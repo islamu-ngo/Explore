@@ -1,22 +1,22 @@
-<!-- ABOUTME: Executable checklist for the fourteen-phase AT Protocol OAuth and event-federation implementation. -->
-<!-- ABOUTME: Tracks DB-first publication, exhaustive event projection, governed validation, Jetstream ingress, HAL, and phase gates. -->
+<!-- ABOUTME: Executable checklist for the fifteen-phase AT Protocol OAuth and event-federation implementation. -->
+<!-- ABOUTME: Tracks DB-first publication, canonical ingress, tenant-local event import, HAL, and phase gates. -->
 
 # AT Protocol Integration — Task Checklist
 
-Last Updated: 2026-07-22 Europe/Brussels
+Last Updated: 2026-07-23 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** All 32/32 implementation tasks are complete and independently verified. The durable execution plan is 20/25 top-level gates complete; canonical full-project verification and F1-F4 remain.
-- **Completed:** 32/32 implementation tasks; broad phase/final verification remains tracked separately.
-- **Current priority:** Execute Todo 21 on one attributable snapshot: Release build, all nine project commands, locked/generated contract and migration checks, and deterministic integration smoke.
-- **Next recommended slice:** Freeze the ATProto-relevant source snapshot after concurrent dynamic-event UI writes settle, run Todo 21, then complete F1-F4 without absorbing unrelated failures or changes.
+- **Overall status:** All 33/33 implementation tasks are complete and independently verified. The durable execution plan is 21/26 top-level gates complete; canonical full-project verification and F1-F4 remain.
+- **Completed:** 33/33 implementation tasks; Phase 15 implementation is complete.
+- **Current priority:** Run Todo 22's canonical Release build, all nine project commands, contract/migration checks, and deterministic integration smoke.
+- **Next recommended slice:** Freeze the attributable ATProto snapshot for Todo 22, then complete F1-F4.
 - **OAuth scope:** Phases 1-6.
-- **Federation scope:** Phases 7-14 complete; ADR-015 is Task 9.1 and remains the recovery/publication ownership boundary.
+- **Federation scope:** Phases 7-15 complete; canonical ingress atomically materializes tenant-local Event/EventSession aggregates.
 
 ## Progress Reconciliation — 2026-07-22
 
-- Todos 16-20 are confirmed in `.omo/start-work/ledger.jsonl`; five top-level gates remain: Todo 21 and F1-F4.
+- Todos 16-21 are confirmed in `.omo/start-work/ledger.jsonl`; five top-level gates remain: Todo 22 and F1-F4.
 - Phase 13.1 settings passed Application 17/17, Infrastructure 13/13, API 8/8, Architecture 9/9, PostgreSQL 1/1, and both bUnit administration surfaces 25/25 combined.
 - Phase 13.2 held one Jetstream session while updating filters in place; its subscriber/readiness/runtime-store matrix passed 30/30, including coalescing, failure reconnect, cursor preservation, and cancellation cleanup.
 - Phase 13.3 passed the real PostgreSQL PDS snapshot reconciliation matrix 4/4 twice after correcting one test-only JSONB comparison to semantic JSON equality.
@@ -519,7 +519,7 @@ Focused independent evidence is green: Application handlers 62/62, planners/proc
   - **Dependencies:** 13.1.
 
 - [x] **13.3 Implement Inbound Event Backfill Engine**
-  - **Status:** Complete and independently confirmed against real PostgreSQL. Recovery uses bounded verified PDS snapshots and the canonical inbound read model; it never synthesizes editable local events or registrations. Evidence: `.omo/evidence/atproto-auth/task-18/pds-recovery.md`.
+  - **Status:** Complete and independently confirmed against real PostgreSQL for canonical snapshot reconciliation. Its former read-model-only aggregate boundary is superseded by Phase 15, which reuses the same transaction to materialize Event/EventSession rows. Evidence: `.omo/evidence/atproto-auth/task-18/pds-recovery.md`.
   - **Files:** ReconcileAtprotoPdsSnapshotsCommand.cs/Handler.cs/Validator.cs (new); AtprotoPdsSnapshotGateway.cs and AtprotoRepositorySnapshotVerifier.cs (new); AtprotoJetstreamRepository.cs (existing).
   - **Acceptance:**
     - [x] Downtime recovery resumes the durable Unix-microsecond Jetstream cursor without PDS snapshot I/O.
@@ -558,6 +558,27 @@ Focused independent evidence is green: Application handlers 62/62, planners/proc
 
 - [ ] dotnet build --configuration Release --verbosity quiet
 - [ ] dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
+
+## Phase 15: Tenant-Local Inbound Event Import — IMPLEMENTATION COMPLETE
+
+- [x] **15.1 Materialize accepted ATProto events as Event aggregates with one EventSession**
+  - **Status:** Complete and independently confirmed. Evidence: `.omo/evidence/atproto-auth/task21/final-adversarial-verify.md`.
+  - **Files:** dedicated ATProto import request/validator/command/handler/mapper; Jetstream runtime store and repository; PDS reconciliation request/handler; focused tests; ADR/workstream docs.
+  - **Acceptance:**
+    - [x] Validator requires only lexicon name and createdAt, while validating every optional supplied value.
+    - [x] First safe source URI maps to EventUrl; schedule maps to exactly one EventSession.
+    - [x] Jetstream and PDS recovery create/update/tombstone the Event/session atomically with canonical record, tenant presentation, and fence/cursor semantics.
+    - [x] Replays are idempotent, updates preserve aggregate identities, and inbound imports never enqueue outbound PDS work.
+    - [x] Real PostgreSQL evidence proves source timestamp, mapping, one-session cardinality, rollback, replay, update, and tombstone behavior.
+  - **Effort:** XL
+  - **Dependencies:** 10.1, 11.1, 13.3.
+
+### Phase 15 Verification — RUN ONCE AFTER IMPLEMENTATION
+
+- [ ] dotnet build --configuration Release --verbosity quiet
+- [ ] dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
+- [ ] dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
+- [ ] dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
 
 ## Remaining / Deferred Work
 

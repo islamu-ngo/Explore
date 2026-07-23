@@ -3,21 +3,21 @@
 
 # AT Protocol Integration — Implementation Plan
 
-Last Updated: 2026-07-22 Europe/Brussels
+Last Updated: 2026-07-23 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** Write an implementation plan under dev/active for the ATProto implementation, follow dev/report/atproto-report.md strictly, use CarpaNet documentation from /home/amir/dev/Github/CarpaNet/docs/docs and Context7, ignore backward compatibility because the product is still in development, and preserve repository conventions, Clean Architecture, security, and maintainability. The 2026-07-18 clarification makes ATProto Events one governed capability for both fetch and publication, requires local-DB-first publication, requires every non-native public event field in the single event record description, and adds an administrator-selectable community-lexicon validation profile.
 - **Task directory:** dev/active/atproto-auth/
-- **Planning status:** All 32 planned implementation tasks across fourteen phases are complete and evidence-backed. The execution plan is 20/25 top-level gates complete; the canonical full-project verification (Todo 21) and final F1-F4 review wave remain open, so no release-readiness claim is made.
-- **Completed implementation tasks:** 32/32. The added recovery, refresh-durability, and universal-discovery slices are independently confirmed under `.omo/evidence/atproto-auth/task-16/` through `task-20/`.
-- **Current priority:** Run Todo 21's canonical Release build, all nine project test commands, contract/migration checks, and deterministic integration smoke on one attributable snapshot, then complete F1-F4.
+- **Planning status:** All 33 implementation tasks across fifteen phases are complete and evidence-backed. The user's 2026-07-23 clarification superseded ADR-015's read-model-only inbound boundary: each accepted inbound event now materializes a tenant-local `Event` and exactly one `EventSession`. The execution plan is 21/26 top-level gates complete; canonical full-project verification and F1-F4 remain open.
+- **Completed implementation tasks:** 33/33. Recovery, refresh durability, universal discovery, and tenant-local inbound aggregate materialization are independently confirmed under `.omo/evidence/atproto-auth/task-16/` through `task21/`.
+- **Current priority:** Run Todo 22's canonical Release build, all nine project test commands, contract/migration checks, and deterministic integration smoke.
 - **Primary source:** dev/report/atproto-report.md, revision 3 dated 2026-07-18.
 - **Matched intents:** bff-auth-bug, add-write-endpoint, add-get-endpoint, add-cqrs-handler, add-ef-migration, update-repository-query, openapi-contract-change, add-hal-link, blazor-component-affordance, and external-infrastructure-bootstrap.
 - **Relevant skills:** implementation-plan, agentic-research, clean-architecture-rules, auth-patterns, blazor-bff-patterns, cqrs-mediatr-guidelines, dotnet-efcore-guidelines, outbox-pattern, error-tracking, blazor-ui-conventions, and lsp.
 - **Relevant rules:** AGENTS.md; docs/QUICK_REFERENCE.md; docs/GOVERNANCE.md; .claude/rules/application-layer.md; api-controllers.md; api-hateoas.md; blazor-server.md; blazor-client.md; domain-layer.md; efcore-persistence.md; efcore-migrations.md; and tests.md.
 - **Primary layers:** Domain, Application, Persistence, Infrastructure, API, Blazor BFF, generated Blazor client contracts, configuration/secrets, and documentation.
-- **Complexity:** XL. The work crosses two authentication trust boundaries, multi-tenant BFF routing, OAuth state and DPoP credential persistence, asymmetric key rotation, EF Core schema, transactional outbox delivery, community-lexicon projection, Jetstream ingestion and snapshot recovery, public HAL/OpenAPI, and nine test projects across fourteen dependency-ordered phases.
+- **Complexity:** XL. The work crosses two authentication trust boundaries, multi-tenant BFF routing, OAuth state and DPoP credential persistence, asymmetric key rotation, EF Core schema, transactional outbox delivery, community-lexicon projection, Jetstream ingestion and snapshot recovery, tenant-local aggregate import, public HAL/OpenAPI, and nine test projects across fifteen dependency-ordered phases.
 - **Compatibility posture:** Breaking cleanup is authorized for this development-stage feature. Do not add aliases, dual reads/writes, deprecated endpoints, compatibility DTOs, migration shims, or compatibility-only tests.
 
 ## 1. Executive Summary
@@ -25,6 +25,8 @@ Last Updated: 2026-07-22 Europe/Brussels
 Implement AT Protocol OAuth as a real BFF login provider and implement governed event/RSVP federation using CarpaNet, CarpaNet.OAuth, and CarpaNet.Jetstream. The BFF owns handle input, OAuth challenge/callback, client metadata/JWKS, transient state, cookie sign-in, and tenant return routing. The API independently verifies the DPoP-bound PDS session, synchronizes the already-linked platform user, persists the encrypted CarpaNet session, and issues a short-lived first-party ES256 session JWT. Existing YARP bearer forwarding then carries only that first-party JWT to the API; PDS tokens and private DPoP material never reach WebAssembly.
 
 Event federation is DB-first. The effective `federation.atproto_events_enabled` setting activates both inbound event fetching and eligible outbound event publication. Local create/publish validation runs under either the default platform profile or the administrator-selected `community_lexicon` profile. A PDS create is never attempted inside a request transaction and never exists without a committed application event: the local publication transition and durable `PdsSyncOutbox` row commit atomically, then a worker restores the user's CarpaNet session and writes the PDS record. One `community.lexicon.calendar.event` record represents the whole event. Every public/federatable field that does not have a native lexicon property—including all sessions, days, agenda items, aspects, lookups, categories, tags, locations, and custom EAV values—is rendered deterministically into that record's description.
+
+Inbound event federation keeps one globally canonical DID/collection/rkey record, but no longer stops at a discovery projection. For every enabled tenant presentation, the fenced Jetstream or complete PDS-snapshot transaction also creates or updates one provenance-linked `Event` and exactly one `EventSession`. A dedicated internal CQRS command and manually instantiated FluentValidation validator accept the community lexicon minimum (`name` and `createdAt`) while validating every optional supplied value. The first safe lexicon URI is the source URL and maps to `Event.EventUrl`; starts/ends map to the session schedule; mode, status, RSVP expectation, description, DID, and canonical record identity map deterministically without enqueuing outbound federation.
 
 The implementation deliberately reuses the existing AtprotoAuthenticationHandler seam, DynamicAuthSchemeManager, LoginRedirect component, SyncUserCommand, UserExternalLogin, IndexedDid, UserAuthenticationToken, cookie/YARP pipeline, tenant context, secret registry, rate limiting, logging, and test fixtures. It does not hand-roll PAR, PKCE, DPoP, nonce retry, handle resolution, PDS discovery, or OAuth token refresh because CarpaNet already owns those protocol details.
 
@@ -36,6 +38,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 - Client metadata and public JWKS are hosted at the configured canonical ATProto public URL.
 - Disabling auth.atproto_login_enabled removes the provider and makes its readiness truthful.
 - Disabling federation.atproto_events_enabled stops both inbound collection ingestion and new outbound event/RSVP enqueue for that effective scope.
+- Accepted inbound community events create or update one tenant-local Event and one EventSession in the same fenced transaction as canonical materialization and cursor/snapshot settlement.
 - An enabled tenant can publish only with explicit user consent, a linked DID, a restorable OAuth session, successful local publication, successful exhaustive projection, and a durable post-commit outbox entry.
 - Instance administrators, or tenant administrators when the existing setting lock is open, can select platform validation or the community lexicon's minimum required event fields; `community_lexicon` is effective only while ATProto Events is enabled.
 
@@ -49,6 +52,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 - No CarpaNet.AspNetCore package unless implementation evidence proves a concrete need; current documentation shows XRPC server generation, not OAuth client metadata hosting.
 - No retroactive bulk publication merely because an administrator enables the capability; already-published events require an explicit, HAL-advertised synchronization action or a later lifecycle transition.
 - No separate session records in the community event collection; all session data is embedded as readable text in the one event description.
+- No second remote session record is created, but every inbound local import creates exactly one application `EventSession`.
 - No reflection-based EF graph serialization, raw entity JSON, private registration answers, attendee PII, moderation evidence, audit internals, secrets, or internal-only identifiers in the PDS description.
 - No public create/update/delete API, DTO, handler, generated client method, or HAL affordance may directly mutate `AtprotoRecord`; only lifecycle-owned outbound delivery and the canonical inbound subscriber own those records.
 
@@ -1180,7 +1184,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 
 - **Goal:** Implement governed downtime recovery, in-place Jetstream filter updates, bounded current PDS snapshot reconciliation, and atomic encrypted OAuth refresh persistence.
 - **Depends on:** Phase 12.
-- **Progress:** Implementation complete and independently verified in Todos 16-19. The Phase 13 broad build/project gate remains part of Todo 21.
+- **Progress:** Implementation complete and independently verified in Todos 16-19. The Phase 13 broad build/project gate remains part of Todo 22.
 - **Related skills/rules:** clean-architecture-rules, cqrs-mediatr-guidelines, dotnet-efcore-guidelines.
 - **Acceptance criteria:**
   - Tenant admin can toggle backfill enabled and select between downtime-only and full modes.
@@ -1235,11 +1239,11 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
   - src/Explore.Application/Features/Federation/Atproto/Validators/ReconcileAtprotoPdsSnapshotsCommandValidator.cs (new)
   - src/Explore.Infrastructure/Services/Federation/AtprotoPdsSnapshotGateway.cs (new)
   - src/Explore.Persistence/Repositories/AtprotoJetstreamRepository.cs (existing)
-- **Description:** Preserve ADR-015 by reconciling bounded current PDS snapshots through the global canonical DID/collection/rkey ingestion and tenant-presentation pipeline; never create editable local `Event` or `EventRegistration` aggregates. `DowntimeOnly` resumes the durable Jetstream cursor without PDS I/O. Governed `Full` recovery fetches a bounded `com.atproto.sync.getRepo` CAR for a bounded known-DID set, verifies DID/PDS/repository binding, commit signatures, canonical CBOR/CAR/MST structure, exact event/RSVP collections, and record limits, then atomically reconciles accepted keys. Only a complete successful snapshot may tombstone older absent canonical records; cancellation, invalid data, partial failure, and stale fences preserve prior state.
+- **Description:** Reconcile bounded current PDS snapshots through the global canonical DID/collection/rkey ingestion and tenant-presentation pipeline. The original read-model-only implementation is complete; Phase 15 now extends its existing fenced transaction with tenant-local Event/EventSession materialization. `DowntimeOnly` resumes the durable Jetstream cursor without PDS I/O. Governed `Full` recovery fetches a bounded `com.atproto.sync.getRepo` CAR for a bounded known-DID set, verifies DID/PDS/repository binding, commit signatures, canonical CBOR/CAR/MST structure, exact event/RSVP collections, and record limits, then atomically reconciles accepted keys. Only a complete successful snapshot may tombstone older absent canonical records; cancellation, invalid data, partial failure, and stale fences preserve prior state.
 - **Acceptance Criteria:**
   - [x] Downtime recovery resumes from the saved Unix-microsecond cursor and performs no PDS snapshot I/O.
   - [x] Full recovery is bounded by known DIDs, response/CAR/block/MST/record limits, exact collections, cancellation, and a single leased consumer.
-  - [x] Recovered records reuse canonical inbound records and tenant presentations; no editable local event/registration aggregate is synthesized.
+  - [x] Recovered records reuse canonical inbound records and tenant presentations; Phase 15 owns the later Event/EventSession materialization amendment.
   - [x] DID/collection/rkey deduplication, idempotent replay, atomic settlement, and complete-snapshot tombstoning pass real PostgreSQL coverage.
 - **Dependencies:** 13.2.
 - **Effort:** XL
@@ -1266,7 +1270,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 
 - **Goal:** Ensure PDS independence (Bluesky, Eurosky, self-hosted) and maintain clean abstractions to support future Keycloak + local PDS integration without breaking changes.
 - **Depends on:** Phase 13.
-- **Progress:** Implementation complete and independently verified in Todo 20. The Phase 14 broad build/project gate remains part of Todo 21.
+- **Progress:** Implementation complete and independently verified in Todo 20. The Phase 14 broad build/project gate remains part of Todo 22.
 - **Related skills/rules:** clean-architecture-rules, auth-patterns.
 - **Acceptance criteria:**
   - Authentication works with accounts in Eurosky, self-hosted, or Bluesky PDS endpoints.
@@ -1294,6 +1298,47 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 - **Effort:** M
 - **Required Skills/Rules:** auth-patterns.
 
+### Phase 15: Tenant-Local Inbound Event Import
+
+- **Goal:** Materialize every accepted tenant-visible ATProto event into the normal Event model with exactly one EventSession while retaining the global canonical record as protocol authority.
+- **Depends on:** Phases 10, 11, 13.3, and 14.
+- **Progress:** Implementation complete and independently confirmed in Todo 21. Canonical all-project verification remains owned by Todo 22.
+- **Related skills/rules:** clean-architecture-rules, cqrs-mediatr-guidelines, dotnet-efcore-guidelines, application-layer.md, efcore-persistence.md, tests.md.
+- **Acceptance criteria:**
+  - A dedicated internal command/handler manually instantiates a validator whose only required lexicon fields are name and createdAt; every optional supplied field remains validated.
+  - Jetstream create/update/tombstone and complete PDS snapshot reconciliation atomically synchronize the canonical record, tenant presentation, one Event, and one EventSession under the existing fence and advisory lock.
+  - Replays preserve aggregate identities, newer source versions update source-owned fields, and tombstones soft-delete imported aggregates.
+  - First safe source URI maps to EventUrl; startsAt/endsAt map to unscheduled, open-ended, or fixed session timing; mode/status/RSVP expectation and provenance map deterministically.
+  - Inbound import never plans outbound work, assigns a local owner role, exposes a public import contract, or changes unrelated dynamic-event UI files.
+- **Phase-end verification (run once after all tasks):**
+  - dotnet build --configuration Release --verbosity quiet
+  - dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
+  - dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
+  - dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
+- **Rollback / failure handling:** The canonical record/projection/presentation transaction remains authoritative; any aggregate-import failure rolls the whole fenced apply back so replay can retry.
+
+#### Task 15.1: Materialize accepted ATProto events as Event aggregates with one EventSession
+
+- **Status:** Complete and independently confirmed. Root-cause/mapping evidence is under `.omo/evidence/atproto-auth/import-investigation/`; implementation and final adversarial evidence are under `.omo/evidence/atproto-auth/task21/`.
+- **Type:** create / modify
+- **Layer:** Application / Infrastructure / Persistence
+- **Files:**
+  - dedicated ATProto import request, validator, command, handler, and mapper under `src/Explore.Application/Features/Federation/Atproto`
+  - `src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamRuntimeStore.cs`
+  - `src/Explore.Persistence/Repositories/AtprotoJetstreamRepository.cs`
+  - PDS reconciliation request/handler
+  - focused Application, Infrastructure, and PostgreSQL tests
+- **Description:** Map lexicon `name` to Event/Session title, `createdAt` to preserved source creation time, description to bounded content, the first policy-approved `uris[].uri` to EventUrl, starts/ends to the single session, mode to Local/Digital/Hybrid, status to Draft/Published/Cancelled, RSVP expectation to registration-required metadata, and DID/AT URI to provenance and a source-managed tenant actor. Apply the same mapping in live Jetstream and complete PDS snapshot recovery.
+- **Acceptance Criteria:**
+  - [x] Missing name or createdAt fails before persistence; malformed optional fields cannot create a partial aggregate.
+  - [x] One visible tenant receives one Event and one EventSession linked by AtprotoRecordId and provenance.
+  - [x] Duplicate, update, tombstone, cancellation, partial snapshot, and transaction-failure cases converge without duplicate rows or outbound outbox work.
+  - [x] Scheduled imported events de-duplicate to the local Event in discovery; planned/draft records retain the federated projection until locally publishable.
+  - [x] Source createdAt and EventUrl survive a real PostgreSQL round trip.
+- **Dependencies:** 10.1, 11.1, 13.3, 14.1.
+- **Effort:** XL
+- **Required Skills/Rules:** clean-architecture-rules, cqrs-mediatr-guidelines, dotnet-efcore-guidelines.
+
 ## 7. Testing Strategy
 
 Each phase owns focused tests with its implementation tasks, then runs one Release build and one fastest relevant non-browser project once.
@@ -1314,8 +1359,9 @@ Each phase owns focused tests with its implementation tasks, then runs one Relea
 | 12 | Explore.Blazor.Client.Tests | Proves lock-aware admin/user controls, accessible consent/profile UX, federated rendering, and HAL-only action gating. |
 | 13 | Explore.Infrastructure.Tests | Proves Jetstream dynamic updates, backfill logic, CAR reading, and token refresh hooks. |
 | 14 | Explore.Blazor.IntegrationTests | Proves universal PDS OAuth routing and dynamic provider discovery. |
+| 15 | Event.Persistence.IntegrationTests | Proves atomic canonical-to-Event/EventSession import, mapping, replay, update, tombstone, tenant isolation, and rollback against PostgreSQL. |
 
-Intent-mandated projects are distributed across the fourteen phases. No phase adds a second dotnet test command. Repeated test projects have distinct bounded purposes recorded above. The report's Bluesky/Eurosky/self-hosted-PDS matrix is release evidence outside these implementation phase gates; it is not scheduled as browser/manual/live-service verification in this plan.
+Intent-mandated projects are distributed across the fifteen phases. Repeated test projects have distinct bounded purposes recorded above. The report's Bluesky/Eurosky/self-hosted-PDS matrix is release evidence outside these implementation phase gates; it is not scheduled as browser/manual/live-service verification in this plan.
 
 ## 8. Documentation, Configuration, And Operations Impact
 
@@ -1453,7 +1499,7 @@ Intent-mandated projects are distributed across the fourteen phases. No phase ad
 
 ### Automated phase gates
 
-Each of the fourteen phases is complete only when all its tasks are checked and its one Release build plus one selected test project pass. No separate manual/browser/live-provider gate is part of this plan.
+Each of the fifteen phases is complete only when all its tasks are checked and its declared Release build/test gates pass. No separate manual/browser/live-provider gate is part of this plan.
 
 ## 15. Implementation Agent Contract — KEEP DEV DOCS CURRENT
 
