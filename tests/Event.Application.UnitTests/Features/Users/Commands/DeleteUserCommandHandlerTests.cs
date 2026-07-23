@@ -3,6 +3,7 @@
 
 using System;
 using Event.Application.UnitTests.Common;
+using Explore.Application.Configuration;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Application.Contracts.Services;
@@ -11,9 +12,9 @@ using Explore.Application.Features.Users.Handlers.Commands;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Services;
 using Explore.Domain;
-using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -102,24 +103,42 @@ public class DeleteUserCommandHandlerTests
         ledgerRepository
             .AppendAsync(Arg.Any<PrivacyErasureIntent>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<PrivacyErasureIntent>());
+        IPrivacyErasureStateRepository stateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+        PrivacyErasureSaga? saga = null;
+        stateRepository.GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(_ => saga);
+        stateRepository.GetByIntentAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(_ => saga);
+        stateRepository.AddSagaAsync(Arg.Any<PrivacyErasureSaga>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                saga = call.Arg<PrivacyErasureSaga>();
+                return Task.CompletedTask;
+            });
         var applier = new PrivacyErasureApplier(
             _userRepository,
             _userPiiRepository,
             _userAuthenticationTokenRepository,
             _erasureRepository,
+            Substitute.For<IUserPrivacyErasureRepository>(),
+            Substitute.For<IPrivacyErasureProviderWorkRepository>(),
+            Substitute.For<IPrivacyErasureProviderLocatorProtector>(),
             checkpointRepository,
             ledgerRepository,
+            stateRepository,
             outboxRepository,
             _cache,
             TimeProvider.System,
-            Substitute.For<ILogger<PrivacyErasureApplier>>());
+            Substitute.For<ILogger<PrivacyErasureApplier>>(),
+            Options.Create(new PrivacyErasureOptions()));
 
         IPrivacyErasureService service = new RetainedAuthorityPrivacyErasureWorkflow(
-            _userRepository,
             checkpointRepository,
+            ledgerRepository,
+            stateRepository,
             authority,
             _unitOfWork,
-            applier);
+            applier,
+            Options.Create(new PrivacyErasureOptions()),
+            TimeProvider.System);
         _handler = new DeleteUserCommandHandler(service);
     }
 
@@ -128,7 +147,7 @@ public class DeleteUserCommandHandlerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var command = new DeleteUserCommand { UserId = userId };
+        var command = new DeleteUserCommand { UserId = userId, IntentId = Guid.CreateVersion7() };
 
         var user = DataBuilder.User.Generate();
         user.Id = userId;
@@ -142,23 +161,27 @@ public class DeleteUserCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result).IsEqualTo(Unit.Value);
+        await Assert.That(result.Receipt).IsNotNull();
         await _userRepository.Received(1).Update(Arg.Is<User>(deleted =>
             deleted == user && deleted.IsDeleted));
     }
 
     [Test]
-    public async Task Handle_WithNonExistentUser_ThrowsNotFoundException()
+    public async Task Handle_WithNonExistentUser_ReturnsIndistinguishableReceipt()
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var command = new DeleteUserCommand { UserId = userId };
+        var command = new DeleteUserCommand { UserId = userId, IntentId = Guid.CreateVersion7() };
 
         _userRepository.GetById(userId).Returns((User?)null);
+        _userPiiRepository.GetById(userId).Returns((UserPii?)null);
+        _userAuthenticationTokenRepository.GetByUser(userId).Returns([]);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<NotFoundException>(
-            async () => await _handler.Handle(command, CancellationToken.None));
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result.Receipt).IsNotNull();
         await _userRepository.DidNotReceive().Update(Arg.Any<User>());
     }
 
@@ -167,7 +190,7 @@ public class DeleteUserCommandHandlerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var command = new DeleteUserCommand { UserId = userId };
+        var command = new DeleteUserCommand { UserId = userId, IntentId = Guid.CreateVersion7() };
 
         var user = DataBuilder.User.Generate();
         user.Id = userId;
@@ -182,7 +205,7 @@ public class DeleteUserCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await Assert.That(result).IsEqualTo(Unit.Value);
+        await Assert.That(result.Receipt).IsNotNull();
         await _userRepository.Received(1).Update(Arg.Is<User>(u =>
             u.Id == userId && u.IsDeleted));
     }
@@ -193,7 +216,7 @@ public class DeleteUserCommandHandlerTests
         // Arrange
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
-        var command = new DeleteUserCommand { UserId = userId };
+        var command = new DeleteUserCommand { UserId = userId, IntentId = Guid.CreateVersion7() };
 
         var user = DataBuilder.User.Generate();
         user.Id = userId;
@@ -234,7 +257,8 @@ public class DeleteUserCommandHandlerTests
         // Assert
         await _actorPiiRepository.DidNotReceive().Delete(Arg.Any<ActorPii>());
         await Assert.That(actorPii.ActorId).IsEqualTo(actorId);
-        await Assert.That(actorPii.DisplayName).StartsWith("DeletedUser");
+        await Assert.That(actor.UserId).IsNull();
+        await Assert.That(actorPii.DisplayName).IsEqualTo("Deleted user");
         await Assert.That(actorPii.Did).IsNull();
         await Assert.That(actorPii.Handle).IsNull();
         await Assert.That(actorPii.ProfilePictureUri).IsNull();

@@ -1,10 +1,18 @@
-// ABOUTME: Application contract for platform-wide account erasure and retained replay.
-// ABOUTME: Exposes deletion plus sequence-zero recovery without leaking persistence or provider details.
+// ABOUTME: Application contract for asynchronous platform account erasure, status, and replay.
+// ABOUTME: Keeps callers independent from receipt hashing, authority storage, and transaction details.
+
+using Explore.Application.DTOs.PrivacyErasure;
 
 namespace Explore.Application.Contracts.Services;
 
 public interface IPrivacyErasureService
 {
-    Task EraseUserAsync(Guid userId, CancellationToken cancellationToken);
+    Task<PrivacyErasureStartDto> EraseUserAsync(
+        Guid userId,
+        Guid intentId,
+        CancellationToken cancellationToken);
+
+    Task<Guid?> AuthenticateReceiptAsync(string receipt, CancellationToken cancellationToken);
+    Task<PrivacyErasureStatusDto?> GetStatusAsync(Guid intentId, CancellationToken cancellationToken);
     Task ReplayPendingAsync(CancellationToken cancellationToken);
 }

@@ -48,6 +48,21 @@ public static class ApplicationServicesRegistration
             {
                 options.Topology = erasureDurability.Topology;
             });
+        services.AddOptions<PrivacyErasureOptions>()
+            .Bind(configuration.GetSection(PrivacyErasureOptions.SectionName))
+            .Validate(options =>
+            {
+                try
+                {
+                    options.Validate();
+                    return true;
+                }
+                catch (InvalidOperationException)
+                {
+                    return false;
+                }
+            }, "Privacy-erasure lifecycle settings are invalid.")
+            .ValidateOnStart();
 
         services.AddAutoMapper(cfg =>
         {

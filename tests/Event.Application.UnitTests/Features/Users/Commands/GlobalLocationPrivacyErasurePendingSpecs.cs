@@ -2,6 +2,7 @@
 // ABOUTME: Exercises the current command boundary so Todo 10 must fail closed and erase every owned Home.
 
 using Event.Application.UnitTests.Common;
+using Explore.Application.Configuration;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Application.Contracts.Services;
@@ -12,6 +13,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using TUnit.Core;
 
@@ -33,7 +35,9 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
                 throw new InvalidOperationException("The retained erasure authority is unavailable."));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            harness.Handler.Handle(new DeleteUserCommand { UserId = userId }, CancellationToken.None));
+            harness.Handler.Handle(
+                new DeleteUserCommand { UserId = userId, IntentId = Guid.CreateVersion7() },
+                CancellationToken.None));
         await harness.UserRepository.DidNotReceive().Update(Arg.Any<User>());
     }
 
@@ -50,7 +54,7 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
             .Returns([tenantAHome, tenantBHome]);
 
         await harness.Handler.Handle(
-            new DeleteUserCommand { UserId = userId },
+            new DeleteUserCommand { UserId = userId, IntentId = Guid.CreateVersion7() },
             CancellationToken.None);
 
         await Assert.That(tenantAHome.LocationPrivacyStateId)
@@ -110,7 +114,7 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
                 : []);
 
         await harness.Handler.Handle(
-            new DeleteUserCommand { UserId = userId },
+            new DeleteUserCommand { UserId = userId, IntentId = Guid.CreateVersion7() },
             CancellationToken.None);
 
         await Assert.That(appendCount).IsEqualTo(2);
@@ -128,7 +132,7 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             harness.Handler.Handle(
-                new DeleteUserCommand { UserId = userId },
+            new DeleteUserCommand { UserId = userId, IntentId = Guid.CreateVersion7() },
                 cancellation.Token));
 
         _ = harness.UserRepository.DidNotReceive().GetById(Arg.Any<Guid>());
@@ -221,24 +225,42 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
         ledgerRepository
             .AppendAsync(Arg.Any<PrivacyErasureIntent>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<PrivacyErasureIntent>());
+        IPrivacyErasureStateRepository stateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+        PrivacyErasureSaga? saga = null;
+        stateRepository.GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(_ => saga);
+        stateRepository.GetByIntentAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(_ => saga);
+        stateRepository.AddSagaAsync(Arg.Any<PrivacyErasureSaga>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                saga = call.Arg<PrivacyErasureSaga>();
+                return Task.CompletedTask;
+            });
         var applier = new PrivacyErasureApplier(
             userRepository,
             userPiiRepository,
             tokenRepository,
             erasureRepository,
+            Substitute.For<IUserPrivacyErasureRepository>(),
+            Substitute.For<IPrivacyErasureProviderWorkRepository>(),
+            Substitute.For<IPrivacyErasureProviderLocatorProtector>(),
             checkpointRepository,
             ledgerRepository,
+            stateRepository,
             outboxRepository,
             cache,
             TimeProvider.System,
-            Substitute.For<ILogger<PrivacyErasureApplier>>());
+            Substitute.For<ILogger<PrivacyErasureApplier>>(),
+            Options.Create(new PrivacyErasureOptions()));
 
         IPrivacyErasureService service = new RetainedAuthorityPrivacyErasureWorkflow(
-            userRepository,
             checkpointRepository,
+            ledgerRepository,
+            stateRepository,
             authority,
             unitOfWork,
-            applier);
+            applier,
+            Options.Create(new PrivacyErasureOptions()),
+            TimeProvider.System);
         var handler = new DeleteUserCommandHandler(service);
 
         return new DeletionHarness(handler, user, userRepository, erasureRepository, authority);
