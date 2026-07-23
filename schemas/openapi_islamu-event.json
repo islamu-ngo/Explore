@@ -14608,6 +14608,90 @@
         "x-output-cache-policy": "DetailData"
       }
     },
+    "/api/event/public/{slugCode}/og-image": {
+      "get": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Get Public Event Open Graph Image",
+        "description": "Returns a deterministic 1200x630 PNG for an eligible public event, or the generic event-not-found response when the event is not publicly renderable.",
+        "operationId": "GetEventOpenGraphImage",
+        "parameters": [
+          {
+            "name": "slugCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "image/png; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileContentResult"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "image/png": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "image/png; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "image/png": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "image/png; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "image/png": { }
+            }
+          },
+          "304": {
+            "description": "Not Modified",
+            "content": {
+              "application/json": { },
+              "application/hal+json": { },
+              "image/png": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      }
+    },
     "/api/event/{id}/management-detail": {
       "get": {
         "tags": [
