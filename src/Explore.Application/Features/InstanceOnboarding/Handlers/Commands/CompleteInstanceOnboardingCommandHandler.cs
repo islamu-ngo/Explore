@@ -259,7 +259,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
         var externalLogin = new UserExternalLogin
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             UserId = user.Id,
             User = user,
             TenantId = actorTenantId,

@@ -70,7 +70,7 @@ public class ExportFromTmsCommandHandler : IRequestHandler<ExportFromTmsCommand,
             await _translationResolver.InvalidateLanguageAsync(request.LanguageCode, cancellationToken);
 
             response.Success = true;
-            response.Id = Guid.NewGuid();
+            response.Id = Guid.CreateVersion7();
             response.Message =
                 $"Exported {translations.Count} translations for language '{request.LanguageCode}' → {path}";
             _metrics.RecordStaticBundleOperation("export_from_tms", request.LanguageCode, "success");

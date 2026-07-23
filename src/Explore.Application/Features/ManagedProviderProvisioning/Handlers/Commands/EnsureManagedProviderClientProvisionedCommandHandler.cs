@@ -1312,7 +1312,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         if (string.IsNullOrWhiteSpace(normalized)) normalized = prefix;
         if (normalized.Length > 20) normalized = normalized[..20];
 
-        var suffix = Guid.NewGuid().ToString("N")[..6];
+        var suffix = Guid.CreateVersion7().ToString("N")[..6];
         return $"{normalized}-{suffix}";
     }
 }

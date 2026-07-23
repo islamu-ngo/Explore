@@ -159,7 +159,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
     private string GenerateHandle(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
-            return $"org-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+            return $"org-{Guid.CreateVersion7().ToString("N").Substring(0, 8)}";
 
         // Convert to lowercase, replace spaces with hyphens, remove special characters
         var handle = name.ToLowerInvariant()
@@ -176,6 +176,6 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         if (handle.Length > 20)
             handle = handle.Substring(0, 20);
 
-        return $"{handle}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";
+        return $"{handle}-{Guid.CreateVersion7().ToString("N").Substring(0, 6)}";
     }
 }

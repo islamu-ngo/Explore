@@ -87,7 +87,7 @@ public class AnalyticsGovernanceService : IAnalyticsGovernanceService
         return consentMode switch
         {
             AnalyticsConsentMode.Identified => distinctId,
-            AnalyticsConsentMode.Anonymous => $"anonymous-{Guid.NewGuid():N}",
+            AnalyticsConsentMode.Anonymous => $"anonymous-{Guid.CreateVersion7():N}",
             _ => $"pseudo-{HashDistinctId(distinctId)}"
         };
     }

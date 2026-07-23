@@ -10,7 +10,7 @@ public static class SlugGenerator
     public static string FromTitle(string title, string fallbackPrefix = "item")
     {
         if (string.IsNullOrWhiteSpace(title))
-            return $"{fallbackPrefix}-{Guid.NewGuid().ToString("N")[..8]}";
+            return $"{fallbackPrefix}-{Guid.CreateVersion7().ToString("N")[..8]}";
 
         var slug = title.ToLowerInvariant()
             .Replace(" ", "-")

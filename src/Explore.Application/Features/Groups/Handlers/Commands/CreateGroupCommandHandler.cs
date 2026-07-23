@@ -157,7 +157,7 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
     private string GenerateHandle(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
-            return $"grp-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+            return $"grp-{Guid.CreateVersion7().ToString("N").Substring(0, 8)}";
 
         var handle = name.ToLowerInvariant()
             .Replace(" ", "-")
@@ -171,7 +171,7 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
         if (handle.Length > 20)
             handle = handle.Substring(0, 20);
 
-        return $"{handle}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";
+        return $"{handle}-{Guid.CreateVersion7().ToString("N").Substring(0, 6)}";
     }
 
     private async Task<List<string>> ValidateHierarchy(Guid? parentOrganizationId, Guid? parentGroupId, CancellationToken cancellationToken)

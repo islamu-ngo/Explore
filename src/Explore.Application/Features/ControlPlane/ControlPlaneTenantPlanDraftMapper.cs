@@ -13,7 +13,7 @@ internal static class ControlPlaneTenantPlanDraftMapper
     {
         var plan = new TenantPlan
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             Key = draft.Key.Trim(),
             DisplayName = draft.Name.Trim()
         };
@@ -30,7 +30,7 @@ internal static class ControlPlaneTenantPlanDraftMapper
     {
         var version = new TenantPlanVersion
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             TenantPlan = plan,
             TenantPlanId = plan.Id,
             VersionNumber = versionNumber,
@@ -45,7 +45,7 @@ internal static class ControlPlaneTenantPlanDraftMapper
         {
             version.Settings.Add(new TenantPlanVersionSetting
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.CreateVersion7(),
                 TenantPlanVersion = version,
                 TenantPlanVersionId = version.Id,
                 SettingKey = setting.Key,
@@ -58,7 +58,7 @@ internal static class ControlPlaneTenantPlanDraftMapper
         {
             version.Quotas.Add(new TenantPlanVersionQuota
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.CreateVersion7(),
                 TenantPlanVersion = version,
                 TenantPlanVersionId = version.Id,
                 QuotaKey = quota.Key,
@@ -82,7 +82,7 @@ internal static class ControlPlaneTenantPlanDraftMapper
         {
             version.Settings.Add(new TenantPlanVersionSetting
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.CreateVersion7(),
                 TenantPlanVersion = version,
                 TenantPlanVersionId = version.Id,
                 SettingKey = setting.Key,
@@ -95,7 +95,7 @@ internal static class ControlPlaneTenantPlanDraftMapper
         {
             version.Quotas.Add(new TenantPlanVersionQuota
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.CreateVersion7(),
                 TenantPlanVersion = version,
                 TenantPlanVersionId = version.Id,
                 QuotaKey = quota.Key,

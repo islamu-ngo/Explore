@@ -110,8 +110,8 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
             }
 
             // IDs generated before lambda — captured via closure for retry safety
-            var newUserId = userDto.Id != Guid.Empty ? userDto.Id : Guid.NewGuid();
-            var loginId = Guid.NewGuid();
+            var newUserId = userDto.Id != Guid.Empty ? userDto.Id : Guid.CreateVersion7();
+            var loginId = Guid.CreateVersion7();
 
             var syncedUser = await _unitOfWork.ExecuteInTransactionAsync<User>(async ct =>
             {

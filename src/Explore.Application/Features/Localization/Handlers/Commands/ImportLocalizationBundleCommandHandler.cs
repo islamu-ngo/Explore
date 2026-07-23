@@ -62,7 +62,7 @@ public class ImportLocalizationBundleCommandHandler : IRequestHandler<ImportLoca
             await _translationResolver.InvalidateLanguageAsync(culture.Code, cancellationToken);
 
             response.Success = true;
-            response.Id = Guid.NewGuid();
+            response.Id = Guid.CreateVersion7();
             response.Message = $"Imported {request.Dto.Translations.Count} translations for language '{culture.Code}' → {path}";
             _metrics.RecordStaticBundleOperation("import_static_bundle", culture.Code, "success");
             return response;
