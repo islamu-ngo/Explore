@@ -302,6 +302,7 @@ public static class RouteNames
     public const string GetCurrentUserAdminAuthority = "GetCurrentUserAdminAuthority";
     public const string UpdateCurrentUser = "UpdateCurrentUser";
     public const string DeleteCurrentUser = "DeleteCurrentUser";
+    public const string GetPrivacyErasureStatus = "GetPrivacyErasureStatus";
     public const string ResolveUserTenantRedirection = "ResolveUserTenantRedirection";
     public const string UpdateUserLastActiveTenant = "UpdateUserLastActiveTenant";
 

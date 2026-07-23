@@ -209,6 +209,9 @@ public static class AuthenticationExtensions
                 _ => { })
             .AddScheme<AuthenticationSchemeOptions, AtprotoSessionAuthenticationHandler>(
                 ApiAuthenticationSchemeNames.AtprotoSession,
+                _ => { })
+            .AddScheme<AuthenticationSchemeOptions, PrivacyErasureReceiptAuthenticationHandler>(
+                ApiAuthenticationSchemeNames.PrivacyErasureReceipt,
                 _ => { });
 
         services.AddAuthorizationBuilder()

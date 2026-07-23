@@ -479,7 +479,11 @@ builder.Services.AddHealthChecks()
     .AddCheck<AiProviderHealthCheck>(
         "ai-provider",
         failureStatus: HealthStatus.Unhealthy,
-        tags: ["ready", "ai", "provider", "infrastructure"]);
+        tags: ["ready", "ai", "provider", "infrastructure"])
+    .AddCheck<PrivacyErasureReadinessHealthCheck>(
+        "privacy-erasure",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "privacy", "erasure", "infrastructure"]);
 
 // Request timeouts: default 30s, lookups 10s, complex 60s
 builder.Services.AddApiRequestTimeouts(builder.Configuration);

@@ -18,13 +18,17 @@ namespace Event.Api.IntegrationTests.Privacy;
 public sealed class PrivacyErasureStartupGateTests
 {
     [Test]
-    public async Task CoLocatedTopology_DoesNotResolveReplayService()
+    public async Task CoLocatedTopology_ReplaysBeforeStartup()
     {
+        var replay = new RecordingReplay();
         await using ServiceProvider services = new ServiceCollection()
             .AddSingleton<IOptions<PrivacyErasureDurabilityOptions>>(Options.Create(new PrivacyErasureDurabilityOptions()))
+            .AddScoped<IPrivacyErasureReplayService>(_ => replay)
             .BuildServiceProvider();
 
         await PrivacyErasureStartupGate.RunAsync(services, CancellationToken.None);
+
+        await Assert.That(replay.Called).IsTrue();
     }
 
     [Test]
@@ -94,6 +98,17 @@ public sealed class PrivacyErasureStartupGateTests
 
         public Task ReplayAsync(CancellationToken cancellationToken) =>
             throw new IOException(RawProviderMessage);
+    }
+
+    private sealed class RecordingReplay : IPrivacyErasureReplayService
+    {
+        public bool Called { get; private set; }
+
+        public Task ReplayAsync(CancellationToken cancellationToken)
+        {
+            Called = true;
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class ReplayCancellation : IPrivacyErasureReplayService

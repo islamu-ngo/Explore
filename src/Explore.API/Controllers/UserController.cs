@@ -7,6 +7,7 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Organization;
+using Explore.Application.DTOs.PrivacyErasure;
 using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Features.Users.Requests.Queries;
@@ -258,7 +259,12 @@ public class UserController : ExploreControllerBase
 
     [HttpDelete(Name = RouteNames.DeleteCurrentUser)]
     [Authorize]
-    public async Task<ActionResult> DeleteUser(CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(PrivacyErasureStartDto), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<PrivacyErasureStartDto>> DeleteUser(
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken = default)
     {
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
         if (!currentUserId.HasValue)
@@ -266,10 +272,19 @@ public class UserController : ExploreControllerBase
             return this.ToAuthenticationRequiredProblem();
         }
 
-        var command = new DeleteUserCommand { UserId = currentUserId.Value };
-        await _mediator.Send(command, cancellationToken);
+        if (!Guid.TryParse(idempotencyKey, out Guid intentId)
+            || intentId.Version != 7
+            || intentId.Variant is < 8 or > 11)
+        {
+            ModelState.AddModelError("Idempotency-Key", "A UUIDv7 Idempotency-Key header is required.");
+            return ValidationProblem(ModelState);
+        }
 
-        return NoContent();
+        var command = new DeleteUserCommand { UserId = currentUserId.Value, IntentId = intentId };
+        PrivacyErasureStartDto result = await _mediator.Send(command, cancellationToken);
+        Response.Headers.CacheControl = "private, no-store";
+        Response.Headers.RetryAfter = "5";
+        return AcceptedAtRoute(RouteNames.GetPrivacyErasureStatus, routeValues: null, value: result);
     }
 
     private async Task<Guid?> ResolveCurrentUserIdAsync(CancellationToken cancellationToken)

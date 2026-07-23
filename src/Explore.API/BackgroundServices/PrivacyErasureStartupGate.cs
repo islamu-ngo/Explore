@@ -1,9 +1,7 @@
 // ABOUTME: Blocks API startup until external platform privacy-erasure intents are replayed.
 // ABOUTME: Preserves caller cancellation and exposes only sanitized fail-closed errors.
 
-using Explore.Application.Configuration;
 using Explore.Application.Contracts.Services;
-using Microsoft.Extensions.Options;
 
 namespace Explore.API.BackgroundServices;
 
@@ -16,14 +14,6 @@ public static class PrivacyErasureStartupGate
         ArgumentNullException.ThrowIfNull(services);
 
         await using AsyncServiceScope scope = services.CreateAsyncScope();
-        PrivacyErasureDurabilityOptions options = scope.ServiceProvider
-            .GetRequiredService<IOptions<PrivacyErasureDurabilityOptions>>()
-            .Value;
-        if (options.Topology == PrivacyErasureAuthorityTopology.CoLocated)
-        {
-            return;
-        }
-
         try
         {
             await scope.ServiceProvider

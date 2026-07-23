@@ -12,4 +12,6 @@ public static class ApiAuthenticationSchemeNames
     public const string AtprotoBootstrap = "AtprotoBootstrap";
 
     public const string AtprotoSession = "AtprotoSession";
+
+    public const string PrivacyErasureReceipt = "PrivacyErasureReceipt";
 }

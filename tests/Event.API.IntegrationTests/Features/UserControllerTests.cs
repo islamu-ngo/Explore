@@ -3,15 +3,24 @@
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
+using Explore.API.Controllers;
+using Explore.API.Hateoas;
+using Explore.Application.DTOs.PrivacyErasure;
 using Explore.Application.DTOs.User;
+using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Persistence;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -227,6 +236,47 @@ public class UserControllerTests
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task DeleteUser_WithUuidV7Idempotency_ReturnsAcceptedReceiptContract()
+    {
+        Guid userId = Guid.CreateVersion7();
+        Guid intentId = Guid.CreateVersion7();
+        var expected = new PrivacyErasureStartDto(
+            "completed",
+            "once-revealed-receipt",
+            DateTime.UtcNow.AddDays(7));
+        IMediator mediator = Substitute.For<IMediator>();
+        mediator.Send(
+                Arg.Is<DeleteUserCommand>(command =>
+                    command.UserId == userId && command.IntentId == intentId),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
+        var controller = new UserController(mediator)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim("internal_user_id", userId.ToString("D"))],
+                        "test"))
+                }
+            }
+        };
+
+        ActionResult<PrivacyErasureStartDto> result = await controller.DeleteUser(
+            intentId.ToString("D"),
+            CancellationToken.None);
+
+        var accepted = result.Result as AcceptedAtRouteResult;
+        await Assert.That(accepted).IsNotNull();
+        await Assert.That(accepted!.StatusCode).IsEqualTo(StatusCodes.Status202Accepted);
+        await Assert.That(accepted.RouteName).IsEqualTo(RouteNames.GetPrivacyErasureStatus);
+        await Assert.That(accepted.Value).IsSameReferenceAs(expected);
+        await Assert.That(controller.Response.Headers.RetryAfter.ToString()).IsEqualTo("5");
+        await Assert.That(controller.Response.Headers.CacheControl.ToString()).Contains("no-store");
     }
 
     #endregion
