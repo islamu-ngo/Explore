@@ -384,6 +384,64 @@ public sealed class CompositeOutboxMessageDispatcherTests
     }
 
     [Test]
+    public async Task DispatchAsync_WithPrivacyErasureCacheWork_ClearsUserAndSharedEventCaches()
+    {
+        var cache = new RecordingHybridCache();
+        CompositeOutboxMessageDispatcher dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>(),
+            cache: cache);
+        Guid subjectId = Guid.CreateVersion7();
+
+        await dispatcher.DispatchAsync(PrivacyErasureCacheInvalidationOutboxMessageFactory.Create(
+            Guid.CreateVersion7(),
+            subjectId,
+            DateTime.UtcNow));
+
+        await Assert.That(cache.RemovedKeys).Contains($"user:detail:{subjectId}");
+        await Assert.That(cache.RemovedTags).Contains(CacheTags.Events);
+        await Assert.That(cache.RemovedTags).Contains(CacheTags.EventLists);
+        await Assert.That(cache.RemovedTags).Contains(CacheTags.EventDetails);
+        await Assert.That(cache.RemovedTags).Contains(CacheTags.EventLocations);
+    }
+
+    [Test]
+    public async Task ReconcileDeadLetterAsync_WithPrivacyErasureCacheWork_ReplaysInvalidation()
+    {
+        var cache = new RecordingHybridCache();
+        CompositeOutboxMessageDispatcher dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>(),
+            cache: cache);
+        Guid subjectId = Guid.CreateVersion7();
+
+        await dispatcher.ReconcileDeadLetterAsync(
+            PrivacyErasureCacheInvalidationOutboxMessageFactory.Create(
+                Guid.CreateVersion7(),
+                subjectId,
+                DateTime.UtcNow));
+
+        await Assert.That(cache.RemovedKeys).Contains($"user:detail:{subjectId}");
+        await Assert.That(cache.RemovedTags).Contains(CacheTags.EventLocations);
+    }
+
+    [Test]
+    public async Task DispatchAsync_WithPrivacyErasurePayload_RejectsClosedEnvelope()
+    {
+        CompositeOutboxMessageDispatcher dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>());
+        OutboxMessage message = PrivacyErasureCacheInvalidationOutboxMessageFactory.Create(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            DateTime.UtcNow);
+        message.Payload = "{}";
+
+        await Assert.That(async () => await dispatcher.DispatchAsync(message))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
     [Category("EventLocationPrivacy")]
     public async Task ReconcileDeadLetterAsync_WithUnsupportedEventType_Throws()
     {
@@ -410,6 +468,7 @@ public sealed class CompositeOutboxMessageDispatcherTests
         IOutboxRepository? outboxRepository = null,
         HybridCache? cache = null)
     {
+        HybridCache selectedCache = cache ?? new RecordingHybridCache();
         var correctionPlanner = Substitute.For<IAtprotoLocationPrivacyCorrectionPlanner>();
         correctionPlanner.PlanLocationPrivacyCorrectionAsync(
                 Arg.Any<AtprotoLocationPrivacyCorrectionInput>(),
@@ -423,8 +482,9 @@ public sealed class CompositeOutboxMessageDispatcherTests
             moderationFanoutService,
             reportProviderSyncDispatcher ?? Substitute.For<IReportProviderSyncDispatcher>(),
             new LocationPrivacyCorrectionDispatcher(
-                cache ?? new RecordingHybridCache(),
+                selectedCache,
                 correctionPlanner),
+            new PrivacyErasureCacheInvalidationDispatcher(selectedCache),
             outboxRepository ?? Substitute.For<IOutboxRepository>(),
             mediator ?? Substitute.For<IMediator>(),
             NullLogger<CompositeOutboxMessageDispatcher>.Instance);
@@ -529,6 +589,7 @@ public sealed class CompositeOutboxMessageDispatcherTests
 
     private sealed class RecordingHybridCache : HybridCache
     {
+        public List<string> RemovedKeys { get; } = [];
         public List<string> RemovedTags { get; } = [];
 
         public override ValueTask<T> GetOrCreateAsync<TState, T>(
@@ -541,7 +602,11 @@ public sealed class CompositeOutboxMessageDispatcherTests
 
         public override ValueTask RemoveAsync(
             string key,
-            CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+            CancellationToken cancellationToken = default)
+        {
+            RemovedKeys.Add(key);
+            return ValueTask.CompletedTask;
+        }
 
         public override ValueTask RemoveByTagAsync(
             string tag,

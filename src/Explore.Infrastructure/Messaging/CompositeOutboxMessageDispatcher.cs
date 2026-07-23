@@ -23,6 +23,7 @@ public sealed class CompositeOutboxMessageDispatcher(
     IEventModerationNotificationFanoutService moderationNotificationFanoutService,
     IReportProviderSyncDispatcher reportProviderSyncDispatcher,
     LocationPrivacyCorrectionDispatcher locationPrivacyCorrectionDispatcher,
+    PrivacyErasureCacheInvalidationDispatcher privacyErasureCacheInvalidationDispatcher,
     IOutboxRepository outboxRepository,
     IMediator mediator,
     ILogger<CompositeOutboxMessageDispatcher> logger) : IOutboxMessageDispatcher
@@ -57,6 +58,10 @@ public sealed class CompositeOutboxMessageDispatcher(
                 await locationPrivacyCorrectionDispatcher.DispatchAsync(message, ct);
                 return;
 
+            case PrivacyErasureCacheInvalidationOutboxMessageFactory.EventType:
+                await privacyErasureCacheInvalidationDispatcher.DispatchAsync(message, ct);
+                return;
+
             case ManagedTenantProvisioningOutboxEvents.ProcessRequested:
                 await mediator.Send(
                     new ProcessManagedTenantProvisioningOperationCommand(message.AggregateId, message.Id),
@@ -86,6 +91,10 @@ public sealed class CompositeOutboxMessageDispatcher(
             case LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType:
             case LocationPrivacyCorrectionDispatcher.GovernanceCorrectionEventType:
                 await locationPrivacyCorrectionDispatcher.DispatchAsync(message, ct);
+                return;
+
+            case PrivacyErasureCacheInvalidationOutboxMessageFactory.EventType:
+                await privacyErasureCacheInvalidationDispatcher.DispatchAsync(message, ct);
                 return;
 
             default:

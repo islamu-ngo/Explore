@@ -1,13 +1,16 @@
 // ABOUTME: Proves startup replay re-invalidates the latest retained erasure checkpoint.
-// ABOUTME: Ensures stale cache state keeps the replay gate closed without leaking provider detail.
+// ABOUTME: Ensures durable convergence lets replay continue when immediate cache invalidation fails.
 
 using Explore.Application.Caching;
+using Explore.Application.Configuration;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.PrivacyErasure;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Services;
 using Explore.Domain;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using TUnit.Core;
 
@@ -24,7 +27,14 @@ public sealed class GlobalLocationPrivacyReplayCacheGateTests
 
         await Assert.That(harness.Cache.RemovedKeys)
             .Contains($"user:detail:{harness.Intent.SubjectId}");
+        await Assert.That(harness.Cache.RemovedTags).Contains(CacheTags.Events);
+        await Assert.That(harness.Cache.RemovedTags).Contains(CacheTags.EventLists);
+        await Assert.That(harness.Cache.RemovedTags).Contains(CacheTags.EventDetails);
         await Assert.That(harness.Cache.RemovedTags).Contains(CacheTags.EventLocations);
+        await Assert.That(harness.Cache.RemovedTags)
+            .Contains(CacheTags.EventLocationsByTenant(harness.HomeTenantId));
+        await Assert.That(harness.Cache.RemovedTags)
+            .Contains(CacheTags.EventListByTenant(harness.HomeTenantId));
         await harness.Authority.Received(1).ReadAfterAsync(
             harness.Intent.AuthoritySequence,
             Arg.Any<int>(),
@@ -32,17 +42,13 @@ public sealed class GlobalLocationPrivacyReplayCacheGateTests
     }
 
     [Test]
-    public async Task LatestCheckpoint_CacheFailureFailsClosedBeforeReadingLaterFacts()
+    public async Task LatestCheckpoint_CacheFailureContinuesToDurableConvergence()
     {
         ReplayHarness harness = CreateHarness(failOnTag: CacheTags.EventLocations);
 
-        InvalidOperationException? exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            harness.Service.ReplayPendingAsync(CancellationToken.None));
+        await harness.Service.ReplayPendingAsync(CancellationToken.None);
 
-        await Assert.That(exception!.Message)
-            .IsEqualTo("Post-commit privacy-erasure cache invalidation failed.");
-        await Assert.That(exception.Message).DoesNotContain(RecordingHybridCache.RawFailureCanary);
-        await harness.Authority.DidNotReceive().ReadAfterAsync(
+        await harness.Authority.Received(1).ReadAfterAsync(
             harness.Intent.AuthoritySequence,
             Arg.Any<int>(),
             Arg.Any<CancellationToken>());
@@ -79,9 +85,20 @@ public sealed class GlobalLocationPrivacyReplayCacheGateTests
 
         IUserLocationPrivacyErasureRepository erasureRepository =
             Substitute.For<IUserLocationPrivacyErasureRepository>();
+        Guid homeTenantId = Guid.CreateVersion7();
+        var home = new Location
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = homeTenantId,
+            Tenant = null!,
+            FullName = "Erased home",
+            Country = "BE",
+            City = "Brussels",
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
         erasureRepository
             .GetOwnedPrivateHomesAsync(ownerUserId, Arg.Any<CancellationToken>())
-            .Returns([]);
+            .Returns([home]);
         erasureRepository
             .GetEventLocationsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([]);
@@ -98,32 +115,52 @@ public sealed class GlobalLocationPrivacyReplayCacheGateTests
         ledgerRepository
             .AppendAsync(Arg.Any<PrivacyErasureIntent>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<PrivacyErasureIntent>());
+        IPrivacyErasureStateRepository stateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+        PrivacyErasureSaga? saga = null;
+        stateRepository.GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(_ => saga);
+        stateRepository.GetByIntentAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(_ => saga);
+        stateRepository.HasCoverageAsync(intent.IntentId, 1, Arg.Any<CancellationToken>()).Returns(true);
+        stateRepository.AddSagaAsync(Arg.Any<PrivacyErasureSaga>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                saga = call.Arg<PrivacyErasureSaga>();
+                return Task.CompletedTask;
+            });
         var applier = new PrivacyErasureApplier(
             userRepository,
             userPiiRepository,
             tokenRepository,
             erasureRepository,
+            Substitute.For<IUserPrivacyErasureRepository>(),
+            Substitute.For<IPrivacyErasureProviderWorkRepository>(),
+            Substitute.For<IPrivacyErasureProviderLocatorProtector>(),
             checkpointRepository,
             ledgerRepository,
+            stateRepository,
             outboxRepository,
             cache,
             TimeProvider.System,
-            Substitute.For<ILogger<PrivacyErasureApplier>>());
+            Substitute.For<ILogger<PrivacyErasureApplier>>(),
+            Options.Create(new PrivacyErasureOptions()));
         var service = new RetainedAuthorityPrivacyErasureWorkflow(
-            userRepository,
             checkpointRepository,
+            ledgerRepository,
+            stateRepository,
             authority,
             Substitute.For<IUnitOfWork>(),
-            applier);
+            applier,
+            Options.Create(new PrivacyErasureOptions()),
+            TimeProvider.System);
 
-        return new ReplayHarness(service, intent, authority, cache);
+        return new ReplayHarness(service, intent, authority, cache, homeTenantId);
     }
 
     private sealed record ReplayHarness(
         RetainedAuthorityPrivacyErasureWorkflow Service,
         PrivacyErasureIntent Intent,
         IPrivacyErasureAuthority Authority,
-        RecordingHybridCache Cache);
+        RecordingHybridCache Cache,
+        Guid HomeTenantId);
 
     private sealed class RecordingHybridCache(string? failOnTag) : HybridCache
     {

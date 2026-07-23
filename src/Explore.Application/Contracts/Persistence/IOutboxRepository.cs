@@ -79,6 +79,10 @@ public interface IOutboxRepository
     /// </summary>
     Task<List<OutboxMessage>> GetFailedEntries(int limit = 100, CancellationToken ct = default);
 
+    Task<int> CountIncompleteByEventTypeAsync(string eventType, CancellationToken ct = default);
+
+    Task<int> CountDeadLetteredByEventTypeAsync(string eventType, CancellationToken ct = default);
+
     /// <summary>
     /// Removes completed entries older than the cutoff date for table hygiene.
     /// Returns the number of rows deleted.

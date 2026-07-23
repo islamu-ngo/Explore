@@ -22,23 +22,31 @@ public class GetUserRequestHandler : IRequestHandler<GetUserRequest, UserDto>
     private readonly IMapper _mapper;
     private readonly ILogger<GetUserRequestHandler> _logger;
     private readonly HybridCache _cache;
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository;
 
     public GetUserRequestHandler(
         IUserRepository userRepository,
         IObjectStorageService objectStorageService,
         IMapper mapper,
         ILogger<GetUserRequestHandler> logger,
-        HybridCache cache)
+        HybridCache cache,
+        IPrivacyErasureStateRepository privacyErasureStateRepository)
     {
         _userRepository = userRepository;
         _objectStorageService = objectStorageService;
         _mapper = mapper;
         _logger = logger;
         _cache = cache;
+        _privacyErasureStateRepository = privacyErasureStateRepository;
     }
 
     public async Task<UserDto> Handle(GetUserRequest request, CancellationToken cancellationToken)
     {
+        if (await _privacyErasureStateRepository.GetBySubjectAsync(request.UserId, cancellationToken) is not null)
+        {
+            return null!;
+        }
+
         var cacheKey = $"user:detail:{request.UserId}";
 
         var userDto = await _cache.GetOrCreateAsync(
@@ -71,6 +79,12 @@ public class GetUserRequestHandler : IRequestHandler<GetUserRequest, UserDto>
                 LocalCacheExpiration = TimeSpan.FromMinutes(1)
             },
             cancellationToken: cancellationToken);
+
+        if (await _privacyErasureStateRepository.GetBySubjectAsync(request.UserId, cancellationToken) is not null)
+        {
+            await _cache.RemoveAsync(cacheKey, cancellationToken);
+            return null!;
+        }
 
         if (userDto != null && !string.IsNullOrEmpty(userDto.ProfileImageKey))
         {

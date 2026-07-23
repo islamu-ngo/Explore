@@ -209,6 +209,24 @@ public class OutboxRepository : GenericRepository<OutboxMessage, Guid>, IOutboxR
             .ToListAsync(ct);
     }
 
+    public Task<int> CountIncompleteByEventTypeAsync(string eventType, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventType);
+        return _dbContext.OutboxMessages
+            .AsNoTracking()
+            .CountAsync(message => message.EventType == eventType
+                && message.Status != OutboxMessageStatus.Completed, ct);
+    }
+
+    public Task<int> CountDeadLetteredByEventTypeAsync(string eventType, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventType);
+        return _dbContext.OutboxMessages
+            .AsNoTracking()
+            .CountAsync(message => message.EventType == eventType
+                && message.Status == OutboxMessageStatus.DeadLettered, ct);
+    }
+
     public async Task<int> DeleteCompletedOlderThan(DateTime cutoff, CancellationToken ct = default)
     {
         return await _dbContext.OutboxMessages

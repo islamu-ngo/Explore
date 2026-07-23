@@ -77,6 +77,7 @@ public static class InfrastructureServicesRegistration
         services.AddSingleton<IAtprotoPdsSnapshotGateway, AtprotoPdsSnapshotGateway>();
 
         services.AddScoped<IPrivacyErasureReplayService, PrivacyErasureReplayService>();
+        services.AddScoped<IPrivacyErasureProviderLocatorProtector, PrivacyErasureProviderLocatorProtector>();
 
         services.AddOptions<ManagedControlPlaneOptions>()
             .Bind(configuration.GetSection(ManagedControlPlaneOptions.SectionName))
@@ -505,6 +506,7 @@ public static class InfrastructureServicesRegistration
         // Generic Outbox Processor settings and dispatcher
         services.Configure<OutboxProcessorSettings>(configuration.GetSection(OutboxProcessorSettings.SectionName));
         services.AddScoped<LocationPrivacyCorrectionDispatcher>();
+        services.AddScoped<PrivacyErasureCacheInvalidationDispatcher>();
         services.AddScoped<IOutboxMessageDispatcher, CompositeOutboxMessageDispatcher>();
         services.AddOptions<EmailDispatchProcessorSettings>()
             .Bind(configuration.GetSection(EmailDispatchProcessorSettings.SectionName))
