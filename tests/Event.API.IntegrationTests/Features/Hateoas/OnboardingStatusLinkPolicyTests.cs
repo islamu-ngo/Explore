@@ -152,7 +152,7 @@ public sealed class OnboardingStatusLinkPolicyTests
         var manage = links.Single(link => link.Rel == "manage-tenant-settings");
         var complete = links.Single(link => link.Rel == "complete");
 
-        await AssertTenantSettingLink(manage, "GET", AuthorizationActions.TenantSettings.View, tenantId);
+        await AssertTenantSettingLink(manage, "GET", AuthorizationActions.TenantSettings.Update, tenantId);
         await Assert.That(manage.RouteName).IsEqualTo(RouteNames.GetTenantOnboardingPolicySettings);
         await AssertTenantSettingLink(complete, "POST", AuthorizationActions.TenantSettings.Update, tenantId);
         await Assert.That(complete.RouteName).IsEqualTo(RouteNames.CompleteTenantOnboarding);

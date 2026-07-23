@@ -38,7 +38,7 @@ public sealed class TenantOnboardingStatusLinkPolicy : ILinkPolicy<TenantOnboard
                 Method: HttpMethods.Get,
                 Title: "Manage tenant settings",
                 RequiresAuth: true)
-                .RequirePermission(AuthorizationActions.TenantSettings.View,
+                 .RequirePermission(AuthorizationActions.TenantSettings.Update,
                     ResourceKinds.TenantSetting,
                     $"{dto.TenantId}:{TenantOnboardingSettingKey}",
                     TenantAttributes(dto.TenantId),

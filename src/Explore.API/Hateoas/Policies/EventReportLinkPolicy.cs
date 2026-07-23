@@ -112,10 +112,7 @@ public sealed class MyEventReportDetailLinkPolicy(ICurrentUserService currentUse
             "PUT",
             "Update communication consent",
             RequiresAuth: true)
-            .RequirePermission(
-                AuthorizationActions.Users.Update,
-                ResourceKinds.User,
-                userId.ToString());
+            .RequirePermission(AuthorizationActions.Users.Update, ResourceKinds.User, userId.ToString());
     }
 }
 
@@ -151,10 +148,7 @@ public sealed class MyEventReportCollectionLinkPolicy(ICurrentUserService curren
             "PUT",
             "Update communication consent",
             RequiresAuth: true)
-            .RequirePermission(
-                AuthorizationActions.Users.Update,
-                ResourceKinds.User,
-                userId.ToString());
+            .RequirePermission(AuthorizationActions.Users.Update, ResourceKinds.User, userId.ToString());
     }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)

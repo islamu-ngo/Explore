@@ -15,35 +15,26 @@ public sealed class EmailDispatchProcessorControlDetailLinkPolicy
 {
     public IEnumerable<LinkDefinition> GetLinks(EmailDispatchProcessorControlDto dto, ClaimsPrincipal? user)
     {
-        yield return Link("self", RouteNames.GetEmailDispatchProcessorControl, "GET",
-            AuthorizationActions.InstanceSettings.View);
+        yield return Link("self", RouteNames.GetEmailDispatchProcessorControl, "GET", isUpdate: false);
 
         yield return dto.IsPaused
-            ? Link("resume", RouteNames.ResumeEmailDispatchProcessor, "DELETE",
-                AuthorizationActions.InstanceSettings.Update)
-            : Link("pause", RouteNames.PauseEmailDispatchProcessor, "PUT",
-                AuthorizationActions.InstanceSettings.Update);
+            ? Link("resume", RouteNames.ResumeEmailDispatchProcessor, "DELETE", isUpdate: true)
+            : Link("pause", RouteNames.PauseEmailDispatchProcessor, "PUT", isUpdate: true);
 
-        yield return Link("set-rate-limit", RouteNames.SetEmailDispatchGlobalRateLimitOverride, "PUT",
-            AuthorizationActions.InstanceSettings.Update);
+        yield return Link("set-rate-limit", RouteNames.SetEmailDispatchGlobalRateLimitOverride, "PUT", isUpdate: true);
 
         if (dto.GlobalSmtpRateLimitPerMinuteOverride.HasValue)
         {
-            yield return Link("clear-rate-limit", RouteNames.ClearEmailDispatchGlobalRateLimitOverride, "DELETE",
-                AuthorizationActions.InstanceSettings.Update);
+            yield return Link("clear-rate-limit", RouteNames.ClearEmailDispatchGlobalRateLimitOverride, "DELETE", isUpdate: true);
         }
     }
 
-    private static LinkDefinition Link(string relation, string routeName, string method, string action) =>
-        new LinkDefinition(relation, routeName, null, method, relation, RequiresAuth: true)
-            .RequirePermission(
-                action,
-                ResourceKinds.InstanceSetting,
-                EmailDispatchProcessorControl.SettingKey,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = EmailDispatchProcessorControl.SettingKey
-                });
+    private static LinkDefinition Link(string relation, string routeName, string method, bool isUpdate) =>
+        isUpdate
+            ? new LinkDefinition(relation, routeName, null, method, relation, RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.InstanceSettings.Update, ResourceKinds.InstanceSetting, EmailDispatchProcessorControl.SettingKey, new Dictionary<string, object> { ["settingKey"] = EmailDispatchProcessorControl.SettingKey })
+            : new LinkDefinition(relation, routeName, null, method, relation, RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.InstanceSettings.View, ResourceKinds.InstanceSetting, EmailDispatchProcessorControl.SettingKey, new Dictionary<string, object> { ["settingKey"] = EmailDispatchProcessorControl.SettingKey });
 }
 
 public sealed class EmailDispatchProcessorControlCollectionLinkPolicy
