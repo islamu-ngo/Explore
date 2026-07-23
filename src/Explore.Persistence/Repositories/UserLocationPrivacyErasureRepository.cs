@@ -10,8 +10,496 @@ using Microsoft.EntityFrameworkCore;
 namespace Explore.Persistence.Repositories;
 
 public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbContext)
-    : IUserLocationPrivacyErasureRepository
+    : IUserLocationPrivacyErasureRepository, IUserPrivacyErasureRepository
 {
+    public async Task<IReadOnlyList<PrivacyErasureProviderCandidate>> GetProviderCandidatesAsync(
+        Guid subjectId,
+        CancellationToken cancellationToken)
+    {
+        RequireId(subjectId, nameof(subjectId));
+        string reason = TenantFilterBypassReasons.UserPrivacyErasure;
+        var candidates = new List<PrivacyErasureProviderCandidate>();
+
+        candidates.AddRange(await dbContext.UserExternalLogins
+            .IgnoreAllFilters(reason)
+            .AsNoTracking()
+            .Where(value => value.UserId == subjectId
+                && value.ProviderKey != null
+                && value.Provider != null
+                && EF.Functions.ILike(value.Provider, "keycloak"))
+            .Select(value => new PrivacyErasureProviderCandidate(
+                PrivacyErasureProviderKind.Keycloak,
+                PrivacyErasureProviderAction.RevokeOrUnlinkExternalIdentity,
+                value.TenantId,
+                value.Id,
+                PrivacyErasureProviderLocatorKind.AccountIdentifier,
+                value.ProviderKey!))
+            .ToArrayAsync(cancellationToken));
+        candidates.AddRange(await dbContext.Actors
+            .IgnoreAllFilters(reason)
+            .AsNoTracking()
+            .Where(value => value.UserId == subjectId && value.Pii.Did != null)
+            .Select(value => new PrivacyErasureProviderCandidate(
+                PrivacyErasureProviderKind.Atproto,
+                PrivacyErasureProviderAction.RevokeOrUnlinkExternalIdentity,
+                value.TenantId,
+                value.Id,
+                PrivacyErasureProviderLocatorKind.Did,
+                value.Pii.Did!))
+            .ToArrayAsync(cancellationToken));
+        candidates.AddRange(await dbContext.WebPushSubscriptions
+            .IgnoreAllFilters(reason)
+            .AsNoTracking()
+            .Where(value => value.UserId == subjectId)
+            .Select(value => new PrivacyErasureProviderCandidate(
+                PrivacyErasureProviderKind.WebPush,
+                PrivacyErasureProviderAction.InvalidateSubscription,
+                value.TenantId,
+                value.Id,
+                PrivacyErasureProviderLocatorKind.WebPushEndpoint,
+                value.Endpoint))
+            .ToArrayAsync(cancellationToken));
+        candidates.AddRange(await dbContext.StorageObjects
+            .IgnoreAllFilters(reason)
+            .AsNoTracking()
+            .Where(value => value.Actor != null
+                && value.Actor.UserId == subjectId
+                && value.ObjectKey != null)
+            .Select(value => new PrivacyErasureProviderCandidate(
+                PrivacyErasureProviderKind.ObjectStorage,
+                PrivacyErasureProviderAction.DeleteOwnedObject,
+                value.TenantId,
+                value.Id,
+                PrivacyErasureProviderLocatorKind.ObjectKey,
+                value.ObjectKey!))
+            .ToArrayAsync(cancellationToken));
+        candidates.AddRange(await dbContext.EmailDispatchOutbox
+            .IgnoreAllFilters(reason)
+            .AsNoTracking()
+            .Where(value => value.RecipientUserId == subjectId && value.ProviderMessageId != null)
+            .Select(value => new PrivacyErasureProviderCandidate(
+                PrivacyErasureProviderKind.Smtp,
+                PrivacyErasureProviderAction.ExpireLocalMetadataWithoutRecall,
+                value.TenantId,
+                value.Id,
+                PrivacyErasureProviderLocatorKind.ProviderResourceIdentifier,
+                value.ProviderMessageId!))
+            .ToArrayAsync(cancellationToken));
+        candidates.AddRange(await dbContext.WebhookEndpoints
+            .IgnoreAllFilters(reason)
+            .AsNoTracking()
+            .Where(value => value.Consumer != null
+                && value.Consumer.OwnerUserId == subjectId
+                && value.ProviderEndpointId != null)
+            .Select(value => new PrivacyErasureProviderCandidate(
+                PrivacyErasureProviderKind.Webhook,
+                PrivacyErasureProviderAction.DeleteOrAnonymizeProviderCopy,
+                value.TenantId,
+                value.Id,
+                PrivacyErasureProviderLocatorKind.ProviderResourceIdentifier,
+                value.ProviderEndpointId!))
+            .ToArrayAsync(cancellationToken));
+        candidates.AddRange(await dbContext.EventReportExternalLinks
+            .IgnoreAllFilters(reason)
+            .AsNoTracking()
+            .Where(value => value.Report != null
+                && value.Report.ReporterUserId == subjectId
+                && (value.ProviderCaseId != null || value.ProviderSignalId != null))
+            .Select(value => new PrivacyErasureProviderCandidate(
+                value.Provider == EventReportExternalProvider.Osprey
+                    ? PrivacyErasureProviderKind.Osprey
+                    : PrivacyErasureProviderKind.Coop,
+                PrivacyErasureProviderAction.CorrectOrDeleteProviderCopy,
+                value.TenantId,
+                value.Id,
+                PrivacyErasureProviderLocatorKind.ProviderResourceIdentifier,
+                value.ProviderCaseId ?? value.ProviderSignalId!))
+            .ToArrayAsync(cancellationToken));
+
+        return candidates
+            .OrderBy(value => value.ProviderKind)
+            .ThenBy(value => value.TenantId)
+            .ThenBy(value => value.TargetId)
+            .ToArray();
+    }
+
+    public async Task EraseProviderBackedLocalUserMetadataAsync(
+        Guid subjectId,
+        CancellationToken cancellationToken)
+    {
+        RequireId(subjectId, nameof(subjectId));
+        string reason = TenantFilterBypassReasons.UserPrivacyErasure;
+        DateTime utcNow = DateTime.UtcNow;
+        Guid[] webhookConsumerIds = await dbContext.WebhookConsumers
+            .IgnoreAllFilters(reason)
+            .Where(value => value.OwnerUserId == subjectId)
+            .Select(value => value.Id)
+            .ToArrayAsync(cancellationToken);
+
+        await dbContext.UserExternalLogins
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.WebPushDispatchOutbox
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.WebPushSubscriptions
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.NotificationDeliveries
+            .IgnoreAllFilters(reason)
+            .Where(value => value.NotificationIntent != null
+                && value.NotificationIntent.RecipientUserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.EmailDispatchOutbox
+            .IgnoreAllFilters(reason)
+            .Where(value => value.RecipientUserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.StorageObjects
+            .IgnoreAllFilters(reason)
+            .Where(value => value.Actor != null
+                && value.Actor.UserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.Uri, string.Empty)
+                .SetProperty(value => value.ObjectKey, (string?)null)
+                .SetProperty(value => value.Provider, StorageProviders.Local)
+                .SetProperty(value => value.FullName, string.Empty)
+                .SetProperty(value => value.SafeDisplayName, string.Empty)
+                .SetProperty(value => value.ContentType, (string?)null)
+                .SetProperty(value => value.Sha256Checksum, (string?)null)
+                .SetProperty(value => value.OwningResourceKind, (string?)null)
+                .SetProperty(value => value.OwningResourceId, (Guid?)null)
+                .SetProperty(value => value.ActorId, (Guid?)null)
+                .SetProperty(value => value.LifecycleState, StorageObjectLifecycleStates.Deleted)
+                .SetProperty(value => value.IsDeleted, true)
+                .SetProperty(value => value.DeletedAt, utcNow)
+                .SetProperty(value => value.DeletedBy, subjectId)
+                .SetProperty(value => value.UpdatedAt, utcNow)
+                .SetProperty(value => value.UpdatedBy, subjectId), cancellationToken);
+        await dbContext.WebhookLocalTargetSnapshots
+            .IgnoreAllFilters(reason)
+            .Where(value => value.WebhookEndpoint != null
+                && webhookConsumerIds.Contains(value.WebhookEndpoint.ConsumerId))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.DestinationUrl, string.Empty)
+                .SetProperty(value => value.CredentialReference, string.Empty)
+                .SetProperty(value => value.UpdatedAt, utcNow), cancellationToken);
+        await dbContext.WebhookEndpoints
+            .IgnoreAllFilters(reason)
+            .Where(value => webhookConsumerIds.Contains(value.ConsumerId))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.Url, string.Empty)
+                .SetProperty(value => value.Description, (string?)null)
+                .SetProperty(value => value.SecretRef, string.Empty)
+                .SetProperty(value => value.PreviousSecretRef, (string?)null)
+                .SetProperty(value => value.PreviousSecretValidUntil, (DateTime?)null)
+                .SetProperty(value => value.ProviderEndpointId, (string?)null)
+                .SetProperty(value => value.StatusId, (int)WebhookEndpointStatus.Archived)
+                .SetProperty(value => value.AutoPauseReason, (string?)null)
+                .SetProperty(value => value.LastResumedAt, (DateTime?)null)
+                .SetProperty(value => value.LastResumedBy, (Guid?)null)
+                .SetProperty(value => value.UpdatedAt, utcNow), cancellationToken);
+        foreach (Guid consumerId in webhookConsumerIds)
+        {
+            await dbContext.WebhookConsumers
+                .IgnoreAllFilters(reason)
+                .Where(value => value.Id == consumerId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(value => value.OwnerUserId, (Guid?)null)
+                    .SetProperty(value => value.ConsumerKindId, (int)WebhookConsumerKind.Tenant)
+                    .SetProperty(value => value.Name, $"Deleted user {consumerId:N}")
+                    .SetProperty(value => value.StatusId, (int)WebhookConsumerStatus.Archived)
+                    .SetProperty(value => value.ExternalProviderAppId, (string?)null)
+                    .SetProperty(value => value.ProviderModeId, (int)WebhookProviderMode.Local)
+                    .SetProperty(value => value.ConfigurationVersion, value => value.ConfigurationVersion + 1)
+                    .SetProperty(value => value.UpdatedAt, utcNow), cancellationToken);
+        }
+        await dbContext.EventReportExternalLinks
+            .IgnoreAllFilters(reason)
+            .Where(value => value.Report != null
+                && value.Report.ReporterUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.ProviderCaseId, (string?)null)
+                .SetProperty(value => value.ProviderSignalId, (string?)null)
+                .SetProperty(value => value.ProviderUrl, (string?)null)
+                .SetProperty(value => value.SyncState, EventReportSyncState.Disabled)
+                .SetProperty(value => value.LastSyncedAt, (DateTime?)null)
+                .SetProperty(value => value.LastErrorCategory, (string?)null)
+                .SetProperty(value => value.UpdatedAt, utcNow), cancellationToken);
+    }
+
+    public async Task AnonymizeRetainedAuditEvidenceAsync(
+        Guid subjectId,
+        CancellationToken cancellationToken)
+    {
+        RequireId(subjectId, nameof(subjectId));
+        string reason = TenantFilterBypassReasons.UserPrivacyErasure;
+        Guid[] tenantUserIds = await dbContext.TenantUsers
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .Select(value => value.Id)
+            .ToArrayAsync(cancellationToken);
+
+        await dbContext.TenantInvitations
+            .IgnoreAllFilters(reason)
+            .Where(value => value.AcceptedByUserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.TenantInvitations
+            .IgnoreAllFilters(reason)
+            .Where(value => value.InvitedByUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.InvitedByUserId, (Guid?)null), cancellationToken);
+        await dbContext.EventContactShareExports
+            .IgnoreAllFilters(reason)
+            .Where(value => value.ExportedByUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.ExportedByUserId, (Guid?)null), cancellationToken);
+        await dbContext.ConfigurationChangeLogs
+            .Where(value => value.UserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.UserId, (Guid?)null), cancellationToken);
+        await dbContext.OrganizationReviews
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.UserId, (Guid?)null)
+                .SetProperty(value => value.ReviewerName, "Deleted user"), cancellationToken);
+        await dbContext.EventLocationDisclosureAudits
+            .IgnoreAllFilters(reason)
+            .Where(value => value.ActorUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.ActorUserId, (Guid?)null), cancellationToken);
+        await dbContext.EventLocationExactReadAudits
+            .IgnoreAllFilters(reason)
+            .Where(value => value.RequesterUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.RequesterUserId, (Guid?)null), cancellationToken);
+        await dbContext.SupportAccessAuditEvents
+            .Where(value => value.ActorUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.ActorUserId, (Guid?)null), cancellationToken);
+        await dbContext.SupportAccessAuditEvents
+            .Where(value => value.TargetTenantUserId.HasValue
+                && tenantUserIds.Contains(value.TargetTenantUserId.Value))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.TargetTenantUserId, (Guid?)null), cancellationToken);
+        DateTimeOffset supportAccessEndedAt = DateTimeOffset.UtcNow;
+        await dbContext.SupportAccessSessions
+            .Where(value => value.ActorUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.ActorUserId, (Guid?)null)
+                .SetProperty(value => value.StatusId, (int)SupportAccessSessionStatusEnum.Revoked)
+                .SetProperty(value => value.EndReasonId, (int?)SupportAccessEndReasonEnum.RevokedByPolicy)
+                .SetProperty(value => value.EndedAtUtc, (DateTimeOffset?)supportAccessEndedAt), cancellationToken);
+        await dbContext.SupportAccessSessions
+            .Where(value => value.ApprovedByUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.ApprovedByUserId, (Guid?)null), cancellationToken);
+        await dbContext.SupportAccessSessions
+            .Where(value => value.TargetTenantUserId.HasValue
+                && tenantUserIds.Contains(value.TargetTenantUserId.Value))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.TargetTenantUserId, (Guid?)null), cancellationToken);
+        await dbContext.TenantLifecycleLogs
+            .Where(value => value.TransitionedByUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.TransitionedByUserId, (Guid?)null), cancellationToken);
+        await dbContext.TenantPlanApplicationLogs
+            .Where(value => value.AppliedByUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.AppliedByUserId, (Guid?)null), cancellationToken);
+        await dbContext.TenantPlanAssignments
+            .Where(value => value.AssignedByUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.AssignedByUserId, (Guid?)null), cancellationToken);
+        await dbContext.EventReportExternalLinks
+            .IgnoreAllFilters(reason)
+            .Where(value => value.Report != null && value.Report.ReporterUserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.EventReportEvidenceItems
+            .IgnoreAllFilters(reason)
+            .Where(value => value.CreatedByUserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.EventReports
+            .IgnoreAllFilters(reason)
+            .Where(value => value.ReporterUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.ReporterUserId, (Guid?)null)
+                .SetProperty(value => value.ReporterActorId, (Guid?)null)
+                .SetProperty(value => value.ReporterLocale, (string?)null)
+                .SetProperty(value => value.ReporterIpHash, (string?)null)
+                .SetProperty(value => value.ReporterUserAgentHash, (string?)null)
+                .SetProperty(value => value.ReportCaseUpdatesConsent, false)
+                .SetProperty(value => value.ReportFollowUpContactConsent, false), cancellationToken);
+        await dbContext.EventModerationRecords
+            .IgnoreAllFilters(reason)
+            .Where(value => value.ModeratorUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.ModeratorUserId, (Guid?)null), cancellationToken);
+        await dbContext.EventReportCases
+            .IgnoreAllFilters(reason)
+            .Where(value => value.AssignedModeratorUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.AssignedModeratorUserId, (Guid?)null), cancellationToken);
+        await dbContext.EventReportDecisions
+            .IgnoreAllFilters(reason)
+            .Where(value => value.ModeratorUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.ModeratorUserId, (Guid?)null), cancellationToken);
+        await dbContext.AuditLogs
+            .IgnoreAllFilters(reason)
+            .Where(value => value.ActorId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.ActorId, (Guid?)null)
+                .SetProperty(value => value.OldValues, (string?)null)
+                .SetProperty(value => value.NewValues, (string?)null), cancellationToken);
+        await dbContext.EventRoleAssignments
+            .IgnoreAllFilters(reason)
+            .Where(value => value.RevokedByUserId == subjectId && value.UserId != subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.RevokedByUserId, (Guid?)null), cancellationToken);
+        await dbContext.EventLocations
+            .IgnoreAllFilters(reason)
+            .Where(value => value.LastPolicyActorUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.LastPolicyActorUserId, (Guid?)null), cancellationToken);
+        await dbContext.InstanceBootstrapStates
+            .Where(value => value.CompletedByUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.CompletedByUserId, (Guid?)null), cancellationToken);
+        await dbContext.ManagedTenantProvisioningOperations
+            .Where(value => value.TenantAdministratorUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.TenantAdministratorUserId, (Guid?)null), cancellationToken);
+    }
+
+    public async Task EraseRegistrationAndLocalNotificationsAsync(
+        Guid subjectId,
+        CancellationToken cancellationToken)
+    {
+        RequireId(subjectId, nameof(subjectId));
+        string reason = TenantFilterBypassReasons.UserPrivacyErasure;
+        Guid[] tenantUserIds = await dbContext.TenantUsers
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .Select(value => value.Id)
+            .ToArrayAsync(cancellationToken);
+
+        await dbContext.NotificationFanoutRuns
+            .IgnoreAllFilters(reason)
+            .Where(value => value.CursorUserId == subjectId
+                || (value.CursorSubscriberTenantUserId.HasValue
+                    && tenantUserIds.Contains(value.CursorSubscriberTenantUserId.Value)))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.CursorUserId, (Guid?)null)
+                .SetProperty(value => value.CursorSubscriberTenantUserId, (Guid?)null), cancellationToken);
+        await dbContext.NotificationDeliveries
+            .IgnoreAllFilters(reason)
+            .Where(value => value.NotificationIntent != null
+                && value.NotificationIntent.RecipientUserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.NotificationExternalDelegations
+            .IgnoreAllFilters(reason)
+            .Where(value => value.NotificationIntent != null
+                && value.NotificationIntent.RecipientUserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.Notifications
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.NotificationIntents
+            .IgnoreAllFilters(reason)
+            .Where(value => value.RecipientUserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.EventContactShareExportItems
+            .Where(value => value.Consent != null && value.Consent.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.EventContactShareConsents
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.EventRegistrations
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.EventRegistrationIntents
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        string subjectKey = subjectId.ToString();
+        await dbContext.IdempotencyRecords
+            .Where(value => value.UserId == subjectKey)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    public async Task EraseMembershipsAndPreferencesAsync(
+        Guid subjectId,
+        CancellationToken cancellationToken)
+    {
+        RequireId(subjectId, nameof(subjectId));
+        string reason = TenantFilterBypassReasons.UserPrivacyErasure;
+
+        await dbContext.ActorKeyStores
+            .IgnoreAllFilters(reason)
+            .Where(value => value.Actor.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.AiConsentGrants
+            .IgnoreAllFilters(reason)
+            .Where(value => value.SubjectUserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.ExternalApiKeys
+            .Where(value => value.ExternalApiKeyOwnerTypeId == (int)ExternalApiKeyOwnerType.User
+                && value.OwnerId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.UserAppearancePreferences
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.UserAppearanceProfiles
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.NotificationChannelPreferences
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.NotificationPreferenceProfiles
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.UserNotificationPreferences
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.UserPreferences
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.EventRoleAssignments
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.ActorSubscriptions
+            .IgnoreAllFilters(reason)
+            .Where(value => value.SubscriberUserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.GroupMembers
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.OrganizationMembers
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.TenantUsers
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.PlatformUserRoles
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Location>> GetOwnedPrivateHomesAsync(
         Guid ownerUserId,
         CancellationToken cancellationToken)

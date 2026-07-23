@@ -2,11 +2,14 @@
 // ABOUTME: Shares User and location mutation, checkpoint, outbox, mirror, and cache behavior across durability modes.
 
 using Explore.Application.Caching;
+using Explore.Application.Configuration;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Application.Services;
 
@@ -15,13 +18,20 @@ public sealed class PrivacyErasureApplier(
     IGenericRepository<UserPii, Guid> userPiiRepository,
     IUserAuthenticationTokenRepository tokenRepository,
     IUserLocationPrivacyErasureRepository erasureRepository,
+    IUserPrivacyErasureRepository privacyErasureRepository,
+    IPrivacyErasureProviderWorkRepository providerWorkRepository,
+    IPrivacyErasureProviderLocatorProtector providerLocatorProtector,
     IPrivacyErasureReplayCheckpointRepository checkpointRepository,
     IPrivacyErasureLedgerRepository ledgerRepository,
+    IPrivacyErasureStateRepository stateRepository,
     IOutboxRepository outboxRepository,
     HybridCache cache,
     TimeProvider timeProvider,
-    ILogger<PrivacyErasureApplier> logger)
+    ILogger<PrivacyErasureApplier> logger,
+    IOptions<PrivacyErasureOptions> options)
 {
+    private readonly PrivacyErasureOptions _options = options.Value;
+
     public async Task<PreparedErasure> PrepareAsync(
         PrivacyErasureIntent intent,
         CancellationToken cancellationToken)
@@ -42,6 +52,7 @@ public sealed class PrivacyErasureApplier(
             homes.ToDictionary(home => home.Id, _ => Guid.CreateVersion7()),
             eventLocations.ToDictionary(item => item.Id, _ => Guid.CreateVersion7()),
             Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
             appliedAtUtc);
     }
 
@@ -52,15 +63,36 @@ public sealed class PrivacyErasureApplier(
     {
         PrivacyErasureReplayCheckpoint? current =
             await checkpointRepository.GetLatestAsync(cancellationToken);
-        if (current?.Matches(intent) == true)
+        if (current?.Matches(intent) == true
+            && await stateRepository.HasCoverageAsync(
+                intent.IntentId,
+                _options.CurrentPolicyVersion,
+                cancellationToken))
         {
             return AppliedErasure.None;
         }
 
         await ledgerRepository.AppendAsync(intent, cancellationToken);
-        PrivacyErasureReplayCheckpoint checkpoint = current is null
-            ? PrivacyErasureReplayCheckpoint.Start(intent, prepared.AppliedAtUtc, prepared.CheckpointId)
-            : PrivacyErasureReplayCheckpoint.Advance(current, intent, prepared.AppliedAtUtc, prepared.CheckpointId);
+        if (current?.AuthoritySequence == intent.AuthoritySequence && !current.Matches(intent))
+        {
+            throw new InvalidOperationException(
+                "The application erasure checkpoint does not match the retained authority.");
+        }
+
+        PrivacyErasureReplayCheckpoint? checkpoint = current switch
+        {
+            null => PrivacyErasureReplayCheckpoint.Start(
+                intent,
+                prepared.AppliedAtUtc,
+                prepared.CheckpointId),
+            { AuthoritySequence: var sequence } when sequence < intent.AuthoritySequence =>
+                PrivacyErasureReplayCheckpoint.Advance(
+                    current,
+                    intent,
+                    prepared.AppliedAtUtc,
+                    prepared.CheckpointId),
+            _ => null
+        };
         IReadOnlyList<Location> homes = await erasureRepository.GetOwnedPrivateHomesAsync(
             intent.SubjectId,
             cancellationToken);
@@ -68,6 +100,43 @@ public sealed class PrivacyErasureApplier(
             homes.Select(home => home.Id).ToArray(),
             cancellationToken);
         IReadOnlyList<Actor> actors = await erasureRepository.GetUserActorsAsync(
+            intent.SubjectId,
+            cancellationToken);
+        IReadOnlyList<PrivacyErasureProviderCandidate> providerCandidates =
+            await privacyErasureRepository.GetProviderCandidatesAsync(intent.SubjectId, cancellationToken);
+        DateTime locatorExpiresAtUtc = prepared.AppliedAtUtc + _options.ProviderLocatorLifetime;
+        PrivacyErasureProviderWork[] providerWork = providerCandidates
+            .DistinctBy(candidate => (
+                candidate.ProviderKind,
+                candidate.Action,
+                candidate.TenantId,
+                candidate.TargetId))
+            .Select(candidate => PrivacyErasureProviderWork.Create(
+                Guid.CreateVersion7(),
+                intent,
+                candidate.ProviderKind,
+                candidate.Action,
+                candidate.TenantId,
+                candidate.TargetId,
+                candidate.LocatorKind,
+                providerLocatorProtector.Protect(candidate.Locator, _options.ProviderLocatorLifetime),
+                providerLocatorProtector.CurrentVersion,
+                locatorExpiresAtUtc,
+                prepared.AppliedAtUtc))
+            .ToArray();
+        int providerWorkCount = await providerWorkRepository.AddMissingAsync(providerWork, cancellationToken);
+        await stateRepository.SaveChangesAsync(cancellationToken);
+
+        await privacyErasureRepository.EraseProviderBackedLocalUserMetadataAsync(
+            intent.SubjectId,
+            cancellationToken);
+        await privacyErasureRepository.AnonymizeRetainedAuditEvidenceAsync(
+            intent.SubjectId,
+            cancellationToken);
+        await privacyErasureRepository.EraseRegistrationAndLocalNotificationsAsync(
+            intent.SubjectId,
+            cancellationToken);
+        await privacyErasureRepository.EraseMembershipsAndPreferencesAsync(
             intent.SubjectId,
             cancellationToken);
 
@@ -90,9 +159,17 @@ public sealed class PrivacyErasureApplier(
             home.EraseOwnedPii(prepared.AppliedAtUtc, ToLocationReason(intent.ReasonCode));
         }
 
-        foreach (Actor actor in actors.Where(actor => actor.Pii is not null))
+        foreach (Actor actor in actors)
         {
-            actor.Pii!.DisplayName = $"DeletedUser{intent.IntentId:N}";
+            actor.UserId = null;
+            actor.PdsHost = null;
+            actor.DidCustodyTypeId = null;
+            if (actor.Pii is null)
+            {
+                continue;
+            }
+
+            actor.Pii.DisplayName = "Deleted user";
             actor.Pii.Did = null;
             actor.Pii.Handle = null;
             actor.Pii.ProfilePictureUri = null;
@@ -121,8 +198,30 @@ public sealed class PrivacyErasureApplier(
             await userRepository.Update(user);
         }
 
-        await checkpointRepository.AppendAsync(checkpoint, cancellationToken);
-        var messages = new List<OutboxMessage>(homes.Count + eventLocations.Count);
+        if (checkpoint is not null)
+        {
+            await checkpointRepository.AppendAsync(checkpoint, cancellationToken);
+        }
+        await stateRepository.AddCoverageAsync(
+            PrivacyErasurePolicyCoverage.Record(
+                intent,
+                _options.CurrentPolicyVersion,
+                prepared.AppliedAtUtc),
+            cancellationToken);
+        PrivacyErasureSaga? saga = await stateRepository.GetByIntentAsync(intent.IntentId, cancellationToken);
+        if (saga?.Status == PrivacyErasureSagaStatus.Fenced)
+        {
+            saga.MarkLocalSettled(prepared.AppliedAtUtc, providerWorkCount, saga.ConcurrencyToken);
+        }
+
+        await stateRepository.SaveChangesAsync(cancellationToken);
+        var messages = new List<OutboxMessage>(homes.Count + eventLocations.Count + 1)
+        {
+            PrivacyErasureCacheInvalidationOutboxMessageFactory.Create(
+                prepared.CacheConvergenceMessageId,
+                intent.SubjectId,
+                prepared.AppliedAtUtc)
+        };
         messages.AddRange(homes.Select(home => LocationPrivacyOutboxMessageFactory.CreateLocationErased(
             prepared.LocationMessageIds.TryGetValue(home.Id, out Guid id)
                 ? id
@@ -155,6 +254,9 @@ public sealed class PrivacyErasureApplier(
         try
         {
             await cache.RemoveAsync($"user:detail:{applied.UserId}", CancellationToken.None);
+            await cache.RemoveByTagAsync(CacheTags.Events, CancellationToken.None);
+            await cache.RemoveByTagAsync(CacheTags.EventLists, CancellationToken.None);
+            await cache.RemoveByTagAsync(CacheTags.EventDetails, CancellationToken.None);
             await cache.RemoveByTagAsync(CacheTags.EventLocations, CancellationToken.None);
             foreach (Guid tenantId in applied.TenantIds)
             {
@@ -172,7 +274,6 @@ public sealed class PrivacyErasureApplier(
         catch (Exception)
         {
             logger.LogWarning("Post-commit privacy-erasure cache invalidation failed.");
-            throw new InvalidOperationException("Post-commit privacy-erasure cache invalidation failed.");
         }
     }
 
@@ -188,7 +289,10 @@ public sealed class PrivacyErasureApplier(
             cancellationToken);
         await InvalidateAfterCommitAsync(new AppliedErasure(
             intent.SubjectId,
-            eventLocations.Select(item => item.TenantId).Distinct().ToArray(),
+            homes.Select(home => home.TenantId)
+                .Concat(eventLocations.Select(item => item.TenantId))
+                .Distinct()
+                .ToArray(),
             eventLocations.Select(item => new CorrectedEventLocation(item.TenantId, item.EventId, item.Id)).ToArray()));
     }
 
@@ -206,6 +310,7 @@ public sealed class PrivacyErasureApplier(
         IReadOnlyDictionary<Guid, Guid> LocationMessageIds,
         IReadOnlyDictionary<Guid, Guid> CorrectionMessageIds,
         Guid CheckpointId,
+        Guid CacheConvergenceMessageId,
         DateTime AppliedAtUtc);
 
     public sealed record AppliedErasure(

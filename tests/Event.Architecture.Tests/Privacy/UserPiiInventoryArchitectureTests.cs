@@ -122,7 +122,8 @@ public sealed class UserPiiInventoryArchitectureTests
             .ToArray();
         await Assert.That(missingModelProperties).IsEmpty();
 
-        string[] discoveredPiiProperties = context.Model.GetEntityTypes()
+        HashSet<IEntityType> userLinkedEntities = DiscoverUserLinkedEntities(context.Model);
+        string[] discoveredPiiProperties = userLinkedEntities
             .Where(entity => entity.ClrType.Name.EndsWith("Pii", StringComparison.Ordinal))
             .SelectMany(entity => entity.GetProperties()
                 .Where(property => property.ClrType == typeof(string))
@@ -172,11 +173,15 @@ public sealed class UserPiiInventoryArchitectureTests
     public async Task OmissionAndMalformedTestCopiesFailWithExactCopy()
     {
         UserPiiInventoryEntry omitted = UserPiiInventory.Entries
-            .Single(entry => entry.Copy == "OrganizationPii.Email");
+            .Single(entry => entry.Copy == "UserPii.Email");
         string[] omissionErrors = Validate(
             UserPiiInventory.Entries.Where(entry => entry != omitted).ToArray(),
             expectedEntries: UserPiiInventory.Entries);
-        await Assert.That(omissionErrors).IsEquivalentTo(["missing: OrganizationPii.Email"]);
+        await Assert.That(omissionErrors).IsEquivalentTo(["missing: UserPii.Email"]);
+
+        await Assert.That(UserPiiInventory.Entries.Any(entry =>
+            entry.Copy.StartsWith("OrganizationPii.", StringComparison.Ordinal)
+            || entry.OwnershipKey.Contains("Organization.OwnerUserId", StringComparison.Ordinal))).IsFalse();
 
         UserPiiInventoryEntry omittedProvider = UserPiiInventory.Entries
             .Single(entry => entry.Copy == "provider:keycloak:platform-managed-account");
@@ -247,6 +252,38 @@ public sealed class UserPiiInventoryArchitectureTests
     }
 
     [Test]
+    public async Task RetainedAuditActorLinksAreNullableForErasure()
+    {
+        await using var context = new ExploreDbContext(
+            new DbContextOptionsBuilder<ExploreDbContext>()
+                .UseNpgsql("Host=invalid;Database=inventory;Username=inventory;Password=redacted")
+                .Options);
+        string[] actorLinks =
+        [
+            "ConfigurationChangeLog.UserId",
+            "EventLocationDisclosureAudit.ActorUserId",
+            "EventLocationExactReadAudit.RequesterUserId",
+            "EventContactShareExport.ExportedByUserId",
+            "OrganizationReview.UserId",
+            "SupportAccessAuditEvent.ActorUserId",
+            "SupportAccessSession.ActorUserId",
+            "TenantInvitation.InvitedByUserId",
+            "TenantLifecycleLog.TransitionedByUserId",
+            "TenantPlanApplicationLog.AppliedByUserId",
+            "TenantPlanAssignment.AssignedByUserId"
+        ];
+        string[] nonNullable = context.Model.GetEntityTypes()
+            .SelectMany(entity => entity.GetProperties()
+                .Select(property => (Copy: $"{entity.ClrType.Name}.{property.Name}", property.IsNullable)))
+            .Where(property => actorLinks.Contains(property.Copy, StringComparer.Ordinal) && !property.IsNullable)
+            .Select(property => property.Copy)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        await Assert.That(nonNullable).IsEmpty();
+    }
+
+    [Test]
     public async Task InventoryTestCopyOmissionProbe()
     {
         string? omittedCopy = Environment.GetEnvironmentVariable("USER_PII_INVENTORY_OMIT");
@@ -311,7 +348,7 @@ public sealed class UserPiiInventoryArchitectureTests
         {
             string[] required =
             [
-                "OrganizationPii.Email",
+                "UserPii.Email",
                 "TenantInvitation.Email",
                 "EventRegistration.UserId",
                 "EventContactShareExportItem.EmailSnapshot",
@@ -400,6 +437,21 @@ public sealed class UserPiiInventoryArchitectureTests
 
     private static string[] DiscoverSourceDerivedLocalCopies(IModel model)
     {
+        HashSet<IEntityType> userLinkedEntities = DiscoverUserLinkedEntities(model);
+
+        return userLinkedEntities
+            .SelectMany(entity => entity.GetProperties()
+                .Where(property =>
+                    IsDirectUserLink(property)
+                    || IsPersonalDataProperty(property))
+                .Select(property => $"{entity.ClrType.Name}.{property.Name}"))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static HashSet<IEntityType> DiscoverUserLinkedEntities(IModel model)
+    {
         HashSet<IEntityType> userLinkedEntities = model.GetEntityTypes()
             .Where(entity =>
                 entity.ClrType == typeof(Explore.Domain.User)
@@ -415,7 +467,8 @@ public sealed class UserPiiInventoryArchitectureTests
             {
                 if (userLinkedEntities.Contains(entity)
                     || !entity.GetForeignKeys().Any(foreignKey =>
-                        userLinkedEntities.Contains(foreignKey.PrincipalEntityType)))
+                        userLinkedEntities.Contains(foreignKey.PrincipalEntityType)
+                        && !IsOrganizationActorAssociation(foreignKey)))
                 {
                     continue;
                 }
@@ -426,16 +479,12 @@ public sealed class UserPiiInventoryArchitectureTests
         }
         while (discovered);
 
-        return userLinkedEntities
-            .SelectMany(entity => entity.GetProperties()
-                .Where(property =>
-                    IsDirectUserLink(property)
-                    || IsPersonalDataProperty(property))
-                .Select(property => $"{entity.ClrType.Name}.{property.Name}"))
-            .Distinct(StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
+        return userLinkedEntities;
     }
+
+    private static bool IsOrganizationActorAssociation(IReadOnlyForeignKey foreignKey) =>
+        foreignKey.DeclaringEntityType.ClrType == typeof(Explore.Domain.Organization)
+        && foreignKey.PrincipalEntityType.ClrType == typeof(Explore.Domain.Actor);
 
     private static bool IsDirectUserLink(IReadOnlyProperty property) =>
         property.Name.EndsWith("UserId", StringComparison.Ordinal);

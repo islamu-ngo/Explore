@@ -1,5 +1,5 @@
-// ABOUTME: Guards the Application persistence contract for User-owned Private Home erasure reads.
-// ABOUTME: Requires a concrete entity collection and forbids IQueryable or DTO leakage.
+// ABOUTME: Guards Application persistence contracts for User-owned local and provider erasure reads.
+// ABOUTME: Requires bounded concrete collections and forbids IQueryable leakage.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
@@ -18,6 +18,29 @@ public sealed class UserLocationPrivacyErasureRepositoryContractTests
 
         await Assert.That(method).IsNotNull();
         await Assert.That(method!.ReturnType).IsEqualTo(typeof(Task<List<Location>>));
+        await Assert.That(typeof(IQueryable).IsAssignableFrom(method.ReturnType)).IsFalse();
+    }
+
+    [Test]
+    public async Task ProviderCandidateRead_ReturnsBoundedTypedCandidatesInsteadOfQueryable()
+    {
+        var method = typeof(IUserPrivacyErasureRepository).GetMethod(
+            nameof(IUserPrivacyErasureRepository.GetProviderCandidatesAsync));
+
+        await Assert.That(method).IsNotNull();
+        await Assert.That(method!.ReturnType)
+            .IsEqualTo(typeof(Task<IReadOnlyList<PrivacyErasureProviderCandidate>>));
+        await Assert.That(typeof(IQueryable).IsAssignableFrom(method.ReturnType)).IsFalse();
+    }
+
+    [Test]
+    public async Task ProviderBackedLocalMetadataWrite_ReturnsTaskAndNotQueryable()
+    {
+        var method = typeof(IUserPrivacyErasureRepository).GetMethod(
+            nameof(IUserPrivacyErasureRepository.EraseProviderBackedLocalUserMetadataAsync));
+
+        await Assert.That(method).IsNotNull();
+        await Assert.That(method!.ReturnType).IsEqualTo(typeof(Task));
         await Assert.That(typeof(IQueryable).IsAssignableFrom(method.ReturnType)).IsFalse();
     }
 }
