@@ -103,6 +103,27 @@ public sealed class EventDetailsSidebarTests : IDisposable
     }
 
     [Test]
+    public async Task Render_WhenFederatedSourceExists_ShowsNewTabOpenAction()
+    {
+        var eventItem = CreateEventListItem(Guid.NewGuid());
+        const string sourceHref = "/api/event/federated/record/source";
+        eventItem.Id = null;
+        eventItem.AdditionalProperties["eventDiscoverySource"] = "atproto";
+        eventItem.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(
+            new Dictionary<string, HalLink>
+            {
+                ["source"] = new() { Href = sourceHref, Method = "GET" }
+            });
+
+        var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
+            .Add(component => component.SelectedEvent, eventItem));
+
+        var link = cut.Find("a.event-details-sidebar__external-link");
+        await Assert.That(link.GetAttribute("href")).IsEqualTo(sourceHref);
+        await Assert.That(link.GetAttribute("target")).IsEqualTo("_blank");
+    }
+
+    [Test]
     public async Task LightboxDialog_ClickOutsideImage_ClosesDialog()
     {
         _ctx.Render<MudPopoverProvider>();

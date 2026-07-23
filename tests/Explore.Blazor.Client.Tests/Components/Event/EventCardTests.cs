@@ -344,18 +344,23 @@ public class EventCardTests : IDisposable
     {
         var selectCount = 0;
         var eventDto = CreateTestEvent();
+        const string sourceHref = "/api/event/federated/record/source";
         eventDto.Id = null;
         eventDto.AdditionalProperties["eventDiscoverySource"] = "atproto";
         eventDto.AdditionalProperties["_links"] = System.Text.Json.JsonSerializer.SerializeToElement(
             new Dictionary<string, HalLink>
             {
-                ["source"] = new() { Href = "/api/event/federated/record/source", Method = "GET" }
+                ["source"] = new() { Href = sourceHref, Method = "GET" }
             });
         var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
             .Add(component => component.Event, eventDto)
             .Add(component => component.Layout, LayoutMode.DetailedList)
             .Add(component => component.OnClick, EventCallback.Factory.Create<EventListDto>(this, _ => selectCount++))
             .Add(component => component.OnShareRequested, EventCallback.Factory.Create<EventListDto>(this, _ => { })));
+
+        var externalLink = cut.Find("a.event-card__external-link");
+        await Assert.That(externalLink.GetAttribute("href")).IsEqualTo(sourceHref);
+        await Assert.That(externalLink.GetAttribute("target")).IsEqualTo("_blank");
 
         cut.Find(".event-card").Click();
 

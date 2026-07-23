@@ -87,7 +87,8 @@ public partial class EventDetailsSidebar : ComponentBase
 
     private string? ExternalEventUrl =>
         EventUrlHelper.GetSafeExternalUrl(SelectedEvent?.EventUrl)
-        ?? EventUrlHelper.GetSafeExternalUrl(EventDetail?.EventUrl);
+        ?? EventUrlHelper.GetSafeExternalUrl(EventDetail?.EventUrl)
+        ?? (SelectedEvent?.IsFederatedDiscoveryEvent() == true ? SelectedEvent.GetHalHref("source") : null);
 
     private string ExternalEventLinkLabel =>
         $"Open {SelectedEvent?.Title} on its external platform in a new tab";
