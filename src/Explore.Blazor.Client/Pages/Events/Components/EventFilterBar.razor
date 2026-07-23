@@ -53,7 +53,7 @@
 
             <div class="filter-bar__filter-item filter-bar__filter-item--full">
                 <div class="filter-bar__label">Format</div>
-                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedFormatIds" MultiSelectionTextFunc="FormatSelectedFormats" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedFormatIds" MultiSelectionTextFunc="FormatSelectedFormats" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                     @foreach (var format in EventFormats)
                     {
                         <MudSelectItem T="int" Value="@(format.Id.GetValueOrDefault())">@format.FullName</MudSelectItem>
@@ -63,7 +63,7 @@
 
             <div class="filter-bar__filter-item filter-bar__filter-item--full">
                 <div class="filter-bar__label">Type</div>
-                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedEventTypeIds" MultiSelectionTextFunc="FormatSelectedEventTypes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedEventTypeIds" MultiSelectionTextFunc="FormatSelectedEventTypes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                     @foreach (var type in EventTypes)
                     {
                         <MudSelectItem T="int" Value="@(type.Id.GetValueOrDefault())">@type.FullName</MudSelectItem>
@@ -73,7 +73,7 @@
 
             <div class="filter-bar__filter-item filter-bar__filter-item--full">
                 <div class="filter-bar__label">Madhab</div>
-                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedMadhabIds" MultiSelectionTextFunc="FormatSelectedMadhabs" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedMadhabIds" MultiSelectionTextFunc="FormatSelectedMadhabs" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                     @foreach (var madhab in Madhabs)
                     {
                         <MudSelectItem T="int" Value="@(madhab.Id.GetValueOrDefault())">@madhab.FullName</MudSelectItem>
@@ -83,7 +83,7 @@
 
             <div class="filter-bar__filter-item filter-bar__filter-item--full">
                 <div class="filter-bar__label">Registration</div>
-                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedRegistrationModeIds" MultiSelectionTextFunc="FormatSelectedRegistrationModes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedRegistrationModeIds" MultiSelectionTextFunc="FormatSelectedRegistrationModes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                     @foreach (var mode in RegistrationModes)
                     {
                         <MudSelectItem T="int" Value="@(mode.Id.GetValueOrDefault())">@mode.FullName</MudSelectItem>
@@ -93,7 +93,7 @@
 
             <div class="filter-bar__filter-item filter-bar__filter-item--full">
                 <div class="filter-bar__label">Language</div>
-                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedLanguageIds" MultiSelectionTextFunc="FormatSelectedLanguages" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedLanguageIds" MultiSelectionTextFunc="FormatSelectedLanguages" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                     @foreach (var language in Languages)
                     {
                         <MudSelectItem T="int" Value="@(language.Id.GetValueOrDefault())">@language.FullName</MudSelectItem>
@@ -103,7 +103,7 @@
 
             <div class="filter-bar__filter-item filter-bar__filter-item--full">
                 <div class="filter-bar__label">Gender</div>
-                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedAudienceGenderIds" MultiSelectionTextFunc="FormatSelectedAudienceGenders" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedAudienceGenderIds" MultiSelectionTextFunc="FormatSelectedAudienceGenders" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                     @foreach (var gender in AudienceGenders)
                     {
                         <MudSelectItem T="int" Value="@(gender.Id.GetValueOrDefault())">@gender.FullName</MudSelectItem>
@@ -113,7 +113,7 @@
 
             <div class="filter-bar__filter-item filter-bar__filter-item--full">
                 <div class="filter-bar__label">Age</div>
-                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedAudienceAgeIds" MultiSelectionTextFunc="FormatSelectedAudienceAges" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedAudienceAgeIds" MultiSelectionTextFunc="FormatSelectedAudienceAges" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                     @foreach (var age in AudienceAges)
                     {
                         <MudSelectItem T="int" Value="@(age.Id.GetValueOrDefault())">@age.FullName</MudSelectItem>
@@ -123,7 +123,7 @@
 
             <div class="filter-bar__filter-item filter-bar__filter-item--full">
                 <div class="filter-bar__label">Sort By</div>
-                <MudSelect T="string" @bind-Value="SelectedSortBy" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                <MudSelect T="string" @bind-Value="SelectedSortBy" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                     <MudSelectItem Value="@("date")">Date</MudSelectItem>
                     <MudSelectItem Value="@("title")">Title</MudSelectItem>
                     <MudSelectItem Value="@("popularity")">Popularity</MudSelectItem>
@@ -155,7 +155,7 @@
 
                 <div class="filter-bar__filter-item filter-bar__filter-item--full">
                     <div class="filter-bar__label">Gender Mode</div>
-                    <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedGenderModeIds" MultiSelectionTextFunc="FormatSelectedGenderModes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                    <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedGenderModeIds" MultiSelectionTextFunc="FormatSelectedGenderModes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                         @foreach (GenderSegregationMode item in Enum.GetValues(typeof(GenderSegregationMode)))
                         {
                             <MudSelectItem T="int" Value="@((int)item)">@item.ToString()</MudSelectItem>
@@ -165,7 +165,7 @@
 
                 <div class="filter-bar__filter-item filter-bar__filter-item--full">
                     <div class="filter-bar__label">Prayer Time</div>
-                    <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedReferencePrayerIds" MultiSelectionTextFunc="FormatSelectedPrayerTimes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                    <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedReferencePrayerIds" MultiSelectionTextFunc="FormatSelectedPrayerTimes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                         @foreach (PrayerTime item in Enum.GetValues(typeof(PrayerTime)))
                         {
                             <MudSelectItem T="int" Value="@((int)item)">@item.ToString()</MudSelectItem>
@@ -182,7 +182,7 @@
 
                 <div class="filter-bar__filter-item filter-bar__filter-item--full">
                     <div class="filter-bar__label">Skill Level</div>
-                    <MudSelect T="SkillLevel?" @bind-Value="SelectedSkillLevel" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                    <MudSelect T="SkillLevel?" @bind-Value="SelectedSkillLevel" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative" Clearable="true">
                         <MudSelectItem T="SkillLevel?" Value="@((SkillLevel?)null)">Any</MudSelectItem>
                         @foreach (SkillLevel item in Enum.GetValues(typeof(SkillLevel)))
                         {
@@ -289,7 +289,7 @@
 
                     <div class="filter-bar__filter-item">
                         <div class="filter-bar__label">Format</div>
-                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedFormatIds" MultiSelectionTextFunc="FormatSelectedFormats" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedFormatIds" MultiSelectionTextFunc="FormatSelectedFormats" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                             @foreach (var format in EventFormats)
                             {
                                 <MudSelectItem T="int" Value="@(format.Id.GetValueOrDefault())">@format.FullName</MudSelectItem>
@@ -299,7 +299,7 @@
 
                     <div class="filter-bar__filter-item">
                         <div class="filter-bar__label">Type</div>
-                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedEventTypeIds" MultiSelectionTextFunc="FormatSelectedEventTypes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedEventTypeIds" MultiSelectionTextFunc="FormatSelectedEventTypes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                             @foreach (var type in EventTypes)
                             {
                                 <MudSelectItem T="int" Value="@(type.Id.GetValueOrDefault())">@type.FullName</MudSelectItem>
@@ -309,7 +309,7 @@
 
                     <div class="filter-bar__filter-item">
                         <div class="filter-bar__label">Madhab</div>
-                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedMadhabIds" MultiSelectionTextFunc="FormatSelectedMadhabs" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedMadhabIds" MultiSelectionTextFunc="FormatSelectedMadhabs" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                             @foreach (var madhab in Madhabs)
                             {
                                 <MudSelectItem T="int" Value="@(madhab.Id.GetValueOrDefault())">@madhab.FullName</MudSelectItem>
@@ -319,7 +319,7 @@
 
                     <div class="filter-bar__filter-item">
                         <div class="filter-bar__label">Registration</div>
-                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedRegistrationModeIds" MultiSelectionTextFunc="FormatSelectedRegistrationModes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedRegistrationModeIds" MultiSelectionTextFunc="FormatSelectedRegistrationModes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                             @foreach (var mode in RegistrationModes)
                             {
                                 <MudSelectItem T="int" Value="@(mode.Id.GetValueOrDefault())">@mode.FullName</MudSelectItem>
@@ -329,7 +329,7 @@
 
                     <div class="filter-bar__filter-item">
                         <div class="filter-bar__label">Language</div>
-                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedLanguageIds" MultiSelectionTextFunc="FormatSelectedLanguages" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedLanguageIds" MultiSelectionTextFunc="FormatSelectedLanguages" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                             @foreach (var language in Languages)
                             {
                                 <MudSelectItem T="int" Value="@(language.Id.GetValueOrDefault())">@language.FullName</MudSelectItem>
@@ -339,7 +339,7 @@
 
                     <div class="filter-bar__filter-item">
                         <div class="filter-bar__label">Gender</div>
-                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedAudienceGenderIds" MultiSelectionTextFunc="FormatSelectedAudienceGenders" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedAudienceGenderIds" MultiSelectionTextFunc="FormatSelectedAudienceGenders" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                             @foreach (var gender in AudienceGenders)
                             {
                                 <MudSelectItem T="int" Value="@(gender.Id.GetValueOrDefault())">@gender.FullName</MudSelectItem>
@@ -349,7 +349,7 @@
 
                     <div class="filter-bar__filter-item">
                         <div class="filter-bar__label">Age</div>
-                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedAudienceAgeIds" MultiSelectionTextFunc="FormatSelectedAudienceAges" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedAudienceAgeIds" MultiSelectionTextFunc="FormatSelectedAudienceAges" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                             @foreach (var age in AudienceAges)
                             {
                                 <MudSelectItem T="int" Value="@(age.Id.GetValueOrDefault())">@age.FullName</MudSelectItem>
@@ -359,7 +359,7 @@
 
                     <div class="filter-bar__filter-item">
                         <div class="filter-bar__label">Sort By</div>
-                        <MudSelect T="string" @bind-Value="SelectedSortBy" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                        <MudSelect T="string" @bind-Value="SelectedSortBy" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                             <MudSelectItem Value="@("date")">Date</MudSelectItem>
                             <MudSelectItem Value="@("title")">Title</MudSelectItem>
                             <MudSelectItem Value="@("popularity")">Popularity</MudSelectItem>
@@ -388,7 +388,7 @@
                     {
                         <div class="filter-bar__filter-item">
                             <div class="filter-bar__label">Gender Mode</div>
-                            <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedGenderModeIds" MultiSelectionTextFunc="FormatSelectedGenderModes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                            <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedGenderModeIds" MultiSelectionTextFunc="FormatSelectedGenderModes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                                 @foreach (GenderSegregationMode item in Enum.GetValues(typeof(GenderSegregationMode)))
                                 {
                                     <MudSelectItem T="int" Value="@((int)item)">@item.ToString()</MudSelectItem>
@@ -398,7 +398,7 @@
 
                         <div class="filter-bar__filter-item">
                             <div class="filter-bar__label">Prayer Time</div>
-                            <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedReferencePrayerIds" MultiSelectionTextFunc="FormatSelectedPrayerTimes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                            <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedReferencePrayerIds" MultiSelectionTextFunc="FormatSelectedPrayerTimes" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                                 @foreach (PrayerTime item in Enum.GetValues(typeof(PrayerTime)))
                                 {
                                     <MudSelectItem T="int" Value="@((int)item)">@item.ToString()</MudSelectItem>
@@ -412,7 +412,7 @@
                     {
                         <div class="filter-bar__filter-item">
                             <div class="filter-bar__label">Skill Level</div>
-                            <MudSelect T="SkillLevel?" @bind-Value="SelectedSkillLevel" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                            <MudSelect T="SkillLevel?" @bind-Value="SelectedSkillLevel" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative" Clearable="true">
                                 <MudSelectItem T="SkillLevel?" Value="@((SkillLevel?)null)">Any</MudSelectItem>
                                 @foreach (SkillLevel item in Enum.GetValues(typeof(SkillLevel)))
                                 {

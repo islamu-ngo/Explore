@@ -2,13 +2,64 @@
 /* Layout, spacing, and responsive behavior for the tri-state category filter. */
 
 .tri-state-category-filter {
-    display: inline-block;
+    display: block;
+    width: 100%;
 }
 
-.tri-state-category-filter__trigger {
-    text-transform: none;
-    font-weight: 500;
+.tri-state-filter-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: var(--mud-default-border-radius, 4px);
+    border: 1px solid var(--mud-palette-lines-inputs, rgba(255, 255, 255, 0.23));
+    background-color: transparent;
+    color: var(--mud-palette-text-primary);
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.875rem;
+    box-sizing: border-box;
+    outline: none;
+}
+
+.tri-state-filter-trigger:hover,
+.tri-state-filter-trigger:focus-visible {
+    border-color: var(--mud-palette-text-primary);
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.tri-state-filter-trigger--open {
+    border-color: var(--mud-palette-primary);
+}
+
+.tri-state-filter-trigger--active {
+    border-color: var(--mud-palette-primary);
+    color: var(--mud-palette-primary);
+}
+
+.tri-state-filter-trigger__content {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
     white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.tri-state-filter-trigger__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    font-weight: 400;
+}
+
+.tri-state-filter-trigger__arrow {
+    margin-left: 8px;
+    opacity: 0.7;
+    flex-shrink: 0;
+    transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 ::deep .tri-state-category-filter__popover {

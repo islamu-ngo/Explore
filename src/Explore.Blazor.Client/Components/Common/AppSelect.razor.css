@@ -1,0 +1,5 @@
+/* ABOUTME: CSS isolation for AppSelect wrapper component. */
+/* ABOUTME: Provides standard full-width layout for MudSelect controls. */
+.app-select {
+    width: 100%;
+}

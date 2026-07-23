@@ -3,18 +3,19 @@
 @using Explore.Blazor.Client.Models
 
 <div class="tri-state-category-filter" style="position: relative;">
-    @* Trigger Button with live badge *@
-    <MudButton Elevation="0" Variant="Variant.Outlined"
-               Color="@(HasActiveFilters() ? MudBlazor.Color.Primary : MudBlazor.Color.Default)"
-               StartIcon="@Icons.Material.Filled.Category"
-               EndIcon="@(_isOpen ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
-               OnClick="TogglePopover"
-               Size="Size.Small"
-               FullWidth="true"
-               Style="text-transform: none; white-space: nowrap;"
-               Class="tri-state-category-filter__trigger">
-        @GetBadgeText()
-    </MudButton>
+    @* Trigger styled to match MudSelect Outlined Dense *@
+    <div class="tri-state-filter-trigger @(_isOpen ? "tri-state-filter-trigger--open" : "") @(HasActiveFilters() ? "tri-state-filter-trigger--active" : "")"
+         @onclick="TogglePopover"
+         role="button"
+         tabindex="0">
+        <div class="tri-state-filter-trigger__content">
+            <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Class="mr-2" Style="font-size: 1.1rem; opacity: 0.7;" />
+            <span class="tri-state-filter-trigger__text">@GetBadgeText()</span>
+        </div>
+        <MudIcon Icon="@(_isOpen ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)"
+                 Size="Size.Small"
+                 Class="tri-state-filter-trigger__arrow" />
+    </div>
 
     @* Overlay for click-outside-to-close *@
     <MudOverlay Visible="_isOpen" OnClick="ClosePopover" LockScroll="false" />
@@ -24,7 +25,7 @@
                 AnchorOrigin="Origin.BottomLeft"
                 TransformOrigin="Origin.TopLeft"
                 Class="tri-state-category-filter__popover">
-        <MudPaper Class="pa-4" Style="min-width: 400px; max-width: 600px; max-height: 60vh; overflow-y: auto; overflow-x: hidden;" Elevation="8">
+        <MudPaper Class="pa-4" Style="min-width: 520px; max-width: min(650px, 92vw); max-height: 70vh; overflow-y: auto; overflow-x: hidden;" Elevation="8">
 
             @* Search + Reset controls *@
             <div class="d-flex align-center gap-2 mb-2">
@@ -98,14 +99,14 @@
             <div class="d-flex flex-wrap gap-4 mb-2">
                 <div class="d-flex align-center gap-1">
                     <MudText Typo="Typo.caption" Style="white-space: nowrap;">Inclusion mode</MudText>
-                    <MudSelect T="string" @bind-Value="_inclusionMode" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Style="min-width: 80px;" AnchorOrigin="Origin.BottomCenter">
+                    <MudSelect T="string" @bind-Value="_inclusionMode" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Style="min-width: 80px;" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                         <MudSelectItem Value="@("and")">And</MudSelectItem>
                         <MudSelectItem Value="@("or")">Or</MudSelectItem>
                     </MudSelect>
                 </div>
                 <div class="d-flex align-center gap-1">
                     <MudText Typo="Typo.caption" Style="white-space: nowrap;">Exclusion mode</MudText>
-                    <MudSelect T="string" @bind-Value="_exclusionMode" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Style="min-width: 80px;" AnchorOrigin="Origin.BottomCenter">
+                    <MudSelect T="string" @bind-Value="_exclusionMode" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Style="min-width: 80px;" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" DropdownWidth="DropdownWidth.Relative">
                         <MudSelectItem Value="@("or")">Or</MudSelectItem>
                         <MudSelectItem Value="@("and")">And</MudSelectItem>
                     </MudSelect>
