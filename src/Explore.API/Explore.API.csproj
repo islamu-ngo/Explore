@@ -22,6 +22,8 @@
     <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
     <PackageReference Include="Aspire.Keycloak.Authentication" />
     <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" />
+    <PackageReference Include="HarfBuzzSharp" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
     <PackageReference Include="Ical.Net" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
@@ -61,6 +63,9 @@
     <PackageReference Include="Serilog.Enrichers.Thread" />
     <PackageReference Include="Serilog.Formatting.Compact" />
     <PackageReference Include="Serilog.Settings.Configuration" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.HarfBuzz" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
     <PackageReference Include="TickerQ" />
@@ -75,6 +80,10 @@
     <ProjectReference Include="..\Explore.Persistence\Explore.Persistence.csproj" />
     <ProjectReference Include="..\Explore.Secrets\Explore.Secrets.csproj" />
     <ProjectReference Include="..\Explore.ServiceDefaults\Explore.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources/Fonts/NotoSansArabic[wdth,wght].ttf" />
   </ItemGroup>
 
   <!-- Include openapi.json as content (committed to source control) -->

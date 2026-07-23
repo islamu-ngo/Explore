@@ -68,6 +68,8 @@
     <PackageVersion Include="Google.Protobuf" Version="3.34.1" />
     <PackageVersion Include="Grpc.Net.Client" Version="2.76.0" />
     <PackageVersion Include="Grpc.Tools" Version="2.76.0" />
+    <PackageVersion Include="HarfBuzzSharp" Version="14.2.1.1" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.1.1" />
     <PackageVersion Include="Ical.Net" Version="5.2.1" />
     <PackageVersion Include="Infisical.Sdk" Version="3.0.3" />
     <PackageVersion Include="MailKit" Version="4.16.0" />
@@ -142,6 +144,9 @@
     <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
     <PackageVersion Include="Serilog.Formatting.Compact" Version="3.0.0" />
     <PackageVersion Include="Serilog.Settings.Configuration" Version="10.0.0" />
+    <PackageVersion Include="SkiaSharp" Version="4.150.1" />
+    <PackageVersion Include="SkiaSharp.HarfBuzz" Version="4.150.1" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.150.1" />
     <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.15.0.120848" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.1.7" />
     <PackageVersion Include="Svix" Version="1.96.1" />

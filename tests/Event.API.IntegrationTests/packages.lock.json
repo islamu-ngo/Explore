@@ -273,6 +273,16 @@
           "Grpc.Core.Api": "2.76.0"
         }
       },
+      "HarfBuzzSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "14.2.1.1",
+        "contentHash": "WkvDdOQN940zZAbRfHbYTmtUKVgrmmeFI0W6IIbNAj2FyYMWrgX3OvpRFrcftdnczpxrPNDE2YzykoorIdCuZw=="
+      },
+      "HarfBuzzSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "14.2.1.1",
+        "contentHash": "doOYYTksh3+VDcuXMHFZaYkA1gs0JFfvUyBMH5fhLUA20FPNfDL5gciiyXlzZ/HNR/J3u2C27e6tvycbk+2MUQ=="
+      },
       "MediatR.Contracts": {
         "type": "Transitive",
         "resolved": "2.0.1",
@@ -950,6 +960,16 @@
         "resolved": "3.2.0",
         "contentHash": "K8ivHRbPWfncijk62Dan/r/z55gwq3aFzqB6yFlD9X0bbpIaacHyHH2cpcIdz0FECUpERUZTwxts0z4gRWpQpA=="
       },
+      "SkiaSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "4.150.1",
+        "contentHash": "r755HVwaHZhyf1clWjrM2/RoOZYCzkQEmE9pu/mVsebPejWu52niNPUwtfyf112qoF0PIk6OndqVOUoITj6TwQ=="
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "4.150.1",
+        "contentHash": "qrLSL8OonbkMJdSH8heK0Jl39Y2xxZGdd7Ru4cyBXk2ITdx+Fu1sCFLmvCKmnMaYs//mlN/YSpSpOurEXErcQw=="
+      },
       "SSH.NET": {
         "type": "Transitive",
         "resolved": "2025.1.0",
@@ -1157,6 +1177,8 @@
           "Explore.Persistence": "[1.0.0, )",
           "Explore.Secrets": "[1.0.0, )",
           "Explore.ServiceDefaults": "[1.0.0, )",
+          "HarfBuzzSharp": "[14.2.1.1, )",
+          "HarfBuzzSharp.NativeAssets.Linux": "[14.2.1.1, )",
           "Ical.Net": "[5.2.1, )",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.8, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.7, )",
@@ -1184,6 +1206,9 @@
           "Serilog.Enrichers.Thread": "[4.0.0, )",
           "Serilog.Formatting.Compact": "[3.0.0, )",
           "Serilog.Settings.Configuration": "[10.0.0, )",
+          "SkiaSharp": "[4.150.1, )",
+          "SkiaSharp.HarfBuzz": "[4.150.1, )",
+          "SkiaSharp.NativeAssets.Linux.NoDependencies": "[4.150.1, )",
           "Swashbuckle.AspNetCore": "[10.1.7, )",
           "System.IdentityModel.Tokens.Jwt": "[8.14.0, )",
           "TickerQ": "[10.2.0, )",
@@ -1457,6 +1482,22 @@
           "Grpc.Net.Common": "2.76.0",
           "Microsoft.Extensions.Logging.Abstractions": "8.0.0"
         }
+      },
+      "HarfBuzzSharp": {
+        "type": "CentralTransitive",
+        "requested": "[14.2.1.1, )",
+        "resolved": "14.2.1.1",
+        "contentHash": "7XDWIol7Iq0Lw2MxJLjI3ec1mGQspC5BM0Ao85TDCSMgr94mmdRReSO00ZxHiy+j8OMpOkuu8B9x2brhKSlWaw==",
+        "dependencies": {
+          "HarfBuzzSharp.NativeAssets.Win32": "14.2.1.1",
+          "HarfBuzzSharp.NativeAssets.macOS": "14.2.1.1"
+        }
+      },
+      "HarfBuzzSharp.NativeAssets.Linux": {
+        "type": "CentralTransitive",
+        "requested": "[14.2.1.1, )",
+        "resolved": "14.2.1.1",
+        "contentHash": "UQB+s4T1JI7Cq2KXkoTUuab2bUSmxZ/Ou4te1YD2aQ3NGKccg07EZbyiJunILtsQ0psvM2CCLmhpabnCvrd+tw=="
       },
       "Ical.Net": {
         "type": "CentralTransitive",
@@ -2023,6 +2064,32 @@
           "Microsoft.Extensions.DependencyModel": "10.0.0",
           "Serilog": "4.3.0"
         }
+      },
+      "SkiaSharp": {
+        "type": "CentralTransitive",
+        "requested": "[4.150.1, )",
+        "resolved": "4.150.1",
+        "contentHash": "5v3T8X1N62Dp+AkPO70GNBNS/NRBPGMOTiN+Prg33sZAcm/Ug3YOAH+3RTj/jxJV8NGTJs2idGpC2Qdae2mGLQ==",
+        "dependencies": {
+          "SkiaSharp.NativeAssets.Win32": "4.150.1",
+          "SkiaSharp.NativeAssets.macOS": "4.150.1"
+        }
+      },
+      "SkiaSharp.HarfBuzz": {
+        "type": "CentralTransitive",
+        "requested": "[4.150.1, )",
+        "resolved": "4.150.1",
+        "contentHash": "ufL06cWlXgEpgtFeBpLi15ovGpuSfxe4tmDMBbGKdaEJVuA9Ko0vV7l00zqobGXDfu883VZuulMR/pxUKw+1MA==",
+        "dependencies": {
+          "HarfBuzzSharp": "14.2.1.1",
+          "SkiaSharp": "4.150.1"
+        }
+      },
+      "SkiaSharp.NativeAssets.Linux.NoDependencies": {
+        "type": "CentralTransitive",
+        "requested": "[4.150.1, )",
+        "resolved": "4.150.1",
+        "contentHash": "2KVadgDky2xQw7lEMRT/u0ftX5K1u8X7MhCN47Em22Z6VM6JJg1c9cwfGuSPAt1oY6+GjGHH18vkeev+nqT9Kw=="
       },
       "Svix": {
         "type": "CentralTransitive",
