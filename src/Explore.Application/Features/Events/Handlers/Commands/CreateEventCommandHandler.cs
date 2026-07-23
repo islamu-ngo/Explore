@@ -389,7 +389,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         };
     }
 
-    private static string GeneratePublicCode() => Guid.NewGuid().ToString("N")[..12];
+    private static string GeneratePublicCode() => Guid.CreateVersion7().ToString("N")[..12];
 
     private async Task AssignFeaturedImageActorAsync(CreateEventRequest dto, Guid actorId)
     {
