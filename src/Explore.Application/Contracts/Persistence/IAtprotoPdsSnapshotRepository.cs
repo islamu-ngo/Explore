@@ -11,7 +11,10 @@ public sealed record AtprotoPdsSnapshotApplyRequest(
     IReadOnlyList<AtprotoPdsSnapshot> Snapshots,
     IReadOnlyList<Guid> PresentationTenantIds,
     long SnapshotVersion,
-    DateTime ObservedAt);
+    DateTime ObservedAt)
+{
+    public IReadOnlyList<AtprotoFederatedEventImportPlan> EventImports { get; init; } = [];
+}
 
 public interface IAtprotoPdsSnapshotRepository
 {

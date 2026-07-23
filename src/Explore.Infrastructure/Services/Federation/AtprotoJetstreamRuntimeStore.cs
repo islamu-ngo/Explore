@@ -72,8 +72,8 @@ internal sealed class AtprotoJetstreamRuntimeStore(IServiceScopeFactory scopeFac
         CancellationToken cancellationToken)
     {
         await using AsyncServiceScope scope = scopeFactory.CreateAsyncScope();
-        bool applied = await scope.ServiceProvider.GetRequiredService<IAtprotoJetstreamRepository>()
-            .TryApplyAndAdvanceAsync(request, cancellationToken);
+        bool applied = await scope.ServiceProvider.GetRequiredService<IMediator>()
+            .Send(new ImportAtprotoFederatedEventCommand(request), cancellationToken);
         if (applied
             && AffectsEventDiscovery(request)
             && scope.ServiceProvider.GetService<IAtprotoDiscoveryCacheInvalidator>() is { } cacheInvalidator)

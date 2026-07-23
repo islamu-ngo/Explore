@@ -104,14 +104,35 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandler(
             return new(AtprotoPdsRecoveryOutcome.PartialFailure, fingerprint, FailedDids: failed);
         }
 
+        var importPlans = new List<AtprotoFederatedEventImportPlan>();
+        foreach (AtprotoPdsSnapshotItem item in snapshots.SelectMany(snapshot => snapshot.Items))
+        {
+            if (item.EventProjection is null)
+            {
+                continue;
+            }
+
+            IReadOnlyList<AtprotoFederatedEventImportPlan> itemPlans =
+                await AtprotoFederatedEventImportPlanFactory.CreateAsync(
+                    item.Record,
+                    item.EventProjection,
+                    presentationTenantIds,
+                    cancellationToken);
+            importPlans.AddRange(itemPlans);
+        }
+
+        var applyRequest = new AtprotoPdsSnapshotApplyRequest(
+            request.Claim,
+            normalizedDids,
+            snapshots,
+            presentationTenantIds,
+            snapshotVersion,
+            timeProvider.GetUtcNow().UtcDateTime)
+        {
+            EventImports = importPlans
+        };
         bool reconciled = await repository.TryReconcileAsync(
-            new AtprotoPdsSnapshotApplyRequest(
-                request.Claim,
-                normalizedDids,
-                snapshots,
-                presentationTenantIds,
-                snapshotVersion,
-                timeProvider.GetUtcNow().UtcDateTime),
+            applyRequest,
             cancellationToken);
         return reconciled
             ? new(AtprotoPdsRecoveryOutcome.Completed, fingerprint, normalizedDids.Length)

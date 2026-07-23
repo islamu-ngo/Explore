@@ -24,6 +24,25 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
     private const string SecondDid = "did:plc:second-owner";
 
     [Test]
+    public async Task SnapshotApplyRequest_DefaultsImportPlansToEmpty()
+    {
+        var request = new AtprotoPdsSnapshotApplyRequest(
+            new AtprotoJetstreamClaim(
+                Guid.CreateVersion7(),
+                "https://jetstream.example",
+                42,
+                Guid.CreateVersion7(),
+                1),
+            [Did],
+            [],
+            [],
+            1,
+            SnapshotStartedAt);
+
+        await Assert.That(request.EventImports.Count).IsEqualTo(0);
+    }
+
+    [Test]
     public async Task Handle_DisabledPolicy_PerformsNoSnapshotIo()
     {
         var fixture = new Fixture();
@@ -170,6 +189,92 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
                 && request.Snapshots[0].PresentIdentities.Count == 1
                 && request.Snapshots[0].Items.Count == 1
                 && request.PresentationTenantIds.SequenceEqual(new[] { fixture.TenantId })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_FullPolicy_AttachesExactImportPlanOnlyForVisibleTenant()
+    {
+        var fixture = new Fixture();
+        Guid hiddenTenantId = Guid.CreateVersion7();
+        fixture.SetTenants(fixture.TenantId, hiddenTenantId);
+        fixture.SetPresentation(enabled: false, locked: false);
+        fixture.SetTenantPresentation(fixture.TenantId, enabled: true);
+        fixture.SetTenantPresentation(hiddenTenantId, enabled: false);
+        fixture.Gateway.FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(CompleteSnapshot(Did, includeAcceptedItem: true));
+        fixture.Repository.TryReconcileAsync(
+                Arg.Any<AtprotoPdsSnapshotApplyRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(
+            Command([Did]),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Completed);
+        await fixture.Repository.Received(1).TryReconcileAsync(
+            Arg.Is<AtprotoPdsSnapshotApplyRequest>(request =>
+                request.EventImports.Count == 1
+                && request.EventImports[0].TenantId == fixture.TenantId
+                && request.EventImports[0].AtprotoRecordId == request.Snapshots[0].Items[0].Record.Id
+                && request.EventImports[0].Did == Did
+                && request.EventImports[0].AtUri
+                    == $"at://{Did}/{AtprotoEventPublicationPlanner.EventCollection}/event-1"
+                && request.EventImports[0].Name == "Recovered event"
+                && request.EventImports[0].CreatedAt == new DateTimeOffset(SnapshotStartedAt)
+                && request.EventImports[0].Description == "Recovered event description."
+                && request.EventImports[0].SourceUrl == "https://events.example/recovered"
+                && request.EventImports[0].StartsAt == new DateTimeOffset(SnapshotStartedAt).AddDays(1)
+                && request.EventImports[0].EndsAt == new DateTimeOffset(SnapshotStartedAt).AddDays(1).AddHours(2)
+                && request.EventImports[0].Mode == "#hybrid"
+                && request.EventImports[0].Status == "#scheduled"
+                && request.EventImports[0].RsvpExpected == true
+                && request.EventImports.All(plan => plan.TenantId != hiddenTenantId)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_FullPolicy_InvalidEventProjectionFailsBeforePersistence()
+    {
+        var fixture = new Fixture();
+        AtprotoRecord record = Record(Did);
+        AtprotoEventProjection projection = Projection(record);
+        projection.Name = " ";
+        projection.CreatedAt = default;
+        var identity = new AtprotoPdsSnapshotIdentity(record.Collection, record.RecordKey);
+        var snapshot = new AtprotoPdsSnapshot(
+            Did,
+            [identity],
+            [new AtprotoPdsSnapshotItem(record, projection)]);
+        fixture.Gateway.FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(AtprotoPdsSnapshotFetchResult.Complete(snapshot));
+
+        await Assert.ThrowsAsync<FluentValidation.ValidationException>(() =>
+            fixture.Handler.Handle(Command([Did]), CancellationToken.None));
+
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+    }
+
+    [Test]
+    public async Task Handle_FullPolicy_SnapshotDeletionAttachesNoImportPlan()
+    {
+        var fixture = new Fixture();
+        fixture.Gateway.FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(AtprotoPdsSnapshotFetchResult.Complete(
+                new AtprotoPdsSnapshot(Did, [], [])));
+        fixture.Repository.TryReconcileAsync(
+                Arg.Any<AtprotoPdsSnapshotApplyRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(
+            Command([Did]),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Completed);
+        await fixture.Repository.Received(1).TryReconcileAsync(
+            Arg.Is<AtprotoPdsSnapshotApplyRequest>(request => request.EventImports.Count == 0),
             Arg.Any<CancellationToken>());
     }
 
@@ -445,6 +550,14 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
     {
         AtprotoRecordId = record.Id,
         Name = "Recovered event",
+        Description = "Recovered event description.",
+        CreatedAt = new DateTimeOffset(SnapshotStartedAt),
+        StartsAt = new DateTimeOffset(SnapshotStartedAt).AddDays(1),
+        EndsAt = new DateTimeOffset(SnapshotStartedAt).AddDays(1).AddHours(2),
+        Mode = "hybrid",
+        Status = "scheduled",
+        RsvpExpected = true,
+        SourceUrl = "https://events.example/recovered",
         SourceVersion = record.SourceVersion,
         MaterializedAt = SnapshotStartedAt
     };

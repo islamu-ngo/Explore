@@ -4,9 +4,12 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Federation;
+using Explore.Domain.Services.Scheduling;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 
 namespace Explore.Persistence.Repositories;
 
@@ -15,6 +18,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
     private const string EventCollection = "community.lexicon.calendar.event";
     private const string RsvpCollection = "community.lexicon.calendar.rsvp";
     private const string TidAlphabet = "234567abcdefghijklmnopqrstuvwxyz";
+    private static readonly EventScheduleProjectionCalculator ScheduleProjectionCalculator = new();
     private readonly ExploreDbContext _dbContext;
 
     public AtprotoJetstreamRepository(ExploreDbContext dbContext)
@@ -161,6 +165,12 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             state.LastEventAt = request.ObservedAt;
             state.UpdatedAt = request.ObservedAt;
             await _dbContext.SaveChangesAsync(cancellationToken);
+            if (!await HasCurrentFenceAtCommitAsync(request.Claim, cancellationToken))
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return false;
+            }
+
             await transaction.CommitAsync(cancellationToken);
             return true;
         });
@@ -269,6 +279,11 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 foreach (AtprotoPdsSnapshotItem item in snapshots[did].Items)
                 {
                     var identity = (did, item.Record.Collection, item.Record.RecordKey);
+                    AtprotoFederatedEventImportPlan[] eventImports = request.EventImports
+                        .Where(value =>
+                            string.Equals(value.Did, did, StringComparison.Ordinal)
+                            && string.Equals(value.AtUri, item.Record.Uri, StringComparison.Ordinal))
+                        .ToArray();
                     if (!canonicalByIdentity.TryGetValue(identity, out AtprotoRecord? canonical))
                     {
                         canonical = item.Record;
@@ -278,8 +293,19 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                         canonicalByIdentity.Add(identity, canonical);
                         await _dbContext.AtprotoRecords.AddAsync(canonical, cancellationToken);
                     }
-                    else if (canonical.SourceVersion >= request.SnapshotVersion)
+                    else if (canonical.SourceVersion > request.SnapshotVersion)
                     {
+                        continue;
+                    }
+                    else if (canonical.SourceVersion == request.SnapshotVersion)
+                    {
+                        await ApplyEventImportsAsync(
+                            canonical,
+                            eventImports,
+                            request.ObservedAt,
+                            TenantFilterBypassReasons.AtprotoPdsSnapshotGlobalReconciliation,
+                            updateExisting: false,
+                            cancellationToken);
                         continue;
                     }
                     else
@@ -298,6 +324,13 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                         presentations,
                         presentationByKey,
                         request);
+                    await ApplyEventImportsAsync(
+                        canonical,
+                        eventImports,
+                        request.ObservedAt,
+                        TenantFilterBypassReasons.AtprotoPdsSnapshotGlobalReconciliation,
+                        updateExisting: true,
+                        cancellationToken);
                 }
             }
 
@@ -316,6 +349,14 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 }
 
                 HidePresentations(canonical.Id, presentations, request);
+                await ApplyEventImportsAsync(
+                    canonical,
+                    [],
+                    request.ObservedAt,
+                    TenantFilterBypassReasons.AtprotoPdsSnapshotGlobalReconciliation,
+                    updateExisting: true,
+                    cancellationToken,
+                    forceTombstone: true);
             }
 
             foreach (AtprotoRecord canonical in missing)
@@ -337,6 +378,13 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 }
 
                 HidePresentations(canonical.Id, presentations, request);
+                await ApplyEventImportsAsync(
+                    canonical,
+                    [],
+                    request.ObservedAt,
+                    TenantFilterBypassReasons.AtprotoPdsSnapshotGlobalReconciliation,
+                    updateExisting: true,
+                    cancellationToken);
             }
 
             foreach (Guid dependentId in dependentRecordIds)
@@ -598,8 +646,24 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             value.Collection == incoming.Collection &&
             value.RecordKey == incoming.RecordKey,
             cancellationToken);
-        if (canonical is not null && incoming.SourceVersion <= canonical.SourceVersion)
+        if (canonical is not null && incoming.SourceVersion < canonical.SourceVersion)
         {
+            return true;
+        }
+
+        if (canonical is not null && incoming.SourceVersion == canonical.SourceVersion)
+        {
+            if (canonical.Collection == EventCollection)
+            {
+                await ApplyEventImportsAsync(
+                    canonical,
+                    request.EventImports,
+                    request.ObservedAt,
+                    TenantFilterBypassReasons.AtprotoJetstreamGlobalMaterialization,
+                    updateExisting: false,
+                    cancellationToken);
+            }
+
             return true;
         }
 
@@ -641,6 +705,13 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
         if (canonical.Collection == "community.lexicon.calendar.event")
         {
             await ApplyEventProjectionAsync(canonical, request, cancellationToken);
+            await ApplyEventImportsAsync(
+                canonical,
+                request.EventImports,
+                request.ObservedAt,
+                TenantFilterBypassReasons.AtprotoJetstreamGlobalMaterialization,
+                updateExisting: true,
+                cancellationToken);
         }
 
         foreach (var supplied in request.Presentations)
@@ -690,6 +761,238 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
 
         return true;
     }
+
+    private async Task ApplyEventImportsAsync(
+        AtprotoRecord canonical,
+        IReadOnlyList<AtprotoFederatedEventImportPlan> imports,
+        DateTime observedAt,
+        string filterBypassReason,
+        bool updateExisting,
+        CancellationToken cancellationToken,
+        bool forceTombstone = false)
+    {
+        if (canonical.Collection != EventCollection)
+        {
+            return;
+        }
+
+        if (canonical.TombstonedAt is not null || forceTombstone)
+        {
+            DateTime deletedAt = canonical.TombstonedAt ?? observedAt;
+            List<Explore.Domain.Event> importedEvents = await _dbContext.Events
+                .IgnoreAllFilters(filterBypassReason)
+                .Where(value => value.AtprotoRecordId == canonical.Id)
+                .ToListAsync(cancellationToken);
+            foreach (Explore.Domain.Event importedEvent in importedEvents)
+            {
+                importedEvent.IsDeleted = true;
+                importedEvent.DeletedAt = deletedAt;
+                importedEvent.UpdatedAt = observedAt;
+                List<EventSession> sessions = await _dbContext.EventSessions
+                    .IgnoreAllFilters(filterBypassReason)
+                    .Where(value =>
+                        value.TenantId == importedEvent.TenantId
+                        && value.EventId == importedEvent.Id)
+                    .ToListAsync(cancellationToken);
+                foreach (EventSession session in sessions)
+                {
+                    session.IsDeleted = true;
+                    session.DeletedAt = deletedAt;
+                    session.UpdatedAt = observedAt;
+                }
+            }
+
+            return;
+        }
+
+        foreach (AtprotoFederatedEventImportPlan import in imports)
+        {
+            Actor? actor = _dbContext.ChangeTracker.Entries<Actor>()
+                .Where(entry => entry.State != EntityState.Deleted)
+                .Select(entry => entry.Entity)
+                .SingleOrDefault(value =>
+                    value.TenantId == import.TenantId
+                    && !value.IsDeleted
+                    && string.Equals(value.Pii.Did, import.Did, StringComparison.Ordinal));
+            actor ??= await _dbContext.Actors
+                .IgnoreTenantFilter(filterBypassReason)
+                .SingleOrDefaultAsync(value =>
+                    value.TenantId == import.TenantId
+                    && value.Pii.Did == import.Did,
+                    cancellationToken);
+            if (actor is null)
+            {
+                actor = new Actor
+                {
+                    Id = Guid.CreateVersion7(),
+                    TenantId = import.TenantId,
+                    Tenant = null!,
+                    ActorTypeId = (int)ActorTypeEnum.Bot,
+                    ActorType = null!,
+                    Pii = new ActorPii
+                    {
+                        DisplayName = import.Did,
+                        Did = import.Did
+                    }
+                };
+                await _dbContext.Actors.AddAsync(actor, cancellationToken);
+            }
+
+            Explore.Domain.Event? importedEvent = _dbContext.ChangeTracker.Entries<Explore.Domain.Event>()
+                .Where(entry => entry.State != EntityState.Deleted)
+                .Select(entry => entry.Entity)
+                .SingleOrDefault(value =>
+                    value.TenantId == import.TenantId
+                    && value.AtprotoRecordId == canonical.Id);
+            importedEvent ??= await _dbContext.Events
+                .IgnoreAllFilters(filterBypassReason)
+                .SingleOrDefaultAsync(value =>
+                    value.TenantId == import.TenantId
+                    && value.AtprotoRecordId == canonical.Id,
+                    cancellationToken);
+            bool preserveHealthyEvent = importedEvent is not null && !updateExisting;
+            if (importedEvent is null)
+            {
+                importedEvent = new Explore.Domain.Event
+                {
+                    Id = Guid.CreateVersion7(),
+                    TenantId = import.TenantId,
+                    Tenant = null!,
+                    ActorId = actor.Id,
+                    Actor = actor,
+                    Title = import.Name,
+                    VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+                    VisibilityType = null!,
+                    EventStatusId = MapEventStatus(import.Status),
+                    EventStatus = null!,
+                    EventFormatId = MapEventFormat(import.Mode),
+                    EventFormat = null!,
+                    AtprotoRecordId = canonical.Id,
+                    AtprotoRecord = canonical,
+                    EventTimeZoneId = "UTC",
+                    Timezone = "UTC",
+                    CreatedAt = import.CreatedAt.UtcDateTime
+                };
+                await _dbContext.Events.AddAsync(importedEvent, cancellationToken);
+            }
+
+            if (!preserveHealthyEvent)
+            {
+                importedEvent.ActorId = actor.Id;
+                importedEvent.Actor = actor;
+                importedEvent.Title = import.Name;
+                importedEvent.Content = import.Description;
+                importedEvent.Description = SummarizeDescription(import.Description);
+                importedEvent.EventUrl = import.SourceUrl;
+                importedEvent.EventFormatId = MapEventFormat(import.Mode);
+                importedEvent.EventStatusId = MapEventStatus(import.Status);
+                importedEvent.IsRegistrationRequired = import.RsvpExpected ?? false;
+                importedEvent.AtprotoRecordId = canonical.Id;
+                importedEvent.AtprotoRecord = canonical;
+                importedEvent.ProvenanceSource = "atproto";
+                importedEvent.ProvenanceExternalId = import.AtUri.Length <= 200
+                    ? import.AtUri
+                    : import.AtUri[..200];
+                importedEvent.CreatedAt = import.CreatedAt.UtcDateTime;
+                importedEvent.UpdatedAt = observedAt;
+                importedEvent.IsDeleted = false;
+                importedEvent.DeletedAt = null;
+                importedEvent.DeletedBy = null;
+            }
+
+            EventSession? session = _dbContext.ChangeTracker.Entries<EventSession>()
+                .Where(entry => entry.State != EntityState.Deleted)
+                .Select(entry => entry.Entity)
+                .SingleOrDefault(value =>
+                    value.TenantId == import.TenantId
+                    && value.EventId == importedEvent.Id);
+            session ??= await _dbContext.EventSessions
+                .IgnoreAllFilters(filterBypassReason)
+                .SingleOrDefaultAsync(value =>
+                    value.TenantId == import.TenantId
+                    && value.EventId == importedEvent.Id,
+                    cancellationToken);
+            if (session is null)
+            {
+                session = new EventSession
+                {
+                    Id = Guid.CreateVersion7(),
+                    TenantId = import.TenantId,
+                    Tenant = null!,
+                    EventId = importedEvent.Id,
+                    Event = importedEvent,
+                    CreatedAt = import.CreatedAt.UtcDateTime
+                };
+                await _dbContext.EventSessions.AddAsync(session, cancellationToken);
+            }
+            else if (preserveHealthyEvent && !session.IsDeleted)
+            {
+                continue;
+            }
+
+            session.Title = import.Name;
+            session.Description = null;
+            session.EventSessionStatusId = MapSessionStatus(import.Status);
+            session.CreatedAt = import.CreatedAt.UtcDateTime;
+            session.UpdatedAt = observedAt;
+            session.IsDeleted = false;
+            session.DeletedAt = null;
+            session.DeletedBy = null;
+            if (import.StartsAt is null)
+            {
+                session.StartTime = null;
+                session.EndTime = null;
+                session.EndTimeType = SessionEndTimeType.Fixed;
+                session.ReprojectLocalTimes("UTC", ScheduleProjectionCalculator);
+            }
+            else
+            {
+                session.EndTimeType = import.EndsAt is null
+                    ? SessionEndTimeType.OpenEnded
+                    : SessionEndTimeType.Fixed;
+                session.Reschedule(
+                    import.StartsAt.Value,
+                    import.EndsAt,
+                    "UTC",
+                    ScheduleProjectionCalculator);
+            }
+
+            if (!importedEvent.Sessions.Contains(session))
+            {
+                importedEvent.Sessions.Add(session);
+            }
+            importedEvent.RecalculateScheduleSummaryFromSessions();
+        }
+    }
+
+    private static int MapEventFormat(string? mode) =>
+        mode switch
+        {
+            "#virtual" => (int)EventFormatEnum.Digital,
+            "#hybrid" => (int)EventFormatEnum.Hybrid,
+            _ => (int)EventFormatEnum.Local
+        };
+
+    private static int MapEventStatus(string? status) =>
+        status switch
+        {
+            null or "#scheduled" or "#rescheduled" => (int)EventStatusEnum.Published,
+            "#cancelled" => (int)EventStatusEnum.Cancelled,
+            _ => (int)EventStatusEnum.Draft
+        };
+
+    private static int MapSessionStatus(string? status) =>
+        status switch
+        {
+            null or "#scheduled" or "#rescheduled" => (int)EventSessionStatusEnum.Published,
+            "#cancelled" => (int)EventSessionStatusEnum.Cancelled,
+            _ => (int)EventSessionStatusEnum.Draft
+        };
+
+    private static string? SummarizeDescription(string? description) =>
+        description is null
+            ? null
+            : string.Concat(description.EnumerateRunes().Take(150).Select(rune => rune.ToString()));
 
     private async Task ApplyEventProjectionAsync(
         AtprotoRecord canonical,

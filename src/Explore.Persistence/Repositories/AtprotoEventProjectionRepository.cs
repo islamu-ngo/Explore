@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Federation;
 using Microsoft.EntityFrameworkCore;
 
@@ -95,7 +96,9 @@ public sealed class AtprotoEventProjectionRepository(ExploreDbContext dbContext)
         return includeLocalEchoes
             ? query
             : query.Where(projection => !dbContext.Events.Any(@event =>
-                @event.AtprotoRecordId == projection.AtprotoRecordId));
+                @event.AtprotoRecordId == projection.AtprotoRecordId
+                && @event.EventStatusId == (int)EventStatusEnum.Published
+                && @event.VisibilityTypeId == (int)VisibilityTypeEnum.Public));
     }
 
     private static IOrderedQueryable<AtprotoEventProjection> Order(

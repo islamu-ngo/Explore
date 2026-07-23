@@ -82,7 +82,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         var scope = await SeedScopeAsync("jetstream-replay");
         await using var context = fixture.CreateDbContext();
         var repository = new AtprotoJetstreamRepository(context);
-        var now = Utc(10);
+        var now = CurrentUtc();
         var claim = await repository.TryClaimAsync(
             "wss://jetstream.example/subscribe",
             "worker-a",
@@ -128,7 +128,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         await fixture.ResetAsync();
         await using var context = fixture.CreateDbContext();
         var repository = new AtprotoJetstreamRepository(context);
-        var now = Utc(10);
+        var now = CurrentUtc();
         AtprotoJetstreamClaim claim = await repository.TryClaimAsync(
             "https://jetstream.example",
             "worker-a",
@@ -258,7 +258,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         var scope = await SeedScopeAsync("jetstream-tombstone");
         await using var context = fixture.CreateDbContext();
         var repository = new AtprotoJetstreamRepository(context);
-        var now = Utc(10);
+        var now = CurrentUtc();
         var claim = await repository.TryClaimAsync(
             "https://jetstream.example",
             "worker-a",
@@ -330,7 +330,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
     {
         await fixture.ResetAsync();
         await using var context = fixture.CreateDbContext();
-        var now = Utc(10);
+        var now = CurrentUtc();
         AtprotoRecord local = IncomingRecord(sourceVersion: 0, now);
         local.Id = Guid.CreateVersion7();
         local.Direction = AtprotoRecordDirection.Outbound;
@@ -1372,6 +1372,12 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
     };
 
     private static DateTime Utc(int hour) => new(2026, 7, 18, hour, 0, 0, DateTimeKind.Utc);
+
+    private static DateTime CurrentUtc()
+    {
+        DateTime now = DateTime.UtcNow;
+        return new DateTime(now.Ticks - (now.Ticks % 10), DateTimeKind.Utc);
+    }
 
     private sealed record FederationScope(Guid TenantId, Guid UserId);
     private sealed record StaticTenantContext(Guid TenantId) : ITenantContext;

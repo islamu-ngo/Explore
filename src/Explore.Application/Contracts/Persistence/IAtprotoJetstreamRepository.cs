@@ -3,6 +3,7 @@
 
 using Explore.Domain;
 using Explore.Domain.Federation;
+using Explore.Application.Features.Federation.Atproto.Models;
 
 namespace Explore.Application.Contracts.Persistence;
 
@@ -29,7 +30,10 @@ public sealed record AtprotoJetstreamApplyRequest(
     DateTime ObservedAt,
     bool AdvanceCursor = true,
     AtprotoEventProjection? EventProjection = null,
-    AtprotoEventProjectionInvalidation? EventProjectionInvalidation = null);
+    AtprotoEventProjectionInvalidation? EventProjectionInvalidation = null)
+{
+    public IReadOnlyList<AtprotoFederatedEventImportPlan> EventImports { get; init; } = [];
+}
 
 public interface IAtprotoJetstreamRepository
 {

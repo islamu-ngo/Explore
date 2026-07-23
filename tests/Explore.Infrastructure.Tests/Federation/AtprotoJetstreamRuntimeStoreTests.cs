@@ -158,13 +158,47 @@ public sealed class AtprotoJetstreamRuntimeStoreTests
     }
 
     [Test]
-    public async Task SuccessfulApplyInvalidatesDiscoveryCacheAfterRepositoryCommit()
+    public async Task ApplyDispatchesImportCommandWithExactRequestCancellationAndResult()
     {
+        IMediator mediator = Substitute.For<IMediator>();
         IAtprotoJetstreamRepository repository = Substitute.For<IAtprotoJetstreamRepository>();
         IAtprotoDiscoveryCacheInvalidator invalidator = Substitute.For<IAtprotoDiscoveryCacheInvalidator>();
-        repository.TryApplyAndAdvanceAsync(Arg.Any<AtprotoJetstreamApplyRequest>(), Arg.Any<CancellationToken>())
+        AtprotoJetstreamApplyRequest request = Request(affectsDiscovery: false);
+        using var cancellation = new CancellationTokenSource();
+        mediator.Send(
+                Arg.Any<ImportAtprotoFederatedEventCommand>(),
+                cancellation.Token)
             .Returns(true);
-        AtprotoJetstreamRuntimeStore store = CreateStore(repository, invalidator);
+        repository.TryApplyAndAdvanceAsync(request, cancellation.Token).Returns(false);
+        var services = new ServiceCollection();
+        services.AddScoped(_ => mediator);
+        services.AddScoped(_ => repository);
+        services.AddScoped(_ => invalidator);
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        var store = new AtprotoJetstreamRuntimeStore(
+            provider.GetRequiredService<IServiceScopeFactory>());
+
+        await Assert.That(request.EventImports).IsEmpty();
+        bool applied = await store.TryApplyAndAdvanceAsync(request, cancellation.Token);
+
+        await Assert.That(applied).IsTrue();
+        await mediator.Received(1).Send(
+            Arg.Is<ImportAtprotoFederatedEventCommand>(
+                command => command != null
+                    && ReferenceEquals(command.ApplyRequest, request)),
+            cancellation.Token);
+        await repository.DidNotReceiveWithAnyArgs()
+            .TryApplyAndAdvanceAsync(default!, default);
+    }
+
+    [Test]
+    public async Task SuccessfulApplyInvalidatesDiscoveryCacheAfterImportCommandCompletes()
+    {
+        IMediator mediator = Substitute.For<IMediator>();
+        IAtprotoDiscoveryCacheInvalidator invalidator = Substitute.For<IAtprotoDiscoveryCacheInvalidator>();
+        mediator.Send(Arg.Any<ImportAtprotoFederatedEventCommand>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        AtprotoJetstreamRuntimeStore store = CreateStore(mediator, invalidator);
 
         bool applied = await store.TryApplyAndAdvanceAsync(Request(affectsDiscovery: true), CancellationToken.None);
 
@@ -175,11 +209,11 @@ public sealed class AtprotoJetstreamRuntimeStoreTests
     [Test]
     public async Task RejectedApplyDoesNotInvalidateDiscoveryCache()
     {
-        IAtprotoJetstreamRepository repository = Substitute.For<IAtprotoJetstreamRepository>();
+        IMediator mediator = Substitute.For<IMediator>();
         IAtprotoDiscoveryCacheInvalidator invalidator = Substitute.For<IAtprotoDiscoveryCacheInvalidator>();
-        repository.TryApplyAndAdvanceAsync(Arg.Any<AtprotoJetstreamApplyRequest>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ImportAtprotoFederatedEventCommand>(), Arg.Any<CancellationToken>())
             .Returns(false);
-        AtprotoJetstreamRuntimeStore store = CreateStore(repository, invalidator);
+        AtprotoJetstreamRuntimeStore store = CreateStore(mediator, invalidator);
 
         bool applied = await store.TryApplyAndAdvanceAsync(Request(affectsDiscovery: true), CancellationToken.None);
 
@@ -190,11 +224,11 @@ public sealed class AtprotoJetstreamRuntimeStoreTests
     [Test]
     public async Task SuccessfulUnrelatedApplyDoesNotInvalidateDiscoveryCache()
     {
-        IAtprotoJetstreamRepository repository = Substitute.For<IAtprotoJetstreamRepository>();
+        IMediator mediator = Substitute.For<IMediator>();
         IAtprotoDiscoveryCacheInvalidator invalidator = Substitute.For<IAtprotoDiscoveryCacheInvalidator>();
-        repository.TryApplyAndAdvanceAsync(Arg.Any<AtprotoJetstreamApplyRequest>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ImportAtprotoFederatedEventCommand>(), Arg.Any<CancellationToken>())
             .Returns(true);
-        AtprotoJetstreamRuntimeStore store = CreateStore(repository, invalidator);
+        AtprotoJetstreamRuntimeStore store = CreateStore(mediator, invalidator);
 
         bool applied = await store.TryApplyAndAdvanceAsync(Request(affectsDiscovery: false), CancellationToken.None);
 
@@ -202,12 +236,34 @@ public sealed class AtprotoJetstreamRuntimeStoreTests
         await invalidator.DidNotReceiveWithAnyArgs().InvalidateAsync(default);
     }
 
+    [Test]
+    public async Task CanceledApplyCommandDoesNotInvalidateDiscoveryCache()
+    {
+        IMediator mediator = Substitute.For<IMediator>();
+        IAtprotoDiscoveryCacheInvalidator invalidator = Substitute.For<IAtprotoDiscoveryCacheInvalidator>();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        mediator.Send(
+                Arg.Any<ImportAtprotoFederatedEventCommand>(),
+                cancellation.Token)
+            .Returns(Task.FromCanceled<bool>(cancellation.Token));
+        AtprotoJetstreamRuntimeStore store = CreateStore(mediator, invalidator);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => store.TryApplyAndAdvanceAsync(Request(affectsDiscovery: true), cancellation.Token));
+
+        await mediator.Received(1).Send(
+            Arg.Any<ImportAtprotoFederatedEventCommand>(),
+            cancellation.Token);
+        await invalidator.DidNotReceiveWithAnyArgs().InvalidateAsync(default);
+    }
+
     private static AtprotoJetstreamRuntimeStore CreateStore(
-        IAtprotoJetstreamRepository repository,
+        IMediator mediator,
         IAtprotoDiscoveryCacheInvalidator invalidator)
     {
         var services = new ServiceCollection();
-        services.AddScoped(_ => repository);
+        services.AddScoped(_ => mediator);
         services.AddScoped(_ => invalidator);
         ServiceProvider provider = services.BuildServiceProvider();
         return new AtprotoJetstreamRuntimeStore(provider.GetRequiredService<IServiceScopeFactory>());
