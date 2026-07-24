@@ -23,6 +23,16 @@
         }
         else
         {
+            @if (HeaderContent is not null)
+            {
+                <div class="hero-carousel__persistent-header">
+                    <div class="hero-carousel__persistent-header-inner">
+                        <div class="hero-carousel__header">
+                            @HeaderContent
+                        </div>
+                    </div>
+                </div>
+            }
             <div class="hero-carousel__viewport">
             @for (var index = 0; index < _slides.Count; index++)
             {
@@ -63,12 +73,6 @@
                             <div class="hero-carousel__scrim"></div>
                         </div>
                         <div class="hero-carousel__inner @(HeaderContent is not null ? "hero-carousel__inner--with-header" : null)">
-                            @if (isActive && HeaderContent is not null)
-                            {
-                                <div class="hero-carousel__header">
-                                    @HeaderContent
-                                </div>
-                            }
                             <div class="hero-carousel__poster-frame">
                                 <img class="hero-carousel__poster-image"
                                      src="@GetImageSource(slide, index)"
@@ -81,11 +85,13 @@
                                      @onerror="() => HandleImageError(index)" />
                             </div>
                             <div class="hero-carousel__content">
-                                @if (!string.IsNullOrWhiteSpace(slide.EventFormatFullName))
-                                {
-                                    <span class="hero-carousel__format">@slide.EventFormatFullName</span>
-                                }
                                 <h2 class="hero-carousel__title">@slide.Title</h2>
+                                <div class="hero-carousel__badges" aria-label="Event classifications">
+                                    @foreach (var badge in GetBadges(slide))
+                                    {
+                                        <span class="hero-carousel__badge">@badge.ToUpperInvariant()</span>
+                                    }
+                                </div>
                                 <p class="hero-carousel__metadata">@GetMetadata(slide)</p>
                                 @if (!string.IsNullOrWhiteSpace(slide.Description))
                                 {
@@ -259,6 +265,18 @@
         return color == EventColorHelper.DefaultColor
             ? EventColorHelper.GetColorByHash(slide.Title)
             : color;
+    }
+
+    private static IEnumerable<string> GetBadges(EventListDto slide)
+    {
+        if (!string.IsNullOrWhiteSpace(slide.EventTypeFullName))
+            yield return slide.EventTypeFullName;
+
+        if (!string.IsNullOrWhiteSpace(slide.EventFormatFullName) &&
+            !string.Equals(slide.EventFormatFullName, slide.EventTypeFullName, StringComparison.OrdinalIgnoreCase))
+        {
+            yield return slide.EventFormatFullName;
+        }
     }
 
     private static string GetMetadata(EventListDto slide)

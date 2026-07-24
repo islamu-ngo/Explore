@@ -59,9 +59,9 @@ public sealed class TenantStorageSettingsAdminServiceTests
     }
 
     [Test]
-    public async Task SaveAsync_DoesNotCallApi_WhenEditAffordanceMissing()
+    public async Task PatchPolicyAsync_DoesNotCallApi_WhenEditAffordanceMissing()
     {
-        var result = await _service.SaveAsync(new HalResourceOfTenantStorageSettingsDto());
+        var result = await _service.PatchPolicyAsync(new HalResourceOfTenantStorageSettingsDto());
 
         await Assert.That(result.Success).IsFalse();
         await _api.DidNotReceive().PatchTenantStorageSettingsAsync(
@@ -72,7 +72,7 @@ public sealed class TenantStorageSettingsAdminServiceTests
     }
 
     [Test]
-    public async Task SaveAsync_ForwardsGeneratedTenantStorageDto_WhenEditable()
+    public async Task PatchPolicyAsync_ForwardsOnlyCompletePolicyGroup_WhenEditable()
     {
         _api.PatchTenantStorageSettingsAsync(
                 Arg.Any<PatchTenantStorageSettingsDto>(),
@@ -97,7 +97,7 @@ public sealed class TenantStorageSettingsAdminServiceTests
             }
         };
 
-        var result = await _service.SaveAsync(model);
+        var result = await _service.PatchPolicyAsync(model);
 
         await Assert.That(result.Success).IsTrue();
         await _api.Received(1).PatchTenantStorageSettingsAsync(
@@ -110,11 +110,102 @@ public sealed class TenantStorageSettingsAdminServiceTests
                 request.Policy.MaxUploadBytes != null &&
                 request.Policy.MaxUploadBytes.HasValue == true &&
                 request.Policy.MaxUploadBytes.Value == 10 * 1024 * 1024 &&
-                request.S3 != null &&
-                request.S3.AccessKeyId == null &&
-                request.S3.SecretAccessKey == null),
+                request.S3 == null),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PatchS3Async_ForwardsOnlyNonSecretS3Leaves_AndAlwaysOmitsCredentials()
+    {
+        _api.PatchTenantStorageSettingsAsync(
+                Arg.Any<PatchTenantStorageSettingsDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+        var model = CreateEditableModel();
+        model.S3Endpoint = " https://storage.example.test ";
+        model.S3Region = "eu-central-1";
+        model.S3ForcePathStyle = false;
+        model.S3UploadUrlExpirationMinutes = 90;
+        model.S3AccessKeyId = "typed-access-key";
+        model.S3SecretAccessKey = "typed-secret-key";
+        model.S3AccessKeyConfigured = true;
+        model.S3SecretAccessKeyConfigured = true;
+
+        var result = await _service.PatchS3Async(model);
+
+        await Assert.That(result.Success).IsTrue();
+        await _api.Received(1).PatchTenantStorageSettingsAsync(
+            Arg.Is<PatchTenantStorageSettingsDto>(request => IsS3OnlyRequestWithOmittedCredentials(request!)),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PatchS3CredentialsAsync_ForwardsExactlyBothCredentialLeaves_InOneS3Group()
+    {
+        _api.PatchTenantStorageSettingsAsync(
+                Arg.Any<PatchTenantStorageSettingsDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+        var model = CreateEditableModel();
+        model.S3Endpoint = "https://storage.example.test";
+        model.S3AccessKeyId = " typed-access-key ";
+        model.S3SecretAccessKey = " typed-secret-key ";
+
+        var result = await _service.PatchS3CredentialsAsync(model);
+
+        await Assert.That(result.Success).IsTrue();
+        await _api.Received(1).PatchTenantStorageSettingsAsync(
+            Arg.Is<PatchTenantStorageSettingsDto>(request => IsCredentialOnlyRequest(request!)),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    private static HalResourceOfTenantStorageSettingsDto CreateEditableModel() => new()
+    {
+        TenantOverridesAllowed = true,
+        TenantStorageLocked = false,
+        IsReadOnly = false,
+        Provider = StorageProviderOptions.S3Compatible,
+        MaxUploadBytes = 10 * 1024 * 1024,
+        TenantQuotaBytes = 1024L * 1024 * 1024,
+        _links = new Dictionary<string, HalLink>
+        {
+            ["edit"] = new() { Href = "/api/tenant/settings/storage", Method = "PATCH" }
+        }
+    };
+
+    private static bool IsS3OnlyRequestWithOmittedCredentials(PatchTenantStorageSettingsDto request)
+    {
+        PatchTenantStorageS3Dto? s3 = request.S3;
+        return request.Policy is null
+            && s3?.Endpoint?.Value == "https://storage.example.test"
+            && s3.Region?.Value == "eu-central-1"
+            && s3.ForcePathStyle?.Value == false
+            && s3.UploadUrlExpirationMinutes?.Value == 90
+            && s3.AccessKeyId is null
+            && s3.SecretAccessKey is null;
+    }
+
+    private static bool IsCredentialOnlyRequest(PatchTenantStorageSettingsDto request)
+    {
+        PatchTenantStorageS3Dto? s3 = request.S3;
+        return request.Policy is null
+            && s3?.AccessKeyId?.Value == "typed-access-key"
+            && s3.SecretAccessKey?.Value == "typed-secret-key"
+            && s3.Endpoint is null
+            && s3.PublicEndpoint is null
+            && s3.BucketName is null
+            && s3.Region is null
+            && s3.ForcePathStyle is null
+            && s3.UploadUrlExpirationMinutes is null;
     }
 }

@@ -515,7 +515,7 @@ public class InstanceOnboardingServiceTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(requestUri).IsNotNull();
         await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instance/settings/authz-provider");
-        await Assert.That(method).IsEqualTo(HttpMethod.Put);
+        await Assert.That(method).IsEqualTo(HttpMethod.Patch);
         await Assert.That(requestBody).Contains("cerbos", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -655,6 +655,60 @@ public class InstanceOnboardingServiceTests
         await Assert.That(result.Success).IsFalse();
     }
 
+    [Test]
+    public async Task UpdateModuleSettingsAsync_SendsOnlySpecifiedPatchLeaf()
+    {
+        // Arrange
+        string? requestJson = null;
+        SetupBffClient(async request =>
+        {
+            requestJson = await request.Content!.ReadAsStringAsync();
+            return CreateJsonResponse(new BaseCommandResponseOfGuid { Success = true });
+        });
+
+        // Act
+        await _service.UpdateModuleSettingsAsync(new ModuleSettingsDto { EnableIslamicModule = true });
+
+        // Assert
+        using JsonDocument document = JsonDocument.Parse(requestJson!);
+        JsonElement root = document.RootElement;
+        JsonElement update = root.GetProperty("enableIslamicModule");
+        await Assert.That(update.GetProperty("hasValue").GetBoolean()).IsTrue();
+        await Assert.That(update.GetProperty("value").GetBoolean()).IsTrue();
+        await Assert.That(root.GetProperty("enableTechModule").ValueKind).IsEqualTo(JsonValueKind.Null);
+    }
+
+    #endregion
+
+    #region UpdateAiAssistantProviderConfigurationAsync
+
+    [Test]
+    public async Task UpdateAiAssistantProviderConfigurationAsync_SendsOneCoupledCredentialGroup()
+    {
+        string? requestJson = null;
+        SetupBffClient(async request =>
+        {
+            requestJson = await request.Content!.ReadAsStringAsync();
+            return CreateJsonResponse(new BaseCommandResponseOfGuid { Success = true });
+        });
+
+        await _service.UpdateAiAssistantProviderConfigurationAsync(new AiAssistantProviderConfigurationWriteDto
+        {
+            Provider = "openai-compatible",
+            EndpointUrl = "https://ai.example.test/v1",
+            ApiKey = "replacement-key",
+            ModelId = "model-a",
+            AllowedModelIds = ["model-a"]
+        });
+
+        using JsonDocument document = JsonDocument.Parse(requestJson!);
+        JsonElement root = document.RootElement;
+        JsonElement update = root.GetProperty("providerConfiguration");
+        await Assert.That(update.GetProperty("hasValue").GetBoolean()).IsTrue();
+        await Assert.That(update.GetProperty("value").GetProperty("apiKey").GetString()).IsEqualTo("replacement-key");
+        await Assert.That(root.GetProperty("enabled").ValueKind).IsEqualTo(JsonValueKind.Null);
+    }
+
     #endregion
 
     #region StorageSettingsAsync
@@ -685,7 +739,7 @@ public class InstanceOnboardingServiceTests
             },
             _links = new Dictionary<string, HalLink>
             {
-                ["edit"] = new() { Href = "/api/instance/settings/storage", Method = "PUT" },
+                ["edit"] = new() { Href = "/api/instance/settings/storage", Method = "PATCH" },
                 ["provider-test"] = new() { Href = "/api/instance/settings/storage/test", Method = "POST" },
                 ["recalculate-usage"] = new() { Href = "/api/instance/settings/storage/recalculate-usage", Method = "POST" }
             }
@@ -728,7 +782,7 @@ public class InstanceOnboardingServiceTests
             InstanceMaxUploadBytes = 100L * 1024 * 1024,
             _links = new Dictionary<string, HalLink>
             {
-                ["edit"] = new() { Href = "/api/instance/settings/storage", Method = "PUT" }
+                ["edit"] = new() { Href = "/api/instance/settings/storage", Method = "PATCH" }
             }
         });
 
@@ -736,7 +790,7 @@ public class InstanceOnboardingServiceTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(requestUri).IsNotNull();
         await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instance/settings/storage");
-        await Assert.That(method).IsEqualTo(HttpMethod.Put);
+        await Assert.That(method).IsEqualTo(HttpMethod.Patch);
         await Assert.That(requestBody).Contains("\"provider\":\"local\"", StringComparison.OrdinalIgnoreCase);
     }
 

@@ -1,9 +1,12 @@
 @* ABOUTME: Renders tenant branding fields from the typed tenant settings document. *@
-@* ABOUTME: Uses API-emitted HAL affordances to determine editability during settings cutover. *@
+@* ABOUTME: Autosaves one capability-gated field with serialized concurrency-stamp chaining. *@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Components.Common
+@using Microsoft.AspNetCore.Components.Web
+@implements IDisposable
+@inject ITenantBrandingSettingsAdminService BrandingSettingsService
 
 <div class="settings-section">
     <div class="settings-section-header">
@@ -27,30 +30,42 @@
         }
 
         <AppTextField T="string" Label="Brand display name"
-                      @bind-Value="Model.DisplayName"
-                      ReadOnly="@IsReadOnly"
-                      Disabled="@IsSaving"
+                      Value="@Model.DisplayName"
+                      ValueChanged="OnDisplayNameChanged"
+                      OnBlur="@(EventCallback.Factory.Create<FocusEventArgs>(this, FlushDisplayNameSaveAsync))"
+                      Immediate="true"
+                      ReadOnly="@IsDisplayNameReadOnly"
+                      Disabled="@IsDisplayNameReadOnly"
                       FullWidth="true"
                       HelperText="Public name shown in tenant-branded surfaces." />
 
         <AppTextField T="string" Label="Brand logo URL"
-                      @bind-Value="Model.LogoUrl"
-                      ReadOnly="@IsReadOnly"
-                      Disabled="@IsSaving"
+                      Value="@Model.LogoUrl"
+                      ValueChanged="OnLogoUrlChanged"
+                      OnBlur="@(EventCallback.Factory.Create<FocusEventArgs>(this, FlushLogoUrlSaveAsync))"
+                      Immediate="true"
+                      ReadOnly="@IsLogoUrlReadOnly"
+                      Disabled="@IsLogoUrlReadOnly"
                       FullWidth="true"
                       HelperText="HTTPS URL for the tenant logo asset." />
 
         <AppTextField T="string" Label="Brand favicon URL"
-                       @bind-Value="Model.FaviconUrl"
-                       ReadOnly="@IsReadOnly"
-                       Disabled="@IsSaving"
+                       Value="@Model.FaviconUrl"
+                       ValueChanged="OnFaviconUrlChanged"
+                       OnBlur="@(EventCallback.Factory.Create<FocusEventArgs>(this, FlushFaviconUrlSaveAsync))"
+                       Immediate="true"
+                       ReadOnly="@IsFaviconUrlReadOnly"
+                       Disabled="@IsFaviconUrlReadOnly"
                        FullWidth="true"
                        HelperText="HTTPS URL for the browser favicon asset." />
 
         <AppTextField T="string" Label="Brand custom CSS URL"
-                       @bind-Value="Model.CustomCssUrl"
-                       ReadOnly="@IsReadOnly"
-                       Disabled="@IsSaving"
+                       Value="@Model.CustomCssUrl"
+                       ValueChanged="OnCustomCssUrlChanged"
+                       OnBlur="@(EventCallback.Factory.Create<FocusEventArgs>(this, FlushCustomCssUrlSaveAsync))"
+                       Immediate="true"
+                       ReadOnly="@IsCustomCssUrlReadOnly"
+                       Disabled="@IsCustomCssUrlReadOnly"
                        FullWidth="true"
                        HelperText="HTTPS URL for the tenant-specific stylesheet asset." />
 
@@ -60,6 +75,9 @@
                 Concurrency stamp: @Model.ConcurrencyStamp
             </MudText>
         }
+
+        <div role="status" aria-live="polite" aria-atomic="true">@_saveStatusMessage</div>
+        <div role="alert">@_saveErrorMessage</div>
     </MudStack>
 </div>
 
@@ -67,8 +85,385 @@
     [Parameter, EditorRequired]
     public TenantBrandingSettingsAdminModel Model { get; set; } = null!;
 
-    [Parameter]
-    public bool IsSaving { get; set; }
+    private const int AutosaveDelayMilliseconds = 400;
 
-    private bool IsReadOnly => !Model.Exists || !Model.CanReplace;
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
+    private readonly CancellationTokenSource _lifetimeCts = new();
+    private CancellationTokenSource? _displayNameDebounceCts;
+    private CancellationTokenSource? _logoUrlDebounceCts;
+    private CancellationTokenSource? _faviconUrlDebounceCts;
+    private CancellationTokenSource? _customCssUrlDebounceCts;
+    private long _saveVersion;
+    private long _displayNameSaveVersion;
+    private long _logoUrlSaveVersion;
+    private long _faviconUrlSaveVersion;
+    private long _customCssUrlSaveVersion;
+    private long _displayNameRevision;
+    private long _logoUrlRevision;
+    private long _faviconUrlRevision;
+    private long _customCssUrlRevision;
+    private long _displayNameConfirmedRevision;
+    private long _logoUrlConfirmedRevision;
+    private long _faviconUrlConfirmedRevision;
+    private long _customCssUrlConfirmedRevision;
+    private string? _saveStatusMessage;
+    private string? _saveErrorMessage;
+    private bool _disposed;
+
+    private bool IsDisplayNameReadOnly => !CanEdit || !Model.CanChangeDisplayName;
+    private bool IsLogoUrlReadOnly => !CanEdit || !Model.CanChangeLogoUrl;
+    private bool IsFaviconUrlReadOnly => !CanEdit || !Model.CanChangeFaviconUrl;
+    private bool IsCustomCssUrlReadOnly => !CanEdit || !Model.CanChangeCustomCssUrl;
+    private bool CanEdit => Model.Exists && Model.CanReplace;
+
+    private void OnDisplayNameChanged(string? value)
+    {
+        if (IsDisplayNameReadOnly) return;
+        Model.DisplayName = value ?? string.Empty;
+        _displayNameRevision++;
+        ScheduleDisplayNameSave();
+    }
+
+    private void OnLogoUrlChanged(string? value)
+    {
+        if (IsLogoUrlReadOnly) return;
+        Model.LogoUrl = value ?? string.Empty;
+        _logoUrlRevision++;
+        ScheduleLogoUrlSave();
+    }
+
+    private void OnFaviconUrlChanged(string? value)
+    {
+        if (IsFaviconUrlReadOnly) return;
+        Model.FaviconUrl = value ?? string.Empty;
+        _faviconUrlRevision++;
+        ScheduleFaviconUrlSave();
+    }
+
+    private void OnCustomCssUrlChanged(string? value)
+    {
+        if (IsCustomCssUrlReadOnly) return;
+        Model.CustomCssUrl = value ?? string.Empty;
+        _customCssUrlRevision++;
+        ScheduleCustomCssUrlSave();
+    }
+
+    private long BeginSave()
+    {
+        _saveStatusMessage = "Saving branding settings...";
+        _saveErrorMessage = null;
+        return ++_saveVersion;
+    }
+
+    private async Task SaveFieldAsync(
+        BrandingField field,
+        long revision,
+        long version,
+        Func<CancellationToken, Task<TenantBrandingSettingsSaveResult>> save,
+        CancellationToken cancellationToken)
+    {
+        var lockTaken = false;
+        try
+        {
+            await _saveLock.WaitAsync(cancellationToken);
+            lockTaken = true;
+            if (revision != CurrentRevision(field)) return;
+
+            TenantBrandingSettingsSaveResult response = await save(cancellationToken);
+            if (_disposed) return;
+
+            if (response.Success && response.Model is not null)
+            {
+                ApplyResponseAuthority(response.Model);
+                SetConfirmedRevision(field, revision);
+                if (version == _saveVersion)
+                {
+                    _saveStatusMessage = "Branding settings saved.";
+                    _saveErrorMessage = null;
+                }
+            }
+            else if (response.IsConcurrencyConflict)
+            {
+                TenantBrandingSettingsAdminModel authoritative = await BrandingSettingsService.GetAsync(cancellationToken);
+                if (authoritative.Exists)
+                {
+                    ApplyConflictAuthority(authoritative, field, revision);
+                }
+
+                if (version == _saveVersion)
+                {
+                    _saveStatusMessage = null;
+                    _saveErrorMessage = authoritative.Exists
+                        ? response.Message
+                        : "Branding settings changed elsewhere, but the latest values could not be loaded.";
+                }
+            }
+            else if (version == _saveVersion)
+            {
+                _saveStatusMessage = null;
+                _saveErrorMessage = response.Message;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            if (!_disposed && version == _saveVersion)
+            {
+                _saveStatusMessage = null;
+                _saveErrorMessage = "Branding settings could not be saved.";
+            }
+        }
+        finally
+        {
+            if (lockTaken) _saveLock.Release();
+            if (!_disposed) await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ApplyResponseAuthority(TenantBrandingSettingsAdminModel updated)
+    {
+        Model.Exists = updated.Exists;
+        Model.CanReplace = updated.CanReplace;
+        Model.ConcurrencyStamp = updated.ConcurrencyStamp;
+        Model.CanChangeDisplayName = updated.CanChangeDisplayName;
+        Model.CanChangeLogoUrl = updated.CanChangeLogoUrl;
+        Model.CanChangeFaviconUrl = updated.CanChangeFaviconUrl;
+        Model.CanChangeCustomCssUrl = updated.CanChangeCustomCssUrl;
+        Model.ErrorMessage = updated.ErrorMessage;
+    }
+
+    private void ApplyConflictAuthority(
+        TenantBrandingSettingsAdminModel authoritative,
+        BrandingField conflictingField,
+        long conflictingRevision)
+    {
+        ApplyResponseAuthority(authoritative);
+        ApplyAuthoritativeValue(
+            BrandingField.DisplayName,
+            conflictingField,
+            conflictingRevision,
+            () => Model.DisplayName = authoritative.DisplayName);
+        ApplyAuthoritativeValue(
+            BrandingField.LogoUrl,
+            conflictingField,
+            conflictingRevision,
+            () => Model.LogoUrl = authoritative.LogoUrl);
+        ApplyAuthoritativeValue(
+            BrandingField.FaviconUrl,
+            conflictingField,
+            conflictingRevision,
+            () => Model.FaviconUrl = authoritative.FaviconUrl);
+        ApplyAuthoritativeValue(
+            BrandingField.CustomCssUrl,
+            conflictingField,
+            conflictingRevision,
+            () => Model.CustomCssUrl = authoritative.CustomCssUrl);
+    }
+
+    private void ApplyAuthoritativeValue(
+        BrandingField field,
+        BrandingField conflictingField,
+        long conflictingRevision,
+        Action apply)
+    {
+        bool shouldApply = field == conflictingField
+            ? CurrentRevision(field) == conflictingRevision
+            : CurrentRevision(field) == ConfirmedRevision(field);
+        if (!shouldApply) return;
+
+        apply();
+        SetConfirmedRevision(field, CurrentRevision(field));
+    }
+
+    private void ScheduleDisplayNameSave()
+    {
+        CancelDebounce(ref _displayNameDebounceCts);
+        _displayNameDebounceCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _displayNameSaveVersion = BeginSave();
+        _ = RunDisplayNameDebounceAsync(_displayNameDebounceCts, _displayNameRevision, _displayNameSaveVersion);
+    }
+
+    private async Task RunDisplayNameDebounceAsync(CancellationTokenSource source, long revision, long version)
+    {
+        try
+        {
+            await Task.Delay(AutosaveDelayMilliseconds, source.Token);
+            if (ReferenceEquals(_displayNameDebounceCts, source)) _displayNameDebounceCts = null;
+            await SaveFieldAsync(BrandingField.DisplayName, revision, version, token => BrandingSettingsService.PatchDisplayNameAsync(Model, token), source.Token);
+        }
+        catch (OperationCanceledException) when (source.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            source.Dispose();
+        }
+    }
+
+    private Task FlushDisplayNameSaveAsync()
+    {
+        if (_displayNameDebounceCts is null) return Task.CompletedTask;
+        CancelDebounce(ref _displayNameDebounceCts);
+        return SaveFieldAsync(BrandingField.DisplayName, _displayNameRevision, _displayNameSaveVersion, token => BrandingSettingsService.PatchDisplayNameAsync(Model, token), _lifetimeCts.Token);
+    }
+
+    private void ScheduleLogoUrlSave()
+    {
+        CancelDebounce(ref _logoUrlDebounceCts);
+        _logoUrlDebounceCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _logoUrlSaveVersion = BeginSave();
+        _ = RunLogoUrlDebounceAsync(_logoUrlDebounceCts, _logoUrlRevision, _logoUrlSaveVersion);
+    }
+
+    private async Task RunLogoUrlDebounceAsync(CancellationTokenSource source, long revision, long version)
+    {
+        try
+        {
+            await Task.Delay(AutosaveDelayMilliseconds, source.Token);
+            if (ReferenceEquals(_logoUrlDebounceCts, source)) _logoUrlDebounceCts = null;
+            await SaveFieldAsync(BrandingField.LogoUrl, revision, version, token => BrandingSettingsService.PatchLogoUrlAsync(Model, token), source.Token);
+        }
+        catch (OperationCanceledException) when (source.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            source.Dispose();
+        }
+    }
+
+    private Task FlushLogoUrlSaveAsync()
+    {
+        if (_logoUrlDebounceCts is null) return Task.CompletedTask;
+        CancelDebounce(ref _logoUrlDebounceCts);
+        return SaveFieldAsync(BrandingField.LogoUrl, _logoUrlRevision, _logoUrlSaveVersion, token => BrandingSettingsService.PatchLogoUrlAsync(Model, token), _lifetimeCts.Token);
+    }
+
+    private void ScheduleFaviconUrlSave()
+    {
+        CancelDebounce(ref _faviconUrlDebounceCts);
+        _faviconUrlDebounceCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _faviconUrlSaveVersion = BeginSave();
+        _ = RunFaviconUrlDebounceAsync(_faviconUrlDebounceCts, _faviconUrlRevision, _faviconUrlSaveVersion);
+    }
+
+    private async Task RunFaviconUrlDebounceAsync(CancellationTokenSource source, long revision, long version)
+    {
+        try
+        {
+            await Task.Delay(AutosaveDelayMilliseconds, source.Token);
+            if (ReferenceEquals(_faviconUrlDebounceCts, source)) _faviconUrlDebounceCts = null;
+            await SaveFieldAsync(BrandingField.FaviconUrl, revision, version, token => BrandingSettingsService.PatchFaviconUrlAsync(Model, token), source.Token);
+        }
+        catch (OperationCanceledException) when (source.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            source.Dispose();
+        }
+    }
+
+    private Task FlushFaviconUrlSaveAsync()
+    {
+        if (_faviconUrlDebounceCts is null) return Task.CompletedTask;
+        CancelDebounce(ref _faviconUrlDebounceCts);
+        return SaveFieldAsync(BrandingField.FaviconUrl, _faviconUrlRevision, _faviconUrlSaveVersion, token => BrandingSettingsService.PatchFaviconUrlAsync(Model, token), _lifetimeCts.Token);
+    }
+
+    private void ScheduleCustomCssUrlSave()
+    {
+        CancelDebounce(ref _customCssUrlDebounceCts);
+        _customCssUrlDebounceCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _customCssUrlSaveVersion = BeginSave();
+        _ = RunCustomCssUrlDebounceAsync(_customCssUrlDebounceCts, _customCssUrlRevision, _customCssUrlSaveVersion);
+    }
+
+    private async Task RunCustomCssUrlDebounceAsync(CancellationTokenSource source, long revision, long version)
+    {
+        try
+        {
+            await Task.Delay(AutosaveDelayMilliseconds, source.Token);
+            if (ReferenceEquals(_customCssUrlDebounceCts, source)) _customCssUrlDebounceCts = null;
+            await SaveFieldAsync(BrandingField.CustomCssUrl, revision, version, token => BrandingSettingsService.PatchCustomCssUrlAsync(Model, token), source.Token);
+        }
+        catch (OperationCanceledException) when (source.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            source.Dispose();
+        }
+    }
+
+    private Task FlushCustomCssUrlSaveAsync()
+    {
+        if (_customCssUrlDebounceCts is null) return Task.CompletedTask;
+        CancelDebounce(ref _customCssUrlDebounceCts);
+        return SaveFieldAsync(BrandingField.CustomCssUrl, _customCssUrlRevision, _customCssUrlSaveVersion, token => BrandingSettingsService.PatchCustomCssUrlAsync(Model, token), _lifetimeCts.Token);
+    }
+
+    private long CurrentRevision(BrandingField field) => field switch
+    {
+        BrandingField.DisplayName => _displayNameRevision,
+        BrandingField.LogoUrl => _logoUrlRevision,
+        BrandingField.FaviconUrl => _faviconUrlRevision,
+        _ => _customCssUrlRevision
+    };
+
+    private long ConfirmedRevision(BrandingField field) => field switch
+    {
+        BrandingField.DisplayName => _displayNameConfirmedRevision,
+        BrandingField.LogoUrl => _logoUrlConfirmedRevision,
+        BrandingField.FaviconUrl => _faviconUrlConfirmedRevision,
+        _ => _customCssUrlConfirmedRevision
+    };
+
+    private void SetConfirmedRevision(BrandingField field, long revision)
+    {
+        switch (field)
+        {
+            case BrandingField.DisplayName:
+                _displayNameConfirmedRevision = revision;
+                break;
+            case BrandingField.LogoUrl:
+                _logoUrlConfirmedRevision = revision;
+                break;
+            case BrandingField.FaviconUrl:
+                _faviconUrlConfirmedRevision = revision;
+                break;
+            case BrandingField.CustomCssUrl:
+                _customCssUrlConfirmedRevision = revision;
+                break;
+        }
+    }
+
+    private static void CancelDebounce(ref CancellationTokenSource? source)
+    {
+        CancellationTokenSource? pending = source;
+        source = null;
+        pending?.Cancel();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _lifetimeCts.Cancel();
+        CancelDebounce(ref _displayNameDebounceCts);
+        CancelDebounce(ref _logoUrlDebounceCts);
+        CancelDebounce(ref _faviconUrlDebounceCts);
+        CancelDebounce(ref _customCssUrlDebounceCts);
+        _lifetimeCts.Dispose();
+    }
+
+    private enum BrandingField
+    {
+        DisplayName,
+        LogoUrl,
+        FaviconUrl,
+        CustomCssUrl
+    }
 }

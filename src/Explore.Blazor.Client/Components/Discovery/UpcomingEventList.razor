@@ -7,56 +7,68 @@
         <div class="upcoming-event-list__column" data-testid="upcoming-event-column">
             @foreach (var eventItem in column)
             {
-                @if (GetEventUrl(eventItem) is { } eventUrl)
-                {
-                    <a @key="eventItem"
-                       class="upcoming-event-list__row"
-                       data-testid="upcoming-event-row"
-                       href="@eventUrl"
-                       aria-label="@GetEventLinkLabel(eventItem)">
-                        <img class="upcoming-event-list__image"
-                             src="@GetImageSource(eventItem)"
-                             alt=""
-                             width="56"
-                             height="80"
-                             loading="lazy"
-                             decoding="async"
-                             @onerror="() => HandleImageError(eventItem)" />
-                        <span class="upcoming-event-list__copy">
-                            <span class="upcoming-event-list__title" title="@eventItem.Title">@eventItem.Title</span>
-                            <span class="upcoming-event-list__metadata">@GetScheduleAndFormat(eventItem)</span>
-                            @if (GetContext(eventItem) is { } context)
-                            {
-                                <span class="upcoming-event-list__context">@context</span>
-                            }
-                        </span>
-                    </a>
-                }
-                else
-                {
-                    <div @key="eventItem"
-                         class="upcoming-event-list__row"
-                         data-testid="upcoming-event-row"
-                         role="article"
-                         aria-label="@GetEventLinkLabel(eventItem)">
-                        <img class="upcoming-event-list__image"
-                             src="@GetImageSource(eventItem)"
-                             alt=""
-                             width="56"
-                             height="80"
-                             loading="lazy"
-                             decoding="async"
-                             @onerror="() => HandleImageError(eventItem)" />
-                        <span class="upcoming-event-list__copy">
-                            <span class="upcoming-event-list__title" title="@eventItem.Title">@eventItem.Title</span>
-                            <span class="upcoming-event-list__metadata">@GetScheduleAndFormat(eventItem)</span>
-                            @if (GetContext(eventItem) is { } context)
-                            {
-                                <span class="upcoming-event-list__context">@context</span>
-                            }
-                        </span>
-                    </div>
-                }
+                <div @key="eventItem" class="upcoming-event-list__item">
+                    @if (GetEventUrl(eventItem) is { } eventUrl)
+                    {
+                        <a class="upcoming-event-list__row"
+                           data-testid="upcoming-event-row"
+                           href="@eventUrl"
+                           aria-label="@GetEventLinkLabel(eventItem)">
+                            <img class="upcoming-event-list__image"
+                                 src="@GetImageSource(eventItem)"
+                                 alt=""
+                                 width="56"
+                                 height="80"
+                                 loading="lazy"
+                                 decoding="async"
+                                 @onerror="() => HandleImageError(eventItem)" />
+                            <span class="upcoming-event-list__copy">
+                                <span class="upcoming-event-list__title" title="@eventItem.Title">@eventItem.Title</span>
+                                <span class="upcoming-event-list__metadata">@GetScheduleAndFormat(eventItem)</span>
+                                @if (GetContext(eventItem) is { } context)
+                                {
+                                    <span class="upcoming-event-list__context">@context</span>
+                                }
+                            </span>
+                        </a>
+                    }
+                    else
+                    {
+                        <div class="upcoming-event-list__row"
+                             data-testid="upcoming-event-row"
+                             role="article"
+                             aria-label="@GetEventLinkLabel(eventItem)">
+                            <img class="upcoming-event-list__image"
+                                 src="@GetImageSource(eventItem)"
+                                 alt=""
+                                 width="56"
+                                 height="80"
+                                 loading="lazy"
+                                 decoding="async"
+                                 @onerror="() => HandleImageError(eventItem)" />
+                            <span class="upcoming-event-list__copy">
+                                <span class="upcoming-event-list__title" title="@eventItem.Title">@eventItem.Title</span>
+                                <span class="upcoming-event-list__metadata">@GetScheduleAndFormat(eventItem)</span>
+                                @if (GetContext(eventItem) is { } context)
+                                {
+                                    <span class="upcoming-event-list__context">@context</span>
+                                }
+                            </span>
+                        </div>
+                    }
+
+                    @if (GetExternalEventUrl(eventItem) is { } externalEventUrl)
+                    {
+                        <a class="upcoming-event-list__external-link"
+                           href="@externalEventUrl"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           aria-label="@GetExternalEventLinkLabel(eventItem)">
+                            <span>Open</span>
+                            <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" aria-hidden="true" />
+                        </a>
+                    }
+                </div>
             }
         </div>
     }
@@ -64,7 +76,7 @@
 
 @code {
     private const int ItemsPerColumn = 6;
-    private const int MaximumItems = 10;
+    private const int MaximumColumns = 3;
     private readonly HashSet<EventListDto> _failedImages = [];
     private IReadOnlyList<EventListDto> _events = [];
 
@@ -76,7 +88,7 @@
 
     protected override void OnParametersSet()
     {
-        _events = Events.Take(MaximumItems).ToArray();
+        _events = Events.Take(ItemsPerColumn * MaximumColumns).ToArray();
         _failedImages.RemoveWhere(eventItem => !_events.Contains(eventItem));
     }
 
@@ -127,4 +139,11 @@
     private static string? GetEventUrl(EventListDto eventItem) => eventItem.IsFederatedDiscoveryEvent()
         ? eventItem.GetHalHref("source")
         : EventUrlHelper.BuildPublicPath(eventItem.Slug, eventItem.PublicCode) ?? "/events";
+
+    private static string? GetExternalEventUrl(EventListDto eventItem) =>
+        EventUrlHelper.GetSafeExternalUrl(eventItem.EventUrl)
+        ?? (eventItem.IsFederatedDiscoveryEvent() ? eventItem.GetHalHref("source") : null);
+
+    private static string GetExternalEventLinkLabel(EventListDto eventItem) =>
+        $"Open {eventItem.Title} on its external platform in a new tab";
 }

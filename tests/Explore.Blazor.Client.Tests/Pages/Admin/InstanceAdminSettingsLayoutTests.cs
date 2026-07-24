@@ -7,6 +7,7 @@ using Explore.Blazor.Client.Contracts.Services.Federation;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Tests.Common.Authentication;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
@@ -264,6 +265,210 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         await _instanceOnboardingService.Received(1)
             .UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
         await _instanceOnboardingService.Received(1).RefreshAuthSchemesAsync();
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_AuthProvidersSaveFailure_ReloadsBothAuthoritativeModels()
+    {
+        _instanceOnboardingService.UpdateAuthProviderConfigurationAsAdminAsync(Arg.Any<AuthProviderConfigurationDto>())
+            .Returns(new BaseCommandResponseOfGuid { Success = false, Message = "Authentication update failed." });
+        _instanceOnboardingService.UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationDto>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+
+        Type componentType = GetLayoutComponentType();
+        IRenderedComponent<DynamicComponent> cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, componentType));
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Provider navigation item was not rendered.");
+            }
+        });
+        object layout = GetRenderedLayout(cut);
+        SetPrivateField(layout, "_currentSection", "auth-providers");
+
+        await InvokePrivateTaskAsync(layout, "SaveAsync");
+
+        await _instanceOnboardingService.Received(2).GetAuthProviderConfigurationAsAdminAsync();
+        await _instanceOnboardingService.Received(2).GetAuthorizationProviderConfigurationAsAdminAsync();
+        await _instanceOnboardingService.DidNotReceive().RefreshAuthSchemesAsync();
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_SparseSaveFailures_ReloadAuthoritativeSectionModels()
+    {
+        var failure = new BaseCommandResponseOfGuid { Success = false, Message = "Update failed." };
+        _instanceOnboardingService.UpdateBrandingSettingsAsync(Arg.Any<BrandingSettingsDto>()).Returns(failure);
+        _instanceOnboardingService.UpdateDomainSettingsAsync(Arg.Any<DomainSettingsDto>()).Returns(failure);
+        _instanceOnboardingService.UpdateAnalyticsGovernanceSettingsAsync(Arg.Any<AnalyticsGovernanceSettingsDto>()).Returns(failure);
+
+        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
+        object layout = GetRenderedLayout(cut);
+
+        await InvokePrivateTaskAsync(layout, "SaveBrandingAsync", new BrandingSettingsDto { LockTenantBrandDisplayName = true });
+        await InvokePrivateTaskAsync(layout, "SaveDomainAsync", new DomainSettingsDto { AllowTenantCustomDomains = true });
+        await InvokePrivateTaskAsync(layout, "SaveAnalyticsAsync", new AnalyticsGovernanceSettingsDto { GlobalDisableClientTracking = true });
+
+        await _instanceOnboardingService.Received(2).GetBrandingSettingsAsync();
+        await _instanceOnboardingService.Received(2).GetDomainSettingsAsync();
+        await _instanceOnboardingService.Received(2).GetAnalyticsGovernanceSettingsAsync();
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_FailedModuleAutosave_RendersAuthoritativeValue()
+    {
+        _instanceOnboardingService.GetModuleSettingsAsync()
+            .Returns(
+                new ModuleSettingsDto { EnableIslamicModule = false },
+                new ModuleSettingsDto { EnableIslamicModule = false });
+        _instanceOnboardingService.UpdateModuleSettingsAsync(Arg.Any<ModuleSettingsDto>())
+            .Returns(new BaseCommandResponseOfGuid { Success = false, Message = "Module update failed." });
+        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
+        object layout = GetRenderedLayout(cut);
+        SetPrivateField(layout, "_currentSection", "modules");
+        SetPrivateField(layout, "_showMobileMenu", false);
+        await InvokeStateHasChangedAsync(cut, layout);
+        var moduleSwitch = cut.FindComponents<MudSwitch<bool>>()
+            .Single(component => component.Markup.Contains("Enable Islamic module", StringComparison.Ordinal));
+
+        await cut.InvokeAsync(() => moduleSwitch.Instance.ValueChanged.InvokeAsync(true));
+        cut.WaitForAssertion(() =>
+        {
+            var restored = cut.FindComponents<MudSwitch<bool>>()
+                .Single(component => component.Markup.Contains("Enable Islamic module", StringComparison.Ordinal));
+            if (restored.Instance.Value)
+            {
+                throw new InvalidOperationException("The failed autosave did not render the authoritative module value.");
+            }
+        });
+
+        await _instanceOnboardingService.Received(2).GetModuleSettingsAsync();
+        await Assert.That(cut.Find("[role='alert']").TextContent).Contains("Module update failed.", StringComparison.Ordinal);
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_OrdinaryPolicyAndAiSections_HaveNoBroadSaveButton()
+    {
+        _instanceOnboardingService.GetAiAssistantGovernanceSettingsAsync()
+            .Returns(new AiAssistantGovernanceSettingsDto
+            {
+                Enabled = true,
+                Provider = "openai-compatible",
+                EndpointUrl = "https://ai.example.test/v1",
+                ModelId = "model-a"
+            });
+        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
+        object layout = GetRenderedLayout(cut);
+
+        SetPrivateField(layout, "_currentSection", "policies");
+        SetPrivateField(layout, "_showMobileMenu", false);
+        await InvokeStateHasChangedAsync(cut, layout);
+        await Assert.That(cut.Markup).DoesNotContain("Save Settings", StringComparison.Ordinal);
+
+        SetPrivateField(layout, "_currentSection", "ai");
+        await InvokeStateHasChangedAsync(cut, layout);
+        await Assert.That(cut.Markup).DoesNotContain("Save Settings", StringComparison.Ordinal);
+        await Assert.That(cut.Markup).Contains("Save provider configuration", StringComparison.Ordinal);
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_FailedGovernanceAutosave_RendersAuthoritativeValue()
+    {
+        _instanceOnboardingService.GetMcpGovernanceSettingsAsync()
+            .Returns(
+                new McpGovernanceSettingsDto { Enabled = false },
+                new McpGovernanceSettingsDto { Enabled = false });
+        _instanceOnboardingService.UpdateMcpGovernanceSettingsAsync(Arg.Any<McpGovernanceSettingsDto>())
+            .Returns(new BaseCommandResponseOfGuid { Success = false, Message = "MCP update failed." });
+        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
+        object layout = GetRenderedLayout(cut);
+        SetPrivateField(layout, "_currentSection", "advanced");
+        SetPrivateField(layout, "_showMobileMenu", false);
+        await InvokeStateHasChangedAsync(cut, layout);
+        cut.WaitForState(() => cut.Markup.Contains("Enable MCP adapter at runtime", StringComparison.Ordinal));
+        var mcpSwitch = cut.FindComponents<MudSwitch<bool>>()
+            .Single(component => component.Markup.Contains("Enable MCP adapter at runtime", StringComparison.Ordinal));
+
+        await cut.InvokeAsync(() => mcpSwitch.Instance.ValueChanged.InvokeAsync(true));
+        cut.WaitForAssertion(() =>
+        {
+            var restored = cut.FindComponents<MudSwitch<bool>>()
+                .Single(component => component.Markup.Contains("Enable MCP adapter at runtime", StringComparison.Ordinal));
+            if (restored.Instance.Value)
+            {
+                throw new InvalidOperationException("The failed governance autosave did not render the authoritative MCP value.");
+            }
+        });
+
+        await _instanceOnboardingService.Received(2).GetMcpGovernanceSettingsAsync();
+        await Assert.That(cut.FindAll("[role='alert']").Any(alert =>
+            alert.TextContent.Contains("MCP update failed.", StringComparison.Ordinal))).IsTrue();
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_FailedAiAutosave_RendersAuthoritativeValue()
+    {
+        _instanceOnboardingService.GetAiAssistantGovernanceSettingsAsync()
+            .Returns(
+                new AiAssistantGovernanceSettingsDto { Enabled = false },
+                new AiAssistantGovernanceSettingsDto { Enabled = false });
+        _instanceOnboardingService.UpdateAiAssistantGovernanceSettingsAsync(Arg.Any<AiAssistantGovernanceSettingsDto>())
+            .Returns(new BaseCommandResponseOfGuid { Success = false, Message = "AI update failed." });
+        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
+        object layout = GetRenderedLayout(cut);
+        SetPrivateField(layout, "_currentSection", "ai");
+        SetPrivateField(layout, "_showMobileMenu", false);
+        await InvokeStateHasChangedAsync(cut, layout);
+        var aiSwitch = cut.FindComponents<MudSwitch<bool>>()
+            .Single(component => component.Markup.Contains("Enable AI Assistant", StringComparison.Ordinal));
+
+        await cut.InvokeAsync(() => aiSwitch.Instance.ValueChanged.InvokeAsync(true));
+        cut.WaitForAssertion(() =>
+        {
+            var restored = cut.FindComponents<MudSwitch<bool>>()
+                .Single(component => component.Markup.Contains("Enable AI Assistant", StringComparison.Ordinal));
+            if (restored.Instance.Value)
+            {
+                throw new InvalidOperationException("The failed AI autosave did not render the authoritative value.");
+            }
+        });
+
+        await _instanceOnboardingService.Received(2).GetAiAssistantGovernanceSettingsAsync();
+        await Assert.That(cut.FindAll("[role='alert']").Any(alert =>
+            alert.TextContent.Contains("AI update failed.", StringComparison.Ordinal))).IsTrue();
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_FailedAiProviderSave_ReloadsAuthoritativeModel()
+    {
+        _instanceOnboardingService.UpdateAiAssistantProviderConfigurationAsync(Arg.Any<AiAssistantProviderConfigurationWriteDto>())
+            .Returns(new BaseCommandResponseOfGuid { Success = false, Message = "AI provider update failed." });
+        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
+        object layout = GetRenderedLayout(cut);
+
+        await InvokePrivateTaskAsync(layout, "SaveAiProviderConfigurationAsync", new AiAssistantProviderConfigurationWriteDto
+        {
+            Provider = "openai-compatible",
+            EndpointUrl = "https://ai.example.test/v1",
+            ApiKey = "replacement-key",
+            ModelId = "model-a",
+            AllowedModelIds = ["model-a"]
+        });
+
+        await _instanceOnboardingService.Received(2).GetAiAssistantGovernanceSettingsAsync();
     }
 
     [Test]
@@ -609,6 +814,15 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         var task = (Task)instance.GetType()
             .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic, Type.EmptyTypes)!
             .Invoke(instance, null)!;
+
+        await task;
+    }
+
+    private static async Task InvokePrivateTaskAsync(object instance, string methodName, object argument)
+    {
+        var task = (Task)instance.GetType()
+            .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic, [argument.GetType()])!
+            .Invoke(instance, [argument])!;
 
         await task;
     }

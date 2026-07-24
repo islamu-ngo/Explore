@@ -427,7 +427,7 @@
         {
             response = usingKeycloakBootstrap
                 ? await BootstrapKeycloakWithSecretCleanupAsync()
-                : await InstanceOnboardingService.SaveAuthProviderConfigurationAsync(_model);
+            : await InstanceOnboardingService.UpdateAuthProviderConfigurationAsAdminAsync(_model);
         }
         catch (Exception)
         {

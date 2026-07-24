@@ -1,13 +1,12 @@
 @* ABOUTME: Standalone tenant admin component for managing footer configuration, social links, and link groups. *@
-@* ABOUTME: Follows Navigation.razor CRUD pattern with settings panel, link group table, and nested link management. *@
+@* ABOUTME: Autosaves grouped scalar settings from authoritative HAL state while preserving explicit link CRUD. *@
 
 @using Explore.Blazor.Client.Pages.Admin.Components
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Footer
-@using Explore.Blazor.Client.Components.Forms
-@using Microsoft.AspNetCore.Authorization
 @using MudBlazor
-@using System.Text.Json
+
+@implements IDisposable
 
 @inject IFooterAdminService FooterService
 @inject IDialogService DialogService
@@ -20,10 +19,16 @@
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">Customize footer appearance, content, and link groups</MudText>
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(_errorMessage))
-    {
-        <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
-    }
+    <div role="alert" aria-live="assertive" aria-atomic="true">
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+        }
+        @if (!string.IsNullOrWhiteSpace(_saveErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@_saveErrorMessage</MudAlert>
+        }
+    </div>
 
     @if (_isLoading)
     {
@@ -39,11 +44,15 @@
             <MudText Typo="Typo.h6" Class="mb-4">General Settings</MudText>
 
             <MudStack Spacing="3">
-                <MudSwitch T="bool" @bind-Value="_enabled"
+                <MudSwitch T="bool" Value="_enabled"
+                           ValueChanged="OnEnabledChangedAsync"
+                           Disabled="@(!CanEditSettings)"
                            Color="Color.Primary"
                            Label="Footer Enabled" />
 
-                <MudSelect T="string" @bind-Value="_template"
+                <MudSelect T="string" Value="_template"
+                           ValueChanged="OnTemplateChangedAsync"
+                           Disabled="@(!CanEditTemplate)"
                            Label="Template"
                            Variant="Variant.Outlined"
                            AnchorOrigin="Origin.BottomCenter">
@@ -53,24 +62,36 @@
                     <MudSelectItem Value="@("community")">Community</MudSelectItem>
                 </MudSelect>
 
-                <MudSwitch T="bool" @bind-Value="_showDescription"
+                <MudSwitch T="bool" Value="_showDescription"
+                           ValueChanged="OnShowDescriptionChangedAsync"
+                           Disabled="@(!CanEditDescription)"
                            Color="Color.Primary"
                            Label="Show Description" />
 
                 @if (_showDescription)
                 {
-                    <MudTextField T="string" @bind-Value="_descriptionText"
+                    <MudTextField T="string" Value="_descriptionText"
+                                  ValueChanged="OnDescriptionTextChanged"
+                                  OnBlur="@(_ => FlushDescriptionSaveAsync())"
+                                  Immediate="true"
+                                  Disabled="@(!CanEditDescription)"
                                   Label="Description Text"
                                   Lines="3"
                                   Variant="Variant.Outlined"
                                   Placeholder="Brief description shown in the footer" />
                 }
 
-                <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_copyrightText"
+                <MudTextField Variant="Variant.Outlined" T="string" Value="_copyrightText"
+                              ValueChanged="OnCopyrightTextChanged"
+                              OnBlur="@(_ => FlushCopyrightSaveAsync())"
+                              Immediate="true"
+                              Disabled="@(!CanEditCopyright)"
                               Label="Copyright Text"
                               Placeholder="e.g., &copy; 2026 My Organization" />
 
-                <MudSwitch T="bool" @bind-Value="_showCookieSettingsLink"
+                <MudSwitch T="bool" Value="_showCookieSettingsLink"
+                           ValueChanged="OnShowCookieSettingsLinkChangedAsync"
+                           Disabled="@(!CanEditSettings)"
                            Color="Color.Primary"
                            Label="Show Cookie Settings Link" />
             </MudStack>
@@ -80,7 +101,9 @@
         <MudPaper Elevation="0" Class="pa-6 rounded-lg border-solid border-1 mud-border-lines-default mb-6">
             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
                 <MudText Typo="Typo.h6">Social Links</MudText>
-                <MudSwitch T="bool" @bind-Value="_showSocialLinks"
+                <MudSwitch T="bool" Value="_showSocialLinks"
+                           ValueChanged="OnShowSocialLinksChangedAsync"
+                           Disabled="@(!CanEditSocialLinks)"
                            Color="Color.Primary"
                            Label="Show Social Links" />
             </MudStack>
@@ -99,7 +122,9 @@
                     {
                         var index = i;
                         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-2">
-                            <MudSelect T="string" @bind-Value="_socialLinks[index].Platform"
+                            <MudSelect T="string" Value="_socialLinks[index].Platform"
+                                       ValueChanged="@(value => OnSocialPlatformChanged(value, index))"
+                                       Disabled="@(!CanEditSocialLinks)"
                                        Label="Platform"
                                        Variant="Variant.Outlined"
                                        Style="min-width: 160px;"
@@ -109,16 +134,26 @@
                                     <MudSelectItem Value="@platform">@CapitalizePlatform(platform)</MudSelectItem>
                                 }
                             </MudSelect>
-                            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_socialLinks[index].Url"
+                            <MudTextField Variant="Variant.Outlined" T="string" Value="_socialLinks[index].Url"
+                                          ValueChanged="@(value => OnSocialUrlChanged(value, index))"
+                                          OnBlur="@(_ => FlushSocialLinksSaveAsync())"
+                                          Immediate="true"
+                                          Disabled="@(!CanEditSocialLinks)"
                                           Label="URL"
                                           Placeholder="https://..." />
-                            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_socialLinks[index].Label"
+                            <MudTextField Variant="Variant.Outlined" T="string" Value="_socialLinks[index].Label"
+                                          ValueChanged="@(value => OnSocialLabelChanged(value, index))"
+                                          OnBlur="@(_ => FlushSocialLinksSaveAsync())"
+                                          Immediate="true"
+                                          Disabled="@(!CanEditSocialLinks)"
                                           Label="Label (optional)"
                                           Placeholder="Display name" />
                             <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                            Color="Color.Error"
                                            Size="Size.Small"
                                            OnClick="@(() => RemoveSocialLink(index))"
+                                           Disabled="@(!CanEditSocialLinks)"
+                                           aria-label="Remove social link"
                                            Title="Remove" />
                         </MudStack>
                     }
@@ -126,27 +161,22 @@
 
                 <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
                            OnClick="AddSocialLink"
+                           Disabled="@(!CanEditSocialLinks)"
                            Class="mt-2">
                     Add Social Link
                 </MudButton>
             }
         </MudPaper>
 
-        <!-- Save Settings Button -->
-        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-8">
-            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveSettingsAsync"
-                       Disabled="_submitState.IsSubmitting"
-                       StartIcon="@Icons.Material.Filled.Save">
-                @(_submitState.IsSubmitting ? "Saving..." : "Save Settings")
-            </MudButton>
-        </MudStack>
+        <div role="status" aria-live="polite" aria-atomic="true" class="mb-8">@_saveStatusMessage</div>
 
         <!-- Link Groups -->
         <MudPaper Elevation="0" Class="pa-6 rounded-lg border-solid border-1 mud-border-lines-default mb-6">
             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
                 <MudText Typo="Typo.h6">Link Groups</MudText>
                 <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
-                           OnClick="OpenCreateGroupDialog">
+                           OnClick="OpenCreateGroupDialog"
+                           Disabled="@(!CanManageLinkGroups)">
                     Create Group
                 </MudButton>
             </MudStack>
@@ -174,13 +204,13 @@
                                                Size="Size.Small"
                                                Color="Color.Default"
                                                OnClick="@(() => MoveGroupUp(context))"
-                                               Disabled="@IsFirstGroup(context)"
+                                               Disabled="@(!CanManageLinkGroups || IsFirstGroup(context))"
                                                Title="Move up" />
                                 <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward"
                                                Size="Size.Small"
                                                Color="Color.Default"
                                                OnClick="@(() => MoveGroupDown(context))"
-                                               Disabled="@IsLastGroup(context)"
+                                               Disabled="@(!CanManageLinkGroups || IsLastGroup(context))"
                                                Title="Move down" />
                                 <MudText Typo="Typo.body2">@context.Order</MudText>
                             </MudStack>
@@ -204,11 +234,13 @@
                                                Size="Size.Small"
                                                Color="Color.Primary"
                                                OnClick="@(() => OpenEditGroupDialog(context))"
+                                               Disabled="@(!CanManageLinkGroups)"
                                                Title="Edit" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                Size="Size.Small"
                                                Color="Color.Error"
                                                OnClick="@(() => DeleteGroup(context))"
+                                               Disabled="@(!CanManageLinkGroups)"
                                                Title="Delete" />
                             </MudStack>
                         </MudTd>
@@ -229,7 +261,8 @@
                         <MudText Typo="Typo.h6">Links in &ldquo;@_selectedGroup.Title&rdquo;</MudText>
                     </MudStack>
                     <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
-                               OnClick="OpenCreateLinkDialog">
+                               OnClick="OpenCreateLinkDialog"
+                               Disabled="@(!CanManageLinkGroups)">
                         Add Link
                     </MudButton>
                 </MudStack>
@@ -265,11 +298,13 @@
                                                    Size="Size.Small"
                                                    Color="Color.Primary"
                                                    OnClick="@(() => OpenEditLinkDialog(context))"
+                                                   Disabled="@(!CanManageLinkGroups)"
                                                    Title="Edit" />
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                    Size="Size.Small"
                                                    Color="Color.Error"
                                                    OnClick="@(() => DeleteLink(context))"
+                                                   Disabled="@(!CanManageLinkGroups)"
                                                    Title="Delete" />
                                 </MudStack>
                             </MudTd>
@@ -285,8 +320,22 @@
     // ── State ─────────────────────────────────────────────────────────────
 
     private bool _isLoading = true;
-    private FormSubmitState _submitState = new();
     private string? _errorMessage;
+    private string? _saveErrorMessage;
+    private string? _saveStatusMessage;
+    private HalResourceOfTenantFooterSettingsDto? _settings;
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
+    private readonly CancellationTokenSource _lifetimeCts = new();
+    private CancellationTokenSource? _descriptionDebounceCts;
+    private CancellationTokenSource? _socialLinksDebounceCts;
+    private CancellationTokenSource? _copyrightDebounceCts;
+    private long _saveVersion;
+    private long _descriptionSaveVersion;
+    private long _socialLinksSaveVersion;
+    private long _copyrightSaveVersion;
+    private bool _disposed;
+
+    private const int AutosaveDelayMilliseconds = 400;
 
     // Settings fields
     private bool _enabled;
@@ -324,15 +373,18 @@
     {
         _isLoading = true;
         _errorMessage = null;
+        var cancellationToken = _lifetimeCts.Token;
 
         try
         {
-            var settingsTask = FooterService.GetFooterSettingsAsync();
-            var groupsTask = FooterService.GetLinkGroupsAsync();
+            var settingsTask = FooterService.GetTenantFooterSettingsAsync(cancellationToken);
+            var groupsTask = FooterService.GetLinkGroupsAsync(cancellationToken);
 
             await Task.WhenAll(settingsTask, groupsTask);
+            if (_disposed) return;
 
             var settings = settingsTask.Result;
+            _settings = settings;
             if (settings != null)
             {
                 _enabled = settings.Enabled == true;
@@ -354,102 +406,400 @@
 
             _linkGroups = groupsTask.Result.OrderBy(g => g.Order).ToList();
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception)
         {
-            _errorMessage = "Failed to load footer settings.";
+            if (!_disposed)
+            {
+                _errorMessage = "Failed to load footer settings.";
+            }
         }
         finally
         {
-            _isLoading = false;
+            if (!_disposed)
+            {
+                _isLoading = false;
+            }
         }
     }
 
-    // ── Settings Save ─────────────────────────────────────────────────────
+    // ── Settings Autosave ─────────────────────────────────────────────────
 
-    private async Task SaveSettingsAsync()
+    private bool CanEditSettings => !_disposed && _settings?._links?.ContainsKey("edit") == true;
+    private bool CanEditTemplate => CanEditSettings && _settings?.LockTenantTemplate != true;
+    private bool CanEditDescription => CanEditSettings && _settings?.LockTenantDescription != true;
+    private bool CanEditSocialLinks => CanEditSettings && _settings?.LockTenantSocialLinks != true;
+    private bool CanEditCopyright => CanEditSettings && _settings?.LockTenantCopyright != true;
+    private bool CanManageLinkGroups => _settings?._links?.ContainsKey("manage-link-groups") == true;
+
+    private Task OnEnabledChangedAsync(bool value)
     {
-        _submitState.Start();
-        _errorMessage = null;
+        if (!CanEditSettings) return Task.CompletedTask;
+        _enabled = value;
+        return SaveImmediatelyAsync(CreateGeneralPatch());
+    }
 
+    private Task OnShowCookieSettingsLinkChangedAsync(bool value)
+    {
+        if (!CanEditSettings) return Task.CompletedTask;
+        _showCookieSettingsLink = value;
+        return SaveImmediatelyAsync(CreateGeneralPatch());
+    }
+
+    private Task OnTemplateChangedAsync(string value)
+    {
+        if (!CanEditTemplate) return Task.CompletedTask;
+        _template = value;
+        return SaveImmediatelyAsync(new PatchTenantFooterSettingsDto
+        {
+            Template = new PatchTenantFooterTemplateDto
+            {
+                Value = StringUpdate(_template)
+            }
+        });
+    }
+
+    private Task OnShowDescriptionChangedAsync(bool value)
+    {
+        if (!CanEditDescription) return Task.CompletedTask;
+        CancelDebounce(ref _descriptionDebounceCts);
+        _showDescription = value;
+        return SaveImmediatelyAsync(CreateDescriptionPatch());
+    }
+
+    private Task OnDescriptionTextChanged(string value)
+    {
+        if (!CanEditDescription) return Task.CompletedTask;
+        _descriptionText = value ?? string.Empty;
+        ScheduleDescriptionSave();
+        return Task.CompletedTask;
+    }
+
+    private Task OnShowSocialLinksChangedAsync(bool value)
+    {
+        if (!CanEditSocialLinks) return Task.CompletedTask;
+        CancelDebounce(ref _socialLinksDebounceCts);
+        _showSocialLinks = value;
+        return SaveImmediatelyAsync(CreateSocialLinksPatch());
+    }
+
+    private Task OnSocialPlatformChanged(string value, int index)
+    {
+        if (!CanEditSocialLinks || index < 0 || index >= _socialLinks.Count) return Task.CompletedTask;
+        _socialLinks[index].Platform = value;
+        ScheduleSocialLinksSave();
+        return Task.CompletedTask;
+    }
+
+    private Task OnSocialUrlChanged(string value, int index)
+    {
+        if (!CanEditSocialLinks || index < 0 || index >= _socialLinks.Count) return Task.CompletedTask;
+        _socialLinks[index].Url = value ?? string.Empty;
+        ScheduleSocialLinksSave();
+        return Task.CompletedTask;
+    }
+
+    private Task OnSocialLabelChanged(string value, int index)
+    {
+        if (!CanEditSocialLinks || index < 0 || index >= _socialLinks.Count) return Task.CompletedTask;
+        _socialLinks[index].Label = value ?? string.Empty;
+        ScheduleSocialLinksSave();
+        return Task.CompletedTask;
+    }
+
+    private Task OnCopyrightTextChanged(string value)
+    {
+        if (!CanEditCopyright) return Task.CompletedTask;
+        _copyrightText = value ?? string.Empty;
+        ScheduleCopyrightSave();
+        return Task.CompletedTask;
+    }
+
+    private Task SaveImmediatelyAsync(PatchTenantFooterSettingsDto request)
+    {
+        var version = BeginSave();
+        return SavePatchAsync(request, version, _lifetimeCts.Token);
+    }
+
+    private long BeginSave()
+    {
+        _saveStatusMessage = "Saving footer settings...";
+        _saveErrorMessage = null;
+        return ++_saveVersion;
+    }
+
+    private async Task SavePatchAsync(
+        PatchTenantFooterSettingsDto request,
+        long version,
+        CancellationToken cancellationToken)
+    {
+        var lockTaken = false;
         try
         {
-            var socialLinksJson = JsonSerializer.Serialize(
-                _socialLinks.Select(s => new { platform = s.Platform, url = s.Url, label = s.Label }),
-                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            await _saveLock.WaitAsync(cancellationToken);
+            lockTaken = true;
+            var response = await FooterService.PatchTenantFooterSettingsAsync(request, cancellationToken);
 
-            var model = new UpdateTenantFooterSettingsRequest
+            if (!_disposed && version == _saveVersion)
             {
-                Enabled = _enabled,
-                Template = _template,
-                ShowDescription = _showDescription,
-                DescriptionText = _descriptionText,
-                ShowSocialLinks = _showSocialLinks,
-                SocialLinksJson = socialLinksJson,
-                CopyrightText = _copyrightText,
-                ShowCookieSettingsLink = _showCookieSettingsLink
-            };
-
-            var response = await FooterService.UpdateTenantSettingsAsync(model);
-            if (response?.Success == true)
-            {
-                Snackbar.Add("Footer settings saved.", Severity.Success);
+                if (response.Success == true)
+                {
+                    _saveStatusMessage = "Footer settings saved.";
+                    _saveErrorMessage = null;
+                }
+                else
+                {
+                    _saveStatusMessage = null;
+                    _saveErrorMessage = response.Message ?? "Failed to save footer settings.";
+                }
             }
-            else
-            {
-                _errorMessage = response?.Message ?? "Failed to save footer settings.";
-            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception)
         {
-            _errorMessage = "An error occurred while saving footer settings.";
+            if (!_disposed && version == _saveVersion)
+            {
+                _saveStatusMessage = null;
+                _saveErrorMessage = "An error occurred while saving footer settings.";
+            }
         }
         finally
         {
-            _submitState.Complete();
+            if (lockTaken)
+            {
+                _saveLock.Release();
+            }
+
+            if (!_disposed)
+            {
+                await InvokeAsync(StateHasChanged);
+            }
         }
+    }
+
+    private PatchTenantFooterSettingsDto CreateGeneralPatch() => new()
+    {
+        General = new PatchTenantFooterGeneralDto
+        {
+            Enabled = BooleanUpdate(_enabled),
+            ShowCookieSettingsLink = BooleanUpdate(_showCookieSettingsLink)
+        }
+    };
+
+    private PatchTenantFooterSettingsDto CreateDescriptionPatch() => new()
+    {
+        Description = new PatchTenantFooterDescriptionDto
+        {
+            Show = BooleanUpdate(_showDescription),
+            Text = StringUpdate(_descriptionText)
+        }
+    };
+
+    private PatchTenantFooterSettingsDto CreateSocialLinksPatch() => new()
+    {
+        SocialLinks = new PatchTenantFooterSocialLinksDto
+        {
+            Show = BooleanUpdate(_showSocialLinks),
+            Items = new OptionalUpdateOfIReadOnlyListOfFooterSocialLinkDto
+            {
+                HasValue = true,
+                Value = _socialLinks.Select(link => new FooterSocialLinkDto
+                {
+                    Platform = link.Platform,
+                    Url = link.Url,
+                    Label = link.Label
+                }).ToList()
+            }
+        }
+    };
+
+    private PatchTenantFooterSettingsDto CreateCopyrightPatch() => new()
+    {
+        Copyright = new PatchTenantFooterCopyrightDto
+        {
+            Text = StringUpdate(_copyrightText)
+        }
+    };
+
+    private static OptionalUpdateOfboolean BooleanUpdate(bool value) => new() { HasValue = true, Value = value };
+    private static OptionalUpdateOfstring StringUpdate(string value) => new() { HasValue = true, Value = value };
+
+    private void ScheduleDescriptionSave()
+    {
+        CancelDebounce(ref _descriptionDebounceCts);
+        _descriptionDebounceCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _descriptionSaveVersion = BeginSave();
+        _ = RunDescriptionDebounceAsync(_descriptionDebounceCts, _descriptionSaveVersion);
+    }
+
+    private async Task RunDescriptionDebounceAsync(CancellationTokenSource source, long version)
+    {
+        try
+        {
+            await Task.Delay(AutosaveDelayMilliseconds, source.Token);
+            if (ReferenceEquals(_descriptionDebounceCts, source))
+            {
+                _descriptionDebounceCts = null;
+            }
+            await SavePatchAsync(CreateDescriptionPatch(), version, source.Token);
+        }
+        catch (OperationCanceledException) when (source.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            source.Dispose();
+        }
+    }
+
+    private Task FlushDescriptionSaveAsync()
+    {
+        if (_descriptionDebounceCts is null) return Task.CompletedTask;
+        var version = _descriptionSaveVersion;
+        CancelDebounce(ref _descriptionDebounceCts);
+        return SavePatchAsync(CreateDescriptionPatch(), version, _lifetimeCts.Token);
+    }
+
+    private void ScheduleSocialLinksSave()
+    {
+        CancelDebounce(ref _socialLinksDebounceCts);
+        _socialLinksDebounceCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _socialLinksSaveVersion = BeginSave();
+        _ = RunSocialLinksDebounceAsync(_socialLinksDebounceCts, _socialLinksSaveVersion);
+    }
+
+    private async Task RunSocialLinksDebounceAsync(CancellationTokenSource source, long version)
+    {
+        try
+        {
+            await Task.Delay(AutosaveDelayMilliseconds, source.Token);
+            if (ReferenceEquals(_socialLinksDebounceCts, source))
+            {
+                _socialLinksDebounceCts = null;
+            }
+            await SavePatchAsync(CreateSocialLinksPatch(), version, source.Token);
+        }
+        catch (OperationCanceledException) when (source.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            source.Dispose();
+        }
+    }
+
+    private Task FlushSocialLinksSaveAsync()
+    {
+        if (_socialLinksDebounceCts is null) return Task.CompletedTask;
+        var version = _socialLinksSaveVersion;
+        CancelDebounce(ref _socialLinksDebounceCts);
+        return SavePatchAsync(CreateSocialLinksPatch(), version, _lifetimeCts.Token);
+    }
+
+    private void ScheduleCopyrightSave()
+    {
+        CancelDebounce(ref _copyrightDebounceCts);
+        _copyrightDebounceCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _copyrightSaveVersion = BeginSave();
+        _ = RunCopyrightDebounceAsync(_copyrightDebounceCts, _copyrightSaveVersion);
+    }
+
+    private async Task RunCopyrightDebounceAsync(CancellationTokenSource source, long version)
+    {
+        try
+        {
+            await Task.Delay(AutosaveDelayMilliseconds, source.Token);
+            if (ReferenceEquals(_copyrightDebounceCts, source))
+            {
+                _copyrightDebounceCts = null;
+            }
+            await SavePatchAsync(CreateCopyrightPatch(), version, source.Token);
+        }
+        catch (OperationCanceledException) when (source.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            source.Dispose();
+        }
+    }
+
+    private Task FlushCopyrightSaveAsync()
+    {
+        if (_copyrightDebounceCts is null) return Task.CompletedTask;
+        var version = _copyrightSaveVersion;
+        CancelDebounce(ref _copyrightDebounceCts);
+        return SavePatchAsync(CreateCopyrightPatch(), version, _lifetimeCts.Token);
+    }
+
+    private static void CancelDebounce(ref CancellationTokenSource? source)
+    {
+        var pending = source;
+        source = null;
+        if (pending is null) return;
+        pending.Cancel();
     }
 
     // ── Social Links ──────────────────────────────────────────────────────
 
-    private void AddSocialLink()
+    private Task AddSocialLink()
     {
+        if (!CanEditSocialLinks) return Task.CompletedTask;
         _socialLinks.Add(new FooterSocialLinkDto
         {
             Platform = "facebook",
             Url = string.Empty,
             Label = string.Empty
         });
+        ScheduleSocialLinksSave();
+        return Task.CompletedTask;
     }
 
-    private void RemoveSocialLink(int index)
+    private Task RemoveSocialLink(int index)
     {
-        if (index >= 0 && index < _socialLinks.Count)
+        if (CanEditSocialLinks && index >= 0 && index < _socialLinks.Count)
         {
             _socialLinks.RemoveAt(index);
+            ScheduleSocialLinksSave();
         }
+        return Task.CompletedTask;
     }
 
     // ── Link Groups CRUD ──────────────────────────────────────────────────
 
     private async Task LoadLinkGroupsAsync()
     {
+        if (_disposed) return;
+        var cancellationToken = _lifetimeCts.Token;
         try
         {
-            var groups = await FooterService.GetLinkGroupsAsync();
+            var groups = await FooterService.GetLinkGroupsAsync(cancellationToken);
+            if (_disposed) return;
             _linkGroups = groups.OrderBy(g => g.Order).ToList();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception)
         {
-            _errorMessage = "Failed to reload link groups.";
+            if (!_disposed)
+            {
+                _errorMessage = "Failed to reload link groups.";
+            }
         }
     }
 
     private async Task OpenCreateGroupDialog()
     {
+        if (!CanManageLinkGroups || _disposed) return;
         var dialog = await FooterLinkGroupDialog.ShowAsync(DialogService, "Create Link Group");
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is CreateFooterLinkGroupRequest createModel)
+        if (!_disposed && CanManageLinkGroups && !result.Canceled && result.Data is CreateFooterLinkGroupRequest createModel)
         {
             await CreateGroupAsync(createModel);
         }
@@ -457,6 +807,7 @@
 
     private async Task OpenEditGroupDialog(FooterLinkGroupListDto group)
     {
+        if (!CanManageLinkGroups || _disposed) return;
         if (group.Id is not Guid groupId)
         {
             _errorMessage = "The selected link group has no identifier.";
@@ -471,7 +822,7 @@
         var dialog = await FooterLinkGroupDialog.ShowAsync(DialogService, "Edit Link Group", parameters);
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is UpdateFooterLinkGroupRequest updateModel)
+        if (!_disposed && CanManageLinkGroups && !result.Canceled && result.Data is UpdateFooterLinkGroupRequest updateModel)
         {
             await UpdateGroupAsync(groupId, updateModel);
         }
@@ -479,9 +830,12 @@
 
     private async Task CreateGroupAsync(CreateFooterLinkGroupRequest model)
     {
+        if (!CanManageLinkGroups || _disposed) return;
+        var cancellationToken = _lifetimeCts.Token;
         try
         {
-            var response = await FooterService.CreateLinkGroupAsync(model);
+            var response = await FooterService.CreateLinkGroupAsync(model, cancellationToken);
+            if (_disposed) return;
             if (response?.Success == true)
             {
                 Snackbar.Add("Link group created.", Severity.Success);
@@ -492,17 +846,26 @@
                 _errorMessage = response?.Message ?? "Failed to create link group.";
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception)
         {
-            _errorMessage = "An error occurred while creating the link group.";
+            if (!_disposed)
+            {
+                _errorMessage = "An error occurred while creating the link group.";
+            }
         }
     }
 
     private async Task UpdateGroupAsync(Guid id, UpdateFooterLinkGroupRequest model)
     {
+        if (!CanManageLinkGroups || _disposed) return;
+        var cancellationToken = _lifetimeCts.Token;
         try
         {
-            var response = await FooterService.UpdateLinkGroupAsync(id, model);
+            var response = await FooterService.UpdateLinkGroupAsync(id, model, cancellationToken);
+            if (_disposed) return;
             if (response?.Success == true)
             {
                 Snackbar.Add("Link group updated.", Severity.Success);
@@ -513,14 +876,21 @@
                 _errorMessage = response?.Message ?? "Failed to update link group.";
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception)
         {
-            _errorMessage = "An error occurred while updating the link group.";
+            if (!_disposed)
+            {
+                _errorMessage = "An error occurred while updating the link group.";
+            }
         }
     }
 
     private async Task DeleteGroup(FooterLinkGroupListDto group)
     {
+        if (!CanManageLinkGroups || _disposed) return;
         if (group.Id is not Guid groupId)
         {
             _errorMessage = "The selected link group has no identifier.";
@@ -533,11 +903,13 @@
             yesText: "Delete",
             cancelText: "Cancel");
 
-        if (confirmed == true)
+        if (confirmed == true && !_disposed && CanManageLinkGroups)
         {
+            var cancellationToken = _lifetimeCts.Token;
             try
             {
-                var deleted = await FooterService.DeleteLinkGroupAsync(groupId);
+                var deleted = await FooterService.DeleteLinkGroupAsync(groupId, cancellationToken);
+                if (_disposed) return;
                 if (deleted)
                 {
                     Snackbar.Add("Link group deleted.", Severity.Success);
@@ -555,9 +927,15 @@
                     _errorMessage = "Failed to delete link group.";
                 }
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+            }
             catch (Exception)
             {
-                _errorMessage = "An error occurred while deleting the link group.";
+                if (!_disposed)
+                {
+                    _errorMessage = "An error occurred while deleting the link group.";
+                }
             }
         }
     }
@@ -566,6 +944,7 @@
 
     private async Task MoveGroupUp(FooterLinkGroupListDto group)
     {
+        if (!CanManageLinkGroups || _disposed) return;
         var index = _linkGroups.IndexOf(group);
         if (index > 0)
         {
@@ -575,6 +954,7 @@
 
     private async Task MoveGroupDown(FooterLinkGroupListDto group)
     {
+        if (!CanManageLinkGroups || _disposed) return;
         var index = _linkGroups.IndexOf(group);
         if (index < _linkGroups.Count - 1)
         {
@@ -584,6 +964,7 @@
 
     private async Task SwapGroupOrder(int index1, int index2)
     {
+        if (!CanManageLinkGroups || _disposed) return;
         var group1 = _linkGroups[index1];
         var group2 = _linkGroups[index2];
 
@@ -602,19 +983,27 @@
             return;
         }
 
+        var cancellationToken = _lifetimeCts.Token;
         try
         {
-            var response = await FooterService.ReorderLinkGroupsAsync(orderedIds);
+            var response = await FooterService.ReorderLinkGroupsAsync(orderedIds, cancellationToken);
+            if (_disposed) return;
             if (response?.Success != true)
             {
                 _errorMessage = response?.Message ?? "Failed to reorder link groups.";
                 await LoadLinkGroupsAsync();
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception)
         {
-            _errorMessage = "An error occurred while reordering link groups.";
-            await LoadLinkGroupsAsync();
+            if (!_disposed)
+            {
+                _errorMessage = "An error occurred while reordering link groups.";
+                await LoadLinkGroupsAsync();
+            }
         }
     }
 
@@ -625,15 +1014,18 @@
 
     private async Task SelectGroup(FooterLinkGroupListDto group)
     {
+        if (_disposed) return;
         if (group.Id is not Guid groupId)
         {
             _errorMessage = "The selected link group has no identifier.";
             return;
         }
 
+        var cancellationToken = _lifetimeCts.Token;
         try
         {
-            var details = await FooterService.GetLinkGroupAsync(groupId);
+            var details = await FooterService.GetLinkGroupAsync(groupId, cancellationToken);
+            if (_disposed) return;
             if (details != null)
             {
                 _selectedGroup = details;
@@ -644,43 +1036,59 @@
                 _errorMessage = "Failed to load link group details.";
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception)
         {
-            _errorMessage = "An error occurred while loading group links.";
+            if (!_disposed)
+            {
+                _errorMessage = "An error occurred while loading group links.";
+            }
         }
     }
 
     private void DeselectGroup()
     {
+        if (_disposed) return;
         _selectedGroup = null;
         _selectedGroupLinks.Clear();
     }
 
     private async Task ReloadSelectedGroupLinksAsync()
     {
-        if (_selectedGroup?.Id is not Guid groupId) return;
+        if (_disposed || _selectedGroup?.Id is not Guid groupId) return;
 
+        var cancellationToken = _lifetimeCts.Token;
         try
         {
-            var details = await FooterService.GetLinkGroupAsync(groupId);
+            var details = await FooterService.GetLinkGroupAsync(groupId, cancellationToken);
+            if (_disposed) return;
             if (details != null)
             {
                 _selectedGroup = details;
                 _selectedGroupLinks = (details.Links ?? []).OrderBy(l => l.Order).ToList();
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception)
         {
-            _errorMessage = "Failed to reload group links.";
+            if (!_disposed)
+            {
+                _errorMessage = "Failed to reload group links.";
+            }
         }
     }
 
     private async Task OpenCreateLinkDialog()
     {
+        if (!CanManageLinkGroups || _disposed) return;
         var dialog = await FooterLinkDialog.ShowAsync(DialogService, "Add Link");
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is CreateFooterLinkRequest createModel)
+        if (!_disposed && CanManageLinkGroups && !result.Canceled && result.Data is CreateFooterLinkRequest createModel)
         {
             await CreateLinkAsync(createModel);
         }
@@ -688,6 +1096,7 @@
 
     private async Task OpenEditLinkDialog(FooterLinkItemDto link)
     {
+        if (!CanManageLinkGroups || _disposed) return;
         if (link.Id is not Guid linkId)
         {
             _errorMessage = "The selected link has no identifier.";
@@ -702,7 +1111,7 @@
         var dialog = await FooterLinkDialog.ShowAsync(DialogService, "Edit Link", parameters);
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is UpdateFooterLinkRequest updateModel)
+        if (!_disposed && CanManageLinkGroups && !result.Canceled && result.Data is UpdateFooterLinkRequest updateModel)
         {
             await UpdateLinkAsync(linkId, updateModel);
         }
@@ -710,11 +1119,13 @@
 
     private async Task CreateLinkAsync(CreateFooterLinkRequest model)
     {
-        if (_selectedGroup?.Id is not Guid groupId) return;
+        if (!CanManageLinkGroups || _disposed || _selectedGroup?.Id is not Guid groupId) return;
 
+        var cancellationToken = _lifetimeCts.Token;
         try
         {
-            var response = await FooterService.CreateLinkAsync(groupId, model);
+            var response = await FooterService.CreateLinkAsync(groupId, model, cancellationToken);
+            if (_disposed) return;
             if (response?.Success == true)
             {
                 Snackbar.Add("Link added.", Severity.Success);
@@ -726,17 +1137,26 @@
                 _errorMessage = response?.Message ?? "Failed to add link.";
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception)
         {
-            _errorMessage = "An error occurred while adding the link.";
+            if (!_disposed)
+            {
+                _errorMessage = "An error occurred while adding the link.";
+            }
         }
     }
 
     private async Task UpdateLinkAsync(Guid id, UpdateFooterLinkRequest model)
     {
+        if (!CanManageLinkGroups || _disposed) return;
+        var cancellationToken = _lifetimeCts.Token;
         try
         {
-            var response = await FooterService.UpdateLinkAsync(id, model);
+            var response = await FooterService.UpdateLinkAsync(id, model, cancellationToken);
+            if (_disposed) return;
             if (response?.Success == true)
             {
                 Snackbar.Add("Link updated.", Severity.Success);
@@ -747,14 +1167,21 @@
                 _errorMessage = response?.Message ?? "Failed to update link.";
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception)
         {
-            _errorMessage = "An error occurred while updating the link.";
+            if (!_disposed)
+            {
+                _errorMessage = "An error occurred while updating the link.";
+            }
         }
     }
 
     private async Task DeleteLink(FooterLinkItemDto link)
     {
+        if (!CanManageLinkGroups || _disposed) return;
         if (link.Id is not Guid linkId)
         {
             _errorMessage = "The selected link has no identifier.";
@@ -767,11 +1194,13 @@
             yesText: "Delete",
             cancelText: "Cancel");
 
-        if (confirmed == true)
+        if (confirmed == true && !_disposed && CanManageLinkGroups)
         {
+            var cancellationToken = _lifetimeCts.Token;
             try
             {
-                var deleted = await FooterService.DeleteLinkAsync(linkId);
+                var deleted = await FooterService.DeleteLinkAsync(linkId, cancellationToken);
+                if (_disposed) return;
                 if (deleted)
                 {
                     Snackbar.Add("Link deleted.", Severity.Success);
@@ -783,9 +1212,15 @@
                     _errorMessage = "Failed to delete link.";
                 }
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+            }
             catch (Exception)
             {
-                _errorMessage = "An error occurred while deleting the link.";
+                if (!_disposed)
+                {
+                    _errorMessage = "An error occurred while deleting the link.";
+                }
             }
         }
     }
@@ -806,5 +1241,16 @@
             "youtube" => "YouTube",
             _ => char.ToUpperInvariant(platform[0]) + platform[1..]
         };
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        CancelDebounce(ref _descriptionDebounceCts);
+        CancelDebounce(ref _socialLinksDebounceCts);
+        CancelDebounce(ref _copyrightDebounceCts);
+        _lifetimeCts.Cancel();
+        _lifetimeCts.Dispose();
+    }
 
 }

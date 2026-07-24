@@ -25,12 +25,16 @@
 
         <MudTextField T="string" Label="Username"
                       Variant="Variant.Outlined"
-                      @bind-Value="Model.Username" />
+                      Value="Username"
+                      ValueChanged="UsernameChanged"
+                      HelperText="@(Model.UsernameConfigured == true ? "A username is configured. Leave blank to keep it." : "No username is configured.")" />
 
         <MudTextField T="string" Label="Password"
                       Variant="Variant.Outlined"
-                      @bind-Value="Model.Password"
-                      InputType="InputType.Password" />
+                      Value="Password"
+                      ValueChanged="PasswordChanged"
+                      InputType="InputType.Password"
+                      HelperText="@(Model.PasswordConfigured == true ? "A password is configured. Leave blank to keep it." : "No password is configured.")" />
 
         <MudSelect T="string"
                    Label="Security Mode"
@@ -114,6 +118,18 @@
 
     [Parameter]
     public EventCallback<bool> LockForTenantsChanged { get; set; }
+
+    [Parameter]
+    public string Username { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> UsernameChanged { get; set; }
+
+    [Parameter]
+    public string Password { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> PasswordChanged { get; set; }
 
     private bool _isTesting;
     private SmtpConnectionTestResultDto? _testResult;

@@ -209,7 +209,7 @@
                         }
                         else if (_currentSection == "branding")
                         {
-                            <TenantBrandingSection Model="_brandingModel" IsSaving="_submitState.IsSubmitting" />
+                            <TenantBrandingSection Model="_brandingModel" />
                         }
                         else if (_currentSection == "announcement-bar")
                         {
@@ -252,7 +252,7 @@
                         }
                         else if (_currentSection == "storage" && _model.CanOverrideStorage == true)
                         {
-                            <TenantStorageSection Model="_storageModel" IsSaving="_submitState.IsSubmitting" />
+                            <TenantStorageSection Model="_storageModel" />
                         }
                         else if (_currentSection == "analytics" && _model.CanOverrideAnalytics == true)
                         {
@@ -478,18 +478,6 @@
             return;
         }
 
-        if (_currentSection == "branding")
-        {
-            await SaveBrandingAsync();
-            return;
-        }
-
-        if (_currentSection == "storage" && _model.CanOverrideStorage == true)
-        {
-            await SaveStorageAsync();
-            return;
-        }
-
         _submitState.Start();
         _errorMessage = null;
         var response = await TenantOnboardingService.UpdateSettingsAsync(
@@ -580,43 +568,6 @@
         _errorMessage = "Failed to save public experience settings.";
     }
 
-    private async Task SaveBrandingAsync()
-    {
-        _submitState.Start();
-        _errorMessage = null;
-
-        TenantBrandingSettingsSaveResult response = await TenantBrandingSettingsAdminService.SaveAsync(_brandingModel);
-        _submitState.Complete();
-
-        if (response.Success && response.Model is not null)
-        {
-            _brandingModel = response.Model;
-            await RefreshShellExperienceAsync();
-            Snackbar.Add("Tenant branding settings saved.", Severity.Success);
-            return;
-        }
-
-        _errorMessage = "Failed to save tenant branding settings.";
-    }
-
-    private async Task SaveStorageAsync()
-    {
-        _submitState.Start();
-        _errorMessage = null;
-
-        var response = await TenantStorageSettingsAdminService.SaveAsync(_storageModel);
-        _submitState.Complete();
-
-        if (response.Success == true)
-        {
-            _storageModel = await TenantStorageSettingsAdminService.GetAsync();
-            Snackbar.Add("Tenant storage settings saved.", Severity.Success);
-            return;
-        }
-
-        _errorMessage = "Failed to save tenant storage settings.";
-    }
-
     private void SelectSection(string section)
     {
         _currentSection = section;
@@ -637,13 +588,11 @@
         _currentSection switch
         {
             "support-access-evidence" => false,
-            "branding" => _brandingModel.Exists && _brandingModel.CanReplace,
-            "storage" => _storageModel.IsEditable(),
             _ => true
         };
 
     private bool IsReadOnlySection =>
-        _currentSection is "policies" or "nav-links" or "support-access-evidence" or "webhooks" or "shell";
+        _currentSection is "policies" or "branding" or "storage" or "nav-links" or "support-access-evidence" or "webhooks" or "shell";
 
     private async Task RefreshShellExperienceAsync()
     {

@@ -3,6 +3,7 @@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components.Web
 
 <div class="settings-section">
     <div class="settings-section-header">
@@ -15,6 +16,8 @@
         <MudTextField T="string" Label="Instance Base Domain"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.InstanceBaseDomain"
+                      OnBlur="@(EventCallback.Factory.Create<FocusEventArgs>(this, SaveBaseDomainAsync))"
+                      Disabled="_isSaving"
                       Placeholder="example.com"
                       HelperText="Used for tenant subdomains (e.g., tenant.example.com)." />
 
@@ -23,30 +26,37 @@
             <MudTextField T="string" Label="Dedicated Admin Host"
                           Variant="Variant.Outlined"
                           @bind-Value="Model.AdminHost"
+                          OnBlur="@(EventCallback.Factory.Create<FocusEventArgs>(this, SaveAdminHostAsync))"
+                          Disabled="_isSaving"
                           Placeholder="admin.example.org"
                           HelperText="Optional operator host for the multi-tenant control plane." />
         }
 
         <MudSwitch T="bool"
                    Value="Model.AllowTenantCustomDomains == true"
-                   ValueChanged="@(value => Model.AllowTenantCustomDomains = value)"
+                   ValueChanged="OnAllowCustomDomainsChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Primary">
             Allow tenant custom domains
         </MudSwitch>
 
         <MudSwitch T="bool"
                    Value="Model.LockTenantSubdomain == true"
-                   ValueChanged="@(value => Model.LockTenantSubdomain = value)"
+                   ValueChanged="OnLockSubdomainChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Primary">
             Lock tenant subdomain changes
         </MudSwitch>
 
         <MudSwitch T="bool"
                    Value="Model.LockTenantCustomDomain == true"
-                   ValueChanged="@(value => Model.LockTenantCustomDomain = value)"
+                   ValueChanged="OnLockCustomDomainChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Primary">
             Lock tenant custom domain changes
         </MudSwitch>
+        <div role="status" aria-live="polite" aria-atomic="true">@_saveStatus</div>
+        <div role="alert">@_saveError</div>
     </MudStack>
 </div>
 
@@ -56,4 +66,56 @@
 
     [Parameter]
     public bool IsMultiTenantMode { get; set; }
+
+    [Parameter, EditorRequired]
+    public Func<DomainSettingsDto, Task<BaseCommandResponseOfGuid>> SaveDomainAsync { get; set; } = null!;
+
+    private bool _isSaving;
+    private string? _saveStatus;
+    private string? _saveError;
+
+    private Task SaveBaseDomainAsync() => SaveAsync(new() { InstanceBaseDomain = Model.InstanceBaseDomain });
+    private Task SaveAdminHostAsync() => SaveAsync(new() { AdminHost = Model.AdminHost });
+
+    private Task OnAllowCustomDomainsChangedAsync(bool value)
+    {
+        Model.AllowTenantCustomDomains = value;
+        return SaveAsync(new() { AllowTenantCustomDomains = value });
+    }
+
+    private Task OnLockSubdomainChangedAsync(bool value)
+    {
+        Model.LockTenantSubdomain = value;
+        return SaveAsync(new() { LockTenantSubdomain = value });
+    }
+
+    private Task OnLockCustomDomainChangedAsync(bool value)
+    {
+        Model.LockTenantCustomDomain = value;
+        return SaveAsync(new() { LockTenantCustomDomain = value });
+    }
+
+    private async Task SaveAsync(DomainSettingsDto patch)
+    {
+        _isSaving = true;
+        _saveStatus = "Saving domain settings...";
+        _saveError = null;
+        try
+        {
+            BaseCommandResponseOfGuid response = await SaveDomainAsync(patch);
+            _saveStatus = response.Success == true ? "Domain settings saved." : null;
+            _saveError = response.Success == true
+                ? null
+                : string.IsNullOrWhiteSpace(response.Message) ? "Domain settings could not be saved." : response.Message;
+        }
+        catch (Exception)
+        {
+            _saveStatus = null;
+            _saveError = "Domain settings could not be saved.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
 }

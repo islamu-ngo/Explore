@@ -37,19 +37,19 @@ public interface IInstanceOnboardingService
     Task<BaseCommandResponseOfGuid> UpdateRenderPolicyAsync(RenderPolicySettingsDto settings);
     Task<BaseCommandResponseOfGuid> UpdateMcpGovernanceSettingsAsync(McpGovernanceSettingsDto settings);
     Task<BaseCommandResponseOfGuid> UpdateAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceSettingsDto settings);
+    Task<BaseCommandResponseOfGuid> UpdateAiAssistantProviderConfigurationAsync(AiAssistantProviderConfigurationWriteDto settings);
 
     Task<HalResourceOfInstanceStorageSettingsDto> GetStorageSettingsAsync();
     Task<BaseCommandResponseOfGuid> UpdateStorageSettingsAsync(HalResourceOfInstanceStorageSettingsDto settings);
     Task<InstanceStorageProviderStatusDto> TestStorageConnectionAsync();
     Task<InstanceStorageUsageDto?> RecalculateStorageUsageAsync();
     Task<InstanceSmtpSettingsDto> GetSmtpSettingsAsync();
-    Task<BaseCommandResponseOfGuid> UpdateSmtpSettingsAsync(InstanceSmtpSettingsDto settings);
+    Task<BaseCommandResponseOfGuid> UpdateSmtpSettingsAsync(InstanceSmtpConfigurationWriteDto settings);
     Task<SmtpConnectionTestResultDto> TestSmtpConnectionAsync();
     Task<int> GetActiveTenantCountAsync();
 
     Task<AuthProviderConfigurationDto> GetAuthProviderConfigurationAsync();
     Task<AuthProviderConfigurationDto> GetAuthProviderConfigurationAsAdminAsync();
-    Task<BaseCommandResponseOfGuid> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationDto config);
     Task<BaseCommandResponseOfGuid> BootstrapKeycloakRealmAsync(KeycloakBootstrapRequestDto request);
     Task<KeycloakRealmDoctorResultDto> RunKeycloakRealmDoctorAsync(KeycloakRealmDoctorRequestDto request);
     Task<KeycloakRealmSyncPlanDto> PreviewKeycloakRealmSyncAsync(KeycloakRealmSyncPreviewRequestDto request);
@@ -63,7 +63,6 @@ public interface IInstanceOnboardingService
 
     Task<AuthorizationProviderConfigurationDto> GetAuthorizationProviderConfigurationAsync();
     Task<AuthorizationProviderConfigurationDto> GetAuthorizationProviderConfigurationAsAdminAsync();
-    Task<BaseCommandResponseOfGuid> SaveAuthorizationProviderConfigurationAsync(AuthorizationProviderConfigurationDto config);
     Task<BaseCommandResponseOfGuid> UpdateAuthorizationProviderConfigurationAsAdminAsync(AuthorizationProviderConfigurationDto config);
     Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsync();
     Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsAdminAsync();
@@ -190,31 +189,41 @@ public sealed class InstanceOnboardingService(
             new UpdateDeploymentModeRequest { DeploymentMode = deploymentMode }, cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateModuleSettingsAsync(ModuleSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceModuleSettingsAsync(settings, cancellationToken: ct));
+        SendCommandAsync(ct => api.UpdateInstanceModuleSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateEventPolicyAsync(EventPolicyDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceEventPolicyAsync(settings, cancellationToken: ct));
+        SendCommandAsync(ct => api.UpdateInstanceEventPolicyAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateOrganizationPolicyAsync(OrganizationPolicyDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceOrganizationPolicyAsync(settings, cancellationToken: ct));
+        SendCommandAsync(ct => api.UpdateInstanceOrganizationPolicyAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateBrandingSettingsAsync(BrandingSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceBrandingSettingsAsync(settings, cancellationToken: ct));
+        SendCommandAsync(ct => api.UpdateInstanceBrandingSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateDomainSettingsAsync(DomainSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceDomainSettingsAsync(settings, cancellationToken: ct));
+        SendCommandAsync(ct => api.UpdateInstanceDomainSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateTenantDelegationAsync(TenantDelegationSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceTenantDelegationSettingsAsync(settings, cancellationToken: ct));
+        SendCommandAsync(ct => api.UpdateInstanceTenantDelegationSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateRenderPolicyAsync(RenderPolicySettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceRenderPolicySettingsAsync(settings, cancellationToken: ct));
+        SendCommandAsync(ct => api.UpdateInstanceRenderPolicySettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateMcpGovernanceSettingsAsync(McpGovernanceSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceMcpGovernanceSettingsAsync(settings, cancellationToken: ct));
+        SendCommandAsync(ct => api.UpdateInstanceMcpGovernanceSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceAiAssistantGovernanceSettingsAsync(settings, cancellationToken: ct));
+        SendCommandAsync(ct => api.UpdateInstanceAiAssistantGovernanceSettingsAsync(ToPatch(settings), cancellationToken: ct));
+
+    public Task<BaseCommandResponseOfGuid> UpdateAiAssistantProviderConfigurationAsync(AiAssistantProviderConfigurationWriteDto settings) =>
+        SendCommandAsync(ct => api.UpdateInstanceAiAssistantGovernanceSettingsAsync(new PatchAiAssistantGovernanceSettingsDto
+        {
+            ProviderConfiguration = new OptionalUpdateOfAiAssistantProviderConfigurationWriteDto
+            {
+                HasValue = true,
+                Value = settings
+            }
+        }, cancellationToken: ct));
 
     public async Task<HalResourceOfInstanceStorageSettingsDto> GetStorageSettingsAsync()
     {
@@ -268,8 +277,15 @@ public sealed class InstanceOnboardingService(
     public Task<InstanceSmtpSettingsDto> GetSmtpSettingsAsync() =>
         GetSettingsAsync(ct => api.GetInstanceSmtpSettingsAsync(cancellationToken: ct), () => new());
 
-    public Task<BaseCommandResponseOfGuid> UpdateSmtpSettingsAsync(InstanceSmtpSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceSmtpSettingsAsync(settings, cancellationToken: ct));
+    public Task<BaseCommandResponseOfGuid> UpdateSmtpSettingsAsync(InstanceSmtpConfigurationWriteDto settings) =>
+        SendCommandAsync(ct => api.UpdateInstanceSmtpSettingsAsync(new PatchInstanceSmtpSettingsDto
+        {
+            Configuration = new OptionalUpdateOfInstanceSmtpConfigurationWriteDto
+            {
+                HasValue = true,
+                Value = settings
+            }
+        }, cancellationToken: ct));
 
     public async Task<SmtpConnectionTestResultDto> TestSmtpConnectionAsync()
     {
@@ -302,9 +318,6 @@ public sealed class InstanceOnboardingService(
 
     public Task<AuthProviderConfigurationDto> GetAuthProviderConfigurationAsAdminAsync() =>
         GetSettingsAsync(ct => api.GetInstanceAuthProviderConfigurationAsync(cancellationToken: ct), () => new());
-
-    public Task<BaseCommandResponseOfGuid> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationDto config) =>
-        SendCommandAsync(ct => api.SaveInstanceOnboardingAuthProviderConfigurationAsync(config, cancellationToken: ct));
 
     public async Task<BaseCommandResponseOfGuid> BootstrapKeycloakRealmAsync(KeycloakBootstrapRequestDto request)
     {
@@ -340,7 +353,7 @@ public sealed class InstanceOnboardingService(
             () => BlockedRotation("Keycloak client-secret rotation failed. Check admin access and retry."));
 
     public Task<BaseCommandResponseOfGuid> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationDto config) =>
-        SendCommandAsync(ct => api.UpdateInstanceAuthProviderConfigurationAsync(config, cancellationToken: ct));
+        SendCommandAsync(ct => api.UpdateInstanceAuthProviderConfigurationAsync(ToPatch(config), cancellationToken: ct));
 
     public async Task<bool> IsAuthProviderConfiguredAsync() =>
         await GetAuthProviderConfiguredStateAsync() ?? false;
@@ -367,11 +380,8 @@ public sealed class InstanceOnboardingService(
             ct => api.GetInstanceAuthorizationProviderConfigurationAsync(cancellationToken: ct),
             () => new());
 
-    public Task<BaseCommandResponseOfGuid> SaveAuthorizationProviderConfigurationAsync(AuthorizationProviderConfigurationDto config) =>
-        SendCommandAsync(ct => api.SaveInstanceOnboardingAuthorizationProviderConfigurationAsync(config, cancellationToken: ct));
-
     public Task<BaseCommandResponseOfGuid> UpdateAuthorizationProviderConfigurationAsAdminAsync(AuthorizationProviderConfigurationDto config) =>
-        SendCommandAsync(ct => api.UpdateInstanceAuthorizationProviderConfigurationAsync(config, cancellationToken: ct));
+        SendCommandAsync(ct => api.UpdateInstanceAuthorizationProviderConfigurationAsync(ToPatch(config), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsync() =>
         SendCommandAsync(ct => api.SyncInstanceOnboardingAuthorizationPolicyPackageAsync(cancellationToken: ct));
@@ -468,13 +478,13 @@ public sealed class InstanceOnboardingService(
         GetSettingsAsync(ct => api.GetInstanceAnalyticsGovernanceSettingsAsync(cancellationToken: ct), () => new());
 
     public Task<BaseCommandResponseOfGuid> UpdateAnalyticsGovernanceSettingsAsync(AnalyticsGovernanceSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceAnalyticsGovernanceSettingsAsync(settings, cancellationToken: ct));
+        SendCommandAsync(ct => api.UpdateInstanceAnalyticsGovernanceSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<FooterGovernanceSettingsDto> GetFooterGovernanceSettingsAsync() =>
         GetSettingsAsync(ct => api.GetFooterGovernanceSettingsAsync(cancellationToken: ct), () => new());
 
     public Task<BaseCommandResponseOfGuid> UpdateFooterGovernanceSettingsAsync(FooterGovernanceSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateFooterGovernanceSettingsAsync(settings, cancellationToken: ct));
+        SendCommandAsync(ct => api.UpdateFooterGovernanceSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     private void ApplyKeycloakBootstrapBrowserDefaults(KeycloakBootstrapRequestDto request)
     {
@@ -618,6 +628,178 @@ public sealed class InstanceOnboardingService(
 
     private static BaseCommandResponseOfGuid FailedCommandResponse(string message) =>
         new() { Success = false, Message = message, Errors = [message] };
+
+    private static PatchModuleSettingsDto ToPatch(ModuleSettingsDto settings) => new()
+    {
+        EnableIslamicModule = Optional(settings.EnableIslamicModule),
+        EnableTechModule = Optional(settings.EnableTechModule)
+    };
+
+    private static PatchEventPolicyDto ToPatch(EventPolicyDto settings) => new()
+    {
+        AllowUserSubmittedEvents = Optional(settings.AllowUserSubmittedEvents),
+        AllowOrganizationSubmittedEvents = Optional(settings.AllowOrganizationSubmittedEvents),
+        AllowGroupSubmittedEvents = Optional(settings.AllowGroupSubmittedEvents),
+        EventCardClickOpensDetailPage = Optional(settings.EventCardClickOpensDetailPage),
+        LockTenantEventCardClickBehavior = Optional(settings.LockTenantEventCardClickBehavior)
+    };
+
+    private static PatchOrganizationPolicyDto ToPatch(OrganizationPolicyDto settings) => new()
+    {
+        RequireOrganizationVerification = Optional(settings.RequireOrganizationVerification),
+        AllowTenantToOmitVerification = Optional(settings.AllowTenantToOmitVerification),
+        AllowOrganizationSelfRegistration = Optional(settings.AllowOrganizationSelfRegistration),
+        AllowGroupSelfRegistration = Optional(settings.AllowGroupSelfRegistration)
+    };
+
+    private static PatchBrandingSettingsDto ToPatch(BrandingSettingsDto settings) => new()
+    {
+        DefaultBrandDisplayName = Optional(settings.DefaultBrandDisplayName),
+        DefaultBrandLogoUrl = Optional(settings.DefaultBrandLogoUrl),
+        DefaultBrandFaviconUrl = Optional(settings.DefaultBrandFaviconUrl),
+        DefaultBrandCustomCssUrl = Optional(settings.DefaultBrandCustomCssUrl),
+        LockTenantBrandDisplayName = Optional(settings.LockTenantBrandDisplayName),
+        LockTenantBrandLogoUrl = Optional(settings.LockTenantBrandLogoUrl),
+        LockTenantBrandFaviconUrl = Optional(settings.LockTenantBrandFaviconUrl),
+        LockTenantBrandCustomCssUrl = Optional(settings.LockTenantBrandCustomCssUrl)
+    };
+
+    private static PatchDomainSettingsDto ToPatch(DomainSettingsDto settings) => new()
+    {
+        InstanceBaseDomain = Optional(settings.InstanceBaseDomain),
+        AdminHost = Optional(settings.AdminHost),
+        AllowTenantCustomDomains = Optional(settings.AllowTenantCustomDomains),
+        LockTenantSubdomain = Optional(settings.LockTenantSubdomain),
+        LockTenantCustomDomain = Optional(settings.LockTenantCustomDomain)
+    };
+
+    private static PatchTenantDelegationSettingsDto ToPatch(TenantDelegationSettingsDto settings) => new()
+    {
+        AllowTenantSelfServiceRegistration = Optional(settings.AllowTenantSelfServiceRegistration),
+        AllowTenantWhiteLabeling = Optional(settings.AllowTenantWhiteLabeling),
+        DefaultPublicHomePage = Optional(settings.DefaultPublicHomePage),
+        LockTenantHomePagePreference = Optional(settings.LockTenantHomePagePreference),
+        LockTenantSmtp = Optional(settings.LockTenantSmtp),
+        LockTenantStorage = Optional(settings.LockTenantStorage),
+        LockTenantAnalytics = Optional(settings.LockTenantAnalytics),
+        LockTenantAiAssistant = Optional(settings.LockTenantAiAssistant)
+    };
+
+    private static PatchRenderPolicySettingsDto ToPatch(RenderPolicySettingsDto settings) => new()
+    {
+        RenderPolicyPreset = Optional(settings.RenderPolicyPreset),
+        EnableAdvancedRenderPolicyOverrides = Optional(settings.EnableAdvancedRenderPolicyOverrides),
+        GlobalRenderMode = Optional(settings.GlobalRenderMode),
+        GlobalPrerenderEnabled = Optional(settings.GlobalPrerenderEnabled),
+        PublicSeoRenderMode = Optional(settings.PublicSeoRenderMode),
+        PublicSeoPrerenderEnabled = Optional(settings.PublicSeoPrerenderEnabled),
+        OperationalRenderMode = Optional(settings.OperationalRenderMode),
+        OperationalPrerenderEnabled = Optional(settings.OperationalPrerenderEnabled),
+        AdminRenderMode = Optional(settings.AdminRenderMode),
+        AdminPrerenderEnabled = Optional(settings.AdminPrerenderEnabled),
+        OnboardingRenderMode = Optional(settings.OnboardingRenderMode),
+        OnboardingPrerenderEnabled = Optional(settings.OnboardingPrerenderEnabled),
+        AllowTenantRenderPolicyOverride = Optional(settings.AllowTenantRenderPolicyOverride),
+        LockTenantPublicSeoRenderPolicy = Optional(settings.LockTenantPublicSeoRenderPolicy),
+        LockTenantOperationalRenderPolicy = Optional(settings.LockTenantOperationalRenderPolicy),
+        LockTenantAdminRenderPolicy = Optional(settings.LockTenantAdminRenderPolicy)
+    };
+
+    private static PatchMcpGovernanceSettingsDto ToPatch(McpGovernanceSettingsDto settings) => new()
+    {
+        Enabled = Optional(settings.Enabled),
+        EnableLegacySse = Optional(settings.EnableLegacySse),
+        LockTenantMcp = Optional(settings.LockTenantMcp),
+        LockTenantMcpLegacySse = Optional(settings.LockTenantMcpLegacySse)
+    };
+
+    private static PatchAiAssistantGovernanceSettingsDto ToPatch(AiAssistantGovernanceSettingsDto settings) => new()
+    {
+        Enabled = Optional(settings.Enabled),
+        AllowAnonymousAccess = Optional(settings.AllowAnonymousAccess),
+        ToolProposalsEnabled = Optional(settings.ToolProposalsEnabled),
+        LockTenantAiAssistant = Optional(settings.LockTenantAiAssistant)
+    };
+
+    private static PatchAuthProviderConfigurationDto ToPatch(AuthProviderConfigurationDto config) => new()
+    {
+        Configuration = new OptionalUpdateOfAuthProviderConfigurationWriteDto
+        {
+            HasValue = true,
+            Value = new AuthProviderConfigurationWriteDto
+            {
+                KeycloakEnabled = config.KeycloakEnabled,
+                KeycloakAuthority = config.KeycloakAuthority,
+                KeycloakClientId = config.KeycloakClientId,
+                KeycloakClientSecret = config.KeycloakClientSecret,
+                AtprotoLoginEnabled = config.AtprotoLoginEnabled,
+                AtprotoPublicUrl = config.AtprotoPublicUrl,
+                GoogleSsoEnabled = config.GoogleSsoEnabled,
+                GoogleClientId = config.GoogleClientId,
+                GoogleClientSecret = config.GoogleClientSecret,
+                LockKeycloakEnabled = config.LockKeycloakEnabled,
+                LockAtprotoLoginEnabled = config.LockAtprotoLoginEnabled,
+                LockGoogleSsoEnabled = config.LockGoogleSsoEnabled
+            }
+        }
+    };
+
+    private static PatchAuthorizationProviderConfigurationDto ToPatch(AuthorizationProviderConfigurationDto config) => new()
+    {
+        Configuration = new OptionalUpdateOfAuthorizationProviderConfigurationWriteDto
+        {
+            HasValue = true,
+            Value = new AuthorizationProviderConfigurationWriteDto
+            {
+                Provider = config.Provider,
+                CerbosGrpcEndpoint = config.CerbosGrpcEndpoint,
+                CerbosAdminEndpoint = config.CerbosAdminEndpoint,
+                CerbosAdminUsername = config.CerbosAdminUsername,
+                CerbosAdminPassword = config.CerbosAdminPassword
+            }
+        }
+    };
+
+    private static PatchAnalyticsGovernanceSettingsDto ToPatch(AnalyticsGovernanceSettingsDto settings) => new()
+    {
+        CookieConsentEnabled = Optional(settings.CookieConsentEnabled),
+        DeclineBehavior = Optional(settings.DeclineBehavior),
+        ConsentCookieLifetimeDays = Optional(settings.ConsentCookieLifetimeDays),
+        GlobalDisableClientTracking = Optional(settings.GlobalDisableClientTracking),
+        PosthogCookielessMode = Optional(settings.PosthogCookielessMode),
+        PosthogPersonProfiles = Optional(settings.PosthogPersonProfiles),
+        PosthogSessionReplay = Optional(settings.PosthogSessionReplay),
+        PosthogAutocapture = Optional(settings.PosthogAutocapture),
+        PosthogHeatmaps = Optional(settings.PosthogHeatmaps),
+        PosthogToolbar = Optional(settings.PosthogToolbar)
+    };
+
+    private static PatchFooterGovernanceSettingsDto ToPatch(FooterGovernanceSettingsDto settings) => new()
+    {
+        LockTenantTemplate = Optional(settings.LockTenantTemplate),
+        LockTenantLinkGroups = Optional(settings.LockTenantLinkGroups),
+        LockTenantSocialLinks = Optional(settings.LockTenantSocialLinks),
+        LockTenantDescription = Optional(settings.LockTenantDescription),
+        LockTenantCopyright = Optional(settings.LockTenantCopyright)
+    };
+
+    private static OptionalUpdateOfboolean? Optional(bool? value) =>
+        value.HasValue ? new() { HasValue = true, Value = value } : null;
+
+    private static OptionalUpdateOfint? Optional(int? value) =>
+        value.HasValue ? new() { HasValue = true, Value = value } : null;
+
+    private static OptionalUpdateOfstring? Optional(string? value) =>
+        value is not null ? new() { HasValue = true, Value = value } : null;
+
+    private static OptionalUpdateOfDeclineBehavior? Optional(DeclineBehavior? value) =>
+        value.HasValue ? new() { HasValue = true, Value = value } : null;
+
+    private static OptionalUpdateOfPosthogCookielessMode? Optional(PosthogCookielessMode? value) =>
+        value.HasValue ? new() { HasValue = true, Value = value } : null;
+
+    private static OptionalUpdateOfPosthogPersonProfiles? Optional(PosthogPersonProfiles? value) =>
+        value.HasValue ? new() { HasValue = true, Value = value } : null;
 
     private static ICollection<string> MergeBootstrapValues(ICollection<string>? currentValues, string requiredValue) =>
         (currentValues ?? [])

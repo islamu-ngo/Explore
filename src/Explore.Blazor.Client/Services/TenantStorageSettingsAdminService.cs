@@ -8,7 +8,9 @@ namespace Explore.Blazor.Client.Services;
 public interface ITenantStorageSettingsAdminService
 {
     Task<HalResourceOfTenantStorageSettingsDto> GetAsync(CancellationToken cancellationToken = default);
-    Task<BaseCommandResponseOfGuid> SaveAsync(HalResourceOfTenantStorageSettingsDto settings, CancellationToken cancellationToken = default);
+    Task<BaseCommandResponseOfGuid> PatchPolicyAsync(HalResourceOfTenantStorageSettingsDto settings, CancellationToken cancellationToken = default);
+    Task<BaseCommandResponseOfGuid> PatchS3Async(HalResourceOfTenantStorageSettingsDto settings, CancellationToken cancellationToken = default);
+    Task<BaseCommandResponseOfGuid> PatchS3CredentialsAsync(HalResourceOfTenantStorageSettingsDto settings, CancellationToken cancellationToken = default);
 }
 
 public sealed class TenantStorageSettingsAdminService(
@@ -29,9 +31,38 @@ public sealed class TenantStorageSettingsAdminService(
         }
     }
 
-    public async Task<BaseCommandResponseOfGuid> SaveAsync(
+    public Task<BaseCommandResponseOfGuid> PatchPolicyAsync(
+        HalResourceOfTenantStorageSettingsDto settings,
+        CancellationToken cancellationToken = default) =>
+        PatchAsync(settings, settings.ToPolicyPatchRequest(), "policy", cancellationToken);
+
+    public Task<BaseCommandResponseOfGuid> PatchS3Async(
+        HalResourceOfTenantStorageSettingsDto settings,
+        CancellationToken cancellationToken = default) =>
+        PatchAsync(settings, settings.ToS3PatchRequest(), "S3", cancellationToken);
+
+    public Task<BaseCommandResponseOfGuid> PatchS3CredentialsAsync(
         HalResourceOfTenantStorageSettingsDto settings,
         CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(settings.S3AccessKeyId)
+            || string.IsNullOrWhiteSpace(settings.S3SecretAccessKey))
+        {
+            return Task.FromResult(new BaseCommandResponseOfGuid
+            {
+                Success = false,
+                Message = "Both S3 credential values are required."
+            });
+        }
+
+        return PatchAsync(settings, settings.ToS3CredentialsPatchRequest(), "S3 credentials", cancellationToken);
+    }
+
+    private async Task<BaseCommandResponseOfGuid> PatchAsync(
+        HalResourceOfTenantStorageSettingsDto settings,
+        PatchTenantStorageSettingsDto request,
+        string group,
+        CancellationToken cancellationToken)
     {
         if (!settings.IsEditable())
         {
@@ -45,12 +76,12 @@ public sealed class TenantStorageSettingsAdminService(
         try
         {
             return await api.PatchTenantStorageSettingsAsync(
-                settings.ToPatchRequest(),
+                request,
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to save tenant storage settings.");
+            logger.LogError(ex, "Failed to patch tenant storage {Group} settings.", group);
             return new BaseCommandResponseOfGuid
             {
                 Success = false,

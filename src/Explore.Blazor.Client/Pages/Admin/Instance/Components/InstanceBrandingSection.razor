@@ -3,6 +3,7 @@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components.Web
 
 <div class="settings-section">
     <div class="settings-section-header">
@@ -21,19 +22,27 @@
     <MudStack Spacing="3">
         <MudTextField T="string" Label="Brand Display Name"
                       Variant="Variant.Outlined"
-                      @bind-Value="Model.DefaultBrandDisplayName" />
+                      @bind-Value="Model.DefaultBrandDisplayName"
+                      OnBlur="@(EventCallback.Factory.Create<FocusEventArgs>(this, SaveDisplayNameAsync))"
+                      Disabled="_isSaving" />
 
         <MudTextField T="string" Label="Brand Logo URL"
                       Variant="Variant.Outlined"
-                      @bind-Value="Model.DefaultBrandLogoUrl" />
+                      @bind-Value="Model.DefaultBrandLogoUrl"
+                      OnBlur="@(EventCallback.Factory.Create<FocusEventArgs>(this, SaveLogoUrlAsync))"
+                      Disabled="_isSaving" />
 
         <MudTextField T="string" Label="Brand Favicon URL"
                       Variant="Variant.Outlined"
-                      @bind-Value="Model.DefaultBrandFaviconUrl" />
+                      @bind-Value="Model.DefaultBrandFaviconUrl"
+                      OnBlur="@(EventCallback.Factory.Create<FocusEventArgs>(this, SaveFaviconUrlAsync))"
+                      Disabled="_isSaving" />
 
         <MudTextField T="string" Label="Custom CSS URL (Optional)"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.DefaultBrandCustomCssUrl"
+                      OnBlur="@(EventCallback.Factory.Create<FocusEventArgs>(this, SaveCustomCssUrlAsync))"
+                      Disabled="_isSaving"
                       HelperText="Optional override for a platform-level custom stylesheet." />
 
         @if (!IsSingleTenant)
@@ -43,32 +52,38 @@
 
             <MudSwitch T="bool"
                        Value="Model.LockTenantBrandDisplayName == true"
-                       ValueChanged="@(value => Model.LockTenantBrandDisplayName = value)"
+                       ValueChanged="OnLockDisplayNameChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Primary">
                 Lock tenant brand display name
             </MudSwitch>
 
             <MudSwitch T="bool"
                        Value="Model.LockTenantBrandLogoUrl == true"
-                       ValueChanged="@(value => Model.LockTenantBrandLogoUrl = value)"
+                       ValueChanged="OnLockLogoUrlChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Primary">
                 Lock tenant brand logo
             </MudSwitch>
 
             <MudSwitch T="bool"
                        Value="Model.LockTenantBrandFaviconUrl == true"
-                       ValueChanged="@(value => Model.LockTenantBrandFaviconUrl = value)"
+                       ValueChanged="OnLockFaviconUrlChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Primary">
                 Lock tenant brand favicon
             </MudSwitch>
 
             <MudSwitch T="bool"
                        Value="Model.LockTenantBrandCustomCssUrl == true"
-                       ValueChanged="@(value => Model.LockTenantBrandCustomCssUrl = value)"
+                       ValueChanged="OnLockCustomCssUrlChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Primary">
                 Lock tenant custom CSS URL
             </MudSwitch>
         }
+        <div role="status" aria-live="polite" aria-atomic="true">@_saveStatus</div>
+        <div role="alert">@_saveError</div>
     </MudStack>
 </div>
 
@@ -79,4 +94,64 @@
     /// <summary>When true, hides lock toggles since there are no tenants to override.</summary>
     [Parameter]
     public bool IsSingleTenant { get; set; }
+
+    [Parameter, EditorRequired]
+    public Func<BrandingSettingsDto, Task<BaseCommandResponseOfGuid>> SaveBrandingAsync { get; set; } = null!;
+
+    private bool _isSaving;
+    private string? _saveStatus;
+    private string? _saveError;
+
+    private Task SaveDisplayNameAsync() => SaveAsync(new() { DefaultBrandDisplayName = Model.DefaultBrandDisplayName });
+    private Task SaveLogoUrlAsync() => SaveAsync(new() { DefaultBrandLogoUrl = Model.DefaultBrandLogoUrl });
+    private Task SaveFaviconUrlAsync() => SaveAsync(new() { DefaultBrandFaviconUrl = Model.DefaultBrandFaviconUrl });
+    private Task SaveCustomCssUrlAsync() => SaveAsync(new() { DefaultBrandCustomCssUrl = Model.DefaultBrandCustomCssUrl });
+
+    private Task OnLockDisplayNameChangedAsync(bool value)
+    {
+        Model.LockTenantBrandDisplayName = value;
+        return SaveAsync(new() { LockTenantBrandDisplayName = value });
+    }
+
+    private Task OnLockLogoUrlChangedAsync(bool value)
+    {
+        Model.LockTenantBrandLogoUrl = value;
+        return SaveAsync(new() { LockTenantBrandLogoUrl = value });
+    }
+
+    private Task OnLockFaviconUrlChangedAsync(bool value)
+    {
+        Model.LockTenantBrandFaviconUrl = value;
+        return SaveAsync(new() { LockTenantBrandFaviconUrl = value });
+    }
+
+    private Task OnLockCustomCssUrlChangedAsync(bool value)
+    {
+        Model.LockTenantBrandCustomCssUrl = value;
+        return SaveAsync(new() { LockTenantBrandCustomCssUrl = value });
+    }
+
+    private async Task SaveAsync(BrandingSettingsDto patch)
+    {
+        _isSaving = true;
+        _saveStatus = "Saving branding settings...";
+        _saveError = null;
+        try
+        {
+            BaseCommandResponseOfGuid response = await SaveBrandingAsync(patch);
+            _saveStatus = response.Success == true ? "Branding settings saved." : null;
+            _saveError = response.Success == true
+                ? null
+                : string.IsNullOrWhiteSpace(response.Message) ? "Branding settings could not be saved." : response.Message;
+        }
+        catch (Exception)
+        {
+            _saveStatus = null;
+            _saveError = "Branding settings could not be saved.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
 }

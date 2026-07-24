@@ -17,35 +17,40 @@
 
         <MudSwitch T="bool"
                    Value="Model.LockTenantTemplate == true"
-                   ValueChanged="@(value => Model.LockTenantTemplate = value)"
+                   ValueChanged="OnLockTemplateChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Primary">
             Lock tenant footer template
         </MudSwitch>
 
         <MudSwitch T="bool"
                    Value="Model.LockTenantLinkGroups == true"
-                   ValueChanged="@(value => Model.LockTenantLinkGroups = value)"
+                   ValueChanged="OnLockLinkGroupsChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Primary">
             Lock tenant link groups
         </MudSwitch>
 
         <MudSwitch T="bool"
                    Value="Model.LockTenantSocialLinks == true"
-                   ValueChanged="@(value => Model.LockTenantSocialLinks = value)"
+                   ValueChanged="OnLockSocialLinksChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Primary">
             Lock tenant social links
         </MudSwitch>
 
         <MudSwitch T="bool"
                    Value="Model.LockTenantDescription == true"
-                   ValueChanged="@(value => Model.LockTenantDescription = value)"
+                   ValueChanged="OnLockDescriptionChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Primary">
             Lock tenant description
         </MudSwitch>
 
         <MudSwitch T="bool"
                    Value="Model.LockTenantCopyright == true"
-                   ValueChanged="@(value => Model.LockTenantCopyright = value)"
+                   ValueChanged="OnLockCopyrightChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Primary">
             Lock tenant copyright text
         </MudSwitch>
@@ -56,6 +61,8 @@
                 In single-tenant mode, these locks have no effect since you are the only administrator.
             </MudAlert>
         }
+        <div role="status" aria-live="polite" aria-atomic="true">@_saveStatus</div>
+        <div role="alert">@_saveError</div>
     </MudStack>
 </div>
 
@@ -66,4 +73,65 @@
     /// <summary>When true, shows an informational note that locks have no effect.</summary>
     [Parameter]
     public bool IsSingleTenant { get; set; }
+
+    [Parameter, EditorRequired]
+    public Func<FooterGovernanceSettingsDto, Task<BaseCommandResponseOfGuid>> SaveFooterGovernanceAsync { get; set; } = null!;
+
+    private bool _isSaving;
+    private string? _saveStatus;
+    private string? _saveError;
+
+    private Task OnLockTemplateChangedAsync(bool value)
+    {
+        Model.LockTenantTemplate = value;
+        return SaveAsync(new() { LockTenantTemplate = value });
+    }
+
+    private Task OnLockLinkGroupsChangedAsync(bool value)
+    {
+        Model.LockTenantLinkGroups = value;
+        return SaveAsync(new() { LockTenantLinkGroups = value });
+    }
+
+    private Task OnLockSocialLinksChangedAsync(bool value)
+    {
+        Model.LockTenantSocialLinks = value;
+        return SaveAsync(new() { LockTenantSocialLinks = value });
+    }
+
+    private Task OnLockDescriptionChangedAsync(bool value)
+    {
+        Model.LockTenantDescription = value;
+        return SaveAsync(new() { LockTenantDescription = value });
+    }
+
+    private Task OnLockCopyrightChangedAsync(bool value)
+    {
+        Model.LockTenantCopyright = value;
+        return SaveAsync(new() { LockTenantCopyright = value });
+    }
+
+    private async Task SaveAsync(FooterGovernanceSettingsDto patch)
+    {
+        _isSaving = true;
+        _saveStatus = "Saving footer governance...";
+        _saveError = null;
+        try
+        {
+            BaseCommandResponseOfGuid response = await SaveFooterGovernanceAsync(patch);
+            _saveStatus = response.Success == true ? "Footer governance saved." : null;
+            _saveError = response.Success == true
+                ? null
+                : string.IsNullOrWhiteSpace(response.Message) ? "Footer governance could not be saved." : response.Message;
+        }
+        catch (Exception)
+        {
+            _saveStatus = null;
+            _saveError = "Footer governance could not be saved.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
 }

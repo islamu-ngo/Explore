@@ -105,20 +105,31 @@
                         </div>
                         @if (_currentSection == "governance")
                         {
-                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" Mcp="_mcp" DeploymentMode="@_deploymentMode" DisplayMode="general" />
+                            <InstanceGovernanceSection Delegation="_delegation"
+                                                       EventPolicy="_eventPolicy"
+                                                       OrganizationPolicy="_orgPolicy"
+                                                       RenderPolicy="_renderPolicy"
+                                                       Mcp="_mcp"
+                                                       DeploymentMode="@_deploymentMode"
+                                                       DisplayMode="general"
+                                                       SaveDelegationAsync="SaveDelegationAsync"
+                                                       SaveEventPolicyAsync="SaveEventPolicyAsync"
+                                                       SaveOrganizationPolicyAsync="SaveOrganizationPolicyAsync"
+                                                       SaveRenderPolicyAsync="SaveRenderPolicyAsync"
+                                                       SaveMcpAsync="SaveMcpAsync" />
                             @if (IsSingleTenantMode)
                             {
                                 <MudDivider Class="my-6" />
-                                <InstanceBrandingSection Model="_branding" IsSingleTenant="true" />
+                                <InstanceBrandingSection Model="_branding" IsSingleTenant="true" SaveBrandingAsync="SaveBrandingAsync" />
                             }
                         }
                         else if (_currentSection == "domain")
                         {
-                        <InstanceDomainSection Model="_domain" IsMultiTenantMode="!IsSingleTenantMode" />
+                        <InstanceDomainSection Model="_domain" IsMultiTenantMode="!IsSingleTenantMode" SaveDomainAsync="SaveDomainAsync" />
                         }
                         else if (_currentSection == "branding" && !IsSingleTenantMode)
                         {
-                            <InstanceBrandingSection Model="_branding" IsSingleTenant="false" />
+                            <InstanceBrandingSection Model="_branding" IsSingleTenant="false" SaveBrandingAsync="SaveBrandingAsync" />
                         }
                         else if (_currentSection == "themes")
                         {
@@ -133,7 +144,13 @@
                         }
                         else if (_currentSection == "modules")
                         {
-                            <InstanceModulesSection Model="_modules" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" IsSingleTenant="IsSingleTenantMode" />
+                            <InstanceModulesSection Model="_modules"
+                                                    EventPolicy="_eventPolicy"
+                                                    OrganizationPolicy="_orgPolicy"
+                                                    IsSingleTenant="IsSingleTenantMode"
+                                                    SaveModuleSettingsAsync="SaveModuleSettingsAsync"
+                                                    SaveEventPolicyAsync="SaveEventPolicyAsync"
+                                                    SaveOrganizationPolicyAsync="SaveOrganizationPolicyAsync" />
                         }
                         else if (_currentSection == "storage")
                         {
@@ -145,20 +162,28 @@
                         else if (_currentSection == "smtp")
                         {
                             <InstanceSmtpSection Model="_smtpModel" OnboardingService="InstanceOnboardingService"
-                                               IsSingleTenant="IsSingleTenantMode"
+                                                Username="_smtpUsername"
+                                                UsernameChanged="@(value => _smtpUsername = value)"
+                                                Password="_smtpPassword"
+                                                PasswordChanged="@(value => _smtpPassword = value)"
+                                                IsSingleTenant="IsSingleTenantMode"
                                                LockForTenants="_delegation.LockTenantSmtp == true"
                                                LockForTenantsChanged="@(v => _delegation.LockTenantSmtp = v)" />
                         }
                         else if (_currentSection == "analytics-privacy")
                         {
                             <InstanceAnalyticsPrivacySection Model="_analyticsModel"
-                                                           IsSingleTenant="IsSingleTenantMode"
-                                                           LockForTenants="_delegation.LockTenantAnalytics == true"
-                                                           LockForTenantsChanged="@(v => _delegation.LockTenantAnalytics = v)" />
+                                                            IsSingleTenant="IsSingleTenantMode"
+                                                            LockForTenants="_delegation.LockTenantAnalytics == true"
+                                                            LockForTenantsChanged="@(v => _delegation.LockTenantAnalytics = v)"
+                                                            SaveAnalyticsAsync="SaveAnalyticsAsync"
+                                                            SaveDelegationAsync="SaveDelegationAsync" />
                         }
                         else if (_currentSection == "footer-governance" && !IsSingleTenantMode)
                         {
-                            <InstanceFooterGovernanceSection Model="_footerGovernance" IsSingleTenant="IsSingleTenantMode" />
+                            <InstanceFooterGovernanceSection Model="_footerGovernance"
+                                                             IsSingleTenant="IsSingleTenantMode"
+                                                             SaveFooterGovernanceAsync="SaveFooterGovernanceAsync" />
                         }
                         else if (_currentSection == "footer" && IsSingleTenantMode && _canManageTenant)
                         {
@@ -178,7 +203,10 @@
                         }
                         else if (_currentSection == "ai")
                         {
-                            <InstanceAiSection AiAssistant="_aiAssistant" DeploymentMode="_deploymentMode" />
+                            <InstanceAiSection AiAssistant="_aiAssistant"
+                                               DeploymentMode="_deploymentMode"
+                                               SaveAiAssistantAsync="SaveAiAssistantAsync"
+                                               SaveAiProviderConfigurationAsync="SaveAiProviderConfigurationAsync" />
                         }
                         else if (_currentSection == "policies" && IsSingleTenantMode && _canManageTenant)
                         {
@@ -204,7 +232,19 @@
                         }
                         else if (_currentSection == "advanced")
                         {
-                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" Mcp="_mcp" DeploymentMode="@_deploymentMode" DisplayMode="advanced" SuppressAtprotoGovernance="@(IsSingleTenantMode && _canManageTenant)" />
+                            <InstanceGovernanceSection Delegation="_delegation"
+                                                       EventPolicy="_eventPolicy"
+                                                       OrganizationPolicy="_orgPolicy"
+                                                       RenderPolicy="_renderPolicy"
+                                                       Mcp="_mcp"
+                                                       DeploymentMode="@_deploymentMode"
+                                                       DisplayMode="advanced"
+                                                       SuppressAtprotoGovernance="@(IsSingleTenantMode && _canManageTenant)"
+                                                       SaveDelegationAsync="SaveDelegationAsync"
+                                                       SaveEventPolicyAsync="SaveEventPolicyAsync"
+                                                       SaveOrganizationPolicyAsync="SaveOrganizationPolicyAsync"
+                                                       SaveRenderPolicyAsync="SaveRenderPolicyAsync"
+                                                       SaveMcpAsync="SaveMcpAsync" />
                         }
                         else if (_currentSection == "access-tokens")
                         {
@@ -297,6 +337,8 @@
     // Infrastructure models
     private HalResourceOfInstanceStorageSettingsDto _storageModel = new();
     private InstanceSmtpSettingsDto _smtpModel = new();
+    private string _smtpUsername = string.Empty;
+    private string _smtpPassword = string.Empty;
     private AuthProviderConfigurationDto _authProviderModel = new();
     private AuthorizationProviderConfigurationDto _authorizationProviderModel = new();
     private TenantPolicySettingsDto _tenantModel = new();
@@ -322,7 +364,7 @@
     private bool CanSaveCurrentSection => _currentSection != "storage" || _storageModel.HasLink("edit");
 
     private static bool IsSettingsSection(string section) =>
-        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "announcement-bar" or "public-experience" or "advanced" or "analytics-privacy" or "footer-governance" or "ai"
+        section is "auth-providers" or "storage" or "smtp" or "announcement-bar" or "public-experience"
             // Localization and Footer manage their own Save button
             ;
 
@@ -402,6 +444,158 @@
         StateHasChanged();
     }
 
+    private async Task<BaseCommandResponseOfGuid> SaveModuleSettingsAsync(ModuleSettingsDto patch)
+    {
+        BaseCommandResponseOfGuid response = await InstanceOnboardingService.UpdateModuleSettingsAsync(patch);
+        if (response.Success != true)
+        {
+            _modules = await InstanceOnboardingService.GetModuleSettingsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+
+        return response;
+    }
+
+    private async Task<BaseCommandResponseOfGuid> SaveEventPolicyAsync(EventPolicyDto patch)
+    {
+        BaseCommandResponseOfGuid response = await InstanceOnboardingService.UpdateEventPolicyAsync(patch);
+        if (response.Success != true)
+        {
+            _eventPolicy = await InstanceOnboardingService.GetEventPolicyAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+
+        return response;
+    }
+
+    private async Task<BaseCommandResponseOfGuid> SaveOrganizationPolicyAsync(OrganizationPolicyDto patch)
+    {
+        BaseCommandResponseOfGuid response = await InstanceOnboardingService.UpdateOrganizationPolicyAsync(patch);
+        if (response.Success != true)
+        {
+            _orgPolicy = await InstanceOnboardingService.GetOrganizationPolicyAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+
+        return response;
+    }
+
+    private async Task<BaseCommandResponseOfGuid> SaveDelegationAsync(TenantDelegationSettingsDto patch)
+    {
+        BaseCommandResponseOfGuid response = await InstanceOnboardingService.UpdateTenantDelegationAsync(patch);
+        if (response.Success != true)
+        {
+            _delegation = await InstanceOnboardingService.GetTenantDelegationAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+
+        return response;
+    }
+
+    private async Task<BaseCommandResponseOfGuid> SaveRenderPolicyAsync(RenderPolicySettingsDto patch)
+    {
+        BaseCommandResponseOfGuid response = await InstanceOnboardingService.UpdateRenderPolicyAsync(patch);
+        if (response.Success != true)
+        {
+            _renderPolicy = await InstanceOnboardingService.GetRenderPolicyAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+
+        return response;
+    }
+
+    private async Task<BaseCommandResponseOfGuid> SaveMcpAsync(McpGovernanceSettingsDto patch)
+    {
+        BaseCommandResponseOfGuid response = await InstanceOnboardingService.UpdateMcpGovernanceSettingsAsync(patch);
+        if (response.Success != true)
+        {
+            _mcp = await InstanceOnboardingService.GetMcpGovernanceSettingsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+
+        return response;
+    }
+
+    private async Task<BaseCommandResponseOfGuid> SaveBrandingAsync(BrandingSettingsDto patch)
+    {
+        BaseCommandResponseOfGuid response = await InstanceOnboardingService.UpdateBrandingSettingsAsync(patch);
+        if (response.Success != true)
+        {
+            _branding = await InstanceOnboardingService.GetBrandingSettingsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+
+        return response;
+    }
+
+    private async Task<BaseCommandResponseOfGuid> SaveDomainAsync(DomainSettingsDto patch)
+    {
+        BaseCommandResponseOfGuid response = await InstanceOnboardingService.UpdateDomainSettingsAsync(patch);
+        if (response.Success != true)
+        {
+            _domain = await InstanceOnboardingService.GetDomainSettingsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+
+        return response;
+    }
+
+    private async Task<BaseCommandResponseOfGuid> SaveAnalyticsAsync(AnalyticsGovernanceSettingsDto patch)
+    {
+        BaseCommandResponseOfGuid response = await InstanceOnboardingService.UpdateAnalyticsGovernanceSettingsAsync(patch);
+        if (response.Success != true)
+        {
+            _analyticsModel = await InstanceOnboardingService.GetAnalyticsGovernanceSettingsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+
+        return response;
+    }
+
+    private async Task<BaseCommandResponseOfGuid> SaveFooterGovernanceAsync(FooterGovernanceSettingsDto patch)
+    {
+        BaseCommandResponseOfGuid response = await InstanceOnboardingService.UpdateFooterGovernanceSettingsAsync(patch);
+        if (response.Success != true)
+        {
+            _footerGovernance = await InstanceOnboardingService.GetFooterGovernanceSettingsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+
+        return response;
+    }
+
+    private async Task<BaseCommandResponseOfGuid> SaveAiAssistantAsync(AiAssistantGovernanceSettingsDto patch)
+    {
+        BaseCommandResponseOfGuid response = await InstanceOnboardingService.UpdateAiAssistantGovernanceSettingsAsync(patch);
+        if (response.Success != true)
+        {
+            _aiAssistant = await InstanceOnboardingService.GetAiAssistantGovernanceSettingsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        else
+        {
+            await RefreshShellExperienceAsync();
+        }
+
+        return response;
+    }
+
+    private async Task<BaseCommandResponseOfGuid> SaveAiProviderConfigurationAsync(AiAssistantProviderConfigurationWriteDto configuration)
+    {
+        BaseCommandResponseOfGuid response = await InstanceOnboardingService.UpdateAiAssistantProviderConfigurationAsync(configuration);
+        if (response.Success != true)
+        {
+            _aiAssistant = await InstanceOnboardingService.GetAiAssistantGovernanceSettingsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        else
+        {
+            await RefreshShellExperienceAsync();
+        }
+
+        return response;
+    }
+
     private Task SaveAsync() => SaveAsync(false);
 
     private async Task SaveAsync(bool forceAnnouncementBarRedisplay)
@@ -426,21 +620,6 @@
 
         switch (_currentSection)
         {
-            case "governance":
-                tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(_delegation));
-                tasks.Add(InstanceOnboardingService.UpdateEventPolicyAsync(_eventPolicy));
-                tasks.Add(InstanceOnboardingService.UpdateOrganizationPolicyAsync(_orgPolicy));
-                if (IsSingleTenantMode)
-                {
-                    tasks.Add(InstanceOnboardingService.UpdateBrandingSettingsAsync(_branding));
-                }
-                break;
-            case "domain":
-                tasks.Add(InstanceOnboardingService.UpdateDomainSettingsAsync(_domain));
-                break;
-            case "branding":
-                tasks.Add(InstanceOnboardingService.UpdateBrandingSettingsAsync(_branding));
-                break;
             case "auth-providers":
                 tasks.Add(InstanceOnboardingService.UpdateAuthProviderConfigurationAsAdminAsync(_authProviderModel));
                 if (_authorizationProviderModel.AuthorizationProviderManagedByDeployment != true)
@@ -448,44 +627,26 @@
                     tasks.Add(InstanceOnboardingService.UpdateAuthorizationProviderConfigurationAsAdminAsync(_authorizationProviderModel));
                 }
                 break;
-            case "modules":
-                tasks.Add(InstanceOnboardingService.UpdateModuleSettingsAsync(_modules));
-                tasks.Add(InstanceOnboardingService.UpdateEventPolicyAsync(_eventPolicy));
-                tasks.Add(InstanceOnboardingService.UpdateOrganizationPolicyAsync(_orgPolicy));
-                break;
             case "storage":
                 tasks.Add(InstanceOnboardingService.UpdateStorageSettingsAsync(_storageModel));
-                tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(_delegation));
+                tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(
+                    new TenantDelegationSettingsDto { LockTenantStorage = _delegation.LockTenantStorage }));
                 break;
             case "smtp":
-                tasks.Add(InstanceOnboardingService.UpdateSmtpSettingsAsync(_smtpModel));
-                tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(_delegation));
-                break;
-            case "analytics-privacy":
-                tasks.Add(InstanceOnboardingService.UpdateAnalyticsGovernanceSettingsAsync(_analyticsModel));
-                tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(_delegation));
-                break;
-            case "policies" when IsSingleTenantMode && _canManageTenant:
-                _eventPolicy.AllowUserSubmittedEvents = _tenantModel.AllowUserSubmittedEvents ?? _eventPolicy.AllowUserSubmittedEvents;
-                _eventPolicy.AllowOrganizationSubmittedEvents = _tenantModel.AllowOrganizationSubmittedEvents ?? _eventPolicy.AllowOrganizationSubmittedEvents;
-                _eventPolicy.AllowGroupSubmittedEvents = _tenantModel.AllowGroupSubmittedEvents ?? _eventPolicy.AllowGroupSubmittedEvents;
-                _eventPolicy.EventCardClickOpensDetailPage = _tenantModel.EventCardClickOpensDetailPage ?? _eventPolicy.EventCardClickOpensDetailPage;
-                _orgPolicy.RequireOrganizationVerification = _tenantModel.RequireOrganizationVerification ?? _orgPolicy.RequireOrganizationVerification;
-                _orgPolicy.AllowOrganizationSelfRegistration = _tenantModel.AllowOrganizationSelfRegistration ?? _orgPolicy.AllowOrganizationSelfRegistration;
-                _orgPolicy.AllowGroupSelfRegistration = _tenantModel.AllowGroupSelfRegistration ?? _orgPolicy.AllowGroupSelfRegistration;
-
-                PublicExperienceAdminSaveResult policyResponse = await TenantPublicExperienceAdminService.SaveSingleTenantPolicySettingsAsync(_tenantModel);
-                if (!policyResponse.Success)
+                tasks.Add(InstanceOnboardingService.UpdateSmtpSettingsAsync(new InstanceSmtpConfigurationWriteDto
                 {
-                    _submitState.Complete();
-                    _errorMessage = string.IsNullOrWhiteSpace(policyResponse.Message)
-                        ? "Policy settings failed."
-                        : policyResponse.Message;
-                    return;
-                }
-
-                tasks.Add(InstanceOnboardingService.UpdateEventPolicyAsync(_eventPolicy));
-                tasks.Add(InstanceOnboardingService.UpdateOrganizationPolicyAsync(_orgPolicy));
+                    Host = _smtpModel.Host,
+                    Port = _smtpModel.Port,
+                    Username = _smtpUsername,
+                    Password = _smtpPassword,
+                    Security = _smtpModel.Security,
+                    FromAddress = _smtpModel.FromAddress,
+                    FromName = _smtpModel.FromName,
+                    TimeoutSeconds = _smtpModel.TimeoutSeconds,
+                    SkipCertificateValidation = _smtpModel.SkipCertificateValidation
+                }));
+                tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(
+                    new TenantDelegationSettingsDto { LockTenantSmtp = _delegation.LockTenantSmtp }));
                 break;
             case "announcement-bar" when IsSingleTenantMode && _canManageTenant:
                 var hadAnnouncementBarBeforeSave = _hasAnnouncementBar;
@@ -505,15 +666,6 @@
                 _hasAnnouncementBar = HasUsableAnnouncementBar(_tenantModel);
                 _lastAnnouncementSaveStartedWithExistingBar = hadAnnouncementBarBeforeSave;
                 break;
-            case "ai":
-                _delegation.LockTenantAiAssistant = _aiAssistant.LockTenantAiAssistant;
-                tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(_delegation));
-                tasks.Add(InstanceOnboardingService.UpdateAiAssistantGovernanceSettingsAsync(_aiAssistant));
-                break;
-            case "advanced":
-                tasks.Add(InstanceOnboardingService.UpdateRenderPolicyAsync(_renderPolicy));
-                tasks.Add(InstanceOnboardingService.UpdateMcpGovernanceSettingsAsync(_mcp));
-                break;
         }
 
         if (tasks.Count > 0)
@@ -522,6 +674,10 @@
             var failed = results.FirstOrDefault(r => r.Success != true);
             if (failed is not null)
             {
+                if (_currentSection == "auth-providers")
+                {
+                    await ReloadAuthProviderModelsAsync();
+                }
                 _submitState.Complete();
                 _errorMessage = string.IsNullOrWhiteSpace(failed.Message) ? "Failed to save settings." : failed.Message;
                 return;
@@ -532,6 +688,12 @@
         {
             await InstanceOnboardingService.RefreshAuthSchemesAsync();
         }
+        else if (_currentSection == "smtp")
+        {
+            _smtpUsername = string.Empty;
+            _smtpPassword = string.Empty;
+            _smtpModel = await InstanceOnboardingService.GetSmtpSettingsAsync();
+        }
 
         _submitState.Complete();
         await RefreshShellExperienceAsync(openAiAssistantIfAvailable: ShouldOpenAiAssistantAfterSave());
@@ -541,6 +703,17 @@
             : "Settings saved.";
 
         Snackbar.Add(successMessage, Severity.Success);
+    }
+
+    private async Task ReloadAuthProviderModelsAsync()
+    {
+        Task<AuthProviderConfigurationDto> authTask =
+            InstanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync();
+        Task<AuthorizationProviderConfigurationDto> authorizationTask =
+            InstanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync();
+        await Task.WhenAll(authTask, authorizationTask);
+        _authProviderModel = authTask.Result;
+        _authorizationProviderModel = authorizationTask.Result;
     }
 
     private async Task RemoveAnnouncementBarAsync()

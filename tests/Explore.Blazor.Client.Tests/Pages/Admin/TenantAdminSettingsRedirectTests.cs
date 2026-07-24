@@ -29,6 +29,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _publicExperienceAdminService = _ctx.AddMockService<ITenantPublicExperienceAdminService>();
         _tenantStorageSettingsAdminService = _ctx.AddMockService<ITenantStorageSettingsAdminService>();
         _tenantBrandingSettingsAdminService = _ctx.AddMockService<ITenantBrandingSettingsAdminService>();
+        _ctx.AddMockService<IOrganizationService>();
         _ctx.AddMockService<IUiShellContextService>();
         _ctx.AddMockService<IShellPreferencesService>();
         _publicExperienceAdminService.GetSettingsAsync(Arg.Any<CancellationToken>())
@@ -128,6 +129,53 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         await _tenantOnboardingService.DidNotReceive().UpdateSettingsAsync(
             Arg.Any<TenantPolicySettingsDto>(),
             Arg.Any<bool>());
+    }
+
+    [Test]
+    public async Task TenantAdminSettingsLayout_BrandingAndStorage_DoNotExposeBroadSave()
+    {
+        var management = CreateManagementModel();
+        management.CanOverrideStorage = true;
+        ConfigureAuthorizedManagement(management);
+        _tenantBrandingSettingsAdminService.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(new TenantBrandingSettingsAdminModel
+            {
+                Exists = true,
+                CanReplace = true,
+                CanChangeDisplayName = true,
+                ConcurrencyStamp = Guid.NewGuid()
+            });
+        _tenantStorageSettingsAdminService.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(new HalResourceOfTenantStorageSettingsDto
+            {
+                TenantOverridesAllowed = true,
+                TenantStorageLocked = false,
+                IsReadOnly = false,
+                _links = new Dictionary<string, HalLink>
+                {
+                    ["edit"] = new() { Href = "/api/tenant/settings/storage", Method = "PATCH" }
+                }
+            }.InitializeForEditing());
+        var cut = RenderLayout();
+
+        NavigateTo(cut, "Branding");
+        await Assert.That(cut.Markup).Contains("Brand display name", StringComparison.Ordinal);
+        await Assert.That(cut.Markup).DoesNotContain("Save Tenant Settings", StringComparison.Ordinal);
+
+        NavigateTo(cut, "Object Storage");
+        await Assert.That(cut.Markup).Contains("Tenant Storage Provider", StringComparison.Ordinal);
+        await Assert.That(cut.Markup).DoesNotContain("Save Tenant Settings", StringComparison.Ordinal);
+    }
+
+    [Test]
+    public async Task TenantAdminSettingsLayout_PublicExperience_KeepsBroadSaveAffordance()
+    {
+        ConfigureAuthorizedManagement(CreateManagementModel());
+        var cut = RenderLayout();
+
+        NavigateTo(cut, "Public Experience");
+
+        await Assert.That(cut.Markup).Contains("Save Tenant Settings", StringComparison.Ordinal);
     }
 
     [Test]

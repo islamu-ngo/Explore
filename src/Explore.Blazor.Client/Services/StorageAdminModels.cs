@@ -115,28 +115,40 @@ public static class StorageAdminExtensions
         && settings.TenantStorageLocked != true
         && settings.TenantOverridesAllowed == true;
 
-    public static InstanceStorageSettingsDto ToUpdateRequest(
+    public static PatchInstanceStorageSettingsDto ToUpdateRequest(
         this HalResourceOfInstanceStorageSettingsDto settings) => new()
         {
-            Provider = StorageProviderOptions.Normalize(settings.Provider),
-            DefaultMaxUploadBytes = settings.DefaultMaxUploadBytes,
-            DefaultTenantQuotaBytes = settings.DefaultTenantQuotaBytes,
-            InstanceMaxUploadBytes = settings.InstanceMaxUploadBytes,
-            LockTenantStorage = settings.LockTenantStorage,
-            Routes = settings.Routes?.Select(route => ToRequestRoute(route)).ToList(),
-            S3Endpoint = NullIfWhiteSpace(settings.S3Endpoint),
-            S3PublicEndpoint = NullIfWhiteSpace(settings.S3PublicEndpoint),
-            S3BucketName = NullIfWhiteSpace(settings.S3BucketName),
-            S3AccessKeyId = NullIfWhiteSpace(settings.S3AccessKeyId),
-            S3SecretAccessKey = NullIfWhiteSpace(settings.S3SecretAccessKey),
-            S3AccessKeyConfigured = settings.S3AccessKeyConfigured,
-            S3SecretAccessKeyConfigured = settings.S3SecretAccessKeyConfigured,
-            S3Region = NullIfWhiteSpace(settings.S3Region),
-            S3ForcePathStyle = settings.S3ForcePathStyle,
-            S3UploadUrlExpirationMinutes = settings.S3UploadUrlExpirationMinutes
+            Policy = new OptionalUpdateOfInstanceStoragePolicyWriteDto
+            {
+                HasValue = true,
+                Value = new InstanceStoragePolicyWriteDto
+                {
+                    Provider = StorageProviderOptions.Normalize(settings.Provider),
+                    DefaultMaxUploadBytes = settings.DefaultMaxUploadBytes,
+                    DefaultTenantQuotaBytes = settings.DefaultTenantQuotaBytes,
+                    InstanceMaxUploadBytes = settings.InstanceMaxUploadBytes,
+                    LockTenantStorage = settings.LockTenantStorage,
+                    Routes = settings.Routes?.Select(ToRequestRoute).ToList() ?? []
+                }
+            },
+            S3Configuration = new OptionalUpdateOfInstanceS3ConfigurationWriteDto
+            {
+                HasValue = true,
+                Value = new InstanceS3ConfigurationWriteDto
+                {
+                    Endpoint = NullIfWhiteSpace(settings.S3Endpoint),
+                    PublicEndpoint = NullIfWhiteSpace(settings.S3PublicEndpoint),
+                    BucketName = NullIfWhiteSpace(settings.S3BucketName),
+                    AccessKeyId = NullIfWhiteSpace(settings.S3AccessKeyId),
+                    SecretAccessKey = NullIfWhiteSpace(settings.S3SecretAccessKey),
+                    Region = NullIfWhiteSpace(settings.S3Region),
+                    ForcePathStyle = settings.S3ForcePathStyle,
+                    UploadUrlExpirationMinutes = settings.S3UploadUrlExpirationMinutes
+                }
+            }
         };
 
-    public static PatchTenantStorageSettingsDto ToPatchRequest(
+    public static PatchTenantStorageSettingsDto ToPolicyPatchRequest(
         this HalResourceOfTenantStorageSettingsDto settings) => new()
         {
             Policy = new PatchTenantStoragePolicyDto
@@ -149,14 +161,17 @@ public static class StorageAdminExtensions
                     HasValue = true,
                     Value = settings.Routes?.Select(ToRequestRoute).ToList() ?? []
                 }
-            },
+            }
+        };
+
+    public static PatchTenantStorageSettingsDto ToS3PatchRequest(
+        this HalResourceOfTenantStorageSettingsDto settings) => new()
+        {
             S3 = new PatchTenantStorageS3Dto
             {
                 Endpoint = OptionalString(NullIfWhiteSpace(settings.S3Endpoint)),
                 PublicEndpoint = OptionalString(NullIfWhiteSpace(settings.S3PublicEndpoint)),
                 BucketName = OptionalString(NullIfWhiteSpace(settings.S3BucketName)),
-                AccessKeyId = OptionalSecret(settings.S3AccessKeyId, settings.S3AccessKeyConfigured),
-                SecretAccessKey = OptionalSecret(settings.S3SecretAccessKey, settings.S3SecretAccessKeyConfigured),
                 Region = OptionalString(NullIfWhiteSpace(settings.S3Region)),
                 ForcePathStyle = new OptionalUpdateOfboolean
                 {
@@ -168,6 +183,16 @@ public static class StorageAdminExtensions
                     HasValue = true,
                     Value = settings.S3UploadUrlExpirationMinutes
                 }
+            }
+        };
+
+    public static PatchTenantStorageSettingsDto ToS3CredentialsPatchRequest(
+        this HalResourceOfTenantStorageSettingsDto settings) => new()
+        {
+            S3 = new PatchTenantStorageS3Dto
+            {
+                AccessKeyId = OptionalSecret(settings.S3AccessKeyId),
+                SecretAccessKey = OptionalSecret(settings.S3SecretAccessKey)
             }
         };
 
@@ -259,10 +284,8 @@ public static class StorageAdminExtensions
         Value = value
     };
 
-    private static OptionalUpdateOfstring? OptionalSecret(string? value, bool? isConfigured) =>
-        string.IsNullOrWhiteSpace(value) && isConfigured == true
-            ? null
-            : OptionalString(NullIfWhiteSpace(value));
+    private static OptionalUpdateOfstring? OptionalSecret(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : OptionalString(value.Trim());
 
     private static long PositiveOrDefault(long? value, long fallback) => value is > 0 ? value.Value : fallback;
     private static int PositiveOrDefault(int? value, int fallback) => value is > 0 ? value.Value : fallback;

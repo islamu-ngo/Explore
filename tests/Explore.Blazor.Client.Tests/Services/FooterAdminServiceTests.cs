@@ -33,25 +33,36 @@ public sealed class FooterAdminServiceTests
     }
 
     [Test]
-    public async Task GetFooterSettingsAsync_ReturnsSettings_FromConfigEnvelope()
+    public async Task GetTenantFooterSettingsAsync_ReturnsAuthoritativeHalResource()
     {
-        var settings = new FooterSettingsDto
+        var settings = new HalResourceOfTenantFooterSettingsDto
         {
             Enabled = true,
-            Template = "compact"
+            Template = "compact",
+            LockTenantTemplate = true,
+            _links = new Dictionary<string, HalLink>
+            {
+                ["edit"] = new() { Href = "/api/footer/settings" }
+            }
         };
-        _apiClient.GetFooterConfigAsync(
+        _apiClient.GetTenantFooterSettingsAsync(
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new FooterConfigDto { Settings = settings });
+            .Returns(settings);
         var service = CreateService();
 
-        var result = await service.GetFooterSettingsAsync();
+        var result = await service.GetTenantFooterSettingsAsync();
 
         await Assert.That(result).IsSameReferenceAs(settings);
         await Assert.That(result!.Enabled).IsTrue();
         await Assert.That(result.Template).IsEqualTo("compact");
+        await Assert.That(result.LockTenantTemplate).IsTrue();
+        await Assert.That(result._links!.ContainsKey("edit")).IsTrue();
+        await _apiClient.DidNotReceive().GetFooterConfigAsync(
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -132,7 +143,7 @@ public sealed class FooterAdminServiceTests
     }
 
     [Test]
-    public async Task UpdateTenantSettingsAsync_ForwardsRequestAndReturnsSuccess()
+    public async Task PatchTenantFooterSettingsAsync_ForwardsGroupedRequestAndReturnsSuccess()
     {
         var expected = new BaseCommandResponseOfGuid
         {
@@ -140,24 +151,100 @@ public sealed class FooterAdminServiceTests
             Message = "updated",
             Id = Guid.NewGuid()
         };
-        _apiClient.UpdateTenantFooterSettingsAsync(
-                Arg.Any<UpdateTenantFooterSettingsRequest>(),
+        _apiClient.PatchTenantFooterSettingsAsync(
+                Arg.Any<PatchTenantFooterSettingsDto>(),
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(expected);
         var service = CreateService();
-        var request = new UpdateTenantFooterSettingsRequest { Enabled = true };
+        var request = new PatchTenantFooterSettingsDto
+        {
+            General = new PatchTenantFooterGeneralDto
+            {
+                Enabled = new OptionalUpdateOfboolean { HasValue = true, Value = false },
+                ShowCookieSettingsLink = new OptionalUpdateOfboolean { HasValue = true, Value = true }
+            }
+        };
 
-        var result = await service.UpdateTenantSettingsAsync(request);
+        var result = await service.PatchTenantFooterSettingsAsync(request);
 
         await Assert.That(result).IsSameReferenceAs(expected);
         await Assert.That(result.Success).IsTrue();
-        await _apiClient.Received(1).UpdateTenantFooterSettingsAsync(
+        await Assert.That(request.Template).IsNull();
+        await Assert.That(request.Description).IsNull();
+        await Assert.That(request.SocialLinks).IsNull();
+        await Assert.That(request.Copyright).IsNull();
+        await _apiClient.Received(1).PatchTenantFooterSettingsAsync(
             request,
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task LinkCrudAndReorder_NeverInvokeSettingsPatch()
+    {
+        var success = new BaseCommandResponseOfGuid { Success = true };
+        _apiClient.CreateFooterLinkGroupAsync(
+                Arg.Any<CreateFooterLinkGroupRequest>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(success);
+        _apiClient.UpdateFooterLinkGroupAsync(
+                Arg.Any<Guid>(), Arg.Any<UpdateFooterLinkGroupRequest>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(success);
+        _apiClient.DeleteFooterLinkGroupAsync(
+                Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        _apiClient.ReorderFooterLinkGroupsAsync(
+                Arg.Any<IEnumerable<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(success);
+        _apiClient.CreateFooterLinkAsync(
+                Arg.Any<Guid>(), Arg.Any<CreateFooterLinkRequest>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(success);
+        _apiClient.UpdateFooterLinkAsync(
+                Arg.Any<Guid>(), Arg.Any<UpdateFooterLinkRequest>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(success);
+        _apiClient.DeleteFooterLinkAsync(
+                Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        var service = CreateService();
+        var id = Guid.NewGuid();
+
+        await service.CreateLinkGroupAsync(new CreateFooterLinkGroupRequest { Title = "Group" });
+        await service.UpdateLinkGroupAsync(id, new UpdateFooterLinkGroupRequest { Title = "Updated" });
+        await service.DeleteLinkGroupAsync(id);
+        await service.ReorderLinkGroupsAsync([id]);
+        await service.CreateLinkAsync(id, new CreateFooterLinkRequest { Label = "Docs", Url = "/docs" });
+        await service.UpdateLinkAsync(id, new UpdateFooterLinkRequest { Label = "Help", Url = "/help" });
+        await service.DeleteLinkAsync(id);
+
+        await _apiClient.DidNotReceive().PatchTenantFooterSettingsAsync(
+            Arg.Any<PatchTenantFooterSettingsDto>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task CancelledReadsCommandsAndDeletes_PropagateCancellation()
+    {
+        using var source = new CancellationTokenSource();
+        source.Cancel();
+        _apiClient.GetTenantFooterSettingsAsync(null, null, source.Token)
+            .Returns<Task<HalResourceOfTenantFooterSettingsDto>>(_ => throw new OperationCanceledException(source.Token));
+        _apiClient.CreateFooterLinkGroupAsync(
+                Arg.Any<CreateFooterLinkGroupRequest>(), null, null, source.Token)
+            .Returns<Task<BaseCommandResponseOfGuid>>(_ => throw new OperationCanceledException(source.Token));
+        _apiClient.DeleteFooterLinkAsync(Arg.Any<Guid>(), null, null, source.Token)
+            .Returns<Task<bool>>(_ => throw new OperationCanceledException(source.Token));
+        var service = CreateService();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await service.GetTenantFooterSettingsAsync(source.Token));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await service.CreateLinkGroupAsync(new CreateFooterLinkGroupRequest { Title = "Group" }, source.Token));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await service.DeleteLinkAsync(Guid.NewGuid(), source.Token));
     }
 
     private FooterAdminService CreateService() => new(_apiClient, _logger);

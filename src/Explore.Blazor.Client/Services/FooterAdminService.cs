@@ -11,12 +11,16 @@ public sealed class FooterAdminService(
     IEventApiClient apiClient,
     ILogger<FooterAdminService> logger) : IFooterAdminService
 {
-    public async Task<FooterSettingsDto?> GetFooterSettingsAsync(CancellationToken cancellationToken = default)
+    public async Task<HalResourceOfTenantFooterSettingsDto?> GetTenantFooterSettingsAsync(
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var config = await apiClient.GetFooterConfigAsync(cancellationToken: cancellationToken);
-            return config.Settings;
+            return await apiClient.GetTenantFooterSettingsAsync(cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -31,6 +35,10 @@ public sealed class FooterAdminService(
         {
             var groups = await apiClient.GetFooterLinkGroupsAsync(cancellationToken: cancellationToken);
             return groups.ToList();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -50,6 +58,10 @@ public sealed class FooterAdminService(
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
             return null;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -113,11 +125,11 @@ public sealed class FooterAdminService(
             $"delete link {id}",
             cancellationToken);
 
-    public Task<BaseCommandResponseOfGuid> UpdateTenantSettingsAsync(
-        UpdateTenantFooterSettingsRequest request,
+    public Task<BaseCommandResponseOfGuid> PatchTenantFooterSettingsAsync(
+        PatchTenantFooterSettingsDto request,
         CancellationToken cancellationToken = default) =>
         ExecuteCommandAsync(
-            ct => apiClient.UpdateTenantFooterSettingsAsync(request, cancellationToken: ct),
+            ct => apiClient.PatchTenantFooterSettingsAsync(request, cancellationToken: ct),
             "update tenant footer settings",
             cancellationToken);
 
@@ -129,6 +141,10 @@ public sealed class FooterAdminService(
         try
         {
             return await action(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (ApiException ex)
         {
@@ -154,6 +170,10 @@ public sealed class FooterAdminService(
         try
         {
             return await action(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

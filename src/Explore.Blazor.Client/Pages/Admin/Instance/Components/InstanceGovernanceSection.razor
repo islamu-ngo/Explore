@@ -163,7 +163,8 @@
         @if (ShowHomePage && !IsSingleTenant)
         {
             <MudSwitch T="bool" Value="Delegation.AllowTenantSelfServiceRegistration == true"
-                       ValueChanged="value => Delegation.AllowTenantSelfServiceRegistration = value"
+                       ValueChanged="OnTenantSelfServiceRegistrationChangedAsync"
+                       Disabled="_settingsSaving"
                        Color="Color.Primary">
                 Allow tenant self-service registration
             </MudSwitch>
@@ -174,17 +175,20 @@
             <MudDivider Class="my-2" />
             <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Event Submission Policies</MudText>
             <MudSwitch T="bool" Value="EventPolicy.AllowUserSubmittedEvents == true"
-                       ValueChanged="value => EventPolicy.AllowUserSubmittedEvents = value"
+                       ValueChanged="OnAllowUserSubmittedEventsChangedAsync"
+                       Disabled="_settingsSaving"
                        Color="Color.Primary">
                 Allow user-submitted events
             </MudSwitch>
             <MudSwitch T="bool" Value="EventPolicy.AllowOrganizationSubmittedEvents == true"
-                       ValueChanged="value => EventPolicy.AllowOrganizationSubmittedEvents = value"
+                       ValueChanged="OnAllowOrganizationSubmittedEventsChangedAsync"
+                       Disabled="_settingsSaving"
                        Color="Color.Primary">
                 Allow organization-submitted events
             </MudSwitch>
             <MudSwitch T="bool" Value="EventPolicy.AllowGroupSubmittedEvents == true"
-                       ValueChanged="value => EventPolicy.AllowGroupSubmittedEvents = value"
+                       ValueChanged="OnAllowGroupSubmittedEventsChangedAsync"
+                       Disabled="_settingsSaving"
                        Color="Color.Primary">
                 Allow group-submitted events
             </MudSwitch>
@@ -201,12 +205,14 @@
             <MudDivider Class="my-2" />
             <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Self-Registration Controls</MudText>
             <MudSwitch T="bool" Value="OrganizationPolicy.AllowOrganizationSelfRegistration == true"
-                       ValueChanged="value => OrganizationPolicy.AllowOrganizationSelfRegistration = value"
+                       ValueChanged="OnAllowOrganizationSelfRegistrationChangedAsync"
+                       Disabled="_settingsSaving"
                        Color="Color.Primary">
                 Allow organization self-registration
             </MudSwitch>
             <MudSwitch T="bool" Value="OrganizationPolicy.AllowGroupSelfRegistration == true"
-                       ValueChanged="value => OrganizationPolicy.AllowGroupSelfRegistration = value"
+                       ValueChanged="OnAllowGroupSelfRegistrationChangedAsync"
+                       Disabled="_settingsSaving"
                        Color="Color.Primary">
                 Allow group self-registration
             </MudSwitch>
@@ -216,7 +222,9 @@
         {
             <MudSelect T="string"
                        Label="Default Public Home Page"
-                       @bind-Value="Delegation.DefaultPublicHomePage"
+                       Value="Delegation.DefaultPublicHomePage"
+                       ValueChanged="OnDefaultPublicHomePageChangedAsync"
+                       Disabled="_settingsSaving"
                        Variant="Variant.Outlined">
                 <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
                 <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
@@ -225,8 +233,9 @@
             @if (!IsSingleTenant)
             {
                 <MudSwitch T="bool" Value="Delegation.LockTenantHomePagePreference == true"
-                           ValueChanged="value => Delegation.LockTenantHomePagePreference = value"
-                           Color="Color.Primary">
+                            ValueChanged="OnLockTenantHomePagePreferenceChangedAsync"
+                            Disabled="_settingsSaving"
+                            Color="Color.Primary">
                     Lock tenant home page preference
                 </MudSwitch>
             }
@@ -251,14 +260,16 @@
                 </MudText>
 
                 <MudSwitch T="bool" Value="Mcp.Enabled == true"
-                           ValueChanged="value => Mcp.Enabled = value"
-                           Color="Color.Primary">
+                            ValueChanged="OnMcpEnabledChangedAsync"
+                            Disabled="_settingsSaving"
+                            Color="Color.Primary">
                     Enable MCP adapter at runtime
                 </MudSwitch>
 
                 <MudSwitch T="bool" Value="Mcp.EnableLegacySse == true"
-                           ValueChanged="value => Mcp.EnableLegacySse = value"
-                           Color="Color.Warning">
+                            ValueChanged="OnMcpLegacySseChangedAsync"
+                            Disabled="_settingsSaving"
+                            Color="Color.Warning">
                     Request legacy SSE transport
                 </MudSwitch>
 
@@ -269,13 +280,15 @@
                 @if (!IsSingleTenant)
                 {
                     <MudSwitch T="bool" Value="Mcp.LockTenantMcp == true"
-                               ValueChanged="value => Mcp.LockTenantMcp = value"
-                               Color="Color.Primary">
+                                ValueChanged="OnLockTenantMcpChangedAsync"
+                                Disabled="_settingsSaving"
+                                Color="Color.Primary">
                         Lock tenant MCP enablement override
                     </MudSwitch>
                     <MudSwitch T="bool" Value="Mcp.LockTenantMcpLegacySse == true"
-                               ValueChanged="value => Mcp.LockTenantMcpLegacySse = value"
-                               Color="Color.Primary">
+                                ValueChanged="OnLockTenantMcpLegacySseChangedAsync"
+                                Disabled="_settingsSaving"
+                                Color="Color.Primary">
                         Lock tenant legacy SSE override
                     </MudSwitch>
                 }
@@ -516,7 +529,7 @@
             <div class="instance-governance__preset-grid">
                 @foreach (var option in PresetOptions)
                 {
-                    <MudPaper Class="@GetPresetCardClass(option.Value)" Elevation="0" @onclick="() => SelectPreset(option.Value)">
+                    <MudPaper Class="@GetPresetCardClass(option.Value)" Elevation="0" @onclick="() => SelectPresetAsync(option.Value)">
                         <MudStack Spacing="1">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
@@ -557,10 +570,12 @@
 
                         <MudGrid>
                             <MudItem xs="12" md="6">
-                                <MudSelect T="string"
-                                           Label="Global Render Mode"
-                                           @bind-Value="RenderPolicy.GlobalRenderMode"
-                                           Variant="Variant.Outlined">
+                                 <MudSelect T="string"
+                                            Label="Global Render Mode"
+                                            Value="RenderPolicy.GlobalRenderMode"
+                                            ValueChanged="OnGlobalRenderModeChangedAsync"
+                                            Disabled="_settingsSaving"
+                                            Variant="Variant.Outlined">
                                     @foreach (var mode in RenderModeOptions)
                                     {
                                         <MudSelectItem Value="@mode.Value">@mode.Label</MudSelectItem>
@@ -568,9 +583,10 @@
                                 </MudSelect>
                             </MudItem>
                             <MudItem xs="12" md="6">
-                                <MudSwitch T="bool" Value="RenderPolicy.GlobalPrerenderEnabled == true"
-                                           ValueChanged="value => RenderPolicy.GlobalPrerenderEnabled = value"
-                                           Color="Color.Primary">
+                                 <MudSwitch T="bool" Value="RenderPolicy.GlobalPrerenderEnabled == true"
+                                            ValueChanged="OnGlobalPrerenderChangedAsync"
+                                            Disabled="_settingsSaving"
+                                            Color="Color.Primary">
                                     Global Prerender Enabled
                                 </MudSwitch>
                             </MudItem>
@@ -591,7 +607,8 @@
                                     <MudSelect T="string"
                                                Label="@($"{group.Label} Render Mode")"
                                                Value="@GetRouteGroupMode(group.Value)"
-                                               ValueChanged="mode => SetRouteGroupMode(group.Value, mode)"
+                                               ValueChanged="mode => SetRouteGroupModeAsync(group.Value, mode)"
+                                               Disabled="_settingsSaving"
                                                Variant="Variant.Outlined">
                                         @foreach (var mode in RenderModeOptions.Where(x => !IsOnboardingInteractiveServerRestricted(group.Value) || x.Value != "InteractiveServer"))
                                         {
@@ -602,7 +619,8 @@
                                 <MudItem xs="12" md="6">
                                     <MudSwitch T="bool"
                                                Value="@GetRouteGroupPrerender(group.Value)"
-                                               ValueChanged="enabled => SetRouteGroupPrerender(group.Value, enabled)"
+                                               ValueChanged="enabled => SetRouteGroupPrerenderAsync(group.Value, enabled)"
+                                               Disabled="_settingsSaving"
                                                Color="Color.Primary">
                                         @($"{group.Label} Prerender Enabled")
                                     </MudSwitch>
@@ -626,7 +644,8 @@
 
             <MudSwitch T="bool"
                        Value="RenderPolicy.AllowTenantRenderPolicyOverride == true"
-                       ValueChanged="value => RenderPolicy.AllowTenantRenderPolicyOverride = value"
+                       ValueChanged="OnAllowTenantRenderPolicyOverrideChangedAsync"
+                       Disabled="_settingsSaving"
                        Color="Color.Primary">
                 Allow tenants to override render policy
             </MudSwitch>
@@ -640,19 +659,22 @@
                         </MudText>
                         <MudSwitch T="bool"
                                    Value="RenderPolicy.LockTenantPublicSeoRenderPolicy == true"
-                                   ValueChanged="value => RenderPolicy.LockTenantPublicSeoRenderPolicy = value"
+                                   ValueChanged="OnLockTenantPublicSeoRenderPolicyChangedAsync"
+                                   Disabled="_settingsSaving"
                                    Color="Color.Warning">
                             Lock Public/SEO render policy
                         </MudSwitch>
                         <MudSwitch T="bool"
                                    Value="RenderPolicy.LockTenantOperationalRenderPolicy == true"
-                                   ValueChanged="value => RenderPolicy.LockTenantOperationalRenderPolicy = value"
+                                   ValueChanged="OnLockTenantOperationalRenderPolicyChangedAsync"
+                                   Disabled="_settingsSaving"
                                    Color="Color.Warning">
                             Lock Operational render policy
                         </MudSwitch>
                         <MudSwitch T="bool"
                                    Value="RenderPolicy.LockTenantAdminRenderPolicy == true"
-                                   ValueChanged="value => RenderPolicy.LockTenantAdminRenderPolicy = value"
+                                   ValueChanged="OnLockTenantAdminRenderPolicyChangedAsync"
+                                   Disabled="_settingsSaving"
                                    Color="Color.Warning">
                             Lock Admin render policy
                         </MudSwitch>
@@ -665,6 +687,8 @@
             }
         </MudStack>
         }
+        <div role="status" aria-live="polite" aria-atomic="true">@_settingsSaveStatus</div>
+        <div role="alert">@_settingsSaveError</div>
     </MudStack>
 </div>
 
@@ -730,6 +754,21 @@
     [Parameter]
     public bool SuppressAtprotoGovernance { get; set; }
 
+    [Parameter, EditorRequired]
+    public Func<TenantDelegationSettingsDto, Task<BaseCommandResponseOfGuid>> SaveDelegationAsync { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Func<EventPolicyDto, Task<BaseCommandResponseOfGuid>> SaveEventPolicyAsync { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Func<OrganizationPolicyDto, Task<BaseCommandResponseOfGuid>> SaveOrganizationPolicyAsync { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Func<RenderPolicySettingsDto, Task<BaseCommandResponseOfGuid>> SaveRenderPolicyAsync { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Func<McpGovernanceSettingsDto, Task<BaseCommandResponseOfGuid>> SaveMcpAsync { get; set; } = null!;
+
     private bool ShowDeploymentMode => DisplayMode is "full" or "advanced";
     private bool ShowGeneralGovernance => DisplayMode is "full" or "general";
     private bool ShowRenderPolicies => DisplayMode is "full" or "advanced";
@@ -749,6 +788,9 @@
     private bool _atprotoSaving;
     private bool _atprotoSaveSucceeded;
     private string? _atprotoMessage;
+    private bool _settingsSaving;
+    private string? _settingsSaveStatus;
+    private string? _settingsSaveError;
 
     private bool AtprotoEventsEnabled => ReadBool(FindAtprotoSetting(AtprotoEventsEnabledKey)?.Value);
 
@@ -936,8 +978,13 @@
         }
     }
 
-    private void SelectPreset(string preset)
+    private async Task SelectPresetAsync(string preset)
     {
+        if (_settingsSaving)
+        {
+            return;
+        }
+
         RenderPolicy.RenderPolicyPreset = preset;
 
         switch (preset)
@@ -978,7 +1025,24 @@
         }
 
         EnsureOnboardingGuardrail();
+        await SaveSettingsAsync(() => SaveRenderPolicyAsync(CreatePresetPatch()), "Render policy");
     }
+
+    private RenderPolicySettingsDto CreatePresetPatch() => new()
+    {
+        RenderPolicyPreset = RenderPolicy.RenderPolicyPreset,
+        EnableAdvancedRenderPolicyOverrides = RenderPolicy.EnableAdvancedRenderPolicyOverrides,
+        GlobalRenderMode = RenderPolicy.GlobalRenderMode,
+        GlobalPrerenderEnabled = RenderPolicy.GlobalPrerenderEnabled,
+        PublicSeoRenderMode = RenderPolicy.PublicSeoRenderMode,
+        PublicSeoPrerenderEnabled = RenderPolicy.PublicSeoPrerenderEnabled,
+        OperationalRenderMode = RenderPolicy.OperationalRenderMode,
+        OperationalPrerenderEnabled = RenderPolicy.OperationalPrerenderEnabled,
+        AdminRenderMode = RenderPolicy.AdminRenderMode,
+        AdminPrerenderEnabled = RenderPolicy.AdminPrerenderEnabled,
+        OnboardingRenderMode = RenderPolicy.OnboardingRenderMode,
+        OnboardingPrerenderEnabled = RenderPolicy.OnboardingPrerenderEnabled
+    };
 
     private async Task LoadAtprotoSettingsAsync()
     {
@@ -1143,15 +1207,175 @@
         _ => "Unknown"
     };
 
-    private void OnAdvancedOverridesChanged(bool enabled)
+    private Task OnTenantSelfServiceRegistrationChangedAsync(bool value)
     {
-        if (enabled)
-        {
-            SelectPreset("CustomAdvanced");
-            return;
-        }
+        Delegation.AllowTenantSelfServiceRegistration = value;
+        return SaveSettingsAsync(
+            () => SaveDelegationAsync(new TenantDelegationSettingsDto { AllowTenantSelfServiceRegistration = value }),
+            "Governance settings");
+    }
 
-        SelectPreset(RecommendedPreset);
+    private Task OnAllowUserSubmittedEventsChangedAsync(bool value)
+    {
+        EventPolicy.AllowUserSubmittedEvents = value;
+        return SaveSettingsAsync(
+            () => SaveEventPolicyAsync(new EventPolicyDto { AllowUserSubmittedEvents = value }),
+            "Event policy");
+    }
+
+    private Task OnAllowOrganizationSubmittedEventsChangedAsync(bool value)
+    {
+        EventPolicy.AllowOrganizationSubmittedEvents = value;
+        return SaveSettingsAsync(
+            () => SaveEventPolicyAsync(new EventPolicyDto { AllowOrganizationSubmittedEvents = value }),
+            "Event policy");
+    }
+
+    private Task OnAllowGroupSubmittedEventsChangedAsync(bool value)
+    {
+        EventPolicy.AllowGroupSubmittedEvents = value;
+        return SaveSettingsAsync(
+            () => SaveEventPolicyAsync(new EventPolicyDto { AllowGroupSubmittedEvents = value }),
+            "Event policy");
+    }
+
+    private Task OnAllowOrganizationSelfRegistrationChangedAsync(bool value)
+    {
+        OrganizationPolicy.AllowOrganizationSelfRegistration = value;
+        return SaveSettingsAsync(
+            () => SaveOrganizationPolicyAsync(new OrganizationPolicyDto { AllowOrganizationSelfRegistration = value }),
+            "Organization policy");
+    }
+
+    private Task OnAllowGroupSelfRegistrationChangedAsync(bool value)
+    {
+        OrganizationPolicy.AllowGroupSelfRegistration = value;
+        return SaveSettingsAsync(
+            () => SaveOrganizationPolicyAsync(new OrganizationPolicyDto { AllowGroupSelfRegistration = value }),
+            "Organization policy");
+    }
+
+    private Task OnDefaultPublicHomePageChangedAsync(string value)
+    {
+        Delegation.DefaultPublicHomePage = value;
+        return SaveSettingsAsync(
+            () => SaveDelegationAsync(new TenantDelegationSettingsDto { DefaultPublicHomePage = value }),
+            "Governance settings");
+    }
+
+    private Task OnLockTenantHomePagePreferenceChangedAsync(bool value)
+    {
+        Delegation.LockTenantHomePagePreference = value;
+        return SaveSettingsAsync(
+            () => SaveDelegationAsync(new TenantDelegationSettingsDto { LockTenantHomePagePreference = value }),
+            "Governance settings");
+    }
+
+    private Task OnMcpEnabledChangedAsync(bool value)
+    {
+        Mcp.Enabled = value;
+        return SaveSettingsAsync(() => SaveMcpAsync(new McpGovernanceSettingsDto { Enabled = value }), "MCP settings");
+    }
+
+    private Task OnMcpLegacySseChangedAsync(bool value)
+    {
+        Mcp.EnableLegacySse = value;
+        return SaveSettingsAsync(() => SaveMcpAsync(new McpGovernanceSettingsDto { EnableLegacySse = value }), "MCP settings");
+    }
+
+    private Task OnLockTenantMcpChangedAsync(bool value)
+    {
+        Mcp.LockTenantMcp = value;
+        return SaveSettingsAsync(() => SaveMcpAsync(new McpGovernanceSettingsDto { LockTenantMcp = value }), "MCP settings");
+    }
+
+    private Task OnLockTenantMcpLegacySseChangedAsync(bool value)
+    {
+        Mcp.LockTenantMcpLegacySse = value;
+        return SaveSettingsAsync(() => SaveMcpAsync(new McpGovernanceSettingsDto { LockTenantMcpLegacySse = value }), "MCP settings");
+    }
+
+    private Task OnGlobalRenderModeChangedAsync(string value)
+    {
+        RenderPolicy.GlobalRenderMode = value;
+        return SaveSettingsAsync(
+            () => SaveRenderPolicyAsync(new RenderPolicySettingsDto { GlobalRenderMode = value }),
+            "Render policy");
+    }
+
+    private Task OnGlobalPrerenderChangedAsync(bool value)
+    {
+        RenderPolicy.GlobalPrerenderEnabled = value;
+        return SaveSettingsAsync(
+            () => SaveRenderPolicyAsync(new RenderPolicySettingsDto { GlobalPrerenderEnabled = value }),
+            "Render policy");
+    }
+
+    private Task OnAllowTenantRenderPolicyOverrideChangedAsync(bool value)
+    {
+        RenderPolicy.AllowTenantRenderPolicyOverride = value;
+        return SaveSettingsAsync(
+            () => SaveRenderPolicyAsync(new RenderPolicySettingsDto { AllowTenantRenderPolicyOverride = value }),
+            "Render policy");
+    }
+
+    private Task OnLockTenantPublicSeoRenderPolicyChangedAsync(bool value)
+    {
+        RenderPolicy.LockTenantPublicSeoRenderPolicy = value;
+        return SaveSettingsAsync(
+            () => SaveRenderPolicyAsync(new RenderPolicySettingsDto { LockTenantPublicSeoRenderPolicy = value }),
+            "Render policy");
+    }
+
+    private Task OnLockTenantOperationalRenderPolicyChangedAsync(bool value)
+    {
+        RenderPolicy.LockTenantOperationalRenderPolicy = value;
+        return SaveSettingsAsync(
+            () => SaveRenderPolicyAsync(new RenderPolicySettingsDto { LockTenantOperationalRenderPolicy = value }),
+            "Render policy");
+    }
+
+    private Task OnLockTenantAdminRenderPolicyChangedAsync(bool value)
+    {
+        RenderPolicy.LockTenantAdminRenderPolicy = value;
+        return SaveSettingsAsync(
+            () => SaveRenderPolicyAsync(new RenderPolicySettingsDto { LockTenantAdminRenderPolicy = value }),
+            "Render policy");
+    }
+
+    private async Task SaveSettingsAsync(Func<Task<BaseCommandResponseOfGuid>> save, string label)
+    {
+        _settingsSaving = true;
+        _settingsSaveStatus = $"Saving {label.ToLowerInvariant()}...";
+        _settingsSaveError = null;
+        try
+        {
+            BaseCommandResponseOfGuid response = await save();
+            if (response.Success == true)
+            {
+                _settingsSaveStatus = $"{label} saved.";
+                return;
+            }
+
+            _settingsSaveStatus = null;
+            _settingsSaveError = string.IsNullOrWhiteSpace(response.Message)
+                ? $"{label} could not be saved."
+                : response.Message;
+        }
+        catch (Exception)
+        {
+            _settingsSaveStatus = null;
+            _settingsSaveError = $"{label} could not be saved.";
+        }
+        finally
+        {
+            _settingsSaving = false;
+        }
+    }
+
+    private Task OnAdvancedOverridesChanged(bool enabled)
+    {
+        return SelectPresetAsync(enabled ? "CustomAdvanced" : RecommendedPreset);
     }
 
     private string GetRouteGroupMode(string group)
@@ -1166,27 +1390,33 @@
         };
     }
 
-    private void SetRouteGroupMode(string group, string mode)
+    private Task SetRouteGroupModeAsync(string group, string mode)
     {
         var normalizedMode = NormalizeRenderMode(mode);
+        var patch = new RenderPolicySettingsDto();
 
         switch (group)
         {
             case "public-seo":
                 RenderPolicy.PublicSeoRenderMode = normalizedMode;
+                patch.PublicSeoRenderMode = normalizedMode;
                 break;
             case "operational":
                 RenderPolicy.OperationalRenderMode = normalizedMode;
+                patch.OperationalRenderMode = normalizedMode;
                 break;
             case "admin":
                 RenderPolicy.AdminRenderMode = normalizedMode;
+                patch.AdminRenderMode = normalizedMode;
                 break;
             case "onboarding":
                 RenderPolicy.OnboardingRenderMode = NormalizeOnboardingRenderMode(normalizedMode);
+                patch.OnboardingRenderMode = RenderPolicy.OnboardingRenderMode;
                 break;
         }
 
         EnsureOnboardingGuardrail();
+        return SaveSettingsAsync(() => SaveRenderPolicyAsync(patch), "Render policy");
     }
 
     private bool GetRouteGroupPrerender(string group)
@@ -1201,23 +1431,30 @@
         };
     }
 
-    private void SetRouteGroupPrerender(string group, bool enabled)
+    private Task SetRouteGroupPrerenderAsync(string group, bool enabled)
     {
+        var patch = new RenderPolicySettingsDto();
         switch (group)
         {
             case "public-seo":
                 RenderPolicy.PublicSeoPrerenderEnabled = enabled;
+                patch.PublicSeoPrerenderEnabled = enabled;
                 break;
             case "operational":
                 RenderPolicy.OperationalPrerenderEnabled = enabled;
+                patch.OperationalPrerenderEnabled = enabled;
                 break;
             case "admin":
                 RenderPolicy.AdminPrerenderEnabled = enabled;
+                patch.AdminPrerenderEnabled = enabled;
                 break;
             case "onboarding":
                 RenderPolicy.OnboardingPrerenderEnabled = enabled;
+                patch.OnboardingPrerenderEnabled = enabled;
                 break;
         }
+
+        return SaveSettingsAsync(() => SaveRenderPolicyAsync(patch), "Render policy");
     }
 
     private static bool IsOnboardingInteractiveServerRestricted(string group)

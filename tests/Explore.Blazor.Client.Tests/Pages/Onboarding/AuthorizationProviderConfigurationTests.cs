@@ -169,7 +169,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
     {
         SetupIncompleteOnboardingStatus();
         var service = SetupFetchConfiguration(new AuthorizationProviderConfigurationDto { Provider = "local" });
-        service.SaveAuthorizationProviderConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>())
+        service.UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationDto>())
             .Returns(new BaseCommandResponseOfGuid { Success = true, Message = "Authorization provider saved." });
 
         var cut = _ctx.RenderMudComponent<AuthorizationProviderConfiguration>();
@@ -187,7 +187,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
             }
         });
 
-        await service.Received(1).SaveAuthorizationProviderConfigurationAsync(
+        await service.Received(1).UpdateAuthorizationProviderConfigurationAsAdminAsync(
             Arg.Is<AuthorizationProviderConfigurationDto>(request => request.Provider == "local"));
     }
 
@@ -202,7 +202,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
             CerbosEndpointVerified = true,
             CerbosEndpointOwnership = ApplicationOwnership()
         });
-        service.SaveAuthorizationProviderConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>())
+        service.UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationDto>())
             .Returns(new BaseCommandResponseOfGuid { Success = true, Message = "Authorization provider saved." });
 
         var cut = _ctx.RenderMudComponent<AuthorizationProviderConfiguration>();

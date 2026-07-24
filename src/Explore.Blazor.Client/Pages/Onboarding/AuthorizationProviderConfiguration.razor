@@ -561,7 +561,7 @@
 
         try
         {
-            var response = await InstanceOnboardingService.SaveAuthorizationProviderConfigurationAsync(_model);
+            var response = await InstanceOnboardingService.UpdateAuthorizationProviderConfigurationAsAdminAsync(_model);
             if (response.Success != true)
             {
                 _errorMessage = string.IsNullOrWhiteSpace(response.Message)

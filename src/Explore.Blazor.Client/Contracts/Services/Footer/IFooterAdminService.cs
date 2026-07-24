@@ -7,7 +7,7 @@ namespace Explore.Blazor.Client.Contracts.Services.Footer;
 
 public interface IFooterAdminService
 {
-    Task<FooterSettingsDto?> GetFooterSettingsAsync(CancellationToken cancellationToken = default);
+    Task<HalResourceOfTenantFooterSettingsDto?> GetTenantFooterSettingsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<FooterLinkGroupListDto>> GetLinkGroupsAsync(CancellationToken cancellationToken = default);
     Task<FooterLinkGroupDetailsDto?> GetLinkGroupAsync(Guid id, CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> CreateLinkGroupAsync(CreateFooterLinkGroupRequest request, CancellationToken cancellationToken = default);
@@ -17,5 +17,5 @@ public interface IFooterAdminService
     Task<BaseCommandResponseOfGuid> CreateLinkAsync(Guid groupId, CreateFooterLinkRequest request, CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> UpdateLinkAsync(Guid id, UpdateFooterLinkRequest request, CancellationToken cancellationToken = default);
     Task<bool> DeleteLinkAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<BaseCommandResponseOfGuid> UpdateTenantSettingsAsync(UpdateTenantFooterSettingsRequest request, CancellationToken cancellationToken = default);
+    Task<BaseCommandResponseOfGuid> PatchTenantFooterSettingsAsync(PatchTenantFooterSettingsDto request, CancellationToken cancellationToken = default);
 }

@@ -325,6 +325,10 @@
     pointer-events: auto;
 }
 
+::deep .event-card--CompactGrid:hover .event-card__overlay {
+    z-index: 6;
+}
+
 ::deep .event-card__hover-item {
     display: flex;
     align-items: center;

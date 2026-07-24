@@ -14,28 +14,32 @@
     <MudStack Spacing="3">
         <MudSwitch T="bool"
                    Value="Model.EnableIslamicModule == true"
-                   ValueChanged="@(value => Model.EnableIslamicModule = value)"
+                   ValueChanged="OnIslamicModuleChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Primary">
             Enable Islamic module
         </MudSwitch>
 
         <MudSwitch T="bool"
                    Value="Model.EnableTechModule == true"
-                   ValueChanged="@(value => Model.EnableTechModule = value)"
+                   ValueChanged="OnTechModuleChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Primary">
             Enable Tech module
         </MudSwitch>
 
         <MudSwitch T="bool"
                    Value="EventPolicy.AllowUserSubmittedEvents == true"
-                   ValueChanged="@(value => EventPolicy.AllowUserSubmittedEvents = value)"
+                   ValueChanged="OnUserSubmittedEventsChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Primary">
             Allow user-submitted events
         </MudSwitch>
 
         <MudSwitch T="bool"
                    Value="OrganizationPolicy.RequireOrganizationVerification == true"
-                   ValueChanged="@(value => OrganizationPolicy.RequireOrganizationVerification = value)"
+                   ValueChanged="OnRequireOrganizationVerificationChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Primary">
             Require organization verification
         </MudSwitch>
@@ -44,11 +48,15 @@
         {
             <MudSwitch T="bool"
                        Value="OrganizationPolicy.AllowTenantToOmitVerification == true"
-                       ValueChanged="@(value => OrganizationPolicy.AllowTenantToOmitVerification = value)"
+                       ValueChanged="OnAllowTenantToOmitVerificationChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Primary">
                 Allow tenant admins to omit organization verification
             </MudSwitch>
         }
+
+        <div role="status" aria-live="polite" aria-atomic="true">@_saveStatusMessage</div>
+        <div role="alert">@_saveErrorMessage</div>
     </MudStack>
 </div>
 
@@ -64,4 +72,78 @@
 
     [Parameter]
     public bool IsSingleTenant { get; set; }
+
+    [Parameter, EditorRequired]
+    public Func<ModuleSettingsDto, Task<BaseCommandResponseOfGuid>> SaveModuleSettingsAsync { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Func<EventPolicyDto, Task<BaseCommandResponseOfGuid>> SaveEventPolicyAsync { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Func<OrganizationPolicyDto, Task<BaseCommandResponseOfGuid>> SaveOrganizationPolicyAsync { get; set; } = null!;
+
+    private bool _isSaving;
+    private string? _saveStatusMessage;
+    private string? _saveErrorMessage;
+
+    private Task OnIslamicModuleChangedAsync(bool value)
+    {
+        Model.EnableIslamicModule = value;
+        return SaveAsync(() => SaveModuleSettingsAsync(new ModuleSettingsDto { EnableIslamicModule = value }));
+    }
+
+    private Task OnTechModuleChangedAsync(bool value)
+    {
+        Model.EnableTechModule = value;
+        return SaveAsync(() => SaveModuleSettingsAsync(new ModuleSettingsDto { EnableTechModule = value }));
+    }
+
+    private Task OnUserSubmittedEventsChangedAsync(bool value)
+    {
+        EventPolicy.AllowUserSubmittedEvents = value;
+        return SaveAsync(() => SaveEventPolicyAsync(new EventPolicyDto { AllowUserSubmittedEvents = value }));
+    }
+
+    private Task OnRequireOrganizationVerificationChangedAsync(bool value)
+    {
+        OrganizationPolicy.RequireOrganizationVerification = value;
+        return SaveAsync(() => SaveOrganizationPolicyAsync(new OrganizationPolicyDto { RequireOrganizationVerification = value }));
+    }
+
+    private Task OnAllowTenantToOmitVerificationChangedAsync(bool value)
+    {
+        OrganizationPolicy.AllowTenantToOmitVerification = value;
+        return SaveAsync(() => SaveOrganizationPolicyAsync(new OrganizationPolicyDto { AllowTenantToOmitVerification = value }));
+    }
+
+    private async Task SaveAsync(Func<Task<BaseCommandResponseOfGuid>> save)
+    {
+        _isSaving = true;
+        _saveStatusMessage = "Saving module settings...";
+        _saveErrorMessage = null;
+
+        try
+        {
+            BaseCommandResponseOfGuid response = await save();
+            if (response.Success == true)
+            {
+                _saveStatusMessage = "Module settings saved.";
+                return;
+            }
+
+            _saveStatusMessage = null;
+            _saveErrorMessage = string.IsNullOrWhiteSpace(response.Message)
+                ? "Module settings could not be saved."
+                : response.Message;
+        }
+        catch (Exception)
+        {
+            _saveStatusMessage = null;
+            _saveErrorMessage = "Module settings could not be saved.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
 }

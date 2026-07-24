@@ -1,9 +1,11 @@
 @* ABOUTME: Tenant storage settings section for inherited policy and optional tenant overrides. *@
-@* ABOUTME: Renders locked/read-only states and HAL-gated storage provider fields. *@
+@* ABOUTME: Autosaves isolated policy and S3 groups with HAL gating, debounce, and accessible status. *@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
+@implements IDisposable
+@inject ITenantStorageSettingsAdminService StorageSettingsService
 
 <div class="settings-section tenant-storage-section">
     <div class="settings-section-header">
@@ -67,7 +69,8 @@
         <MudSelect T="string"
                    Label="Tenant Storage Provider"
                    Variant="Variant.Outlined"
-                   @bind-Value="Provider"
+                   Value="@Provider"
+                   ValueChanged="OnProviderChangedAsync"
                    Disabled="@ControlsDisabled">
             <MudSelectItem T="string" Value="@StorageProviderOptions.Local">Local file storage</MudSelectItem>
             <MudSelectItem T="string" Value="@StorageProviderOptions.S3Compatible">S3-compatible object storage</MudSelectItem>
@@ -78,7 +81,10 @@
                 <MudNumericField T="long"
                                  Label="Max upload (MB)"
                                  Variant="Variant.Outlined"
-                                 @bind-Value="MaxUploadMiB"
+                                 Value="@MaxUploadMiB"
+                                 ValueChanged="OnMaxUploadChanged"
+                                 OnBlur="@(_ => FlushPolicySaveAsync())"
+                                 Immediate="true"
                                  Min="1L"
                                  Max="@InstanceMaxUploadMiB"
                                  Disabled="@ControlsDisabled"
@@ -88,7 +94,10 @@
                 <MudNumericField T="long"
                                  Label="Tenant quota (GB)"
                                  Variant="Variant.Outlined"
-                                 @bind-Value="TenantQuotaGiB"
+                                 Value="@TenantQuotaGiB"
+                                 ValueChanged="OnTenantQuotaChanged"
+                                 OnBlur="@(_ => FlushPolicySaveAsync())"
+                                 Immediate="true"
                                  Min="1L"
                                  Disabled="@ControlsDisabled"
                                  HelperText="Total storage quota for this tenant." />
@@ -116,7 +125,8 @@
                                        Label="@($"{StorageRouteOptions.Label(route.RouteKey)} provider")"
                                        Variant="Variant.Outlined"
                                        Dense="true"
-                                       @bind-Value="route.Provider"
+                                       Value="@route.Provider"
+                                       ValueChanged="@(value => OnRouteProviderChangedAsync(route, value))"
                                        Disabled="@(ControlsDisabled || route.IsReadOnly == true)">
                                 <MudSelectItem T="string" Value="@StorageProviderOptions.Local">Local file storage</MudSelectItem>
                                 <MudSelectItem T="string" Value="@StorageProviderOptions.S3Compatible">S3-compatible object storage</MudSelectItem>
@@ -128,8 +138,10 @@
                                              Label="@($"{StorageRouteOptions.Label(route.RouteKey)} max upload (MB)")"
                                              Variant="Variant.Outlined"
                                              Dense="true"
-                                             Value="@StorageAdminExtensions.BytesToMiB(route.MaxUploadBytes)"
-                                             ValueChanged="@(value => route.MaxUploadBytes = StorageAdminExtensions.MiBToBytes(value))"
+                                              Value="@StorageAdminExtensions.BytesToMiB(route.MaxUploadBytes)"
+                                              ValueChanged="@(value => OnRouteMaxUploadChanged(route, value))"
+                                              OnBlur="@(_ => FlushPolicySaveAsync())"
+                                              Immediate="true"
                                              Min="1L"
                                              Max="@InstanceMaxUploadMiB"
                                              Disabled="@(ControlsDisabled || route.IsReadOnly == true)" />
@@ -148,48 +160,74 @@
                     <MudItem xs="12" md="6">
                         <MudTextField T="string" Label="Endpoint"
                                       Variant="Variant.Outlined"
-                                      @bind-Value="Model.S3Endpoint"
+                                      Value="@Model.S3Endpoint"
+                                      ValueChanged="OnS3EndpointChanged"
+                                      OnBlur="@(_ => FlushS3SaveAsync())"
+                                      Immediate="true"
                                       Disabled="@ControlsDisabled"
                                       Placeholder="https://object-storage.example.com" />
                     </MudItem>
                     <MudItem xs="12" md="6">
                         <MudTextField T="string" Label="Public Endpoint"
                                       Variant="Variant.Outlined"
-                                      @bind-Value="Model.S3PublicEndpoint"
+                                      Value="@Model.S3PublicEndpoint"
+                                      ValueChanged="OnS3PublicEndpointChanged"
+                                      OnBlur="@(_ => FlushS3SaveAsync())"
+                                      Immediate="true"
                                       Disabled="@ControlsDisabled"
                                       Placeholder="https://cdn.example.com" />
                     </MudItem>
                     <MudItem xs="12" md="6">
                         <MudTextField T="string" Label="Bucket Name"
                                       Variant="Variant.Outlined"
-                                      @bind-Value="Model.S3BucketName"
+                                      Value="@Model.S3BucketName"
+                                      ValueChanged="OnS3BucketNameChanged"
+                                      OnBlur="@(_ => FlushS3SaveAsync())"
+                                      Immediate="true"
                                       Disabled="@ControlsDisabled" />
                     </MudItem>
                     <MudItem xs="12" md="6">
                         <MudTextField T="string" Label="Region"
                                       Variant="Variant.Outlined"
-                                      @bind-Value="Model.S3Region"
+                                      Value="@Model.S3Region"
+                                      ValueChanged="OnS3RegionChanged"
+                                      OnBlur="@(_ => FlushS3SaveAsync())"
+                                      Immediate="true"
                                       Disabled="@ControlsDisabled" />
                     </MudItem>
                     <MudItem xs="12" md="6">
                         <MudTextField T="string" Label="Access Key ID"
                                       Variant="Variant.Outlined"
-                                      @bind-Value="Model.S3AccessKeyId"
-                                      Disabled="@ControlsDisabled"
+                                      Value="@Model.S3AccessKeyId"
+                                      ValueChanged="OnS3AccessKeyChanged"
+                                      Immediate="true"
+                                      Disabled="@(ControlsDisabled || _credentialSavePending)"
                                       HelperText="@ConfiguredText(Model.S3AccessKeyConfigured, "access key")" />
                     </MudItem>
                     <MudItem xs="12" md="6">
                         <MudTextField T="string" Label="Secret Access Key"
                                       Variant="Variant.Outlined"
-                                      @bind-Value="Model.S3SecretAccessKey"
+                                      Value="@Model.S3SecretAccessKey"
+                                      ValueChanged="OnS3SecretAccessKeyChanged"
+                                      Immediate="true"
                                       InputType="InputType.Password"
-                                      Disabled="@ControlsDisabled"
+                                      Disabled="@(ControlsDisabled || _credentialSavePending)"
                                       HelperText="@ConfiguredText(Model.S3SecretAccessKeyConfigured, "secret key")" />
                     </MudItem>
                 </MudGrid>
 
+                <MudButton Elevation="0"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Key"
+                           OnClick="UpdateS3CredentialsAsync"
+                           Disabled="@(!CanUpdateS3Credentials)">
+                    Update S3 credentials
+                </MudButton>
+
                 <MudSwitch T="bool"
-                           @bind-Value="S3ForcePathStyle"
+                           Value="@S3ForcePathStyle"
+                           ValueChanged="OnS3ForcePathStyleChangedAsync"
                            Color="Color.Primary"
                            Disabled="@ControlsDisabled">
                     Force path-style URLs
@@ -198,7 +236,10 @@
                 <MudNumericField T="int"
                                  Label="Upload URL expiration (minutes)"
                                  Variant="Variant.Outlined"
-                                 @bind-Value="S3UploadUrlExpirationMinutes"
+                                 Value="@S3UploadUrlExpirationMinutes"
+                                 ValueChanged="OnS3UploadExpirationChanged"
+                                 OnBlur="@(_ => FlushS3SaveAsync())"
+                                 Immediate="true"
                                  Min="1"
                                  Max="1440"
                                  Disabled="@ControlsDisabled" />
@@ -210,6 +251,9 @@
                 Local file storage is selected for this tenant. Files remain accessible only through metadata-backed API URLs.
             </MudAlert>
         }
+
+        <div role="status" aria-live="polite" aria-atomic="true">@_saveStatusMessage</div>
+        <div role="alert">@_saveErrorMessage</div>
     </MudStack>
 </div>
 
@@ -217,10 +261,29 @@
     [Parameter, EditorRequired]
     public HalResourceOfTenantStorageSettingsDto Model { get; set; } = null!;
 
-    [Parameter]
-    public bool IsSaving { get; set; }
+    private const int AutosaveDelayMilliseconds = 400;
 
-    private bool ControlsDisabled => IsSaving || !Model.IsEditable();
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
+    private readonly CancellationTokenSource _lifetimeCts = new();
+    private CancellationTokenSource? _policyDebounceCts;
+    private CancellationTokenSource? _s3DebounceCts;
+    private long _saveVersion;
+    private long _policySaveVersion;
+    private long _s3SaveVersion;
+    private string? _saveStatusMessage;
+    private string? _saveErrorMessage;
+    private bool _credentialSavePending;
+    private bool _disposed;
+
+    private bool ControlsDisabled => !Model.IsEditable();
+    private bool SavePending => _credentialSavePending
+        || _saveLock.CurrentCount == 0
+        || _policyDebounceCts is not null
+        || _s3DebounceCts is not null;
+    private bool CanUpdateS3Credentials => !ControlsDisabled
+        && !SavePending
+        && !string.IsNullOrWhiteSpace(Model.S3AccessKeyId)
+        && !string.IsNullOrWhiteSpace(Model.S3SecretAccessKey);
 
     private string Provider
     {
@@ -255,6 +318,272 @@
     private long InstanceMaxUploadMiB =>
         StorageAdminExtensions.BytesToMiB(Model.EffectivePolicy?.InstanceMaxUploadBytes);
 
+    private Task OnProviderChangedAsync(string value)
+    {
+        if (ControlsDisabled) return Task.CompletedTask;
+        Model.Provider = StorageProviderOptions.Normalize(value);
+        return SavePolicyImmediatelyAsync();
+    }
+
+    private Task OnRouteProviderChangedAsync(Routes2 route, string value)
+    {
+        if (ControlsDisabled || route.IsReadOnly == true) return Task.CompletedTask;
+        route.Provider = StorageProviderOptions.Normalize(value);
+        return SavePolicyImmediatelyAsync();
+    }
+
+    private void OnMaxUploadChanged(long value)
+    {
+        if (ControlsDisabled) return;
+        MaxUploadMiB = value;
+        SchedulePolicySave();
+    }
+
+    private void OnTenantQuotaChanged(long value)
+    {
+        if (ControlsDisabled) return;
+        TenantQuotaGiB = value;
+        SchedulePolicySave();
+    }
+
+    private void OnRouteMaxUploadChanged(Routes2 route, long value)
+    {
+        if (ControlsDisabled || route.IsReadOnly == true) return;
+        route.MaxUploadBytes = StorageAdminExtensions.MiBToBytes(value);
+        SchedulePolicySave();
+    }
+
+    private void OnS3EndpointChanged(string value) => ChangeS3Text(value, updated => Model.S3Endpoint = updated);
+    private void OnS3PublicEndpointChanged(string value) => ChangeS3Text(value, updated => Model.S3PublicEndpoint = updated);
+    private void OnS3BucketNameChanged(string value) => ChangeS3Text(value, updated => Model.S3BucketName = updated);
+    private void OnS3RegionChanged(string value) => ChangeS3Text(value, updated => Model.S3Region = updated);
+    private void OnS3AccessKeyChanged(string? value)
+    {
+        if (ControlsDisabled || _credentialSavePending) return;
+        Model.S3AccessKeyId = value ?? string.Empty;
+    }
+
+    private void OnS3SecretAccessKeyChanged(string? value)
+    {
+        if (ControlsDisabled || _credentialSavePending) return;
+        Model.S3SecretAccessKey = value ?? string.Empty;
+    }
+
+    private void ChangeS3Text(string? value, Action<string> apply)
+    {
+        if (ControlsDisabled) return;
+        apply(value ?? string.Empty);
+        ScheduleS3Save();
+    }
+
+    private Task OnS3ForcePathStyleChangedAsync(bool value)
+    {
+        if (ControlsDisabled) return Task.CompletedTask;
+        Model.S3ForcePathStyle = value;
+        return SaveS3ImmediatelyAsync();
+    }
+
+    private void OnS3UploadExpirationChanged(int value)
+    {
+        if (ControlsDisabled) return;
+        S3UploadUrlExpirationMinutes = value;
+        ScheduleS3Save();
+    }
+
+    private Task SavePolicyImmediatelyAsync()
+    {
+        CancelDebounce(ref _policyDebounceCts);
+        return SavePolicyAsync(BeginSave(), _lifetimeCts.Token);
+    }
+
+    private Task SaveS3ImmediatelyAsync()
+    {
+        CancelDebounce(ref _s3DebounceCts);
+        return SaveS3Async(BeginSave(), _lifetimeCts.Token);
+    }
+
+    private long BeginSave()
+    {
+        _saveStatusMessage = "Saving storage settings...";
+        _saveErrorMessage = null;
+        return ++_saveVersion;
+    }
+
+    private async Task SavePolicyAsync(long version, CancellationToken cancellationToken) =>
+        await SaveAsync(() => StorageSettingsService.PatchPolicyAsync(Model, cancellationToken), version, cancellationToken);
+
+    private async Task SaveS3Async(long version, CancellationToken cancellationToken) =>
+        await SaveAsync(() => StorageSettingsService.PatchS3Async(Model, cancellationToken), version, cancellationToken);
+
+    private async Task UpdateS3CredentialsAsync()
+    {
+        if (!CanUpdateS3Credentials) return;
+
+        _credentialSavePending = true;
+        long version = BeginSave();
+        var lockTaken = false;
+        try
+        {
+            await _saveLock.WaitAsync(_lifetimeCts.Token);
+            lockTaken = true;
+            BaseCommandResponseOfGuid response = await StorageSettingsService.PatchS3CredentialsAsync(Model, _lifetimeCts.Token);
+            if (_disposed) return;
+
+            if (response.Success == true)
+            {
+                HalResourceOfTenantStorageSettingsDto redacted = await StorageSettingsService.GetAsync(_lifetimeCts.Token);
+                if (_disposed) return;
+
+                Model.S3AccessKeyId = string.Empty;
+                Model.S3SecretAccessKey = string.Empty;
+                Model.S3AccessKeyConfigured = redacted.S3AccessKeyConfigured;
+                Model.S3SecretAccessKeyConfigured = redacted.S3SecretAccessKeyConfigured;
+                if (version == _saveVersion)
+                {
+                    _saveStatusMessage = "S3 credentials updated.";
+                    _saveErrorMessage = null;
+                }
+            }
+            else if (version == _saveVersion)
+            {
+                _saveStatusMessage = null;
+                _saveErrorMessage = response.Message ?? "S3 credentials could not be updated.";
+            }
+        }
+        catch (OperationCanceledException) when (_lifetimeCts.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            if (!_disposed && version == _saveVersion)
+            {
+                _saveStatusMessage = null;
+                _saveErrorMessage = "S3 credentials could not be updated.";
+            }
+        }
+        finally
+        {
+            if (lockTaken) _saveLock.Release();
+            _credentialSavePending = false;
+            if (!_disposed) await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task SaveAsync(
+        Func<Task<BaseCommandResponseOfGuid>> save,
+        long version,
+        CancellationToken cancellationToken)
+    {
+        var lockTaken = false;
+        try
+        {
+            await _saveLock.WaitAsync(cancellationToken);
+            lockTaken = true;
+            BaseCommandResponseOfGuid response = await save();
+            if (_disposed || version != _saveVersion) return;
+
+            if (response.Success == true)
+            {
+                _saveStatusMessage = "Storage settings saved.";
+                _saveErrorMessage = null;
+            }
+            else
+            {
+                _saveStatusMessage = null;
+                _saveErrorMessage = response.Message ?? "Storage settings could not be saved.";
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            if (!_disposed && version == _saveVersion)
+            {
+                _saveStatusMessage = null;
+                _saveErrorMessage = "Storage settings could not be saved.";
+            }
+        }
+        finally
+        {
+            if (lockTaken) _saveLock.Release();
+            if (!_disposed) await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void SchedulePolicySave()
+    {
+        CancelDebounce(ref _policyDebounceCts);
+        _policyDebounceCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _policySaveVersion = BeginSave();
+        _ = RunPolicyDebounceAsync(_policyDebounceCts, _policySaveVersion);
+    }
+
+    private async Task RunPolicyDebounceAsync(CancellationTokenSource source, long version)
+    {
+        try
+        {
+            await Task.Delay(AutosaveDelayMilliseconds, source.Token);
+            if (ReferenceEquals(_policyDebounceCts, source)) _policyDebounceCts = null;
+            await SavePolicyAsync(version, source.Token);
+        }
+        catch (OperationCanceledException) when (source.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            source.Dispose();
+        }
+    }
+
+    private Task FlushPolicySaveAsync()
+    {
+        if (_policyDebounceCts is null) return Task.CompletedTask;
+        long version = _policySaveVersion;
+        CancelDebounce(ref _policyDebounceCts);
+        return SavePolicyAsync(version, _lifetimeCts.Token);
+    }
+
+    private void ScheduleS3Save()
+    {
+        CancelDebounce(ref _s3DebounceCts);
+        _s3DebounceCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _s3SaveVersion = BeginSave();
+        _ = RunS3DebounceAsync(_s3DebounceCts, _s3SaveVersion);
+    }
+
+    private async Task RunS3DebounceAsync(CancellationTokenSource source, long version)
+    {
+        try
+        {
+            await Task.Delay(AutosaveDelayMilliseconds, source.Token);
+            if (ReferenceEquals(_s3DebounceCts, source)) _s3DebounceCts = null;
+            await SaveS3Async(version, source.Token);
+        }
+        catch (OperationCanceledException) when (source.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            source.Dispose();
+        }
+    }
+
+    private Task FlushS3SaveAsync()
+    {
+        if (_s3DebounceCts is null) return Task.CompletedTask;
+        long version = _s3SaveVersion;
+        CancelDebounce(ref _s3DebounceCts);
+        return SaveS3Async(version, _lifetimeCts.Token);
+    }
+
+    private static void CancelDebounce(ref CancellationTokenSource? source)
+    {
+        CancellationTokenSource? pending = source;
+        source = null;
+        pending?.Cancel();
+    }
+
     private static string ConfiguredText(bool? configured, string label) =>
         configured == true ? $"An existing {label} is configured. Leave blank to keep it." : string.Empty;
 
@@ -271,5 +600,15 @@
         }
 
         return unit == 0 ? $"{value:0} {units[unit]}" : $"{value:0.#} {units[unit]}";
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _lifetimeCts.Cancel();
+        CancelDebounce(ref _policyDebounceCts);
+        CancelDebounce(ref _s3DebounceCts);
+        _lifetimeCts.Dispose();
     }
 }

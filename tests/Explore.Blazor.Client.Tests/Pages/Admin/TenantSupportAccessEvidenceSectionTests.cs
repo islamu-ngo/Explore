@@ -6,6 +6,7 @@ using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.SupportAccess;
 using Explore.Blazor.Client.Models.Responses;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Text.Json;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
@@ -141,16 +142,22 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
 
     private void ConfigureDefaults()
     {
-        _tenantOnboardingService.GetStatusAsync()
-            .Returns(Task.FromResult<TenantOnboardingStatusDto?>(new TenantOnboardingStatusDto
+        var tenantStatus = new TenantOnboardingStatusDto
+        {
+            IsCompleted = true,
+            IsAuthenticated = true,
+            IsCurrentUserTenantAdministrator = true,
+            TenantId = _tenantId
+        };
+        tenantStatus.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(
+            new Dictionary<string, object>
             {
-                IsCompleted = true,
-                IsAuthenticated = true,
-                IsCurrentUserTenantAdministrator = true,
-                TenantId = _tenantId
-            }));
-        _tenantOnboardingService.GetSettingsAsync()
-            .Returns(Task.FromResult(new TenantPolicySettingsDto()));
+                ["manage-tenant-settings"] = new { href = "/api/tenant-onboarding/policy-settings" }
+            });
+        _tenantOnboardingService.GetStatusAsync()
+            .Returns(Task.FromResult<TenantOnboardingStatusDto?>(tenantStatus));
+        _tenantOnboardingService.GetManagementSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<TenantPolicySettingsDto?>(new TenantPolicySettingsDto()));
         _instanceOnboardingService.GetStatusAsync()
             .Returns(Task.FromResult<InstanceOnboardingStatusDto?>(new InstanceOnboardingStatusDto
             {

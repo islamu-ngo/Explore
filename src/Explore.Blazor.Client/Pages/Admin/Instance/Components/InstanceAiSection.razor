@@ -19,28 +19,31 @@
     <MudStack Spacing="3">
         <MudSwitch T="bool"
                    Value="AiAssistant.Enabled == true"
-                   ValueChanged="@(value => AiAssistant.Enabled = value)"
+                   ValueChanged="OnEnabledChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Primary">
             Enable AI Assistant
         </MudSwitch>
 
         @if (AiAssistant.Enabled == true)
         {
-            <MudSelect T="string" Label="Provider" @bind-Value="AiAssistant.Provider" Variant="Variant.Outlined">
+            <MudSelect T="string" Label="Provider" @bind-Value="AiAssistant.Provider" Disabled="_isSaving" Variant="Variant.Outlined">
                 <MudSelectItem Value="@("openai-compatible")">OpenAI-compatible</MudSelectItem>
                 <MudSelectItem Value="@("anthropic-compatible")">Anthropic-compatible</MudSelectItem>
             </MudSelect>
 
             <MudSwitch T="bool"
                        Value="AiAssistant.AllowAnonymousAccess == true"
-                       ValueChanged="@(value => AiAssistant.AllowAnonymousAccess = value)"
+                       ValueChanged="OnAllowAnonymousAccessChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Warning">
                 Allow anonymous users to open the AI Assistant
             </MudSwitch>
 
             <MudSwitch T="bool"
                        Value="AiAssistant.ToolProposalsEnabled == true"
-                       ValueChanged="@(value => AiAssistant.ToolProposalsEnabled = value)"
+                       ValueChanged="OnToolProposalsEnabledChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Primary">
                 Enable tool proposals (Build mode)
             </MudSwitch>
@@ -53,17 +56,19 @@
                           Value="AiAssistant.EndpointUrl"
                           ValueChanged="OnEndpointUrlChanged"
                           Label="Endpoint URL"
-                          InputType="InputType.Url"
+                           InputType="InputType.Url"
+                           Disabled="_isSaving"
                           Variant="Variant.Outlined"
                           Placeholder="http://127.0.0.1:1337/v1"
                           HelperText="Provider base URL. Model discovery calls the provider's models endpoint automatically." />
 
             <MudTextField T="string"
-                          Label="API key (optional)"
-                          @bind-Value="AiAssistant.ApiKey"
-                          Variant="Variant.Outlined"
-                          InputType="InputType.Password"
-                          HelperText="Leave blank when the local provider does not require authentication." />
+                          Label="API key (leave blank to keep configured key)"
+                          @bind-Value="_apiKey"
+                           Variant="Variant.Outlined"
+                           InputType="InputType.Password"
+                           Disabled="_isSaving"
+                          HelperText="@(AiAssistant.ApiKeyConfigured == true ? "A provider key is configured on the server. Enter a replacement only when rotating it." : "Enter the provider key to use for model discovery and save with this provider configuration.")" />
 
             <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2" Class="flex-wrap">
                 @if (HasDiscoveredModels)
@@ -73,6 +78,7 @@
                                ValueChanged="OnModelIdChanged"
                                Label="Default model ID"
                                Variant="Variant.Outlined"
+                               Disabled="_isSaving"
                                HelperText="Select a model returned by the provider."
                                Class="flex-grow-1">
                         @foreach (var model in ModelOptions)
@@ -88,6 +94,7 @@
                                   ValueChanged="OnModelIdChanged"
                                   Label="Default model ID"
                                   Variant="Variant.Outlined"
+                                  Disabled="_isSaving"
                                   Placeholder="gpt-4o-mini, llama3.1, claude-sonnet-4-20250514"
                                   HelperText="Example: gpt-4o-mini, llama3.1, or the model name exposed by your provider."
                                   Class="flex-grow-1" />
@@ -98,7 +105,7 @@
                            Variant="Variant.Outlined"
                            StartIcon="@Icons.Material.Filled.Refresh"
                            OnClick="LoadModelsAsync"
-                           Disabled="@(!CanLoadModels)">
+                           Disabled="@(_isSaving || !CanLoadModels)">
                     @(_isLoadingModels ? "Loading..." : "Load models")
                 </MudButton>
             </MudStack>
@@ -111,6 +118,7 @@
                            SelectedValuesChanged="OnSelectedAllowedModelIdsChanged"
                            Label="Allowed models"
                            Variant="Variant.Outlined"
+                           Disabled="_isSaving"
                            HelperText="Choose every model the assistant may use.">
                     @foreach (var model in ModelOptions)
                     {
@@ -124,8 +132,9 @@
                               Value="@AllowedModelsText"
                               ValueChanged="OnAllowedModelsTextChanged"
                               Label="Allowed model IDs"
-                              Variant="Variant.Outlined"
-                              Lines="3"
+                               Variant="Variant.Outlined"
+                               Lines="3"
+                               Disabled="_isSaving"
                               HelperText="Optional. Use commas or one model per line. The default model ID is always included." />
             }
 
@@ -142,6 +151,15 @@
                     Enter an endpoint URL and model ID before saving, otherwise the AI Assistant cannot be enabled.
                 </MudAlert>
             }
+
+            <MudButton Elevation="0"
+                       Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="SaveProviderConfigurationAsync"
+                       Disabled="@(_isSaving || HasIncompleteConfiguration)">
+                @(_isSaving ? "Saving..." : "Save provider configuration")
+            </MudButton>
         }
 
         @if (!IsSingleTenant)
@@ -149,11 +167,15 @@
             <MudDivider Class="my-2" />
             <MudSwitch T="bool"
                        Value="AiAssistant.LockTenantAiAssistant == true"
-                       ValueChanged="@(value => AiAssistant.LockTenantAiAssistant = value)"
+                       ValueChanged="OnLockTenantAiAssistantChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Primary">
                 Lock tenant AI Assistant configuration
             </MudSwitch>
         }
+
+        <div role="status" aria-live="polite" aria-atomic="true">@_saveStatus</div>
+        <div role="alert">@_saveError</div>
     </MudStack>
 </div>
 
@@ -162,12 +184,23 @@
     private bool _isLoadingModels;
     private string? _modelLoadMessage;
     private Color _modelLoadMessageColor = Color.Secondary;
+    private string _apiKey = string.Empty;
+    private bool _isSaving;
+    private string? _saveStatus;
+    private string? _saveError;
+    private long _modelLoadVersion;
 
     [Parameter, EditorRequired]
     public AiAssistantGovernanceSettingsDto AiAssistant { get; set; } = new();
 
     [Parameter]
     public string DeploymentMode { get; set; } = "SingleTenant";
+
+    [Parameter, EditorRequired]
+    public Func<AiAssistantGovernanceSettingsDto, Task<BaseCommandResponseOfGuid>> SaveAiAssistantAsync { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Func<AiAssistantProviderConfigurationWriteDto, Task<BaseCommandResponseOfGuid>> SaveAiProviderConfigurationAsync { get; set; } = null!;
 
     private bool IsSingleTenant => string.Equals(DeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase)
                                    || string.IsNullOrWhiteSpace(DeploymentMode);
@@ -228,9 +261,80 @@
         EnsureDefaultModelAllowed();
     }
 
+    private Task OnEnabledChangedAsync(bool value)
+    {
+        AiAssistant.Enabled = value;
+        return SaveAsync(new AiAssistantGovernanceSettingsDto { Enabled = value }, "AI Assistant setting");
+    }
+
+    private Task OnAllowAnonymousAccessChangedAsync(bool value)
+    {
+        AiAssistant.AllowAnonymousAccess = value;
+        return SaveAsync(new AiAssistantGovernanceSettingsDto { AllowAnonymousAccess = value }, "AI Assistant setting");
+    }
+
+    private Task OnToolProposalsEnabledChangedAsync(bool value)
+    {
+        AiAssistant.ToolProposalsEnabled = value;
+        return SaveAsync(new AiAssistantGovernanceSettingsDto { ToolProposalsEnabled = value }, "AI Assistant setting");
+    }
+
+    private Task OnLockTenantAiAssistantChangedAsync(bool value)
+    {
+        AiAssistant.LockTenantAiAssistant = value;
+        return SaveAsync(new AiAssistantGovernanceSettingsDto { LockTenantAiAssistant = value }, "AI Assistant setting");
+    }
+
+    private async Task SaveProviderConfigurationAsync()
+    {
+        BaseCommandResponseOfGuid response = await SaveAsync(() => SaveAiProviderConfigurationAsync(new AiAssistantProviderConfigurationWriteDto
+        {
+            Provider = AiAssistant.Provider ?? string.Empty,
+            EndpointUrl = AiAssistant.EndpointUrl ?? string.Empty,
+            ApiKey = _apiKey,
+            ModelId = AiAssistant.ModelId ?? string.Empty,
+            AllowedModelIds = AiAssistant.AllowedModelIds?.ToArray() ?? []
+        }), "AI provider configuration");
+        if (response.Success == true)
+            _apiKey = string.Empty;
+    }
+
+    private Task<BaseCommandResponseOfGuid> SaveAsync(AiAssistantGovernanceSettingsDto patch, string label) =>
+        SaveAsync(() => SaveAiAssistantAsync(patch), label);
+
+    private async Task<BaseCommandResponseOfGuid> SaveAsync(
+        Func<Task<BaseCommandResponseOfGuid>> save,
+        string label)
+    {
+        _isSaving = true;
+        _saveStatus = $"Saving {label.ToLowerInvariant()}...";
+        _saveError = null;
+        try
+        {
+            BaseCommandResponseOfGuid response = await save();
+            _saveStatus = response.Success == true ? $"{label} saved." : null;
+            _saveError = response.Success == true
+                ? null
+                : string.IsNullOrWhiteSpace(response.Message) ? $"{label} could not be saved." : response.Message;
+            return response;
+        }
+        catch (Exception)
+        {
+            _saveStatus = null;
+            _saveError = $"{label} could not be saved.";
+            return new BaseCommandResponseOfGuid { Success = false, Message = _saveError };
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
     private void OnEndpointUrlChanged(string endpointUrl)
     {
         AiAssistant.EndpointUrl = endpointUrl;
+        _modelLoadVersion++;
+        _isLoadingModels = false;
         ClearDiscoveredModels();
     }
 
@@ -261,10 +365,20 @@
 
         _isLoadingModels = true;
         SetModelLoadMessage(null, Color.Secondary);
+        long requestVersion = ++_modelLoadVersion;
+        string endpointUrl = AiAssistant.EndpointUrl;
+        string apiKey = _apiKey;
 
         try
         {
-            var models = await TenantOnboardingService.GetAiModelsAsync(AiAssistant.EndpointUrl, AiAssistant.ApiKey);
+            var models = await TenantOnboardingService.GetAiModelsAsync(endpointUrl, apiKey);
+            if (requestVersion != _modelLoadVersion
+                || !string.Equals(endpointUrl, AiAssistant.EndpointUrl, StringComparison.Ordinal)
+                || !string.Equals(apiKey, _apiKey, StringComparison.Ordinal))
+            {
+                return;
+            }
+
             _discoveredModels = models
                 .Where(m => !string.IsNullOrWhiteSpace(m.Id))
                 .GroupBy(m => m.Id, StringComparer.OrdinalIgnoreCase)
@@ -294,7 +408,10 @@
         }
         finally
         {
-            _isLoadingModels = false;
+            if (requestVersion == _modelLoadVersion)
+            {
+                _isLoadingModels = false;
+            }
         }
     }
 

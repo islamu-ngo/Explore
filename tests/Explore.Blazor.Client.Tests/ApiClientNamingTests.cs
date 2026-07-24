@@ -40,6 +40,21 @@ public class ApiClientNamingTests
         "HalCollectionResourceOfLocationRoomListDto"
     ];
 
+    private static readonly string[] RequiredTenantSettingsMethodNames =
+    [
+        "PatchTenantStorageSettingsAsync",
+        "PatchTenantBrandingSettingsDocumentAsync",
+        "PatchTenantFooterSettingsAsync",
+        "GetTenantFooterSettingsAsync"
+    ];
+
+    private static readonly string[] LegacyTenantSettingsMethodNames =
+    [
+        "UpdateTenantStorageSettingsAsync",
+        "ReplaceTenantBrandingSettingsDocumentAsync",
+        "UpdateTenantFooterSettingsAsync"
+    ];
+
     /// <summary>
     /// Exact-match banned method names. These are NSwag's collision-disambiguation fallbacks
     /// observed in the current generated client. Phase 2+3 must eliminate every one of them.
@@ -157,6 +172,28 @@ public class ApiClientNamingTests
     }
 
     [Test]
+    public async Task GeneratedClient_TenantSettingsMethodsUseCanonicalNamesWithoutCompatibilityOverloads()
+    {
+        var generatedClientSource = GetGeneratedClientSource();
+        var generatedMethodNames = GetGeneratedAsyncMethodDeclarationNames(generatedClientSource);
+
+        foreach (var requiredMethodName in RequiredTenantSettingsMethodNames)
+        {
+            await Assert.That(generatedMethodNames.Count(name => name == requiredMethodName))
+                .IsEqualTo(2)
+                .Because($"Generated source must contain exactly the IEventApiClient and EventApiClient declarations for {requiredMethodName}, without a compatibility overload.");
+        }
+
+        foreach (var legacyMethodName in LegacyTenantSettingsMethodNames)
+        {
+            await Assert.That(generatedMethodNames.Contains(legacyMethodName, StringComparer.Ordinal)).IsFalse();
+            await Assert.That(generatedClientSource.Contains($"{legacyMethodName}(", StringComparison.Ordinal))
+                .IsFalse()
+                .Because($"Generated client source must not retain the retired {legacyMethodName} compatibility method.");
+        }
+    }
+
+    [Test]
     public async Task GeneratedClient_EmitsSchedulingDtoTypes()
     {
         var generatedClientSource = GetGeneratedClientSource();
@@ -225,6 +262,40 @@ public class ApiClientNamingTests
             "../../../../../src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"));
 
         return File.ReadAllText(generatedClientPath);
+    }
+
+    private static List<string> GetGeneratedAsyncMethodDeclarationNames(string generatedClientSource)
+    {
+        var methodNames = new List<string>();
+
+        using var reader = new StringReader(generatedClientSource);
+        string? line;
+        while ((line = reader.ReadLine()) is not null)
+        {
+            var trimmed = line.TrimStart();
+            if (!trimmed.StartsWith("System.Threading.Tasks.Task", StringComparison.Ordinal)
+                && !trimmed.StartsWith("public virtual async System.Threading.Tasks.Task", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var openParenthesis = trimmed.IndexOf('(', StringComparison.Ordinal);
+            var lastSpace = openParenthesis > 0
+                ? trimmed.LastIndexOf(' ', openParenthesis - 1)
+                : -1;
+            if (lastSpace < 0)
+            {
+                continue;
+            }
+
+            var methodName = trimmed[(lastSpace + 1)..openParenthesis];
+            if (methodName.EndsWith("Async", StringComparison.Ordinal))
+            {
+                methodNames.Add(methodName);
+            }
+        }
+
+        return methodNames;
     }
 
     private static List<string> GetUntypedHalEmbeddedCollectionTypeNames(string generatedClientSource)

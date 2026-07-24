@@ -73,6 +73,45 @@ public sealed class HeroCarouselTests : IDisposable
     }
 
     [Test]
+    public async Task HeroCarouselKeepsContextHeaderOutsideAnimatedSlides()
+    {
+        var cut = _ctx.RenderMudComponent<HeroCarousel>(parameters => parameters
+            .Add(component => component.Events, CreateEvents(2))
+            .Add(
+                component => component.HeaderContent,
+                (RenderFragment)(builder => builder.AddContent(0, "Browsing events in"))));
+
+        var header = cut.Find(".hero-carousel__persistent-header");
+
+        await Assert.That(header.TextContent.Trim()).IsEqualTo("Browsing events in");
+        await Assert.That(cut.FindAll(".hero-carousel__slide .hero-carousel__persistent-header").Count).IsEqualTo(0);
+
+        await cut.Find("button[aria-label='Next featured event']")
+            .TriggerEventAsync("onclick", new MouseEventArgs());
+
+        await Assert.That(cut.FindAll(".hero-carousel__persistent-header").Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task HeroCarouselRendersTitleBeforeCompactClassificationBadges()
+    {
+        var events = CreateEvents(1);
+        events[0].EventTypeFullName = "Community gathering";
+        events[0].EventFormatFullName = "In-Person";
+
+        var cut = _ctx.RenderMudComponent<HeroCarousel>(parameters => parameters
+            .Add(component => component.Events, events));
+        var content = cut.Find(".hero-carousel__content");
+        var badges = content.QuerySelectorAll(".hero-carousel__badge");
+
+        await Assert.That(badges.Length).IsEqualTo(2);
+        await Assert.That(badges[0].TextContent).IsEqualTo("COMMUNITY GATHERING");
+        await Assert.That(badges[1].TextContent).IsEqualTo("IN-PERSON");
+        await Assert.That(content.InnerHtml.IndexOf("hero-carousel__title", StringComparison.Ordinal))
+            .IsLessThan(content.InnerHtml.IndexOf("hero-carousel__badges", StringComparison.Ordinal));
+    }
+
+    [Test]
     public async Task ActiveSlideIsOneAccessibleEventLinkWithoutNestedCallToAction()
     {
         var cut = Render(1);
@@ -158,6 +197,7 @@ public sealed class HeroCarouselTests : IDisposable
                 Description = $"Description {index}",
                 FeaturedImageUri = $"https://example.test/events/{index}.webp",
                 ActorDisplayName = "Community organizer",
+                EventTypeFullName = "Community event",
                 EventFormatFullName = "In-Person",
                 FirstSessionDate = new DateTimeOffset(2026, 8, index, 18, 0, 0, TimeSpan.Zero)
             })

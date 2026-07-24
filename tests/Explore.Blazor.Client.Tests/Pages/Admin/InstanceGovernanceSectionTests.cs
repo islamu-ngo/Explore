@@ -75,6 +75,39 @@ public class InstanceGovernanceSectionTests : IDisposable
     }
 
     [Test]
+    public async Task RenderPolicyPreset_SendsCoupledPresetFieldsWithoutDelegationLocks()
+    {
+        RenderPolicySettingsDto? captured = null;
+        var renderPolicy = new RenderPolicySettingsDto
+        {
+            RenderPolicyPreset = "SeoBalanced",
+            AllowTenantRenderPolicyOverride = true,
+            LockTenantPublicSeoRenderPolicy = true,
+            LockTenantOperationalRenderPolicy = true,
+            LockTenantAdminRenderPolicy = true
+        };
+        var cut = RenderGovernanceSection(
+            renderPolicy: renderPolicy,
+            saveRenderPolicyAsync: patch =>
+            {
+                captured = patch;
+                return Task.FromResult(new BaseCommandResponseOfGuid { Success = true });
+            });
+
+        cut.FindAll(".instance-governance__preset-card")
+            .Single(card => card.TextContent.Contains("Custom Advanced", StringComparison.OrdinalIgnoreCase))
+            .Click();
+
+        await Assert.That(captured).IsNotNull();
+        await Assert.That(captured!.RenderPolicyPreset).IsEqualTo("CustomAdvanced");
+        await Assert.That(captured.EnableAdvancedRenderPolicyOverrides).IsTrue();
+        await Assert.That(captured.AllowTenantRenderPolicyOverride).IsNull();
+        await Assert.That(captured.LockTenantPublicSeoRenderPolicy).IsNull();
+        await Assert.That(captured.LockTenantOperationalRenderPolicy).IsNull();
+        await Assert.That(captured.LockTenantAdminRenderPolicy).IsNull();
+    }
+
+    [Test]
     public async Task RenderPolicyPreset_RendersPresetHelpTooltipTriggers()
     {
         var renderPolicy = new RenderPolicySettingsDto
@@ -104,6 +137,29 @@ public class InstanceGovernanceSectionTests : IDisposable
         var cut = RenderGovernanceSection(deploymentMode: "MultiTenant");
 
         await Assert.That(cut.Markup).Contains("Allow tenant self-service registration", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
+    public async Task GovernanceSection_EventToggleSendsOnePropertyAndAnnouncesSavedState()
+    {
+        EventPolicyDto? captured = null;
+        var cut = RenderGovernanceSection(
+            deploymentMode: "MultiTenant",
+            displayMode: "general",
+            saveEventPolicyAsync: patch =>
+            {
+                captured = patch;
+                return Task.FromResult(new BaseCommandResponseOfGuid { Success = true });
+            });
+        var eventSwitch = cut.FindComponents<MudSwitch<bool>>()
+            .Single(component => component.Markup.Contains("Allow user-submitted events", StringComparison.Ordinal));
+
+        await cut.InvokeAsync(() => eventSwitch.Instance.ValueChanged.InvokeAsync(true));
+
+        await Assert.That(captured).IsNotNull();
+        await Assert.That(captured!.AllowUserSubmittedEvents).IsTrue();
+        await Assert.That(captured.AllowOrganizationSubmittedEvents).IsNull();
+        await Assert.That(cut.Find("[role='status']").TextContent).Contains("Event policy saved.", StringComparison.Ordinal);
     }
 
     [Test]
@@ -445,7 +501,9 @@ public class InstanceGovernanceSectionTests : IDisposable
         OrganizationPolicyDto? orgPolicy = null,
         RenderPolicySettingsDto? renderPolicy = null,
         string deploymentMode = "SingleTenant",
-        string displayMode = "full")
+        string displayMode = "full",
+        Func<EventPolicyDto, Task<BaseCommandResponseOfGuid>>? saveEventPolicyAsync = null,
+        Func<RenderPolicySettingsDto, Task<BaseCommandResponseOfGuid>>? saveRenderPolicyAsync = null)
     {
         var componentType = typeof(IInstanceOnboardingService).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.Instance.Components.InstanceGovernanceSection")
                             ?? throw new InvalidOperationException("InstanceGovernanceSection component type not found");
@@ -457,11 +515,19 @@ public class InstanceGovernanceSectionTests : IDisposable
                  ["Delegation"] = delegation ?? new TenantDelegationSettingsDto(),
                  ["EventPolicy"] = eventPolicy ?? new EventPolicyDto(),
                  ["OrganizationPolicy"] = orgPolicy ?? new OrganizationPolicyDto(),
-                 ["RenderPolicy"] = renderPolicy ?? new RenderPolicySettingsDto(),
-                 ["DeploymentMode"] = deploymentMode,
-                 ["DisplayMode"] = displayMode
-             }));
+                  ["RenderPolicy"] = renderPolicy ?? new RenderPolicySettingsDto(),
+                  ["DeploymentMode"] = deploymentMode,
+                  ["DisplayMode"] = displayMode,
+                  ["SaveDelegationAsync"] = SuccessfulSave<TenantDelegationSettingsDto>(),
+                  ["SaveEventPolicyAsync"] = saveEventPolicyAsync ?? SuccessfulSave<EventPolicyDto>(),
+                  ["SaveOrganizationPolicyAsync"] = SuccessfulSave<OrganizationPolicyDto>(),
+                  ["SaveRenderPolicyAsync"] = saveRenderPolicyAsync ?? SuccessfulSave<RenderPolicySettingsDto>(),
+                  ["SaveMcpAsync"] = SuccessfulSave<McpGovernanceSettingsDto>()
+              }));
     }
+
+    private static Func<T, Task<BaseCommandResponseOfGuid>> SuccessfulSave<T>() =>
+        _ => Task.FromResult(new BaseCommandResponseOfGuid { Success = true });
 
     private static HalResourceOfControlPlaneDeploymentModeRunbookDto CreateRunbook(
         IDictionary<string, HalLink> links) => new()

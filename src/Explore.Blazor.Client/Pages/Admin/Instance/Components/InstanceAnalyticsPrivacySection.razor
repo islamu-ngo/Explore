@@ -22,7 +22,8 @@
 
         <MudSwitch T="bool"
                    Value="Model.GlobalDisableClientTracking == true"
-                   ValueChanged="@(value => Model.GlobalDisableClientTracking = value)"
+                   ValueChanged="OnGlobalDisableChangedAsync"
+                   Disabled="_isSaving"
                    Color="Color.Error" Label="Emergency: Disable all client-side analytics" />
 
         @* ── Provider Info (read-only) ──────────────────────────────── *@
@@ -102,13 +103,16 @@
 
             <MudSwitch T="bool"
                        Value="Model.CookieConsentEnabled == true"
-                       ValueChanged="@(value => Model.CookieConsentEnabled = value)"
+                       ValueChanged="OnCookieConsentChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Primary"
                        Label="Enable cookie consent banner" />
 
             @if (Model.CookieConsentEnabled == true)
             {
-                <MudSelect T="DeclineBehavior?" @bind-Value="Model.DeclineBehavior"
+                <MudSelect T="DeclineBehavior?" Value="Model.DeclineBehavior"
+                           ValueChanged="OnDeclineBehaviorChangedAsync"
+                           Disabled="_isSaving"
                            Label="When user declines cookies"
                            Variant="Variant.Outlined"
                            HelperText="Controls what happens to analytics when a user clicks 'Decline'">
@@ -129,7 +133,9 @@
                     </MudAlert>
                 }
 
-                <MudNumericField T="int?" @bind-Value="Model.ConsentCookieLifetimeDays"
+                <MudNumericField T="int?" Value="Model.ConsentCookieLifetimeDays"
+                                 ValueChanged="OnConsentLifetimeChangedAsync"
+                                 Disabled="_isSaving"
                                  Label="Consent cookie lifetime (days)"
                                  Variant="Variant.Outlined"
                                  Min="30" Max="365"
@@ -147,7 +153,9 @@
                 Disabling features here reduces data collection and may remove the need for a consent banner.
             </MudText>
 
-            <MudSelect T="PosthogCookielessMode?" @bind-Value="Model.PosthogCookielessMode"
+            <MudSelect T="PosthogCookielessMode?" Value="Model.PosthogCookielessMode"
+                       ValueChanged="OnCookielessModeChangedAsync"
+                       Disabled="_isSaving"
                        Label="Cookieless Mode"
                        Variant="Variant.Outlined"
                        HelperText="Controls whether PostHog stores data on users' devices">
@@ -173,7 +181,9 @@
                 </MudAlert>
             }
 
-            <MudSelect T="PosthogPersonProfiles?" @bind-Value="Model.PosthogPersonProfiles"
+            <MudSelect T="PosthogPersonProfiles?" Value="Model.PosthogPersonProfiles"
+                       ValueChanged="OnPersonProfilesChangedAsync"
+                       Disabled="_isSaving"
                        Label="Person Profiles"
                        Variant="Variant.Outlined"
                        HelperText="Controls when PostHog creates user profiles">
@@ -194,7 +204,8 @@
 
             <MudSwitch T="bool"
                        Value="Model.PosthogSessionReplay == true"
-                       ValueChanged="@(value => Model.PosthogSessionReplay = value)"
+                       ValueChanged="OnSessionReplayChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Primary"
                        Label="Session Replay" />
 
@@ -208,19 +219,22 @@
 
             <MudSwitch T="bool"
                        Value="Model.PosthogAutocapture == true"
-                       ValueChanged="@(value => Model.PosthogAutocapture = value)"
+                       ValueChanged="OnAutocaptureChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Primary"
                        Label="Autocapture (automatic click/input tracking)" />
 
             <MudSwitch T="bool"
                        Value="Model.PosthogHeatmaps == true"
-                       ValueChanged="@(value => Model.PosthogHeatmaps = value)"
+                       ValueChanged="OnHeatmapsChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Primary"
                        Label="Heatmaps" />
 
             <MudSwitch T="bool"
                        Value="Model.PosthogToolbar == true"
-                       ValueChanged="@(value => Model.PosthogToolbar = value)"
+                       ValueChanged="OnToolbarChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Primary"
                        Label="PostHog Toolbar (debug overlay)" />
 
@@ -249,11 +263,14 @@
             <MudDivider Class="my-3" />
             <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Tenant Delegation</MudText>
             <MudSwitch T="bool" Value="LockForTenants"
-                       ValueChanged="LockForTenantsChanged"
+                       ValueChanged="OnLockForTenantsChangedAsync"
+                       Disabled="_isSaving"
                        Color="Color.Warning">
                 Lock analytics settings — tenants cannot configure their own analytics and privacy
             </MudSwitch>
         }
+        <div role="status" aria-live="polite" aria-atomic="true">@_saveStatus</div>
+        <div role="alert">@_saveError</div>
     </MudStack>
 </div>
 
@@ -270,10 +287,88 @@
     [Parameter]
     public EventCallback<bool> LockForTenantsChanged { get; set; }
 
+    [Parameter, EditorRequired]
+    public Func<AnalyticsGovernanceSettingsDto, Task<BaseCommandResponseOfGuid>> SaveAnalyticsAsync { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Func<TenantDelegationSettingsDto, Task<BaseCommandResponseOfGuid>> SaveDelegationAsync { get; set; } = null!;
+
+    private bool _isSaving;
+    private string? _saveStatus;
+    private string? _saveError;
+
     private bool IsPosthog => string.Equals(Model.Provider, "posthog", StringComparison.OrdinalIgnoreCase);
 
     private bool IsRybbit => string.Equals(Model.Provider, "rybbit", StringComparison.OrdinalIgnoreCase);
 
     private bool HasProvider => Model.Enabled == true
                                 && !string.Equals(Model.Provider, "none", StringComparison.OrdinalIgnoreCase);
+
+    private Task OnGlobalDisableChangedAsync(bool value) => SaveAnalyticsValueAsync(
+        new() { GlobalDisableClientTracking = value }, () => Model.GlobalDisableClientTracking = value);
+
+    private Task OnCookieConsentChangedAsync(bool value) => SaveAnalyticsValueAsync(
+        new() { CookieConsentEnabled = value }, () => Model.CookieConsentEnabled = value);
+
+    private Task OnDeclineBehaviorChangedAsync(DeclineBehavior? value) => SaveAnalyticsValueAsync(
+        new() { DeclineBehavior = value }, () => Model.DeclineBehavior = value);
+
+    private Task OnConsentLifetimeChangedAsync(int? value) => SaveAnalyticsValueAsync(
+        new() { ConsentCookieLifetimeDays = value }, () => Model.ConsentCookieLifetimeDays = value);
+
+    private Task OnCookielessModeChangedAsync(PosthogCookielessMode? value) => SaveAnalyticsValueAsync(
+        new() { PosthogCookielessMode = value }, () => Model.PosthogCookielessMode = value);
+
+    private Task OnPersonProfilesChangedAsync(PosthogPersonProfiles? value) => SaveAnalyticsValueAsync(
+        new() { PosthogPersonProfiles = value }, () => Model.PosthogPersonProfiles = value);
+
+    private Task OnSessionReplayChangedAsync(bool value) => SaveAnalyticsValueAsync(
+        new() { PosthogSessionReplay = value }, () => Model.PosthogSessionReplay = value);
+
+    private Task OnAutocaptureChangedAsync(bool value) => SaveAnalyticsValueAsync(
+        new() { PosthogAutocapture = value }, () => Model.PosthogAutocapture = value);
+
+    private Task OnHeatmapsChangedAsync(bool value) => SaveAnalyticsValueAsync(
+        new() { PosthogHeatmaps = value }, () => Model.PosthogHeatmaps = value);
+
+    private Task OnToolbarChangedAsync(bool value) => SaveAnalyticsValueAsync(
+        new() { PosthogToolbar = value }, () => Model.PosthogToolbar = value);
+
+    private Task SaveAnalyticsValueAsync(AnalyticsGovernanceSettingsDto patch, Action apply)
+    {
+        apply();
+        return SaveAsync(() => SaveAnalyticsAsync(patch), "Analytics settings");
+    }
+
+    private async Task OnLockForTenantsChangedAsync(bool value)
+    {
+        await LockForTenantsChanged.InvokeAsync(value);
+        await SaveAsync(
+            () => SaveDelegationAsync(new TenantDelegationSettingsDto { LockTenantAnalytics = value }),
+            "Analytics delegation");
+    }
+
+    private async Task SaveAsync(Func<Task<BaseCommandResponseOfGuid>> save, string label)
+    {
+        _isSaving = true;
+        _saveStatus = $"Saving {label.ToLowerInvariant()}...";
+        _saveError = null;
+        try
+        {
+            BaseCommandResponseOfGuid response = await save();
+            _saveStatus = response.Success == true ? $"{label} saved." : null;
+            _saveError = response.Success == true
+                ? null
+                : string.IsNullOrWhiteSpace(response.Message) ? $"{label} could not be saved." : response.Message;
+        }
+        catch (Exception)
+        {
+            _saveStatus = null;
+            _saveError = $"{label} could not be saved.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
 }

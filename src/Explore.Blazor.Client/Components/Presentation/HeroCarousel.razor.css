@@ -125,7 +125,7 @@
     display: grid;
     grid-template-columns: 13.5rem minmax(0, 1fr);
     gap: var(--isl-space-4);
-    align-items: center;
+    align-items: start;
     block-size: 100%;
     max-inline-size: 90rem;
     margin-inline: auto;
@@ -134,7 +134,7 @@
 }
 
 .hero-carousel__inner--with-header {
-    grid-template-rows: auto minmax(0, 1fr);
+    padding-block-start: calc(2.75rem + var(--isl-space-8));
 }
 
 .hero-carousel__inner.hero-carousel__inner--empty {
@@ -149,9 +149,23 @@
 .hero-carousel__header {
     position: relative;
     z-index: 4;
-    grid-column: 1 / -1;
     color: var(--isl-overlay-text);
     pointer-events: auto;
+}
+
+.hero-carousel__persistent-header {
+    position: absolute;
+    z-index: 5;
+    inset-block-start: 0;
+    inset-inline: 0;
+    pointer-events: none;
+}
+
+.hero-carousel__persistent-header-inner {
+    max-inline-size: 90rem;
+    margin-inline: auto;
+    padding: var(--isl-space-4);
+    padding-block-end: 0;
 }
 
 .hero-carousel__slide-link {
@@ -182,29 +196,39 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    justify-content: center;
+    justify-content: flex-start;
     min-inline-size: 0;
-    max-inline-size: 50rem;
+    inline-size: 100%;
 }
 
-.hero-carousel__format {
-    margin-block-end: 0.75rem;
-    padding-block: 0.25rem;
-    padding-inline: 0.65rem;
-    border-radius: var(--isl-radius-pill, 999px);
-    background: var(--isl-color-primary, var(--mud-palette-primary));
-    font-size: 0.75rem;
-    font-weight: 700;
+.hero-carousel__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2);
+    margin-block-start: var(--isl-space-2);
+}
+
+.hero-carousel__badge {
+    padding-block: calc(var(--isl-space-1) / 2);
+    padding-inline: var(--isl-space-2);
+    border-radius: var(--isl-radius-sm);
+    background: oklch(0.12 0 0 / 0.92);
+    color: var(--isl-overlay-text);
+    font-size: var(--isl-typography-overline-size);
+    font-weight: 750;
+    line-height: 1;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
 }
 
 .hero-carousel__title {
-    max-inline-size: 24ch;
+    inline-size: 100%;
     margin: 0;
     overflow: hidden;
     font-size: var(--isl-typography-h1-size);
     font-weight: var(--isl-typography-h1-weight);
     line-height: var(--isl-typography-h1-line-height);
-    text-wrap: balance;
+    text-wrap: wrap;
 }
 
 .hero-carousel__metadata,
@@ -289,7 +313,7 @@
     }
 }
 
-@media (max-width: 47.99rem) {
+@media (max-width: 48rem) {
     .hero-carousel__description {
         display: none;
     }
@@ -310,12 +334,27 @@
         padding-block-end: var(--isl-space-3);
     }
 
-    .hero-carousel__format {
-        margin-block-end: var(--isl-space-2);
+    .hero-carousel__inner--with-header {
+        padding-block-start: calc(2.75rem + var(--isl-space-4));
+    }
+
+    .hero-carousel__persistent-header-inner {
+        padding: var(--isl-space-3);
+        padding-block-end: 0;
+    }
+
+    .hero-carousel__badges {
+        gap: var(--isl-space-1);
+        margin-block-start: var(--isl-space-1);
+    }
+
+    .hero-carousel__badge {
+        padding-inline: var(--isl-space-1);
     }
 
     .hero-carousel__title {
         display: -webkit-box;
+        margin-block-start: calc(-1 * var(--isl-space-1));
         font-size: var(--isl-typography-h4-size);
         line-height: var(--isl-typography-h4-line-height);
         -webkit-box-orient: vertical;
