@@ -6,7 +6,7 @@ ABOUTME: Covers local-first runtime storage, optional S3-compatible mode, reconc
 > **Audience:** Operators | Admins | Contributors
 > **Status:** Mixed
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-06-23
+> **Last Verified:** 2026-07-24
 > **Source Anchors:** `Explore.Infrastructure/Storage/`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `Explore.Infrastructure/Services/ObjectStorageService.cs`, `Explore.API/Controllers/StorageObjectController.cs`, `Explore.API/Controllers/TenantStorageSettingsController.cs`, `Explore.Blazor.Client/Services/ImageStorageService.cs`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 Storage is moving to a local-first, provider-neutral model. New upload/read flows use metadata-backed `StorageObject` records and the selected `IFileStorageProvider`; S3-compatible storage remains optional for instances that select and configure it.
@@ -19,9 +19,9 @@ Storage is moving to a local-first, provider-neutral model. New upload/read flow
 | Configuration resolution | `S3ConfigResolver` resolves tenant-aware settings from persisted settings first, then `IConfiguration`, with a five-minute cache. |
 | Public reads | `StorageObjectController` streams file content by `StorageObject.Id`; public images use the same metadata reader with public-image visibility checks. Caller-supplied object-key read and presign routes are removed. |
 | Authenticated writes | Upload URL generation requires authentication; `StorageObject` create/update/delete operations require authentication and `storage_object` resource authorization. |
-| Admin settings | Instance admins can read/update provider policy, quotas, max-upload ceilings, delegation lock, usage, and redacted optional S3 settings through instance settings endpoints. Provider test and usage recalculation actions are API-backed. Tenant admins can read effective tenant policy, usage, lock state, and redacted optional S3 overrides through tenant settings endpoints; writes are accepted only when instance delegation is unlocked and values stay within instance ceilings and allowed providers. |
+| Admin settings | Instance admins can read/update provider policy, quotas, max-upload ceilings, delegation lock, usage, and redacted optional S3 settings through instance settings endpoints. Provider test and usage recalculation actions are API-backed. Tenant admins read effective tenant policy, usage, lock state, and redacted optional S3 overrides through `GET /api/tenant/settings/storage`, then patch supplied `policy` or `s3` leaves through `PATCH /api/tenant/settings/storage`. Writes are accepted only when instance delegation is unlocked and values stay within instance ceilings and allowed providers. |
 | Blazor client boundary | Browser uploads use BFF upload sessions and proxy streaming. Trusted direct provider uploads use a provider-neutral `DirectStorageUpload` client only when the server issued the destination URL. Public image/content display resolves from `StorageObject.Id` or existing `/api/storageobject/...` API paths, not raw provider object keys. |
-| Blazor admin UI | Instance and tenant storage dashboards consume service models mapped from HAL settings resources. Action buttons are driven by `_links` and read-only state, not client-side role checks. |
+| Blazor admin UI | Instance and tenant storage dashboards consume service models mapped from HAL settings resources. The tenant dashboard autosaves isolated `policy` and `s3` patches only when `_links.edit` is present. Action buttons are driven by `_links` and read-only state, not client-side role checks. |
 | Local self-hosting | Docker Compose mounts a durable `local_storage_data` volume for local-first storage by default. MinIO remains optional through the `storage` profile for instances that select S3-compatible storage. |
 | Reconciliation | API hosts a dry-run-first reconciliation worker that checks metadata/object drift, reports missing backing objects and local orphan files, and performs quarantine/delete mutations only when explicit policy flags are enabled. |
 | Moderation image deletion | Heavy event redaction marks referenced event image metadata as `delete_requested` with the owning event resource id, commits the redaction, then deletes provider objects through `IFileStorageProvider`. Failures leave metadata retryable and do not log object keys, filenames, paths, endpoints, buckets, or raw provider errors. |
@@ -43,6 +43,21 @@ Local storage is the default provider. Its filesystem root is deployment-managed
 | Tenant delegation | `governance.lock_tenant_storage` | Controls whether tenant-level storage overrides are locked. |
 
 For external secret providers, keep the naming distinction from [SECRETS.md](SECRETS.md): provider-side optional S3 names map into runtime `S3Settings:*` values. `Storage__Local__*` keys are deployment/runtime configuration only and must not contain tenant-controlled paths.
+
+### Tenant Settings PATCH Contract
+
+Tenant storage administration has one grouped write route: `PATCH /api/tenant/settings/storage`, operation ID `PatchTenantStorageSettings`, generated method `PatchTenantStorageSettingsAsync`. The former `PUT` operation and `UpdateTenantStorageSettingsAsync` client method are removed. This grouped resource is separate from exact-key setting APIs that still use `PUT`.
+
+The request has two optional groups:
+
+| Group | Presence-Aware Leaves |
+|---|---|
+| `policy` | `provider`, `maxUploadBytes`, `tenantQuotaBytes`, `routes` |
+| `s3` | `endpoint`, `publicEndpoint`, `bucketName`, `accessKeyId`, `secretAccessKey`, `region`, `forcePathStyle`, `uploadUrlExpirationMinutes` |
+
+Each leaf uses explicit presence metadata. An omitted group or leaf preserves the stored value. A present clearable string leaf can intentionally clear that value. Ordinary S3 autosave never sends `accessKeyId` or `secretAccessKey`. Credentials rotate only as one coupled pair through the explicit **Update S3 credentials** action, which requires both browser inputs and the resource's HAL `edit` affordance; reads return only redacted configured flags.
+
+The server first requires tenant-admin or instance-admin authority and rejects the whole patch while instance storage delegation is locked. It validates that the request contains an update, merges supplied leaves into the current effective model for provider, quota, route, endpoint, and ceiling validation, then persists only the supplied leaves in one transaction. After a successful transaction it invalidates both the tenant hierarchical-settings cache and the tenant S3 resolver cache. The HAL `edit` relation is the client authority for showing or enabling storage edits, while the server repeats authorization, lock, and validation checks for direct API calls.
 
 ### Reconciliation Settings
 
@@ -90,7 +105,7 @@ The instance storage dashboard reads `HalResourceOfInstanceStorageSettingsDto` t
 
 The tenant storage dashboard reads `HalResourceOfTenantStorageSettingsDto` through `TenantStorageSettingsAdminService` and maps it into `TenantStorageSettingsModel`. The UI is read-only when the tenant `edit` link is absent, delegation is locked, or the effective policy says the settings are read-only. Tenant overrides stay bounded by the server-provided effective policy and instance ceilings; server validation remains authoritative.
 
-The Phase 5.2-5.4 implementation was verified with Blazor client/host/test Release builds and focused bUnit/service tests. A real authenticated browser smoke for keyboard-only upload/admin paths remains a Phase 5.5 validation item.
+Autosave keeps `policy` and non-credential `s3` changes separate. Discrete choices save immediately; text and numeric inputs wait 400 ms after typing and flush on blur. A successful credential rotation clears both browser inputs and reloads the redacted configured flags; a failed rotation retains both inputs for an explicit retry. The component cancels superseded autosaves and announces saving, success, and failure through a polite `role="status"` live region. This describes the implemented interaction boundary and does not claim browser visual QA.
 
 ## API Surface
 
@@ -101,9 +116,9 @@ The Phase 5.2-5.4 implementation was verified with Blazor client/host/test Relea
 | Generate upload URL | Requires authentication. |
 | Create/update/delete storage object metadata | Requires authentication and `storage_object` resource authorization. |
 | Instance storage settings read/update/test/recalculate | Instance-admin/setup-secret boundaries are handled by instance settings endpoints. Read responses redact S3 secrets and expose configured flags instead. |
-| Tenant storage settings read/update | Requires tenant-admin or instance-admin authority for the current tenant. `GET/PUT /api/tenant/settings/storage` returns effective policy, read-only lock state, usage, and redacted optional S3 overrides; updates are rejected while delegation is locked or when max-upload/provider validation fails. |
+| Tenant storage settings read/patch | Requires tenant-admin or instance-admin authority for the current tenant. `GET /api/tenant/settings/storage` returns effective policy, read-only lock state, usage, and redacted optional S3 overrides. `PATCH /api/tenant/settings/storage` changes only supplied `policy` or `s3` leaves and rejects the whole request while delegation is locked or when merged max-upload, quota, route, provider, or S3 validation fails. |
 
-HAL links are the client source of truth for storage UI affordances. Storage object collection/detail responses expose public read links (`content`, `public-image`, `presigned-download`) only for active objects and expose mutation links (`create`, `create-upload-session`, `edit`, `delete`) through server-side authorization metadata. Instance storage settings expose `edit`, `provider-test`, and `recalculate-usage` affordances for authorized instance administrators. Tenant storage settings expose `edit` only when instance delegation allows tenant overrides and the effective policy is not read-only. Treat link presence as an authorization hint, not as a replacement for server-side enforcement.
+HAL links are the client source of truth for storage UI affordances. Storage object collection/detail responses expose public read links (`content`, `public-image`, `presigned-download`) only for active objects and expose mutation links (`create`, `create-upload-session`, `edit`, `delete`) through server-side authorization metadata. Instance storage settings expose `edit`, `provider-test`, and `recalculate-usage` affordances for authorized instance administrators. Tenant storage settings expose `edit` only when instance delegation allows tenant overrides and the effective policy is not read-only. Link presence controls client affordances, but direct API writes still pass server-side authorization, lock, validation, transaction, and cache-invalidation checks.
 
 ## Backup And Restore Impact
 

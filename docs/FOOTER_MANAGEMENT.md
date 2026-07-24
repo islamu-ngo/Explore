@@ -47,6 +47,24 @@ Footer behavior is controlled through the settings system (section: `FooterSetti
 | `footer.copyright_text` | `string` | — | Copyright line |
 | `footer.show_cookie_settings_link` | `bool` | `true` | Cookie consent link |
 
+### Tenant Settings Contract
+
+Tenant administrators load the scalar settings resource through authenticated `GET /api/footer/settings`, operation ID `GetTenantFooterSettings`, generated method `GetTenantFooterSettingsAsync`. The HAL response includes the resolved scalar values, typed social links, governance lock flags, and the authorized `edit` and `manage-link-groups` capabilities. It intentionally excludes link-group and link entities.
+
+Scalar updates use `PATCH /api/footer/settings`, operation ID `PatchTenantFooterSettings`, generated method `PatchTenantFooterSettingsAsync`. The former `PUT` operation and `UpdateTenantFooterSettingsAsync` client method are removed. This grouped resource does not change exact-key setting operations elsewhere that still use `PUT`.
+
+The patch body contains optional groups with presence-aware leaves:
+
+| Group | Leaves |
+|---|---|
+| `general` | `enabled`, `showCookieSettingsLink` |
+| `template` | `value` |
+| `description` | `show`, `text` |
+| `socialLinks` | `show`, `items` |
+| `copyright` | `text` |
+
+Omitted groups and leaves preserve their stored values. `socialLinks.items` is a typed list of `{ platform, url, label }`, not an unstructured JSON string in the API contract. The server validates the supplied patch before persistence, writes all accepted leaves in one transaction, and invalidates the tenant settings cache once after success.
+
 ## Templates
 
 | Template | Layout | Use Case |
@@ -80,9 +98,13 @@ Instance admins can lock footer aspects to prevent tenant overrides:
 
 Governance is managed via `InstanceFooterGovernanceSection.razor` with toggle controls. In single-tenant mode, an info alert explains that governance has no effect.
 
+The scalar PATCH resolves current lock state on every request. Requested `template`, `description`, `socialLinks`, or `copyright` leaves that are locked by instance governance are preserved rather than overwritten; unlocked requested leaves can still be written in the same patch. The `general` leaves aren't covered by those scalar locks. HAL remains the UI authority, but direct API calls do not bypass server lock handling.
+
+Link management has a separate boundary. The tenant settings resource includes `manage-link-groups` only when effective link-group governance is unlocked and the caller has tenant update authority. Every create, update, delete, and reorder command also calls `FooterLinkMutationGuard`, so constructing a link mutation URL directly cannot bypass the effective lock. That guard returns an authorization failure in multi-tenant mode and bypasses the instance lock in single-tenant mode, matching the platform governance rule.
+
 ## API Endpoints
 
-### FooterController (11 endpoints)
+### FooterController (12 endpoints)
 
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
@@ -96,7 +118,10 @@ Governance is managed via `InstanceFooterGovernanceSection.razor` with toggle co
 | POST | `/api/footer/link-groups/{groupId}/links` | Authorize | Create link in group |
 | PUT | `/api/footer/links/{id}` | Authorize | Update link |
 | DELETE | `/api/footer/links/{id}` | Authorize | Delete link |
-| PUT | `/api/footer/settings` | Authorize | Update footer settings |
+| GET | `/api/footer/settings` | Authorize | Read scalar settings, lock state, and HAL capabilities |
+| PATCH | `/api/footer/settings` | Authorize | Patch supplied scalar setting groups and leaves |
+
+`GET /api/footer/config` remains the anonymous public rendering contract. The authenticated settings GET and PATCH are admin contracts. Link group and link create/update/delete operations plus `POST /api/footer/link-groups/reorder` remain explicit and unchanged; they are not folded into the scalar settings patch.
 
 ## CQRS Structure
 
@@ -106,6 +131,7 @@ Governance is managed via `InstanceFooterGovernanceSection.razor` with toggle co
 | Query | `GetLinkGroupList` | Admin link group listing |
 | Query | `GetLinkGroupDetails` | Single group with links |
 | Query | `GetGovernanceSettings` | Instance lock states |
+| Query | `GetTenantFooterSettings` | Authenticated scalar settings, locks, and HAL source data |
 | Command | `CreateLinkGroup` | New link group |
 | Command | `UpdateLinkGroup` | Modify link group |
 | Command | `DeleteLinkGroup` | Remove link group |
@@ -113,19 +139,21 @@ Governance is managed via `InstanceFooterGovernanceSection.razor` with toggle co
 | Command | `CreateLink` | New link in group |
 | Command | `UpdateLink` | Modify link |
 | Command | `DeleteLink` | Remove link |
-| Command | `UpdateTenantFooterSettings` | Tenant footer settings |
+| Command | `PatchTenantFooterSettings` | Presence-aware tenant footer scalar settings patch |
 | Command | `UpdateGovernanceSettings` | Instance governance locks |
 
 ## Admin UI
 
-`FooterSettings.razor` at `/admin/tenant/footer` provides:
+The tenant footer section at `/admin/tenant/settings?section=footer` provides:
 
-- **General Settings** — template, description, copyright, toggles
-- **Social Links** — inline editing with platform selector
-- **Link Groups** — table with drag-to-reorder
-- **Group Links** — nested link management per group
+- **General Settings**: enabled and cookie-settings toggles, plus template selection
+- **Description and Copyright**: scalar text and visibility controls
+- **Social Links**: typed platform, URL, and accessible-label entries
+- **Link Groups and Group Links**: explicit create, edit, delete, and reorder actions when `manage-link-groups` is present
 
 Dialogs: `FooterLinkDialog`, `FooterLinkGroupDialog`.
+
+Autosave sends only the affected scalar group. Discrete toggles and template selection save immediately. Description, copyright, and social-link text wait 400 ms after typing and flush on blur. Saving, success, and failure messages are exposed through polite `role="status"` feedback, while load failures use an assertive alert. Link CRUD and reorder keep their explicit command boundaries. This records implemented behavior and does not claim browser visual QA.
 
 ## Related
 

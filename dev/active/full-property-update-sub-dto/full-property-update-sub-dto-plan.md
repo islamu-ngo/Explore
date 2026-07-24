@@ -66,7 +66,7 @@ Relevant projects:
 - `tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj` when persistence changes
 - `tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj`
 
-Existing anchors include `UpdateEventSessionCommandHandlerTests`, `UpdateInstanceGovernanceSettingsCommandHandlerTests`, `UpdateTenantPolicySettingsCommandHandlerTests`, and `TenantPoliciesSectionTests`. Gaps remain around immediate policy persistence, failed-save rollback/status, full DTO stale overwrite prevention, old contract removal, and final detection of public broad update DTOs.
+Existing anchors include `UpdateEventSessionCommandHandlerTests`, `UpdateInstanceSubResourceCommandHandlerTests`, `UpdateTenantPolicySettingsCommandHandlerTests`, and `TenantPoliciesSectionTests`. Gaps remain around immediate policy persistence, failed-save rollback/status, full DTO stale overwrite prevention, old contract removal, and final detection of public broad update DTOs.
 
 ### 2.4 Documentation And Generated Contracts
 

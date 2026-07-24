@@ -3,14 +3,14 @@
 
 # Full Property Update Sub-DTO Pattern - Task Checklist
 
-Last Updated: 2026-07-23 Europe/Brussels
+Last Updated: 2026-07-24 Europe/Brussels
 
 ## Status Summary
 
 - **Overall status:** Implementation in progress; Phase 1 active.
-- **Completed:** 1/20 implementation tasks; phase verification is tracked separately.
-- **Current priority:** Task 1.2 tenant settings document/sub-resource migration.
-- **Next recommended slice:** Task 1.2, followed by Task 1.3 instance settings and onboarding duplicates.
+- **Completed:** 3/20 implementation tasks; phase verification is tracked separately.
+- **Current priority:** Reconcile the five unrelated Blazor failures before closing Phase 1 verification.
+- **Next recommended slice:** Phase 1 Blazor verification, then Task 2.1.
 - **Coverage contract:** 59 DTO files, 71 update-handler files, and 104 public PUT/PATCH endpoints are individually registered.
 
 ## Implementation Maintenance Rules
@@ -34,20 +34,22 @@ Last Updated: 2026-07-23 Europe/Brussels
   - **Verification:** Focused backend suites passed 115/115; focused Blazor suites passed 41/41; Release build passed with 0 errors. User explicitly waived runtime visual QA after Chrome DevTools MCP was unavailable.
   - **Effort:** L
   - **Dependencies:** none.
-- [ ] **1.2 Migrate every tenant settings document/sub-resource**
+- [x] **1.2 Migrate every tenant settings document/sub-resource**
   - **Rows:** H-044/H-061; A-054/A-068/A-075.
   - **Acceptance:** Tenant storage, branding document, and footer settings use grouped PATCH/autosave with existing lock, concurrency, audit, validation, and cache behavior.
+  - **Verification:** Application unit tests passed 2,999/2,999; Task 1.2 API and Blazor suites passed; architecture passed 299/299 with one governed skip; canonical Release build passed with 0 errors. Five-lane goal/QA/quality/security/context review passed after fixing database-race translation, incompatible branding JSON preservation, explicit storage credential rotation, and one stale PUT fixture. Full API and Blazor sweeps retain unrelated failures recorded in context.
   - **Effort:** L
   - **Dependencies:** 1.1.
-- [ ] **1.3 Migrate all instance settings and onboarding duplicates**
+- [x] **1.3 Migrate all instance settings and onboarding duplicates**
   - **Rows:** H-006/H-016/H-017/H-045/H-055-H-057/H-064; A-005/A-006/A-026-A-042.
   - **Acceptance:** All 17 instance sub-resources plus onboarding auth/authz duplicates use dedicated partial DTOs; legacy monolith/duplicate shapes are removed; secret/coupled UI groups remain explicit.
+  - **Verification:** Focused client service tests passed 38/38; focused instance UI tests passed 32/32; focused Application handler tests passed 22/22; instance OpenAPI architecture tests passed 4/4; canonical Release build passed with 0 errors. Full Blazor client suite passed 2,105/2,111 with one governed skip and the same five unrelated failures recorded in context. Post-review fixes cover redacted S3 credentials, failed-save authoritative reloads, H-006 removal, SMTP/AI read-secret redaction, and explicit grouped AI credential replacement with blank-key preservation. Final Task 1.3 review passed with no focused blockers.
   - **Effort:** XL
   - **Dependencies:** 1.1.
 
 ### Phase 1 Verification - RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 2: Verify Every Existing Canonical Or Focused Surface - NOT STARTED

@@ -386,6 +386,7 @@ API runtime protections include:
 | `setup_secret` | Fixed window | IP | 5 requests/60s |
 | `AnalyticsRelay` | Fixed window | IP | 120 requests/60s |
 | `AiAssistant` | Fixed window | API key ID when present, otherwise authenticated user ID | 12 sends/60s |
+| `EventOpenGraphImage` | Concurrency | Fixed `EventOpenGraphImage` key shared by the API process | 2 concurrent renders, queue 0 |
 
 **Rejection**: `429 Too Many Requests` with RFC 6585 ProblemDetails, `Retry-After` when available, plus `X-RateLimit-Limit` and `X-RateLimit-Remaining` headers. Successfully authenticated API keys are throttled per key ID; no-key, malformed, invalid, revoked, or inactive API-key traffic remains in the anonymous/IP partition. External API-key authentication metrics use bounded `outcome`, `tenant_id`, and `owner_type` tags only, never raw keys, secrets, or request paths.
 
@@ -399,6 +400,9 @@ API runtime protections include:
 - `SetupSecret:PermitLimit`, `SetupSecret:WindowSeconds`
 - `AnalyticsRelay:PermitLimit`, `AnalyticsRelay:WindowSeconds`
 - `AiAssistant:PermitLimit`, `AiAssistant:WindowSeconds`
+- `EventOpenGraphImage:ConcurrencyLimit`
+
+`EventOpenGraphImage` is a process-wide render ceiling within each API process. All Open Graph image requests share the fixed partition, and the zero-length queue rejects excess work immediately with `429`. Raise the concurrency limit carefully after observing CPU and memory use; each API replica has its own ceiling.
 
 AI assistant send requests have layered abuse controls:
 - API rate limiting uses the `AiAssistant` policy before the request reaches MediatR.

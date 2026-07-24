@@ -3,7 +3,7 @@
 
 # Full Property Update Sub-DTO Pattern - Context
 
-Last Updated: 2026-07-23 Europe/Brussels
+Last Updated: 2026-07-24 Europe/Brussels
 
 ## SESSION PROGRESS (2026-07-23 Europe/Brussels)
 
@@ -26,22 +26,41 @@ Last Updated: 2026-07-23 Europe/Brussels
 - Verified Task 1.1 with 115 focused backend tests, 41 focused Blazor tests, and a Release build with 0 errors.
 - Recorded the user's explicit waiver of runtime visual QA after Chrome DevTools MCP was unavailable; component interaction coverage remains green, but no browser visual pass is claimed.
 - Moved H-019/A-003 deletion to Task 5.3 because the broad onboarding write still serves non-policy announcement-bar callers; this is removal sequencing, not backward compatibility.
+- Completed Task 1.2: replaced tenant storage, branding document, and footer settings PUT operations with presence-aware grouped PATCH contracts and regenerated OpenAPI/NSwag clients without compatibility methods.
+- Tenant storage validates a merged effective candidate but transactionally persists only supplied Policy/S3 leaves, preventing inherited values from becoming tenant overrides; cache invalidation follows commit.
+- Tenant branding serializes autosaves around the returned concurrency stamp, preserves omitted DisplayName/asset leaves, supports explicit clear, enforces per-field governance atomically, and returns the authoritative reloaded HAL document.
+- Tenant footer now exposes an authenticated HAL admin resource, grouped scalar autosave, typed social links, and a permission-bound `manage-link-groups` capability; a concrete server guard enforces the effective link-group governance lock for all seven direct mutation handlers.
+- Storage, branding, and footer Blazor sections own accessible local pending/saved/error state; immediate controls save directly, text/numeric/social fields use bounded debounce with blur flush, and parent broad Save no longer owns storage/branding.
+- Updated API changelog/reference, storage, and footer documentation; regenerated the canonical API contract inventory.
+- Verified Task 1.2 with 2,999/2,999 Application unit tests, all focused API/Blazor tests, 299/299 architecture tests with one governed skip, and a canonical Release build with 0 errors.
+- Five-lane post-implementation review found and resolved three Task 1.2 blockers: branding persistence races now translate through `IUnitOfWork` to HTTP 409, incompatible persisted branding JSON fails closed without mutation/invalidation, and S3 credentials use an explicit coupled rotation action instead of ordinary autosave; the stale tenant-storage PUT test fixture now advertises PATCH.
+- Goal, executable QA, code-quality, security, and context-mining rechecks all returned PASS with no remaining Task 1.2 blockers.
+- Completed Task 1.3: regenerated instance PATCH contracts are mapped by `InstanceOnboardingService`, storage uses complete Policy/S3 groups, and auth/authz onboarding duplicates route through the canonical update operations.
+- Ordinary instance module, governance, branding, domain, analytics, and footer controls now send sparse updates with accessible pending/saved/error state; failed callbacks reload only the authoritative sub-resource. Text fields save on blur, while switches/selects save immediately.
+- Storage, SMTP, AI provider/credential, authentication, and authorization groups remain explicit Save/test/action flows; the parent broad Save no longer owns ordinary autosaved sections.
+- Task 1.3 post-review fixes removed the legacy H-006 monolith, preserve redacted S3 credentials, reload authoritative auth/authz and ordinary section models after failed writes, and prevent SMTP/AI read contracts from returning persisted secret-shaped fields. OpenAPI and the NSwag client were regenerated, and the breaking pre-v1 read-contract change is recorded in `docs/API_CHANGELOG.md`.
+- The final Task 1.3 review found and fixed one AI credential regression: provider configuration now uses one explicit grouped write DTO, nonblank transient keys replace the configured key, blank keys preserve it, and read DTOs still expose only `ApiKeyConfigured`.
+- Task 1.3 verification passed 38/38 focused client service tests, 32/32 focused instance UI tests, 22/22 focused Application handler tests, 4/4 instance OpenAPI architecture tests, and the canonical Release build with 0 errors. The full Blazor client suite passed 2,105 tests, skipped one governed test, and retained the five unrelated failures recorded below.
 
 ### IN PROGRESS
 
-- Task 1.2 tenant storage, branding document, and footer settings grouped PATCH/autosave migration.
+- Phase 1 Blazor baseline reconciliation; Task 1.3 implementation, focused verification, and post-fix review are complete.
 
 ### NEXT
 
-1. Implement Task 1.2 rows H-044/H-061 and A-054/A-068/A-075 without overwriting sibling settings.
-2. Complete Task 1.3 for every instance settings sub-resource and onboarding duplicate.
+1. Reconcile or separately fix the five unrelated full Blazor failures before checking the Phase 1 test gate.
+2. Start Task 2.1 after Phase 1 verification is closed.
 3. Keep H-019/A-003 until Task 5.3, then remove them after their remaining callers have explicit save boundaries.
 4. Keep unrelated dirty worktree changes untouched.
 
 ### BLOCKERS
 
-- No technical blocker.
-- Runtime visual QA is intentionally skipped by explicit user direction; do not report a browser visual pass for Task 1.1.
+- No focused Task 1.3 technical blocker.
+- Runtime visual QA is intentionally skipped by explicit user direction; do not report a browser visual pass for Tasks 1.1 or 1.2.
+- The canonical non-runtime Infrastructure lane currently has one unrelated email-dispatch assertion failure because a null HTML body is passed to `DoesNotContain`; 1,053 tests pass.
+- Full Persistence integration currently has 69 unrelated failures across privacy, notification-fanout, and email-outbox database/FK isolation scenarios; 591 tests pass.
+- Full API integration currently has 16 unrelated failures (privacy/public-session invariants, EventLocation HAL typing, event view filters, RFC 7807/logging checks, and event-location disclosure tests); 1,947 tests pass and two skip.
+- Full Blazor client currently has 5 unrelated failures (EventLocation HAL collection typing, home discovery heading, tag-filter trigger, and two event-report dialog assertions); all Task 1.2 Blazor tests pass.
 
 ## Quick Resume
 
@@ -59,14 +78,14 @@ Last Updated: 2026-07-23 Europe/Brussels
 | `src/Explore.Application/DTOs/EventSession/UpdateEventSessionDto.cs` | Existing | Canonical relationship/transactional grouped DTO. | Reference for related state and projections. |
 | `src/Explore.Application/Features/EventSessions/Handlers/Commands/UpdateEventSessionCommandHandler.cs` | Existing | Relationship validation, concurrency, UoW, cache invalidation. | Reference for coupled groups. |
 | `src/Explore.API/Controllers/SettingsController.cs` | Existing | Hierarchical user/tenant/instance key and category writes. | Reuse exact-key tenant write for independent controls. |
-| `src/Explore.API/Controllers/InstanceSettingsController.cs` | Existing | Focused instance sub-resources. | Modules/events/organizations still accept full read DTOs through PUT. |
-| `src/Explore.Blazor.Client/Pages/Admin/Tenant/Components/TenantPoliciesSection.razor` | Existing | Tenant policy UI and ATProto autosave reference. | Eight legacy switches still rely on later broad Save. |
+| `src/Explore.API/Controllers/InstanceSettingsController.cs` | Updated | Focused instance sub-resources. | Instance settings use generated dedicated PATCH request DTOs; read DTOs are not write contracts. |
+| `src/Explore.Blazor.Client/Pages/Admin/Tenant/Components/TenantPoliciesSection.razor` | Updated | Tenant policy UI and ATProto autosave reference. | Policy switches use exact-key autosave with accessible feedback. |
 | `src/Explore.Blazor.Client/Pages/Admin/Tenant/Components/TenantAdminSettingsLayout.razor` | Existing | Tenant settings orchestration. | Broad bottom Save is removed only after every section is classified. |
 | `src/Explore.Blazor.Client/Pages/Admin/Instance/Components/InstanceAdminSettingsLayout.razor` | Existing | Instance settings orchestration. | Convert ordinary sections to partial autosave; retain explicit sensitive actions. |
 | `src/Explore.Blazor.Client/Services/TenantPublicExperienceAdminService.cs` | Existing | Tenant settings client path. | Reuse if it already exposes exact-key write; otherwise use current generated settings client. |
-| `src/Explore.Blazor.Client/Services/InstanceOnboardingService.cs` | Existing | Instance settings client path. | Change methods to partial write DTOs with generated PATCH operations. |
+| `src/Explore.Blazor.Client/Services/InstanceOnboardingService.cs` | Updated | Instance settings client path. | Maps sparse read-model leaves to generated PATCH envelopes and preserves explicit sensitive actions. |
 | `tests/Explore.Blazor.Client.Tests/Pages/Admin/TenantPoliciesSectionTests.cs` | Existing | Tenant policy interaction coverage. | Add immediate save, lock, pending, and failure recovery cases. |
-| `tests/Event.Application.UnitTests/Features/InstanceOnboarding/Commands/UpdateInstanceGovernanceSettingsCommandHandlerTests.cs` | Existing | Instance governance handler coverage. | Add omitted-group and one-group update cases. |
+| `tests/Event.Application.UnitTests/Features/InstanceOnboarding/Commands/UpdateInstanceSubResourceCommandHandlerTests.cs` | Added | Instance sparse-handler and storage-secret coverage. | Covers omitted leaves, one-property updates, complete groups, and redacted S3 credential preservation. |
 | `dev/active/full-property-update-sub-dto/full-property-update-sub-dto-inventory.md` | Updated | Normative exhaustive scope register. | D-001-D-059, H-001-H-071, and A-001-A-104 must all reach final state. |
 
 ## Key Decisions
@@ -112,16 +131,17 @@ Planning-only verification uses `git diff --check` for this active directory. Th
 - Active unrelated changes touch admin layouts and generated contracts. Implementation agents must reread affected files and merge with current work rather than overwrite it.
 - H-019/A-003 remain until Task 5.3 because announcement-bar writes still depend on them; removing them earlier would break a live non-policy caller.
 - Instance sub-resource concurrency may rely on existing policy-set/version behavior; Task 1.3 must preserve it rather than introduce a new token blindly.
+- Task 1.2 intentionally adds one footer `manage-link-groups` HAL capability rather than per-item link policies because every explicit link mutation shares the same tenant-update permission and governance lock.
 
 ## Handoff Notes
 
-### Handoff - 2026-07-23 Europe/Brussels
+### Handoff - 2026-07-24 Europe/Brussels
 
-- **Current state:** Task 1.1 implementation is complete; Task 1.2 is active. H-019/A-003 deletion is reassigned to Task 5.3 after remaining broad callers migrate.
-- **Next action:** Implement Task 1.2 tenant storage, branding document, and footer settings grouped PATCH/autosave contracts.
-- **Blockers:** None. Runtime visual QA was explicitly waived by the user after Chrome DevTools MCP was unavailable.
-- **Modified files:** Task 1.1 touched settings authorization/handlers/controllers, tenant policy Blazor/service/tests, generated client output, and these active workstream artifacts.
-- **Validation:** Focused backend tests passed 115/115; focused Blazor tests passed 41/41; Release build passed with 0 errors. No browser visual pass is claimed.
-- **Documentation impact:** Public contract removals and generated-client changes continue per task; H-019/A-003 remain documented for Task 5.3 removal.
+- **Current state:** Tasks 1.1, 1.2, and Task 1.3 implementation/focused verification/review are complete. H-019/A-003 deletion remains assigned to Task 5.3 after remaining broad callers migrate.
+- **Next action:** Reconcile the five unrelated Blazor failures before closing the Phase 1 test gate and beginning Task 2.1.
+- **Blockers:** Task 1.3 has no focused blocker. Runtime visual QA remains explicitly waived; unrelated canonical-suite failures are listed above.
+- **Modified files:** Task 1.2 touched storage/branding/footer Application and API contracts, HAL/authorization, generated OpenAPI/client outputs, tenant admin services/components/tests, API docs, and active workstream artifacts.
+- **Validation:** Task 1.3 passed 38/38 client service, 32/32 instance UI, 22/22 Application handler, and 4/4 OpenAPI architecture tests; canonical Release build passed with 0 errors. Full Blazor passed 2,105/2,111 with one governed skip and five unrelated failures. Domain, Application, Architecture, Secrets, and Blazor integration canonical lanes passed; Infrastructure, Persistence, and API retain the unrelated failures listed above. No browser visual pass is claimed.
+- **Documentation impact:** API changelog/reference, storage/footer guides, generated contract inventory, and active workstream state now describe the PATCH-only contracts.
 - **Risks:** Concurrent unrelated work already touches tenant/instance admin layouts and generated clients; all affected files must be reread immediately before implementation edits.
 - **Notes for next contributor/agent:** Never revert unrelated changes. Re-read a file immediately before editing if it is already dirty.

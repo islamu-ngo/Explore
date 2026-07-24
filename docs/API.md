@@ -68,7 +68,7 @@ The middleware pipeline in `Program.cs` is ordered precisely. Changing order wil
 15. **MCP Runtime Gate** — `UseMiddleware<McpRuntimeGateMiddleware>()`. Applies only to the configured MCP path after tenant/auth context exists. Returns `404` when startup mapping is enabled but runtime `mcp.enabled` resolves false.
 16. **Request Localization** — `UseRequestLocalization()`.
 17. **Idempotency** — `UseMiddleware<IdempotencyMiddleware>()`. Implements `Idempotency-Key` header for write operations (POST/PUT/PATCH/DELETE). Caches responses by (Key, TenantId) and replays on duplicate requests within 24-hour window.
-18. **Rate Limiter** — `UseRateLimiter()`. Five tiered policies (see below).
+18. **Rate Limiter** — `UseRateLimiter()`. Eight tiered policies (see below).
 19. **Authorization** — `UseAuthorization()`.
 20. **Support Access Audit** — `SupportAccessAuditMiddleware`. For active BFF/server-forwarded support-access sessions, records bounded request evidence after authorization without changing the response if audit persistence fails.
 21. **Output Cache** — `UseOutputCache()`. Eight cache policies (see below).
@@ -206,7 +206,7 @@ rather than a HAL resource, so Blazor gates edit controls from server-provided
 
 ---
 
-## Rate Limiting (7 Tiers)
+## Rate Limiting (8 Tiers)
 
 Configured in `RateLimitingExtensions.cs`. All settings are configurable via `appsettings.json` under `RateLimiting` section.
 
@@ -247,12 +247,17 @@ Configured in `RateLimitingExtensions.cs`. All settings are configurable via `ap
 - **Mechanism**: Fixed window per API key ID when present, otherwise per authenticated user ID.
 - **Defaults**: 12 requests per 60-second window.
 
+### EventOpenGraphImage (Process-Wide Concurrency)
+- **Policy**: `EventOpenGraphImage` — for public event Open Graph image rendering.
+- **Mechanism**: Concurrency limiter with one fixed `EventOpenGraphImage` partition shared by all requests in the API process.
+- **Defaults**: 2 concurrent renders, queue limit 0.
+
 ### Rejection Behavior
 - Returns `429 Too Many Requests` with RFC 6585 `ProblemDetails`.
 - Includes `Retry-After` when available plus `X-RateLimit-Limit` and `X-RateLimit-Remaining`.
 
 ### Testing Override
-In `Testing` environment, all rate limiters are replaced with `NoLimiter` (disabled). Integration factories can opt back into the global limiter to verify `429`, `Retry-After`, and per-key/IP partition behavior.
+In `Testing` environment, all rate limiters, including `EventOpenGraphImage`, are replaced with `NoLimiter` (disabled). Integration factories can opt back into rate limiting to verify `429`, `Retry-After`, and partition behavior.
 
 ---
 
@@ -989,17 +994,19 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `PATCH /api/actor-subscriptions/actors/{targetActorId}/notification-level` — update subscription notification level with concurrency stamp
    - `DELETE /api/actor-subscriptions/actors/{targetActorId}` — unsubscribe with concurrency stamp
 9. Footer management:
-   - `GET /api/footer/config` — public footer config (AllowAnonymous)
-   - `GET /api/footer/link-groups` — list link groups (Authorize)
-   - `GET /api/footer/link-groups/{id}` — link group detail (Authorize)
-   - `POST /api/footer/link-groups` — create link group; requires authenticated tenant update authorization
-   - `PUT /api/footer/link-groups/{id}` — update link group; requires authenticated tenant update authorization
-   - `DELETE /api/footer/link-groups/{id}` — delete link group; requires authenticated tenant update authorization
-   - `POST /api/footer/link-groups/reorder` — reorder link groups; requires authenticated tenant update authorization
-   - `POST /api/footer/link-groups/{groupId}/links` — create link in group; requires authenticated tenant update authorization
-   - `PUT /api/footer/links/{id}` — update link; requires authenticated tenant update authorization
-   - `DELETE /api/footer/links/{id}` — delete link; requires authenticated tenant update authorization
-   - `PUT /api/footer/settings` — update footer settings; requires authenticated tenant update authorization
+   - `GET /api/footer/config`: public footer config (`AllowAnonymous`)
+   - `GET /api/footer/settings`: authenticated scalar settings, typed social links, governance locks, and HAL `edit` / `manage-link-groups` capabilities
+   - `PATCH /api/footer/settings`: presence-aware `general`, `template`, `description`, `socialLinks`, and `copyright` groups; omitted leaves and instance-locked scalar leaves are preserved
+   - `GET /api/footer/link-groups`: list link groups (`Authorize`)
+   - `GET /api/footer/link-groups/{id}`: link group detail (`Authorize`)
+   - `POST /api/footer/link-groups`: create link group; requires authenticated tenant update authorization
+   - `PUT /api/footer/link-groups/{id}`: update link group; requires authenticated tenant update authorization
+   - `DELETE /api/footer/link-groups/{id}`: delete link group; requires authenticated tenant update authorization
+   - `POST /api/footer/link-groups/reorder`: reorder link groups; requires authenticated tenant update authorization
+   - `POST /api/footer/link-groups/{groupId}/links`: create link in group; requires authenticated tenant update authorization
+   - `PUT /api/footer/links/{id}`: update link; requires authenticated tenant update authorization
+   - `DELETE /api/footer/links/{id}`: delete link; requires authenticated tenant update authorization
+   - Link mutations remain explicit operations and repeat the effective link-group governance check server-side. Clients render link management only when the settings resource includes `manage-link-groups`.
 10. Actor appearance:
    - Actor entities include appearance fields (BackgroundColor, BackgroundEffect, BannerColor, BannerPictureId, BackgroundImageId) managed via actor update endpoints.
 11. Instance MCP governance:
