@@ -14644,14 +14644,12 @@
           "200": {
             "description": "OK",
             "content": {
-              "image/png; v=0.1": {
+              "image/png": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileContentResult"
+                  "type": "string",
+                  "format": "binary"
                 }
-              },
-              "application/json": { },
-              "application/hal+json": { },
-              "image/png": { }
+              }
             }
           },
           "400": {
@@ -14680,6 +14678,19 @@
               "image/png": { }
             }
           },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "image/png; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "image/png": { }
+            }
+          },
           "304": {
             "description": "Not Modified",
             "content": {
@@ -14689,7 +14700,8 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Public",
+        "x-rate-limit-policy": "EventOpenGraphImage"
       }
     },
     "/api/event/{id}/management-detail": {
@@ -30168,11 +30180,74 @@
       }
     },
     "/api/footer/settings": {
-      "put": {
+      "get": {
         "tags": [
           "Footer"
         ],
-        "operationId": "UpdateTenantFooterSettings",
+        "summary": "Get Tenant Footer Settings",
+        "description": "Returns the current tenant footer scalar settings and governance lock states without link groups or links.",
+        "operationId": "GetTenantFooterSettings",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantFooterSettingsDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantFooterSettingsDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      },
+      "patch": {
+        "tags": [
+          "Footer"
+        ],
+        "summary": "Patch Tenant Footer Settings",
+        "description": "Patches supplied tenant footer setting leaves while preserving omitted or instance-locked values.",
+        "operationId": "PatchTenantFooterSettings",
         "parameters": [
           {
             "name": "api-version",
@@ -30193,17 +30268,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateTenantFooterSettingsRequest"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTenantFooterSettingsRequest"
+                "$ref": "#/components/schemas/PatchTenantFooterSettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateTenantFooterSettingsRequest"
+                "$ref": "#/components/schemas/PatchTenantFooterSettingsDto"
               }
             }
           },
@@ -30238,6 +30308,40 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -32933,149 +33037,6 @@
           }
         },
         "x-endpoint-class": "Public"
-      },
-      "put": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Save Auth Provider Configuration (Setup)",
-        "description": "Saves auth provider configuration during instance setup. Protected by setup secret. At least one provider must be enabled.",
-        "operationId": "SaveInstanceOnboardingAuthProviderConfiguration",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/AuthProviderConfigurationDto"
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/AuthProviderConfigurationDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "410": {
-            "description": "Gone",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too Many Requests",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Admin",
-        "x-rate-limit-policy": "SetupSecret"
       }
     },
     "/api/instanceonboarding/auth-provider-configuration/internal": {
@@ -33414,151 +33375,6 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationProviderConfigurationDto"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "410": {
-            "description": "Gone",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too Many Requests",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Admin",
-        "x-rate-limit-policy": "SetupSecret"
-      }
-    },
-    "/api/instanceonboarding/authz-provider-configuration": {
-      "put": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Save Authorization Provider Configuration (Setup)",
-        "description": "Saves authorization provider configuration during instance setup. Protected by setup secret.",
-        "operationId": "SaveInstanceOnboardingAuthorizationProviderConfiguration",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/AuthorizationProviderConfigurationDto"
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/AuthorizationProviderConfigurationDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -34064,7 +33880,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -34091,17 +33907,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ModuleSettingsDto"
+                "$ref": "#/components/schemas/PatchModuleSettingsDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ModuleSettingsDto"
+                "$ref": "#/components/schemas/PatchModuleSettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ModuleSettingsDto"
+                "$ref": "#/components/schemas/PatchModuleSettingsDto"
               }
             }
           },
@@ -34240,7 +34056,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -34267,17 +34083,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/EventPolicyDto"
+                "$ref": "#/components/schemas/PatchEventPolicyDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/EventPolicyDto"
+                "$ref": "#/components/schemas/PatchEventPolicyDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/EventPolicyDto"
+                "$ref": "#/components/schemas/PatchEventPolicyDto"
               }
             }
           },
@@ -34416,7 +34232,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -34443,17 +34259,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/OrganizationPolicyDto"
+                "$ref": "#/components/schemas/PatchOrganizationPolicyDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/OrganizationPolicyDto"
+                "$ref": "#/components/schemas/PatchOrganizationPolicyDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/OrganizationPolicyDto"
+                "$ref": "#/components/schemas/PatchOrganizationPolicyDto"
               }
             }
           },
@@ -34592,7 +34408,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -34619,17 +34435,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/BrandingSettingsDto"
+                "$ref": "#/components/schemas/PatchBrandingSettingsDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/BrandingSettingsDto"
+                "$ref": "#/components/schemas/PatchBrandingSettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/BrandingSettingsDto"
+                "$ref": "#/components/schemas/PatchBrandingSettingsDto"
               }
             }
           },
@@ -34768,7 +34584,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -34795,17 +34611,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/DomainSettingsDto"
+                "$ref": "#/components/schemas/PatchDomainSettingsDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/DomainSettingsDto"
+                "$ref": "#/components/schemas/PatchDomainSettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/DomainSettingsDto"
+                "$ref": "#/components/schemas/PatchDomainSettingsDto"
               }
             }
           },
@@ -34944,7 +34760,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -34971,17 +34787,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantDelegationSettingsDto"
+                "$ref": "#/components/schemas/PatchTenantDelegationSettingsDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantDelegationSettingsDto"
+                "$ref": "#/components/schemas/PatchTenantDelegationSettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantDelegationSettingsDto"
+                "$ref": "#/components/schemas/PatchTenantDelegationSettingsDto"
               }
             }
           },
@@ -35120,7 +34936,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -35147,17 +34963,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AdminPortalSettingsDto"
+                "$ref": "#/components/schemas/PatchAdminPortalSettingsDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AdminPortalSettingsDto"
+                "$ref": "#/components/schemas/PatchAdminPortalSettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AdminPortalSettingsDto"
+                "$ref": "#/components/schemas/PatchAdminPortalSettingsDto"
               }
             }
           },
@@ -35296,7 +35112,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -35323,17 +35139,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AiAssistantGovernanceSettingsDto"
+                "$ref": "#/components/schemas/PatchAiAssistantGovernanceSettingsDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AiAssistantGovernanceSettingsDto"
+                "$ref": "#/components/schemas/PatchAiAssistantGovernanceSettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AiAssistantGovernanceSettingsDto"
+                "$ref": "#/components/schemas/PatchAiAssistantGovernanceSettingsDto"
               }
             }
           },
@@ -35472,7 +35288,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -35499,17 +35315,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/McpGovernanceSettingsDto"
+                "$ref": "#/components/schemas/PatchMcpGovernanceSettingsDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/McpGovernanceSettingsDto"
+                "$ref": "#/components/schemas/PatchMcpGovernanceSettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/McpGovernanceSettingsDto"
+                "$ref": "#/components/schemas/PatchMcpGovernanceSettingsDto"
               }
             }
           },
@@ -35648,7 +35464,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -35675,17 +35491,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/RenderPolicySettingsDto"
+                "$ref": "#/components/schemas/PatchRenderPolicySettingsDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/RenderPolicySettingsDto"
+                "$ref": "#/components/schemas/PatchRenderPolicySettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/RenderPolicySettingsDto"
+                "$ref": "#/components/schemas/PatchRenderPolicySettingsDto"
               }
             }
           },
@@ -35994,7 +35810,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -36021,12 +35837,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/InstanceStorageSettingsDto"
+                "$ref": "#/components/schemas/PatchInstanceStorageSettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/InstanceStorageSettingsDto"
+                "$ref": "#/components/schemas/PatchInstanceStorageSettingsDto"
               }
             }
           },
@@ -36303,7 +36119,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -36330,12 +36146,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
+                "$ref": "#/components/schemas/PatchInstanceSmtpSettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
+                "$ref": "#/components/schemas/PatchInstanceSmtpSettingsDto"
               }
             }
           },
@@ -36523,7 +36339,7 @@
         },
         "x-endpoint-class": "Public"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -36550,17 +36366,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ResolverConfigurationDto"
+                "$ref": "#/components/schemas/PatchResolverConfigurationDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ResolverConfigurationDto"
+                "$ref": "#/components/schemas/PatchResolverConfigurationDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ResolverConfigurationDto"
+                "$ref": "#/components/schemas/PatchResolverConfigurationDto"
               }
             }
           },
@@ -36699,7 +36515,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -36726,12 +36542,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AnalyticsGovernanceSettingsDto"
+                "$ref": "#/components/schemas/PatchAnalyticsGovernanceSettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AnalyticsGovernanceSettingsDto"
+                "$ref": "#/components/schemas/PatchAnalyticsGovernanceSettingsDto"
               }
             }
           },
@@ -36870,7 +36686,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -36897,12 +36713,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/FooterGovernanceSettingsDto"
+                "$ref": "#/components/schemas/PatchFooterGovernanceSettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/FooterGovernanceSettingsDto"
+                "$ref": "#/components/schemas/PatchFooterGovernanceSettingsDto"
               }
             }
           },
@@ -37041,7 +36857,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -37068,12 +36884,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                "$ref": "#/components/schemas/PatchAuthProviderConfigurationDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                "$ref": "#/components/schemas/PatchAuthProviderConfigurationDto"
               }
             }
           },
@@ -37617,7 +37433,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "InstanceSettings"
         ],
@@ -37644,12 +37460,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AuthorizationProviderConfigurationDto"
+                "$ref": "#/components/schemas/PatchAuthorizationProviderConfigurationDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AuthorizationProviderConfigurationDto"
+                "$ref": "#/components/schemas/PatchAuthorizationProviderConfigurationDto"
               }
             }
           },
@@ -54090,13 +53906,13 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "TenantSettingsDocuments"
         ],
-        "summary": "Replace Tenant Branding Settings Document",
-        "description": "Fully replaces the current tenant branding typed settings document. Uses optimistic concurrency and writes only tenant JSONB settings documents.",
-        "operationId": "ReplaceTenantBrandingSettingsDocument",
+        "summary": "Patch Tenant Branding Settings Document",
+        "description": "Patches supplied tenant branding groups with optimistic concurrency while preserving omitted JSONB settings leaves.",
+        "operationId": "PatchTenantBrandingSettingsDocument",
         "parameters": [
           {
             "name": "api-version",
@@ -54117,12 +53933,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ReplaceTenantBrandingSettingsDocumentDto"
+                "$ref": "#/components/schemas/PatchTenantBrandingSettingsDocumentDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ReplaceTenantBrandingSettingsDocumentDto"
+                "$ref": "#/components/schemas/PatchTenantBrandingSettingsDocumentDto"
               }
             }
           },
@@ -62671,8 +62487,8 @@
           "endpointUrl": {
             "type": "string"
           },
-          "apiKey": {
-            "type": "string"
+          "apiKeyConfigured": {
+            "type": "boolean"
           },
           "modelId": {
             "type": "string"
@@ -62740,6 +62556,29 @@
           },
           "supportsStreaming": {
             "type": "boolean"
+          }
+        }
+      },
+      "AiAssistantProviderConfigurationWriteDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "endpointUrl": {
+            "type": "string"
+          },
+          "apiKey": {
+            "type": "string"
+          },
+          "modelId": {
+            "type": "string"
+          },
+          "allowedModelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -63575,6 +63414,32 @@
           }
         }
       },
+      "AuthorizationProviderConfigurationWriteDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "cerbosGrpcEndpoint": {
+            "type": "string"
+          },
+          "cerbosAdminEndpoint": {
+            "type": "string"
+          },
+          "cerbosAdminUsername": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cerbosAdminPassword": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "AuthProviderConfigurationDto": {
         "type": "object",
         "properties": {
@@ -63595,6 +63460,47 @@
           },
           "keycloakClientSecretOwnership": {
             "$ref": "#/components/schemas/SecretOwnershipDto"
+          },
+          "atprotoLoginEnabled": {
+            "type": "boolean"
+          },
+          "atprotoPublicUrl": {
+            "type": "string"
+          },
+          "googleSsoEnabled": {
+            "type": "boolean"
+          },
+          "googleClientId": {
+            "type": "string"
+          },
+          "googleClientSecret": {
+            "type": "string"
+          },
+          "lockKeycloakEnabled": {
+            "type": "boolean"
+          },
+          "lockAtprotoLoginEnabled": {
+            "type": "boolean"
+          },
+          "lockGoogleSsoEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AuthProviderConfigurationWriteDto": {
+        "type": "object",
+        "properties": {
+          "keycloakEnabled": {
+            "type": "boolean"
+          },
+          "keycloakAuthority": {
+            "type": "string"
+          },
+          "keycloakClientId": {
+            "type": "string"
+          },
+          "keycloakClientSecret": {
+            "type": "string"
           },
           "atprotoLoginEnabled": {
             "type": "boolean"
@@ -91824,12 +91730,103 @@
           "isLockedByInstance": {
             "type": "boolean"
           },
+          "canChangeDisplayName": {
+            "type": "boolean"
+          },
+          "canChangeLogoUrl": {
+            "type": "boolean"
+          },
+          "canChangeFaviconUrl": {
+            "type": "boolean"
+          },
+          "canChangeCustomCssUrl": {
+            "type": "boolean"
+          },
           "updatedAt": {
             "type": [
               "null",
               "string"
             ],
             "format": "date-time"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfTenantFooterSettingsDto": {
+        "required": [
+          "tenantId"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "template": {
+            "type": "string"
+          },
+          "showDescription": {
+            "type": "boolean"
+          },
+          "descriptionText": {
+            "type": "string"
+          },
+          "showSocialLinks": {
+            "type": "boolean"
+          },
+          "socialLinks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "copyrightText": {
+            "type": "string"
+          },
+          "showCookieSettingsLink": {
+            "type": "boolean"
+          },
+          "lockTenantTemplate": {
+            "type": "boolean"
+          },
+          "lockTenantDescription": {
+            "type": "boolean"
+          },
+          "lockTenantLinkGroups": {
+            "type": "boolean"
+          },
+          "lockTenantSocialLinks": {
+            "type": "boolean"
+          },
+          "lockTenantCopyright": {
+            "type": "boolean"
           },
           "_links": {
             "type": "object",
@@ -93979,7 +93976,41 @@
           }
         }
       },
-      "InstanceSmtpSettingsDto": {
+      "InstanceS3ConfigurationWriteDto": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          },
+          "publicEndpoint": {
+            "type": "string"
+          },
+          "bucketName": {
+            "type": "string"
+          },
+          "accessKeyId": {
+            "type": "string"
+          },
+          "secretAccessKey": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "forcePathStyle": {
+            "type": "boolean"
+          },
+          "uploadUrlExpirationMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "InstanceSmtpConfigurationWriteDto": {
         "type": "object",
         "properties": {
           "host": {
@@ -94021,13 +94052,55 @@
           }
         }
       },
-      "InstanceStorageEffectivePolicyDto": {
+      "InstanceSmtpSettingsDto": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "port": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "usernameConfigured": {
+            "type": "boolean"
+          },
+          "passwordConfigured": {
+            "type": "boolean"
+          },
+          "security": {
+            "type": "string"
+          },
+          "fromAddress": {
+            "type": "string"
+          },
+          "fromName": {
+            "type": "string"
+          },
+          "timeoutSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "skipCertificateValidation": {
+            "type": "boolean"
+          }
+        }
+      },
+      "InstanceStoragePolicyWriteDto": {
         "type": "object",
         "properties": {
           "provider": {
             "type": "string"
           },
-          "maxUploadBytes": {
+          "defaultMaxUploadBytes": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -94035,7 +94108,7 @@
             ],
             "format": "int64"
           },
-          "tenantQuotaBytes": {
+          "defaultTenantQuotaBytes": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -94051,20 +94124,8 @@
             ],
             "format": "int64"
           },
-          "tenantOverridesAllowed": {
+          "lockTenantStorage": {
             "type": "boolean"
-          },
-          "tenantStorageLocked": {
-            "type": "boolean"
-          },
-          "providerSource": {
-            "type": "string"
-          },
-          "maxUploadSource": {
-            "type": "string"
-          },
-          "quotaSource": {
-            "type": "string"
           },
           "routes": {
             "type": "array",
@@ -94186,7 +94247,32 @@
           "routes": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/StorageRouteSettingsDto"
+              "type": "object",
+              "properties": {
+                "routeKey": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "maxUploadBytes": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                  "type": [
+                    "integer",
+                    "string"
+                  ],
+                  "format": "int64"
+                },
+                "providerSource": {
+                  "type": "string"
+                },
+                "maxUploadSource": {
+                  "type": "string"
+                },
+                "isReadOnly": {
+                  "type": "boolean"
+                }
+              }
             }
           },
           "s3Endpoint": {
@@ -94225,13 +94311,205 @@
             "format": "int32"
           },
           "effectivePolicy": {
-            "$ref": "#/components/schemas/InstanceStorageEffectivePolicyDto"
+            "type": "object",
+            "properties": {
+              "provider": {
+                "type": "string"
+              },
+              "maxUploadBytes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "tenantQuotaBytes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "instanceMaxUploadBytes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "tenantOverridesAllowed": {
+                "type": "boolean"
+              },
+              "tenantStorageLocked": {
+                "type": "boolean"
+              },
+              "providerSource": {
+                "type": "string"
+              },
+              "maxUploadSource": {
+                "type": "string"
+              },
+              "quotaSource": {
+                "type": "string"
+              },
+              "routes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "routeKey": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "maxUploadBytes": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int64"
+                    },
+                    "providerSource": {
+                      "type": "string"
+                    },
+                    "maxUploadSource": {
+                      "type": "string"
+                    },
+                    "isReadOnly": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
           },
           "usage": {
-            "$ref": "#/components/schemas/InstanceStorageUsageDto"
+            "type": "object",
+            "properties": {
+              "usedBytes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "reservedBytes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "quarantinedBytes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "objectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "lastRecalculatedAt": {
+                "type": [
+                  "null",
+                  "string"
+                ],
+                "format": "date-time"
+              },
+              "providers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "provider": {
+                      "type": "string"
+                    },
+                    "usedBytes": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int64"
+                    },
+                    "reservedBytes": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int64"
+                    },
+                    "quarantinedBytes": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int64"
+                    },
+                    "objectCount": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int64"
+                    },
+                    "lastRecalculatedAt": {
+                      "type": [
+                        "null",
+                        "string"
+                      ],
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
           },
           "providerStatus": {
-            "$ref": "#/components/schemas/InstanceStorageProviderStatusDto"
+            "type": "object",
+            "properties": {
+              "provider": {
+                "type": "string"
+              },
+              "isAvailable": {
+                "type": "boolean"
+              },
+              "supportsServerSideStreaming": {
+                "type": "boolean"
+              },
+              "supportsBrowserDirectUpload": {
+                "type": "boolean"
+              },
+              "failureCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "message": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              }
+            }
           }
         }
       },
@@ -98162,6 +98440,60 @@
           }
         }
       },
+      "OptionalUpdateOfAiAssistantProviderConfigurationWriteDto": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AiAssistantProviderConfigurationWriteDto"
+              }
+            ]
+          }
+        }
+      },
+      "OptionalUpdateOfAuthorizationProviderConfigurationWriteDto": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AuthorizationProviderConfigurationWriteDto"
+              }
+            ]
+          }
+        }
+      },
+      "OptionalUpdateOfAuthProviderConfigurationWriteDto": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AuthProviderConfigurationWriteDto"
+              }
+            ]
+          }
+        }
+      },
       "OptionalUpdateOfboolean": {
         "type": "object",
         "properties": {
@@ -98220,6 +98552,17 @@
           }
         }
       },
+      "OptionalUpdateOfDeclineBehavior": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "$ref": "#/components/schemas/DeclineBehavior"
+          }
+        }
+      },
       "OptionalUpdateOfdouble": {
         "type": "object",
         "properties": {
@@ -98270,6 +98613,60 @@
           }
         }
       },
+      "OptionalUpdateOfInstanceS3ConfigurationWriteDto": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InstanceS3ConfigurationWriteDto"
+              }
+            ]
+          }
+        }
+      },
+      "OptionalUpdateOfInstanceSmtpConfigurationWriteDto": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InstanceSmtpConfigurationWriteDto"
+              }
+            ]
+          }
+        }
+      },
+      "OptionalUpdateOfInstanceStoragePolicyWriteDto": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InstanceStoragePolicyWriteDto"
+              }
+            ]
+          }
+        }
+      },
       "OptionalUpdateOfint": {
         "type": "object",
         "properties": {
@@ -98284,6 +98681,23 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "OptionalUpdateOfIReadOnlyListOfFooterSocialLinkDto": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/FooterSocialLinkDto"
+            }
           }
         }
       },
@@ -98317,6 +98731,28 @@
               "string"
             ],
             "format": "int64"
+          }
+        }
+      },
+      "OptionalUpdateOfPosthogCookielessMode": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "$ref": "#/components/schemas/PosthogCookielessMode"
+          }
+        }
+      },
+      "OptionalUpdateOfPosthogPersonProfiles": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "$ref": "#/components/schemas/PosthogPersonProfiles"
           }
         }
       },
@@ -99356,6 +99792,510 @@
           },
           "hasNextPage": {
             "type": "boolean"
+          }
+        }
+      },
+      "PatchAdminPortalSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "publicUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "allowTenantAdminAccess": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchAiAssistantGovernanceSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "providerConfiguration": {
+            "$ref": "#/components/schemas/OptionalUpdateOfAiAssistantProviderConfigurationWriteDto"
+          },
+          "allowAnonymousAccess": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "toolProposalsEnabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantAiAssistant": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchAnalyticsGovernanceSettingsDto": {
+        "type": "object",
+        "properties": {
+          "cookieConsentEnabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "declineBehavior": {
+            "$ref": "#/components/schemas/OptionalUpdateOfDeclineBehavior"
+          },
+          "consentCookieLifetimeDays": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          },
+          "globalDisableClientTracking": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "posthogCookielessMode": {
+            "$ref": "#/components/schemas/OptionalUpdateOfPosthogCookielessMode"
+          },
+          "posthogPersonProfiles": {
+            "$ref": "#/components/schemas/OptionalUpdateOfPosthogPersonProfiles"
+          },
+          "posthogSessionReplay": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "posthogAutocapture": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "posthogHeatmaps": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "posthogToolbar": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchAuthorizationProviderConfigurationDto": {
+        "type": "object",
+        "properties": {
+          "configuration": {
+            "$ref": "#/components/schemas/OptionalUpdateOfAuthorizationProviderConfigurationWriteDto"
+          }
+        }
+      },
+      "PatchAuthProviderConfigurationDto": {
+        "type": "object",
+        "properties": {
+          "configuration": {
+            "$ref": "#/components/schemas/OptionalUpdateOfAuthProviderConfigurationWriteDto"
+          }
+        }
+      },
+      "PatchBrandingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "defaultBrandDisplayName": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "defaultBrandLogoUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "defaultBrandFaviconUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "defaultBrandCustomCssUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "lockTenantBrandDisplayName": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantBrandLogoUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantBrandFaviconUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantBrandCustomCssUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchDomainSettingsDto": {
+        "type": "object",
+        "properties": {
+          "instanceBaseDomain": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "adminHost": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "allowTenantCustomDomains": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantSubdomain": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantCustomDomain": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchEventPolicyDto": {
+        "type": "object",
+        "properties": {
+          "allowUserSubmittedEvents": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "allowOrganizationSubmittedEvents": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "allowGroupSubmittedEvents": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "eventCardClickOpensDetailPage": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantEventCardClickBehavior": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchFooterGovernanceSettingsDto": {
+        "type": "object",
+        "properties": {
+          "lockTenantTemplate": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantLinkGroups": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantSocialLinks": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantDescription": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantCopyright": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchInstanceSmtpSettingsDto": {
+        "type": "object",
+        "properties": {
+          "configuration": {
+            "$ref": "#/components/schemas/OptionalUpdateOfInstanceSmtpConfigurationWriteDto"
+          }
+        }
+      },
+      "PatchInstanceStorageSettingsDto": {
+        "type": "object",
+        "properties": {
+          "policy": {
+            "$ref": "#/components/schemas/OptionalUpdateOfInstanceStoragePolicyWriteDto"
+          },
+          "s3Configuration": {
+            "$ref": "#/components/schemas/OptionalUpdateOfInstanceS3ConfigurationWriteDto"
+          }
+        }
+      },
+      "PatchMcpGovernanceSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "enableLegacySse": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantMcp": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantMcpLegacySse": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchModuleSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enableIslamicModule": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "enableTechModule": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchOrganizationPolicyDto": {
+        "type": "object",
+        "properties": {
+          "requireOrganizationVerification": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "allowTenantToOmitVerification": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "allowOrganizationSelfRegistration": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "allowGroupSelfRegistration": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchRenderPolicySettingsDto": {
+        "type": "object",
+        "properties": {
+          "renderPolicyPreset": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "enableAdvancedRenderPolicyOverrides": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "globalRenderMode": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "globalPrerenderEnabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "publicSeoRenderMode": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "publicSeoPrerenderEnabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "operationalRenderMode": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "operationalPrerenderEnabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "adminRenderMode": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "adminPrerenderEnabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "onboardingRenderMode": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "onboardingPrerenderEnabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "allowTenantRenderPolicyOverride": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantPublicSeoRenderPolicy": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantOperationalRenderPolicy": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantAdminRenderPolicy": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchResolverConfigurationDto": {
+        "type": "object",
+        "properties": {
+          "headerEnabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "subdomainEnabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "customDomainEnabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "pathEnabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "pathPrefix": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "instanceBaseDomain": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "allowTenantCustomDomains": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchTenantBrandingAssetsDto": {
+        "type": "object",
+        "properties": {
+          "logoUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "faviconUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "customCssUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "PatchTenantBrandingDisplayNameDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "PatchTenantBrandingSettingsDocumentDto": {
+        "required": [
+          "expectedConcurrencyStamp"
+        ],
+        "type": "object",
+        "properties": {
+          "expectedConcurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantBrandingDisplayNameDto"
+              }
+            ]
+          },
+          "assets": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantBrandingAssetsDto"
+              }
+            ]
+          }
+        }
+      },
+      "PatchTenantDelegationSettingsDto": {
+        "type": "object",
+        "properties": {
+          "allowTenantSelfServiceRegistration": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "allowTenantWhiteLabeling": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "defaultPublicHomePage": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "lockTenantHomePagePreference": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantSmtp": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantStorage": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantAnalytics": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "lockTenantAiAssistant": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchTenantFooterCopyrightDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "PatchTenantFooterDescriptionDto": {
+        "type": "object",
+        "properties": {
+          "show": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "text": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "PatchTenantFooterGeneralDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "showCookieSettingsLink": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchTenantFooterSettingsDto": {
+        "type": "object",
+        "properties": {
+          "general": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantFooterGeneralDto"
+              }
+            ]
+          },
+          "template": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantFooterTemplateDto"
+              }
+            ]
+          },
+          "description": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantFooterDescriptionDto"
+              }
+            ]
+          },
+          "socialLinks": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantFooterSocialLinksDto"
+              }
+            ]
+          },
+          "copyright": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantFooterCopyrightDto"
+              }
+            ]
+          }
+        }
+      },
+      "PatchTenantFooterSocialLinksDto": {
+        "type": "object",
+        "properties": {
+          "show": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "items": {
+            "$ref": "#/components/schemas/OptionalUpdateOfIReadOnlyListOfFooterSocialLinkDto"
+          }
+        }
+      },
+      "PatchTenantFooterTemplateDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           }
         }
       },
@@ -100735,22 +101675,6 @@
           },
           "reasonCode": {
             "type": "string"
-          }
-        }
-      },
-      "ReplaceTenantBrandingSettingsDocumentDto": {
-        "required": [
-          "expectedConcurrencyStamp",
-          "payload"
-        ],
-        "type": "object",
-        "properties": {
-          "expectedConcurrencyStamp": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "payload": {
-            "$ref": "#/components/schemas/TenantBrandingSettingsPayloadDto"
           }
         }
       },
@@ -103114,41 +104038,24 @@
           "isLockedByInstance": {
             "type": "boolean"
           },
+          "canChangeDisplayName": {
+            "type": "boolean"
+          },
+          "canChangeLogoUrl": {
+            "type": "boolean"
+          },
+          "canChangeFaviconUrl": {
+            "type": "boolean"
+          },
+          "canChangeCustomCssUrl": {
+            "type": "boolean"
+          },
           "updatedAt": {
             "type": [
               "null",
               "string"
             ],
             "format": "date-time"
-          }
-        }
-      },
-      "TenantBrandingSettingsPayloadDto": {
-        "type": "object",
-        "properties": {
-          "displayName": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "logoUrl": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "faviconUrl": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "customCssUrl": {
-            "type": [
-              "null",
-              "string"
-            ]
           }
         }
       },
@@ -103202,6 +104109,71 @@
             "type": "string"
           },
           "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TenantFooterSettingsDto": {
+        "required": [
+          "tenantId"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "template": {
+            "type": "string"
+          },
+          "showDescription": {
+            "type": "boolean"
+          },
+          "descriptionText": {
+            "type": "string"
+          },
+          "showSocialLinks": {
+            "type": "boolean"
+          },
+          "socialLinks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "copyrightText": {
+            "type": "string"
+          },
+          "showCookieSettingsLink": {
+            "type": "boolean"
+          },
+          "lockTenantTemplate": {
+            "type": "boolean"
+          },
+          "lockTenantDescription": {
+            "type": "boolean"
+          },
+          "lockTenantLinkGroups": {
+            "type": "boolean"
+          },
+          "lockTenantSocialLinks": {
+            "type": "boolean"
+          },
+          "lockTenantCopyright": {
             "type": "boolean"
           }
         }
@@ -108131,69 +109103,6 @@
           },
           "isActive": {
             "type": "boolean"
-          }
-        }
-      },
-      "UpdateTenantFooterSettingsRequest": {
-        "required": [
-          "enabled",
-          "template",
-          "showDescription",
-          "descriptionText",
-          "showSocialLinks",
-          "socialLinksJson",
-          "copyrightText",
-          "showCookieSettingsLink"
-        ],
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": [
-              "null",
-              "boolean"
-            ]
-          },
-          "template": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "showDescription": {
-            "type": [
-              "null",
-              "boolean"
-            ]
-          },
-          "descriptionText": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "showSocialLinks": {
-            "type": [
-              "null",
-              "boolean"
-            ]
-          },
-          "socialLinksJson": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "copyrightText": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "showCookieSettingsLink": {
-            "type": [
-              "null",
-              "boolean"
-            ]
           }
         }
       },
