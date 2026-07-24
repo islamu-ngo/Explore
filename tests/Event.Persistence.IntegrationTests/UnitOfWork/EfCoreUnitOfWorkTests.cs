@@ -1,13 +1,16 @@
 // ABOUTME: Integration tests for EfCoreUnitOfWork transactional correctness against a real Postgres database.
-// ABOUTME: Covers: rollback on failure, commit on success, nested transaction guard, generic overload.
+// ABOUTME: Covers commit, rollback, nesting, generic returns, and translated optimistic-concurrency conflicts.
 
 using System.Data;
+using System.Text.Json;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Documents;
 using Explore.Persistence;
+using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using TUnit.Assertions;
@@ -229,5 +232,73 @@ public class EfCoreUnitOfWorkTests
         await Assert.That(caught).IsNotNull();
         await Assert.That(caught!.Code).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
         await Assert.That(caught.EntityType).IsEqualTo(nameof(LocationRoom));
+    }
+
+    [Test]
+    public async Task ExecuteInTransactionAsync_WhenTenantBrandingDocumentStampStale_TranslatesRepositoryConflict()
+    {
+        var tenantId = Guid.NewGuid();
+        var documentId = Guid.NewGuid();
+        const string originalPayload = "{\"displayName\":\"Original Brand\"}";
+        const string concurrentPayload = "{\"displayName\":\"Concurrent Brand\"}";
+        const string stalePayload = "{\"displayName\":\"Stale Brand\"}";
+
+        using (var seedContext = _fixture.CreateDbContext())
+        {
+            seedContext.Set<Tenant>().Add(new Tenant
+            {
+                Id = tenantId,
+                FullName = $"Tenant {tenantId:N}",
+                Slug = $"tenant-{tenantId:N}",
+                TenantStatusId = (int)TenantStatusEnum.Active,
+                TenantStatus = null!
+            });
+
+            var document = TenantSettingsDocument.Create(
+                tenantId,
+                SettingsDocumentKeys.Tenant.Branding,
+                schemaVersion: 1,
+                defaultsVersion: "2026-05-branding",
+                payloadJson: originalPayload);
+            document.Id = documentId;
+            seedContext.Set<TenantSettingsDocument>().Add(document);
+            await seedContext.SaveChangesAsync();
+        }
+
+        using var contextA = _fixture.CreateDbContext();
+        var repositoryA = new TenantSettingsDocumentRepository(contextA);
+        var documentA = await repositoryA.GetTrackedByTenantAndDocumentKey(
+            tenantId,
+            SettingsDocumentKeys.Tenant.Branding);
+        await Assert.That(documentA).IsNotNull();
+
+        using (var contextB = _fixture.CreateDbContext())
+        {
+            var repositoryB = new TenantSettingsDocumentRepository(contextB);
+            var documentB = await repositoryB.GetTrackedByTenantAndDocumentKey(
+                tenantId,
+                SettingsDocumentKeys.Tenant.Branding);
+            documentB!.UpdatePayload(documentB.SchemaVersion, documentB.DefaultsVersion, concurrentPayload);
+            await repositoryB.Update(documentB);
+        }
+
+        var unitOfWorkA = new EfCoreUnitOfWork(contextA);
+        var exception = await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
+            unitOfWorkA.ExecuteInTransactionAsync(async _ =>
+            {
+                documentA!.UpdatePayload(documentA.SchemaVersion, documentA.DefaultsVersion, stalePayload);
+                await repositoryA.Update(documentA);
+            }));
+
+        await Assert.That(exception!.Code).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
+        await Assert.That(exception.EntityType).IsEqualTo(nameof(TenantSettingsDocument));
+        await Assert.That(exception.EntityId).IsEqualTo(documentId.ToString());
+
+        using var verifyContext = _fixture.CreateDbContext();
+        var persisted = await new TenantSettingsDocumentRepository(verifyContext)
+            .GetByTenantAndDocumentKey(tenantId, SettingsDocumentKeys.Tenant.Branding);
+        await Assert.That(persisted).IsNotNull();
+        using var persistedPayload = JsonDocument.Parse(persisted!.PayloadJson);
+        await Assert.That(persistedPayload.RootElement.GetProperty("displayName").GetString()).IsEqualTo("Concurrent Brand");
     }
 }

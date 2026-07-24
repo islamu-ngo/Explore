@@ -56,6 +56,16 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .FirstOrDefaultAsync(e => e.PublicCode == publicCode, cancellationToken);
     }
 
+    public async Task<Event?> GetPublicEventForOpenGraphAsync(string publicCode, CancellationToken cancellationToken)
+    {
+        return await _dbContext.Events
+            .AsNoTracking()
+            .Where(e => e.PublicCode == publicCode)
+            .Where(e => e.EventStatusId == (int)EventStatusEnum.Published)
+            .Where(e => e.VisibilityTypeId == (int)VisibilityTypeEnum.Public)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<Event?> GetAuthorizationTargetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         return await _dbContext.Events

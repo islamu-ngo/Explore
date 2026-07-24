@@ -12,12 +12,15 @@ namespace Explore.Application.Features.Footer.Handlers.Commands;
 public sealed class ReorderFooterLinkGroupsCommandHandler(
     IFooterLinkGroupRepository footerLinkGroupRepository,
     IUnitOfWork unitOfWork,
-    ITenantContext tenantContext)
+    ITenantContext tenantContext,
+    FooterLinkMutationGuard mutationGuard)
     : IRequestHandler<ReorderFooterLinkGroupsCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
         ReorderFooterLinkGroupsCommand request, CancellationToken cancellationToken)
     {
+        await mutationGuard.EnsureAllowedAsync(tenantContext.TenantId, cancellationToken);
+
         var tenantGroups = await footerLinkGroupRepository.GetByTenantIdAsync(
             tenantContext.TenantId, cancellationToken);
 

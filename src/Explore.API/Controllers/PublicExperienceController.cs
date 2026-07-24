@@ -4,9 +4,11 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.PublicExperience;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
+using Explore.Application.Hateoas;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -22,10 +24,17 @@ namespace Explore.API.Controllers;
 public class PublicExperienceController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ILinkPolicy<EventDiscoveryItemDto> _eventDiscoveryLinkPolicy;
+    private readonly IHateoasLinkGenerator _linkGenerator;
 
-    public PublicExperienceController(IMediator mediator)
+    public PublicExperienceController(
+        IMediator mediator,
+        ILinkPolicy<EventDiscoveryItemDto> eventDiscoveryLinkPolicy,
+        IHateoasLinkGenerator linkGenerator)
     {
         _mediator = mediator;
+        _eventDiscoveryLinkPolicy = eventDiscoveryLinkPolicy;
+        _linkGenerator = linkGenerator;
     }
 
     [HttpGet("settings", Name = RouteNames.GetPublicExperienceSettings)]
@@ -65,6 +74,44 @@ public class PublicExperienceController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var home = await _mediator.Send(new GetHomeDiscoveryQuery(areaId, mode), cancellationToken);
+        AddSourceLinks(home);
         return Ok(home);
     }
+
+    private void AddSourceLinks(HomeDiscoveryDto home)
+    {
+        if (HttpContext.Items.TryGetValue(HateoasConstants.MinimalResponseKey, out var minimal)
+            && minimal is true)
+        {
+            return;
+        }
+
+        foreach (var item in EnumerateDiscoveryItems(home))
+        {
+            LinkDefinition? definition = _eventDiscoveryLinkPolicy
+                .GetLinks(item, User)
+                .FirstOrDefault(link => link.Rel == "source");
+            if (definition is null)
+            {
+                continue;
+            }
+
+            HalLink? link = _linkGenerator.GenerateLink(definition, HttpContext);
+            if (link is not null)
+            {
+                item.AdditionalProperties["_links"] =
+                    new Dictionary<string, HalLink> { ["source"] = link };
+            }
+        }
+    }
+
+    private static IEnumerable<EventDiscoveryItemDto> EnumerateDiscoveryItems(HomeDiscoveryDto home) =>
+        home.Hero
+            .Concat(home.UpcomingInArea)
+            .Concat(home.Spotlight?.Items ?? [])
+            .Concat(home.MostViewedInArea)
+            .Concat(home.MostViewedOnline)
+            .Concat(home.CuratedSections.SelectMany(section => section.Items))
+            .Concat(home.RecentlyAdded)
+            .Distinct();
 }

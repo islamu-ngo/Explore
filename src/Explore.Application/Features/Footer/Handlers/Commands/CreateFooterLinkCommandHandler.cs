@@ -14,12 +14,15 @@ namespace Explore.Application.Features.Footer.Handlers.Commands;
 public sealed class CreateFooterLinkCommandHandler(
     IFooterLinkGroupRepository footerLinkGroupRepository,
     IFooterLinkRepository footerLinkRepository,
-    ITenantContext tenantContext)
+    ITenantContext tenantContext,
+    FooterLinkMutationGuard mutationGuard)
     : IRequestHandler<CreateFooterLinkCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
         CreateFooterLinkCommand request, CancellationToken cancellationToken)
     {
+        await mutationGuard.EnsureAllowedAsync(tenantContext.TenantId, cancellationToken);
+
         var group = await footerLinkGroupRepository.GetById(request.GroupId);
 
         if (group is null || group.TenantId != tenantContext.TenantId)

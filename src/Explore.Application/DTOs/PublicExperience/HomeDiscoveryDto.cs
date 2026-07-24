@@ -3,6 +3,7 @@
 
 using Explore.Application.DTOs.Event;
 using Explore.Application.Models.PublicExperience;
+using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.PublicExperience;
 
@@ -41,6 +42,9 @@ public sealed class EventDiscoveryItemDto
     public Guid? NearestLocationId { get; set; }
     public string? NearestLocationName { get; set; }
     public DateTimeOffset? NearestOccurrenceStartsAtUtc { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, object> AdditionalProperties { get; set; } = [];
 }
 
 public sealed class FederatedEventDto

@@ -1,5 +1,5 @@
-// ABOUTME: Admin controller for instance-level settings management via focused sub-resource endpoints.
-// ABOUTME: Replaces monolithic GET/PUT settings endpoints with per-domain REST sub-resources.
+// ABOUTME: Admin controller for instance-level settings management via focused PATCH sub-resource endpoints.
+// ABOUTME: Replaces monolithic settings writes with per-domain, presence-aware REST contracts.
 
 using Asp.Versioning;
 using Explore.API.Attributes;
@@ -80,19 +80,19 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.Modules);
     }
 
-    [HttpPut("modules", Name = RouteNames.UpdateInstanceModuleSettings)]
+    [HttpPatch("modules", Name = RouteNames.UpdateInstanceModuleSettings)]
     [EndpointSummary("Update Module Settings")]
     [EndpointDescription("Updates instance module enablement flags. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateModuleSettings(
-        [FromBody] ModuleSettingsDto settings, CancellationToken cancellationToken = default)
+        [FromBody] PatchModuleSettingsDto settings, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateModuleSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateModuleSettingsCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -108,19 +108,19 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.EventPolicy);
     }
 
-    [HttpPut("events", Name = RouteNames.UpdateInstanceEventPolicy)]
+    [HttpPatch("events", Name = RouteNames.UpdateInstanceEventPolicy)]
     [EndpointSummary("Update Event Policy")]
     [EndpointDescription("Updates instance event lifecycle policy. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateEventPolicy(
-        [FromBody] EventPolicyDto settings, CancellationToken cancellationToken = default)
+        [FromBody] PatchEventPolicyDto settings, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateEventPolicyCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateEventPolicyCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -136,19 +136,19 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.OrganizationPolicy);
     }
 
-    [HttpPut("organizations", Name = RouteNames.UpdateInstanceOrganizationPolicy)]
+    [HttpPatch("organizations", Name = RouteNames.UpdateInstanceOrganizationPolicy)]
     [EndpointSummary("Update Organization Policy")]
     [EndpointDescription("Updates instance organization policy. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateOrganizationPolicy(
-        [FromBody] OrganizationPolicyDto settings, CancellationToken cancellationToken = default)
+        [FromBody] PatchOrganizationPolicyDto settings, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateOrganizationPolicyCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateOrganizationPolicyCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -164,21 +164,21 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.Branding);
     }
 
-    [HttpPut("branding", Name = RouteNames.UpdateInstanceBrandingSettings)]
+    [HttpPatch("branding", Name = RouteNames.UpdateInstanceBrandingSettings)]
     [EndpointSummary("Update Branding Settings")]
     [EndpointDescription("Updates instance branding settings. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateBrandingSettings(
-        [FromBody] BrandingSettingsDto settings,
+        [FromBody] PatchBrandingSettingsDto settings,
         [FromServices] IOutputCacheStore cacheStore,
         CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateBrandingSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateBrandingSettingsCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         if (response.Success)
         {
             await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
@@ -199,19 +199,19 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.Domains);
     }
 
-    [HttpPut("domains", Name = RouteNames.UpdateInstanceDomainSettings)]
+    [HttpPatch("domains", Name = RouteNames.UpdateInstanceDomainSettings)]
     [EndpointSummary("Update Domain Settings")]
     [EndpointDescription("Updates instance domain settings. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateDomainSettings(
-        [FromBody] DomainSettingsDto settings, CancellationToken cancellationToken = default)
+        [FromBody] PatchDomainSettingsDto settings, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateDomainSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateDomainSettingsCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -227,19 +227,19 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.TenantDelegation);
     }
 
-    [HttpPut("tenant-delegation", Name = RouteNames.UpdateInstanceTenantDelegationSettings)]
+    [HttpPatch("tenant-delegation", Name = RouteNames.UpdateInstanceTenantDelegationSettings)]
     [EndpointSummary("Update Tenant Delegation Settings")]
     [EndpointDescription("Updates instance tenant delegation settings. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateTenantDelegationSettings(
-        [FromBody] TenantDelegationSettingsDto settings, CancellationToken cancellationToken = default)
+        [FromBody] PatchTenantDelegationSettingsDto settings, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateTenantDelegationSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateTenantDelegationSettingsCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -255,19 +255,19 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.AdminPortal);
     }
 
-    [HttpPut("admin-portal", Name = RouteNames.UpdateInstanceAdminPortalSettings)]
+    [HttpPatch("admin-portal", Name = RouteNames.UpdateInstanceAdminPortalSettings)]
     [EndpointSummary("Update Admin Portal Settings")]
     [EndpointDescription("Updates dedicated Control Plane Admin Portal settings. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAdminPortalSettings(
-        [FromBody] AdminPortalSettingsDto settings, CancellationToken cancellationToken = default)
+        [FromBody] PatchAdminPortalSettingsDto settings, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateAdminPortalSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateAdminPortalSettingsCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -283,19 +283,19 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.AiAssistant);
     }
 
-    [HttpPut("ai-assistant", Name = RouteNames.UpdateInstanceAiAssistantGovernanceSettings)]
+    [HttpPatch("ai-assistant", Name = RouteNames.UpdateInstanceAiAssistantGovernanceSettings)]
     [EndpointSummary("Update AI Assistant Governance Settings")]
     [EndpointDescription("Updates instance AI assistant defaults and tenant override lock settings. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAiAssistantGovernanceSettings(
-        [FromBody] AiAssistantGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
+        [FromBody] PatchAiAssistantGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateAiAssistantGovernanceSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateAiAssistantGovernanceSettingsCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -311,19 +311,19 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.Mcp);
     }
 
-    [HttpPut("mcp", Name = RouteNames.UpdateInstanceMcpGovernanceSettings)]
+    [HttpPatch("mcp", Name = RouteNames.UpdateInstanceMcpGovernanceSettings)]
     [EndpointSummary("Update MCP Governance Settings")]
     [EndpointDescription("Updates instance MCP runtime enablement and tenant override locks. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateMcpGovernanceSettings(
-        [FromBody] McpGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
+        [FromBody] PatchMcpGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateMcpGovernanceSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateMcpGovernanceSettingsCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -339,19 +339,19 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.RenderPolicy);
     }
 
-    [HttpPut("render-policy", Name = RouteNames.UpdateInstanceRenderPolicySettings)]
+    [HttpPatch("render-policy", Name = RouteNames.UpdateInstanceRenderPolicySettings)]
     [EndpointSummary("Update Render Policy Settings")]
     [EndpointDescription("Updates instance render policy settings. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateRenderPolicySettings(
-        [FromBody] RenderPolicySettingsDto settings, CancellationToken cancellationToken = default)
+        [FromBody] PatchRenderPolicySettingsDto settings, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateRenderPolicySettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateRenderPolicySettingsCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -402,7 +402,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(halResource);
     }
 
-    [HttpPut("storage", Name = RouteNames.UpdateInstanceStorageSettings)]
+    [HttpPatch("storage", Name = RouteNames.UpdateInstanceStorageSettings)]
     [EndpointSummary("Update Instance Storage Settings")]
     [EndpointDescription("Updates instance storage provider policy, quotas, delegation lock, and optional S3 settings. Requires instance administrator.")]
     [Consumes("application/json")]
@@ -410,12 +410,12 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateStorageSettings(
-        [FromBody] InstanceStorageSettingsDto settings, CancellationToken cancellationToken = default)
+        [FromBody] PatchInstanceStorageSettingsDto settings, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateInstanceStorageSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateInstanceStorageSettingsCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -457,7 +457,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings);
     }
 
-    [HttpPut("smtp", Name = RouteNames.UpdateInstanceSmtpSettings)]
+    [HttpPatch("smtp", Name = RouteNames.UpdateInstanceSmtpSettings)]
     [EndpointSummary("Update Instance SMTP Settings")]
     [EndpointDescription("Updates instance SMTP settings. Requires instance administrator.")]
     [Consumes("application/json")]
@@ -465,12 +465,12 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSmtpSettings(
-        [FromBody] InstanceSmtpSettingsDto settings, CancellationToken cancellationToken = default)
+        [FromBody] PatchInstanceSmtpSettingsDto settings, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateInstanceSmtpSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateInstanceSmtpSettingsCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -504,19 +504,19 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(configuration);
     }
 
-    [HttpPut("resolver-config", Name = RouteNames.UpdateInstanceResolverConfiguration)]
+    [HttpPatch("resolver-config", Name = RouteNames.UpdateInstanceResolverConfiguration)]
     [EndpointSummary("Update Tenant Resolver Configuration")]
     [EndpointDescription("Updates instance-level tenant resolver configuration. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateResolverConfiguration(
-        [FromBody] ResolverConfigurationDto configuration, CancellationToken cancellationToken = default)
+        [FromBody] PatchResolverConfigurationDto configuration, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateResolverConfigurationCommand { UserId = userId.Value, Configuration = configuration }, cancellationToken);
+        var response = await _mediator.Send(new UpdateResolverConfigurationCommand { UserId = userId.Value, Patch = configuration }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -532,7 +532,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings);
     }
 
-    [HttpPut("analytics-governance", Name = RouteNames.UpdateInstanceAnalyticsGovernanceSettings)]
+    [HttpPatch("analytics-governance", Name = RouteNames.UpdateInstanceAnalyticsGovernanceSettings)]
     [EndpointSummary("Update Analytics Governance Settings")]
     [EndpointDescription("Updates analytics and cookie consent governance settings. Requires instance administrator.")]
     [Consumes("application/json")]
@@ -540,12 +540,12 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAnalyticsGovernanceSettings(
-        [FromBody] AnalyticsGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
+        [FromBody] PatchAnalyticsGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateAnalyticsGovernanceSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateAnalyticsGovernanceSettingsCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -561,7 +561,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings);
     }
 
-    [HttpPut("footer-governance", Name = RouteNames.UpdateFooterGovernanceSettings)]
+    [HttpPatch("footer-governance", Name = RouteNames.UpdateFooterGovernanceSettings)]
     [EndpointSummary("Update Footer Governance Settings")]
     [EndpointDescription("Updates instance-level footer lock flags. Requires instance administrator.")]
     [Consumes("application/json")]
@@ -569,13 +569,13 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateFooterGovernanceSettings(
-        [FromBody] FooterGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
+        [FromBody] PatchFooterGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
     {
         if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return this.ToForbiddenProblem(detail: "Instance administrator or active setup secret authority is required for this operation.");
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateFooterGovernanceSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        var response = await _mediator.Send(new UpdateFooterGovernanceSettingsCommand { UserId = userId.Value, Patch = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -591,7 +591,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(configuration);
     }
 
-    [HttpPut("auth-provider", Name = RouteNames.UpdateInstanceAuthProviderConfiguration)]
+    [HttpPatch("auth-provider", Name = RouteNames.UpdateInstanceAuthProviderConfiguration)]
     [EndpointSummary("Update Auth Provider Configuration")]
     [EndpointDescription("Updates auth provider configuration. Requires instance administrator and blocks self-lockout.")]
     [Consumes("application/json")]
@@ -599,12 +599,12 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAuthProviderConfiguration(
-        [FromBody] AuthProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
+        [FromBody] PatchAuthProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateAuthProviderConfigurationCommand { UserId = userId.Value, Configuration = configuration }, cancellationToken);
+        var response = await _mediator.Send(new UpdateAuthProviderConfigurationCommand { UserId = userId.Value, Patch = configuration }, cancellationToken);
         return HandleCommandResponse(response);
     }
 
@@ -701,7 +701,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(configuration);
     }
 
-    [HttpPut("authz-provider", Name = RouteNames.UpdateInstanceAuthorizationProviderConfiguration)]
+    [HttpPatch("authz-provider", Name = RouteNames.UpdateInstanceAuthorizationProviderConfiguration)]
     [EndpointSummary("Update Authorization Provider Configuration")]
     [EndpointDescription("Updates authorization provider configuration. Requires instance administrator.")]
     [Consumes("application/json")]
@@ -709,13 +709,13 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAuthorizationProviderConfiguration(
-        [FromBody] AuthorizationProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
+        [FromBody] PatchAuthorizationProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
         var response = await _mediator.Send(
-            new UpdateAuthorizationProviderConfigurationCommand { UserId = userId.Value, Configuration = configuration },
+            new UpdateAuthorizationProviderConfigurationCommand { UserId = userId.Value, Patch = configuration },
             cancellationToken);
 
         return HandleCommandResponse(response);

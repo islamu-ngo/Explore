@@ -3,6 +3,7 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
@@ -37,7 +38,26 @@ public class UpdateInstanceSmtpSettingsCommandHandler : IRequestHandler<UpdateIn
             return response;
         }
 
-        await _smtpSettingService.ApplySettingsAsync(request.Settings);
+        if (!request.Patch.HasChanges() || request.Patch.Configuration.Value is null)
+        {
+            response.Success = false;
+            response.Message = "SMTP settings patch must include a complete configuration group.";
+            return response;
+        }
+
+        var patch = request.Patch.Configuration.Value;
+        var settings = await _smtpSettingService.ReadSettingsAsync();
+        settings.Host = patch.Host;
+        settings.Port = patch.Port;
+        settings.Username = patch.Username;
+        settings.Password = patch.Password;
+        settings.Security = patch.Security;
+        settings.FromAddress = patch.FromAddress;
+        settings.FromName = patch.FromName;
+        settings.TimeoutSeconds = patch.TimeoutSeconds;
+        settings.SkipCertificateValidation = patch.SkipCertificateValidation;
+
+        await _smtpSettingService.ApplySettingsAsync(settings);
 
         _smtpConfigResolver.InvalidateCache();
 

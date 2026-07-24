@@ -83,6 +83,10 @@ public sealed class GetTenantBrandingSettingsDocumentQueryHandlerTests
         await Assert.That(result.SourceScopeId).IsEqualTo(tenantId);
         await Assert.That(result.ConcurrencyStamp).IsEqualTo(Guid.Parse("11111111-1111-1111-1111-111111111111"));
         await Assert.That(result.IsLockedByInstance).IsTrue();
+        await Assert.That(result.CanChangeDisplayName).IsTrue();
+        await Assert.That(result.CanChangeLogoUrl).IsFalse();
+        await Assert.That(result.CanChangeFaviconUrl).IsTrue();
+        await Assert.That(result.CanChangeCustomCssUrl).IsTrue();
         await Assert.That(result.UpdatedAt).IsEqualTo(updatedAt);
         await Assert.That(result.Payload.DisplayName).IsEqualTo("Open Islamu");
         await Assert.That(result.Payload.LogoUrl).IsEqualTo("https://cdn.example.test/logo.svg");
@@ -113,6 +117,10 @@ public sealed class GetTenantBrandingSettingsDocumentQueryHandlerTests
         await Assert.That(result.Source).IsEqualTo(SettingsDocumentSource.Tenant.ToString());
         await Assert.That(result.SourceScopeId).IsEqualTo(tenantId);
         await Assert.That(result.ConcurrencyStamp).IsEqualTo(Guid.Parse("22222222-2222-2222-2222-222222222222"));
+        await Assert.That(result.CanChangeDisplayName).IsTrue();
+        await Assert.That(result.CanChangeLogoUrl).IsTrue();
+        await Assert.That(result.CanChangeFaviconUrl).IsTrue();
+        await Assert.That(result.CanChangeCustomCssUrl).IsTrue();
         await Assert.That(result.Payload.DisplayName).IsEqualTo("Provisioned Brand");
         await _provisioningService.Received(1)
             .EnsureTenantBrandingDocumentAsync(tenantId, null, Arg.Any<CancellationToken>());

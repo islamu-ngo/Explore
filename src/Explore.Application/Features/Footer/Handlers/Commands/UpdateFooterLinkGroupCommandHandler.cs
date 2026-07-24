@@ -12,12 +12,15 @@ namespace Explore.Application.Features.Footer.Handlers.Commands;
 
 public sealed class UpdateFooterLinkGroupCommandHandler(
     IFooterLinkGroupRepository footerLinkGroupRepository,
-    ITenantContext tenantContext)
+    ITenantContext tenantContext,
+    FooterLinkMutationGuard mutationGuard)
     : IRequestHandler<UpdateFooterLinkGroupCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
         UpdateFooterLinkGroupCommand request, CancellationToken cancellationToken)
     {
+        await mutationGuard.EnsureAllowedAsync(tenantContext.TenantId, cancellationToken);
+
         var group = await footerLinkGroupRepository.GetById(request.GroupId);
 
         if (group is null || group.TenantId != tenantContext.TenantId)

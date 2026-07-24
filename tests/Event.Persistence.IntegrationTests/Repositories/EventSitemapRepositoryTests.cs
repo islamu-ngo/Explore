@@ -67,6 +67,79 @@ public sealed class EventSitemapRepositoryTests(PostgreSqlContainerFixture fixtu
         await Assert.That(results.Single().VisibilityTypeId).IsEqualTo((int)VisibilityTypeEnum.Public);
     }
 
+    [Test]
+    public async Task GetPublicEventForOpenGraphAsync_ReturnsOnlyEligibleUntrackedEventFromCurrentTenant()
+    {
+        await fixture.ResetAsync();
+        var tenantA = await SeedTenantAsync("open-graph-a");
+        var tenantB = await SeedTenantAsync("open-graph-b");
+
+        var eligibleEvent = CreateEvent(
+            tenantA,
+            "Published public Open Graph event",
+            EventStatusEnum.Published,
+            VisibilityTypeEnum.Public,
+            DateTimeOffset.UtcNow.AddDays(1));
+        eligibleEvent.PublicCode = "ogeligible";
+
+        var draftEvent = CreateEvent(
+            tenantA,
+            "Draft Open Graph event",
+            EventStatusEnum.Draft,
+            VisibilityTypeEnum.Public,
+            DateTimeOffset.UtcNow.AddDays(2));
+        draftEvent.PublicCode = "ogdraft";
+
+        var privateEvent = CreateEvent(
+            tenantA,
+            "Private Open Graph event",
+            EventStatusEnum.Published,
+            VisibilityTypeEnum.Private,
+            DateTimeOffset.UtcNow.AddDays(3));
+        privateEvent.PublicCode = "ogprivate";
+
+        var otherTenantEvent = CreateEvent(
+            tenantB,
+            "Other tenant Open Graph event",
+            EventStatusEnum.Published,
+            VisibilityTypeEnum.Public,
+            DateTimeOffset.UtcNow.AddDays(4));
+        otherTenantEvent.PublicCode = "ogother";
+
+        await using (var seedContext = fixture.CreateDbContext())
+        {
+            seedContext.Events.AddRange(eligibleEvent, draftEvent, privateEvent, otherTenantEvent);
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using var tenantAContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantA.TenantId));
+        var repository = new EventRepository(tenantAContext);
+
+        DomainEvent? eligibleResult = await repository.GetPublicEventForOpenGraphAsync(
+            eligibleEvent.PublicCode,
+            CancellationToken.None);
+        DomainEvent? draftResult = await repository.GetPublicEventForOpenGraphAsync(
+            draftEvent.PublicCode,
+            CancellationToken.None);
+        DomainEvent? privateResult = await repository.GetPublicEventForOpenGraphAsync(
+            privateEvent.PublicCode,
+            CancellationToken.None);
+        DomainEvent? otherTenantResult = await repository.GetPublicEventForOpenGraphAsync(
+            otherTenantEvent.PublicCode,
+            CancellationToken.None);
+
+        await Assert.That(eligibleResult).IsNotNull();
+        await Assert.That(eligibleResult!.Id).IsEqualTo(eligibleEvent.Id);
+        await Assert.That(eligibleResult.TenantId).IsEqualTo(tenantA.TenantId);
+        await Assert.That(eligibleResult.Title).IsEqualTo(eligibleEvent.Title);
+        await Assert.That(eligibleResult.FirstSessionDate).IsEqualTo(eligibleEvent.FirstSessionDate);
+        await Assert.That(eligibleResult.LastSessionDate).IsEqualTo(eligibleEvent.LastSessionDate);
+        await Assert.That(draftResult).IsNull();
+        await Assert.That(privateResult).IsNull();
+        await Assert.That(otherTenantResult).IsNull();
+        await Assert.That(tenantAContext.ChangeTracker.Entries<DomainEvent>().Any()).IsFalse();
+    }
+
     private async Task<EventSitemapScope> SeedTenantAsync(string slugPrefix)
     {
         await using var context = fixture.CreateDbContext();

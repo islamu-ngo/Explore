@@ -35,8 +35,10 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
         {
             Host = DeserializeString(host?.Value, string.Empty),
             Port = DeserializeInt(port?.Value, 587),
-            Username = DeserializeString(username?.Value, string.Empty),
-            Password = DeserializeString(password?.Value, string.Empty),
+            Username = string.Empty,
+            Password = string.Empty,
+            UsernameConfigured = !string.IsNullOrWhiteSpace(DeserializeString(username?.Value, string.Empty)),
+            PasswordConfigured = !string.IsNullOrWhiteSpace(DeserializeString(password?.Value, string.Empty)),
             Security = DeserializeString(security?.Value, "StartTls"),
             FromAddress = DeserializeString(fromAddress?.Value, string.Empty),
             FromName = DeserializeString(fromName?.Value, string.Empty),
@@ -65,23 +67,29 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
             2,
             "SMTP server port");
 
-        await UpsertSystemSettingAsync(
-            InfrastructureSecretSettingKeys.Email.SmtpUsername,
-            JsonSerializer.Serialize(settings.Username.Trim()),
-            SettingValueType.String,
-            false,
-            "Email",
-            3,
-            "SMTP username");
+        if (!string.IsNullOrWhiteSpace(settings.Username))
+        {
+            await UpsertSystemSettingAsync(
+                InfrastructureSecretSettingKeys.Email.SmtpUsername,
+                JsonSerializer.Serialize(settings.Username.Trim()),
+                SettingValueType.String,
+                false,
+                "Email",
+                3,
+                "SMTP username");
+        }
 
-        await UpsertSystemSettingAsync(
-            InfrastructureSecretSettingKeys.Email.SmtpPassword,
-            JsonSerializer.Serialize(settings.Password.Trim()),
-            SettingValueType.String,
-            false,
-            "Email",
-            4,
-            "SMTP password or app token");
+        if (!string.IsNullOrWhiteSpace(settings.Password))
+        {
+            await UpsertSystemSettingAsync(
+                InfrastructureSecretSettingKeys.Email.SmtpPassword,
+                JsonSerializer.Serialize(settings.Password.Trim()),
+                SettingValueType.String,
+                false,
+                "Email",
+                4,
+                "SMTP password or app token");
+        }
 
         await UpsertSystemSettingAsync(
             GovernanceSettingKeys.Email.SmtpSecurity,

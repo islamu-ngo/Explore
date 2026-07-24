@@ -12,7 +12,6 @@ using Explore.Application.DTOs.TenantSettingsDocuments;
 using Explore.Application.Features.TenantSettingsDocuments.Requests.Commands;
 using Explore.Application.Features.TenantSettingsDocuments.Requests.Queries;
 using Explore.Application.Hateoas;
-using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -32,10 +31,10 @@ public sealed class TenantSettingsDocumentsController(
     IResourceAssembler<TenantBrandingSettingsDocumentDto, TenantBrandingSettingsDocumentDto> resourceAssembler)
     : ExploreControllerBase
 {
-    private static readonly ApiValidationProblemDescriptor ReplaceBrandingValidationProblem = new(
+    private static readonly ApiValidationProblemDescriptor PatchBrandingValidationProblem = new(
         "tenantBrandingSettingsDocument",
         "Tenant branding settings document validation failed",
-        "Tenant branding settings document replacement failed.");
+        "Tenant branding settings document patch failed.");
 
     private static readonly ApiNotFoundProblemDescriptor BrandingDocumentNotFoundProblem = new(
         "Tenant branding settings document not found",
@@ -61,9 +60,9 @@ public sealed class TenantSettingsDocumentsController(
         return Ok(resource);
     }
 
-    [HttpPut("branding", Name = RouteNames.ReplaceTenantBrandingSettingsDocument)]
-    [EndpointSummary("Replace Tenant Branding Settings Document")]
-    [EndpointDescription("Fully replaces the current tenant branding typed settings document. Uses optimistic concurrency and writes only tenant JSONB settings documents.")]
+    [HttpPatch("branding", Name = RouteNames.PatchTenantBrandingSettingsDocument)]
+    [EndpointSummary("Patch Tenant Branding Settings Document")]
+    [EndpointDescription("Patches supplied tenant branding groups with optimistic concurrency while preserving omitted JSONB settings leaves.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(HalResource<TenantBrandingSettingsDocumentDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
@@ -71,17 +70,17 @@ public sealed class TenantSettingsDocumentsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<HalResource<TenantBrandingSettingsDocumentDto>>> ReplaceBranding(
-        [FromBody] ReplaceTenantBrandingSettingsDocumentDto document,
+    public async Task<ActionResult<HalResource<TenantBrandingSettingsDocumentDto>>> PatchBranding(
+        [FromBody] PatchTenantBrandingSettingsDocumentDto patch,
         [FromServices] IOutputCacheStore cacheStore,
         CancellationToken cancellationToken = default)
     {
         var lockState = await lockService.GetLockStateAsync(cancellationToken);
         var response = await mediator.Send(
-            new ReplaceTenantBrandingSettingsDocumentCommand
+            new PatchTenantBrandingSettingsDocumentCommand
             {
                 TenantId = tenantContext.TenantId,
-                Document = document,
+                Patch = patch,
                 IsLockedByInstance = lockState.IsLockedByInstance
             },
             cancellationToken);
@@ -93,16 +92,16 @@ public sealed class TenantSettingsDocumentsController(
                 return this.ToNotFoundProblem(BrandingDocumentNotFoundProblem);
             }
 
-            return this.ToCommandValidationProblem(response, ReplaceBrandingValidationProblem);
+            return this.ToCommandValidationProblem(response, PatchBrandingValidationProblem);
         }
-
-        await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
 
         var updated = await mediator.Send(new GetTenantBrandingSettingsDocumentQuery(), cancellationToken);
         if (updated is null)
         {
             return this.ToNotFoundProblem(BrandingDocumentNotFoundProblem);
         }
+
+        await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
 
         var resource = await resourceAssembler.ToResource(updated, HttpContext);
         return Ok(resource);

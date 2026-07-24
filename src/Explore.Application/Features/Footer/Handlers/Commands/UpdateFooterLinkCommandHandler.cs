@@ -13,12 +13,15 @@ namespace Explore.Application.Features.Footer.Handlers.Commands;
 public sealed class UpdateFooterLinkCommandHandler(
     IFooterLinkGroupRepository footerLinkGroupRepository,
     IFooterLinkRepository footerLinkRepository,
-    ITenantContext tenantContext)
+    ITenantContext tenantContext,
+    FooterLinkMutationGuard mutationGuard)
     : IRequestHandler<UpdateFooterLinkCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
         UpdateFooterLinkCommand request, CancellationToken cancellationToken)
     {
+        await mutationGuard.EnsureAllowedAsync(tenantContext.TenantId, cancellationToken);
+
         var link = await footerLinkRepository.GetById(request.LinkId);
         if (link is null)
             throw new NotFoundException(nameof(link), request.LinkId);

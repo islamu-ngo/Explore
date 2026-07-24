@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
@@ -50,8 +51,33 @@ public class UpdateAuthProviderConfigurationCommandHandler : IRequestHandler<Upd
         }
 
         var currentConfiguration = await _configurationService.ReadConfigurationAsync();
+        if (!request.Patch.HasChanges() || request.Patch.Configuration.Value is null)
+        {
+            response.Success = false;
+            response.Message = "Authentication provider patch must include a complete configuration group.";
+            return response;
+        }
+
+        var patch = request.Patch.Configuration.Value;
+        var configuration = new AuthProviderConfigurationDto
+        {
+            KeycloakEnabled = patch.KeycloakEnabled,
+            KeycloakAuthority = patch.KeycloakAuthority,
+            KeycloakClientId = patch.KeycloakClientId,
+            KeycloakClientSecret = patch.KeycloakClientSecret,
+            KeycloakDetectedFromEnvironment = currentConfiguration.KeycloakDetectedFromEnvironment,
+            KeycloakClientSecretOwnership = currentConfiguration.KeycloakClientSecretOwnership,
+            AtprotoLoginEnabled = patch.AtprotoLoginEnabled,
+            AtprotoPublicUrl = patch.AtprotoPublicUrl,
+            GoogleSsoEnabled = patch.GoogleSsoEnabled,
+            GoogleClientId = patch.GoogleClientId,
+            GoogleClientSecret = patch.GoogleClientSecret,
+            LockKeycloakEnabled = patch.LockKeycloakEnabled,
+            LockAtprotoLoginEnabled = patch.LockAtprotoLoginEnabled,
+            LockGoogleSsoEnabled = patch.LockGoogleSsoEnabled
+        };
         var validator = new AuthProviderConfigurationDtoValidator(currentConfiguration);
-        var validationResult = await validator.ValidateAsync(request.Configuration, cancellationToken);
+        var validationResult = await validator.ValidateAsync(configuration, cancellationToken);
         if (!validationResult.IsValid)
         {
             response.Success = false;
@@ -69,14 +95,14 @@ public class UpdateAuthProviderConfigurationCommandHandler : IRequestHandler<Upd
         }
 
         var currentUserLogins = await _userExternalLoginRepository.GetByUser(request.UserId);
-        if (!WouldKeepAtLeastOneProviderEnabledForCurrentAdmin(currentUser.AuthProvider, currentUserLogins, request.Configuration))
+        if (!WouldKeepAtLeastOneProviderEnabledForCurrentAdmin(currentUser.AuthProvider, currentUserLogins, configuration))
         {
             response.Success = false;
             response.Message = "Cannot disable all authentication providers linked to your current admin account.";
             return response;
         }
 
-        await _configurationService.ApplyConfigurationAsync(request.Configuration);
+        await _configurationService.ApplyConfigurationAsync(configuration);
         await _jwtAuthorityRefreshNotifier.ReloadAsync(cancellationToken);
 
         response.Success = true;

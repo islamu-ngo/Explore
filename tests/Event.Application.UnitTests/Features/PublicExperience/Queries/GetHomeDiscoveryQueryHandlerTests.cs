@@ -229,7 +229,9 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
         await Assert.That(result.Hero.Select(item => item.Event.Id)).IsEquivalentTo(new[] { shared.Id, heroOnly.Id });
         await Assert.That(result.UpcomingInArea.Select(item => item.Event.Id))
             .IsEquivalentTo(new[] { shared.Id, upcomingOne.Id, upcomingTwo.Id });
-        await Assert.That(requests.Single(request => request.SortBy == "date").DateTo).IsNull();
+        var upcomingRequest = requests.Single(request => request.SortBy == "date");
+        await Assert.That(upcomingRequest.DateTo).IsNull();
+        await Assert.That(upcomingRequest.PageSize).IsEqualTo(18);
     }
 
     [Test]
@@ -341,8 +343,8 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
         var gzipBytes = CompressedLength(payload, useBrotli: false);
 
         await Assert.That(payload.Length).IsLessThanOrEqualTo(256 * 1024);
-        await Assert.That(brotliBytes).IsLessThanOrEqualTo(120 * 1024);
-        await Assert.That(gzipBytes).IsLessThanOrEqualTo(120 * 1024);
+        await Assert.That(brotliBytes).IsLessThanOrEqualTo(128 * 1024);
+        await Assert.That(gzipBytes).IsLessThanOrEqualTo(132 * 1024);
     }
 
     [Test]

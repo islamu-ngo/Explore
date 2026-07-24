@@ -1,5 +1,5 @@
 // ABOUTME: HAL link policy for tenant branding typed settings documents.
-// ABOUTME: Emits replace affordances through permission checks instead of client-side role logic.
+// ABOUTME: Emits PATCH edit affordances through field capabilities and permission checks.
 
 namespace Explore.API.Hateoas.Policies;
 
@@ -21,12 +21,20 @@ public sealed class TenantBrandingSettingsDocumentLinkPolicy : ILinkPolicy<Tenan
             "GET",
             "Tenant branding settings document");
 
+        if (!dto.CanChangeDisplayName &&
+            !dto.CanChangeLogoUrl &&
+            !dto.CanChangeFaviconUrl &&
+            !dto.CanChangeCustomCssUrl)
+        {
+            yield break;
+        }
+
         yield return new LinkDefinition(
-            "self/replace-settings",
-            RouteNames.ReplaceTenantBrandingSettingsDocument,
+            LinkRelations.Edit,
+            RouteNames.PatchTenantBrandingSettingsDocument,
             null,
-            "PUT",
-            "Replace tenant branding settings",
+            "PATCH",
+            "Patch tenant branding settings",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.TenantBrandingSettingsDocument, dto);
     }

@@ -522,6 +522,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             Provider = NormalizeAiAssistantProvider(aiAssistant.Provider, aiAssistant.Enabled),
             EndpointUrl = aiAssistant.EndpointUrl ?? string.Empty,
             ApiKey = aiAssistant.ApiKey ?? string.Empty,
+            ApiKeyConfigured = !string.IsNullOrWhiteSpace(aiAssistant.ApiKey),
             ModelId = aiAssistant.ModelId ?? string.Empty,
             AllowedModelIds = NormalizeAiModelIds([aiAssistant.ModelId], aiAssistant.AllowedModelIds),
             AllowAnonymousAccess = aiAssistant.AllowAnonymousAccess,

@@ -30,6 +30,7 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
     : IRequestHandler<GetHomeDiscoveryQuery, HomeDiscoveryDto>
 {
     private const int HeroLimit = 10;
+    private const int UpcomingLimit = 18;
     private const int StandardLimit = 10;
     private const int SpotlightLimit = 3;
     private const int MaximumCuratedSections = 2;
@@ -68,11 +69,11 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
                 result.SectionStatuses["hero"] = HomeDiscoverySectionStatus.Empty;
             }
 
-            var upcomingRequest = CreateUpcomingRequest(today, "date", sortDescending: false, StandardLimit);
+            var upcomingRequest = CreateUpcomingRequest(today, "date", sortDescending: false, UpcomingLimit);
             if (ApplyContext(upcomingRequest, areaState))
             {
                 result.UpcomingInArea = await QuerySectionAsync(
-                    "upcoming", upcomingRequest, StandardLimit, result.SectionStatuses, operationToken);
+                    "upcoming", upcomingRequest, UpcomingLimit, result.SectionStatuses, operationToken);
             }
             else
             {

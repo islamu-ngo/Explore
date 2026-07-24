@@ -11,6 +11,7 @@ using Explore.API.Controllers;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.Models.Common;
 using Explore.Application.Onboarding;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -233,11 +234,36 @@ public class InstanceOnboardingControllerTests
         var nonAdminUserId = Guid.NewGuid();
         await EnsureUserExistsAsync(factory, nonAdminUserId);
 
-        using var request = CreateInstanceAdminRequest(HttpMethod.Put, $"{SettingsBaseUrl}/modules", nonAdminUserId,
-            new ModuleSettingsDto { EnableIslamicModule = true, EnableTechModule = true }, includeSetupSecret: false);
+        using var request = CreateInstanceAdminRequest(HttpMethod.Patch, $"{SettingsBaseUrl}/modules", nonAdminUserId,
+            new PatchModuleSettingsDto
+            {
+                EnableIslamicModule = OptionalUpdate<bool>.Set(true),
+                EnableTechModule = OptionalUpdate<bool>.Set(true)
+            }, includeSetupSecret: false);
         var response = await client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
+
+    [Test]
+    public async Task RetiredInstanceSettingsAndOnboardingWrites_ShouldNotBeRoutable()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+        (HttpMethod Method, string Path, HttpStatusCode ExpectedStatus)[] retiredWrites =
+        [
+            (HttpMethod.Put, $"{SettingsBaseUrl}/modules", HttpStatusCode.MethodNotAllowed),
+            (HttpMethod.Put, $"{BaseUrl}/auth-provider-configuration", HttpStatusCode.MethodNotAllowed),
+            (HttpMethod.Put, $"{BaseUrl}/authz-provider-configuration", HttpStatusCode.NotFound)
+        ];
+
+        foreach (var (method, path, expectedStatus) in retiredWrites)
+        {
+            using var request = new HttpRequestMessage(method, path);
+            var response = await client.SendAsync(request);
+
+            await Assert.That(response.StatusCode).IsEqualTo(expectedStatus);
+        }
     }
 
     [Test]
@@ -301,7 +327,11 @@ public class InstanceOnboardingControllerTests
         using var factory = CreateFactoryWithSetupSecret();
         using var client = factory.CreateClient();
 
-        var response = await client.PutAsJsonAsync($"{SettingsBaseUrl}/auth-provider", CreateGoogleOnlyAuthProviderConfiguration());
+        using var request = new HttpRequestMessage(HttpMethod.Patch, $"{SettingsBaseUrl}/auth-provider")
+        {
+            Content = JsonContent.Create(CreateGoogleOnlyAuthProviderPatch())
+        };
+        var response = await client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
@@ -316,10 +346,10 @@ public class InstanceOnboardingControllerTests
         await EnsureUserExistsAsync(factory, userId);
 
         using var request = CreateInstanceAdminRequest(
-            HttpMethod.Put,
+            HttpMethod.Patch,
             $"{SettingsBaseUrl}/auth-provider",
             userId,
-            CreateGoogleOnlyAuthProviderConfiguration(),
+            CreateGoogleOnlyAuthProviderPatch(),
             includeSetupSecret: false);
 
         var response = await client.SendAsync(request);
@@ -338,10 +368,10 @@ public class InstanceOnboardingControllerTests
         await EnsureInstanceAdminRoleAsync(factory, userId);
 
         using var request = CreateInstanceAdminRequest(
-            HttpMethod.Put,
+            HttpMethod.Patch,
             $"{SettingsBaseUrl}/auth-provider",
             userId,
-            CreateGoogleOnlyAuthProviderConfiguration(),
+            CreateGoogleOnlyAuthProviderPatch(),
             includeSetupSecret: false);
 
         var response = await client.SendAsync(request);
@@ -365,10 +395,10 @@ public class InstanceOnboardingControllerTests
         await EnsureUserExternalLoginAsync(factory, userId, "google", $"google-{userId:N}");
 
         using var updateRequest = CreateInstanceAdminRequest(
-            HttpMethod.Put,
+            HttpMethod.Patch,
             $"{SettingsBaseUrl}/auth-provider",
             userId,
-            CreateGoogleOnlyAuthProviderConfiguration(),
+            CreateGoogleOnlyAuthProviderPatch(),
             includeSetupSecret: false);
 
         var updateResponse = await client.SendAsync(updateRequest);
@@ -438,60 +468,6 @@ public class InstanceOnboardingControllerTests
         await AssertDeploymentKeycloakConfiguration(adminConfiguration, authority, clientId);
     }
 
-    [Skip("Category: API integration. Removal: enable when OpenFeature SDK shutdown no longer throws ChannelClosedException during WebApplicationFactory disposal.")]
-    [Test]
-    public async Task SetupAuthProviderConfigurationFlow_SaveThenComplete_ShouldExposeConfiguredAndProtectPublicReadAfterCompletion()
-    {
-        using var factory = CreateFactoryWithSetupSecret();
-        using var client = factory.CreateClient();
-
-        var userId = Guid.NewGuid();
-        await EnsureUserExistsAsync(factory, userId);
-
-        using var saveRequest = CreateInstanceAdminRequest(
-            HttpMethod.Put,
-            $"{BaseUrl}/auth-provider-configuration",
-            userId,
-            CreateGoogleOnlyAuthProviderConfiguration(),
-            includeSetupSecret: true);
-        var saveResponse = await client.SendAsync(saveRequest);
-        await Assert.That(saveResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var configuredResponse = await client.GetAsync($"{SettingsBaseUrl}/auth-provider/status");
-        await Assert.That(configuredResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var configuredPayload = await configuredResponse.Content.ReadFromJsonAsync<AuthProviderConfiguredResponse>();
-        await Assert.That(configuredPayload).IsNotNull();
-        await Assert.That(configuredPayload!.Configured).IsTrue();
-        await Assert.That(configuredPayload.AuthorizationProviderManagedByDeployment).IsFalse();
-        await Assert.That(configuredPayload.AuthorizationProviderBootstrapStatus).IsEqualTo("not-applicable");
-
-        var completePayload = CreateValidOnboardingRequest();
-        using var completeRequest = CreateInstanceAdminRequest(
-            HttpMethod.Post,
-            $"{BaseUrl}/complete",
-            userId,
-            completePayload,
-            includeSetupSecret: true);
-        var completeResponse = await client.SendAsync(completeRequest);
-        await Assert.That(completeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var anonymousGetResponse = await client.GetAsync($"{SettingsBaseUrl}/auth-provider");
-        await Assert.That(anonymousGetResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
-
-        using var adminGetRequest = CreateInstanceAdminRequest(
-            HttpMethod.Get,
-            $"{SettingsBaseUrl}/auth-provider",
-            userId,
-            body: null,
-            includeSetupSecret: false);
-        var adminGetResponse = await client.SendAsync(adminGetRequest);
-        await Assert.That(adminGetResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var adminConfig = await adminGetResponse.Content.ReadFromJsonAsync<AuthProviderConfigurationDto>();
-        await Assert.That(adminConfig).IsNotNull();
-        await Assert.That(adminConfig!.GoogleSsoEnabled).IsTrue();
-    }
-
     [Test]
     public async Task GetAuthProviderConfigurationInternal_WithSetupSecret_ShouldReturnSecretsWhileAdminEndpointRedacts()
     {
@@ -501,13 +477,14 @@ public class InstanceOnboardingControllerTests
         var userId = Guid.NewGuid();
         await EnsureUserExistsAsync(factory, userId);
         await EnsureInstanceAdminRoleAsync(factory, userId);
+        await EnsureUserExternalLoginAsync(factory, userId, "google", $"google-{userId:N}");
 
         using var saveRequest = CreateInstanceAdminRequest(
-            HttpMethod.Put,
-            $"{BaseUrl}/auth-provider-configuration",
+            HttpMethod.Patch,
+            $"{SettingsBaseUrl}/auth-provider",
             userId,
-            CreateGoogleOnlyAuthProviderConfiguration(),
-            includeSetupSecret: true);
+            CreateGoogleOnlyAuthProviderPatch(),
+            includeSetupSecret: false);
         var saveResponse = await client.SendAsync(saveRequest);
         await Assert.That(saveResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
@@ -696,7 +673,11 @@ public class InstanceOnboardingControllerTests
         using var factory = CreateFactoryWithSetupSecret();
         using var client = factory.CreateClient();
 
-        var response = await client.PutAsJsonAsync($"{SettingsBaseUrl}/authz-provider", CreateLocalAuthorizationProviderConfiguration());
+        using var request = new HttpRequestMessage(HttpMethod.Patch, $"{SettingsBaseUrl}/authz-provider")
+        {
+            Content = JsonContent.Create(CreateLocalAuthorizationProviderPatch())
+        };
+        var response = await client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
@@ -711,10 +692,10 @@ public class InstanceOnboardingControllerTests
         await EnsureUserExistsAsync(factory, userId);
 
         using var request = CreateInstanceAdminRequest(
-            HttpMethod.Put,
+            HttpMethod.Patch,
             $"{SettingsBaseUrl}/authz-provider",
             userId,
-            CreateLocalAuthorizationProviderConfiguration(),
+            CreateLocalAuthorizationProviderPatch(),
             includeSetupSecret: false);
 
         var response = await client.SendAsync(request);
@@ -737,10 +718,10 @@ public class InstanceOnboardingControllerTests
         await EnsureInstanceAdminRoleAsync(factory, userId);
 
         using var updateRequest = CreateInstanceAdminRequest(
-            HttpMethod.Put,
+            HttpMethod.Patch,
             $"{SettingsBaseUrl}/authz-provider",
             userId,
-            CreateLocalAuthorizationProviderConfiguration(),
+            CreateLocalAuthorizationProviderPatch(),
             includeSetupSecret: false);
 
         var updateResponse = await client.SendAsync(updateRequest);
@@ -787,57 +768,6 @@ public class InstanceOnboardingControllerTests
     }
 
     [Test]
-    public async Task SetupAuthorizationProviderConfigurationFlow_SaveThenComplete_ShouldExposeConfiguredAndProtectPublicReadAfterCompletion()
-    {
-        using var factory = CreateFactoryWithSetupSecret();
-        using var client = factory.CreateClient();
-
-        var userId = Guid.NewGuid();
-        await EnsureUserExistsAsync(factory, userId);
-
-        using var saveRequest = CreateInstanceAdminRequest(
-            HttpMethod.Put,
-            $"{BaseUrl}/authz-provider-configuration",
-            userId,
-            CreateLocalAuthorizationProviderConfiguration(),
-            includeSetupSecret: true);
-        var saveResponse = await client.SendAsync(saveRequest);
-        await Assert.That(saveResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var configuredResponse = await client.GetAsync($"{SettingsBaseUrl}/authz-provider/status");
-        await Assert.That(configuredResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var configuredPayload = await configuredResponse.Content.ReadFromJsonAsync<AuthProviderConfiguredResponse>();
-        await Assert.That(configuredPayload).IsNotNull();
-        await Assert.That(configuredPayload!.Configured).IsTrue();
-
-        var completePayload = CreateValidOnboardingRequest();
-        using var completeRequest = CreateInstanceAdminRequest(
-            HttpMethod.Post,
-            $"{BaseUrl}/complete",
-            userId,
-            completePayload,
-            includeSetupSecret: true);
-        var completeResponse = await client.SendAsync(completeRequest);
-        await Assert.That(completeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var anonymousGetResponse = await client.GetAsync($"{SettingsBaseUrl}/authz-provider");
-        await Assert.That(anonymousGetResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
-
-        using var adminGetRequest = CreateInstanceAdminRequest(
-            HttpMethod.Get,
-            $"{SettingsBaseUrl}/authz-provider",
-            userId,
-            body: null,
-            includeSetupSecret: false);
-        var adminGetResponse = await client.SendAsync(adminGetRequest);
-        await Assert.That(adminGetResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var adminConfig = await adminGetResponse.Content.ReadFromJsonAsync<AuthorizationProviderConfigurationDto>();
-        await Assert.That(adminConfig).IsNotNull();
-        await Assert.That(adminConfig!.Provider).IsEqualTo("local");
-    }
-
-    [Test]
     public async Task GetAuthorizationProviderConfigurationInternal_WithSetupSecret_ShouldReturnConfiguration()
     {
         using var factory = CreateFactoryWithSetupSecret(new Dictionary<string, string?>
@@ -852,11 +782,11 @@ public class InstanceOnboardingControllerTests
         await EnsureInstanceAdminRoleAsync(factory, userId);
 
         using var saveRequest = CreateInstanceAdminRequest(
-            HttpMethod.Put,
-            $"{BaseUrl}/authz-provider-configuration",
+            HttpMethod.Patch,
+            $"{SettingsBaseUrl}/authz-provider",
             userId,
-            CreateLocalAuthorizationProviderConfiguration(),
-            includeSetupSecret: true);
+            CreateLocalAuthorizationProviderPatch(),
+            includeSetupSecret: false);
         var saveResponse = await client.SendAsync(saveRequest);
         await Assert.That(saveResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
@@ -1094,6 +1024,29 @@ public class InstanceOnboardingControllerTests
         };
     }
 
+    private static PatchAuthProviderConfigurationDto CreateGoogleOnlyAuthProviderPatch()
+    {
+        var configuration = CreateGoogleOnlyAuthProviderConfiguration();
+        return new PatchAuthProviderConfigurationDto
+        {
+            Configuration = OptionalUpdate<AuthProviderConfigurationWriteDto>.Set(new AuthProviderConfigurationWriteDto
+            {
+                KeycloakEnabled = configuration.KeycloakEnabled,
+                KeycloakAuthority = configuration.KeycloakAuthority,
+                KeycloakClientId = configuration.KeycloakClientId,
+                KeycloakClientSecret = configuration.KeycloakClientSecret,
+                AtprotoLoginEnabled = configuration.AtprotoLoginEnabled,
+                AtprotoPublicUrl = configuration.AtprotoPublicUrl,
+                GoogleSsoEnabled = configuration.GoogleSsoEnabled,
+                GoogleClientId = configuration.GoogleClientId,
+                GoogleClientSecret = configuration.GoogleClientSecret,
+                LockKeycloakEnabled = configuration.LockKeycloakEnabled,
+                LockAtprotoLoginEnabled = configuration.LockAtprotoLoginEnabled,
+                LockGoogleSsoEnabled = configuration.LockGoogleSsoEnabled
+            })
+        };
+    }
+
     private static KeycloakBootstrapRequestDto CreateKeycloakBootstrapRequest() =>
         new()
         {
@@ -1116,6 +1069,22 @@ public class InstanceOnboardingControllerTests
             CerbosGrpcEndpoint = string.Empty,
             CerbosDetectedFromEnvironment = false,
             CerbosEndpointVerified = false
+        };
+    }
+
+    private static PatchAuthorizationProviderConfigurationDto CreateLocalAuthorizationProviderPatch()
+    {
+        var configuration = CreateLocalAuthorizationProviderConfiguration();
+        return new PatchAuthorizationProviderConfigurationDto
+        {
+            Configuration = OptionalUpdate<AuthorizationProviderConfigurationWriteDto>.Set(new AuthorizationProviderConfigurationWriteDto
+            {
+                Provider = configuration.Provider,
+                CerbosGrpcEndpoint = configuration.CerbosGrpcEndpoint,
+                CerbosAdminEndpoint = configuration.CerbosAdminEndpoint,
+                CerbosAdminUsername = configuration.CerbosAdminUsername,
+                CerbosAdminPassword = configuration.CerbosAdminPassword
+            })
         };
     }
 

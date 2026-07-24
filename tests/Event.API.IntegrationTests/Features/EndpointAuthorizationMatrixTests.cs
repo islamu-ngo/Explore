@@ -355,15 +355,33 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     }
 
     [Test]
+    public async Task Matrix_Auth_TenantStorageSettingsPatch_AnonymousDenied()
+    {
+        await AssertAnonymousUnauthorized("/api/tenant/settings/storage", HttpMethod.Patch);
+    }
+
+    [Test]
+    public async Task Matrix_Auth_TenantBrandingSettingsDocumentPatch_AnonymousDenied()
+    {
+        await AssertAnonymousUnauthorized("/api/tenant/settings/documents/branding", HttpMethod.Patch);
+    }
+
+    [Test]
     public async Task Matrix_Auth_FooterLinkGroups_AnonymousDenied()
     {
         await AssertAnonymousUnauthorized("/api/footer/link-groups");
     }
 
     [Test]
-    public async Task Matrix_Auth_FooterSettings_AnonymousDenied()
+    public async Task Matrix_Auth_FooterSettingsGet_AnonymousDenied()
     {
-        await AssertAnonymousUnauthorized("/api/footer/settings", HttpMethod.Put);
+        await AssertAnonymousUnauthorized("/api/footer/settings");
+    }
+
+    [Test]
+    public async Task Matrix_Auth_FooterSettingsPatch_AnonymousDenied()
+    {
+        await AssertAnonymousUnauthorized("/api/footer/settings", HttpMethod.Patch);
     }
 
     [Test]

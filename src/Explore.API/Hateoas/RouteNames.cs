@@ -422,7 +422,7 @@ public static class RouteNames
     #region Tenant Settings Routes
 
     public const string GetTenantBrandingSettingsDocument = "GetTenantBrandingSettingsDocument";
-    public const string ReplaceTenantBrandingSettingsDocument = "ReplaceTenantBrandingSettingsDocument";
+    public const string PatchTenantBrandingSettingsDocument = "PatchTenantBrandingSettingsDocument";
     public const string GetTenantStorageSettings = "GetTenantStorageSettings";
     public const string PatchTenantStorageSettings = "PatchTenantStorageSettings";
 
@@ -680,7 +680,8 @@ public static class RouteNames
     public const string DeleteFooterLink = "DeleteFooterLink";
     public const string GetFooterGovernanceSettings = "GetFooterGovernanceSettings";
     public const string UpdateFooterGovernanceSettings = "UpdateFooterGovernanceSettings";
-    public const string UpdateTenantFooterSettings = "UpdateTenantFooterSettings";
+    public const string GetTenantFooterSettings = "GetTenantFooterSettings";
+    public const string PatchTenantFooterSettings = "PatchTenantFooterSettings";
 
     #endregion
 
@@ -911,10 +912,8 @@ public static class RouteNames
     public const string ValidateInstanceSetupSecret = "ValidateInstanceSetupSecret";
     public const string GetInstanceOnboardingAuthProviderConfiguration = "GetInstanceOnboardingAuthProviderConfiguration";
     public const string GetInstanceOnboardingAuthProviderConfigurationInternal = "GetInstanceOnboardingAuthProviderConfigurationInternal";
-    public const string SaveInstanceOnboardingAuthProviderConfiguration = "SaveInstanceOnboardingAuthProviderConfiguration";
     public const string BootstrapInstanceOnboardingKeycloakRealm = "BootstrapInstanceOnboardingKeycloakRealm";
     public const string GetInstanceOnboardingAuthorizationProviderConfigurationInternal = "GetInstanceOnboardingAuthorizationProviderConfigurationInternal";
-    public const string SaveInstanceOnboardingAuthorizationProviderConfiguration = "SaveInstanceOnboardingAuthorizationProviderConfiguration";
     public const string VerifyInstanceOnboardingAuthorizationProviderEndpoint = "VerifyInstanceOnboardingAuthorizationProviderEndpoint";
     public const string SyncInstanceOnboardingAuthorizationPolicyPackage = "SyncInstanceOnboardingAuthorizationPolicyPackage";
     public const string DownloadInstanceOnboardingAuthorizationPolicyPackage = "DownloadInstanceOnboardingAuthorizationPolicyPackage";

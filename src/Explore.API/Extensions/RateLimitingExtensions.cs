@@ -10,6 +10,7 @@ using Explore.API.ExceptionHandling;
 using Explore.Application.Authentication;
 using Explore.Application.Telemetry;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Explore.API.Extensions;
 
@@ -19,6 +20,7 @@ namespace Explore.API.Extensions;
 /// - Authenticated: Per-user sliding window for authenticated endpoints
 /// - Write: Stricter per-user limit for POST/PUT/DELETE operations
 /// - SetupSecret: Existing fixed window for instance bootstrap
+/// - EventOpenGraphImage: Process-wide concurrency limit for public OG renders
 ///
 /// All limits are configurable via appsettings.json under "RateLimiting".
 /// When behind a reverse proxy, client IP comes from HttpContext.Connection.RemoteIpAddress
@@ -34,43 +36,13 @@ public static class RateLimitingExtensions
     public const string AnalyticsRelayPolicy = "AnalyticsRelay";
     public const string AiAssistantPolicy = "AiAssistant";
     public const string ControlPlanePolicy = "ControlPlane";
+    public const string EventOpenGraphImagePolicy = "EventOpenGraphImage";
 
     private const string ControlPlanePathPrefix = "/api/admin/control-plane";
 
     public static IServiceCollection AddApiRateLimiting(
         this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
-        var disableInTesting = configuration.GetValue("RateLimiting:DisableInTesting", true);
-
-        // Disable rate limiting in test environments to prevent 429s during parallel test execution
-        if (environment.EnvironmentName == "Testing" && disableInTesting)
-        {
-            services.AddRateLimiter(options =>
-            {
-                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
-                    _ => RateLimitPartition.GetNoLimiter("test"));
-
-                options.AddPolicy(GlobalPolicy, _ =>
-                    RateLimitPartition.GetNoLimiter<string>("test"));
-                options.AddPolicy(AuthenticatedPolicy, _ =>
-                    RateLimitPartition.GetNoLimiter<string>("test"));
-                options.AddPolicy(WritePolicy, _ =>
-                    RateLimitPartition.GetNoLimiter<string>("test"));
-                options.AddPolicy(PublicIngestionPolicy, _ =>
-                    RateLimitPartition.GetNoLimiter<string>("test"));
-                options.AddPolicy(SetupSecretPolicy, _ =>
-                    RateLimitPartition.GetNoLimiter<string>("test"));
-                options.AddPolicy(AnalyticsRelayPolicy, _ =>
-                    RateLimitPartition.GetNoLimiter<string>("test"));
-                options.AddPolicy(AiAssistantPolicy, _ =>
-                    RateLimitPartition.GetNoLimiter<string>("test"));
-                options.AddPolicy(ControlPlanePolicy, _ =>
-                    RateLimitPartition.GetNoLimiter<string>("test"));
-            });
-
-            return services;
-        }
-
         var section = configuration.GetSection("RateLimiting");
 
         // Global limits (defaults if config absent)
@@ -107,13 +79,54 @@ public static class RateLimitingExtensions
         var controlPlaneConcurrencyLimit = section.GetValue("ControlPlane:ConcurrencyLimit", 4);
         var controlPlaneQueueLimit = section.GetValue("ControlPlane:QueueLimit", 0);
 
-        services.AddRateLimiter(options =>
+        if (environment.EnvironmentName == "Testing")
+        {
+            services.AddRateLimiter(options =>
+            {
+                if (!configuration.GetValue("RateLimiting:DisableInTesting", true))
+                {
+                    ConfigureEnabledRateLimiting(options);
+                    return;
+                }
+
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
+                    _ => RateLimitPartition.GetNoLimiter("test"));
+
+                options.AddPolicy(GlobalPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(AuthenticatedPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(WritePolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(PublicIngestionPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(SetupSecretPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(AnalyticsRelayPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(AiAssistantPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(ControlPlanePolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(EventOpenGraphImagePolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+            });
+        }
+        else
+        {
+            services.AddRateLimiter(ConfigureEnabledRateLimiting);
+        }
+
+        return services;
+
+        void ConfigureEnabledRateLimiting(RateLimiterOptions options)
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
             options.OnRejected = async (ctx, token) =>
             {
-                var policyName = InferPolicyName(ctx.HttpContext);
+                var hasRetryAfter = ctx.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter);
+                var policyName = InferPolicyName(ctx.HttpContext, hasRetryAfter);
                 var apiKeyPrincipal = ctx.HttpContext.User.TryGetApiKeyPrincipalContext();
                 if (apiKeyPrincipal is not null)
                 {
@@ -135,7 +148,7 @@ public static class RateLimitingExtensions
 
                 ctx.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
 
-                if (ctx.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                if (hasRetryAfter)
                 {
                     ctx.HttpContext.Response.Headers.RetryAfter =
                         ((int)retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
@@ -153,7 +166,9 @@ public static class RateLimitingExtensions
                         Type = "https://tools.ietf.org/html/rfc6585#section-4",
                         Title = "Too Many Requests",
                         Status = StatusCodes.Status429TooManyRequests,
-                        Detail = "Rate limit exceeded. Please retry after the period indicated in the Retry-After header.",
+                        Detail = hasRetryAfter
+                            ? "Rate limit exceeded. Please retry after the period indicated in the Retry-After header."
+                            : "Rate limit exceeded. Please try again later.",
                         Instance = ctx.HttpContext.Request.Path,
                         Extensions =
                         {
@@ -274,9 +289,17 @@ public static class RateLimitingExtensions
                         AutoReplenishment = true
                     });
             });
-        });
 
-        return services;
+            options.AddPolicy(EventOpenGraphImagePolicy, _ =>
+                RateLimitPartition.GetConcurrencyLimiter(EventOpenGraphImagePolicy, _ =>
+                    new ConcurrencyLimiterOptions
+                    {
+                        PermitLimit = ResolveEventOpenGraphImageConcurrencyLimit(),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    }));
+
+        }
 
         RateLimitPartition<string> CreateGlobalPartition(HttpContext httpContext)
         {
@@ -362,8 +385,12 @@ public static class RateLimitingExtensions
             AnalyticsRelayPolicy => analyticsRelayPermitLimit,
             AiAssistantPolicy => aiAssistantPermitLimit,
             ControlPlanePolicy => controlPlanePermitLimit,
+            EventOpenGraphImagePolicy => ResolveEventOpenGraphImageConcurrencyLimit(),
             _ => globalTokenLimit
         };
+
+        int ResolveEventOpenGraphImageConcurrencyLimit() =>
+            section.GetValue("EventOpenGraphImage:ConcurrencyLimit", 2);
     }
 
     /// <summary>
@@ -374,11 +401,16 @@ public static class RateLimitingExtensions
         return context.Connection.RemoteIpAddress;
     }
 
-    private static string InferPolicyName(HttpContext context)
+    internal static string InferPolicyName(HttpContext context, bool hasRetryAfter)
     {
         if (IsControlPlaneRequest(context))
         {
             return ControlPlanePolicy;
+        }
+
+        if (IsEventOpenGraphImageRequest(context))
+        {
+            return hasRetryAfter ? GlobalPolicy : EventOpenGraphImagePolicy;
         }
 
         if (context.Request.Path.StartsWithSegments("/api/setup", StringComparison.OrdinalIgnoreCase)
@@ -411,6 +443,25 @@ public static class RateLimitingExtensions
         }
 
         return context.User.Identity?.IsAuthenticated == true ? AuthenticatedPolicy : GlobalPolicy;
+    }
+
+    private static bool IsEventOpenGraphImageRequest(HttpContext context)
+    {
+        const string pathPrefix = "/api/event/public/";
+        const string pathSuffix = "/og-image";
+        var path = context.Request.Path.Value;
+
+        if (!HttpMethods.IsGet(context.Request.Method)
+            || path is null
+            || !path.StartsWith(pathPrefix, StringComparison.OrdinalIgnoreCase)
+            || !path.EndsWith(pathSuffix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var slugStart = pathPrefix.Length;
+        var slugLength = path.Length - slugStart - pathSuffix.Length;
+        return slugLength > 0 && path.AsSpan(slugStart, slugLength).IndexOf('/') < 0;
     }
 
     private static bool IsControlPlaneRequest(HttpContext context)

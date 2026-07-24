@@ -1,14 +1,16 @@
 // ABOUTME: API controller for tenant footer configuration — link groups, links, and scalar settings.
-// ABOUTME: GET endpoints are public; write endpoints require tenant-admin authorization.
+// ABOUTME: Keeps public config anonymous while tenant administration reads and writes require authentication.
 
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Footer;
 using Explore.Application.Features.Footer.Requests.Commands;
 using Explore.Application.Features.Footer.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -40,15 +42,20 @@ public class FooterController : ExploreControllerBase
     private static readonly ApiValidationProblemDescriptor SettingsValidationProblem = new(
         "tenantFooterSettings",
         "Tenant footer settings validation failed",
-        "Tenant footer settings update failed.");
+        "Tenant footer settings patch failed.");
 
     private readonly IMediator _mediator;
     private readonly ITenantContext _tenantContext;
+    private readonly IResourceAssembler<TenantFooterSettingsDto, TenantFooterSettingsDto> _settingsResourceAssembler;
 
-    public FooterController(IMediator mediator, ITenantContext tenantContext)
+    public FooterController(
+        IMediator mediator,
+        ITenantContext tenantContext,
+        IResourceAssembler<TenantFooterSettingsDto, TenantFooterSettingsDto> settingsResourceAssembler)
     {
         _mediator = mediator;
         _tenantContext = tenantContext;
+        _settingsResourceAssembler = settingsResourceAssembler;
     }
 
     // ── Public / tenant-read endpoints ──────────────────────────────────────
@@ -264,32 +271,47 @@ public class FooterController : ExploreControllerBase
         return Ok(result);
     }
 
-    // ── Tenant settings endpoint ─────────────────────────────────────────────
+    // ── Tenant settings endpoints ────────────────────────────────────────────
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("settings", Name = RouteNames.UpdateTenantFooterSettings)]
+    [HttpGet("settings", Name = RouteNames.GetTenantFooterSettings)]
+    [EndpointSummary("Get Tenant Footer Settings")]
+    [EndpointDescription("Returns the current tenant footer scalar settings and governance lock states without link groups or links.")]
+    [ProducesResponseType(typeof(HalResource<TenantFooterSettingsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<HalResource<TenantFooterSettingsDto>>> GetSettings(
+        CancellationToken cancellationToken)
+    {
+        var settings = await _mediator.Send(new GetTenantFooterSettingsQuery(), cancellationToken);
+        var resource = await _settingsResourceAssembler.ToResource(settings, HttpContext);
+        return Ok(resource);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPatch("settings", Name = RouteNames.PatchTenantFooterSettings)]
+    [EndpointSummary("Patch Tenant Footer Settings")]
+    [EndpointDescription("Patches supplied tenant footer setting leaves while preserving omitted or instance-locked values.")]
+    [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSettings(
-        [FromBody] UpdateTenantFooterSettingsRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> PatchSettings(
+        [FromBody] PatchTenantFooterSettingsDto patch,
+        CancellationToken cancellationToken)
     {
         if (TryGetCurrentUserId(out var userId) is { } unauthorized)
         {
             return unauthorized;
         }
-        var result = await _mediator.Send(new UpdateTenantFooterSettingsCommand
+
+        var result = await _mediator.Send(new PatchTenantFooterSettingsCommand
         {
             UserId = userId,
             TenantId = _tenantContext.TenantId,
-            Enabled = request.Enabled,
-            Template = request.Template,
-            ShowDescription = request.ShowDescription,
-            DescriptionText = request.DescriptionText,
-            ShowSocialLinks = request.ShowSocialLinks,
-            SocialLinksJson = request.SocialLinksJson,
-            CopyrightText = request.CopyrightText,
-            ShowCookieSettingsLink = request.ShowCookieSettingsLink,
+            Patch = patch
         }, cancellationToken);
 
         if (!result.Success)
@@ -317,13 +339,4 @@ public class FooterController : ExploreControllerBase
     public sealed record UpdateFooterLinkGroupRequest(string Title, bool IsActive);
     public sealed record CreateFooterLinkRequest(string Label, string Url, bool OpenInNewTab);
     public sealed record UpdateFooterLinkRequest(string Label, string Url, bool OpenInNewTab, bool IsActive);
-    public sealed record UpdateTenantFooterSettingsRequest(
-        bool? Enabled,
-        string? Template,
-        bool? ShowDescription,
-        string? DescriptionText,
-        bool? ShowSocialLinks,
-        string? SocialLinksJson,
-        string? CopyrightText,
-        bool? ShowCookieSettingsLink);
 }

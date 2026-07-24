@@ -22,12 +22,34 @@ public sealed class UpdateAnalyticsGovernanceSettingsCommandHandler(
     public async Task<BaseCommandResponse<Guid>> Handle(
         UpdateAnalyticsGovernanceSettingsCommand request, CancellationToken cancellationToken)
     {
-        var s = request.Settings;
         var userId = request.UserId;
+
+        if (!request.Patch.HasChanges())
+        {
+            return new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                FailureCode = "ValidationFailed",
+                Errors = ["Analytics governance patch must include at least one setting."]
+            };
+        }
 
         // Resolve current provider context for capability-aware validation
         var group = await settingsResolver.ResolveGroupAsync<AnalyticsSettingGroup>(
             new SettingContext(), cancellationToken);
+        var s = new DTOs.Analytics.AnalyticsGovernanceSettingsDto
+        {
+            CookieConsentEnabled = request.Patch.CookieConsentEnabled.HasValue ? request.Patch.CookieConsentEnabled.Value : group.CookieConsentEnabled,
+            DeclineBehavior = request.Patch.DeclineBehavior.HasValue ? request.Patch.DeclineBehavior.Value : group.DeclineBehavior,
+            ConsentCookieLifetimeDays = request.Patch.ConsentCookieLifetimeDays.HasValue ? request.Patch.ConsentCookieLifetimeDays.Value : group.ConsentCookieLifetimeDays,
+            GlobalDisableClientTracking = request.Patch.GlobalDisableClientTracking.HasValue ? request.Patch.GlobalDisableClientTracking.Value : group.GlobalDisableClientTracking,
+            PosthogCookielessMode = request.Patch.PosthogCookielessMode.HasValue ? request.Patch.PosthogCookielessMode.Value : group.PosthogCookielessMode,
+            PosthogPersonProfiles = request.Patch.PosthogPersonProfiles.HasValue ? request.Patch.PosthogPersonProfiles.Value : group.PosthogPersonProfiles,
+            PosthogSessionReplay = request.Patch.PosthogSessionReplay.HasValue ? request.Patch.PosthogSessionReplay.Value : group.PosthogSessionReplay,
+            PosthogAutocapture = request.Patch.PosthogAutocapture.HasValue ? request.Patch.PosthogAutocapture.Value : group.PosthogAutocapture,
+            PosthogHeatmaps = request.Patch.PosthogHeatmaps.HasValue ? request.Patch.PosthogHeatmaps.Value : group.PosthogHeatmaps,
+            PosthogToolbar = request.Patch.PosthogToolbar.HasValue ? request.Patch.PosthogToolbar.Value : group.PosthogToolbar
+        };
 
         var provider = Enum.TryParse<AnalyticsProviderEnum>(group.Provider, true, out var parsed)
             ? parsed : AnalyticsProviderEnum.None;

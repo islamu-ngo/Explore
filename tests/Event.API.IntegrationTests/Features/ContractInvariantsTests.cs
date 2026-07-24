@@ -4,8 +4,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.API.Controllers;
+using Explore.API.Hateoas;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -144,6 +149,194 @@ public class ContractInvariantsTests
         await Assert.That(banned)
             .IsEmpty()
             .Because($"operationIds must be human-readable, not NSwag collision fallbacks (GET, POST2, TenantGET2, FooAsync2, ...). Found: {string.Join("; ", banned.Take(5))}");
+    }
+
+    [Test]
+    public async Task SettingsControllers_ExposeCanonicalPatchActionsWithoutLegacyPutAttributes()
+    {
+        (MethodInfo Action, string Template, string OperationId)[] patchActions =
+        [
+            (
+                typeof(TenantStorageSettingsController).GetMethod(nameof(TenantStorageSettingsController.PatchStorageSettings))!,
+                string.Empty,
+                RouteNames.PatchTenantStorageSettings),
+            (
+                typeof(TenantSettingsDocumentsController).GetMethod(nameof(TenantSettingsDocumentsController.PatchBranding))!,
+                "branding",
+                RouteNames.PatchTenantBrandingSettingsDocument),
+            (
+                typeof(FooterController).GetMethod(nameof(FooterController.PatchSettings))!,
+                "settings",
+                RouteNames.PatchTenantFooterSettings)
+        ];
+
+        foreach (var (action, template, operationId) in patchActions)
+        {
+            var patch = action.GetCustomAttribute<HttpPatchAttribute>();
+
+            await Assert.That(patch).IsNotNull();
+            await Assert.That(patch!.Template).IsEqualTo(template);
+            await Assert.That(patch.Name).IsEqualTo(operationId);
+            await Assert.That(action.GetCustomAttribute<HttpPutAttribute>()).IsNull();
+        }
+
+        var footerGet = typeof(FooterController).GetMethod(nameof(FooterController.GetSettings))!;
+
+        await Assert.That(footerGet.GetCustomAttribute<HttpGetAttribute>()?.Name)
+            .IsEqualTo(RouteNames.GetTenantFooterSettings);
+        await Assert.That(footerGet.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        await Assert.That(footerGet.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull();
+    }
+
+    [Test]
+    public async Task OpenApiDocument_CanonicalSettingsRoutesUsePatchAndNoLegacyPut()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var paths = document.RootElement.GetProperty("paths");
+        (string Path, string OperationId, string RequestSchema)[] patchRoutes =
+        [
+            ("/api/tenant/settings/storage", "PatchTenantStorageSettings", "PatchTenantStorageSettingsDto"),
+            ("/api/tenant/settings/documents/branding", "PatchTenantBrandingSettingsDocument", "PatchTenantBrandingSettingsDocumentDto"),
+            ("/api/footer/settings", "PatchTenantFooterSettings", "PatchTenantFooterSettingsDto")
+        ];
+
+        await AssertPatchRoutes(paths, patchRoutes);
+
+        var footerGet = paths.GetProperty("/api/footer/settings").GetProperty("get");
+        await Assert.That(GetStringProperty(footerGet, "operationId")).IsEqualTo("GetTenantFooterSettings");
+        await Assert.That(GetStringProperty(footerGet, "x-endpoint-class")).IsEqualTo("Authenticated");
+
+        string[] legacyOperationIds =
+        [
+            "UpdateTenantStorageSettings",
+            "ReplaceTenantBrandingSettingsDocument",
+            "UpdateTenantFooterSettings"
+        ];
+        var legacyOperations = EnumerateOperations(document)
+            .Where(operation => legacyOperationIds.Contains(operation.OperationId, System.StringComparer.Ordinal))
+            .Select(operation => operation.OperationId!)
+            .ToList();
+
+        await Assert.That(legacyOperations).IsEmpty();
+    }
+
+    [Test]
+    public async Task OpenApiDocument_InstanceSettingsRoutesUsePatchWithDedicatedSchemas_AndNoOnboardingWriteAliases()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var paths = document.RootElement.GetProperty("paths");
+        (string Path, string OperationId, string RequestSchema)[] patchRoutes =
+        [
+            ("/api/instance/settings/modules", RouteNames.UpdateInstanceModuleSettings, "PatchModuleSettingsDto"),
+            ("/api/instance/settings/events", RouteNames.UpdateInstanceEventPolicy, "PatchEventPolicyDto"),
+            ("/api/instance/settings/organizations", RouteNames.UpdateInstanceOrganizationPolicy, "PatchOrganizationPolicyDto"),
+            ("/api/instance/settings/branding", RouteNames.UpdateInstanceBrandingSettings, "PatchBrandingSettingsDto"),
+            ("/api/instance/settings/domains", RouteNames.UpdateInstanceDomainSettings, "PatchDomainSettingsDto"),
+            ("/api/instance/settings/tenant-delegation", RouteNames.UpdateInstanceTenantDelegationSettings, "PatchTenantDelegationSettingsDto"),
+            ("/api/instance/settings/admin-portal", RouteNames.UpdateInstanceAdminPortalSettings, "PatchAdminPortalSettingsDto"),
+            ("/api/instance/settings/ai-assistant", RouteNames.UpdateInstanceAiAssistantGovernanceSettings, "PatchAiAssistantGovernanceSettingsDto"),
+            ("/api/instance/settings/mcp", RouteNames.UpdateInstanceMcpGovernanceSettings, "PatchMcpGovernanceSettingsDto"),
+            ("/api/instance/settings/render-policy", RouteNames.UpdateInstanceRenderPolicySettings, "PatchRenderPolicySettingsDto"),
+            ("/api/instance/settings/storage", RouteNames.UpdateInstanceStorageSettings, "PatchInstanceStorageSettingsDto"),
+            ("/api/instance/settings/smtp", RouteNames.UpdateInstanceSmtpSettings, "PatchInstanceSmtpSettingsDto"),
+            ("/api/instance/settings/resolver-config", RouteNames.UpdateInstanceResolverConfiguration, "PatchResolverConfigurationDto"),
+            ("/api/instance/settings/analytics-governance", RouteNames.UpdateInstanceAnalyticsGovernanceSettings, "PatchAnalyticsGovernanceSettingsDto"),
+            ("/api/instance/settings/footer-governance", RouteNames.UpdateFooterGovernanceSettings, "PatchFooterGovernanceSettingsDto"),
+            ("/api/instance/settings/auth-provider", RouteNames.UpdateInstanceAuthProviderConfiguration, "PatchAuthProviderConfigurationDto"),
+            ("/api/instance/settings/authz-provider", RouteNames.UpdateInstanceAuthorizationProviderConfiguration, "PatchAuthorizationProviderConfigurationDto")
+        ];
+
+        await AssertPatchRoutes(paths, patchRoutes);
+
+        string[] obsoleteWriteAliases =
+        [
+            "/api/instanceonboarding/auth-provider-configuration",
+            "/api/instanceonboarding/authz-provider-configuration"
+        ];
+        var exposedAliases = obsoleteWriteAliases
+            .Where(path => paths.TryGetProperty(path, out var pathItem)
+                && pathItem.TryGetProperty("put", out _))
+            .ToList();
+
+        await Assert.That(exposedAliases).IsEmpty();
+    }
+
+    [Test]
+    public async Task OpenApiDocument_TenantStoragePatchSchemaIsGroupedAndPresenceAware()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var schema = GetSchema(document, "PatchTenantStorageSettingsDto");
+        var properties = schema.GetProperty("properties");
+
+        await Assert.That(GetSchemaPropertyNames(schema)).IsEquivalentTo(["policy", "s3"]);
+        await Assert.That(GetRequiredPropertyNames(schema)).IsEmpty();
+        await Assert.That(GetReferenceOrNullableReference(properties.GetProperty("policy")))
+            .IsEqualTo("#/components/schemas/PatchTenantStoragePolicyDto");
+        await Assert.That(GetReferenceOrNullableReference(properties.GetProperty("s3")))
+            .IsEqualTo("#/components/schemas/PatchTenantStorageS3Dto");
+
+        await AssertPresenceAwareProperties(
+            document,
+            "PatchTenantStoragePolicyDto",
+            ["provider", "maxUploadBytes", "tenantQuotaBytes", "routes"]);
+        await AssertPresenceAwareProperties(
+            document,
+            "PatchTenantStorageS3Dto",
+            ["endpoint", "publicEndpoint", "bucketName", "accessKeyId", "secretAccessKey", "region", "forcePathStyle", "uploadUrlExpirationMinutes"]);
+    }
+
+    [Test]
+    public async Task OpenApiDocument_TenantBrandingPatchSchemaRequiresConcurrencyAndUsesOptionalGroups()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var schema = GetSchema(document, "PatchTenantBrandingSettingsDocumentDto");
+        var properties = schema.GetProperty("properties");
+
+        await Assert.That(GetSchemaPropertyNames(schema))
+            .IsEquivalentTo(["expectedConcurrencyStamp", "displayName", "assets"]);
+        await Assert.That(GetRequiredPropertyNames(schema)).IsEquivalentTo(["expectedConcurrencyStamp"]);
+        await Assert.That(GetReferenceOrNullableReference(properties.GetProperty("displayName")))
+            .IsEqualTo("#/components/schemas/PatchTenantBrandingDisplayNameDto");
+        await Assert.That(GetReferenceOrNullableReference(properties.GetProperty("assets")))
+            .IsEqualTo("#/components/schemas/PatchTenantBrandingAssetsDto");
+
+        await AssertPresenceAwareProperties(document, "PatchTenantBrandingDisplayNameDto", ["value"]);
+        await AssertPresenceAwareProperties(
+            document,
+            "PatchTenantBrandingAssetsDto",
+            ["logoUrl", "faviconUrl", "customCssUrl"]);
+    }
+
+    [Test]
+    public async Task OpenApiDocument_TenantFooterPatchSchemaContainsOnlyScalarSettingGroups()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var schema = GetSchema(document, "PatchTenantFooterSettingsDto");
+        var properties = schema.GetProperty("properties");
+        (string Property, string Schema)[] groups =
+        [
+            ("general", "PatchTenantFooterGeneralDto"),
+            ("template", "PatchTenantFooterTemplateDto"),
+            ("description", "PatchTenantFooterDescriptionDto"),
+            ("socialLinks", "PatchTenantFooterSocialLinksDto"),
+            ("copyright", "PatchTenantFooterCopyrightDto")
+        ];
+
+        await Assert.That(GetSchemaPropertyNames(schema))
+            .IsEquivalentTo(groups.Select(group => group.Property));
+        await Assert.That(GetRequiredPropertyNames(schema)).IsEmpty();
+
+        foreach (var (property, groupSchema) in groups)
+        {
+            await Assert.That(GetReferenceOrNullableReference(properties.GetProperty(property)))
+                .IsEqualTo($"#/components/schemas/{groupSchema}");
+        }
+
+        await AssertPresenceAwareProperties(document, "PatchTenantFooterGeneralDto", ["enabled", "showCookieSettingsLink"]);
+        await AssertPresenceAwareProperties(document, "PatchTenantFooterTemplateDto", ["value"]);
+        await AssertPresenceAwareProperties(document, "PatchTenantFooterDescriptionDto", ["show", "text"]);
+        await AssertPresenceAwareProperties(document, "PatchTenantFooterSocialLinksDto", ["show", "items"]);
+        await AssertPresenceAwareProperties(document, "PatchTenantFooterCopyrightDto", ["text"]);
     }
 
     [Test]
@@ -584,6 +777,27 @@ public class ContractInvariantsTests
     private static bool EndsWithDigit(string value)
         => value.Length > 0 && char.IsDigit(value[^1]);
 
+    private static async Task AssertPatchRoutes(
+        JsonElement paths,
+        IEnumerable<(string Path, string OperationId, string RequestSchema)> patchRoutes)
+    {
+        foreach (var (path, operationId, requestSchema) in patchRoutes)
+        {
+            var pathItem = paths.GetProperty(path);
+            var patch = pathItem.GetProperty("patch");
+
+            await Assert.That(pathItem.TryGetProperty("put", out _)).IsFalse()
+                .Because($"{path} must not expose its retired PUT replacement operation.");
+            await Assert.That(GetStringProperty(patch, "operationId")).IsEqualTo(operationId);
+            await Assert.That(GetStringProperty(patch, "x-endpoint-class")).IsEqualTo("Authenticated");
+            await Assert.That(GetSchemaReference(
+                    patch.GetProperty("requestBody")
+                        .GetProperty("content")
+                        .GetProperty("application/json; v=0.1")))
+                .IsEqualTo($"#/components/schemas/{requestSchema}");
+        }
+    }
+
     private static bool EndsWithDigitBeforeSuffix(string value, string suffix)
     {
         if (!value.EndsWith(suffix, System.StringComparison.Ordinal)) return false;
@@ -602,9 +816,62 @@ public class ContractInvariantsTests
         .GetProperty("schemas")
         .GetProperty(schemaName);
 
+    private static IReadOnlyList<string> GetSchemaPropertyNames(JsonElement schema) => schema
+        .GetProperty("properties")
+        .EnumerateObject()
+        .Select(property => property.Name)
+        .ToArray();
+
+    private static IReadOnlyList<string> GetRequiredPropertyNames(JsonElement schema)
+        => schema.TryGetProperty("required", out var required) && required.ValueKind == JsonValueKind.Array
+            ? required.EnumerateArray()
+                .Where(property => property.ValueKind == JsonValueKind.String)
+                .Select(property => property.GetString()!)
+                .ToArray()
+            : [];
+
     private static string? GetSchemaReference(JsonElement contentEntry) => GetReference(contentEntry.GetProperty("schema"));
 
     private static string? GetReference(JsonElement element) => GetStringProperty(element, "$ref");
+
+    private static string? GetReferenceOrNullableReference(JsonElement element)
+    {
+        var directReference = GetReference(element);
+        if (directReference is not null)
+        {
+            return directReference;
+        }
+
+        return element.TryGetProperty("oneOf", out var oneOf) && oneOf.ValueKind == JsonValueKind.Array
+            ? oneOf.EnumerateArray()
+                .Select(GetReference)
+                .FirstOrDefault(reference => reference is not null)
+            : null;
+    }
+
+    private static async Task AssertPresenceAwareProperties(
+        JsonDocument document,
+        string schemaName,
+        IReadOnlyList<string> expectedPropertyNames)
+    {
+        var properties = GetSchemaProperties(document, schemaName);
+
+        await Assert.That(properties.EnumerateObject().Select(property => property.Name))
+            .IsEquivalentTo(expectedPropertyNames);
+
+        foreach (var property in properties.EnumerateObject())
+        {
+            var reference = GetReference(property.Value);
+            await Assert.That(reference?.StartsWith("#/components/schemas/OptionalUpdateOf", System.StringComparison.Ordinal) == true)
+                .IsTrue()
+                .Because($"{schemaName}.{property.Name} must preserve omitted-vs-explicit patch intent through OptionalUpdate<T>.");
+
+            var optionalUpdateSchema = GetSchema(document, reference!["#/components/schemas/".Length..]);
+            await Assert.That(GetSchemaPropertyNames(optionalUpdateSchema))
+                .IsEquivalentTo(["hasValue", "value"])
+                .Because($"{schemaName}.{property.Name} must retain the generated presence marker and value.");
+        }
+    }
 
     private static string? GetStringProperty(JsonElement element, string propertyName)
         => element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String

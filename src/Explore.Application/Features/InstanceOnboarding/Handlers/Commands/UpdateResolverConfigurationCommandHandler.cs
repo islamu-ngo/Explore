@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
@@ -35,8 +36,24 @@ public class UpdateResolverConfigurationCommandHandler : IRequestHandler<UpdateR
             return response;
         }
 
+        if (!request.Patch.HasChanges())
+        {
+            response.Success = false;
+            response.Message = "Resolver configuration patch must include at least one setting.";
+            return response;
+        }
+
+        var configuration = await _resolverConfigService.GetConfigurationAsync(cancellationToken);
+        configuration.HeaderEnabled = request.Patch.HeaderEnabled.HasValue ? request.Patch.HeaderEnabled.Value : configuration.HeaderEnabled;
+        configuration.SubdomainEnabled = request.Patch.SubdomainEnabled.HasValue ? request.Patch.SubdomainEnabled.Value : configuration.SubdomainEnabled;
+        configuration.CustomDomainEnabled = request.Patch.CustomDomainEnabled.HasValue ? request.Patch.CustomDomainEnabled.Value : configuration.CustomDomainEnabled;
+        configuration.PathEnabled = request.Patch.PathEnabled.HasValue ? request.Patch.PathEnabled.Value : configuration.PathEnabled;
+        configuration.PathPrefix = request.Patch.PathPrefix.Value ?? configuration.PathPrefix;
+        configuration.InstanceBaseDomain = request.Patch.InstanceBaseDomain.Value ?? configuration.InstanceBaseDomain;
+        configuration.AllowTenantCustomDomains = request.Patch.AllowTenantCustomDomains.HasValue ? request.Patch.AllowTenantCustomDomains.Value : configuration.AllowTenantCustomDomains;
+
         var validator = new ResolverConfigurationDtoValidator();
-        var validationResult = await validator.ValidateAsync(request.Configuration, cancellationToken);
+        var validationResult = await validator.ValidateAsync(configuration, cancellationToken);
         if (!validationResult.IsValid)
         {
             response.Success = false;
@@ -45,7 +62,7 @@ public class UpdateResolverConfigurationCommandHandler : IRequestHandler<UpdateR
             return response;
         }
 
-        await _resolverConfigService.ApplyConfigurationAsync(request.Configuration, request.UserId, cancellationToken);
+        await _resolverConfigService.ApplyConfigurationAsync(configuration, request.UserId, cancellationToken);
 
         response.Success = true;
         response.Id = Guid.Empty;

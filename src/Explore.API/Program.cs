@@ -279,6 +279,7 @@ builder.Services.AddOpenApi("islamu-event", options =>
     options.AddOperationTransformer<Explore.API.OpenApi.EndpointClassificationTransformer>();
     options.AddOperationTransformer<Explore.API.OpenApi.ManagedControlPlaneOpenApiSecurityTransformer>();
     options.AddOperationTransformer<Explore.API.OpenApi.StorageUploadRequestBodyTransformer>();
+    options.AddOperationTransformer<Explore.API.OpenApi.EventOpenGraphImageResponseTransformer>();
 });
 
 builder.Services.AddOptions<PdsSyncWorkerOptions>()

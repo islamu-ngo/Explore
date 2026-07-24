@@ -41,6 +41,7 @@ public sealed class SkiaEventOpenGraphImageRenderer : IEventOpenGraphImageRender
     private const int MaximumEncodedArtworkBytes = 5 * 1024 * 1024;
     private const int MaximumDecodedDimension = 8192;
     private const long MaximumDecodedPixels = 24L * 1024 * 1024;
+    private const long MaximumArtworkDecodePixels = 4L * ArtworkWidth * ArtworkHeight;
     private const string DefaultTitle = "Event";
     private const string DefaultBrand = "Event";
     private const string FontResourceSuffix = "NotoSansArabic[wdth,wght].ttf";
@@ -344,7 +345,7 @@ public sealed class SkiaEventOpenGraphImageRenderer : IEventOpenGraphImageRender
         canvas.DrawRect(bounds, secondMeshPaint);
     }
 
-    private static async Task<SKBitmap?> TryDecodeArtworkAsync(
+    internal static async Task<SKBitmap?> TryDecodeArtworkAsync(
         Stream? artwork,
         string? contentType,
         CancellationToken cancellationToken)
@@ -384,7 +385,37 @@ public sealed class SkiaEventOpenGraphImageRenderer : IEventOpenGraphImageRender
                 return null;
             }
 
-            return SKBitmap.Decode(encodedData);
+            var desiredScale = Math.Min(
+                1f,
+                Math.Max(
+                    (float)ArtworkWidth / info.Width,
+                    (float)ArtworkHeight / info.Height));
+            var decodeDimensions = codec.GetScaledDimensions(desiredScale);
+            var sourceCoversArtwork = info.Width >= ArtworkWidth && info.Height >= ArtworkHeight;
+            while (sourceCoversArtwork &&
+                   (decodeDimensions.Width < ArtworkWidth || decodeDimensions.Height < ArtworkHeight) &&
+                   desiredScale < 1f)
+            {
+                desiredScale = Math.Min(1f, desiredScale * 2f);
+                decodeDimensions = codec.GetScaledDimensions(desiredScale);
+            }
+
+            if (decodeDimensions.Width <= 0 ||
+                decodeDimensions.Height <= 0 ||
+                (sourceCoversArtwork &&
+                    (decodeDimensions.Width < ArtworkWidth || decodeDimensions.Height < ArtworkHeight)) ||
+                (long)decodeDimensions.Width * decodeDimensions.Height > MaximumArtworkDecodePixels)
+            {
+                return null;
+            }
+
+            var decodeInfo = info.WithSize(decodeDimensions);
+            if (decodeInfo.AlphaType == SKAlphaType.Unpremul)
+            {
+                decodeInfo = decodeInfo.WithAlphaType(SKAlphaType.Premul);
+            }
+
+            return SKBitmap.Decode(codec, decodeInfo);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

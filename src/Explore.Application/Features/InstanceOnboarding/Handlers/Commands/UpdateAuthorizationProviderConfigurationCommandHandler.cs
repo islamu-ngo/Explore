@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
@@ -45,8 +46,33 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler : IRequestHa
             return response;
         }
 
+        if (!request.Patch.HasChanges() || request.Patch.Configuration.Value is null)
+        {
+            response.Success = false;
+            response.Message = "Authorization provider patch must include a complete configuration group.";
+            return response;
+        }
+
+        var patch = request.Patch.Configuration.Value;
+        var configuration = new AuthorizationProviderConfigurationDto
+        {
+            Provider = patch.Provider,
+            CerbosGrpcEndpoint = patch.CerbosGrpcEndpoint,
+            CerbosAdminEndpoint = patch.CerbosAdminEndpoint,
+            CerbosAdminUsername = patch.CerbosAdminUsername,
+            CerbosAdminPassword = patch.CerbosAdminPassword,
+            CerbosDetectedFromEnvironment = currentConfiguration.CerbosDetectedFromEnvironment,
+            AuthorizationProviderConfigured = currentConfiguration.AuthorizationProviderConfigured,
+            AuthorizationProviderManagedByDeployment = currentConfiguration.AuthorizationProviderManagedByDeployment,
+            AuthorizationProviderBootstrapStatus = currentConfiguration.AuthorizationProviderBootstrapStatus,
+            CerbosPoliciesSynchronized = currentConfiguration.CerbosPoliciesSynchronized,
+            AuthorizationProviderBootstrapMessage = currentConfiguration.AuthorizationProviderBootstrapMessage,
+            CerbosEndpointOwnership = currentConfiguration.CerbosEndpointOwnership,
+            CerbosAdminCredentialsOwnership = currentConfiguration.CerbosAdminCredentialsOwnership
+        };
+
         var validator = new AuthorizationProviderConfigurationDtoValidator();
-        var validationResult = await validator.ValidateAsync(request.Configuration, cancellationToken);
+        var validationResult = await validator.ValidateAsync(configuration, cancellationToken);
         if (!validationResult.IsValid)
         {
             response.Success = false;
@@ -55,12 +81,12 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler : IRequestHa
             return response;
         }
 
-        request.Configuration.CerbosGrpcEndpoint = GrpcEndpointNormalizer.Normalize(request.Configuration.CerbosGrpcEndpoint);
+        configuration.CerbosGrpcEndpoint = GrpcEndpointNormalizer.Normalize(configuration.CerbosGrpcEndpoint);
 
-        if (request.Configuration.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase))
+        if (configuration.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase))
         {
             var isReachable = await _configurationService.VerifyCerbosEndpointAsync(
-                request.Configuration.CerbosGrpcEndpoint,
+                configuration.CerbosGrpcEndpoint,
                 cancellationToken);
 
             if (!isReachable)
@@ -71,10 +97,10 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler : IRequestHa
                 return response;
             }
 
-            if (!string.IsNullOrWhiteSpace(request.Configuration.CerbosAdminEndpoint))
+            if (!string.IsNullOrWhiteSpace(configuration.CerbosAdminEndpoint))
             {
                 var isAdminEndpointAllowed = await _configurationService.VerifyCerbosAdminEndpointAsync(
-                    request.Configuration.CerbosAdminEndpoint,
+                    configuration.CerbosAdminEndpoint,
                     cancellationToken);
 
                 if (!isAdminEndpointAllowed)
@@ -86,10 +112,10 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler : IRequestHa
                 }
             }
 
-            request.Configuration.CerbosEndpointVerified = true;
+            configuration.CerbosEndpointVerified = true;
         }
 
-        await _configurationService.ApplyConfigurationAsync(request.Configuration);
+        await _configurationService.ApplyConfigurationAsync(configuration);
 
         response.Success = true;
         response.Message = "Authorization provider configuration updated successfully.";

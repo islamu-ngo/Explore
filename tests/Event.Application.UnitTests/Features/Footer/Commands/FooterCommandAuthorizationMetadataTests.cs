@@ -22,7 +22,7 @@ public class FooterCommandAuthorizationMetadataTests
     [Arguments(typeof(CreateFooterLinkCommand))]
     [Arguments(typeof(UpdateFooterLinkCommand))]
     [Arguments(typeof(DeleteFooterLinkCommand))]
-    [Arguments(typeof(UpdateTenantFooterSettingsCommand))]
+    [Arguments(typeof(PatchTenantFooterSettingsCommand))]
     public async Task TenantScopedFooterWriteCommandsRequireTenantUpdatePermission(Type commandType)
     {
         var attribute = commandType.GetCustomAttribute<AuthorizeResourceAttribute>();
@@ -42,7 +42,18 @@ public class FooterCommandAuthorizationMetadataTests
         yield return (new CreateFooterLinkCommand { UserId = UserId, TenantId = TenantId, GroupId = GroupId, Label = "Home", Url = "https://example.test", OpenInNewTab = false }, "groupId");
         yield return (new UpdateFooterLinkCommand { UserId = UserId, TenantId = TenantId, LinkId = LinkId, Label = "Home", Url = "https://example.test", OpenInNewTab = false, IsActive = true }, "linkId");
         yield return (new DeleteFooterLinkCommand { UserId = UserId, TenantId = TenantId, LinkId = LinkId }, "linkId");
-        yield return (new UpdateTenantFooterSettingsCommand { UserId = UserId, TenantId = TenantId, Enabled = true }, "settingGroup");
+        yield return (new PatchTenantFooterSettingsCommand
+        {
+            UserId = UserId,
+            TenantId = TenantId,
+            Patch = new()
+            {
+                General = new()
+                {
+                    Enabled = Explore.Application.Models.Common.OptionalUpdate<bool>.Set(true)
+                }
+            }
+        }, "settingGroup");
     }
 
     [Test]

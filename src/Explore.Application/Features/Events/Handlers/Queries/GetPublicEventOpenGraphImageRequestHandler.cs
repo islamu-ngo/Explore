@@ -1,19 +1,20 @@
 // ABOUTME: Query handler that securely prepares a public event Open Graph image render request.
 // ABOUTME: Uses public event eligibility, effective tenant branding, and trusted public-image storage only.
 
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
-using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.Events.OpenGraph;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Models.Storage;
 using Explore.Domain.Enums;
+using Explore.Domain;
 using MediatR;
 
 namespace Explore.Application.Features.Events.Handlers.Queries;
 
 public sealed class GetPublicEventOpenGraphImageRequestHandler(
-    IMediator mediator,
+    IEventRepository eventRepository,
     ITenantPolicySettingService tenantPolicySettingService,
     IStorageObjectContentReader contentReader,
     IEventOpenGraphImageRenderer renderer)
@@ -23,31 +24,45 @@ public sealed class GetPublicEventOpenGraphImageRequestHandler(
         GetPublicEventOpenGraphImageRequest request,
         CancellationToken cancellationToken)
     {
-        EventDto? eventDto = await mediator.Send(
-            new GetPublicEventDetailsRequest { SlugCode = request.SlugCode },
-            cancellationToken);
-        if (eventDto is null ||
-            eventDto.EventStatusId != (int)EventStatusEnum.Published ||
-            eventDto.VisibilityTypeId != (int)VisibilityTypeEnum.Public)
+        string? publicCode = ExtractPublicCode(request.SlugCode);
+        if (publicCode is null)
+            return null;
+
+        Event? eventEntity = await eventRepository.GetPublicEventForOpenGraphAsync(publicCode, cancellationToken);
+        if (eventEntity is null ||
+            eventEntity.EventStatusId != (int)EventStatusEnum.Published ||
+            eventEntity.VisibilityTypeId != (int)VisibilityTypeEnum.Public)
         {
             return null;
         }
 
         TenantPolicySettingsDto settings = await tenantPolicySettingService
-            .ReadEffectiveTenantSettingsAsync(eventDto.TenantId);
-        StorageObjectContentResult? featuredImage = eventDto.FeaturedImageId == Guid.Empty
-            ? null
-            : await contentReader.OpenAsync(eventDto.FeaturedImageId, publicImagesOnly: true, cancellationToken);
+            .ReadEffectiveTenantSettingsAsync(eventEntity.TenantId);
+        StorageObjectContentResult? featuredImage = eventEntity.FeaturedImageId is Guid featuredImageId && featuredImageId != Guid.Empty
+            ? await contentReader.OpenAsync(featuredImageId, publicImagesOnly: true, cancellationToken)
+            : null;
         using Stream? featuredImageStream = featuredImage?.Content;
 
         return await renderer.RenderAsync(
             new EventOpenGraphImageRenderRequest(
-                eventDto.Title,
-                eventDto.FirstSessionDate,
-                eventDto.LastSessionDate,
+                eventEntity.Title,
+                eventEntity.FirstSessionDate,
+                eventEntity.LastSessionDate,
                 settings.BrandDisplayName,
                 featuredImageStream,
                 featuredImage?.ContentType),
             cancellationToken);
+    }
+
+    private static string? ExtractPublicCode(string slugCode)
+    {
+        if (string.IsNullOrWhiteSpace(slugCode))
+            return null;
+
+        var separatorIndex = slugCode.LastIndexOf('-');
+        if (separatorIndex < 0 || separatorIndex == slugCode.Length - 1)
+            return null;
+
+        return slugCode[(separatorIndex + 1)..];
     }
 }

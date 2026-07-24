@@ -6,15 +6,19 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.DTOs.TenantSettingsDocuments;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.TenantSettingsDocuments.Requests.Commands;
 using Explore.Application.Features.TenantSettingsDocuments.Requests.Queries;
+using Explore.Application.Models.Common;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using NSubstitute;
 using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -39,18 +43,22 @@ public sealed class TenantSettingsDocumentsControllerAnonymousTests
     }
 
     [Test]
-    public async Task ReplaceBranding_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task PatchBranding_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var request = new ReplaceTenantBrandingSettingsDocumentDto
+        var request = new PatchTenantBrandingSettingsDocumentDto
         {
             ExpectedConcurrencyStamp = Guid.NewGuid(),
-            Payload = new TenantBrandingSettingsPayloadDto
+            DisplayName = new PatchTenantBrandingDisplayNameDto
             {
-                DisplayName = "Unauthenticated Brand"
+                Value = OptionalUpdate<string?>.Set("Unauthenticated Brand")
             }
         };
 
-        var response = await _fixture.Client.PutAsJsonAsync("/api/tenant/settings/documents/branding", request);
+        using var message = new HttpRequestMessage(HttpMethod.Patch, "/api/tenant/settings/documents/branding")
+        {
+            Content = JsonContent.Create(request)
+        };
+        var response = await _fixture.Client.SendAsync(message);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
@@ -73,44 +81,160 @@ public sealed class TenantSettingsDocumentsControllerAuthorizedTests
         var root = body.RootElement;
         await Assert.That(root.GetProperty("documentKey").GetString()).IsEqualTo("tenant.branding");
         await Assert.That(root.GetProperty("payload").GetProperty("displayName").GetString()).IsEqualTo("Typed Tenant");
+        await Assert.That(root.GetProperty("canChangeDisplayName").GetBoolean()).IsTrue();
         await Assert.That(root.GetProperty("_links").TryGetProperty("self", out _)).IsTrue();
-        await Assert.That(root.GetProperty("_links").TryGetProperty("self/replace-settings", out _)).IsTrue();
+        await Assert.That(root.GetProperty("_links").TryGetProperty("edit", out _)).IsTrue();
     }
 
     [Test]
-    public async Task ReplaceBranding_WithAuth_ShouldSendCommandAndReturnUpdatedHalDocument()
+    public async Task PatchBranding_WithAuth_ShouldReturnUpdatedHalDocumentAndEvictShellOnce()
     {
         var documentId = Guid.NewGuid();
         var initialStamp = Guid.NewGuid();
         var mediator = new BrandingDocumentMediator(documentId, initialStamp);
-        using var factory = CreateFactoryWithMediator(mediator);
+        var cacheStore = Substitute.For<IOutputCacheStore>();
+        using var factory = CreateFactoryWithMediator(mediator, cacheStore);
         using var client = factory.CreateClient();
-        using var request = CreateAuthenticatedRequest(HttpMethod.Put, "/api/tenant/settings/documents/branding");
-        request.Content = JsonContent.Create(new ReplaceTenantBrandingSettingsDocumentDto
+        using var request = CreateAuthenticatedRequest(HttpMethod.Patch, "/api/tenant/settings/documents/branding");
+        request.Content = JsonContent.Create(new PatchTenantBrandingSettingsDocumentDto
         {
             ExpectedConcurrencyStamp = initialStamp,
-            Payload = new TenantBrandingSettingsPayloadDto
+            DisplayName = new PatchTenantBrandingDisplayNameDto
             {
-                DisplayName = "Updated Tenant",
-                LogoUrl = "https://cdn.example.test/logo.svg",
-                FaviconUrl = "https://cdn.example.test/favicon.ico",
-                CustomCssUrl = "https://cdn.example.test/tenant.css"
+                Value = OptionalUpdate<string?>.Set("Updated Tenant")
             }
         });
 
         var response = await client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        await Assert.That(mediator.LastReplaceCommand).IsNotNull();
-        await Assert.That(mediator.LastReplaceCommand!.Document.ExpectedConcurrencyStamp).IsEqualTo(initialStamp);
+        await Assert.That(mediator.LastPatchCommand).IsNotNull();
+        await Assert.That(mediator.LastPatchCommand!.Patch.ExpectedConcurrencyStamp).IsEqualTo(initialStamp);
+        await Assert.That(mediator.BrandingQueryCount).IsEqualTo(1);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var root = body.RootElement;
         await Assert.That(root.GetProperty("payload").GetProperty("displayName").GetString()).IsEqualTo("Updated Tenant");
         await Assert.That(root.GetProperty("payload").GetProperty("customCssUrl").GetString()).IsEqualTo("https://cdn.example.test/tenant.css");
-        await Assert.That(root.GetProperty("_links").TryGetProperty("self/replace-settings", out _)).IsTrue();
+        await Assert.That(root.GetProperty("concurrencyStamp").GetGuid()).IsEqualTo(mediator.ReloadedConcurrencyStamp!.Value);
+        await Assert.That(root.GetProperty("concurrencyStamp").GetGuid()).IsNotEqualTo(mediator.CommandResponseConcurrencyStamp!.Value);
+        await Assert.That(root.GetProperty("_links").TryGetProperty("edit", out _)).IsTrue();
+        await cacheStore.Received(1).EvictByTagAsync("public-experience-shell", Arg.Any<CancellationToken>());
     }
 
-    private static WebApplicationFactory<Program> CreateFactoryWithMediator(IMediator mediator)
+    [Test]
+    public async Task PatchBranding_WhenCommandFails_ShouldNotEvictShell()
+    {
+        var cacheStore = Substitute.For<IOutputCacheStore>();
+        var mediator = new BrandingDocumentMediator(Guid.NewGuid(), patchSucceeds: false);
+        using var factory = CreateFactoryWithMediator(mediator, cacheStore);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(HttpMethod.Patch, "/api/tenant/settings/documents/branding");
+        request.Content = JsonContent.Create(new PatchTenantBrandingSettingsDocumentDto
+        {
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            DisplayName = new PatchTenantBrandingDisplayNameDto
+            {
+                Value = OptionalUpdate<string?>.Set("Rejected Tenant")
+            }
+        });
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await cacheStore.DidNotReceive().EvictByTagAsync("public-experience-shell", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PatchBranding_WhenAuthoritativeReloadIsMissing_ShouldReturnNotFoundWithoutEvictingShell()
+    {
+        var cacheStore = Substitute.For<IOutputCacheStore>();
+        var mediator = new BrandingDocumentMediator(Guid.NewGuid(), reloadMissingAfterPatch: true);
+        using var factory = CreateFactoryWithMediator(mediator, cacheStore);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(HttpMethod.Patch, "/api/tenant/settings/documents/branding");
+        request.Content = JsonContent.Create(new PatchTenantBrandingSettingsDocumentDto
+        {
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            DisplayName = new PatchTenantBrandingDisplayNameDto
+            {
+                Value = OptionalUpdate<string?>.Set("Updated Tenant")
+            }
+        });
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(mediator.LastPatchCommand).IsNotNull();
+        await Assert.That(mediator.BrandingQueryCount).IsEqualTo(1);
+        await cacheStore.DidNotReceive().EvictByTagAsync("public-experience-shell", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PatchBranding_WhenPersistenceRaceOccurs_ShouldReturnConflictWithoutReloadOrEviction()
+    {
+        var documentId = Guid.NewGuid();
+        var cacheStore = Substitute.For<IOutputCacheStore>();
+        var mediator = new BrandingDocumentMediator(
+            documentId,
+            patchException: new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The TenantSettingsDocument was modified by another request. Reload and retry.",
+                "TenantSettingsDocument",
+                documentId.ToString()));
+        using var factory = CreateFactoryWithMediator(mediator, cacheStore);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedPatchRequest();
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        await Assert.That(body.RootElement.GetProperty("type").GetString()).IsEqualTo("/problems/concurrent_update");
+        await Assert.That(body.RootElement.GetProperty("code").GetString()).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
+        await Assert.That(mediator.BrandingQueryCount).IsEqualTo(0);
+        await cacheStore.DidNotReceive().EvictByTagAsync("public-experience-shell", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PatchBranding_WhenPersistedPayloadIsIncompatible_ShouldReturnSafeErrorWithoutReloadOrEviction()
+    {
+        const string safeExceptionMessage = "Document 'tenant.branding' payload could not be deserialized.";
+        var cacheStore = Substitute.For<IOutputCacheStore>();
+        var mediator = new BrandingDocumentMediator(
+            Guid.NewGuid(),
+            patchException: new InvalidOperationException(safeExceptionMessage));
+        using var factory = CreateFactoryWithMediator(mediator, cacheStore);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedPatchRequest();
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.InternalServerError);
+        var responseBody = await response.Content.ReadAsStringAsync();
+        await Assert.That(responseBody).DoesNotContain(safeExceptionMessage);
+        await Assert.That(mediator.BrandingQueryCount).IsEqualTo(0);
+        await cacheStore.DidNotReceive().EvictByTagAsync("public-experience-shell", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PutBranding_WithAuth_ShouldReturnMethodNotAllowed()
+    {
+        var cacheStore = Substitute.For<IOutputCacheStore>();
+        var mediator = new BrandingDocumentMediator(Guid.NewGuid());
+        using var factory = CreateFactoryWithMediator(mediator, cacheStore);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(HttpMethod.Put, "/api/tenant/settings/documents/branding");
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
+        await Assert.That(mediator.LastPatchCommand).IsNull();
+        await cacheStore.DidNotReceive().EvictByTagAsync("public-experience-shell", Arg.Any<CancellationToken>());
+    }
+
+    private static WebApplicationFactory<Program> CreateFactoryWithMediator(
+        IMediator mediator,
+        IOutputCacheStore? cacheStore = null)
     {
         var factory = new AuthenticatedWebApplicationFactory
         {
@@ -123,6 +247,11 @@ public sealed class TenantSettingsDocumentsControllerAuthorizedTests
             {
                 services.RemoveAll<IMediator>();
                 services.AddSingleton(mediator);
+                if (cacheStore is not null)
+                {
+                    services.RemoveAll<IOutputCacheStore>();
+                    services.AddSingleton(cacheStore);
+                }
             });
         });
     }
@@ -134,14 +263,40 @@ public sealed class TenantSettingsDocumentsControllerAuthorizedTests
         return request;
     }
 
+    private static HttpRequestMessage CreateAuthenticatedPatchRequest()
+    {
+        var request = CreateAuthenticatedRequest(HttpMethod.Patch, "/api/tenant/settings/documents/branding");
+        request.Content = JsonContent.Create(new PatchTenantBrandingSettingsDocumentDto
+        {
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            DisplayName = new PatchTenantBrandingDisplayNameDto
+            {
+                Value = OptionalUpdate<string?>.Set("Updated Tenant")
+            }
+        });
+        return request;
+    }
+
     private sealed class BrandingDocumentMediator : IMediator
     {
         private readonly Guid _documentId;
+        private readonly bool _patchSucceeds;
+        private readonly bool _reloadMissingAfterPatch;
+        private readonly Exception? _patchException;
         private TenantBrandingSettingsDocumentDto _document;
+        private bool _patchHandled;
 
-        public BrandingDocumentMediator(Guid documentId, Guid? concurrencyStamp = null)
+        public BrandingDocumentMediator(
+            Guid documentId,
+            Guid? concurrencyStamp = null,
+            bool patchSucceeds = true,
+            bool reloadMissingAfterPatch = false,
+            Exception? patchException = null)
         {
             _documentId = documentId;
+            _patchSucceeds = patchSucceeds;
+            _reloadMissingAfterPatch = reloadMissingAfterPatch;
+            _patchException = patchException;
             _document = CreateDocument(
                 displayName: "Typed Tenant",
                 logoUrl: "https://cdn.example.test/logo.svg",
@@ -150,7 +305,13 @@ public sealed class TenantSettingsDocumentsControllerAuthorizedTests
                 concurrencyStamp: concurrencyStamp ?? Guid.NewGuid());
         }
 
-        public ReplaceTenantBrandingSettingsDocumentCommand? LastReplaceCommand { get; private set; }
+        public PatchTenantBrandingSettingsDocumentCommand? LastPatchCommand { get; private set; }
+
+        public int BrandingQueryCount { get; private set; }
+
+        public Guid? CommandResponseConcurrencyStamp { get; private set; }
+
+        public Guid? ReloadedConcurrencyStamp { get; private set; }
 
         public Task Publish(object notification, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
@@ -162,8 +323,8 @@ public sealed class TenantSettingsDocumentsControllerAuthorizedTests
         {
             object? response = request switch
             {
-                GetTenantBrandingSettingsDocumentQuery => _document,
-                ReplaceTenantBrandingSettingsDocumentCommand command => Replace(command),
+                GetTenantBrandingSettingsDocumentQuery => GetDocument(),
+                PatchTenantBrandingSettingsDocumentCommand command => Patch(command),
                 _ => throw new InvalidOperationException($"Unexpected request type {request.GetType().Name}.")
             };
 
@@ -177,8 +338,8 @@ public sealed class TenantSettingsDocumentsControllerAuthorizedTests
         public Task<object?> Send(object request, CancellationToken cancellationToken = default)
             => request switch
             {
-                GetTenantBrandingSettingsDocumentQuery => Task.FromResult<object?>(_document),
-                ReplaceTenantBrandingSettingsDocumentCommand command => Task.FromResult<object?>(Replace(command)),
+                GetTenantBrandingSettingsDocumentQuery => Task.FromResult<object?>(GetDocument()),
+                PatchTenantBrandingSettingsDocumentCommand command => Task.FromResult<object?>(Patch(command)),
                 _ => throw new InvalidOperationException($"Unexpected request type {request.GetType().Name}.")
             };
 
@@ -188,23 +349,62 @@ public sealed class TenantSettingsDocumentsControllerAuthorizedTests
         public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
-        private BaseCommandResponse<Guid> Replace(ReplaceTenantBrandingSettingsDocumentCommand command)
+        private TenantBrandingSettingsDocumentDto? GetDocument()
         {
-            LastReplaceCommand = command;
-            _document = CreateDocument(
-                command.Document.Payload.DisplayName,
-                command.Document.Payload.LogoUrl,
-                command.Document.Payload.FaviconUrl,
-                command.Document.Payload.CustomCssUrl,
-                Guid.NewGuid());
+            BrandingQueryCount++;
+            return _patchHandled && _reloadMissingAfterPatch ? null : _document;
+        }
 
-            return new BaseCommandResponse<Guid>
+        private BaseCommandResponse<TenantBrandingSettingsDocumentDto> Patch(
+            PatchTenantBrandingSettingsDocumentCommand command)
+        {
+            LastPatchCommand = command;
+            if (_patchException is not null)
+            {
+                throw _patchException;
+            }
+
+            if (!_patchSucceeds)
+            {
+                return new BaseCommandResponse<TenantBrandingSettingsDocumentDto>
+                {
+                    Success = false,
+                    Message = "Tenant branding settings patch failed.",
+                    Errors = ["Rejected for test."]
+                };
+            }
+
+            var displayName = Apply(command.Patch.DisplayName?.Value ?? default, _document.Payload.DisplayName);
+            var logoUrl = Apply(command.Patch.Assets?.LogoUrl ?? default, _document.Payload.LogoUrl);
+            var faviconUrl = Apply(command.Patch.Assets?.FaviconUrl ?? default, _document.Payload.FaviconUrl);
+            var customCssUrl = Apply(command.Patch.Assets?.CustomCssUrl ?? default, _document.Payload.CustomCssUrl);
+            _patchHandled = true;
+            ReloadedConcurrencyStamp = Guid.NewGuid();
+            _document = CreateDocument(
+                displayName,
+                logoUrl,
+                faviconUrl,
+                customCssUrl,
+                ReloadedConcurrencyStamp.Value);
+
+            CommandResponseConcurrencyStamp = Guid.NewGuid();
+            var commandResponseDocument = CreateDocument(
+                "Command response must not be assembled",
+                logoUrl,
+                faviconUrl,
+                customCssUrl,
+                CommandResponseConcurrencyStamp.Value);
+
+            return new BaseCommandResponse<TenantBrandingSettingsDocumentDto>
             {
                 Success = true,
-                Message = "Tenant branding settings document replaced.",
-                Id = _documentId
+                Message = "Tenant branding settings document patched.",
+                Id = commandResponseDocument
             };
         }
+
+        private static string? Apply(OptionalUpdate<string?> update, string? current)
+            => update.HasValue ? update.Value : current;
 
         private TenantBrandingSettingsDocumentDto CreateDocument(
             string? displayName,
@@ -227,6 +427,10 @@ public sealed class TenantSettingsDocumentsControllerAuthorizedTests
                 Source = "tenant",
                 SourceScopeId = _documentId,
                 ConcurrencyStamp = concurrencyStamp,
+                CanChangeDisplayName = true,
+                CanChangeLogoUrl = true,
+                CanChangeFaviconUrl = true,
+                CanChangeCustomCssUrl = true,
                 UpdatedAt = DateTime.UtcNow
             };
     }

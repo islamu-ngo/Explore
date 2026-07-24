@@ -422,6 +422,7 @@ public class EventController : ExploreControllerBase
     /// </summary>
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
+    [EnableRateLimiting(RateLimitingExtensions.EventOpenGraphImagePolicy)]
     [HttpGet("public/{slugCode}/og-image", Name = RouteNames.GetEventOpenGraphImage)]
     [EndpointSummary("Get Public Event Open Graph Image")]
     [EndpointDescription("Returns a deterministic 1200x630 PNG for an eligible public event, or the generic event-not-found response when the event is not publicly renderable.")]
@@ -429,6 +430,7 @@ public class EventController : ExploreControllerBase
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(StatusCodes.Status304NotModified)]
     public async Task<IActionResult> GetOpenGraphImage(string slugCode, CancellationToken cancellationToken = default)
     {
@@ -441,15 +443,6 @@ public class EventController : ExploreControllerBase
         var entityTag = EntityTagHeaderValue.Parse(result.ETag);
         Response.Headers.CacheControl = "public, max-age=0, must-revalidate";
         Response.Headers.Vary = "Host, X-Tenant-Slug";
-        Response.Headers.ETag = entityTag.ToString();
-
-        if (Request.Headers.IfNoneMatch.Any(value =>
-                value.Split(',').Any(candidate =>
-                    string.Equals(candidate.Trim(), entityTag.ToString(), StringComparison.Ordinal))))
-        {
-            Response.ContentLength = 0;
-            return StatusCode(StatusCodes.Status304NotModified);
-        }
 
         var fileResult = File(result.PngBytes, "image/png");
         fileResult.EntityTag = entityTag;

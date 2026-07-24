@@ -13,12 +13,15 @@ public sealed class DeleteFooterLinkGroupCommandHandler(
     IFooterLinkGroupRepository footerLinkGroupRepository,
     IFooterLinkRepository footerLinkRepository,
     IUnitOfWork unitOfWork,
-    ITenantContext tenantContext)
+    ITenantContext tenantContext,
+    FooterLinkMutationGuard mutationGuard)
     : IRequestHandler<DeleteFooterLinkGroupCommand, bool>
 {
     public async Task<bool> Handle(
         DeleteFooterLinkGroupCommand request, CancellationToken cancellationToken)
     {
+        await mutationGuard.EnsureAllowedAsync(tenantContext.TenantId, cancellationToken);
+
         var group = await footerLinkGroupRepository.GetById(request.GroupId);
 
         if (group is null || group.TenantId != tenantContext.TenantId)

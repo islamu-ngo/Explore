@@ -93,8 +93,9 @@ public class EventHateoasScenarioTests(RealRuntimeApiFixture fixture)
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("image/png");
-        await Assert.That(response.Headers.CacheControl?.ToString())
-            .IsEqualTo("public, max-age=0, must-revalidate");
+        await Assert.That(response.Headers.CacheControl?.Public).IsTrue();
+        await Assert.That(response.Headers.CacheControl?.MustRevalidate).IsTrue();
+        await Assert.That(response.Headers.CacheControl?.MaxAge).IsEqualTo(TimeSpan.Zero);
         await Assert.That(response.Headers.Vary.ToString()).IsEqualTo("Host, X-Tenant-Slug");
         await Assert.That(response.Headers.ETag).IsNotNull();
         await Assert.That(response.Headers.ETag!.IsWeak).IsFalse();
@@ -130,8 +131,9 @@ public class EventHateoasScenarioTests(RealRuntimeApiFixture fixture)
 
         await Assert.That(secondResponse.StatusCode).IsEqualTo(HttpStatusCode.NotModified);
         await Assert.That(secondResponse.Headers.ETag?.ToString()).IsEqualTo(etag);
-        await Assert.That(secondResponse.Headers.CacheControl?.ToString())
-            .IsEqualTo("public, max-age=0, must-revalidate");
+        await Assert.That(secondResponse.Headers.CacheControl?.Public).IsTrue();
+        await Assert.That(secondResponse.Headers.CacheControl?.MustRevalidate).IsTrue();
+        await Assert.That(secondResponse.Headers.CacheControl?.MaxAge).IsEqualTo(TimeSpan.Zero);
         await Assert.That(secondResponse.Headers.Vary.ToString()).IsEqualTo("Host, X-Tenant-Slug");
         await Assert.That(secondBody).IsEmpty();
     }

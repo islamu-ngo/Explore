@@ -41,7 +41,7 @@ public sealed class ControlPlaneDomainLinkPolicy : ILinkPolicy<ControlPlaneDomai
         yield return InstanceSettingUpdateLink(
             LinkRelations.Edit,
             RouteNames.UpdateInstanceDomainSettings,
-            "PUT",
+            "PATCH",
             "Update domain settings",
             "domains");
     }

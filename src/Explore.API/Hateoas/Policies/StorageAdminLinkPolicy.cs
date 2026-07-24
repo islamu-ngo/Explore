@@ -32,7 +32,13 @@ public sealed class InstanceStorageSettingsLinkPolicy : ILinkPolicy<InstanceStor
                 ResourceId,
                 InstanceStorageAttributes());
 
-        yield return LinkDefinition.Edit(RouteNames.UpdateInstanceStorageSettings)
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
+            RouteNames.UpdateInstanceStorageSettings,
+            null,
+            "PATCH",
+            "Patch instance storage settings",
+            RequiresAuth: true)
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 ResourceId,

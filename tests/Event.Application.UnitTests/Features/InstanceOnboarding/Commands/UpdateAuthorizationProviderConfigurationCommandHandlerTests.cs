@@ -4,6 +4,8 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.Instance;
+using Explore.Application.Models.Common;
 using Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using NSubstitute;
@@ -72,7 +74,8 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await _configurationService.DidNotReceive().VerifyCerbosEndpointAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _configurationService.Received(1).ApplyConfigurationAsync(configuration);
+        await _configurationService.Received(1).ApplyConfigurationAsync(Arg.Is<AuthorizationProviderConfigurationDto>(x =>
+            x.Provider == "local"));
     }
 
     [Test]
@@ -173,7 +176,17 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
         return new UpdateAuthorizationProviderConfigurationCommand
         {
             UserId = TestUserId,
-            Configuration = configuration
+            Patch = new PatchAuthorizationProviderConfigurationDto
+            {
+                Configuration = OptionalUpdate<AuthorizationProviderConfigurationWriteDto>.Set(new AuthorizationProviderConfigurationWriteDto
+                {
+                    Provider = configuration.Provider,
+                    CerbosGrpcEndpoint = configuration.CerbosGrpcEndpoint,
+                    CerbosAdminEndpoint = configuration.CerbosAdminEndpoint,
+                    CerbosAdminUsername = configuration.CerbosAdminUsername,
+                    CerbosAdminPassword = configuration.CerbosAdminPassword
+                })
+            }
         };
     }
 }

@@ -3,6 +3,8 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Analytics;
+using Explore.Application.DTOs.Instance;
+using Explore.Application.Models.Common;
 using Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Settings;
@@ -53,7 +55,19 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
         return new UpdateAnalyticsGovernanceSettingsCommand
         {
             UserId = Guid.NewGuid(),
-            Settings = dto
+            Patch = new PatchAnalyticsGovernanceSettingsDto
+            {
+                CookieConsentEnabled = OptionalUpdate<bool>.Set(dto.CookieConsentEnabled),
+                DeclineBehavior = OptionalUpdate<DeclineBehavior>.Set(dto.DeclineBehavior),
+                ConsentCookieLifetimeDays = OptionalUpdate<int>.Set(dto.ConsentCookieLifetimeDays),
+                GlobalDisableClientTracking = OptionalUpdate<bool>.Set(dto.GlobalDisableClientTracking),
+                PosthogCookielessMode = OptionalUpdate<PosthogCookielessMode>.Set(dto.PosthogCookielessMode),
+                PosthogPersonProfiles = OptionalUpdate<PosthogPersonProfiles>.Set(dto.PosthogPersonProfiles),
+                PosthogSessionReplay = OptionalUpdate<bool>.Set(dto.PosthogSessionReplay),
+                PosthogAutocapture = OptionalUpdate<bool>.Set(dto.PosthogAutocapture),
+                PosthogHeatmaps = OptionalUpdate<bool>.Set(dto.PosthogHeatmaps),
+                PosthogToolbar = OptionalUpdate<bool>.Set(dto.PosthogToolbar)
+            }
         };
     }
 

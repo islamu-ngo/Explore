@@ -82,6 +82,83 @@ public sealed class SkiaEventOpenGraphImageRendererTests
     }
 
     [Test]
+    public async Task NonSeekableOversizedArtwork_UsesSameGradientFallbackWithoutDecoding()
+    {
+        const int maximumEncodedArtworkBytes = 5 * 1024 * 1024;
+        var title = "Non-Seekable Oversized Event";
+        var fallback = await RenderAsync(title);
+        var validPng = CreateSolidPng(40, 40, SKColors.Red);
+        var oversizedEncodedData = new byte[maximumEncodedArtworkBytes + 1];
+        validPng.CopyTo(oversizedEncodedData, 0);
+
+        using (var decodeStream = new NonSeekableReadStream(oversizedEncodedData))
+        {
+            using var decoded = await SkiaEventOpenGraphImageRenderer.TryDecodeArtworkAsync(
+                decodeStream,
+                "image/png",
+                CancellationToken.None);
+
+            decoded.Should().BeNull();
+        }
+
+        using var artwork = new NonSeekableReadStream(oversizedEncodedData);
+        var result = await RenderAsync(title, artwork, "image/png");
+
+        HashArtworkPanel(result.PngBytes).Should().Be(HashArtworkPanel(fallback.PngBytes));
+        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4)).Should().Be(CanvasWidth);
+        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4)).Should().Be(CanvasHeight);
+    }
+
+    [Test]
+    public async Task TryDecodeArtworkAsync_LargeJpeg_UsesCodecScaleWithinArtworkPixelCeiling()
+    {
+        var jpegBytes = CreateStripedJpeg(
+            width: 2000,
+            height: 1500,
+            vertical: true,
+            firstBoundary: 500,
+            secondBoundary: 1500);
+        using var artwork = new MemoryStream(jpegBytes);
+
+        using var decoded = await SkiaEventOpenGraphImageRenderer.TryDecodeArtworkAsync(
+            artwork,
+            "image/jpeg",
+            CancellationToken.None);
+
+        decoded.Should().NotBeNull();
+        decoded!.Width.Should().BeGreaterThanOrEqualTo(ArtworkWidth);
+        decoded.Height.Should().BeGreaterThanOrEqualTo(ArtworkHeight);
+        ((long)decoded.Width * decoded.Height).Should().BeLessThanOrEqualTo(4L * ArtworkWidth * ArtworkHeight);
+
+        using var renderArtwork = new MemoryStream(jpegBytes);
+        var result = await RenderAsync("Large JPEG Event", renderArtwork, "image/jpeg");
+
+        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4)).Should().Be(CanvasWidth);
+        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4)).Should().Be(CanvasHeight);
+    }
+
+    [Test]
+    public async Task TryDecodeArtworkAsync_LargePng_UsesGradientFallbackWhenCodecCannotScale()
+    {
+        var fallback = await RenderAsync(title: "Large PNG Event");
+        using var artwork = new MemoryStream(CreateSolidPng(4000, 3000, SKColors.Red));
+
+        using var decoded = await SkiaEventOpenGraphImageRenderer.TryDecodeArtworkAsync(
+            artwork,
+            "image/png",
+            CancellationToken.None);
+
+        decoded.Should().BeNull();
+
+        using var renderArtwork = new MemoryStream(CreateSolidPng(4000, 3000, SKColors.Red));
+        var result = await RenderAsync("Large PNG Event", renderArtwork, "image/png");
+
+        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4)).Should().Be(CanvasWidth);
+        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4)).Should().Be(CanvasHeight);
+        HashArtworkPanel(result.PngBytes).Should().Be(HashArtworkPanel(fallback.PngBytes));
+    }
+
+    [Test]
     public async Task PortraitArtworkUsesCenteredCoverCrop()
     {
         using var artwork = new MemoryStream(CreateStripedPng(
@@ -260,6 +337,23 @@ public sealed class SkiaEventOpenGraphImageRendererTests
         bool vertical,
         int firstBoundary,
         int secondBoundary)
+        => CreateStripedImage(width, height, vertical, firstBoundary, secondBoundary, SKEncodedImageFormat.Png);
+
+    private static byte[] CreateStripedJpeg(
+        int width,
+        int height,
+        bool vertical,
+        int firstBoundary,
+        int secondBoundary)
+        => CreateStripedImage(width, height, vertical, firstBoundary, secondBoundary, SKEncodedImageFormat.Jpeg);
+
+    private static byte[] CreateStripedImage(
+        int width,
+        int height,
+        bool vertical,
+        int firstBoundary,
+        int secondBoundary,
+        SKEncodedImageFormat format)
     {
         using var bitmap = new SKBitmap(width, height);
         for (var y = 0; y < height; y++)
@@ -278,13 +372,65 @@ public sealed class SkiaEventOpenGraphImageRendererTests
             }
         }
 
-        return EncodePng(bitmap);
+        return EncodeImage(bitmap, format);
     }
 
     private static byte[] EncodePng(SKBitmap bitmap)
+        => EncodeImage(bitmap, SKEncodedImageFormat.Png);
+
+    private static byte[] EncodeImage(SKBitmap bitmap, SKEncodedImageFormat format)
     {
         using var image = SKImage.FromBitmap(bitmap);
-        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var data = image.Encode(format, 100);
         return data.ToArray();
+    }
+
+    private sealed class NonSeekableReadStream : Stream
+    {
+        private readonly MemoryStream _inner;
+
+        public NonSeekableReadStream(byte[] bytes)
+            => _inner = new MemoryStream(bytes, writable: false);
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+            => _inner.Read(buffer, offset, count);
+
+        public override ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
+            => _inner.ReadAsync(buffer, cancellationToken);
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+            => throw new NotSupportedException();
+
+        public override void SetLength(long value)
+            => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count)
+            => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _inner.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
     }
 }

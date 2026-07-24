@@ -10,12 +10,15 @@ using MediatR;
 namespace Explore.Application.Features.Footer.Handlers.Commands;
 
 public sealed class CreateFooterLinkGroupCommandHandler(
-    IFooterLinkGroupRepository footerLinkGroupRepository)
+    IFooterLinkGroupRepository footerLinkGroupRepository,
+    FooterLinkMutationGuard mutationGuard)
     : IRequestHandler<CreateFooterLinkGroupCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
         CreateFooterLinkGroupCommand request, CancellationToken cancellationToken)
     {
+        await mutationGuard.EnsureAllowedAsync(request.TenantId, cancellationToken);
+
         var maxOrder = await footerLinkGroupRepository.GetMaxOrderAsync(request.TenantId, cancellationToken);
 
         var group = new TenantFooterLinkGroup

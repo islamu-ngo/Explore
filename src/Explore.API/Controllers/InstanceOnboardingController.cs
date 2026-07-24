@@ -37,16 +37,6 @@ public class InstanceOnboardingController : ExploreControllerBase
         "Instance onboarding validation failed",
         "Instance onboarding completion failed.");
 
-    private static readonly ApiValidationProblemDescriptor AuthProviderValidationProblem = new(
-        "instanceAuthProviderConfiguration",
-        "Instance auth-provider configuration validation failed",
-        "Instance auth-provider configuration update failed.");
-
-    private static readonly ApiValidationProblemDescriptor AuthorizationProviderValidationProblem = new(
-        "instanceAuthorizationProviderConfiguration",
-        "Instance authorization-provider configuration validation failed",
-        "Instance authorization-provider configuration update failed.");
-
     private static readonly ApiValidationProblemDescriptor AuthorizationPolicySyncValidationProblem = new(
         "instanceAuthorizationPolicyPackage",
         "Instance authorization policy package validation failed",
@@ -230,35 +220,6 @@ public class InstanceOnboardingController : ExploreControllerBase
         return Ok(configuration);
     }
 
-    [AllowAnonymous]
-    [SetupSecretRequired]
-    [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
-    [EndpointClassification(EndpointClass.Admin)]
-    [HttpPut("auth-provider-configuration", Name = RouteNames.SaveInstanceOnboardingAuthProviderConfiguration)]
-    [EndpointSummary("Save Auth Provider Configuration (Setup)")]
-    [EndpointDescription("Saves auth provider configuration during instance setup. Protected by setup secret. At least one provider must be enabled.")]
-    [Consumes("application/json")]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveAuthProviderConfiguration([FromBody] AuthProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
-    {
-        var command = new SaveAuthProviderConfigurationCommand
-        {
-            Configuration = configuration
-        };
-
-        var response = await _mediator.Send(command, cancellationToken);
-        if (!response.Success)
-        {
-            return this.ToCommandValidationProblem(response, AuthProviderValidationProblem);
-        }
-
-        return Ok(response);
-    }
-
     /// <summary>
     /// Bootstraps an external Keycloak realm and persists runtime auth-provider configuration during setup.
     /// </summary>
@@ -307,33 +268,6 @@ public class InstanceOnboardingController : ExploreControllerBase
     {
         var configuration = await _mediator.Send(new GetAuthorizationProviderConfigurationQuery(), cancellationToken);
         return Ok(configuration);
-    }
-
-    [AllowAnonymous]
-    [SetupSecretRequired]
-    [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
-    [EndpointClassification(EndpointClass.Admin)]
-    [HttpPut("authz-provider-configuration", Name = RouteNames.SaveInstanceOnboardingAuthorizationProviderConfiguration)]
-    [EndpointSummary("Save Authorization Provider Configuration (Setup)")]
-    [EndpointDescription("Saves authorization provider configuration during instance setup. Protected by setup secret.")]
-    [Consumes("application/json")]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveAuthorizationProviderConfiguration([FromBody] AuthorizationProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
-    {
-        var response = await _mediator.Send(
-            new SaveAuthorizationProviderConfigurationCommand { Configuration = configuration },
-            cancellationToken);
-
-        if (!response.Success)
-        {
-            return this.ToCommandValidationProblem(response, AuthorizationProviderValidationProblem);
-        }
-
-        return Ok(response);
     }
 
     [AllowAnonymous]

@@ -40,7 +40,7 @@ public sealed class ControlPlaneDomainHateoasTests
 
         var edit = links.Single(link => link.Rel == LinkRelations.Edit);
         await Assert.That(edit.RouteName).IsEqualTo(RouteNames.UpdateInstanceDomainSettings);
-        await Assert.That(edit.Method).IsEqualTo("PUT");
+        await Assert.That(edit.Method).IsEqualTo("PATCH");
         await Assert.That(edit.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.Update);
     }
 }

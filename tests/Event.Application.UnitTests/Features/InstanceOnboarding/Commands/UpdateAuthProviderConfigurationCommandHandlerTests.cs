@@ -5,6 +5,8 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.Instance;
+using Explore.Application.Models.Common;
 using Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Domain;
@@ -136,7 +138,8 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
         var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _configurationService.Received(1).ApplyConfigurationAsync(configuration);
+        await _configurationService.Received(1).ApplyConfigurationAsync(Arg.Is<AuthProviderConfigurationDto>(x =>
+            x.GoogleSsoEnabled && x.GoogleClientId == configuration.GoogleClientId));
     }
 
     [Test]
@@ -158,7 +161,8 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
         var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _configurationService.Received(1).ApplyConfigurationAsync(configuration);
+        await _configurationService.Received(1).ApplyConfigurationAsync(Arg.Is<AuthProviderConfigurationDto>(x =>
+            x.KeycloakEnabled && x.KeycloakClientSecret == string.Empty));
     }
 
     [Test]
@@ -201,7 +205,24 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
         return new UpdateAuthProviderConfigurationCommand
         {
             UserId = TestUserId,
-            Configuration = configuration
+            Patch = new PatchAuthProviderConfigurationDto
+            {
+                Configuration = OptionalUpdate<AuthProviderConfigurationWriteDto>.Set(new AuthProviderConfigurationWriteDto
+                {
+                    KeycloakEnabled = configuration.KeycloakEnabled,
+                    KeycloakAuthority = configuration.KeycloakAuthority,
+                    KeycloakClientId = configuration.KeycloakClientId,
+                    KeycloakClientSecret = configuration.KeycloakClientSecret,
+                    AtprotoLoginEnabled = configuration.AtprotoLoginEnabled,
+                    AtprotoPublicUrl = configuration.AtprotoPublicUrl,
+                    GoogleSsoEnabled = configuration.GoogleSsoEnabled,
+                    GoogleClientId = configuration.GoogleClientId,
+                    GoogleClientSecret = configuration.GoogleClientSecret,
+                    LockKeycloakEnabled = configuration.LockKeycloakEnabled,
+                    LockAtprotoLoginEnabled = configuration.LockAtprotoLoginEnabled,
+                    LockGoogleSsoEnabled = configuration.LockGoogleSsoEnabled
+                })
+            }
         };
     }
 

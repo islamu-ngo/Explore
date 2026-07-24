@@ -17,6 +17,7 @@ using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Features.ControlPlane.Plans;
 using Explore.Application.Features.EventReporting;
+using Explore.Application.Features.Footer.Handlers.Commands;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Features.ManagedProviderProvisioning;
 using Explore.Application.Features.ManagedProviderProvisioning.Handlers.Commands;
@@ -125,6 +126,7 @@ public static class ApplicationServicesRegistration
         services.AddScoped<ITenantStorageSettingService, TenantStorageSettingService>();
         services.AddScoped<ITenantBrandingSettingsDocumentProvisioningService, TenantBrandingSettingsDocumentProvisioningService>();
         services.AddScoped<ITenantBrandingSettingsDocumentLockService, TenantBrandingSettingsDocumentLockService>();
+        services.AddScoped<FooterLinkMutationGuard>();
         services.AddScoped<IInstanceGovernanceSettingService, InstanceGovernanceSettingService>();
         services.AddScoped<IInstanceStorageSettingService, InstanceStorageSettingService>();
         services.AddScoped<IInstanceSmtpSettingService, InstanceSmtpSettingService>();

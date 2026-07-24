@@ -30,6 +30,7 @@ using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventTemplate;
+using Explore.Application.DTOs.Footer;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.IndexedDid;
@@ -207,6 +208,10 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<TenantBrandingSettingsDocumentDto>, TenantBrandingSettingsDocumentLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<TenantBrandingSettingsDocumentDto>, TenantBrandingSettingsDocumentCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<TenantBrandingSettingsDocumentDto, TenantBrandingSettingsDocumentDto>, TenantBrandingSettingsDocumentResourceAssembler>();
+
+        services.AddScoped<ILinkPolicy<TenantFooterSettingsDto>, TenantFooterSettingsLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<TenantFooterSettingsDto>, TenantFooterSettingsCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<TenantFooterSettingsDto, TenantFooterSettingsDto>, TenantFooterSettingsResourceAssembler>();
 
         // OrganizationMember (relationship with payload, same DTO for detail and list)
         services.AddScoped<ILinkPolicy<OrganizationMemberDto>, OrganizationMemberDetailLinkPolicy>();

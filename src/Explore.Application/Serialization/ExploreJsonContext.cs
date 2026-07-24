@@ -405,7 +405,7 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(TenantStorageUsageDto))]
 [JsonSerializable(typeof(TenantBrandingSettingsDocumentDto))]
 [JsonSerializable(typeof(TenantBrandingSettingsPayloadDto))]
-[JsonSerializable(typeof(ReplaceTenantBrandingSettingsDocumentDto))]
+[JsonSerializable(typeof(PatchTenantBrandingSettingsDocumentDto))]
 [JsonSerializable(typeof(Explore.Application.DTOs.TenantPolicy.UpdateTenantPolicyRequest))]
 [JsonSerializable(typeof(BaseCommandResponse<Guid>))]
 [JsonSerializable(typeof(TenantUserRoleGrantDto))]

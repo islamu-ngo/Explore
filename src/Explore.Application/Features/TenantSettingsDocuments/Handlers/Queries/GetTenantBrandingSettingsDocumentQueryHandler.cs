@@ -40,16 +40,16 @@ public sealed class GetTenantBrandingSettingsDocumentQueryHandler(
 
         if (resolved is not null)
         {
-            return MapResolved(resolved, lockState.IsLockedByInstance);
+            return MapResolved(resolved, lockState);
         }
 
         var provisioned = await provisioningService.EnsureTenantBrandingDocumentAsync(tenantId, cancellationToken: cancellationToken);
-        return MapProvisioned(provisioned, lockState.IsLockedByInstance);
+        return MapProvisioned(provisioned, lockState);
     }
 
     private static TenantBrandingSettingsDocumentDto MapResolved(
         ResolvedSettingsDocument<BrandingSettings> resolved,
-        bool isLockedByInstance)
+        TenantBrandingSettingsDocumentLockState lockState)
         => new()
         {
             DocumentKey = resolved.DocumentKey,
@@ -59,13 +59,17 @@ public sealed class GetTenantBrandingSettingsDocumentQueryHandler(
             Source = resolved.Source.ToString(),
             SourceScopeId = resolved.SourceScopeId,
             ConcurrencyStamp = resolved.ConcurrencyStamp,
-            IsLockedByInstance = isLockedByInstance,
+            IsLockedByInstance = lockState.IsLockedByInstance,
+            CanChangeDisplayName = lockState.CanChangeDisplayName,
+            CanChangeLogoUrl = lockState.CanChangeLogoUrl,
+            CanChangeFaviconUrl = lockState.CanChangeFaviconUrl,
+            CanChangeCustomCssUrl = lockState.CanChangeCustomCssUrl,
             UpdatedAt = resolved.UpdatedAt
         };
 
     private static TenantBrandingSettingsDocumentDto MapProvisioned(
         TenantSettingsDocument document,
-        bool isLockedByInstance)
+        TenantBrandingSettingsDocumentLockState lockState)
         => new()
         {
             DocumentKey = document.DocumentKey,
@@ -75,7 +79,11 @@ public sealed class GetTenantBrandingSettingsDocumentQueryHandler(
             Source = SettingsDocumentSource.Tenant.ToString(),
             SourceScopeId = document.TenantId,
             ConcurrencyStamp = document.ConcurrencyStamp,
-            IsLockedByInstance = isLockedByInstance,
+            IsLockedByInstance = lockState.IsLockedByInstance,
+            CanChangeDisplayName = lockState.CanChangeDisplayName,
+            CanChangeLogoUrl = lockState.CanChangeLogoUrl,
+            CanChangeFaviconUrl = lockState.CanChangeFaviconUrl,
+            CanChangeCustomCssUrl = lockState.CanChangeCustomCssUrl,
             UpdatedAt = document.UpdatedAt
         };
 

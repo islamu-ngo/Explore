@@ -97,6 +97,7 @@ public sealed class StorageAdminHateoasTests
 
         var edit = links.Single(link => link.Rel == LinkRelations.Edit);
         await Assert.That(edit.RouteName).IsEqualTo(RouteNames.UpdateInstanceStorageSettings);
+        await Assert.That(edit.Method).IsEqualTo("PATCH");
         await Assert.That(edit.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
         await Assert.That(edit.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.Update);
 

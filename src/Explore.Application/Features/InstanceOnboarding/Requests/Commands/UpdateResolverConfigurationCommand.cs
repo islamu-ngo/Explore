@@ -1,7 +1,7 @@
 // ABOUTME: Command contract for updating instance-level tenant resolver configuration.
 // ABOUTME: Keeps resolver toggles and path-prefix settings isolated from general governance updates.
 
-using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.Instance;
 using Explore.Application.Responses;
 using MediatR;
 
@@ -11,5 +11,5 @@ public class UpdateResolverConfigurationCommand : IRequest<BaseCommandResponse<G
 {
     public Guid UserId { get; set; }
 
-    public required ResolverConfigurationDto Configuration { get; set; } = new();
+    public required PatchResolverConfigurationDto Patch { get; set; } = new();
 }

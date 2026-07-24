@@ -5,11 +5,14 @@ using System.Reflection;
 using Explore.API.Attributes;
 using Explore.API.Controllers;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.PublicExperience;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Models.PublicExperience;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.OutputCaching;
@@ -20,6 +23,10 @@ namespace Explore.Api.IntegrationTests.Features;
 public sealed class PublicExperienceHomeDiscoveryControllerTests
 {
     private readonly IMediator _mediator = Substitute.For<IMediator>();
+    private readonly ILinkPolicy<EventDiscoveryItemDto> _linkPolicy =
+        Substitute.For<ILinkPolicy<EventDiscoveryItemDto>>();
+    private readonly IHateoasLinkGenerator _linkGenerator =
+        Substitute.For<IHateoasLinkGenerator>();
 
     [Test]
     public async Task HomeDiscoveryRouteHasStableAnonymousCachedMetadata()
@@ -50,7 +57,7 @@ public sealed class PublicExperienceHomeDiscoveryControllerTests
         };
         _mediator.Send(Arg.Any<GetHomeDiscoveryQuery>(), Arg.Any<CancellationToken>())
             .Returns(expected);
-        var controller = new PublicExperienceController(_mediator);
+        var controller = CreateController();
 
         var action = await controller.GetHomeDiscovery(areaId, "online", CancellationToken.None);
 
@@ -62,4 +69,51 @@ public sealed class PublicExperienceHomeDiscoveryControllerTests
                 query != null && query.AreaId == areaId && query.Mode == "online"),
             Arg.Any<CancellationToken>());
     }
+
+    [Test]
+    public async Task HomeDiscoveryAddsSourceRelationToNestedFederatedItems()
+    {
+        var item = new EventDiscoveryItemDto
+        {
+            Source = "atproto",
+            Federation = new EventFederationMetadataDto
+            {
+                AtprotoRecordId = Guid.NewGuid(),
+                HasSourceLink = true
+            }
+        };
+        var expected = new HomeDiscoveryDto { UpcomingInArea = [item] };
+        _mediator.Send(Arg.Any<GetHomeDiscoveryQuery>(), Arg.Any<CancellationToken>())
+            .Returns(expected);
+        var definition = new LinkDefinition(
+            "source",
+            RouteNames.GetAtprotoEventSource,
+            new { atprotoRecordId = item.Federation.AtprotoRecordId },
+            "GET");
+        _linkPolicy.GetLinks(item, Arg.Any<System.Security.Claims.ClaimsPrincipal?>())
+            .Returns([definition]);
+        _linkGenerator.GenerateLink(definition, Arg.Any<HttpContext>())
+            .Returns(new HalLink
+            {
+                Href = $"/api/event-discovery/{item.Federation.AtprotoRecordId}/source",
+                Method = "GET"
+            });
+        var controller = CreateController();
+
+        await controller.GetHomeDiscovery(cancellationToken: CancellationToken.None);
+
+        var links = item.AdditionalProperties["_links"] as Dictionary<string, HalLink>;
+        await Assert.That(links).IsNotNull();
+        await Assert.That(links!["source"].Href)
+            .IsEqualTo($"/api/event-discovery/{item.Federation.AtprotoRecordId}/source");
+    }
+
+    private PublicExperienceController CreateController() =>
+        new(_mediator, _linkPolicy, _linkGenerator)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            }
+        };
 }

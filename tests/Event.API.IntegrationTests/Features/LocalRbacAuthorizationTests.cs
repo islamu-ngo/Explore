@@ -230,7 +230,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
     public async Task LocalRbac_InstanceAdmin_CanUpdateSettings()
     {
         var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Put, "/api/instance/settings/modules", token, ModuleSettingsJson);
+        using var request = CreateAuthorizedRequest(HttpMethod.Patch, "/api/instance/settings/modules", token, ModuleSettingsJson);
 
         var response = await _instanceAdminClient.SendAsync(request);
 
@@ -244,7 +244,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
     public async Task LocalRbac_RegularUser_DeniedSettingUpdate()
     {
         var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Put, "/api/instance/settings/modules", token, ModuleSettingsJson);
+        using var request = CreateAuthorizedRequest(HttpMethod.Patch, "/api/instance/settings/modules", token, ModuleSettingsJson);
 
         var response = await _regularUserClient.SendAsync(request);
 
@@ -308,7 +308,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
     #region Helpers
 
-    private const string ModuleSettingsJson = "{\"enableIslamicModule\":true,\"enableTechModule\":true}";
+    private const string ModuleSettingsJson = "{\"enableIslamicModule\":{\"hasValue\":true,\"value\":true},\"enableTechModule\":{\"hasValue\":true,\"value\":true}}";
 
     private static string CreateTenantJson()
     {

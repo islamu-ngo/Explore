@@ -6,7 +6,10 @@ using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Seeds;
+using Explore.API.ExceptionHandling;
+using Explore.API.Extensions;
 using Explore.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -138,6 +141,95 @@ public class StressRateLimitingTests(StressApiFixture fixture)
             var response = await _fixture.Client.GetAsync("/api/event");
             // GET should not hit write rate limit
             await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.TooManyRequests);
+        }
+    }
+
+    [Test]
+    public async Task OpenGraphImagePolicy_WithRetryAfter_IsClassifiedAsGlobal()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Get;
+        context.Request.Path = "/api/event/public/example/og-image";
+
+        var policyName = RateLimitingExtensions.InferPolicyName(context, hasRetryAfter: true);
+
+        await Assert.That(policyName).IsEqualTo(RateLimitingExtensions.GlobalPolicy);
+    }
+
+    [Test]
+    public async Task OpenGraphImagePolicy_WithoutRetryAfter_IsClassifiedAsOpenGraphConcurrency()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Get;
+        context.Request.Path = "/api/event/public/example/og-image";
+
+        var policyName = RateLimitingExtensions.InferPolicyName(context, hasRetryAfter: false);
+
+        await Assert.That(policyName).IsEqualTo(RateLimitingExtensions.EventOpenGraphImagePolicy);
+    }
+
+    [Test]
+    public async Task OpenGraphImage_WhenDifferentSlugIsAlreadyRendering_Returns429_ThenFirstRequestCompletes()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var tenant = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(db);
+        var events = await EventScenarioSeed.SeedMultiplePublishedEventsAsync(
+            db,
+            tenant.ActorId,
+            tenant.TenantId,
+            count: 2);
+
+        var firstUrl = $"/api/event/public/event-{events[0].PublicCode}/og-image";
+        var secondUrl = $"/api/event/public/event-{events[1].PublicCode}/og-image";
+        var timeout = TimeSpan.FromSeconds(10);
+        using var firstRequestCancellation = new CancellationTokenSource(timeout);
+        using var secondRequestCancellation = new CancellationTokenSource(timeout);
+        var firstRequest = _fixture.Client.GetAsync(firstUrl, firstRequestCancellation.Token);
+        using var secondClient = _fixture.Factory.CreateClient();
+
+        HttpResponseMessage? firstResponse = null;
+        try
+        {
+            HttpResponseMessage secondResponse;
+            try
+            {
+                await _fixture.WaitForFirstOpenGraphRenderAsync().WaitAsync(timeout);
+                secondResponse = await secondClient.GetAsync(secondUrl, secondRequestCancellation.Token);
+            }
+            finally
+            {
+                _fixture.ReleaseFirstOpenGraphRender();
+            }
+
+            using (secondResponse)
+            {
+                firstResponse = await firstRequest;
+                await Assert.That(firstResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+                await Assert.That(secondResponse.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+                await Assert.That(secondResponse.Headers.GetValues("X-RateLimit-Limit").Single()).IsEqualTo("1");
+                await Assert.That(secondResponse.Headers.GetValues("X-RateLimit-Remaining").Single()).IsEqualTo("0");
+                await Assert.That(secondResponse.Headers.Contains("Retry-After")).IsFalse();
+
+                using var problem = JsonDocument.Parse(await secondResponse.Content.ReadAsStringAsync());
+                await Assert.That(problem.RootElement.GetProperty("code").GetString())
+                    .IsEqualTo(ApiProblemCodes.RateLimited);
+                var detail = problem.RootElement.GetProperty("detail").GetString();
+                await Assert.That(detail).IsEqualTo("Rate limit exceeded. Please try again later.");
+                await Assert.That(detail!.Contains("Retry-After", StringComparison.OrdinalIgnoreCase)).IsFalse();
+            }
+        }
+        finally
+        {
+            firstRequestCancellation.Cancel();
+            if (firstResponse is null)
+            {
+                firstResponse = await firstRequest;
+            }
+
+            firstResponse?.Dispose();
         }
     }
 
