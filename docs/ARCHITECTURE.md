@@ -114,6 +114,8 @@ Implemented today:
 - AT Protocol confidential-client OAuth for already-linked platform accounts, with a server-private trust bridge and encrypted DID-keyed sessions.
 - Database-first event/RSVP publication through immutable `PdsSyncOutbox` intent, fenced leases, stable record keys, retry/reconciliation, and URI/CID settlement.
 - One globally leased, exact-collection Jetstream consumer with optional DID curation for canonical community event/RSVP records, tombstones, quarantine evidence, and durable cursor state.
+- Internal CQRS import of each visible community event into one tenant-local `Event` and one `EventSession`. The fenced persistence transaction also owns canonical state, tenant presentation, cursor/snapshot settlement, and optional `StorageObject` linkage for a CID-verified thumbnail.
+- Lossless accepted-record preservation in `AtprotoRecord.RecordJson`; only semantically compatible lexicon values are promoted into local aggregate fields, while producer-specific and future extensions remain canonical JSON.
 - Tenant-governed typed event discovery, safe source HAL, administrator controls, user consent, and delivery-status client surfaces.
 
 Not fully implemented today:
@@ -124,9 +126,9 @@ Not fully implemented today:
 
 1. `Explore.Blazor` owns CarpaNet confidential-client OAuth, protected single-use state, canonical callback/handoff, and the server cookie. PDS credentials and private key material never enter the browser.
 2. `Explore.API` owns the server-private bootstrap/session trust boundary, first-party JWT validation, ATProto HTTP/HAL contracts, and hosted-worker registration.
-3. `Explore.Application` owns effective capability and self-consent resolution, exhaustive public event/RSVP snapshots, deterministic untruncated description rendering, durable publication planning, and the fenced delivery processor. Request handlers create database intent only and perform no PDS I/O.
-4. `Explore.Persistence` owns encrypted-session metadata persistence, immutable `PdsSyncOutbox` intent, fenced lease/settlement state, and globally canonical Jetstream record, quarantine, presentation, and cursor state.
-5. `Explore.Infrastructure` owns the hardened CarpaNet OAuth/PDS adapters, encrypted session envelope protection, record mapping/validation, and the fixed-endpoint two-collection Jetstream client.
+3. `Explore.Application` owns effective capability and self-consent resolution, exhaustive public event/RSVP snapshots, deterministic untruncated description rendering, durable publication planning, and the fenced delivery processor. For inbound events it also owns `ImportAtprotoFederatedEventCommand`, manual FluentValidation, semantic import-plan mapping, and optional thumbnail staging orchestration.
+4. `Explore.Persistence` owns encrypted-session metadata persistence, immutable `PdsSyncOutbox` intent, fenced lease/settlement state, globally canonical Jetstream record/quarantine/presentation/cursor state, and atomic synchronization of tenant-local `Event`, implicit `EventSession`, and optional `StorageObject` rows.
+5. `Explore.Infrastructure` owns the hardened CarpaNet OAuth/PDS adapters, encrypted session envelope protection, generated-record mapping/validation, the fixed-endpoint two-collection Jetstream client, and CID/MIME/size-verified `com.atproto.sync.getBlob` acquisition through registered storage.
 6. The API-hosted `PdsSyncWorker` drains committed outbound intent; the API-hosted Infrastructure `AtprotoJetstreamSubscriber` holds one global fenced lease for canonical inbound materialization.
 7. `Explore.Blazor.Client` consumes generated safe DTOs. HAL link presence gates Edit/Delete, federated source/RSVP/retry/sync, and instance-governance actions. Generic tenant-setting controls instead use server-derived `EffectiveSettingDto.CanEdit` and `Reason` metadata for writability and explanation. Neither mechanism inspects local roles or claims, and resource actions are never inferred from source type.
 
