@@ -69,12 +69,12 @@ public sealed class DockHostTests : IDisposable
         _ctx.Services.AddSingleton(scrollManager);
         ConfigureViewport(Breakpoint.Xs);
         _dockLayoutState.Register(CreateDescriptor(dockedPanelId, DockScope.Workspace, DockSide.End, DockMode.Docked, order: 10), CreateContent("Mobile docked panel"));
-        _dockLayoutState.Open(dockedPanelId);
         var focusService = _ctx.Services.GetRequiredService<IAccessibilityFocusService>();
 
         var cut = _ctx.Render<DockLayoutHost>(parameters => parameters
             .Add(component => component.Scope, DockScope.Workspace)
             .AddChildContent("Workspace body"));
+        _dockLayoutState.Open(dockedPanelId);
 
         cut.WaitForAssertion(() =>
         {
@@ -119,11 +119,11 @@ public sealed class DockHostTests : IDisposable
         _ctx.Services.AddSingleton(scrollManager);
         ConfigureViewport(Breakpoint.Sm, width: 760);
         _dockLayoutState.Register(CreateDescriptor(dockedPanelId, DockScope.Shell, DockSide.Start, DockMode.Docked, order: 10), CreateContent("Shell nav"));
-        _dockLayoutState.Open(dockedPanelId);
 
         var cut = _ctx.Render<DockLayoutHost>(parameters => parameters
             .Add(component => component.Scope, DockScope.Shell)
             .AddChildContent("Shell body"));
+        _dockLayoutState.Open(dockedPanelId);
 
         cut.WaitForAssertion(() =>
         {

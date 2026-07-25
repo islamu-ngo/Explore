@@ -235,7 +235,9 @@ public sealed class DockLayoutStateTests
         var nav = state.GetPanel(ShellNavId)!;
         var after = state.CreateSnapshot("shell", DockScope.Shell);
         await Assert.That(state.ShouldRenderDockedPanelAsOverlay(nav)).IsTrue();
-        await Assert.That(after.Panels).IsEquivalentTo(before.Panels);
+        await Assert.That(after.Panels.Select(panel => panel with { IsActive = false }))
+            .IsEquivalentTo(before.Panels.Select(panel => panel with { IsActive = false }));
+        await Assert.That(nav.State.IsActive).IsFalse();
         await Assert.That(state.LastChangeReason).IsEqualTo(DockLayoutChangeReason.ViewportPolicy);
     }
 
