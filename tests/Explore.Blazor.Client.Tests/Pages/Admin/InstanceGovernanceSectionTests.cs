@@ -515,15 +515,15 @@ public class InstanceGovernanceSectionTests : IDisposable
                  ["Delegation"] = delegation ?? new TenantDelegationSettingsDto(),
                  ["EventPolicy"] = eventPolicy ?? new EventPolicyDto(),
                  ["OrganizationPolicy"] = orgPolicy ?? new OrganizationPolicyDto(),
-                  ["RenderPolicy"] = renderPolicy ?? new RenderPolicySettingsDto(),
-                  ["DeploymentMode"] = deploymentMode,
-                  ["DisplayMode"] = displayMode,
-                  ["SaveDelegationAsync"] = SuccessfulSave<TenantDelegationSettingsDto>(),
-                  ["SaveEventPolicyAsync"] = saveEventPolicyAsync ?? SuccessfulSave<EventPolicyDto>(),
-                  ["SaveOrganizationPolicyAsync"] = SuccessfulSave<OrganizationPolicyDto>(),
-                  ["SaveRenderPolicyAsync"] = saveRenderPolicyAsync ?? SuccessfulSave<RenderPolicySettingsDto>(),
-                  ["SaveMcpAsync"] = SuccessfulSave<McpGovernanceSettingsDto>()
-              }));
+                 ["RenderPolicy"] = renderPolicy ?? new RenderPolicySettingsDto(),
+                 ["DeploymentMode"] = deploymentMode,
+                 ["DisplayMode"] = displayMode,
+                 ["SaveDelegationAsync"] = SuccessfulSave<TenantDelegationSettingsDto>(),
+                 ["SaveEventPolicyAsync"] = saveEventPolicyAsync ?? SuccessfulSave<EventPolicyDto>(),
+                 ["SaveOrganizationPolicyAsync"] = SuccessfulSave<OrganizationPolicyDto>(),
+                 ["SaveRenderPolicyAsync"] = saveRenderPolicyAsync ?? SuccessfulSave<RenderPolicySettingsDto>(),
+                 ["SaveMcpAsync"] = SuccessfulSave<McpGovernanceSettingsDto>()
+             }));
     }
 
     private static Func<T, Task<BaseCommandResponseOfGuid>> SuccessfulSave<T>() =>

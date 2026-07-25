@@ -71,7 +71,7 @@ public sealed class UpdateAnalyticsGovernanceSettingsCommandHandler(
         var warnings = CollectWarnings(s, group, provider, capabilities);
 
         // Persist all settings
-        await PersistSettingsAsync(s, userId, cancellationToken);
+        await PersistSettingsAsync(s, request.Patch, userId, cancellationToken);
 
         return new BaseCommandResponse<Guid>
         {
@@ -136,58 +136,89 @@ public sealed class UpdateAnalyticsGovernanceSettingsCommandHandler(
 
     private async Task PersistSettingsAsync(
         DTOs.Analytics.AnalyticsGovernanceSettingsDto s,
+        DTOs.Instance.PatchAnalyticsGovernanceSettingsDto patch,
         Guid userId,
         CancellationToken cancellationToken)
     {
-        await settingsResolver.SetValueAsync(
-            GovernanceSettingKeys.Analytics.CookieConsentEnabled,
-            s.CookieConsentEnabled.ToString().ToLowerInvariant(),
-            SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        if (patch.CookieConsentEnabled.HasValue)
+        {
+            await settingsResolver.SetValueAsync(
+                GovernanceSettingKeys.Analytics.CookieConsentEnabled,
+                s.CookieConsentEnabled.ToString().ToLowerInvariant(),
+                SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        }
 
-        await settingsResolver.SetValueAsync(
-            GovernanceSettingKeys.Analytics.DeclineBehavior,
-            s.DeclineBehavior.ToString().ToLowerInvariant(),
-            SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        if (patch.DeclineBehavior.HasValue)
+        {
+            await settingsResolver.SetValueAsync(
+                GovernanceSettingKeys.Analytics.DeclineBehavior,
+                s.DeclineBehavior.ToString().ToLowerInvariant(),
+                SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        }
 
-        await settingsResolver.SetValueAsync(
-            GovernanceSettingKeys.Analytics.ConsentCookieLifetimeDays,
-            s.ConsentCookieLifetimeDays.ToString(),
-            SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        if (patch.ConsentCookieLifetimeDays.HasValue)
+        {
+            await settingsResolver.SetValueAsync(
+                GovernanceSettingKeys.Analytics.ConsentCookieLifetimeDays,
+                s.ConsentCookieLifetimeDays.ToString(),
+                SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        }
 
-        await settingsResolver.SetValueAsync(
-            GovernanceSettingKeys.Analytics.GlobalDisableClientTracking,
-            s.GlobalDisableClientTracking.ToString().ToLowerInvariant(),
-            SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        if (patch.GlobalDisableClientTracking.HasValue)
+        {
+            await settingsResolver.SetValueAsync(
+                GovernanceSettingKeys.Analytics.GlobalDisableClientTracking,
+                s.GlobalDisableClientTracking.ToString().ToLowerInvariant(),
+                SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        }
 
-        await settingsResolver.SetValueAsync(
-            GovernanceSettingKeys.Analytics.PosthogCookielessMode,
-            ToSnakeCase(s.PosthogCookielessMode.ToString()),
-            SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        if (patch.PosthogCookielessMode.HasValue)
+        {
+            await settingsResolver.SetValueAsync(
+                GovernanceSettingKeys.Analytics.PosthogCookielessMode,
+                ToSnakeCase(s.PosthogCookielessMode.ToString()),
+                SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        }
 
-        await settingsResolver.SetValueAsync(
-            GovernanceSettingKeys.Analytics.PosthogPersonProfiles,
-            ToSnakeCase(s.PosthogPersonProfiles.ToString()),
-            SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        if (patch.PosthogPersonProfiles.HasValue)
+        {
+            await settingsResolver.SetValueAsync(
+                GovernanceSettingKeys.Analytics.PosthogPersonProfiles,
+                ToSnakeCase(s.PosthogPersonProfiles.ToString()),
+                SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        }
 
-        await settingsResolver.SetValueAsync(
-            GovernanceSettingKeys.Analytics.PosthogSessionReplay,
-            s.PosthogSessionReplay.ToString().ToLowerInvariant(),
-            SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        if (patch.PosthogSessionReplay.HasValue)
+        {
+            await settingsResolver.SetValueAsync(
+                GovernanceSettingKeys.Analytics.PosthogSessionReplay,
+                s.PosthogSessionReplay.ToString().ToLowerInvariant(),
+                SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        }
 
-        await settingsResolver.SetValueAsync(
-            GovernanceSettingKeys.Analytics.PosthogAutocapture,
-            s.PosthogAutocapture.ToString().ToLowerInvariant(),
-            SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        if (patch.PosthogAutocapture.HasValue)
+        {
+            await settingsResolver.SetValueAsync(
+                GovernanceSettingKeys.Analytics.PosthogAutocapture,
+                s.PosthogAutocapture.ToString().ToLowerInvariant(),
+                SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        }
 
-        await settingsResolver.SetValueAsync(
-            GovernanceSettingKeys.Analytics.PosthogHeatmaps,
-            s.PosthogHeatmaps.ToString().ToLowerInvariant(),
-            SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        if (patch.PosthogHeatmaps.HasValue)
+        {
+            await settingsResolver.SetValueAsync(
+                GovernanceSettingKeys.Analytics.PosthogHeatmaps,
+                s.PosthogHeatmaps.ToString().ToLowerInvariant(),
+                SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        }
 
-        await settingsResolver.SetValueAsync(
-            GovernanceSettingKeys.Analytics.PosthogToolbar,
-            s.PosthogToolbar.ToString().ToLowerInvariant(),
-            SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        if (patch.PosthogToolbar.HasValue)
+        {
+            await settingsResolver.SetValueAsync(
+                GovernanceSettingKeys.Analytics.PosthogToolbar,
+                s.PosthogToolbar.ToString().ToLowerInvariant(),
+                SettingScope.Instance, Guid.Empty, userId, cancellationToken);
+        }
     }
 
     private static string ToSnakeCase(string value)

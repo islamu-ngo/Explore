@@ -202,13 +202,13 @@ public class InstanceSectionLockToggleTests : IDisposable
                       .Add(component => component.Parameters, new Dictionary<string, object>
                       {
                           ["AiAssistant"] = new AiAssistantGovernanceSettingsDto(),
-                           ["SaveAiAssistantAsync"] = new Func<AiAssistantGovernanceSettingsDto, Task<BaseCommandResponseOfGuid>>(patch =>
-                           {
-                               captured = patch;
-                               return Task.FromResult(new BaseCommandResponseOfGuid { Success = true });
-                           }),
-                           ["SaveAiProviderConfigurationAsync"] = new Func<AiAssistantProviderConfigurationWriteDto, Task<BaseCommandResponseOfGuid>>(_ =>
-                               Task.FromResult(new BaseCommandResponseOfGuid { Success = true }))
+                          ["SaveAiAssistantAsync"] = new Func<AiAssistantGovernanceSettingsDto, Task<BaseCommandResponseOfGuid>>(patch =>
+                          {
+                              captured = patch;
+                              return Task.FromResult(new BaseCommandResponseOfGuid { Success = true });
+                          }),
+                          ["SaveAiProviderConfigurationAsync"] = new Func<AiAssistantProviderConfigurationWriteDto, Task<BaseCommandResponseOfGuid>>(_ =>
+                              Task.FromResult(new BaseCommandResponseOfGuid { Success = true }))
                       }));
 
         await cut.InvokeAsync(() =>
@@ -237,14 +237,14 @@ public class InstanceSectionLockToggleTests : IDisposable
                       .Add(component => component.Parameters, new Dictionary<string, object>
                       {
                           ["AiAssistant"] = model,
-                           ["SaveAiAssistantAsync"] = new Func<AiAssistantGovernanceSettingsDto, Task<BaseCommandResponseOfGuid>>(_ =>
-                               Task.FromResult(new BaseCommandResponseOfGuid { Success = true })),
-                           ["SaveAiProviderConfigurationAsync"] = new Func<AiAssistantProviderConfigurationWriteDto, Task<BaseCommandResponseOfGuid>>(patch =>
-                           {
-                               captured = patch;
-                               return Task.FromResult(new BaseCommandResponseOfGuid { Success = true });
-                           })
-                       }));
+                          ["SaveAiAssistantAsync"] = new Func<AiAssistantGovernanceSettingsDto, Task<BaseCommandResponseOfGuid>>(_ =>
+                              Task.FromResult(new BaseCommandResponseOfGuid { Success = true })),
+                          ["SaveAiProviderConfigurationAsync"] = new Func<AiAssistantProviderConfigurationWriteDto, Task<BaseCommandResponseOfGuid>>(patch =>
+                          {
+                              captured = patch;
+                              return Task.FromResult(new BaseCommandResponseOfGuid { Success = true });
+                          })
+                      }));
 
         await Assert.That(captured).IsNull();
         var apiKeyField = cut.FindComponents<MudTextField<string>>().Single(field =>

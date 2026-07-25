@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
+using Explore.Application.Models.Common;
 using Explore.Application.Services;
 using Explore.Application.Settings;
 using Explore.Domain;
@@ -288,6 +289,423 @@ public class InstanceGovernanceSettingServiceTests
             s.SettingKey == GovernanceSettingKeys.AdminPortal.AllowTenantAdminAccess && s.Value == "true"), Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task ApplyModuleSettingsPatchAsync_WhenOneLeafIsSupplied_WritesOnlyThatKey()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyModuleSettingsPatchAsync(
+            null,
+            new PatchModuleSettingsDto
+            {
+                EnableIslamicModule = OptionalUpdate<bool>.Set(false)
+            },
+            new ModuleSettingsDto { EnableIslamicModule = false, EnableTechModule = true },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.Modules.IslamicEnabled
+        ]);
+    }
+
+    [Test]
+    public async Task ApplyEventPolicyPatchAsync_WhenOneLeafIsSupplied_WritesOnlyThatKey()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyEventPolicyPatchAsync(
+            new PatchEventPolicyDto
+            {
+                AllowUserSubmittedEvents = OptionalUpdate<bool>.Set(false)
+            },
+            new EventPolicyDto
+            {
+                AllowUserSubmittedEvents = false,
+                AllowOrganizationSubmittedEvents = true,
+                AllowGroupSubmittedEvents = true,
+                EventCardClickOpensDetailPage = true
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.Events.UserSubmissionEnabled
+        ]);
+    }
+
+    [Test]
+    public async Task ApplyOrganizationPolicyPatchAsync_WhenOneLeafIsSupplied_WritesOnlyThatKey()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyOrganizationPolicyPatchAsync(
+            new PatchOrganizationPolicyDto
+            {
+                RequireOrganizationVerification = OptionalUpdate<bool>.Set(false)
+            },
+            new OrganizationPolicyDto
+            {
+                RequireOrganizationVerification = false,
+                AllowTenantToOmitVerification = false,
+                AllowOrganizationSelfRegistration = true,
+                AllowGroupSelfRegistration = true
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.Organizations.VerificationRequired
+        ]);
+    }
+
+    [Test]
+    public async Task ApplyBrandingSettingsPatchAsync_WhenOneLeafIsSupplied_WritesOnlyThatKey()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyBrandingSettingsPatchAsync(
+            new PatchBrandingSettingsDto
+            {
+                DefaultBrandLogoUrl = OptionalUpdate<string?>.Set("  https://new.example/logo.svg  ")
+            },
+            new BrandingSettingsDto
+            {
+                DefaultBrandDisplayName = "Current brand",
+                DefaultBrandLogoUrl = "  https://new.example/logo.svg  ",
+                DefaultBrandFaviconUrl = "https://current.example/favicon.svg",
+                DefaultBrandCustomCssUrl = "https://current.example/site.css"
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.Branding.LogoUrl
+        ]);
+    }
+
+    [Test]
+    public async Task ApplyDomainSettingsPatchAsync_WhenOneLeafIsSupplied_WritesOnlyThatKey()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyDomainSettingsPatchAsync(
+            new PatchDomainSettingsDto
+            {
+                AdminHost = OptionalUpdate<string?>.Set("  admin.new.example  ")
+            },
+            new DomainSettingsDto
+            {
+                InstanceBaseDomain = "current.example",
+                AdminHost = "  admin.new.example  ",
+                AllowTenantCustomDomains = true
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.Domains.AdminHost
+        ]);
+    }
+
+    [Test]
+    public async Task ApplyTenantDelegationSettingsPatchAsync_WhenOneLeafIsSupplied_WritesOnlyThatKey()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyTenantDelegationSettingsPatchAsync(
+            false,
+            new PatchTenantDelegationSettingsDto
+            {
+                LockTenantStorage = OptionalUpdate<bool>.Set(false)
+            },
+            new TenantDelegationSettingsDto
+            {
+                LockTenantSmtp = true,
+                LockTenantStorage = false,
+                LockTenantAnalytics = true,
+                LockTenantAiAssistant = true
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.TenantDelegation.LockStorage
+        ]);
+    }
+
+    [Test]
+    public async Task ApplyAdminPortalSettingsPatchAsync_WhenOneLeafIsSupplied_WritesOnlyThatKey()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyAdminPortalSettingsPatchAsync(
+            new PatchAdminPortalSettingsDto
+            {
+                PublicUrl = OptionalUpdate<string?>.Set("  https://admin.new.example  ")
+            },
+            new AdminPortalSettingsDto
+            {
+                Enabled = true,
+                PublicUrl = "  https://admin.new.example  ",
+                AllowTenantAdminAccess = true
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.AdminPortal.PublicUrl
+        ]);
+    }
+
+    [Test]
+    public async Task ApplyAiAssistantGovernanceSettingsPatchAsync_WhenProviderConfigurationIsSupplied_WritesOnlyItsKeys()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyAiAssistantGovernanceSettingsPatchAsync(
+            new PatchAiAssistantGovernanceSettingsDto
+            {
+                ProviderConfiguration = OptionalUpdate<AiAssistantProviderConfigurationWriteDto>.Set(new()
+                {
+                    Provider = "openai-compatible",
+                    EndpointUrl = "https://ai.example.test/v1",
+                    ApiKey = "replacement-key",
+                    ModelId = "model-a",
+                    AllowedModelIds = ["model-a"]
+                })
+            },
+            new AiAssistantGovernanceSettingsDto
+            {
+                Enabled = true,
+                Provider = "openai-compatible",
+                EndpointUrl = "https://ai.example.test/v1",
+                ApiKey = "replacement-key",
+                ModelId = "model-a",
+                AllowedModelIds = ["model-a"],
+                ToolProposalsEnabled = true,
+                LockTenantAiAssistant = false
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.AiAssistant.Provider,
+            GovernanceSettingKeys.AiAssistant.EndpointUrl,
+            GovernanceSettingKeys.AiAssistant.ApiKey,
+            GovernanceSettingKeys.AiAssistant.ModelId,
+            GovernanceSettingKeys.AiAssistant.AllowedModelIds
+        ]);
+    }
+
+    [Test]
+    public async Task ApplyMcpGovernanceSettingsPatchAsync_WhenOneLeafIsSupplied_WritesOnlyThatKey()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyMcpGovernanceSettingsPatchAsync(
+            new PatchMcpGovernanceSettingsDto
+            {
+                Enabled = OptionalUpdate<bool>.Set(false)
+            },
+            new McpGovernanceSettingsDto
+            {
+                Enabled = false,
+                EnableLegacySse = true,
+                LockTenantMcp = true,
+                LockTenantMcpLegacySse = false
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.Mcp.Enabled
+        ]);
+    }
+
+    [Test]
+    public async Task ApplyRenderPolicySettingsPatchAsync_WhenOneLeafIsSupplied_WritesOnlyThatKey()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyRenderPolicySettingsPatchAsync(
+            new PatchRenderPolicySettingsDto
+            {
+                GlobalPrerenderEnabled = OptionalUpdate<bool>.Set(true)
+            },
+            new RenderPolicySettingsDto
+            {
+                RenderPolicyPreset = "AllInteractiveServer",
+                EnableAdvancedRenderPolicyOverrides = false,
+                GlobalRenderMode = "InteractiveServer",
+                GlobalPrerenderEnabled = true,
+                PublicSeoRenderMode = "InteractiveServer",
+                OperationalRenderMode = "InteractiveServer",
+                AdminRenderMode = "InteractiveServer",
+                OnboardingRenderMode = "InteractiveAuto"
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.Routing.RenderPolicy.Fallback.PrerenderEnabled
+        ]);
+    }
+
+    [Test]
+    public async Task ApplyEventPolicySettingsPatchAsync_WhenOnlyLockIsSupplied_WritesCardClickLockMirror()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyEventPolicyPatchAsync(
+            new PatchEventPolicyDto
+            {
+                LockTenantEventCardClickBehavior = OptionalUpdate<bool>.Set(true)
+            },
+            new EventPolicyDto
+            {
+                EventCardClickOpensDetailPage = false,
+                LockTenantEventCardClickBehavior = true
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Count).IsEqualTo(1);
+        await Assert.That(writes[0].SettingKey).IsEqualTo(GovernanceSettingKeys.Events.CardClickOpensDetailPage);
+        await Assert.That(writes[0].Value).IsEqualTo("false");
+        await Assert.That(writes[0].IsLocked).IsTrue();
+    }
+
+    [Test]
+    public async Task ApplyMcpGovernanceSettingsPatchAsync_WhenOnlyEnabledLockIsSupplied_UpdatesEnabledAndItsDelegationMirror()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyMcpGovernanceSettingsPatchAsync(
+            new PatchMcpGovernanceSettingsDto
+            {
+                LockTenantMcp = OptionalUpdate<bool>.Set(true)
+            },
+            new McpGovernanceSettingsDto
+            {
+                Enabled = true,
+                EnableLegacySse = false,
+                LockTenantMcp = true,
+                LockTenantMcpLegacySse = false
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Count).IsEqualTo(2);
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.Mcp.Enabled,
+            GovernanceSettingKeys.TenantDelegation.LockMcp
+        ]);
+        var enabled = writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.Mcp.Enabled);
+        await Assert.That(enabled.Value).IsEqualTo("true");
+        await Assert.That(enabled.IsLocked).IsTrue();
+        await Assert.That(writes.Any(setting => setting.SettingKey == GovernanceSettingKeys.Mcp.EnableLegacySse)).IsFalse();
+    }
+
+    [Test]
+    public async Task ApplyMcpGovernanceSettingsPatchAsync_WhenOnlyLegacySseLockIsSupplied_UpdatesLegacySseAndItsDelegationMirror()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyMcpGovernanceSettingsPatchAsync(
+            new PatchMcpGovernanceSettingsDto
+            {
+                LockTenantMcpLegacySse = OptionalUpdate<bool>.Set(true)
+            },
+            new McpGovernanceSettingsDto
+            {
+                Enabled = true,
+                EnableLegacySse = true,
+                LockTenantMcp = false,
+                LockTenantMcpLegacySse = true
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Count).IsEqualTo(2);
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.Mcp.EnableLegacySse,
+            GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse
+        ]);
+        var legacySse = writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.Mcp.EnableLegacySse);
+        await Assert.That(legacySse.Value).IsEqualTo("true");
+        await Assert.That(legacySse.IsLocked).IsTrue();
+        await Assert.That(writes.Any(setting => setting.SettingKey == GovernanceSettingKeys.Mcp.Enabled)).IsFalse();
+    }
+
+    [Test]
+    public async Task ApplyAiAssistantGovernanceSettingsPatchAsync_WhenOnlyLockIsSupplied_UpdatesAllGovernedRowsAndDelegationMirror()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyAiAssistantGovernanceSettingsPatchAsync(
+            new PatchAiAssistantGovernanceSettingsDto
+            {
+                LockTenantAiAssistant = OptionalUpdate<bool>.Set(true)
+            },
+            new AiAssistantGovernanceSettingsDto
+            {
+                Enabled = true,
+                Provider = "openai",
+                EndpointUrl = "https://unused.example",
+                ApiKey = "current-key",
+                ModelId = "current-model",
+                AllowedModelIds = ["current-model", "second-model"],
+                AllowAnonymousAccess = true,
+                ToolProposalsEnabled = false,
+                LockTenantAiAssistant = true
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Count).IsEqualTo(9);
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.AiAssistant.Enabled,
+            GovernanceSettingKeys.AiAssistant.Provider,
+            GovernanceSettingKeys.AiAssistant.EndpointUrl,
+            GovernanceSettingKeys.AiAssistant.ApiKey,
+            GovernanceSettingKeys.AiAssistant.ModelId,
+            GovernanceSettingKeys.AiAssistant.AllowedModelIds,
+            GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess,
+            GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled,
+            GovernanceSettingKeys.TenantDelegation.LockAiAssistant
+        ]);
+        var governed = writes
+            .Where(setting => setting.SettingKey != GovernanceSettingKeys.TenantDelegation.LockAiAssistant)
+            .ToList();
+        await Assert.That(governed.All(setting => setting.IsLocked)).IsTrue();
+        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.Enabled).Value)
+            .IsEqualTo("true");
+        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.Provider).Value)
+            .IsEqualTo("\"openai\"");
+        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.EndpointUrl).Value)
+            .IsEqualTo("\"\"");
+        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.ApiKey).Value)
+            .IsEqualTo("\"current-key\"");
+        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.ModelId).Value)
+            .IsEqualTo("\"current-model\"");
+        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.AllowedModelIds).Value)
+            .IsEqualTo(SettingValueSerializer.Serialize(new List<string> { "current-model", "second-model" }));
+        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess).Value)
+            .IsEqualTo("true");
+        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled).Value)
+            .IsEqualTo("false");
+        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.TenantDelegation.LockAiAssistant).Value)
+            .IsEqualTo("true");
+    }
+
+    [Test]
+    public async Task ApplyRenderPolicySettingsPatchAsync_WhenOnlyLockIsSupplied_WritesOnlyTheLockSetting()
+    {
+        var writes = CaptureWrites();
+
+        await _service.ApplyRenderPolicySettingsPatchAsync(
+            new PatchRenderPolicySettingsDto
+            {
+                LockTenantPublicSeoRenderPolicy = OptionalUpdate<bool>.Set(true)
+            },
+            new RenderPolicySettingsDto
+            {
+                LockTenantPublicSeoRenderPolicy = true
+            },
+            Guid.NewGuid());
+
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.Routing.RenderPolicy.LockTenantPublicSeo
+        ]);
+    }
+
 
     [Test]
     public async Task ReadSettingsAsync_ReadsMcpGovernanceSettings()
@@ -382,6 +800,16 @@ public class InstanceGovernanceSettingServiceTests
             IsLocked = isLocked,
             Source = SettingSource.SystemDefault
         };
+    }
+
+    private List<SystemSetting> CaptureWrites()
+    {
+        var writes = new List<SystemSetting>();
+        _systemSettingRepository.UpsertAsync(
+                Arg.Do<SystemSetting>(setting => writes.Add(setting)),
+                Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        return writes;
     }
 
     private static InstanceGovernanceSettings CreateValidSettings()

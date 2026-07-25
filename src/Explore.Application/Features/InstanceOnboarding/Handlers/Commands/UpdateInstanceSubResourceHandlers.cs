@@ -8,6 +8,7 @@ using Explore.Application.DTOs.Instance.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
@@ -40,7 +41,7 @@ public class UpdateModuleSettingsCommandHandler : IRequestHandler<UpdateModuleSe
             settings.Modules.EnableTechModule = request.Patch.EnableTechModule.Value;
 
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyModuleSettingsAsync(null, settings.Modules, request.UserId), cancellationToken);
+            _service.ApplyModuleSettingsPatchAsync(null, request.Patch, settings.Modules, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Module settings updated successfully.";
         return response;
@@ -91,7 +92,7 @@ public class UpdateEventPolicyCommandHandler : IRequestHandler<UpdateEventPolicy
             settings.EventPolicy.LockTenantEventCardClickBehavior = request.Patch.LockTenantEventCardClickBehavior.Value;
 
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyEventPolicyAsync(settings.EventPolicy, request.UserId), cancellationToken);
+            _service.ApplyEventPolicyPatchAsync(request.Patch, settings.EventPolicy, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Event policy updated successfully.";
         return response;
@@ -140,7 +141,7 @@ public class UpdateOrganizationPolicyCommandHandler : IRequestHandler<UpdateOrga
             settings.OrganizationPolicy.AllowGroupSelfRegistration = request.Patch.AllowGroupSelfRegistration.Value;
 
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyOrganizationPolicyAsync(settings.OrganizationPolicy, request.UserId), cancellationToken);
+            _service.ApplyOrganizationPolicyPatchAsync(request.Patch, settings.OrganizationPolicy, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Organization policy updated successfully.";
         return response;
@@ -207,9 +208,10 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
 
         await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            await _service.ApplyBrandingSettingsAsync(settings.Branding, request.UserId);
+            await _service.ApplyBrandingSettingsPatchAsync(request.Patch, settings.Branding, request.UserId);
 
-            if (await _deploymentModeProvider.IsSingleTenantAsync(ct))
+            if (request.Patch.DefaultBrandDisplayName.HasValue
+                && await _deploymentModeProvider.IsSingleTenantAsync(ct))
             {
                 await _tenantBrandingProvisioningService.EnsureTenantBrandingDocumentAsync(
                     PlatformDefaults.DefaultTenantId,
@@ -267,7 +269,7 @@ public class UpdateDomainSettingsCommandHandler : IRequestHandler<UpdateDomainSe
             settings.Domains.LockTenantCustomDomain = request.Patch.LockTenantCustomDomain.Value;
 
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyDomainSettingsAsync(settings.Domains, request.UserId), cancellationToken);
+            _service.ApplyDomainSettingsPatchAsync(request.Patch, settings.Domains, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Domain settings updated successfully.";
         return response;
@@ -324,7 +326,11 @@ public class UpdateTenantDelegationSettingsCommandHandler : IRequestHandler<Upda
             settings.TenantDelegation.LockTenantAiAssistant = request.Patch.LockTenantAiAssistant.Value;
 
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyTenantDelegationSettingsAsync(settings.TenantDelegation, request.UserId), cancellationToken);
+            _service.ApplyTenantDelegationSettingsPatchAsync(
+                settings.DeploymentMode.Mode == DeploymentMode.MultiTenant,
+                request.Patch,
+                settings.TenantDelegation,
+                request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Tenant delegation settings updated successfully.";
         return response;
@@ -371,7 +377,7 @@ public class UpdateAdminPortalSettingsCommandHandler : IRequestHandler<UpdateAdm
             settings.AdminPortal.AllowTenantAdminAccess = request.Patch.AllowTenantAdminAccess.Value;
 
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyAdminPortalSettingsAsync(settings.AdminPortal, request.UserId), cancellationToken);
+            _service.ApplyAdminPortalSettingsPatchAsync(request.Patch, settings.AdminPortal, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Admin portal settings updated successfully.";
         return response;
@@ -420,7 +426,7 @@ public class UpdateMcpGovernanceSettingsCommandHandler : IRequestHandler<UpdateM
             settings.Mcp.LockTenantMcpLegacySse = request.Patch.LockTenantMcpLegacySse.Value;
 
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyMcpGovernanceSettingsAsync(settings.Mcp, request.UserId), cancellationToken);
+            _service.ApplyMcpGovernanceSettingsPatchAsync(request.Patch, settings.Mcp, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "MCP governance settings updated successfully.";
         return response;
@@ -481,7 +487,7 @@ public class UpdateAiAssistantGovernanceSettingsCommandHandler : IRequestHandler
             settings.AiAssistant.LockTenantAiAssistant = request.Patch.LockTenantAiAssistant.Value;
 
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyAiAssistantGovernanceSettingsAsync(settings.AiAssistant, request.UserId), cancellationToken);
+            _service.ApplyAiAssistantGovernanceSettingsPatchAsync(request.Patch, settings.AiAssistant, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "AI Assistant governance settings updated successfully.";
         return response;
@@ -564,7 +570,7 @@ public class UpdateRenderPolicySettingsCommandHandler : IRequestHandler<UpdateRe
         }
 
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyRenderPolicySettingsAsync(settings.RenderPolicy, request.UserId), cancellationToken);
+            _service.ApplyRenderPolicySettingsPatchAsync(request.Patch, settings.RenderPolicy, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Render policy settings updated successfully.";
         return response;

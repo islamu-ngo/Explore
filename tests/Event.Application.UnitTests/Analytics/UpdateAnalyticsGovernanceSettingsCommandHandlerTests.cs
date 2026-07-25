@@ -4,11 +4,12 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Analytics;
 using Explore.Application.DTOs.Instance;
-using Explore.Application.Models.Common;
 using Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
+using Explore.Application.Models.Common;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums.Analytics;
 using Explore.Domain.Settings;
 using NSubstitute;
@@ -198,6 +199,65 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
         await _settingsResolver.DidNotReceive().SetValueAsync(
             Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<SettingScope>(), Arg.Any<Guid>(), Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenOneLeafIsProvided_PersistsOnlyThatSetting()
+    {
+        var userId = Guid.NewGuid();
+        var command = new UpdateAnalyticsGovernanceSettingsCommand
+        {
+            UserId = userId,
+            Patch = new PatchAnalyticsGovernanceSettingsDto
+            {
+                ConsentCookieLifetimeDays = OptionalUpdate<int>.Set(90)
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _settingsResolver.Received(1).SetValueAsync(
+            GovernanceSettingKeys.Analytics.ConsentCookieLifetimeDays,
+            "90",
+            SettingScope.Instance,
+            Guid.Empty,
+            userId,
+            Arg.Any<CancellationToken>());
+        await _settingsResolver.Received(1).SetValueAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            SettingScope.Instance,
+            Guid.Empty,
+            userId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenMergedCandidateIsInvalid_DoesNotPersistSettings()
+    {
+        SetupCurrentGroup(
+            ("analytics.provider", "\"rudderstack\""),
+            ("analytics.enabled", "true"));
+        var command = new UpdateAnalyticsGovernanceSettingsCommand
+        {
+            UserId = Guid.NewGuid(),
+            Patch = new PatchAnalyticsGovernanceSettingsDto
+            {
+                DeclineBehavior = OptionalUpdate<DeclineBehavior>.Set(DeclineBehavior.Cookieless)
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _settingsResolver.DidNotReceive().SetValueAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<SettingScope>(),
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
     }
 

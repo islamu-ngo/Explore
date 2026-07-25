@@ -212,6 +212,35 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
                 defaultTenantId.Value, modules.EnableIslamicModule, modules.EnableTechModule, actorUserId);
     }
 
+    public async Task ApplyModuleSettingsPatchAsync(
+        Guid? defaultTenantId,
+        PatchModuleSettingsDto patch,
+        ModuleSettingsDto modules,
+        Guid? actorUserId)
+    {
+        if (patch.EnableIslamicModule.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Modules.IslamicEnabled,
+                SettingValueSerializer.Serialize(modules.EnableIslamicModule),
+                actorUserId);
+        }
+
+        if (patch.EnableTechModule.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Modules.TechEnabled,
+                SettingValueSerializer.Serialize(modules.EnableTechModule),
+                actorUserId);
+        }
+
+        if (defaultTenantId.HasValue && patch.HasChanges())
+        {
+            await _moduleCapabilityService.SyncTenantModuleCapabilitiesAsync(
+                defaultTenantId.Value, modules.EnableIslamicModule, modules.EnableTechModule, actorUserId);
+        }
+    }
+
     public async Task ApplyEventPolicyAsync(EventPolicyDto ep, Guid? actorUserId)
     {
         await _upsertService.UpsertValueAsync(
@@ -232,6 +261,45 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             isLocked: ep.LockTenantEventCardClickBehavior, actorUserId);
     }
 
+    public async Task ApplyEventPolicyPatchAsync(
+        PatchEventPolicyDto patch,
+        EventPolicyDto eventPolicy,
+        Guid? actorUserId)
+    {
+        if (patch.AllowUserSubmittedEvents.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Events.UserSubmissionEnabled,
+                SettingValueSerializer.Serialize(eventPolicy.AllowUserSubmittedEvents),
+                actorUserId);
+        }
+
+        if (patch.AllowOrganizationSubmittedEvents.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Events.OrganizationSubmissionEnabled,
+                SettingValueSerializer.Serialize(eventPolicy.AllowOrganizationSubmittedEvents),
+                actorUserId);
+        }
+
+        if (patch.AllowGroupSubmittedEvents.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Events.GroupSubmissionEnabled,
+                SettingValueSerializer.Serialize(eventPolicy.AllowGroupSubmittedEvents),
+                actorUserId);
+        }
+
+        if (patch.EventCardClickOpensDetailPage.HasValue || patch.LockTenantEventCardClickBehavior.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Events.CardClickOpensDetailPage,
+                SettingValueSerializer.Serialize(eventPolicy.EventCardClickOpensDetailPage),
+                isLocked: eventPolicy.LockTenantEventCardClickBehavior,
+                actorUserId);
+        }
+    }
+
     public async Task ApplyOrganizationPolicyAsync(OrganizationPolicyDto op, Guid? actorUserId)
     {
         await _upsertService.UpsertValueAsync(
@@ -249,6 +317,44 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         await _upsertService.UpsertValueAsync(
             GovernanceSettingKeys.Groups.SelfRegistrationEnabled,
             SettingValueSerializer.Serialize(op.AllowGroupSelfRegistration), actorUserId);
+    }
+
+    public async Task ApplyOrganizationPolicyPatchAsync(
+        PatchOrganizationPolicyDto patch,
+        OrganizationPolicyDto organizationPolicy,
+        Guid? actorUserId)
+    {
+        if (patch.RequireOrganizationVerification.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Organizations.VerificationRequired,
+                SettingValueSerializer.Serialize(organizationPolicy.RequireOrganizationVerification),
+                actorUserId);
+        }
+
+        if (patch.AllowTenantToOmitVerification.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Organizations.TenantCanOmitVerification,
+                SettingValueSerializer.Serialize(organizationPolicy.AllowTenantToOmitVerification),
+                actorUserId);
+        }
+
+        if (patch.AllowOrganizationSelfRegistration.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Organizations.SelfRegistrationEnabled,
+                SettingValueSerializer.Serialize(organizationPolicy.AllowOrganizationSelfRegistration),
+                actorUserId);
+        }
+
+        if (patch.AllowGroupSelfRegistration.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Groups.SelfRegistrationEnabled,
+                SettingValueSerializer.Serialize(organizationPolicy.AllowGroupSelfRegistration),
+                actorUserId);
+        }
     }
 
     public async Task ApplyBrandingSettingsAsync(BrandingSettingsDto b, Guid? actorUserId)
@@ -279,6 +385,53 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             isLocked: b.LockTenantBrandCustomCssUrl, actorUserId);
     }
 
+    public async Task ApplyBrandingSettingsPatchAsync(
+        PatchBrandingSettingsDto patch,
+        BrandingSettingsDto branding,
+        Guid? actorUserId)
+    {
+        branding.DefaultBrandDisplayName = NormalizeRequiredDisplayName(branding.DefaultBrandDisplayName);
+        branding.DefaultBrandLogoUrl = NormalizeOptionalUrl(branding.DefaultBrandLogoUrl);
+        branding.DefaultBrandFaviconUrl = NormalizeOptionalUrl(branding.DefaultBrandFaviconUrl);
+        branding.DefaultBrandCustomCssUrl = NormalizeOptionalUrl(branding.DefaultBrandCustomCssUrl);
+
+        if (patch.DefaultBrandDisplayName.HasValue || patch.LockTenantBrandDisplayName.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Branding.DisplayName,
+                SettingValueSerializer.Serialize(branding.DefaultBrandDisplayName),
+                isLocked: branding.LockTenantBrandDisplayName,
+                actorUserId);
+        }
+
+        if (patch.DefaultBrandLogoUrl.HasValue || patch.LockTenantBrandLogoUrl.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Branding.LogoUrl,
+                SettingValueSerializer.Serialize(branding.DefaultBrandLogoUrl),
+                isLocked: branding.LockTenantBrandLogoUrl,
+                actorUserId);
+        }
+
+        if (patch.DefaultBrandFaviconUrl.HasValue || patch.LockTenantBrandFaviconUrl.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Branding.FaviconUrl,
+                SettingValueSerializer.Serialize(branding.DefaultBrandFaviconUrl),
+                isLocked: branding.LockTenantBrandFaviconUrl,
+                actorUserId);
+        }
+
+        if (patch.DefaultBrandCustomCssUrl.HasValue || patch.LockTenantBrandCustomCssUrl.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Branding.CustomCssUrl,
+                SettingValueSerializer.Serialize(branding.DefaultBrandCustomCssUrl),
+                isLocked: branding.LockTenantBrandCustomCssUrl,
+                actorUserId);
+        }
+    }
+
     public async Task ApplyDomainSettingsAsync(DomainSettingsDto d, Guid? actorUserId)
     {
         d.InstanceBaseDomain = NormalizeOptionalHost(d.InstanceBaseDomain);
@@ -307,8 +460,125 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             isLocked: d.LockTenantCustomDomain, actorUserId);
     }
 
+    public async Task ApplyDomainSettingsPatchAsync(
+        PatchDomainSettingsDto patch,
+        DomainSettingsDto domains,
+        Guid? actorUserId)
+    {
+        domains.InstanceBaseDomain = NormalizeOptionalHost(domains.InstanceBaseDomain);
+        domains.AdminHost = NormalizeOptionalHost(domains.AdminHost);
+
+        if (patch.InstanceBaseDomain.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Domains.InstanceBaseDomain,
+                SettingValueSerializer.Serialize(domains.InstanceBaseDomain),
+                actorUserId);
+        }
+
+        if (patch.AdminHost.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Domains.AdminHost,
+                SettingValueSerializer.Serialize(domains.AdminHost),
+                actorUserId);
+        }
+
+        if (patch.AllowTenantCustomDomains.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Domains.AllowTenantCustomDomain,
+                SettingValueSerializer.Serialize(domains.AllowTenantCustomDomains),
+                actorUserId);
+        }
+
+        if (patch.LockTenantSubdomain.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Domains.TenantSubdomain,
+                SettingValueSerializer.Serialize(string.Empty),
+                isLocked: domains.LockTenantSubdomain,
+                actorUserId);
+        }
+
+        if (patch.LockTenantCustomDomain.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Domains.TenantCustomDomain,
+                SettingValueSerializer.Serialize(string.Empty),
+                isLocked: domains.LockTenantCustomDomain,
+                actorUserId);
+        }
+    }
+
     public async Task ApplyTenantDelegationSettingsAsync(TenantDelegationSettingsDto delegation, Guid? actorUserId)
         => await ApplyTenantDelegationSettingsInternalAsync(delegation, false, actorUserId);
+
+    public async Task ApplyTenantDelegationSettingsPatchAsync(
+        bool isMultiTenant,
+        PatchTenantDelegationSettingsDto patch,
+        TenantDelegationSettingsDto delegation,
+        Guid? actorUserId)
+    {
+        delegation.DefaultPublicHomePage = NormalizeHomePage(delegation.DefaultPublicHomePage);
+
+        if (patch.AllowTenantSelfServiceRegistration.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Tenants.SelfServiceRegistration,
+                SettingValueSerializer.Serialize(isMultiTenant && delegation.AllowTenantSelfServiceRegistration),
+                actorUserId);
+        }
+
+        if (patch.AllowTenantWhiteLabeling.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Tenants.WhiteLabelingEnabled,
+                SettingValueSerializer.Serialize(isMultiTenant && delegation.AllowTenantWhiteLabeling),
+                actorUserId);
+        }
+
+        if (patch.DefaultPublicHomePage.HasValue || patch.LockTenantHomePagePreference.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.DefaultPublicHomePage,
+                SettingValueSerializer.Serialize(delegation.DefaultPublicHomePage),
+                isLocked: delegation.LockTenantHomePagePreference,
+                actorUserId);
+        }
+
+        if (patch.LockTenantSmtp.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.TenantDelegation.LockSmtp,
+                SettingValueSerializer.Serialize(delegation.LockTenantSmtp),
+                actorUserId);
+        }
+
+        if (patch.LockTenantStorage.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.TenantDelegation.LockStorage,
+                SettingValueSerializer.Serialize(delegation.LockTenantStorage),
+                actorUserId);
+        }
+
+        if (patch.LockTenantAnalytics.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.TenantDelegation.LockAnalytics,
+                SettingValueSerializer.Serialize(delegation.LockTenantAnalytics),
+                actorUserId);
+        }
+
+        if (patch.LockTenantAiAssistant.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.TenantDelegation.LockAiAssistant,
+                SettingValueSerializer.Serialize(delegation.LockTenantAiAssistant),
+                actorUserId);
+        }
+    }
 
     public async Task ApplyAdminPortalSettingsAsync(AdminPortalSettingsDto adminPortal, Guid? actorUserId)
     {
@@ -325,6 +595,38 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         await _upsertService.UpsertValueAsync(
             GovernanceSettingKeys.AdminPortal.AllowTenantAdminAccess,
             SettingValueSerializer.Serialize(adminPortal.AllowTenantAdminAccess), actorUserId);
+    }
+
+    public async Task ApplyAdminPortalSettingsPatchAsync(
+        PatchAdminPortalSettingsDto patch,
+        AdminPortalSettingsDto adminPortal,
+        Guid? actorUserId)
+    {
+        adminPortal.PublicUrl = NormalizeOptionalUrl(adminPortal.PublicUrl);
+
+        if (patch.Enabled.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.AdminPortal.Enabled,
+                SettingValueSerializer.Serialize(adminPortal.Enabled),
+                actorUserId);
+        }
+
+        if (patch.PublicUrl.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.AdminPortal.PublicUrl,
+                SettingValueSerializer.Serialize(adminPortal.PublicUrl),
+                actorUserId);
+        }
+
+        if (patch.AllowTenantAdminAccess.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.AdminPortal.AllowTenantAdminAccess,
+                SettingValueSerializer.Serialize(adminPortal.AllowTenantAdminAccess),
+                actorUserId);
+        }
     }
 
     public async Task ApplyAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceSettingsDto aiAssistant, Guid? actorUserId)
@@ -389,6 +691,91 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             SettingValueSerializer.Serialize(aiAssistant.LockTenantAiAssistant), actorUserId);
     }
 
+    public async Task ApplyAiAssistantGovernanceSettingsPatchAsync(
+        PatchAiAssistantGovernanceSettingsDto patch,
+        AiAssistantGovernanceSettingsDto aiAssistant,
+        Guid? actorUserId)
+    {
+        var provider = NormalizeAiAssistantProvider(aiAssistant.Provider, aiAssistant.Enabled);
+        var usesOfficialProvider = provider == AiProviderDefaults.ProviderOpenAi
+            || provider == AiProviderDefaults.ProviderAnthropic;
+        var usesCompatibleProvider = provider == AiProviderDefaults.ProviderOpenAiCompatible
+            || provider == AiProviderDefaults.ProviderAnthropicCompatible;
+        var usesExternalProvider = usesOfficialProvider || usesCompatibleProvider;
+        var endpointUrl = usesCompatibleProvider
+            ? NormalizeOptionalUrl(aiAssistant.EndpointUrl)
+            : string.Empty;
+        var apiKey = usesExternalProvider ? aiAssistant.ApiKey?.Trim() ?? string.Empty : string.Empty;
+        var modelId = usesExternalProvider ? aiAssistant.ModelId?.Trim() ?? string.Empty : string.Empty;
+        var allowedModelIds = usesExternalProvider
+            ? NormalizeAiModelIds([modelId], aiAssistant.AllowedModelIds)
+            : [];
+
+        if (patch.Enabled.HasValue || patch.LockTenantAiAssistant.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.AiAssistant.Enabled,
+                SettingValueSerializer.Serialize(aiAssistant.Enabled),
+                isLocked: aiAssistant.LockTenantAiAssistant,
+                actorUserId);
+        }
+
+        if (patch.ProviderConfiguration.HasValue || patch.LockTenantAiAssistant.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.AiAssistant.Provider,
+                SettingValueSerializer.Serialize(provider),
+                isLocked: aiAssistant.LockTenantAiAssistant,
+                actorUserId);
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.AiAssistant.EndpointUrl,
+                SettingValueSerializer.Serialize(endpointUrl),
+                isLocked: aiAssistant.LockTenantAiAssistant,
+                actorUserId);
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.AiAssistant.ApiKey,
+                SettingValueSerializer.Serialize(apiKey),
+                isLocked: aiAssistant.LockTenantAiAssistant,
+                actorUserId);
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.AiAssistant.ModelId,
+                SettingValueSerializer.Serialize(modelId),
+                isLocked: aiAssistant.LockTenantAiAssistant,
+                actorUserId);
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.AiAssistant.AllowedModelIds,
+                SettingValueSerializer.Serialize(allowedModelIds),
+                isLocked: aiAssistant.LockTenantAiAssistant,
+                actorUserId);
+        }
+
+        if (patch.AllowAnonymousAccess.HasValue || patch.LockTenantAiAssistant.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess,
+                SettingValueSerializer.Serialize(aiAssistant.AllowAnonymousAccess),
+                isLocked: aiAssistant.LockTenantAiAssistant,
+                actorUserId);
+        }
+
+        if (patch.ToolProposalsEnabled.HasValue || patch.LockTenantAiAssistant.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled,
+                SettingValueSerializer.Serialize(aiAssistant.ToolProposalsEnabled),
+                isLocked: aiAssistant.LockTenantAiAssistant,
+                actorUserId);
+        }
+
+        if (patch.LockTenantAiAssistant.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.TenantDelegation.LockAiAssistant,
+                SettingValueSerializer.Serialize(aiAssistant.LockTenantAiAssistant),
+                actorUserId);
+        }
+    }
+
     public async Task ApplyMcpGovernanceSettingsAsync(McpGovernanceSettingsDto mcp, Guid? actorUserId)
     {
         await _upsertService.UpsertValueAsync(
@@ -410,8 +797,184 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             SettingValueSerializer.Serialize(mcp.LockTenantMcpLegacySse), actorUserId);
     }
 
+    public async Task ApplyMcpGovernanceSettingsPatchAsync(
+        PatchMcpGovernanceSettingsDto patch,
+        McpGovernanceSettingsDto mcp,
+        Guid? actorUserId)
+    {
+        if (patch.Enabled.HasValue || patch.LockTenantMcp.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Mcp.Enabled,
+                SettingValueSerializer.Serialize(mcp.Enabled),
+                isLocked: mcp.LockTenantMcp,
+                actorUserId);
+        }
+
+        if (patch.EnableLegacySse.HasValue || patch.LockTenantMcpLegacySse.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Mcp.EnableLegacySse,
+                SettingValueSerializer.Serialize(mcp.EnableLegacySse),
+                isLocked: mcp.LockTenantMcpLegacySse,
+                actorUserId);
+        }
+
+        if (patch.LockTenantMcp.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.TenantDelegation.LockMcp,
+                SettingValueSerializer.Serialize(mcp.LockTenantMcp),
+                actorUserId);
+        }
+
+        if (patch.LockTenantMcpLegacySse.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse,
+                SettingValueSerializer.Serialize(mcp.LockTenantMcpLegacySse),
+                actorUserId);
+        }
+    }
+
     public async Task ApplyRenderPolicySettingsAsync(RenderPolicySettingsDto renderPolicy, Guid? actorUserId)
         => await ApplyRenderPolicySettingsInternalAsync(renderPolicy, actorUserId);
+
+    public async Task ApplyRenderPolicySettingsPatchAsync(
+        PatchRenderPolicySettingsDto patch,
+        RenderPolicySettingsDto renderPolicy,
+        Guid? actorUserId)
+    {
+        NormalizeRenderPolicySettings(renderPolicy);
+
+        if (patch.RenderPolicyPreset.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.Preset,
+                SettingValueSerializer.Serialize(renderPolicy.RenderPolicyPreset),
+                actorUserId);
+        }
+
+        if (patch.EnableAdvancedRenderPolicyOverrides.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.AdvancedEnabled,
+                SettingValueSerializer.Serialize(renderPolicy.EnableAdvancedRenderPolicyOverrides),
+                actorUserId);
+        }
+
+        if (patch.GlobalRenderMode.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.Fallback.RenderMode,
+                SettingValueSerializer.Serialize(renderPolicy.GlobalRenderMode),
+                actorUserId);
+        }
+
+        if (patch.GlobalPrerenderEnabled.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.Fallback.PrerenderEnabled,
+                SettingValueSerializer.Serialize(renderPolicy.GlobalPrerenderEnabled),
+                actorUserId);
+        }
+
+        if (patch.PublicSeoRenderMode.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.RenderMode,
+                SettingValueSerializer.Serialize(renderPolicy.PublicSeoRenderMode),
+                actorUserId);
+        }
+
+        if (patch.PublicSeoPrerenderEnabled.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.PrerenderEnabled,
+                SettingValueSerializer.Serialize(renderPolicy.PublicSeoPrerenderEnabled),
+                actorUserId);
+        }
+
+        if (patch.OperationalRenderMode.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.Operational.RenderMode,
+                SettingValueSerializer.Serialize(renderPolicy.OperationalRenderMode),
+                actorUserId);
+        }
+
+        if (patch.OperationalPrerenderEnabled.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.Operational.PrerenderEnabled,
+                SettingValueSerializer.Serialize(renderPolicy.OperationalPrerenderEnabled),
+                actorUserId);
+        }
+
+        if (patch.AdminRenderMode.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.Admin.RenderMode,
+                SettingValueSerializer.Serialize(renderPolicy.AdminRenderMode),
+                actorUserId);
+        }
+
+        if (patch.AdminPrerenderEnabled.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.Admin.PrerenderEnabled,
+                SettingValueSerializer.Serialize(renderPolicy.AdminPrerenderEnabled),
+                actorUserId);
+        }
+
+        if (patch.OnboardingRenderMode.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.Onboarding.RenderMode,
+                SettingValueSerializer.Serialize(renderPolicy.OnboardingRenderMode),
+                actorUserId);
+        }
+
+        if (patch.OnboardingPrerenderEnabled.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.Onboarding.PrerenderEnabled,
+                SettingValueSerializer.Serialize(renderPolicy.OnboardingPrerenderEnabled),
+                actorUserId);
+        }
+
+        if (patch.AllowTenantRenderPolicyOverride.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.AllowTenantOverride,
+                SettingValueSerializer.Serialize(renderPolicy.AllowTenantRenderPolicyOverride),
+                actorUserId);
+        }
+
+        if (patch.LockTenantPublicSeoRenderPolicy.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.LockTenantPublicSeo,
+                SettingValueSerializer.Serialize(renderPolicy.LockTenantPublicSeoRenderPolicy),
+                actorUserId);
+        }
+
+        if (patch.LockTenantOperationalRenderPolicy.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.LockTenantOperational,
+                SettingValueSerializer.Serialize(renderPolicy.LockTenantOperationalRenderPolicy),
+                actorUserId);
+        }
+
+        if (patch.LockTenantAdminRenderPolicy.HasValue)
+        {
+            await _upsertService.UpsertValueAsync(
+                GovernanceSettingKeys.Routing.RenderPolicy.LockTenantAdmin,
+                SettingValueSerializer.Serialize(renderPolicy.LockTenantAdminRenderPolicy),
+                actorUserId);
+        }
+    }
 
     // ── Batch resolution ──────────────────────────────────────
 
