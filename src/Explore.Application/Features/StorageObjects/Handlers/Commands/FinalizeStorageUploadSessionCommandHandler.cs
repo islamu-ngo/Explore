@@ -19,6 +19,8 @@ namespace Explore.Application.Features.StorageObjects.Handlers.Commands;
 public class FinalizeStorageUploadSessionCommandHandler
     : IRequestHandler<FinalizeStorageUploadSessionCommand, BaseCommandResponse<StorageUploadSessionDto>>
 {
+    private const string PrivacyErasureFencedFailureCode = "privacy_erasure_fenced";
+
     private readonly IFileStorageProviderResolver _providerResolver;
     private readonly IStoragePolicyResolver _storagePolicyResolver;
     private readonly IStorageUploadSessionRepository _uploadSessionRepository;
@@ -572,7 +574,7 @@ public class FinalizeStorageUploadSessionCommandHandler
             async ct => await FailSessionAsync(
                 uploadSessionId,
                 tenantId,
-                FailureCodes.PrivacyErasureInProgress,
+                PrivacyErasureFencedFailureCode,
                 "Upload finalization was blocked by privacy erasure.",
                 null,
                 ct),

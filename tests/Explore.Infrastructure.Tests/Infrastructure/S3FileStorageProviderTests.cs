@@ -64,6 +64,65 @@ public sealed class S3FileStorageProviderTests
     }
 
     [Test]
+    public async Task WriteAsync_WithReservedTenantObjectKey_UsesExactKey()
+    {
+        var config = CreateConfig();
+        var s3Client = Substitute.For<IAmazonS3>();
+        var provider = CreateProvider(config, s3Client);
+        var tenantId = Guid.CreateVersion7();
+        var objectKey = $"tenants/{tenantId:N}/uploads/{Guid.CreateVersion7():N}.txt";
+        PutObjectRequest? capturedRequest = null;
+        s3Client
+            .PutObjectAsync(Arg.Any<PutObjectRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                capturedRequest = call.Arg<PutObjectRequest>();
+                capturedRequest.InputStream.CopyTo(Stream.Null);
+                return Task.FromResult(new PutObjectResponse());
+            });
+        await using var content = new MemoryStream(Encoding.UTF8.GetBytes("reserved"));
+
+        FileStorageWriteResult result = await provider.WriteAsync(
+            new FileStorageWriteInput(
+                tenantId,
+                content,
+                "text/plain",
+                "reserved.txt",
+                ".txt",
+                8,
+                8,
+                objectKey),
+            CancellationToken.None);
+
+        await Assert.That(result.ObjectKey).IsEqualTo(objectKey);
+        await Assert.That(capturedRequest!.Key).IsEqualTo(objectKey);
+    }
+
+    [Test]
+    public async Task WriteAsync_WithAnotherTenantObjectKey_RejectsBeforeS3Call()
+    {
+        var s3Client = Substitute.For<IAmazonS3>();
+        var provider = CreateProvider(CreateConfig(), s3Client);
+        await using var content = new MemoryStream(Encoding.UTF8.GetBytes("rejected"));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => provider.WriteAsync(
+            new FileStorageWriteInput(
+                Guid.CreateVersion7(),
+                content,
+                "text/plain",
+                "rejected.txt",
+                ".txt",
+                8,
+                8,
+                $"tenants/{Guid.CreateVersion7():N}/uploads/rejected.txt"),
+            CancellationToken.None));
+
+        await s3Client.DidNotReceive().PutObjectAsync(
+            Arg.Any<PutObjectRequest>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task OpenReadAsync_ReturnsS3ResponseStreamAndMetadata()
     {
         var s3Client = Substitute.For<IAmazonS3>();

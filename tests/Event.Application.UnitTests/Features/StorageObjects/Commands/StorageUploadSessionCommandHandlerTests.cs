@@ -297,7 +297,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
     {
         var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: 11);
         var counter = new StorageUsageCounter { TenantId = _tenantId, Provider = StorageProviders.Local, ReservedBytes = 11 };
-        var objectKey = ValidObjectKey();
+        var objectKey = ReservedObjectKey(session);
         var writeResult = CreateWriteResult(objectKey: objectKey);
         _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
         _usageCounterRepository.GetByTenantAndProviderAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>()).Returns(counter);
@@ -327,7 +327,8 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             Arg.Is<FileStorageWriteInput>(input =>
                 input.TenantId == _tenantId &&
                 input.ExpectedSizeBytes == 11 &&
-                input.MaxSizeBytes == 11),
+                input.MaxSizeBytes == 11 &&
+                input.ObjectKey == objectKey),
             Arg.Any<CancellationToken>());
         await _storageObjectRepository.Received(1).Create(Arg.Is<StorageObject>(storageObject =>
             storageObject.Provider == StorageProviders.Local &&
@@ -345,7 +346,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
         session.PolicyMaxUploadBytes = 80;
         session.PolicyVersion = "7";
         var counter = new StorageUsageCounter { TenantId = _tenantId, Provider = StorageProviders.S3Compatible, ReservedBytes = 11 };
-        var writeResult = CreateWriteResult(StorageProviders.S3Compatible, ValidObjectKey("document.txt"));
+        var writeResult = CreateWriteResult(StorageProviders.S3Compatible, ReservedObjectKey(session));
         _providerResolver.GetRequired(StorageProviders.S3Compatible).Returns(_provider);
         _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
         _usageCounterRepository.GetByTenantAndProviderAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>()).Returns(counter);
@@ -521,7 +522,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             Provider = StorageProviders.Local,
             ReservedBytes = bytes.Length
         };
-        var objectKey = ValidObjectKey("image.png");
+        var objectKey = ReservedObjectKey(session);
         var writeResult = CreateWriteResult(objectKey: objectKey, sizeBytes: bytes.Length, contentType: "image/png");
         byte[]? capturedBytes = null;
         _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
@@ -710,6 +711,59 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
         await _uploadSessionRepository.Received().Update(Arg.Is<StorageUploadSession>(value =>
             value.Id == session.Id &&
             value.Status == StorageUploadSessionStates.Failed));
+    }
+
+    [Test]
+    public async Task FinalizeHandle_WhenErasureFenceAppearsAfterProviderWrite_DoesNotFinalizeMetadata()
+    {
+        var session = CreateSession(StorageUploadSessionStates.Reserved, 11);
+        var counter = new StorageUsageCounter
+        {
+            TenantId = _tenantId,
+            Provider = StorageProviders.Local,
+            ReservedBytes = 11
+        };
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            _userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        PrivacyErasureSaga saga = PrivacyErasureSaga.Start(
+            intent,
+            1,
+            new byte[32],
+            nowUtc.AddMinutes(5),
+            nowUtc);
+
+        _privacyErasureStateRepository
+            .GetBySubjectAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null, (PrivacyErasureSaga?)null, saga);
+        _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+        _usageCounterRepository.GetByTenantAndProviderAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>()).Returns(counter);
+        _provider.WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>())
+            .Returns(call => CreateWriteResult(objectKey: call.Arg<FileStorageWriteInput>().ObjectKey));
+
+        BaseCommandResponse<StorageUploadSessionDto> result = await CreateFinalizeHandler().Handle(
+            new FinalizeStorageUploadSessionCommand
+            {
+                UploadSessionId = session.Id,
+                Content = new MemoryStream(new byte[11]),
+                ContentType = "text/plain",
+                ContentLength = 11
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Upload finalization failed.");
+        await Assert.That(result.Errors).IsEmpty();
+        await Assert.That(session.Status).IsEqualTo(StorageUploadSessionStates.Failed);
+        await _provider.Received(1).WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>());
+        await _storageObjectRepository.DidNotReceive().Create(Arg.Any<StorageObject>());
     }
 
     [Test]
@@ -965,6 +1019,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             _uploadSessionRepository,
             _usageCounterRepository,
             _storageObjectRepository,
+            _privacyErasureStateRepository,
             _tenantContext,
             _currentUserService,
             _unitOfWork,
@@ -1024,6 +1079,9 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
 
     private string ValidObjectKey(string fileName = "object.txt")
         => $"tenants/{_tenantId:N}/2026/07/04/{fileName}";
+
+    private static string ReservedObjectKey(StorageUploadSession session)
+        => $"tenants/{session.TenantId:N}/uploads/{session.Id:N}.{session.Extension}";
 
     private static byte[] ValidPngBytes()
         => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4];

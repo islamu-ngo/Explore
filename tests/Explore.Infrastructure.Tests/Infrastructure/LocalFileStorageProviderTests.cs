@@ -48,6 +48,67 @@ public sealed class LocalFileStorageProviderTests
     }
 
     [Test]
+    public async Task WriteAsync_WithReservedTenantObjectKey_UsesExactKey()
+    {
+        var provider = CreateProvider(out var root);
+
+        try
+        {
+            var tenantId = Guid.CreateVersion7();
+            var objectKey = $"tenants/{tenantId:N}/uploads/{Guid.CreateVersion7():N}.txt";
+            await using var content = new MemoryStream(Encoding.UTF8.GetBytes("reserved"));
+
+            FileStorageWriteResult result = await provider.WriteAsync(
+                new FileStorageWriteInput(
+                    tenantId,
+                    content,
+                    "text/plain",
+                    "reserved.txt",
+                    ".txt",
+                    8,
+                    8,
+                    objectKey),
+                CancellationToken.None);
+
+            await Assert.That(result.ObjectKey).IsEqualTo(objectKey);
+            await Assert.That(File.Exists(provider.ResolveObjectPath(objectKey))).IsTrue();
+        }
+        finally
+        {
+            DeleteRootIfExists(root);
+        }
+    }
+
+    [Test]
+    public async Task WriteAsync_WithAnotherTenantObjectKey_RejectsBeforeWrite()
+    {
+        var provider = CreateProvider(out var root);
+
+        try
+        {
+            await using var content = new MemoryStream(Encoding.UTF8.GetBytes("rejected"));
+
+            await Assert.ThrowsAsync<ArgumentException>(() => provider.WriteAsync(
+                new FileStorageWriteInput(
+                    Guid.CreateVersion7(),
+                    content,
+                    "text/plain",
+                    "rejected.txt",
+                    ".txt",
+                    8,
+                    8,
+                    $"tenants/{Guid.CreateVersion7():N}/uploads/rejected.txt"),
+                CancellationToken.None));
+
+            await Assert.That(Directory.Exists(root)).IsFalse();
+        }
+        finally
+        {
+            DeleteRootIfExists(root);
+        }
+    }
+
+    [Test]
     public async Task OpenReadAsync_ReturnsStoredBytesAndContentType()
     {
         var provider = CreateProvider(out var root);

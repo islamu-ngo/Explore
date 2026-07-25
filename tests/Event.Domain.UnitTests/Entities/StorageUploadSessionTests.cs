@@ -8,6 +8,17 @@ using Explore.Domain;
 public class StorageUploadSessionTests
 {
     [Test]
+    public async Task ReserveObjectKey_WhenReserved_PersistsCleanupIdentityBeforeUpload()
+    {
+        var session = CreateSession();
+
+        session.ReserveObjectKey("tenants/default/uploads/reserved.png");
+
+        await Assert.That(session.ObjectKey).IsEqualTo("tenants/default/uploads/reserved.png");
+        await Assert.That(session.Status).IsEqualTo(StorageUploadSessionStates.Reserved);
+    }
+
+    [Test]
     public async Task MarkUploading_WhenReserved_MovesSessionToUploading()
     {
         var session = CreateSession();
