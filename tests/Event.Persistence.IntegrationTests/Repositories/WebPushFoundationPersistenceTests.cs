@@ -247,6 +247,9 @@ public sealed class WebPushFoundationPersistenceTests(PostgreSqlContainerFixture
         var pending = await repository.GetPendingBatch(10, now, CancellationToken.None);
         var claimed = await repository.TryMarkAsProcessing(dispatch.Id, leaseToken, now, CancellationToken.None);
         var duplicateClaim = await repository.TryMarkAsProcessing(dispatch.Id, Guid.CreateVersion7(), now, CancellationToken.None);
+        var activeClaim = await repository.GetActiveClaimAsync(tenant.Id, dispatch.Id, leaseToken, CancellationToken.None);
+        var wrongTenantClaim = await repository.GetActiveClaimAsync(Guid.CreateVersion7(), dispatch.Id, leaseToken, CancellationToken.None);
+        var staleLeaseClaim = await repository.GetActiveClaimAsync(tenant.Id, dispatch.Id, Guid.CreateVersion7(), CancellationToken.None);
         var staleDelivery = await repository.MarkAsDelivered(dispatch.Id, Guid.CreateVersion7(), now.AddSeconds(1), CancellationToken.None);
         var delivery = await repository.MarkAsDelivered(dispatch.Id, leaseToken, now.AddSeconds(1), CancellationToken.None);
         var delivered = await context.WebPushDispatchOutbox.IgnoreQueryFilters().AsNoTracking().SingleAsync(row => row.Id == dispatch.Id);
@@ -272,6 +275,12 @@ public sealed class WebPushFoundationPersistenceTests(PostgreSqlContainerFixture
         await Assert.That(pending.Select(row => row.Id)).Contains(dispatch.Id);
         await Assert.That(claimed).IsTrue();
         await Assert.That(duplicateClaim).IsFalse();
+        await Assert.That(activeClaim).IsNotNull();
+        await Assert.That(activeClaim!.TenantId).IsEqualTo(tenant.Id);
+        await Assert.That(activeClaim.UserId).IsEqualTo(user.Id);
+        await Assert.That(activeClaim.SubscriptionId).IsEqualTo(subscription.Id);
+        await Assert.That(wrongTenantClaim).IsNull();
+        await Assert.That(staleLeaseClaim).IsNull();
         await Assert.That(staleDelivery).IsFalse();
         await Assert.That(delivery).IsTrue();
         await Assert.That(delivered.Status).IsEqualTo(WebPushDispatchStatus.Delivered);

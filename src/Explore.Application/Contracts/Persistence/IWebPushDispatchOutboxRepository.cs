@@ -30,6 +30,12 @@ public interface IWebPushDispatchOutboxRepository
         DateTime startedAt,
         CancellationToken cancellationToken = default);
 
+    Task<WebPushDispatchOutbox?> GetActiveClaimAsync(
+        Guid tenantId,
+        Guid dispatchId,
+        Guid leaseToken,
+        CancellationToken cancellationToken = default);
+
     Task<bool> MarkAsDelivered(Guid id, Guid leaseToken, DateTime deliveredAt, CancellationToken cancellationToken = default);
 
     Task<bool> MarkAsFailed(
