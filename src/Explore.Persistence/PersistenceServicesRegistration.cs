@@ -269,7 +269,11 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IPrivacyErasureProviderWorkRepository, PrivacyErasureProviderWorkRepository>();
         services.AddScoped<IUserLocationPrivacyErasureRepository, UserLocationPrivacyErasureRepository>();
         services.AddScoped<IUserPrivacyErasureRepository, UserLocationPrivacyErasureRepository>();
-        services.AddScoped<IPrivacyErasureLedgerRepository, ApplicationDatabasePrivacyErasureLedgerRepository>();
+        services.AddScoped<IPrivacyErasureLedgerRepository>(provider =>
+            new ApplicationDatabasePrivacyErasureLedgerRepository(
+                provider.GetRequiredService<ExploreDbContext>(),
+                provider.GetRequiredService<TimeProvider>(),
+                provider.GetRequiredService<IOptions<PrivacyErasureOptions>>().Value.AuthorityRetention));
         if (erasureDurability.Topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
         {
             string connectionString =

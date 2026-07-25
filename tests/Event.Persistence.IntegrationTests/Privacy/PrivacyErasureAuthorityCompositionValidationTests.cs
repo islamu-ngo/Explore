@@ -20,6 +20,7 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
     {
         var services = new ServiceCollection();
         services.AddSingleton(TimeProvider.System);
+        services.AddOptions<PrivacyErasureOptions>();
         IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
             new Dictionary<string, string?>
             {
