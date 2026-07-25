@@ -40,6 +40,39 @@ public sealed class PrivacyErasureProviderWorkRepository(ExploreDbContext dbCont
         return distinct.Length;
     }
 
+    public async Task<int> ExpireLocatorsAsync(
+        DateTime utcNow,
+        int batchSize,
+        bool dryRun,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+        PrivacyErasureProviderWork[] expired = await dbContext.PrivacyErasureProviderWork
+            .Where(item => item.ProtectedLocator != null && item.LocatorExpiresAtUtc <= utcNow)
+            .OrderBy(item => item.LocatorExpiresAtUtc)
+            .ThenBy(item => item.Id)
+            .Take(batchSize)
+            .ToArrayAsync(cancellationToken);
+        if (!dryRun)
+        {
+            foreach (PrivacyErasureProviderWork item in expired)
+            {
+                item.ExpireLocator(utcNow);
+            }
+
+            if (expired.Length != 0)
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+
+        return expired.Length;
+    }
+
     public async Task<IReadOnlyList<PrivacyErasureProviderWork>> ClaimDueAsync(
         string leaseOwner,
         int batchSize,
@@ -50,27 +83,14 @@ public sealed class PrivacyErasureProviderWorkRepository(ExploreDbContext dbCont
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
             cancellationToken);
-        PrivacyErasureProviderWork[] expired = await dbContext.PrivacyErasureProviderWork
-            .Where(item => item.ProtectedLocator != null
-                && item.LocatorExpiresAtUtc <= claimedAtUtc)
-            .ToArrayAsync(cancellationToken);
-        foreach (PrivacyErasureProviderWork item in expired)
-        {
-            item.ExpireLocator(claimedAtUtc);
-        }
-
-        if (expired.Length != 0)
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-
         PrivacyErasureProviderWork[] due = await dbContext.PrivacyErasureProviderWork
-            .Where(item =>
-                ((item.Status == PrivacyErasureProviderWorkStatus.Pending
+            .Where(item => item.ProtectedLocator != null
+                && item.LocatorExpiresAtUtc > claimedAtUtc
+                && (((item.Status == PrivacyErasureProviderWorkStatus.Pending
                     || item.Status == PrivacyErasureProviderWorkStatus.RetryScheduled)
                     && item.NextAttemptAtUtc <= claimedAtUtc)
                 || (item.Status == PrivacyErasureProviderWorkStatus.Processing
-                    && item.LeaseExpiresAtUtc <= claimedAtUtc))
+                    && item.LeaseExpiresAtUtc <= claimedAtUtc)))
             .OrderBy(item => item.NextAttemptAtUtc)
             .ThenBy(item => item.Id)
             .Take(batchSize)
@@ -111,6 +131,40 @@ public sealed class PrivacyErasureProviderWorkRepository(ExploreDbContext dbCont
             leaseToken,
             item => item.MarkUnknown(fenceToken, leaseToken, unknownAtUtc, failureCode),
             cancellationToken);
+
+    public async Task<bool> TryReconcileUnknownAsync(
+        Guid id,
+        long fenceToken,
+        PrivacyErasureProviderReconciliation outcome,
+        DateTime reconciledAtUtc,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+        PrivacyErasureProviderWork? item = await dbContext.PrivacyErasureProviderWork.SingleOrDefaultAsync(
+            candidate => candidate.Id == id
+                && candidate.LeaseFence == fenceToken
+                && candidate.Status == PrivacyErasureProviderWorkStatus.Unknown,
+            cancellationToken);
+        if (item is null)
+        {
+            return false;
+        }
+
+        item.Reconcile(outcome, reconciledAtUtc);
+        if (outcome == PrivacyErasureProviderReconciliation.Completed)
+        {
+            PrivacyErasureSaga saga = await dbContext.PrivacyErasureSagas.SingleAsync(
+                candidate => candidate.IntentId == item.IntentId,
+                cancellationToken);
+            saga.MarkProviderWorkCompleted(reconciledAtUtc, saga.ConcurrencyToken);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
 
     public Task<bool> TryScheduleRetryAsync(
         Guid id,

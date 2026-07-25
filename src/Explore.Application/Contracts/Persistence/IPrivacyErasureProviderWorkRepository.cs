@@ -11,6 +11,12 @@ public interface IPrivacyErasureProviderWorkRepository
         IReadOnlyCollection<PrivacyErasureProviderWork> work,
         CancellationToken cancellationToken);
 
+    Task<int> ExpireLocatorsAsync(
+        DateTime utcNow,
+        int batchSize,
+        bool dryRun,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<PrivacyErasureProviderWork>> ClaimDueAsync(
         string leaseOwner,
         int batchSize,
@@ -31,6 +37,13 @@ public interface IPrivacyErasureProviderWorkRepository
         Guid leaseToken,
         DateTime unknownAtUtc,
         string failureCode,
+        CancellationToken cancellationToken);
+
+    Task<bool> TryReconcileUnknownAsync(
+        Guid id,
+        long fenceToken,
+        PrivacyErasureProviderReconciliation outcome,
+        DateTime reconciledAtUtc,
         CancellationToken cancellationToken);
 
     Task<bool> TryScheduleRetryAsync(

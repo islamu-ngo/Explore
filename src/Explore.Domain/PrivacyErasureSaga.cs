@@ -16,7 +16,7 @@ public sealed class PrivacyErasureSaga
     public Guid SubjectId { get; private set; }
     public int PolicyVersion { get; private set; }
     public long FenceToken { get; private set; }
-    public byte[] ReceiptHash { get; private set; } = [];
+    public byte[]? ReceiptHash { get; private set; }
     public DateTime ReceiptExpiresAtUtc { get; private set; }
     public DateTime FencedAtUtc { get; private set; }
     public Guid ConcurrencyToken { get; private set; }
@@ -79,9 +79,30 @@ public sealed class PrivacyErasureSaga
     public bool Authenticates(ReadOnlySpan<byte> candidateHash, DateTime nowUtc)
     {
         RequireUtc(nowUtc, nameof(nowUtc));
-        return nowUtc < ReceiptExpiresAtUtc
-            && candidateHash.Length == ReceiptHash.Length
-            && CryptographicOperations.FixedTimeEquals(candidateHash, ReceiptHash);
+        if (ReceiptHash is not { Length: 32 } receiptHash || nowUtc >= ReceiptExpiresAtUtc)
+        {
+            return false;
+        }
+
+        return candidateHash.Length == receiptHash.Length
+            && CryptographicOperations.FixedTimeEquals(candidateHash, receiptHash);
+    }
+
+    public void ClearExpiredReceiptHash(DateTime clearedAtUtc)
+    {
+        RequireUtc(clearedAtUtc, nameof(clearedAtUtc));
+        if (clearedAtUtc < ReceiptExpiresAtUtc)
+        {
+            throw new InvalidOperationException("The receipt has not expired.");
+        }
+
+        if (ReceiptHash is null)
+        {
+            return;
+        }
+
+        ReceiptHash = null;
+        RotateConcurrency(clearedAtUtc);
     }
 
     public void MarkLocalSettled(

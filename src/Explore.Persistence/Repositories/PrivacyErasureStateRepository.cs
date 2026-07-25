@@ -34,6 +34,33 @@ public sealed class PrivacyErasureStateRepository(ExploreDbContext dbContext)
             .SingleOrDefaultAsync(item => item.ReceiptHash == receiptHash, cancellationToken);
     }
 
+    public async Task<int> ClearExpiredReceiptHashesAsync(
+        DateTime utcNow,
+        int batchSize,
+        bool dryRun,
+        CancellationToken cancellationToken)
+    {
+        PrivacyErasureSaga[] expired = await dbContext.PrivacyErasureSagas
+            .Where(item => item.ReceiptHash != null && item.ReceiptExpiresAtUtc <= utcNow)
+            .OrderBy(item => item.ReceiptExpiresAtUtc)
+            .Take(batchSize)
+            .ToArrayAsync(cancellationToken);
+        if (!dryRun)
+        {
+            foreach (PrivacyErasureSaga saga in expired)
+            {
+                saga.ClearExpiredReceiptHash(utcNow);
+            }
+
+            if (expired.Length != 0)
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        return expired.Length;
+    }
+
     public Task<bool> HasCoverageAsync(
         Guid intentId,
         int policyVersion,

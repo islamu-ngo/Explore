@@ -51,6 +51,31 @@ public sealed class PrivacyErasureReadinessHealthCheckTests
     }
 
     [Test]
+    public async Task UnknownOrDeadLetteredProviderWork_DegradesReadinessWithoutIdentifiers()
+    {
+        IPrivacyErasureAuthority authority = Substitute.For<IPrivacyErasureAuthority>();
+        authority.ReadAfterAsync(0, 1, Arg.Any<CancellationToken>()).Returns([]);
+        IPrivacyErasureProviderWorkRepository providerWork =
+            Substitute.For<IPrivacyErasureProviderWorkRepository>();
+        providerWork.CountUnknownAsync(Arg.Any<CancellationToken>()).Returns(1);
+        providerWork.CountDeadLetteredAsync(Arg.Any<CancellationToken>()).Returns(1);
+        var check = new PrivacyErasureReadinessHealthCheck(
+            Options.Create(new PrivacyErasureDurabilityOptions()),
+            Substitute.For<IPrivacyErasureReplayCheckpointRepository>(),
+            providerWork,
+            Substitute.For<IOutboxRepository>(),
+            authority,
+            TimeProvider.System);
+
+        HealthCheckResult result = await check.CheckHealthAsync(new HealthCheckContext());
+
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Data["providerUnknown"]).IsEqualTo(1);
+        await Assert.That(result.Data["providerDeadLettered"]).IsEqualTo(1);
+        await Assert.That(string.Join('|', result.Data.Values)).DoesNotContain("provider-canary");
+    }
+
+    [Test]
     public async Task AuthorityFailure_ReturnsSanitizedUnhealthyCode()
     {
         IPrivacyErasureAuthority authority = Substitute.For<IPrivacyErasureAuthority>();

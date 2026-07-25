@@ -32,6 +32,15 @@ public sealed class PrivacyErasureContractTests
     }
 
     [Test]
+    public async Task PrivacyErasureIntent_DefaultRetentionRemainsInfinityForHistoricalFacts()
+    {
+        PrivacyErasureIntent intent = CreateIntent(1);
+
+        await Assert.That(intent.RetentionExpiresAtUtc)
+            .IsEqualTo(DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc));
+    }
+
+    [Test]
     public async Task PrivacyErasureIntent_RejectsMalformedIdentityKindReasonSequenceAndPolicy()
     {
         await Assert.That(() => CreateIntent(1, intentId: Guid.Empty)).Throws<ArgumentException>();
@@ -285,6 +294,27 @@ public sealed class PrivacyErasureContractTests
         await Assert.That(work.Status).IsEqualTo(PrivacyErasureProviderWorkStatus.Completed);
         await Assert.That(work.CompletedAtUtc).IsEqualTo(now.AddMinutes(2));
         await Assert.That(work.ProtectedLocator).IsNull();
+    }
+
+    [Test]
+    public async Task PrivacyErasureSaga_ClearsExpiredReceiptHashWithoutChangingExpiredAuthenticationOutcome()
+    {
+        DateTime now = new(2026, 7, 25, 8, 0, 0, DateTimeKind.Utc);
+        var receiptHash = new byte[32];
+        receiptHash[0] = 7;
+        PrivacyErasureSaga saga = PrivacyErasureSaga.Start(
+            CreateIntent(1, recordedAtUtc: now),
+            1,
+            receiptHash,
+            now.AddHours(1),
+            now);
+
+        await Assert.That(saga.Authenticates(receiptHash, now.AddHours(1))).IsFalse();
+        saga.ClearExpiredReceiptHash(now.AddHours(1));
+
+        await Assert.That(saga.ReceiptHash).IsNull();
+        await Assert.That(saga.Authenticates(receiptHash, now.AddHours(1))).IsFalse();
+        await Assert.That(saga.Authenticates(new byte[32], now.AddHours(1))).IsFalse();
     }
 
     [Test]
