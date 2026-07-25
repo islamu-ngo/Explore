@@ -3,11 +3,11 @@
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Services;
-using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Instance;
-using Explore.Application.Models.Common;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
+using Explore.Application.Models.Common;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.InstanceOnboarding.Commands;
@@ -18,15 +18,21 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
 
     private readonly IAdminContext _adminContext;
     private readonly IAuthorizationProviderConfigurationService _configurationService;
+    private readonly ISetupSecretProvider _setupSecretProvider;
     private readonly UpdateAuthorizationProviderConfigurationCommandHandler _handler;
 
     public UpdateAuthorizationProviderConfigurationCommandHandlerTests()
     {
         _adminContext = Substitute.For<IAdminContext>();
         _configurationService = Substitute.For<IAuthorizationProviderConfigurationService>();
+        _setupSecretProvider = Substitute.For<ISetupSecretProvider>();
+        _setupSecretProvider.IsSetupModeActive.Returns(true);
         _configurationService.ReadConfigurationAsync().Returns(new AuthorizationProviderConfigurationDto());
 
-        _handler = new UpdateAuthorizationProviderConfigurationCommandHandler(_adminContext, _configurationService);
+        _handler = new UpdateAuthorizationProviderConfigurationCommandHandler(
+            _adminContext,
+            _configurationService,
+            _setupSecretProvider);
     }
 
     [Test]
@@ -41,6 +47,49 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).Contains("Only instance administrators");
+        await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
+    }
+
+    [Test]
+    public async Task HandleSetup_WhenSetupModeIsActive_AppliesConfigurationWithoutAdminIdentity()
+    {
+        var command = new UpdateAuthorizationProviderConfigurationDuringSetupCommand
+        {
+            Patch = CreateCommand(new AuthorizationProviderConfigurationDto
+            {
+                Provider = "local"
+            }).Patch
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _configurationService.Received(1).ApplyConfigurationAsync(Arg.Is<AuthorizationProviderConfigurationDto>(x =>
+            x.Provider == "local"));
+    }
+
+    [Test]
+    [Arguments(false, false)]
+    [Arguments(true, true)]
+    public async Task HandleSetup_WhenSetupModeBecomesInactiveOrExpires_DeniesMutation(
+        bool isSetupModeActive,
+        bool isTimedOut)
+    {
+        _setupSecretProvider.IsSetupModeActive.Returns(isSetupModeActive);
+        _setupSecretProvider.IsTimedOut.Returns(isTimedOut);
+        var command = new UpdateAuthorizationProviderConfigurationDuringSetupCommand
+        {
+            Patch = CreateCommand(new AuthorizationProviderConfigurationDto
+            {
+                Provider = "local"
+            }).Patch
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("Setup mode is no longer active");
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
     }
 

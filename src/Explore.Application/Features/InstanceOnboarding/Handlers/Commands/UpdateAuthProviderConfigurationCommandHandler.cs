@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
@@ -12,7 +13,9 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
-public class UpdateAuthProviderConfigurationCommandHandler : IRequestHandler<UpdateAuthProviderConfigurationCommand, BaseCommandResponse<Guid>>
+public class UpdateAuthProviderConfigurationCommandHandler :
+    IRequestHandler<UpdateAuthProviderConfigurationCommand, BaseCommandResponse<Guid>>,
+    IRequestHandler<UpdateAuthProviderConfigurationDuringSetupCommand, BaseCommandResponse<Guid>>
 {
     private const string KeycloakProvider = "keycloak";
     private const string GoogleProvider = "google";
@@ -23,19 +26,22 @@ public class UpdateAuthProviderConfigurationCommandHandler : IRequestHandler<Upd
     private readonly IUserExternalLoginRepository _userExternalLoginRepository;
     private readonly IAuthProviderConfigurationService _configurationService;
     private readonly IJwtAuthorityRefreshNotifier _jwtAuthorityRefreshNotifier;
+    private readonly ISetupSecretProvider _setupSecretProvider;
 
     public UpdateAuthProviderConfigurationCommandHandler(
         IAdminContext adminContext,
         IUserRepository userRepository,
         IUserExternalLoginRepository userExternalLoginRepository,
         IAuthProviderConfigurationService configurationService,
-        IJwtAuthorityRefreshNotifier jwtAuthorityRefreshNotifier)
+        IJwtAuthorityRefreshNotifier jwtAuthorityRefreshNotifier,
+        ISetupSecretProvider setupSecretProvider)
     {
         _adminContext = adminContext;
         _userRepository = userRepository;
         _userExternalLoginRepository = userExternalLoginRepository;
         _configurationService = configurationService;
         _jwtAuthorityRefreshNotifier = jwtAuthorityRefreshNotifier;
+        _setupSecretProvider = setupSecretProvider;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateAuthProviderConfigurationCommand request, CancellationToken cancellationToken)
@@ -50,15 +56,41 @@ public class UpdateAuthProviderConfigurationCommandHandler : IRequestHandler<Upd
             return response;
         }
 
+        return await ApplyConfigurationAsync(request.Patch, request.UserId, cancellationToken);
+    }
+
+    public async Task<BaseCommandResponse<Guid>> Handle(
+        UpdateAuthProviderConfigurationDuringSetupCommand request,
+        CancellationToken cancellationToken)
+    {
+        if (!_setupSecretProvider.IsSetupModeActive || _setupSecretProvider.IsTimedOut)
+        {
+            return new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Setup mode is no longer active."
+            };
+        }
+
+        return await ApplyConfigurationAsync(request.Patch, currentAdminUserId: null, cancellationToken);
+    }
+
+    private async Task<BaseCommandResponse<Guid>> ApplyConfigurationAsync(
+        PatchAuthProviderConfigurationDto configurationPatch,
+        Guid? currentAdminUserId,
+        CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<Guid>();
+
         var currentConfiguration = await _configurationService.ReadConfigurationAsync();
-        if (!request.Patch.HasChanges() || request.Patch.Configuration.Value is null)
+        if (!configurationPatch.HasChanges() || configurationPatch.Configuration.Value is null)
         {
             response.Success = false;
             response.Message = "Authentication provider patch must include a complete configuration group.";
             return response;
         }
 
-        var patch = request.Patch.Configuration.Value;
+        var patch = configurationPatch.Configuration.Value;
         var configuration = new AuthProviderConfigurationDto
         {
             KeycloakEnabled = patch.KeycloakEnabled,
@@ -86,20 +118,23 @@ public class UpdateAuthProviderConfigurationCommandHandler : IRequestHandler<Upd
             return response;
         }
 
-        var currentUser = await _userRepository.GetById(request.UserId);
-        if (currentUser == null)
+        if (currentAdminUserId.HasValue)
         {
-            response.Success = false;
-            response.Message = "Current user could not be resolved.";
-            return response;
-        }
+            var currentUser = await _userRepository.GetById(currentAdminUserId.Value);
+            if (currentUser == null)
+            {
+                response.Success = false;
+                response.Message = "Current user could not be resolved.";
+                return response;
+            }
 
-        var currentUserLogins = await _userExternalLoginRepository.GetByUser(request.UserId);
-        if (!WouldKeepAtLeastOneProviderEnabledForCurrentAdmin(currentUser.AuthProvider, currentUserLogins, configuration))
-        {
-            response.Success = false;
-            response.Message = "Cannot disable all authentication providers linked to your current admin account.";
-            return response;
+            var currentUserLogins = await _userExternalLoginRepository.GetByUser(currentAdminUserId.Value);
+            if (!WouldKeepAtLeastOneProviderEnabledForCurrentAdmin(currentUser.AuthProvider, currentUserLogins, configuration))
+            {
+                response.Success = false;
+                response.Message = "Cannot disable all authentication providers linked to your current admin account.";
+                return response;
+            }
         }
 
         await _configurationService.ApplyConfigurationAsync(configuration);

@@ -8,6 +8,7 @@ using System.Threading.RateLimiting;
 using Explore.API.Authentication;
 using Explore.API.ExceptionHandling;
 using Explore.Application.Authentication;
+using Explore.Application.Constants;
 using Explore.Application.Telemetry;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -415,6 +416,17 @@ public static class RateLimitingExtensions
 
         if (context.Request.Path.StartsWithSegments("/api/setup", StringComparison.OrdinalIgnoreCase)
             || context.Request.Path.StartsWithSegments("/setup", StringComparison.OrdinalIgnoreCase))
+        {
+            return SetupSecretPolicy;
+        }
+
+        if (SetupSecretAuthenticationHandler.SupportsRequest(context.Request)
+            && context.User.Identities.Any(identity =>
+                identity.IsAuthenticated
+                && string.Equals(
+                    identity.AuthenticationType,
+                    ApiAuthenticationSchemeNames.SetupSecret,
+                    StringComparison.Ordinal)))
         {
             return SetupSecretPolicy;
         }

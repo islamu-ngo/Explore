@@ -7,6 +7,8 @@ public static class ApiAuthenticationSchemeNames
 {
     public const string MultiAuth = "MultiAuth";
 
+    public const string SetupSecret = "SetupSecret";
+
     public const string ApiKey = "ApiKey";
 
     public const string AtprotoBootstrap = "AtprotoBootstrap";

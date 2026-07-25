@@ -1,5 +1,5 @@
-// ABOUTME: Registers multi-auth (JWT Bearer + API Key) authentication and authorization for the API.
-// ABOUTME: Dispatches X-API-Key requests to the ApiKey handler; all others go through Keycloak JWT Bearer.
+// ABOUTME: Registers bounded multi-scheme authentication and authorization for the API.
+// ABOUTME: Dispatches exact setup, API-key, ATProto, privacy-receipt, and Keycloak bearer credentials.
 
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
@@ -204,6 +204,9 @@ public static class AuthenticationExtensions
             .AddScheme<AuthenticationSchemeOptions, ManagedControlPlaneAuthenticationHandler>(
                 ManagedControlPlaneAuthenticationDefaults.Scheme,
                 _ => { })
+            .AddScheme<AuthenticationSchemeOptions, SetupSecretAuthenticationHandler>(
+                ApiAuthenticationSchemeNames.SetupSecret,
+                _ => { })
             .AddScheme<AuthenticationSchemeOptions, AtprotoBootstrapAuthenticationHandler>(
                 ApiAuthenticationSchemeNames.AtprotoBootstrap,
                 _ => { })
@@ -273,6 +276,12 @@ public static class AuthenticationExtensions
 
     internal static string SelectDefaultAuthenticationScheme(HttpContext context)
     {
+        if (SetupSecretAuthenticationHandler.SupportsRequest(context.Request)
+            && context.Request.Headers.ContainsKey(SetupSecretAuthenticationHandler.HeaderName))
+        {
+            return ApiAuthenticationSchemeNames.SetupSecret;
+        }
+
         if (HttpMethods.IsPost(context.Request.Method)
             && string.Equals(context.Request.Path.Value, AtprotoJwtOptions.BridgePath, StringComparison.Ordinal)
             && context.Request.Headers.ContainsKey(AtprotoJwtOptions.BootstrapHeaderName))

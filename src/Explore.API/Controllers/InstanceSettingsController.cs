@@ -10,6 +10,7 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Constants;
 using Explore.Application.DTOs.Analytics;
 using Explore.Application.DTOs.Footer;
 using Explore.Application.DTOs.Instance;
@@ -593,7 +594,7 @@ public class InstanceSettingsController : ExploreControllerBase
 
     [HttpPatch("auth-provider", Name = RouteNames.UpdateInstanceAuthProviderConfiguration)]
     [EndpointSummary("Update Auth Provider Configuration")]
-    [EndpointDescription("Updates auth provider configuration. Requires instance administrator and blocks self-lockout.")]
+    [EndpointDescription("Updates auth provider configuration during active setup-secret bootstrap or by an instance administrator. Instance-admin updates block self-lockout.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
@@ -601,10 +602,23 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAuthProviderConfiguration(
         [FromBody] PatchAuthProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
     {
-        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
-        if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
+        BaseCommandResponse<Guid> response;
+        if (IsSetupSecretAuthenticated())
+        {
+            response = await _mediator.Send(
+                new UpdateAuthProviderConfigurationDuringSetupCommand { Patch = configuration },
+                cancellationToken);
+        }
+        else
+        {
+            var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+            if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(new UpdateAuthProviderConfigurationCommand { UserId = userId.Value, Patch = configuration }, cancellationToken);
+            response = await _mediator.Send(
+                new UpdateAuthProviderConfigurationCommand { UserId = userId.Value, Patch = configuration },
+                cancellationToken);
+        }
+
         return HandleCommandResponse(response);
     }
 
@@ -703,7 +717,7 @@ public class InstanceSettingsController : ExploreControllerBase
 
     [HttpPatch("authz-provider", Name = RouteNames.UpdateInstanceAuthorizationProviderConfiguration)]
     [EndpointSummary("Update Authorization Provider Configuration")]
-    [EndpointDescription("Updates authorization provider configuration. Requires instance administrator.")]
+    [EndpointDescription("Updates authorization provider configuration during active setup-secret bootstrap or by an instance administrator.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
@@ -711,12 +725,22 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAuthorizationProviderConfiguration(
         [FromBody] PatchAuthorizationProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
     {
-        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
-        if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
+        BaseCommandResponse<Guid> response;
+        if (IsSetupSecretAuthenticated())
+        {
+            response = await _mediator.Send(
+                new UpdateAuthorizationProviderConfigurationDuringSetupCommand { Patch = configuration },
+                cancellationToken);
+        }
+        else
+        {
+            var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+            if (!userId.HasValue) return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
 
-        var response = await _mediator.Send(
-            new UpdateAuthorizationProviderConfigurationCommand { UserId = userId.Value, Patch = configuration },
-            cancellationToken);
+            response = await _mediator.Send(
+                new UpdateAuthorizationProviderConfigurationCommand { UserId = userId.Value, Patch = configuration },
+                cancellationToken);
+        }
 
         return HandleCommandResponse(response);
     }
@@ -799,6 +823,14 @@ public class InstanceSettingsController : ExploreControllerBase
 
         return !string.IsNullOrEmpty(setupSecret) && _setupSecretProvider.ValidateSecret(setupSecret);
     }
+
+    private bool IsSetupSecretAuthenticated()
+        => User.Identities.Any(identity =>
+            identity.IsAuthenticated
+            && string.Equals(
+                identity.AuthenticationType,
+                ApiAuthenticationSchemeNames.SetupSecret,
+                StringComparison.Ordinal));
 
     private ActionResult<BaseCommandResponse<Guid>> HandleCommandResponse(BaseCommandResponse<Guid> response)
     {

@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
@@ -12,17 +13,22 @@ using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
-public class UpdateAuthorizationProviderConfigurationCommandHandler : IRequestHandler<UpdateAuthorizationProviderConfigurationCommand, BaseCommandResponse<Guid>>
+public class UpdateAuthorizationProviderConfigurationCommandHandler :
+    IRequestHandler<UpdateAuthorizationProviderConfigurationCommand, BaseCommandResponse<Guid>>,
+    IRequestHandler<UpdateAuthorizationProviderConfigurationDuringSetupCommand, BaseCommandResponse<Guid>>
 {
     private readonly IAdminContext _adminContext;
     private readonly IAuthorizationProviderConfigurationService _configurationService;
+    private readonly ISetupSecretProvider _setupSecretProvider;
 
     public UpdateAuthorizationProviderConfigurationCommandHandler(
         IAdminContext adminContext,
-        IAuthorizationProviderConfigurationService configurationService)
+        IAuthorizationProviderConfigurationService configurationService,
+        ISetupSecretProvider setupSecretProvider)
     {
         _adminContext = adminContext;
         _configurationService = configurationService;
+        _setupSecretProvider = setupSecretProvider;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateAuthorizationProviderConfigurationCommand request, CancellationToken cancellationToken)
@@ -37,6 +43,31 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler : IRequestHa
             return response;
         }
 
+        return await ApplyConfigurationAsync(request.Patch, cancellationToken);
+    }
+
+    public async Task<BaseCommandResponse<Guid>> Handle(
+        UpdateAuthorizationProviderConfigurationDuringSetupCommand request,
+        CancellationToken cancellationToken)
+    {
+        if (!_setupSecretProvider.IsSetupModeActive || _setupSecretProvider.IsTimedOut)
+        {
+            return new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Setup mode is no longer active."
+            };
+        }
+
+        return await ApplyConfigurationAsync(request.Patch, cancellationToken);
+    }
+
+    private async Task<BaseCommandResponse<Guid>> ApplyConfigurationAsync(
+        PatchAuthorizationProviderConfigurationDto configurationPatch,
+        CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<Guid>();
+
         var currentConfiguration = await _configurationService.ReadConfigurationAsync();
         if (currentConfiguration.AuthorizationProviderManagedByDeployment)
         {
@@ -46,14 +77,14 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler : IRequestHa
             return response;
         }
 
-        if (!request.Patch.HasChanges() || request.Patch.Configuration.Value is null)
+        if (!configurationPatch.HasChanges() || configurationPatch.Configuration.Value is null)
         {
             response.Success = false;
             response.Message = "Authorization provider patch must include a complete configuration group.";
             return response;
         }
 
-        var patch = request.Patch.Configuration.Value;
+        var patch = configurationPatch.Configuration.Value;
         var configuration = new AuthorizationProviderConfigurationDto
         {
             Provider = patch.Provider,
