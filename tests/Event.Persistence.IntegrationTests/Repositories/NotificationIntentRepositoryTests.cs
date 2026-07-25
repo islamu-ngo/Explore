@@ -3,12 +3,16 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Exceptions;
+using Explore.Application.Notifications;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using TUnit.Core;
+using AppNotificationCategory = Explore.Application.Notifications.NotificationCategory;
 
 namespace Event.Persistence.IntegrationTests.Repositories;
 
@@ -16,6 +20,8 @@ namespace Event.Persistence.IntegrationTests.Repositories;
 [NotInParallel("PersistenceDb")]
 public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixture)
 {
+    private static long _nextAuthoritySequence = DateTime.UtcNow.Ticks;
+
     [Test]
     public async Task LookupSeeder_SeedsNotificationIntentLookupTables()
     {
@@ -76,6 +82,66 @@ public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixtur
         await Assert.That(loaded!.CategoryId).IsEqualTo((int)NotificationCategoryEnum.RegistrationLifecycle);
         await Assert.That(loaded.OwnershipTypeId).IsEqualTo((int)NotificationOwnershipTypeEnum.IslamuEvent);
         await Assert.That(loaded.SafePayloadReference).IsEqualTo("notification-intents/registration-approved");
+    }
+
+    [Test]
+    public async Task EnqueueAsync_AlreadyFencedRecipient_PersistsNoNotificationGraph()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+
+        Tenant tenant = CreateTenant("fenced-orchestration");
+        (User User, TenantUser TenantUser) recipient = CreateTenantRecipient(tenant, "fenced-orchestration");
+        FencedErasureState erasureState = CreateFencedErasureState(recipient.User.Id);
+        context.Tenants.Add(tenant);
+        context.TenantUsers.Add(recipient.TenantUser);
+        context.PrivacyErasureIntents.Add(erasureState.Intent);
+        context.PrivacyErasureSagas.Add(erasureState.Saga);
+        await context.SaveChangesAsync();
+
+        var orchestrator = CreateOrchestrator(
+            context,
+            new FixedNotificationOwnershipResolver(
+                new NotificationOwnershipDecision(AppNotificationCategory.RegistrationLifecycle, NotificationOwnership.IslamuEvent)));
+
+        NotificationOrchestrationResult result = await orchestrator.EnqueueAsync(
+            CreateDraft(tenant.Id, recipient.User.Id, "fenced-orchestration:already-fenced"));
+
+        await Assert.That(result.IsFenced).IsTrue();
+        await Assert.That(result.Intent).IsNull();
+        await AssertNoNotificationGraphAsync(context, tenant.Id, recipient.User.Id);
+    }
+
+    [Test]
+    public async Task EnqueueAsync_FencePersistedAfterResolution_PersistsNoDelegationGraph()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+
+        Tenant tenant = CreateTenant("raced-fenced-orchestration");
+        (User User, TenantUser TenantUser) recipient = CreateTenantRecipient(tenant, "raced-fenced-orchestration");
+        context.Tenants.Add(tenant);
+        context.TenantUsers.Add(recipient.TenantUser);
+        await context.SaveChangesAsync();
+
+        var orchestrator = CreateOrchestrator(
+            context,
+            new FencingNotificationOwnershipResolver(
+                context,
+                recipient.User.Id,
+                new NotificationOwnershipDecision(
+                    AppNotificationCategory.TrustSafetyModeration,
+                    NotificationOwnership.ExternalWorkflowProvider,
+                    ExternalWorkflowProviderKind: Explore.Application.Notifications.ExternalWorkflowProviderKind.Coop,
+                    RequiresLocalAudit: true)));
+
+        NotificationOrchestrationResult result = await orchestrator.EnqueueAsync(
+            CreateDraft(tenant.Id, recipient.User.Id, "fenced-orchestration:raced-fence"));
+
+        await Assert.That(result.IsFenced).IsTrue();
+        await Assert.That(result.Intent).IsNull();
+        await Assert.That(result.ExternalDelegation).IsNull();
+        await AssertNoNotificationGraphAsync(context, tenant.Id, recipient.User.Id);
     }
 
     [Test]
@@ -313,6 +379,93 @@ public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixtur
             CreatedAt = DateTime.UtcNow,
         };
     }
+
+    private static DefaultNotificationOrchestrator CreateOrchestrator(
+        ExploreDbContext context,
+        INotificationOwnershipResolver ownershipResolver) =>
+        new(
+            ownershipResolver,
+            new NotificationIntentRepository(context),
+            new PrivacyErasureStateRepository(context),
+            new EfCoreUnitOfWork(context));
+
+    private static NotificationIntentDraft CreateDraft(Guid tenantId, Guid recipientUserId, string deduplicationKey) =>
+        new(
+            AppNotificationCategory.RegistrationLifecycle,
+            tenantId,
+            "User",
+            "registration.approved",
+            "notification-intents/fenced-orchestration",
+            "sha256:fenced-orchestration",
+            IsUserFacing: true,
+            IsIslamuInitiated: true,
+            DeduplicationKey: deduplicationKey,
+            CorrelationId: Guid.CreateVersion7().ToString("N"),
+            UserId: recipientUserId);
+
+    private static async Task AssertNoNotificationGraphAsync(
+        ExploreDbContext context,
+        Guid tenantId,
+        Guid recipientUserId)
+    {
+        int intents = await context.NotificationIntents
+            .IgnoreQueryFilters()
+            .CountAsync(intent => intent.TenantId == tenantId && intent.RecipientUserId == recipientUserId);
+        int deliveries = await context.NotificationDeliveries
+            .IgnoreQueryFilters()
+            .CountAsync(delivery => delivery.TenantId == tenantId);
+        int delegations = await context.NotificationExternalDelegations
+            .IgnoreQueryFilters()
+            .CountAsync(delegation => delegation.TenantId == tenantId);
+
+        await Assert.That(intents).IsEqualTo(0);
+        await Assert.That(deliveries).IsEqualTo(0);
+        await Assert.That(delegations).IsEqualTo(0);
+    }
+
+    private static FencedErasureState CreateFencedErasureState(Guid userId)
+    {
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            Interlocked.Increment(ref _nextAuthoritySequence),
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        return new FencedErasureState(
+            intent,
+            PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc));
+    }
+
+    private sealed class FixedNotificationOwnershipResolver(NotificationOwnershipDecision decision)
+        : INotificationOwnershipResolver
+    {
+        public Task<NotificationOwnershipDecision> ResolveAsync(
+            NotificationIntentDraft draft,
+            CancellationToken cancellationToken = default) => Task.FromResult(decision);
+    }
+
+    private sealed class FencingNotificationOwnershipResolver(
+        ExploreDbContext context,
+        Guid recipientUserId,
+        NotificationOwnershipDecision decision) : INotificationOwnershipResolver
+    {
+        public async Task<NotificationOwnershipDecision> ResolveAsync(
+            NotificationIntentDraft draft,
+            CancellationToken cancellationToken = default)
+        {
+            FencedErasureState erasureState = CreateFencedErasureState(recipientUserId);
+            context.PrivacyErasureIntents.Add(erasureState.Intent);
+            context.PrivacyErasureSagas.Add(erasureState.Saga);
+            await context.SaveChangesAsync(cancellationToken);
+            return decision;
+        }
+    }
+
+    private sealed record FencedErasureState(PrivacyErasureIntent Intent, PrivacyErasureSaga Saga);
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
 }
