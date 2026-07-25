@@ -20,6 +20,12 @@ public interface IIntegrationSyncOutboxRepository
         DateTime startedAt,
         CancellationToken cancellationToken);
 
+    Task<IntegrationSyncOutbox?> GetActiveClaimAsync(
+        Guid tenantId,
+        Guid id,
+        Guid leaseToken,
+        CancellationToken cancellationToken);
+
     Task MarkAsCompleted(Guid id, DateTime completedAt, CancellationToken cancellationToken);
 
     Task MarkAsFailed(

@@ -148,6 +148,20 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         var ownerStorageB = CreateStorageObject(tenantB, userActorB, fileType, "tenants/b/owner.png", "Owner B", "Owner B");
         var unrelatedStorage = CreateStorageObject(tenantA, unrelatedActor, fileType, "tenants/a/unrelated.png", "Unrelated", "Unrelated");
         seedContext.StorageObjects.AddRange(ownerStorageA, ownerStorageB, unrelatedStorage);
+        var ownerUpload = CreateStorageUploadSession(tenantA, owner, "tenants/a/uploads/owner.txt");
+        var unrelatedUpload = CreateStorageUploadSession(tenantA, unrelated, "tenants/a/uploads/unrelated.txt");
+        seedContext.StorageUploadSessions.AddRange(ownerUpload, unrelatedUpload);
+        var storageUsageCounter = new StorageUsageCounter
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantA.Id,
+            Tenant = tenantA,
+            Provider = StorageProviders.Local,
+            ReservedBytes = ownerUpload.ReservedBytes + unrelatedUpload.ReservedBytes,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        seedContext.StorageUsageCounters.Add(storageUsageCounter);
 
         var webhookConsumerKind = await seedContext.WebhookConsumerKinds.SingleAsync(kind => kind.MasterCode == "USER");
         var webhookConsumerStatus = await seedContext.WebhookConsumerStatuses.SingleAsync(status => status.MasterCode == "ACTIVE");
@@ -177,6 +191,10 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         await Assert.That(candidates.Any(candidate => candidate.ProviderKind == PrivacyErasureProviderKind.Smtp)).IsTrue();
         await Assert.That(candidates.Any(candidate => candidate.ProviderKind == PrivacyErasureProviderKind.WebPush)).IsTrue();
         await Assert.That(candidates.Any(candidate => candidate.ProviderKind == PrivacyErasureProviderKind.ObjectStorage)).IsTrue();
+        await Assert.That(candidates.Any(candidate =>
+            candidate.ProviderKind == PrivacyErasureProviderKind.ObjectStorage
+            && candidate.TargetId == ownerUpload.Id
+            && candidate.Locator == "tenants/a/uploads/owner.txt")).IsTrue();
         await Assert.That(candidates.Any(candidate => candidate.ProviderKind == PrivacyErasureProviderKind.Webhook)).IsTrue();
         await Assert.That(candidates.Any(candidate => candidate.ProviderKind == PrivacyErasureProviderKind.Osprey || candidate.ProviderKind == PrivacyErasureProviderKind.Coop)).IsFalse();
         await repository.EraseProviderBackedLocalUserMetadataAsync(owner.Id, CancellationToken.None);
@@ -247,6 +265,27 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
             && row.Provider == StorageProviders.Local)).IsTrue();
         await Assert.That(unrelatedObject.ObjectKey).IsEqualTo("tenants/a/unrelated.png");
         await Assert.That(unrelatedObject.Provider).IsEqualTo("s3_compatible");
+
+        StorageUploadSession ownerUploadRow = await runtimeContext.StorageUploadSessions
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(row => row.Id == ownerUpload.Id);
+        StorageUploadSession unrelatedUploadRow = await runtimeContext.StorageUploadSessions
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(row => row.Id == unrelatedUpload.Id);
+        await Assert.That(ownerUploadRow.UserId).IsNull();
+        await Assert.That(ownerUploadRow.ObjectKey).IsNull();
+        await Assert.That(ownerUploadRow.ReservedBytes).IsEqualTo(0);
+        await Assert.That(ownerUploadRow.SafeDisplayName).IsEmpty();
+        await Assert.That(ownerUploadRow.Status).IsEqualTo(StorageUploadSessionStates.Uploading);
+        await Assert.That(ownerUploadRow.CreatedBy).IsNull();
+        await Assert.That(ownerUploadRow.UpdatedBy).IsNull();
+        await Assert.That(unrelatedUploadRow.UserId).IsEqualTo(unrelated.Id);
+        await Assert.That(unrelatedUploadRow.ObjectKey).IsEqualTo("tenants/a/uploads/unrelated.txt");
+        await Assert.That(unrelatedUploadRow.ReservedBytes).IsEqualTo(8);
+        StorageUsageCounter storageUsageCounterRow = await runtimeContext.StorageUsageCounters
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(row => row.Id == storageUsageCounter.Id);
+        await Assert.That(storageUsageCounterRow.ReservedBytes).IsEqualTo(8);
 
         WebhookConsumer[] ownerConsumers = await runtimeContext.WebhookConsumers
             .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
@@ -606,6 +645,39 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
             LifecycleState = StorageObjectLifecycleStates.Active,
             Size = 128,
             CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+
+    private static StorageUploadSession CreateStorageUploadSession(
+        Tenant tenant,
+        User user,
+        string objectKey) => new()
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            UserId = user.Id,
+            User = user,
+            Provider = StorageProviders.Local,
+            RouteKey = StorageRouteKeys.General,
+            PolicyMaxUploadBytes = 8,
+            PolicyVersion = "1",
+            ExpectedSizeBytes = 8,
+            ReservedBytes = 8,
+            ContentType = "text/plain",
+            OriginalFileName = "owner.txt",
+            SafeDisplayName = "owner.txt",
+            Extension = "txt",
+            Purpose = StorageObjectPurposes.Attachment,
+            Visibility = StorageObjectVisibilities.PrivateOwner,
+            Status = StorageUploadSessionStates.Uploading,
+            ObjectKey = objectKey,
+            IdempotencyKey = $"upload-{Guid.CreateVersion7():N}",
+            ExpiresAt = DateTime.UtcNow.AddMinutes(10),
+            UploadStartedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = user.Id,
+            UpdatedBy = user.Id,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
 

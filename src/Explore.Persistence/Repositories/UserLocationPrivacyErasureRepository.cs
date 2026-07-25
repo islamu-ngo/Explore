@@ -73,6 +73,18 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
                 PrivacyErasureProviderLocatorKind.ObjectKey,
                 value.ObjectKey!))
             .ToArrayAsync(cancellationToken));
+        candidates.AddRange(await dbContext.StorageUploadSessions
+            .IgnoreAllFilters(reason)
+            .AsNoTracking()
+            .Where(value => value.UserId == subjectId && value.ObjectKey != null)
+            .Select(value => new PrivacyErasureProviderCandidate(
+                PrivacyErasureProviderKind.ObjectStorage,
+                PrivacyErasureProviderAction.DeleteOwnedObject,
+                value.TenantId,
+                value.Id,
+                PrivacyErasureProviderLocatorKind.ObjectKey,
+                value.ObjectKey!))
+            .ToArrayAsync(cancellationToken));
         candidates.AddRange(await dbContext.EmailDispatchOutbox
             .IgnoreAllFilters(reason)
             .AsNoTracking()
@@ -135,6 +147,36 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .Where(value => value.OwnerUserId == subjectId)
             .Select(value => value.Id)
             .ToArrayAsync(cancellationToken);
+        var uploadReservations = await dbContext.StorageUploadSessions
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId
+                && value.ReservedBytes > 0
+                && (value.Status == StorageUploadSessionStates.Reserved
+                    || value.Status == StorageUploadSessionStates.Uploading))
+            .GroupBy(value => new { value.TenantId, value.Provider })
+            .Select(group => new
+            {
+                group.Key.TenantId,
+                group.Key.Provider,
+                ReservedBytes = group.Sum(value => value.ReservedBytes)
+            })
+            .ToArrayAsync(cancellationToken);
+
+        foreach (var reservation in uploadReservations)
+        {
+            await dbContext.StorageUsageCounters
+                .IgnoreAllFilters(reason)
+                .Where(value => value.TenantId == reservation.TenantId
+                    && value.Provider == reservation.Provider)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(
+                        value => value.ReservedBytes,
+                        value => value.ReservedBytes >= reservation.ReservedBytes
+                            ? value.ReservedBytes - reservation.ReservedBytes
+                            : 0)
+                    .SetProperty(value => value.UpdatedAt, utcNow)
+                    .SetProperty(value => value.UpdatedBy, (Guid?)null), cancellationToken);
+        }
 
         await dbContext.UserExternalLogins
             .IgnoreAllFilters(reason)
@@ -161,6 +203,21 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .IgnoreAllFilters(reason)
             .Where(value => value.UserId == subjectId)
             .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.StorageUploadSessions
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.UserId, (Guid?)null)
+                .SetProperty(value => value.ReservedBytes, 0L)
+                .SetProperty(value => value.ObjectKey, (string?)null)
+                .SetProperty(value => value.Sha256Checksum, (string?)null)
+                .SetProperty(value => value.OriginalFileName, (string?)null)
+                .SetProperty(value => value.SafeDisplayName, string.Empty)
+                .SetProperty(value => value.IdempotencyKey, (string?)null)
+                .SetProperty(value => value.FailureMessage, (string?)null)
+                .SetProperty(value => value.CreatedBy, (Guid?)null)
+                .SetProperty(value => value.UpdatedAt, utcNow)
+                .SetProperty(value => value.UpdatedBy, (Guid?)null), cancellationToken);
         await dbContext.StorageObjects
             .IgnoreAllFilters(reason)
             .Where(value => value.Actor != null
