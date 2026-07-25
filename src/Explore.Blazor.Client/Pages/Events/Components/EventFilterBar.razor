@@ -25,14 +25,16 @@
            Class="filter-bar__mobile-drawer">
 
     <MudDrawerHeader Class="filter-bar__drawer-header">
-        <MudText Typo="Typo.h6" Style="font-weight: 700;">
-            <MudIcon Icon="@Icons.Material.Filled.FilterList" Class="mr-2" Style="vertical-align: middle;" />
-            Filters
-        </MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Close"
-                       Size="Size.Small"
-                       OnClick="CloseMobileDrawer"
-                       aria-label="Close filters" />
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <MudText Typo="Typo.h6" Style="font-weight: 700;">
+                <MudIcon Icon="@Icons.Material.Filled.FilterList" Class="mr-2" Style="vertical-align: middle;" />
+                Filters
+            </MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Size="Size.Small"
+                           OnClick="CloseMobileDrawer"
+                           aria-label="Close filters" />
+        </div>
     </MudDrawerHeader>
 
     <div class="filter-bar__drawer-body">
