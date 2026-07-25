@@ -26,10 +26,16 @@ public sealed class EventPublishedNotificationFanoutService : IEventPublishedNot
     public const string OutcomeSkippedCompleted = "skipped_completed";
 
     private const int BatchSize = 250;
+    private const int RecipientOutcomeFenced = 0;
+    private const int RecipientOutcomePreferenceDisabled = 1;
+    private const int RecipientOutcomeNotificationCreated = 2;
+    private const int RecipientOutcomeDuplicateSkipped = 3;
 
     private readonly IActorSubscriptionRepository actorSubscriptionRepository;
     private readonly INotificationRepository notificationRepository;
     private readonly INotificationFanoutRunRepository fanoutRunRepository;
+    private readonly IPrivacyErasureStateRepository privacyErasureStateRepository;
+    private readonly IUnitOfWork unitOfWork;
     private readonly INotificationPreferenceResolver notificationPreferenceResolver;
     private readonly IWebPushSubscriptionRepository webPushSubscriptionRepository;
     private readonly IWebPushDispatchOutboxRepository webPushDispatchOutboxRepository;
@@ -40,6 +46,8 @@ public sealed class EventPublishedNotificationFanoutService : IEventPublishedNot
         IActorSubscriptionRepository actorSubscriptionRepository,
         INotificationRepository notificationRepository,
         INotificationFanoutRunRepository fanoutRunRepository,
+        IPrivacyErasureStateRepository privacyErasureStateRepository,
+        IUnitOfWork unitOfWork,
         INotificationPreferenceResolver notificationPreferenceResolver,
         IWebPushSubscriptionRepository webPushSubscriptionRepository,
         IWebPushDispatchOutboxRepository webPushDispatchOutboxRepository,
@@ -49,6 +57,8 @@ public sealed class EventPublishedNotificationFanoutService : IEventPublishedNot
         this.actorSubscriptionRepository = actorSubscriptionRepository;
         this.notificationRepository = notificationRepository;
         this.fanoutRunRepository = fanoutRunRepository;
+        this.privacyErasureStateRepository = privacyErasureStateRepository;
+        this.unitOfWork = unitOfWork;
         this.notificationPreferenceResolver = notificationPreferenceResolver;
         this.webPushSubscriptionRepository = webPushSubscriptionRepository;
         this.webPushDispatchOutboxRepository = webPushDispatchOutboxRepository;
@@ -107,39 +117,25 @@ public sealed class EventPublishedNotificationFanoutService : IEventPublishedNot
                     processedThisAttempt++;
                     run.CursorSubscriberTenantUserId = subscription.SubscriberTenantUserId;
 
+                    if (await IsFencedAsync(subscription.SubscriberUserId, cancellationToken))
+                    {
+                        continue;
+                    }
+
                     var deduplicationKey = BuildDeduplicationKey(request, subscription);
-                    var notification = await notificationRepository.GetByDeduplicationKeyAsync(
-                        request.TenantId,
-                        subscription.SubscriberUserId,
-                        deduplicationKey,
+                    var outcome = await unitOfWork.ExecuteSerializableAsync(
+                        token => ProcessSubscriberAsync(request, subscription, deduplicationKey, token),
                         cancellationToken);
 
-                    if (notification is not null)
+                    if (outcome == RecipientOutcomeNotificationCreated)
+                    {
+                        run.CreatedNotificationCount++;
+                        createdThisAttempt++;
+                    }
+                    else if (outcome == RecipientOutcomeDuplicateSkipped)
                     {
                         duplicateSkippedThisAttempt++;
-                        await EnqueueWebPushDispatchesAsync(request, subscription, notification.Id, cancellationToken);
-                        continue;
                     }
-
-                    var preference = await notificationPreferenceResolver.ResolveAsync(
-                        new NotificationPreferenceResolveRequest(
-                            request.TenantId,
-                            subscription.SubscriberUserId,
-                            null,
-                            null,
-                            NotificationPreferenceCategoryCodes.EventUpdates,
-                            NotificationPreferenceChannelCodes.InApp),
-                        cancellationToken);
-                    if (!preference.IsEnabled)
-                    {
-                        continue;
-                    }
-
-                    notification = await notificationRepository.Create(CreateNotification(request, subscription, deduplicationKey));
-                    run.CreatedNotificationCount++;
-                    createdThisAttempt++;
-
-                    await EnqueueWebPushDispatchesAsync(request, subscription, notification.Id, cancellationToken);
                 }
 
                 await fanoutRunRepository.Update(run);
@@ -257,6 +253,50 @@ public sealed class EventPublishedNotificationFanoutService : IEventPublishedNot
     {
         return $"event-published:{request.TenantId:N}:{request.EventId:N}:{subscription.SubscriberTenantUserId:N}";
     }
+
+    private async Task<int> ProcessSubscriberAsync(
+        EventPublishedNotificationFanoutRequested request,
+        ActorSubscription subscription,
+        string deduplicationKey,
+        CancellationToken cancellationToken)
+    {
+        if (await IsFencedAsync(subscription.SubscriberUserId, cancellationToken))
+        {
+            return RecipientOutcomeFenced;
+        }
+
+        var notification = await notificationRepository.GetByDeduplicationKeyAsync(
+            request.TenantId,
+            subscription.SubscriberUserId,
+            deduplicationKey,
+            cancellationToken);
+        if (notification is not null)
+        {
+            await EnqueueWebPushDispatchesAsync(request, subscription, notification.Id, cancellationToken);
+            return RecipientOutcomeDuplicateSkipped;
+        }
+
+        var preference = await notificationPreferenceResolver.ResolveAsync(
+            new NotificationPreferenceResolveRequest(
+                request.TenantId,
+                subscription.SubscriberUserId,
+                null,
+                null,
+                NotificationPreferenceCategoryCodes.EventUpdates,
+                NotificationPreferenceChannelCodes.InApp),
+            cancellationToken);
+        if (!preference.IsEnabled)
+        {
+            return RecipientOutcomePreferenceDisabled;
+        }
+
+        notification = await notificationRepository.Create(CreateNotification(request, subscription, deduplicationKey));
+        await EnqueueWebPushDispatchesAsync(request, subscription, notification.Id, cancellationToken);
+        return RecipientOutcomeNotificationCreated;
+    }
+
+    private async Task<bool> IsFencedAsync(Guid userId, CancellationToken cancellationToken) =>
+        await privacyErasureStateRepository.GetBySubjectAsync(userId, cancellationToken) is not null;
 
     private async Task EnqueueWebPushDispatchesAsync(
         EventPublishedNotificationFanoutRequested request,

@@ -2,6 +2,7 @@
 // ABOUTME: Verifies real DI routing creates durable notifications once per eligible subscription.
 
 using System.Text.Json;
+using System.Security.Cryptography;
 
 using Event.Api.IntegrationTests.Builders;
 using Event.Api.IntegrationTests.Fixtures;
@@ -73,6 +74,45 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
         await Assert.That(fanoutRun.CompletedAt).IsNotNull();
     }
 
+    [Test]
+    public async Task InternalFanoutDispatch_WithFencedAndActiveSubscribers_CreatesOnlyActiveNotificationAndWebPushDispatch()
+    {
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var scenario = await SeedFanoutScenarioAsync(context, includeFencedSubscriber: true);
+        var dispatcher = scope.ServiceProvider.GetRequiredService<IOutboxMessageDispatcher>();
+        var message = CreateFanoutOutboxMessage(scenario);
+
+        await dispatcher.DispatchAsync(message);
+        context.ChangeTracker.Clear();
+
+        var notifications = await context.Notifications
+            .IgnoreQueryFilters()
+            .Where(notification => notification.TenantId == scenario.TenantId
+                && (notification.UserId == scenario.SubscriberUserId
+                    || notification.UserId == scenario.FencedSubscriberUserId))
+            .ToListAsync();
+        var dispatches = await context.WebPushDispatchOutbox
+            .IgnoreQueryFilters()
+            .Where(dispatch => dispatch.TenantId == scenario.TenantId
+                && (dispatch.UserId == scenario.SubscriberUserId
+                    || dispatch.UserId == scenario.FencedSubscriberUserId))
+            .ToListAsync();
+        var fanoutRun = await context.NotificationFanoutRuns
+            .IgnoreQueryFilters()
+            .SingleAsync(run => run.TenantId == scenario.TenantId
+                && run.FanoutKind == EventPublishedNotificationFanoutService.FanoutKind
+                && run.EntityId == scenario.EventId);
+
+        await Assert.That(notifications.Select(notification => notification.UserId))
+            .IsEquivalentTo([scenario.SubscriberUserId]);
+        await Assert.That(dispatches.Select(dispatch => dispatch.UserId))
+            .IsEquivalentTo([scenario.SubscriberUserId]);
+        await Assert.That(fanoutRun.Status).IsEqualTo(EventPublishedNotificationFanoutService.StatusCompleted);
+        await Assert.That(fanoutRun.ProcessedCount).IsEqualTo(2);
+        await Assert.That(fanoutRun.CreatedNotificationCount).IsEqualTo(1);
+    }
+
     private static OutboxMessage CreateFanoutOutboxMessage(FanoutScenario scenario)
     {
         var payload = new EventPublishedNotificationFanoutRequested
@@ -99,7 +139,9 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
         };
     }
 
-    private static async Task<FanoutScenario> SeedFanoutScenarioAsync(ExploreDbContext context)
+    private static async Task<FanoutScenario> SeedFanoutScenarioAsync(
+        ExploreDbContext context,
+        bool includeFencedSubscriber = false)
     {
         var tenant = await context.Tenants
             .IgnoreQueryFilters()
@@ -116,6 +158,11 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
 
         var subscriber = new UserBuilder().Build();
         context.Users.Add(subscriber);
+        User? fencedSubscriber = includeFencedSubscriber ? new UserBuilder().Build() : null;
+        if (fencedSubscriber is not null)
+        {
+            context.Users.Add(fencedSubscriber);
+        }
         await context.SaveChangesAsync();
 
         var subscriberActor = new ActorBuilder()
@@ -128,7 +175,18 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
             .WithActorType(ActorTypeEnum.Organization)
             .WithDisplayName("Fanout Source Organization")
             .Build();
+        Actor? fencedSubscriberActor = fencedSubscriber is null
+            ? null
+            : new ActorBuilder()
+                .WithTenantId(tenant.Id)
+                .WithUserId(fencedSubscriber.Id)
+                .WithDisplayName("Fenced Fanout Subscriber")
+                .Build();
         context.Actors.AddRange(subscriberActor, sourceActor);
+        if (fencedSubscriberActor is not null)
+        {
+            context.Actors.Add(fencedSubscriberActor);
+        }
         await context.SaveChangesAsync();
 
         subscriber.ActorId = subscriberActor.Id;
@@ -165,6 +223,41 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
             NotificationLevel = null!,
             SubscribedAt = DateTime.UtcNow
         };
+        TenantUser? fencedTenantUser = fencedSubscriber is null || fencedSubscriberActor is null
+            ? null
+            : new TenantUser
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenant.Id,
+                Tenant = tenant,
+                UserId = fencedSubscriber.Id,
+                User = fencedSubscriber,
+                ActorId = fencedSubscriberActor.Id,
+                Actor = fencedSubscriberActor,
+                StatusId = (int)TenantUserStatusEnum.Active,
+                JoinedAt = DateTime.UtcNow
+            };
+        ActorSubscription? fencedSubscription = fencedTenantUser is null || fencedSubscriber is null
+            ? null
+            : new ActorSubscription
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenant.Id,
+                Tenant = null!,
+                SubscriberTenantUserId = fencedTenantUser.Id,
+                SubscriberTenantUser = null!,
+                SubscriberUserId = fencedSubscriber.Id,
+                SubscriberUser = null!,
+                TargetActorId = sourceActor.Id,
+                TargetActor = null!,
+                TargetActorTypeId = (int)ActorTypeEnum.Organization,
+                TargetActorType = null!,
+                StatusId = (int)ActorSubscriptionStatusEnum.Active,
+                Status = null!,
+                NotificationLevelId = (int)ActorSubscriptionNotificationLevelEnum.All,
+                NotificationLevel = null!,
+                SubscribedAt = DateTime.UtcNow
+            };
 
         var startDate = DateTimeOffset.UtcNow.AddDays(1);
         var endDate = startDate.AddHours(2);
@@ -179,6 +272,30 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
 
         context.TenantUsers.Add(tenantUser);
         context.ActorSubscriptions.Add(subscription);
+        context.WebPushSubscriptions.Add(WebPushSubscription.Create(
+            tenant.Id,
+            subscriber.Id,
+            "active-subscriber-device",
+            $"https://push.example/{subscriber.Id:N}",
+            "p256dh-active",
+            "auth-active",
+            null,
+            DateTime.UtcNow));
+        if (fencedTenantUser is not null && fencedSubscription is not null && fencedSubscriber is not null)
+        {
+            context.TenantUsers.Add(fencedTenantUser);
+            context.ActorSubscriptions.Add(fencedSubscription);
+            context.WebPushSubscriptions.Add(WebPushSubscription.Create(
+                tenant.Id,
+                fencedSubscriber.Id,
+                "fenced-subscriber-device",
+                $"https://push.example/{fencedSubscriber.Id:N}",
+                "p256dh-fenced",
+                "auth-fenced",
+                null,
+                DateTime.UtcNow));
+            context.PrivacyErasureSagas.Add(CreateFencedSaga(fencedSubscriber.Id));
+        }
         context.Events.Add(@event);
         await context.SaveChangesAsync();
 
@@ -190,7 +307,8 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
             @event.Id,
             @event.Title,
             startDate,
-            endDate);
+            endDate,
+            fencedSubscriber?.Id);
     }
 
     private sealed record FanoutScenario(
@@ -201,5 +319,26 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
         Guid EventId,
         string EventTitle,
         DateTimeOffset StartDate,
-        DateTimeOffset? EndDate);
+        DateTimeOffset? EndDate,
+        Guid? FencedSubscriberUserId);
+
+    private static PrivacyErasureSaga CreateFencedSaga(Guid userId)
+    {
+        DateTime now = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            authoritySequence: 1,
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            policyVersion: 1,
+            now,
+            now);
+        return PrivacyErasureSaga.Start(
+            intent,
+            fenceToken: 1,
+            SHA256.HashData([1]),
+            now.AddHours(1),
+            now);
+    }
 }

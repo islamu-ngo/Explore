@@ -2,6 +2,7 @@
 // ABOUTME: Verifies subscriber scans create deterministic notification rows and durable fanout progress.
 
 using System.Diagnostics.Metrics;
+using System.Security.Cryptography;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Models.InternalEvents;
@@ -19,6 +20,8 @@ public sealed class EventPublishedNotificationFanoutServiceTests
     private readonly IActorSubscriptionRepository _actorSubscriptionRepository = Substitute.For<IActorSubscriptionRepository>();
     private readonly INotificationRepository _notificationRepository = Substitute.For<INotificationRepository>();
     private readonly INotificationFanoutRunRepository _fanoutRunRepository = Substitute.For<INotificationFanoutRunRepository>();
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly INotificationPreferenceResolver _preferenceResolver = Substitute.For<INotificationPreferenceResolver>();
     private readonly IWebPushSubscriptionRepository _webPushSubscriptionRepository = Substitute.For<IWebPushSubscriptionRepository>();
     private readonly IWebPushDispatchOutboxRepository _webPushDispatchOutboxRepository = Substitute.For<IWebPushDispatchOutboxRepository>();
@@ -30,6 +33,8 @@ public sealed class EventPublishedNotificationFanoutServiceTests
             _actorSubscriptionRepository,
             _notificationRepository,
             _fanoutRunRepository,
+            _privacyErasureStateRepository,
+            _unitOfWork,
             _preferenceResolver,
             _webPushSubscriptionRepository,
             _webPushDispatchOutboxRepository,
@@ -38,6 +43,12 @@ public sealed class EventPublishedNotificationFanoutServiceTests
 
         _preferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
             .Returns(call => EnabledDecision(call.Arg<NotificationPreferenceResolveRequest>()));
+        _privacyErasureStateRepository.GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null);
+        _unitOfWork.ExecuteSerializableAsync(
+                Arg.Any<Func<CancellationToken, Task<int>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task<int>>>()(call.Arg<CancellationToken>()));
         _webPushSubscriptionRepository.ListActiveForUserAsync(
                 Arg.Any<Guid>(),
                 Arg.Any<Guid>(),
@@ -49,7 +60,8 @@ public sealed class EventPublishedNotificationFanoutServiceTests
     public async Task FanoutAsync_WithActiveSubscriptions_CreatesNotificationsAndCompletesRun()
     {
         var request = CreateRequest();
-        var subscription = CreateSubscription(request.TenantId, request.SourceActorId);
+        var firstSubscription = CreateSubscription(request.TenantId, request.SourceActorId);
+        var secondSubscription = CreateSubscription(request.TenantId, request.SourceActorId);
         var createdNotifications = new List<Notification>();
         var updatedRuns = new List<NotificationFanoutRun>();
 
@@ -72,16 +84,16 @@ public sealed class EventPublishedNotificationFanoutServiceTests
                 null,
                 Arg.Any<int>(),
                 Arg.Any<CancellationToken>())
-            .Returns([subscription]);
+            .Returns([firstSubscription, secondSubscription]);
         _notificationRepository.ExistsByDeduplicationKeyAsync(
                 request.TenantId,
-                subscription.SubscriberUserId,
+                Arg.Any<Guid>(),
                 Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
             .Returns(false);
         _notificationRepository.GetByDeduplicationKeyAsync(
                 request.TenantId,
-                subscription.SubscriberUserId,
+                Arg.Any<Guid>(),
                 Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
             .Returns((Notification?)null);
@@ -90,22 +102,23 @@ public sealed class EventPublishedNotificationFanoutServiceTests
 
         await _service.FanoutAsync(request);
 
-        await Assert.That(createdNotifications).Count().IsEqualTo(1);
-        var notification = createdNotifications.Single();
-        await Assert.That(notification.TenantId).IsEqualTo(request.TenantId);
-        await Assert.That(notification.UserId).IsEqualTo(subscription.SubscriberUserId);
-        await Assert.That(notification.NotificationTypeId).IsEqualTo((int)NotificationTypeEnum.EventCreated);
-        await Assert.That(notification.NotificationEntityTypeId).IsEqualTo((int)NotificationEntityTypeEnum.Event);
-        await Assert.That(notification.EntityId).IsEqualTo(request.EventId.ToString());
-        await Assert.That(notification.NotificationScopeId).IsEqualTo((int)ActorTypeEnum.Organization);
-        await Assert.That(notification.SourceActorId).IsEqualTo(request.SourceActorId);
-        await Assert.That(notification.RecipientContextActorId).IsEqualTo(subscription.TargetActorId);
-        await Assert.That(notification.NotificationReasonId).IsEqualTo((int)NotificationReasonEnum.Subscription);
-        await Assert.That(notification.DeduplicationKey).Contains(request.EventId.ToString("N"));
+        await Assert.That(createdNotifications).Count().IsEqualTo(2);
+        await Assert.That(createdNotifications.Select(notification => notification.UserId))
+            .IsEquivalentTo([firstSubscription.SubscriberUserId, secondSubscription.SubscriberUserId]);
+        await Assert.That(createdNotifications.All(notification =>
+            notification.TenantId == request.TenantId
+            && notification.NotificationTypeId == (int)NotificationTypeEnum.EventCreated
+            && notification.NotificationEntityTypeId == (int)NotificationEntityTypeEnum.Event
+            && notification.EntityId == request.EventId.ToString()
+            && notification.NotificationScopeId == (int)ActorTypeEnum.Organization
+            && notification.SourceActorId == request.SourceActorId
+            && notification.NotificationReasonId == (int)NotificationReasonEnum.Subscription
+            && notification.DeduplicationKey.Contains(request.EventId.ToString("N"), StringComparison.Ordinal)))
+            .IsTrue();
         await Assert.That(updatedRuns.Last().Status).IsEqualTo(EventPublishedNotificationFanoutService.StatusCompleted);
-        await Assert.That(updatedRuns.Last().ProcessedCount).IsEqualTo(1);
-        await Assert.That(updatedRuns.Last().CreatedNotificationCount).IsEqualTo(1);
-        await Assert.That(updatedRuns.Last().CursorSubscriberTenantUserId).IsEqualTo(subscription.SubscriberTenantUserId);
+        await Assert.That(updatedRuns.Last().ProcessedCount).IsEqualTo(2);
+        await Assert.That(updatedRuns.Last().CreatedNotificationCount).IsEqualTo(2);
+        await Assert.That(updatedRuns.Last().CursorSubscriberTenantUserId).IsEqualTo(secondSubscription.SubscriberTenantUserId);
     }
 
     [Test]
@@ -208,6 +221,106 @@ public sealed class EventPublishedNotificationFanoutServiceTests
             run.Status == EventPublishedNotificationFanoutService.StatusCompleted
             && run.ProcessedCount == 1
             && run.CreatedNotificationCount == 0));
+    }
+
+    [Test]
+    public async Task FanoutAsync_WithOneFencedAndOneActiveSubscriber_SkipsFencedPiiReadsAndContinues()
+    {
+        var request = CreateRequest();
+        var fencedSubscription = CreateSubscription(request.TenantId, request.SourceActorId);
+        var activeSubscription = CreateSubscription(request.TenantId, request.SourceActorId);
+        var createdNotifications = new List<Notification>();
+
+        _fanoutRunRepository.GetBySourceAsync(
+                request.TenantId,
+                EventPublishedNotificationFanoutService.FanoutKind,
+                (int)NotificationEntityTypeEnum.Event,
+                request.EventId,
+                request.SourceActorId,
+                true,
+                Arg.Any<CancellationToken>())
+            .Returns((NotificationFanoutRun?)null);
+        _fanoutRunRepository.Create(Arg.Any<NotificationFanoutRun>())
+            .Returns(call => call.Arg<NotificationFanoutRun>());
+        _actorSubscriptionRepository.GetActiveFanoutBatchAsync(
+                request.TenantId,
+                request.SourceActorId,
+                null,
+                Arg.Any<int>(),
+                Arg.Any<CancellationToken>())
+            .Returns([fencedSubscription, activeSubscription]);
+        _privacyErasureStateRepository.GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Guid>() == fencedSubscription.SubscriberUserId
+                ? CreateFencedSaga(fencedSubscription.SubscriberUserId)
+                : null);
+        _notificationRepository.GetByDeduplicationKeyAsync(
+                request.TenantId,
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns((Notification?)null);
+        _notificationRepository.Create(Arg.Do<Notification>(createdNotifications.Add))
+            .Returns(call => call.Arg<Notification>());
+
+        await _service.FanoutAsync(request);
+
+        await Assert.That(createdNotifications.Select(notification => notification.UserId))
+            .IsEquivalentTo([activeSubscription.SubscriberUserId]);
+        await _preferenceResolver.DidNotReceive().ResolveAsync(
+            Arg.Is<NotificationPreferenceResolveRequest>(item => item.UserId == fencedSubscription.SubscriberUserId),
+            Arg.Any<CancellationToken>());
+        await _notificationRepository.DidNotReceive().GetByDeduplicationKeyAsync(
+            request.TenantId,
+            fencedSubscription.SubscriberUserId,
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task FanoutAsync_WhenFenceAppearsBeforeRecipientWrite_SkipsNotificationAndWebPush()
+    {
+        var request = CreateRequest();
+        var subscription = CreateSubscription(request.TenantId, request.SourceActorId);
+
+        _fanoutRunRepository.GetBySourceAsync(
+                request.TenantId,
+                EventPublishedNotificationFanoutService.FanoutKind,
+                (int)NotificationEntityTypeEnum.Event,
+                request.EventId,
+                request.SourceActorId,
+                true,
+                Arg.Any<CancellationToken>())
+            .Returns((NotificationFanoutRun?)null);
+        _fanoutRunRepository.Create(Arg.Any<NotificationFanoutRun>())
+            .Returns(call => call.Arg<NotificationFanoutRun>());
+        _actorSubscriptionRepository.GetActiveFanoutBatchAsync(
+                request.TenantId,
+                request.SourceActorId,
+                null,
+                Arg.Any<int>(),
+                Arg.Any<CancellationToken>())
+            .Returns([subscription]);
+        _privacyErasureStateRepository.GetBySubjectAsync(subscription.SubscriberUserId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null, CreateFencedSaga(subscription.SubscriberUserId));
+        _notificationRepository.GetByDeduplicationKeyAsync(
+                request.TenantId,
+                subscription.SubscriberUserId,
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns((Notification?)null);
+        _notificationRepository.Create(Arg.Any<Notification>())
+            .Returns(call => call.Arg<Notification>());
+
+        await _service.FanoutAsync(request);
+
+        await _privacyErasureStateRepository.Received(2)
+            .GetBySubjectAsync(subscription.SubscriberUserId, Arg.Any<CancellationToken>());
+        await _notificationRepository.DidNotReceive().Create(Arg.Any<Notification>());
+        await _preferenceResolver.DidNotReceive().ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>());
+        await _webPushSubscriptionRepository.DidNotReceive().ListActiveForUserAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -325,5 +438,25 @@ public sealed class EventPublishedNotificationFanoutServiceTests
             false,
             "User",
             null);
+    }
+
+    private static PrivacyErasureSaga CreateFencedSaga(Guid userId)
+    {
+        DateTime now = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            authoritySequence: 1,
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            policyVersion: 1,
+            now,
+            now);
+        return PrivacyErasureSaga.Start(
+            intent,
+            fenceToken: 1,
+            SHA256.HashData([1]),
+            now.AddHours(1),
+            now);
     }
 }

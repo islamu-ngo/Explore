@@ -2,6 +2,7 @@
 // ABOUTME: Proves eligible active push subscriptions receive dispatch rows and opted-out users do not.
 
 using System.Diagnostics.Metrics;
+using System.Security.Cryptography;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Models.InternalEvents;
@@ -19,6 +20,8 @@ public sealed class EventPublishedNotificationFanoutWebPushTests
     private readonly IActorSubscriptionRepository _actorSubscriptionRepository = Substitute.For<IActorSubscriptionRepository>();
     private readonly INotificationRepository _notificationRepository = Substitute.For<INotificationRepository>();
     private readonly INotificationFanoutRunRepository _fanoutRunRepository = Substitute.For<INotificationFanoutRunRepository>();
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly INotificationPreferenceResolver _preferenceResolver = Substitute.For<INotificationPreferenceResolver>();
     private readonly IWebPushSubscriptionRepository _webPushSubscriptionRepository = Substitute.For<IWebPushSubscriptionRepository>();
     private readonly IWebPushDispatchOutboxRepository _webPushDispatchOutboxRepository = Substitute.For<IWebPushDispatchOutboxRepository>();
@@ -145,17 +148,84 @@ public sealed class EventPublishedNotificationFanoutWebPushTests
         await _webPushDispatchOutboxRepository.DidNotReceive().CreateIfNotExistsAsync(Arg.Any<WebPushDispatchOutbox>(), Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task FanoutAsync_WhenFencedSubscriberHasExistingNotification_DoesNotRepairWebPushDispatch()
+    {
+        var request = CreateRequest();
+        var actorSubscription = CreateActorSubscription(request);
+        var pushSubscription = WebPushSubscription.Create(
+            request.TenantId,
+            actorSubscription.SubscriberUserId,
+            "device-a",
+            "https://push.example/sub-a",
+            "p256dh",
+            "auth",
+            null,
+            DateTime.UtcNow);
+        SetupRunAndSubscriber(request, actorSubscription);
+        _privacyErasureStateRepository.GetBySubjectAsync(actorSubscription.SubscriberUserId, Arg.Any<CancellationToken>())
+            .Returns(CreateFencedSaga(actorSubscription.SubscriberUserId));
+        _notificationRepository.GetByDeduplicationKeyAsync(request.TenantId, actorSubscription.SubscriberUserId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new Notification
+            {
+                Id = Guid.NewGuid(),
+                TenantId = request.TenantId,
+                Tenant = null!,
+                UserId = actorSubscription.SubscriberUserId,
+                User = null!,
+                NotificationTypeId = (int)NotificationTypeEnum.EventCreated,
+                NotificationType = null!,
+                NotificationScope = null!,
+                Title = "Existing notification",
+                Body = "Existing body",
+                DeduplicationKey = "existing",
+                CreatedAt = DateTime.UtcNow
+            });
+        _webPushSubscriptionRepository.ListActiveForUserAsync(request.TenantId, actorSubscription.SubscriberUserId, Arg.Any<CancellationToken>())
+            .Returns([pushSubscription]);
+        _preferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => EnabledDecision(call.Arg<NotificationPreferenceResolveRequest>()));
+        _webPushDispatchOutboxRepository.CreateIfNotExistsAsync(Arg.Any<WebPushDispatchOutbox>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        var service = CreateService();
+
+        await service.FanoutAsync(request);
+
+        await _notificationRepository.DidNotReceive().Create(Arg.Any<Notification>());
+        await _preferenceResolver.DidNotReceive().ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>());
+        await _webPushSubscriptionRepository.DidNotReceive().ListActiveForUserAsync(
+            request.TenantId,
+            actorSubscription.SubscriberUserId,
+            Arg.Any<CancellationToken>());
+        await _webPushDispatchOutboxRepository.DidNotReceive().CreateIfNotExistsAsync(
+            Arg.Any<WebPushDispatchOutbox>(),
+            Arg.Any<CancellationToken>());
+    }
+
     private EventPublishedNotificationFanoutService CreateService()
     {
         return new EventPublishedNotificationFanoutService(
             _actorSubscriptionRepository,
             _notificationRepository,
             _fanoutRunRepository,
+            _privacyErasureStateRepository,
+            _unitOfWork,
             _preferenceResolver,
             _webPushSubscriptionRepository,
             _webPushDispatchOutboxRepository,
             CreateMetrics(),
             Substitute.For<ILogger<EventPublishedNotificationFanoutService>>());
+    }
+
+    [Before(Test)]
+    public void ConfigureTransactionAndFenceDefaults()
+    {
+        _privacyErasureStateRepository.GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null);
+        _unitOfWork.ExecuteSerializableAsync(
+                Arg.Any<Func<CancellationToken, Task<int>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task<int>>>()(call.Arg<CancellationToken>()));
     }
 
     private void SetupRunAndSubscriber(EventPublishedNotificationFanoutRequested request, ActorSubscription subscription)
@@ -211,5 +281,25 @@ public sealed class EventPublishedNotificationFanoutWebPushTests
         var meterFactory = Substitute.For<IMeterFactory>();
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
         return new BusinessMetrics(meterFactory);
+    }
+
+    private static PrivacyErasureSaga CreateFencedSaga(Guid userId)
+    {
+        DateTime now = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            authoritySequence: 1,
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            policyVersion: 1,
+            now,
+            now);
+        return PrivacyErasureSaga.Start(
+            intent,
+            fenceToken: 1,
+            SHA256.HashData([1]),
+            now.AddHours(1),
+            now);
     }
 }
