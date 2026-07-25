@@ -1,10 +1,12 @@
 // ABOUTME: Maps canonical inbound ATProto event projections into validated tenant-scoped import plans.
 // ABOUTME: Persists canonical state, presentations, cursor, and local import intent through one atomic repository call.
 
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Application.Features.Federation.Atproto.Requests.Commands;
 using Explore.Application.Features.Federation.Atproto.Services;
+using Explore.Application.Models.Storage;
 using Explore.Domain;
 using FluentValidation;
 using MediatR;
@@ -12,7 +14,8 @@ using MediatR;
 namespace Explore.Application.Features.Federation.Atproto.Handlers.Commands;
 
 public sealed class ImportAtprotoFederatedEventCommandHandler(
-    IAtprotoJetstreamRepository repository)
+    IAtprotoJetstreamRepository repository,
+    IAtprotoThumbnailBlobGateway thumbnailGateway)
     : IRequestHandler<ImportAtprotoFederatedEventCommand, bool>
 {
     public async Task<bool> Handle(
@@ -22,10 +25,24 @@ public sealed class ImportAtprotoFederatedEventCommandHandler(
         AtprotoJetstreamApplyRequest applyRequest = request.ApplyRequest;
         IReadOnlyList<AtprotoFederatedEventImportPlan> importPlans =
             await BuildImportPlansAsync(applyRequest, cancellationToken);
+        IReadOnlyList<AtprotoFederatedEventImportPlan> stagedPlans =
+            await StageThumbnailsAsync(importPlans, cancellationToken);
 
-        return await repository.TryApplyAndAdvanceAsync(
-            applyRequest with { EventImports = importPlans },
-            cancellationToken);
+        AtprotoPersistenceApplyResult result;
+        try
+        {
+            result = await repository.TryApplyAndAdvanceWithResultAsync(
+                applyRequest with { EventImports = stagedPlans },
+                cancellationToken);
+        }
+        catch
+        {
+            await CleanupUnconsumedAsync(stagedPlans, []);
+            throw;
+        }
+
+        await CleanupUnconsumedAsync(stagedPlans, result.ConsumedStagedThumbnails);
+        return result.Applied;
     }
 
     private static async Task<IReadOnlyList<AtprotoFederatedEventImportPlan>> BuildImportPlansAsync(
@@ -47,5 +64,43 @@ public sealed class ImportAtprotoFederatedEventCommandHandler(
             applyRequest.EventProjection,
             tenantIds,
             cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<AtprotoFederatedEventImportPlan>> StageThumbnailsAsync(
+        IReadOnlyList<AtprotoFederatedEventImportPlan> plans,
+        CancellationToken cancellationToken)
+    {
+        var stagedPlans = new List<AtprotoFederatedEventImportPlan>(plans.Count);
+        try
+        {
+            foreach (AtprotoFederatedEventImportPlan plan in plans)
+            {
+                FileStorageWriteResult? staged = await thumbnailGateway.FetchAndStageAsync(
+                    plan.Thumbnail,
+                    plan.TenantId,
+                    cancellationToken);
+                stagedPlans.Add(plan with { StagedThumbnail = staged });
+            }
+
+            return stagedPlans;
+        }
+        catch
+        {
+            await CleanupUnconsumedAsync(stagedPlans, []);
+            throw;
+        }
+    }
+
+    private async Task CleanupUnconsumedAsync(
+        IEnumerable<AtprotoFederatedEventImportPlan> plans,
+        IReadOnlyList<FileStorageWriteResult> consumed)
+    {
+        foreach (FileStorageWriteResult staged in plans
+                     .Select(plan => plan.StagedThumbnail)
+                     .OfType<FileStorageWriteResult>()
+                     .Where(staged => !consumed.Contains(staged)))
+        {
+            await thumbnailGateway.CleanupAsync(staged, CancellationToken.None);
+        }
     }
 }

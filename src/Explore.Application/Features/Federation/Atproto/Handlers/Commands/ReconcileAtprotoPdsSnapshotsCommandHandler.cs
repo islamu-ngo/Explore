@@ -9,6 +9,7 @@ using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Application.Features.Federation.Atproto.Requests.Commands;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Features.Federation.Atproto.Validators;
+using Explore.Application.Models.Storage;
 using Explore.Application.Services.Federation;
 using FluentValidation;
 using MediatR;
@@ -19,6 +20,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandler(
     AtprotoPdsRecoveryPolicyResolver policyResolver,
     AtprotoJetstreamTenantPresentationResolver presentationResolver,
     IAtprotoPdsSnapshotGateway gateway,
+    IAtprotoThumbnailBlobGateway thumbnailGateway,
     IAtprotoPdsSnapshotRepository repository,
     TimeProvider timeProvider)
     : IRequestHandler<ReconcileAtprotoPdsSnapshotsCommand, AtprotoPdsRecoveryResult>
@@ -121,6 +123,8 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandler(
             importPlans.AddRange(itemPlans);
         }
 
+        IReadOnlyList<AtprotoFederatedEventImportPlan> stagedPlans =
+            await StageThumbnailsAsync(importPlans, cancellationToken);
         var applyRequest = new AtprotoPdsSnapshotApplyRequest(
             request.Claim,
             normalizedDids,
@@ -129,14 +133,63 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandler(
             snapshotVersion,
             timeProvider.GetUtcNow().UtcDateTime)
         {
-            EventImports = importPlans
+            EventImports = stagedPlans
         };
-        bool reconciled = await repository.TryReconcileAsync(
-            applyRequest,
-            cancellationToken);
-        return reconciled
+        AtprotoPersistenceApplyResult result;
+        try
+        {
+            result = await repository.TryReconcileWithResultAsync(
+                applyRequest,
+                cancellationToken);
+        }
+        catch
+        {
+            await CleanupUnconsumedAsync(stagedPlans, []);
+            throw;
+        }
+
+        await CleanupUnconsumedAsync(stagedPlans, result.ConsumedStagedThumbnails);
+        return result.Applied
             ? new(AtprotoPdsRecoveryOutcome.Completed, fingerprint, normalizedDids.Length)
             : new(AtprotoPdsRecoveryOutcome.FenceRejected, fingerprint);
+    }
+
+    private async Task<IReadOnlyList<AtprotoFederatedEventImportPlan>> StageThumbnailsAsync(
+        IReadOnlyList<AtprotoFederatedEventImportPlan> plans,
+        CancellationToken cancellationToken)
+    {
+        var stagedPlans = new List<AtprotoFederatedEventImportPlan>(plans.Count);
+        try
+        {
+            foreach (AtprotoFederatedEventImportPlan plan in plans)
+            {
+                FileStorageWriteResult? staged = await thumbnailGateway.FetchAndStageAsync(
+                    plan.Thumbnail,
+                    plan.TenantId,
+                    cancellationToken);
+                stagedPlans.Add(plan with { StagedThumbnail = staged });
+            }
+
+            return stagedPlans;
+        }
+        catch
+        {
+            await CleanupUnconsumedAsync(stagedPlans, []);
+            throw;
+        }
+    }
+
+    private async Task CleanupUnconsumedAsync(
+        IEnumerable<AtprotoFederatedEventImportPlan> plans,
+        IReadOnlyList<FileStorageWriteResult> consumed)
+    {
+        foreach (FileStorageWriteResult staged in plans
+                     .Select(plan => plan.StagedThumbnail)
+                     .OfType<FileStorageWriteResult>()
+                     .Where(staged => !consumed.Contains(staged)))
+        {
+            await thumbnailGateway.CleanupAsync(staged, CancellationToken.None);
+        }
     }
 
     private static bool IsValidSnapshot(string expectedDid, AtprotoPdsSnapshot snapshot)

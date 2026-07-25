@@ -1,9 +1,10 @@
 // ABOUTME: Repository contract for the single global fenced Jetstream lease and atomic cursor materialization.
 // ABOUTME: Applies records or quarantine atomically while allowing invalid cursor evidence to retain the last safe checkpoint.
 
+using Explore.Application.Features.Federation.Atproto.Models;
+using Explore.Application.Models.Storage;
 using Explore.Domain;
 using Explore.Domain.Federation;
-using Explore.Application.Features.Federation.Atproto.Models;
 
 namespace Explore.Application.Contracts.Persistence;
 
@@ -35,6 +36,13 @@ public sealed record AtprotoJetstreamApplyRequest(
     public IReadOnlyList<AtprotoFederatedEventImportPlan> EventImports { get; init; } = [];
 }
 
+public sealed record AtprotoPersistenceApplyResult(
+    bool Applied,
+    IReadOnlyList<FileStorageWriteResult> ConsumedStagedThumbnails)
+{
+    public static AtprotoPersistenceApplyResult Rejected { get; } = new(false, []);
+}
+
 public interface IAtprotoJetstreamRepository
 {
     Task<AtprotoJetstreamClaim?> TryClaimAsync(
@@ -51,6 +59,10 @@ public interface IAtprotoJetstreamRepository
         CancellationToken cancellationToken = default);
 
     Task<bool> TryApplyAndAdvanceAsync(
+        AtprotoJetstreamApplyRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<AtprotoPersistenceApplyResult> TryApplyAndAdvanceWithResultAsync(
         AtprotoJetstreamApplyRequest request,
         CancellationToken cancellationToken = default);
 }

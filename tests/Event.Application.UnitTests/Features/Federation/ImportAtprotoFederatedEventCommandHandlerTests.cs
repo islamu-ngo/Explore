@@ -1,9 +1,12 @@
 // ABOUTME: Failing-first contract tests for internal ATProto event import command orchestration.
 // ABOUTME: Proves validated tenant plans attach to the existing atomic Jetstream repository request.
 
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Federation.Atproto.Handlers.Commands;
+using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Application.Features.Federation.Atproto.Requests.Commands;
+using Explore.Application.Models.Storage;
 using Explore.Domain;
 using Explore.Domain.Federation;
 using FluentValidation;
@@ -17,16 +20,18 @@ public sealed class ImportAtprotoFederatedEventCommandHandlerTests
     private static readonly Guid VisibleTenantId = Guid.CreateVersion7();
     private static readonly Guid HiddenTenantId = Guid.CreateVersion7();
     private static readonly DateTimeOffset CreatedAt = new(2026, 7, 23, 10, 0, 0, TimeSpan.Zero);
+    private const string ThumbnailCid = "bafkreibm6jg3ux5quca3po4nukm4m6xkfxzq4bgxjucfd4g6yuk3z7q7di";
 
     [Test]
     public async Task Handle_ValidProjection_AttachesOnePlanPerVisibleTenantToAtomicRepositoryRequest()
     {
         var repository = Substitute.For<IAtprotoJetstreamRepository>();
-        repository.TryApplyAndAdvanceAsync(
+        repository.TryApplyAndAdvanceWithResultAsync(
                 Arg.Any<AtprotoJetstreamApplyRequest>(),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
-        var handler = new ImportAtprotoFederatedEventCommandHandler(repository);
+            .Returns(new AtprotoPersistenceApplyResult(true, []));
+        var thumbnailGateway = Substitute.For<IAtprotoThumbnailBlobGateway>();
+        var handler = new ImportAtprotoFederatedEventCommandHandler(repository, thumbnailGateway);
         AtprotoJetstreamApplyRequest applyRequest = CreateApplyRequest(
             CreateProjection(),
             [
@@ -39,7 +44,15 @@ public sealed class ImportAtprotoFederatedEventCommandHandlerTests
             CancellationToken.None);
 
         await Assert.That(result).IsTrue();
-        await repository.Received(1).TryApplyAndAdvanceAsync(
+        await thumbnailGateway.Received(1).FetchAndStageAsync(
+            Arg.Is<AtprotoThumbnailBlobCandidate>(candidate =>
+                candidate.Did == "did:plc:community-owner"
+                && candidate.Cid == ThumbnailCid
+                && candidate.MimeType == "image/png"
+                && candidate.Size == 8),
+            VisibleTenantId,
+            Arg.Any<CancellationToken>());
+        await repository.Received(1).TryApplyAndAdvanceWithResultAsync(
             Arg.Is<AtprotoJetstreamApplyRequest>(request =>
                 request.EventImports.Count == 1
                 && request.EventImports[0].TenantId == VisibleTenantId
@@ -61,7 +74,8 @@ public sealed class ImportAtprotoFederatedEventCommandHandlerTests
     public async Task Handle_InvalidProjection_FailsBeforeAtomicRepositoryCall()
     {
         var repository = Substitute.For<IAtprotoJetstreamRepository>();
-        var handler = new ImportAtprotoFederatedEventCommandHandler(repository);
+        var thumbnailGateway = Substitute.For<IAtprotoThumbnailBlobGateway>();
+        var handler = new ImportAtprotoFederatedEventCommandHandler(repository, thumbnailGateway);
         AtprotoEventProjection invalidProjection = CreateProjection();
         invalidProjection.Name = " ";
         invalidProjection.CreatedAt = default;
@@ -75,18 +89,19 @@ public sealed class ImportAtprotoFederatedEventCommandHandlerTests
                 CancellationToken.None));
 
         await repository.DidNotReceiveWithAnyArgs()
-            .TryApplyAndAdvanceAsync(default!, default);
+            .TryApplyAndAdvanceWithResultAsync(default!, default);
     }
 
     [Test]
     public async Task Handle_Tombstone_AttachesNoImportPlansAndStillUsesAtomicRepository()
     {
         var repository = Substitute.For<IAtprotoJetstreamRepository>();
-        repository.TryApplyAndAdvanceAsync(
+        repository.TryApplyAndAdvanceWithResultAsync(
                 Arg.Any<AtprotoJetstreamApplyRequest>(),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
-        var handler = new ImportAtprotoFederatedEventCommandHandler(repository);
+            .Returns(new AtprotoPersistenceApplyResult(true, []));
+        var thumbnailGateway = Substitute.For<IAtprotoThumbnailBlobGateway>();
+        var handler = new ImportAtprotoFederatedEventCommandHandler(repository, thumbnailGateway);
         AtprotoJetstreamApplyRequest applyRequest = CreateApplyRequest(
             eventProjection: null,
             presentations: [],
@@ -101,9 +116,45 @@ public sealed class ImportAtprotoFederatedEventCommandHandlerTests
             CancellationToken.None);
 
         await Assert.That(result).IsTrue();
-        await repository.Received(1).TryApplyAndAdvanceAsync(
+        await repository.Received(1).TryApplyAndAdvanceWithResultAsync(
             Arg.Is<AtprotoJetstreamApplyRequest>(request => request.EventImports.Count == 0),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_FenceRejected_CleansExactStagedThumbnail()
+    {
+        var repository = Substitute.For<IAtprotoJetstreamRepository>();
+        repository.TryApplyAndAdvanceWithResultAsync(
+                Arg.Any<AtprotoJetstreamApplyRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(AtprotoPersistenceApplyResult.Rejected);
+        var thumbnailGateway = Substitute.For<IAtprotoThumbnailBlobGateway>();
+        var staged = new FileStorageWriteResult(
+            "returned-provider",
+            "returned/object-key",
+            8,
+            "image/png",
+            new string('a', 64));
+        thumbnailGateway.FetchAndStageAsync(
+                Arg.Any<Explore.Application.Features.Federation.Atproto.Models.AtprotoThumbnailBlobCandidate>(),
+                VisibleTenantId,
+                Arg.Any<CancellationToken>())
+            .Returns(staged);
+        var handler = new ImportAtprotoFederatedEventCommandHandler(repository, thumbnailGateway);
+
+        bool result = await handler.Handle(
+            new ImportAtprotoFederatedEventCommand(CreateApplyRequest(
+                CreateProjection(),
+                [Presentation(VisibleTenantId, isVisible: true)])),
+            CancellationToken.None);
+
+        await Assert.That(result).IsFalse();
+        await repository.Received(1).TryApplyAndAdvanceWithResultAsync(
+            Arg.Is<AtprotoJetstreamApplyRequest>(request =>
+                request.EventImports.Single().StagedThumbnail == staged),
+            Arg.Any<CancellationToken>());
+        await thumbnailGateway.Received(1).CleanupAsync(staged, CancellationToken.None);
     }
 
     private static AtprotoJetstreamApplyRequest CreateApplyRequest(
@@ -127,6 +178,22 @@ public sealed class ImportAtprotoFederatedEventCommandHandlerTests
             Direction = AtprotoRecordDirection.Inbound,
             Provenance = AtprotoRecordProvenance.Jetstream,
             SourceVersion = 101,
+            RecordJson = $$"""
+                {
+                  "timezone": "Europe/Brussels",
+                  "media": [
+                    {
+                      "role": "thumbnail",
+                      "content": {
+                        "$type": "blob",
+                        "ref": { "$link": "{{ThumbnailCid}}" },
+                        "mimeType": "image/png",
+                        "size": 8
+                      }
+                    }
+                  ]
+                }
+                """,
             UpdatedAt = CreatedAt.UtcDateTime
         };
 

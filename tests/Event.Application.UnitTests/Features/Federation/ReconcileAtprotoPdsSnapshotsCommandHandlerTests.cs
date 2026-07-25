@@ -8,6 +8,7 @@ using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Application.Features.Federation.Atproto.Requests.Commands;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Features.Federation.Atproto.Validators;
+using Explore.Application.Models.Storage;
 using Explore.Application.Services.Federation;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -22,6 +23,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
     private static readonly DateTime SnapshotStartedAt = new(2026, 7, 21, 10, 0, 0, DateTimeKind.Utc);
     private const string Did = "did:plc:recovery-owner";
     private const string SecondDid = "did:plc:second-owner";
+    private const string ThumbnailCid = "bafkreibm6jg3ux5quca3po4nukm4m6xkfxzq4bgxjucfd4g6yuk3z7q7di";
 
     [Test]
     public async Task SnapshotApplyRequest_DefaultsImportPlansToEmpty()
@@ -52,7 +54,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
 
         await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Disabled);
         await fixture.Gateway.DidNotReceiveWithAnyArgs().FetchAsync(default!, default, default);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
     }
 
     [Test]
@@ -65,7 +67,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
 
         await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.DowntimeOnly);
         await fixture.Gateway.DidNotReceiveWithAnyArgs().FetchAsync(default!, default, default);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
     }
 
     [Test]
@@ -80,7 +82,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
 
         await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.DowntimeOnly);
         await fixture.Gateway.DidNotReceiveWithAnyArgs().FetchAsync(default!, default, default);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
     }
 
     [Test]
@@ -92,7 +94,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
 
         await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.ScopeRejected);
         await fixture.Gateway.DidNotReceiveWithAnyArgs().FetchAsync(default!, default, default);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
     }
 
     [Test]
@@ -113,7 +115,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         await Assert.That(reordered.Fingerprint).IsEqualTo(first.Fingerprint);
         await fixture.AssertNoPresentationIoAsync(expectedPolicyResolutions: 2);
         await fixture.Gateway.DidNotReceiveWithAnyArgs().FetchAsync(default!, default, default);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
     }
 
     [Test]
@@ -132,7 +134,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         await Assert.That(result.AppliedDids).IsEqualTo(0);
         await fixture.AssertNoPolicyIoAsync();
         await fixture.Gateway.DidNotReceiveWithAnyArgs().FetchAsync(default!, default, default);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
     }
 
     [Test]
@@ -148,7 +150,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
 
         await fixture.AssertNoPolicyIoAsync();
         await fixture.Gateway.DidNotReceiveWithAnyArgs().FetchAsync(default!, default, default);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
     }
 
     [Test]
@@ -161,7 +163,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
 
         await fixture.AssertNoPolicyIoAsync();
         await fixture.Gateway.DidNotReceiveWithAnyArgs().FetchAsync(default!, default, default);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
     }
 
     [Test]
@@ -170,8 +172,8 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         var fixture = new Fixture();
         fixture.Gateway.FetchAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(call => CompleteSnapshot(call.ArgAt<string>(0), includeAcceptedItem: call.ArgAt<string>(0) == Did));
-        fixture.Repository.TryReconcileAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        fixture.Repository.TryReconcileWithResultAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new AtprotoPersistenceApplyResult(true, []));
 
         AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(
             Command([SecondDid, Did, Did]),
@@ -182,7 +184,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         await Assert.That(result.FailedDids).IsEqualTo(0);
         await fixture.Gateway.Received(1).FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>());
         await fixture.Gateway.Received(1).FetchAsync(SecondDid, Arg.Any<long>(), Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(1).TryReconcileAsync(
+        await fixture.Repository.Received(1).TryReconcileWithResultAsync(
             Arg.Is<AtprotoPdsSnapshotApplyRequest>(request =>
                 request.ScannedDids.SequenceEqual(new[] { Did, SecondDid })
                 && request.Snapshots.Select(snapshot => snapshot.Did).SequenceEqual(new[] { Did, SecondDid })
@@ -203,17 +205,28 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         fixture.SetTenantPresentation(hiddenTenantId, enabled: false);
         fixture.Gateway.FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(CompleteSnapshot(Did, includeAcceptedItem: true));
-        fixture.Repository.TryReconcileAsync(
+        var staged = new FileStorageWriteResult(
+            "returned-provider",
+            "returned/pds-thumbnail",
+            8,
+            "image/png",
+            new string('a', 64));
+        fixture.ThumbnailGateway.FetchAndStageAsync(
+                Arg.Any<AtprotoThumbnailBlobCandidate>(),
+                fixture.TenantId,
+                Arg.Any<CancellationToken>())
+            .Returns(staged);
+        fixture.Repository.TryReconcileWithResultAsync(
                 Arg.Any<AtprotoPdsSnapshotApplyRequest>(),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(new AtprotoPersistenceApplyResult(true, [staged]));
 
         AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(
             Command([Did]),
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Completed);
-        await fixture.Repository.Received(1).TryReconcileAsync(
+        await fixture.Repository.Received(1).TryReconcileWithResultAsync(
             Arg.Is<AtprotoPdsSnapshotApplyRequest>(request =>
                 request.EventImports.Count == 1
                 && request.EventImports[0].TenantId == fixture.TenantId
@@ -230,7 +243,22 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
                 && request.EventImports[0].Mode == "#hybrid"
                 && request.EventImports[0].Status == "#scheduled"
                 && request.EventImports[0].RsvpExpected == true
+                && request.EventImports[0].TimeZoneId == "Europe/Brussels"
+                && request.EventImports[0].Thumbnail == new AtprotoThumbnailBlobCandidate(
+                    Did,
+                    ThumbnailCid,
+                    "image/png",
+                    8)
+                && request.EventImports[0].StagedThumbnail == staged
                 && request.EventImports.All(plan => plan.TenantId != hiddenTenantId)),
+            Arg.Any<CancellationToken>());
+        await fixture.ThumbnailGateway.Received(1).FetchAndStageAsync(
+            Arg.Is<AtprotoThumbnailBlobCandidate>(candidate =>
+                candidate.Did == Did
+                && candidate.Cid == ThumbnailCid
+                && candidate.MimeType == "image/png"
+                && candidate.Size == 8),
+            fixture.TenantId,
             Arg.Any<CancellationToken>());
     }
 
@@ -253,7 +281,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         await Assert.ThrowsAsync<FluentValidation.ValidationException>(() =>
             fixture.Handler.Handle(Command([Did]), CancellationToken.None));
 
-        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
     }
 
     [Test]
@@ -263,17 +291,17 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         fixture.Gateway.FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(AtprotoPdsSnapshotFetchResult.Complete(
                 new AtprotoPdsSnapshot(Did, [], [])));
-        fixture.Repository.TryReconcileAsync(
+        fixture.Repository.TryReconcileWithResultAsync(
                 Arg.Any<AtprotoPdsSnapshotApplyRequest>(),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(new AtprotoPersistenceApplyResult(true, []));
 
         AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(
             Command([Did]),
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Completed);
-        await fixture.Repository.Received(1).TryReconcileAsync(
+        await fixture.Repository.Received(1).TryReconcileWithResultAsync(
             Arg.Is<AtprotoPdsSnapshotApplyRequest>(request => request.EventImports.Count == 0),
             Arg.Any<CancellationToken>());
     }
@@ -288,13 +316,13 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         fixture.SetTenantBackfill(fixture.TenantId, enabled: true, mode: "full");
         fixture.Gateway.FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(CompleteSnapshot(Did));
-        fixture.Repository.TryReconcileAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        fixture.Repository.TryReconcileWithResultAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new AtprotoPersistenceApplyResult(true, []));
 
         AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(Command([Did]), CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Completed);
-        await fixture.Repository.Received(1).TryReconcileAsync(
+        await fixture.Repository.Received(1).TryReconcileWithResultAsync(
             Arg.Is<AtprotoPdsSnapshotApplyRequest>(request =>
                 request.PresentationTenantIds.SequenceEqual(new[] { fixture.TenantId })),
             Arg.Any<CancellationToken>());
@@ -310,13 +338,13 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         fixture.SetTenantBackfill(fixture.TenantId, enabled: true, mode: "full");
         fixture.Gateway.FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(CompleteSnapshot(Did));
-        fixture.Repository.TryReconcileAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        fixture.Repository.TryReconcileWithResultAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new AtprotoPersistenceApplyResult(true, []));
 
         AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(Command([Did]), CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Completed);
-        await fixture.Repository.Received(1).TryReconcileAsync(
+        await fixture.Repository.Received(1).TryReconcileWithResultAsync(
             Arg.Is<AtprotoPdsSnapshotApplyRequest>(request =>
                 request.PresentationTenantIds.SequenceEqual(new[] { fixture.TenantId })),
             Arg.Any<CancellationToken>());
@@ -335,8 +363,8 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         fixture.SetTenantPresentation(backfillDisabledTenantId, enabled: true);
         fixture.Gateway.FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(CompleteSnapshot(Did));
-        fixture.Repository.TryReconcileAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        fixture.Repository.TryReconcileWithResultAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new AtprotoPersistenceApplyResult(true, []));
 
         AtprotoPdsRecoveryResult first = await fixture.Handler.Handle(Command([Did]), CancellationToken.None);
         fixture.SetTenantPresentation(fixture.TenantId, enabled: false);
@@ -349,10 +377,10 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         await Assert.That(second.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Completed);
         await Assert.That(second.Fingerprint).IsNotEqualTo(first.Fingerprint);
         await fixture.Gateway.Received(2).FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(2).TryReconcileAsync(
+        await fixture.Repository.Received(2).TryReconcileWithResultAsync(
             Arg.Any<AtprotoPdsSnapshotApplyRequest>(),
             Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(1).TryReconcileAsync(
+        await fixture.Repository.Received(1).TryReconcileWithResultAsync(
             Arg.Is<AtprotoPdsSnapshotApplyRequest>(request => request.PresentationTenantIds.Count == 0),
             Arg.Any<CancellationToken>());
     }
@@ -375,7 +403,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         await Assert.That(result.FailedDids).IsEqualTo(1);
         await fixture.Gateway.Received(1).FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>());
         await fixture.Gateway.Received(1).FetchAsync(SecondDid, Arg.Any<long>(), Arg.Any<CancellationToken>());
-        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
     }
 
     [Test]
@@ -389,7 +417,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
 
         await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.PartialFailure);
         await Assert.That(result.AppliedDids).IsEqualTo(0);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
     }
 
     [Test]
@@ -413,7 +441,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
 
         await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.PartialFailure);
         await Assert.That(result.AppliedDids).IsEqualTo(0);
-        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
     }
 
     [Test]
@@ -428,7 +456,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             fixture.Handler.Handle(Command([Did, SecondDid]), CancellationToken.None));
 
-        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileWithResultAsync(default!, default);
     }
 
     [Test]
@@ -437,8 +465,8 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         var fixture = new Fixture();
         fixture.Gateway.FetchAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(call => CompleteSnapshot(call.ArgAt<string>(0)));
-        fixture.Repository.TryReconcileAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
-            .Returns(false);
+        fixture.Repository.TryReconcileWithResultAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(AtprotoPersistenceApplyResult.Rejected);
 
         AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(
             Command([Did, SecondDid]),
@@ -447,7 +475,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.FenceRejected);
         await Assert.That(result.AppliedDids).IsEqualTo(0);
         await fixture.Gateway.Received(2).FetchAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(1).TryReconcileAsync(
+        await fixture.Repository.Received(1).TryReconcileWithResultAsync(
             Arg.Is<AtprotoPdsSnapshotApplyRequest>(request => request.Snapshots.Count == 2),
             Arg.Any<CancellationToken>());
     }
@@ -458,8 +486,8 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         var fixture = new Fixture();
         fixture.Gateway.FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(CompleteSnapshot(Did));
-        fixture.Repository.TryReconcileAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        fixture.Repository.TryReconcileWithResultAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new AtprotoPersistenceApplyResult(true, []));
 
         AtprotoPdsRecoveryResult first = await fixture.Handler.Handle(Command([Did]), CancellationToken.None);
         AtprotoPdsRecoveryResult second = await fixture.Handler.Handle(
@@ -469,7 +497,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         await Assert.That(first.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Completed);
         await Assert.That(second.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Unchanged);
         await fixture.Gateway.Received(1).FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(1).TryReconcileAsync(
+        await fixture.Repository.Received(1).TryReconcileWithResultAsync(
             Arg.Any<AtprotoPdsSnapshotApplyRequest>(),
             Arg.Any<CancellationToken>());
     }
@@ -543,6 +571,24 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
             Direction = AtprotoRecordDirection.Reconciled,
             Provenance = AtprotoRecordProvenance.Jetstream,
             SourceVersion = 1,
+            RecordJson = collection == AtprotoEventPublicationPlanner.EventCollection
+                ? $$"""
+                    {
+                      "timezone": "Europe/Brussels",
+                      "media": [
+                        {
+                          "role": "thumbnail",
+                          "content": {
+                            "$type": "blob",
+                            "ref": { "$link": "{{ThumbnailCid}}" },
+                            "mimeType": "image/png",
+                            "size": 8
+                          }
+                        }
+                      ]
+                    }
+                    """
+                : null,
             UpdatedAt = SnapshotStartedAt
         };
 
@@ -590,6 +636,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
             _tenant.GetByKeyAcrossTenants(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(call => _tenantSettings.GetValueOrDefault(call.ArgAt<string>(0), []));
             Gateway = Substitute.For<IAtprotoPdsSnapshotGateway>();
+            ThumbnailGateway = Substitute.For<IAtprotoThumbnailBlobGateway>();
             Repository = Substitute.For<IAtprotoPdsSnapshotRepository>();
             PolicyResolver = new AtprotoPdsRecoveryPolicyResolver(_tenants, _system, _tenant);
             var presentationResolver = new AtprotoJetstreamTenantPresentationResolver(_tenants, _system, _tenant);
@@ -597,12 +644,14 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
                 PolicyResolver,
                 presentationResolver,
                 Gateway,
+                ThumbnailGateway,
                 Repository,
                 TimeProvider.System);
         }
 
         public Guid TenantId { get; }
         public IAtprotoPdsSnapshotGateway Gateway { get; }
+        public IAtprotoThumbnailBlobGateway ThumbnailGateway { get; }
         public IAtprotoPdsSnapshotRepository Repository { get; }
         public AtprotoPdsRecoveryPolicyResolver PolicyResolver { get; }
         public ReconcileAtprotoPdsSnapshotsCommandHandler Handler { get; }

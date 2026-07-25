@@ -1,15 +1,18 @@
 // ABOUTME: Implements the single global renewable Jetstream lease and fenced cursor ownership.
 // ABOUTME: Atomically applies canonical records, tombstones, tenant presentations, or quarantine before cursor advance.
 
+using System.Text;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Federation.Atproto.Models;
+using Explore.Application.Models.Storage;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Federation;
 using Explore.Domain.Services.Scheduling;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
-using System.Text;
 
 namespace Explore.Persistence.Repositories;
 
@@ -109,18 +112,24 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
 
     public async Task<bool> TryApplyAndAdvanceAsync(
         AtprotoJetstreamApplyRequest request,
+        CancellationToken cancellationToken = default) =>
+        (await TryApplyAndAdvanceWithResultAsync(request, cancellationToken)).Applied;
+
+    public async Task<AtprotoPersistenceApplyResult> TryApplyAndAdvanceWithResultAsync(
+        AtprotoJetstreamApplyRequest request,
         CancellationToken cancellationToken = default)
     {
         if (request.ObservedAt.Kind != DateTimeKind.Utc || request.NextCursor <= request.ExpectedCursor ||
             (request.Record is null) == (request.Quarantine is null) ||
             (!request.AdvanceCursor && request.Quarantine?.ReasonCode != "invalid_cursor"))
         {
-            return false;
+            return AtprotoPersistenceApplyResult.Rejected;
         }
 
         var strategy = _dbContext.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
+            var consumed = new List<FileStorageWriteResult>();
             await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
             await AcquireConsumerLockAsync(request.Claim.Service, cancellationToken);
             var state = await _dbContext.AtprotoJetstreamConsumerStates.SingleOrDefaultAsync(value =>
@@ -134,13 +143,13 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             if (state is null)
             {
                 await transaction.RollbackAsync(cancellationToken);
-                return false;
+                return AtprotoPersistenceApplyResult.Rejected;
             }
 
-            if (request.Record is not null && !await ApplyRecordAsync(request, cancellationToken))
+            if (request.Record is not null && !await ApplyRecordAsync(request, consumed, cancellationToken))
             {
                 await transaction.RollbackAsync(cancellationToken);
-                return false;
+                return AtprotoPersistenceApplyResult.Rejected;
             }
 
             if (request.EventProjectionInvalidation is not null)
@@ -168,21 +177,26 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             if (!await HasCurrentFenceAtCommitAsync(request.Claim, cancellationToken))
             {
                 await transaction.RollbackAsync(cancellationToken);
-                return false;
+                return AtprotoPersistenceApplyResult.Rejected;
             }
 
             await transaction.CommitAsync(cancellationToken);
-            return true;
+            return new AtprotoPersistenceApplyResult(true, consumed);
         });
     }
 
     public async Task<bool> TryReconcileAsync(
         AtprotoPdsSnapshotApplyRequest request,
+        CancellationToken cancellationToken) =>
+        (await TryReconcileWithResultAsync(request, cancellationToken)).Applied;
+
+    public async Task<AtprotoPersistenceApplyResult> TryReconcileWithResultAsync(
+        AtprotoPdsSnapshotApplyRequest request,
         CancellationToken cancellationToken)
     {
         if (!IsValidSnapshotRequest(request))
         {
-            return false;
+            return AtprotoPersistenceApplyResult.Rejected;
         }
 
         var strategy = _dbContext.Database.CreateExecutionStrategy();
@@ -194,6 +208,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 _dbContext.ChangeTracker.Clear();
             }
             firstAttempt = false;
+            var consumed = new List<FileStorageWriteResult>();
 
             await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
             await AcquireConsumerLockAsync(request.Claim.Service, cancellationToken);
@@ -208,7 +223,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             if (state is null)
             {
                 await transaction.RollbackAsync(cancellationToken);
-                return false;
+                return AtprotoPersistenceApplyResult.Rejected;
             }
 
             string[] scannedDids = request.ScannedDids.ToArray();
@@ -305,6 +320,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                             request.ObservedAt,
                             TenantFilterBypassReasons.AtprotoPdsSnapshotGlobalReconciliation,
                             updateExisting: false,
+                            consumed,
                             cancellationToken);
                         continue;
                     }
@@ -330,6 +346,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                         request.ObservedAt,
                         TenantFilterBypassReasons.AtprotoPdsSnapshotGlobalReconciliation,
                         updateExisting: true,
+                        consumed,
                         cancellationToken);
                 }
             }
@@ -355,6 +372,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                     request.ObservedAt,
                     TenantFilterBypassReasons.AtprotoPdsSnapshotGlobalReconciliation,
                     updateExisting: true,
+                    consumed,
                     cancellationToken,
                     forceTombstone: true);
             }
@@ -384,6 +402,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                     request.ObservedAt,
                     TenantFilterBypassReasons.AtprotoPdsSnapshotGlobalReconciliation,
                     updateExisting: true,
+                    consumed,
                     cancellationToken);
             }
 
@@ -396,11 +415,11 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             if (!await HasCurrentFenceAtCommitAsync(request.Claim, cancellationToken))
             {
                 await transaction.RollbackAsync(cancellationToken);
-                return false;
+                return AtprotoPersistenceApplyResult.Rejected;
             }
 
             await transaction.CommitAsync(cancellationToken);
-            return true;
+            return new AtprotoPersistenceApplyResult(true, consumed);
         });
     }
 
@@ -638,6 +657,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
 
     private async Task<bool> ApplyRecordAsync(
         AtprotoJetstreamApplyRequest request,
+        ICollection<FileStorageWriteResult> consumed,
         CancellationToken cancellationToken)
     {
         var incoming = request.Record!;
@@ -661,6 +681,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                     request.ObservedAt,
                     TenantFilterBypassReasons.AtprotoJetstreamGlobalMaterialization,
                     updateExisting: false,
+                    consumed,
                     cancellationToken);
             }
 
@@ -711,6 +732,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 request.ObservedAt,
                 TenantFilterBypassReasons.AtprotoJetstreamGlobalMaterialization,
                 updateExisting: true,
+                consumed,
                 cancellationToken);
         }
 
@@ -768,6 +790,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
         DateTime observedAt,
         string filterBypassReason,
         bool updateExisting,
+        ICollection<FileStorageWriteResult> consumed,
         CancellationToken cancellationToken,
         bool forceTombstone = false)
     {
@@ -785,6 +808,21 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 .ToListAsync(cancellationToken);
             foreach (Explore.Domain.Event importedEvent in importedEvents)
             {
+                List<StorageObject> images = await _dbContext.StorageObjects
+                    .IgnoreAllFilters(filterBypassReason)
+                    .Where(value =>
+                        value.TenantId == importedEvent.TenantId
+                        && (value.Id == importedEvent.FeaturedImageId
+                            || (value.OwningResourceKind == ResourceKinds.Event
+                                && value.OwningResourceId == importedEvent.Id)))
+                    .ToListAsync(cancellationToken);
+                foreach (StorageObject image in images)
+                {
+                    image.RequestDelete();
+                    image.UpdatedAt = observedAt;
+                }
+
+                importedEvent.FeaturedImageId = null;
                 importedEvent.IsDeleted = true;
                 importedEvent.DeletedAt = deletedAt;
                 importedEvent.UpdatedAt = observedAt;
@@ -861,6 +899,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                     ActorId = actor.Id,
                     Actor = actor,
                     Title = import.Name,
+                    Slug = SlugGenerator.FromTitle(import.Name, "event"),
                     VisibilityTypeId = (int)VisibilityTypeEnum.Public,
                     VisibilityType = null!,
                     EventStatusId = MapEventStatus(import.Status),
@@ -869,8 +908,8 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                     EventFormat = null!,
                     AtprotoRecordId = canonical.Id,
                     AtprotoRecord = canonical,
-                    EventTimeZoneId = "UTC",
-                    Timezone = "UTC",
+                    EventTimeZoneId = import.TimeZoneId,
+                    Timezone = import.TimeZoneId,
                     CreatedAt = import.CreatedAt.UtcDateTime
                 };
                 await _dbContext.Events.AddAsync(importedEvent, cancellationToken);
@@ -886,6 +925,8 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 importedEvent.EventUrl = import.SourceUrl;
                 importedEvent.EventFormatId = MapEventFormat(import.Mode);
                 importedEvent.EventStatusId = MapEventStatus(import.Status);
+                importedEvent.EventTimeZoneId = import.TimeZoneId;
+                importedEvent.Timezone = import.TimeZoneId;
                 importedEvent.IsRegistrationRequired = import.RsvpExpected ?? false;
                 importedEvent.AtprotoRecordId = canonical.Id;
                 importedEvent.AtprotoRecord = canonical;
@@ -899,6 +940,16 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 importedEvent.DeletedAt = null;
                 importedEvent.DeletedBy = null;
             }
+
+            await ApplyThumbnailAsync(
+                import,
+                importedEvent,
+                actor,
+                observedAt,
+                filterBypassReason,
+                updateExisting,
+                consumed,
+                cancellationToken);
 
             EventSession? session = _dbContext.ChangeTracker.Entries<EventSession>()
                 .Where(entry => entry.State != EntityState.Deleted)
@@ -921,6 +972,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                     Tenant = null!,
                     EventId = importedEvent.Id,
                     Event = importedEvent,
+                    Slug = SlugGenerator.FromTitle($"{import.Name}-session-1", "session"),
                     CreatedAt = import.CreatedAt.UtcDateTime
                 };
                 await _dbContext.EventSessions.AddAsync(session, cancellationToken);
@@ -943,7 +995,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 session.StartTime = null;
                 session.EndTime = null;
                 session.EndTimeType = SessionEndTimeType.Fixed;
-                session.ReprojectLocalTimes("UTC", ScheduleProjectionCalculator);
+                session.ReprojectLocalTimes(import.TimeZoneId, ScheduleProjectionCalculator);
             }
             else
             {
@@ -953,7 +1005,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 session.Reschedule(
                     import.StartsAt.Value,
                     import.EndsAt,
-                    "UTC",
+                    import.TimeZoneId,
                     ScheduleProjectionCalculator);
             }
 
@@ -964,6 +1016,101 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             importedEvent.RecalculateScheduleSummaryFromSessions();
         }
     }
+
+    private async Task ApplyThumbnailAsync(
+        AtprotoFederatedEventImportPlan import,
+        Explore.Domain.Event importedEvent,
+        Actor actor,
+        DateTime observedAt,
+        string filterBypassReason,
+        bool updateExisting,
+        ICollection<FileStorageWriteResult> consumed,
+        CancellationToken cancellationToken)
+    {
+        StorageObject? existing = importedEvent.FeaturedImageId is null
+            ? null
+            : await _dbContext.StorageObjects
+                .IgnoreAllFilters(filterBypassReason)
+                .SingleOrDefaultAsync(
+                    value => value.TenantId == import.TenantId
+                        && value.Id == importedEvent.FeaturedImageId,
+                    cancellationToken);
+
+        if (import.Thumbnail is null)
+        {
+            if (updateExisting && existing is not null)
+            {
+                existing.RequestDelete();
+                existing.UpdatedAt = observedAt;
+                importedEvent.FeaturedImageId = null;
+            }
+
+            return;
+        }
+
+        if (import.StagedThumbnail is null)
+        {
+            return;
+        }
+
+        string provenanceUri = $"at://{import.Thumbnail.Did}/blob/{import.Thumbnail.Cid}";
+        if (existing is not null
+            && existing.LifecycleState == StorageObjectLifecycleStates.Active
+            && string.Equals(existing.Uri, provenanceUri, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (existing is not null)
+        {
+            existing.RequestDelete();
+            existing.UpdatedAt = observedAt;
+        }
+
+        string extension = ImageExtension(import.Thumbnail.MimeType);
+        string displayName = $"{import.Thumbnail.Cid}{extension}";
+        FileStorageWriteResult staged = import.StagedThumbnail;
+        var image = new StorageObject
+        {
+            Id = Guid.CreateVersion7(),
+            FileTypeId = (int)FileTypeEnum.Image,
+            FileType = null!,
+            Uri = provenanceUri,
+            ObjectKey = staged.ObjectKey,
+            Provider = staged.Provider,
+            FullName = displayName,
+            SafeDisplayName = displayName,
+            Extension = extension,
+            ContentType = import.Thumbnail.MimeType,
+            Sha256Checksum = staged.Sha256Checksum,
+            Size = staged.SizeBytes,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            Purpose = StorageObjectPurposes.EventImage,
+            LifecycleState = StorageObjectLifecycleStates.Active,
+            OwningResourceKind = ResourceKinds.Event,
+            OwningResourceId = importedEvent.Id,
+            TenantId = import.TenantId,
+            Tenant = null!,
+            ActorId = actor.Id,
+            Actor = actor,
+            CreatedAt = observedAt
+        };
+        await _dbContext.StorageObjects.AddAsync(image, cancellationToken);
+        importedEvent.FeaturedImageId = image.Id;
+        consumed.Add(staged);
+    }
+
+    private static string ImageExtension(string mimeType) =>
+        mimeType.ToLowerInvariant() switch
+        {
+            "image/jpeg" => ".jpg",
+            "image/png" => ".png",
+            "image/webp" => ".webp",
+            "image/gif" => ".gif",
+            "image/avif" => ".avif",
+            "image/svg+xml" => ".svg",
+            _ => ".img"
+        };
 
     private static int MapEventFormat(string? mode) =>
         mode switch

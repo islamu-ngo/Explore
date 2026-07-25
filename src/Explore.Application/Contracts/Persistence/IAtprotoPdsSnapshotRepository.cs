@@ -21,4 +21,8 @@ public interface IAtprotoPdsSnapshotRepository
     Task<bool> TryReconcileAsync(
         AtprotoPdsSnapshotApplyRequest request,
         CancellationToken cancellationToken);
+
+    Task<AtprotoPersistenceApplyResult> TryReconcileWithResultAsync(
+        AtprotoPdsSnapshotApplyRequest request,
+        CancellationToken cancellationToken);
 }
