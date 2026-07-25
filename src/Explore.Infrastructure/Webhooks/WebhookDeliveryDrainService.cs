@@ -305,6 +305,29 @@ public sealed class WebhookDeliveryDrainService(
         await using var executionScope = scopeFactory.CreateAsyncScope();
         var tenantContextAccessor = executionScope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
         tenantContextAccessor.SetTenant(claim.Target.TenantId);
+        var targetRepository = executionScope.ServiceProvider.GetRequiredService<IWebhookLocalTargetRepository>();
+        var activeTarget = await targetRepository.GetActiveClaimAsync(
+            claim.Target.TenantId,
+            claim.Target.Id,
+            claim.LeaseToken,
+            claim.DeliveryFence,
+            DateTimeOffset.UtcNow,
+            cancellationToken);
+        if (activeTarget?.ProcessingLeaseExpiresAtUtc is not { } leaseExpiresAtUtc)
+        {
+            metrics.RecordWebhookProcessingOutcome(
+                WebhookTelemetryProvider.Local,
+                WebhookTelemetryOperation.Delivery,
+                WebhookTelemetryOutcome.LeaseLost);
+            return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.AlreadyClaimed);
+        }
+
+        claim = claim with
+        {
+            Target = activeTarget,
+            Message = activeTarget.WebhookMessage,
+            LeaseExpiresAtUtc = leaseExpiresAtUtc
+        };
         var governanceResolver = executionScope.ServiceProvider.GetRequiredService<IWebhookDeliveryGovernanceResolver>();
         var deliveryPolicy = await governanceResolver.ResolveAsync(claim.Target.TenantId, cancellationToken);
         var payloadBytes = claim.Message.GetPayloadBytes();

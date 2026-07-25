@@ -169,12 +169,14 @@ public sealed class WebhookLocalTargetRepository(ExploreDbContext dbContext)
         dbContext.WebhookLocalTargetSnapshots
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
             .Include(target => target.WebhookMessage)
+            .Include(target => target.WebhookEndpoint)
             .FirstOrDefaultAsync(target =>
                 target.TenantId == tenantId &&
                 target.Id == targetId &&
                 target.DeliveryStatusId == (int)WebhookLocalDeliveryStatus.Delivering &&
                 target.ProcessingLeaseToken == leaseToken &&
                 target.DeliveryFence == deliveryFence &&
+                target.WebhookEndpoint.StatusId == (int)WebhookEndpointStatus.Active &&
                 target.ProcessingLeaseExpiresAtUtc > observedAtUtc,
                 cancellationToken);
 

@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for LocalProvider webhook delivery attempt drainage.
-// ABOUTME: Verifies signed HTTP delivery, retries, SSRF blocking, and stale lease recovery transitions.
+// ABOUTME: Verifies signed HTTP delivery, retries, SSRF blocking, and pre-I/O stale-claim fencing.
 
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -101,6 +101,33 @@ public sealed class WebhookDeliveryDrainServiceTests
             attempt.EndpointId,
             Arg.Any<DateTime>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessBatchAsync_WhenActiveClaimIsGoneBeforePreIoReload_DoesNotResolveSecretOrSend()
+    {
+        var secretConfiguration = Substitute.For<IConfiguration>();
+        secretConfiguration[$"{WebhookOptions.SectionName}:EndpointSecrets:endpoint-one"]
+            .Returns(CreateSvixSecret());
+        var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NoContent));
+        var fixture = new Fixture(handler, secretConfiguration: secretConfiguration);
+        var claim = CreateTargetClaim();
+        fixture.ConfigureTargetClaim(claim);
+        fixture.TargetRepository.GetActiveClaimAsync(
+                claim.Target.TenantId,
+                claim.Target.Id,
+                claim.LeaseToken,
+                claim.DeliveryFence,
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<CancellationToken>())
+            .Returns((WebhookLocalTargetSnapshot?)null);
+        secretConfiguration.ClearReceivedCalls();
+
+        var result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
+
+        await Assert.That(result.AlreadyClaimedCount).IsEqualTo(1);
+        await Assert.That(handler.CallCount).IsEqualTo(0);
+        await Assert.That(secretConfiguration.ReceivedCalls().Count()).IsEqualTo(0);
     }
 
     [Test]
@@ -632,7 +659,8 @@ public sealed class WebhookDeliveryDrainServiceTests
             HttpMessageHandler handler,
             WebhookDeliveryProcessorSettings? settings = null,
             WebhookOptions? webhookOptions = null,
-            WebhookDeliveryGovernancePolicy? deliveryPolicy = null)
+            WebhookDeliveryGovernancePolicy? deliveryPolicy = null,
+            IConfiguration? secretConfiguration = null)
         {
             AttemptRepository = Substitute.For<IWebhookDeliveryAttemptRepository>();
             TargetRepository = Substitute.For<IWebhookLocalTargetRepository>();
@@ -674,7 +702,7 @@ public sealed class WebhookDeliveryDrainServiceTests
                     Arg.Any<CancellationToken>())
                 .Returns(new WebhookEndpointFailureState(1, false));
 
-            var configuration = new ConfigurationBuilder()
+            var configuration = secretConfiguration ?? new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     [$"{WebhookOptions.SectionName}:EndpointSecrets:endpoint-one"] = CreateSvixSecret()
@@ -760,6 +788,9 @@ public sealed class WebhookDeliveryDrainServiceTests
 
         public void ConfigureTargetClaim(WebhookLocalTargetClaim claim)
         {
+            typeof(WebhookLocalTargetSnapshot)
+                .GetProperty(nameof(WebhookLocalTargetSnapshot.WebhookMessage))!
+                .SetValue(claim.Target, claim.Message);
             LastTargetClaim = claim;
             TargetRepository.GetDueTenantIdsAsync(
                     Arg.Any<int>(),

@@ -1,5 +1,5 @@
 // ABOUTME: PostgreSQL integration tests for canonical Local webhook target claiming and recovery.
-// ABOUTME: Proves retry compatibility, single-owner fencing, expiry evidence, and endpoint circuit recovery.
+// ABOUTME: Proves retry compatibility, single-owner fencing, expiry evidence, and endpoint archive rehydration.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
@@ -95,6 +95,37 @@ public sealed class WebhookDeliveryClaimIntegrationTests : IAsyncInitializer, IA
         await Assert.That(staleLease).IsNull();
         await Assert.That(staleFence).IsNull();
         await Assert.That(owner).IsNotNull();
+    }
+
+    [Test]
+    public async Task GetActiveClaimAsync_WhenEndpointIsArchivedAfterClaim_ReturnsNull()
+    {
+        await ResetDatabaseAsync();
+        var now = DateTimeOffset.UtcNow;
+        var target = await SeedTargetAsync(now.AddSeconds(-1));
+        var claim = (await ClaimAsync(
+            CreateClaimRequest(target, now, TimeSpan.FromMinutes(2)),
+            CreateClaimLimits(target))).Single();
+
+        await using (var archiveContext = CreateDbContext())
+        {
+            await new WebhookEndpointRepository(archiveContext).ArchiveAsync(
+                target.TenantId,
+                target.WebhookEndpointId,
+                now.UtcDateTime,
+                CancellationToken.None);
+        }
+
+        await using var workerContext = CreateDbContext();
+        var activeClaim = await new WebhookLocalTargetRepository(workerContext).GetActiveClaimAsync(
+            target.TenantId,
+            target.Id,
+            claim.LeaseToken,
+            claim.DeliveryFence,
+            now,
+            CancellationToken.None);
+
+        await Assert.That(activeClaim).IsNull();
     }
 
     [Test]
