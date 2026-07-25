@@ -2,8 +2,8 @@
 // ABOUTME: Preserves setup validation through a synthetic unclaimed-instance secret provider.
 
 using System.Security.Cryptography;
-using Explore.Application.Contracts.Services;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.Application.Contracts.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;

@@ -10,6 +10,7 @@ using System.Threading.RateLimiting;
 using Explore.API.Authentication;
 using Explore.Application.Authentication;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -72,6 +73,8 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
     public IReadOnlyList<ApiKeyClientDescriptor> ApiKeyClients { get; init; } = [];
 
     public IReadOnlyList<PersistedApiKeySeed> PersistedApiKeys { get; init; } = [];
+
+    public ISetupSecretProvider? SetupSecretProviderOverride { get; init; }
 
     public bool McpEnabled { get; init; }
 
@@ -210,6 +213,12 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
         builder.ConfigureTestServices(services =>
         {
             TestHostServicePruner.RemoveNoisyHostedServices(services);
+
+            if (SetupSecretProviderOverride is not null)
+            {
+                services.RemoveAll<ISetupSecretProvider>();
+                services.AddSingleton(SetupSecretProviderOverride);
+            }
 
             if (!DisableRateLimitingInTesting)
             {
@@ -413,7 +422,11 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
             return Task.FromResult(_configuration);
         }
 
-        public Task ApplyConfigurationAsync(ResolverConfigurationDto configuration, Guid? actorUserId, CancellationToken cancellationToken = default)
+        public Task ApplyConfigurationAsync(
+            PatchResolverConfigurationDto patch,
+            ResolverConfigurationDto configuration,
+            Guid? actorUserId,
+            CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
