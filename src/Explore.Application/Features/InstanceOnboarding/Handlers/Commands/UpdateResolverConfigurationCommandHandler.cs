@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
@@ -48,8 +49,12 @@ public class UpdateResolverConfigurationCommandHandler : IRequestHandler<UpdateR
         configuration.SubdomainEnabled = request.Patch.SubdomainEnabled.HasValue ? request.Patch.SubdomainEnabled.Value : configuration.SubdomainEnabled;
         configuration.CustomDomainEnabled = request.Patch.CustomDomainEnabled.HasValue ? request.Patch.CustomDomainEnabled.Value : configuration.CustomDomainEnabled;
         configuration.PathEnabled = request.Patch.PathEnabled.HasValue ? request.Patch.PathEnabled.Value : configuration.PathEnabled;
-        configuration.PathPrefix = request.Patch.PathPrefix.Value ?? configuration.PathPrefix;
-        configuration.InstanceBaseDomain = request.Patch.InstanceBaseDomain.Value ?? configuration.InstanceBaseDomain;
+        configuration.PathPrefix = request.Patch.PathPrefix.HasValue
+            ? request.Patch.PathPrefix.Value ?? string.Empty
+            : configuration.PathPrefix;
+        configuration.InstanceBaseDomain = request.Patch.InstanceBaseDomain.HasValue
+            ? request.Patch.InstanceBaseDomain.Value ?? string.Empty
+            : configuration.InstanceBaseDomain;
         configuration.AllowTenantCustomDomains = request.Patch.AllowTenantCustomDomains.HasValue ? request.Patch.AllowTenantCustomDomains.Value : configuration.AllowTenantCustomDomains;
 
         var validator = new ResolverConfigurationDtoValidator();
@@ -62,7 +67,7 @@ public class UpdateResolverConfigurationCommandHandler : IRequestHandler<UpdateR
             return response;
         }
 
-        await _resolverConfigService.ApplyConfigurationAsync(configuration, request.UserId, cancellationToken);
+        await _resolverConfigService.ApplyConfigurationAsync(request.Patch, configuration, request.UserId, cancellationToken);
 
         response.Success = true;
         response.Id = Guid.Empty;

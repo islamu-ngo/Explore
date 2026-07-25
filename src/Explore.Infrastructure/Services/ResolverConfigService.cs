@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -50,81 +51,109 @@ public class ResolverConfigService : IResolverConfigService
         return configuration;
     }
 
-    public async Task ApplyConfigurationAsync(ResolverConfigurationDto configuration, Guid? actorUserId, CancellationToken cancellationToken = default)
+    public async Task ApplyConfigurationAsync(
+        PatchResolverConfigurationDto patch,
+        ResolverConfigurationDto configuration,
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
         var normalized = Normalize(configuration);
 
-        await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.Routing.ResolverHeaderEnabled,
-            JsonSerializer.Serialize(normalized.HeaderEnabled),
-            SettingValueType.Boolean,
-            true,
-            "Routing",
-            20,
-            "Whether the header tenant resolver is enabled. Must remain enabled for YARP propagation.",
-            actorUserId);
+        if (patch.HeaderEnabled.HasValue)
+        {
+            await UpsertSystemSettingAsync(
+                GovernanceSettingKeys.Routing.ResolverHeaderEnabled,
+                JsonSerializer.Serialize(normalized.HeaderEnabled),
+                SettingValueType.Boolean,
+                true,
+                "Routing",
+                20,
+                "Whether the header tenant resolver is enabled. Must remain enabled for YARP propagation.",
+                actorUserId);
+        }
 
-        await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.Routing.ResolverCustomDomainEnabled,
-            JsonSerializer.Serialize(normalized.CustomDomainEnabled),
-            SettingValueType.Boolean,
-            false,
-            "Routing",
-            21,
-            "Whether the custom-domain tenant resolver is enabled.",
-            actorUserId);
+        if (patch.CustomDomainEnabled.HasValue)
+        {
+            await UpsertSystemSettingAsync(
+                GovernanceSettingKeys.Routing.ResolverCustomDomainEnabled,
+                JsonSerializer.Serialize(normalized.CustomDomainEnabled),
+                SettingValueType.Boolean,
+                false,
+                "Routing",
+                21,
+                "Whether the custom-domain tenant resolver is enabled.",
+                actorUserId);
+        }
 
-        await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.Routing.ResolverSubdomainEnabled,
-            JsonSerializer.Serialize(normalized.SubdomainEnabled),
-            SettingValueType.Boolean,
-            false,
-            "Routing",
-            22,
-            "Whether the subdomain tenant resolver is enabled.",
-            actorUserId);
+        if (patch.SubdomainEnabled.HasValue)
+        {
+            await UpsertSystemSettingAsync(
+                GovernanceSettingKeys.Routing.ResolverSubdomainEnabled,
+                JsonSerializer.Serialize(normalized.SubdomainEnabled),
+                SettingValueType.Boolean,
+                false,
+                "Routing",
+                22,
+                "Whether the subdomain tenant resolver is enabled.",
+                actorUserId);
+        }
 
-        await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.Routing.ResolverPathEnabled,
-            JsonSerializer.Serialize(normalized.PathEnabled),
-            SettingValueType.Boolean,
-            false,
-            "Routing",
-            23,
-            "Whether the path-based tenant resolver is enabled.",
-            actorUserId);
+        if (patch.PathEnabled.HasValue)
+        {
+            await UpsertSystemSettingAsync(
+                GovernanceSettingKeys.Routing.ResolverPathEnabled,
+                JsonSerializer.Serialize(normalized.PathEnabled),
+                SettingValueType.Boolean,
+                false,
+                "Routing",
+                23,
+                "Whether the path-based tenant resolver is enabled.",
+                actorUserId);
+        }
 
-        await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.Routing.PathPrefix,
-            JsonSerializer.Serialize(normalized.PathPrefix),
-            SettingValueType.String,
-            false,
-            "Routing",
-            24,
-            "Path prefix used by the path-based tenant resolver.",
-            actorUserId);
+        if (patch.PathPrefix.HasValue)
+        {
+            await UpsertSystemSettingAsync(
+                GovernanceSettingKeys.Routing.PathPrefix,
+                JsonSerializer.Serialize(normalized.PathPrefix),
+                SettingValueType.String,
+                false,
+                "Routing",
+                24,
+                "Path prefix used by the path-based tenant resolver.",
+                actorUserId);
+        }
 
-        await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.Domains.InstanceBaseDomain,
-            JsonSerializer.Serialize(normalized.InstanceBaseDomain),
-            SettingValueType.String,
-            false,
-            "Domains",
-            1,
-            "Base domain used for tenant subdomain generation.",
-            actorUserId);
+        if (patch.InstanceBaseDomain.HasValue)
+        {
+            await UpsertSystemSettingAsync(
+                GovernanceSettingKeys.Domains.InstanceBaseDomain,
+                JsonSerializer.Serialize(normalized.InstanceBaseDomain),
+                SettingValueType.String,
+                false,
+                "Domains",
+                1,
+                "Base domain used for tenant subdomain generation.",
+                actorUserId);
+        }
 
-        await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.Domains.AllowTenantCustomDomain,
-            JsonSerializer.Serialize(normalized.AllowTenantCustomDomains),
-            SettingValueType.Boolean,
-            false,
-            "Domains",
-            2,
-            "Whether tenant administrators may configure a custom domain.",
-            actorUserId);
+        if (patch.AllowTenantCustomDomains.HasValue)
+        {
+            await UpsertSystemSettingAsync(
+                GovernanceSettingKeys.Domains.AllowTenantCustomDomain,
+                JsonSerializer.Serialize(normalized.AllowTenantCustomDomains),
+                SettingValueType.Boolean,
+                false,
+                "Domains",
+                2,
+                "Whether tenant administrators may configure a custom domain.",
+                actorUserId);
+        }
 
-        InvalidateCache();
+        if (patch.HasChanges())
+        {
+            InvalidateCache();
+        }
     }
 
     public void InvalidateCache()

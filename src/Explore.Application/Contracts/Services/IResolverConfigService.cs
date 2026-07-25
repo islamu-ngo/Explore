@@ -2,6 +2,7 @@
 // ABOUTME: Keeps tenant resolution bootstrapping independent from tenant-aware settings cascades.
 
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.Instance;
 
 namespace Explore.Application.Contracts.Services;
 
@@ -9,7 +10,11 @@ public interface IResolverConfigService
 {
     Task<ResolverConfigurationDto> GetConfigurationAsync(CancellationToken cancellationToken = default);
 
-    Task ApplyConfigurationAsync(ResolverConfigurationDto configuration, Guid? actorUserId, CancellationToken cancellationToken = default);
+    Task ApplyConfigurationAsync(
+        PatchResolverConfigurationDto patch,
+        ResolverConfigurationDto configuration,
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default);
 
     void InvalidateCache();
 }
