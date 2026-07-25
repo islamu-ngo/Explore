@@ -221,6 +221,8 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
         options.JsonSerializerOptions.UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow;
+        options.JsonSerializerOptions.Converters.Add(
+            new Explore.API.Serialization.OptionalUpdateJsonConverterFactory());
         // Serialize all enums as strings by default — matches client DTO expectations
         // (e.g. DeploymentModeDto.Mode) and industry best practice for public APIs.
         options.JsonSerializerOptions.Converters.Add(
