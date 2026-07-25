@@ -57,4 +57,8 @@ public sealed record RecipientNotificationMaterializationResult(
     NotificationIntent Intent,
     IReadOnlyList<NotificationDelivery> Deliveries,
     Notification? Notification,
-    EmailDispatchOutbox? Email);
+    EmailDispatchOutbox? Email,
+    bool IsSkipped = false)
+{
+    public static RecipientNotificationMaterializationResult Skipped() => new(null!, [], null, null, true);
+}

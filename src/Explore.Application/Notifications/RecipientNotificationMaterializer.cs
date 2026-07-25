@@ -11,7 +11,8 @@ namespace Explore.Application.Notifications;
 
 public sealed class RecipientNotificationMaterializer(
     IRecipientNotificationGraphRepository notificationGraphRepository,
-    IUnitOfWork unitOfWork) : IRecipientNotificationMaterializer
+    IUnitOfWork unitOfWork,
+    IPrivacyErasureStateRepository? privacyErasureStateRepository = null) : IRecipientNotificationMaterializer
 {
     public async Task<RecipientNotificationMaterializationResult> MaterializeAsync(
         RecipientNotificationMaterialization request,
@@ -45,7 +46,17 @@ public sealed class RecipientNotificationMaterializer(
         RecipientNotificationMaterialization request,
         CancellationToken cancellationToken)
     {
+        if (await IsFencedAsync(request, cancellationToken))
+        {
+            return RecipientNotificationMaterializationResult.Skipped();
+        }
+
         var graph = BuildGraph(request);
+        if (await IsFencedAsync(request, cancellationToken))
+        {
+            return RecipientNotificationMaterializationResult.Skipped();
+        }
+
         await notificationGraphRepository.CreateGraphAsync(graph.Intent, cancellationToken);
         return graph;
     }
@@ -54,6 +65,11 @@ public sealed class RecipientNotificationMaterializer(
         RecipientNotificationMaterialization request,
         CancellationToken cancellationToken)
     {
+        if (await IsFencedAsync(request, cancellationToken))
+        {
+            return RecipientNotificationMaterializationResult.Skipped();
+        }
+
         NotificationIntent? winner = await LoadWinningIntentAsync(request, cancellationToken);
         if (winner is null)
         {
@@ -61,6 +77,11 @@ public sealed class RecipientNotificationMaterializer(
         }
 
         RecipientNotificationMaterializationResult expected = BuildGraph(request with { IntentId = winner.Id });
+        if (await IsFencedAsync(request, cancellationToken))
+        {
+            return RecipientNotificationMaterializationResult.Skipped();
+        }
+
         await notificationGraphRepository.RepairMissingRecipientDeliveryRowsAsync(
             winner,
             expected.Deliveries,
@@ -89,6 +110,14 @@ public sealed class RecipientNotificationMaterializer(
                 request.Intent.DeduplicationKey!,
                 cancellationToken);
     }
+
+    private async Task<bool> IsFencedAsync(
+        RecipientNotificationMaterialization request,
+        CancellationToken cancellationToken) =>
+        privacyErasureStateRepository is not null
+        && await privacyErasureStateRepository.GetBySubjectAsync(
+            request.Intent.UserId!.Value,
+            cancellationToken) is not null;
 
     private static RecipientNotificationMaterializationResult BuildGraph(RecipientNotificationMaterialization request)
     {

@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Domain;
@@ -73,6 +74,154 @@ public sealed class NotificationFanoutPageProcessorTests
         await fixture.RunRepository.Received(1).TryCompleteAsync(
             Arg.Is<NotificationFanoutClaim>(claim =>
                 claim.Cursor.HasValue && claim.Cursor.Value.UserId == third.UserId),
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task OrdinaryTwoRecipientFanoutCharacterizationPersistsBothGraphsBeforeCheckpoint()
+    {
+        var fixture = new Fixture();
+        NotificationFanoutAudienceMember first = fixture.Member(1);
+        NotificationFanoutAudienceMember second = fixture.Member(2);
+        fixture.ConfigurePages(after => after is null ? [first, second] : []);
+
+        NotificationFanoutPageProcessingResult result = await fixture.Processor.ProcessAsync(
+            fixture.Claim,
+            pageSize: 2,
+            fixture.LeaseDuration);
+
+        await Assert.That(result.Outcome).IsEqualTo(NotificationFanoutPageProcessingOutcome.Completed);
+        await Assert.That(result.RecipientsMaterialized).IsEqualTo(2);
+        await Assert.That(result.NotificationsCreated).IsEqualTo(2);
+        await fixture.RunRepository.Received(1).TryCheckpointAsync(
+            Arg.Any<NotificationFanoutClaim>(),
+            null,
+            new NotificationFanoutAudienceCursor(second.FirstEligibleRegistrationCreatedAt, second.UserId),
+            2,
+            2,
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SkippedFencedRecipientStillAdvancesCursorAndCountsOnlyActiveGraph()
+    {
+        var fixture = new Fixture();
+        NotificationFanoutAudienceMember fenced = fixture.Member(1);
+        NotificationFanoutAudienceMember active = fixture.Member(2);
+        fixture.ConfigurePages(after => after is null ? [fenced, active] : []);
+        fixture.MaterializationService.MaterializeAsync(
+                fixture.Occurrence,
+                fenced.UserId,
+                Arg.Any<CancellationToken>())
+            .Returns(RecipientNotificationMaterializationResult.Skipped());
+        fixture.MaterializationService.MaterializeAsync(
+                fixture.Occurrence,
+                active.UserId,
+                Arg.Any<CancellationToken>())
+            .Returns(fixture.ResultFor(active.UserId));
+
+        NotificationFanoutPageProcessingResult result = await fixture.Processor.ProcessAsync(
+            fixture.Claim,
+            pageSize: 2,
+            fixture.LeaseDuration);
+
+        await Assert.That(result.Outcome).IsEqualTo(NotificationFanoutPageProcessingOutcome.Completed);
+        await Assert.That(result.RecipientsMaterialized).IsEqualTo(1);
+        await Assert.That(result.NotificationsCreated).IsEqualTo(1);
+        await fixture.RunRepository.Received(1).TryCheckpointAsync(
+            Arg.Any<NotificationFanoutClaim>(),
+            null,
+            new NotificationFanoutAudienceCursor(active.FirstEligibleRegistrationCreatedAt, active.UserId),
+            2,
+            1,
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RealPagePathCheckpointsFencedAndActiveRecipientsWhilePersistingOnlyActiveGraph()
+    {
+        var fixture = new Fixture();
+        NotificationFanoutAudienceMember fenced = fixture.Member(1);
+        NotificationFanoutAudienceMember active = fixture.Member(2);
+        fixture.ConfigurePages(after => after is null ? [fenced, active] : []);
+        IPrivacyErasureStateRepository privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+        privacyErasureStateRepository
+            .GetBySubjectAsync(fenced.UserId, Arg.Any<CancellationToken>())
+            .Returns(CreateFencedSaga(fenced.UserId));
+        privacyErasureStateRepository
+            .GetBySubjectAsync(active.UserId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null);
+        IUserRepository userRepository = Substitute.For<IUserRepository>();
+        userRepository.GetUserWithDetails(active.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User
+            {
+                Id = active.UserId,
+                Pii = new UserPii
+                {
+                    Email = "active@example.test",
+                    FirstName = "Active",
+                    LastName = "Recipient"
+                },
+                EmailVerified = true
+            });
+        INotificationPreferenceResolver preferenceResolver = Substitute.For<INotificationPreferenceResolver>();
+        preferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var request = call.Arg<NotificationPreferenceResolveRequest>();
+                return new NotificationPreferenceDecision(
+                    request.CategoryCode,
+                    request.ChannelCode,
+                    true,
+                    false,
+                    false,
+                    false,
+                    "Default",
+                    null);
+            });
+        var persistedGraphs = new List<NotificationIntent>();
+        IRecipientNotificationGraphRepository graphRepository = Substitute.For<IRecipientNotificationGraphRepository>();
+        graphRepository.CreateGraphAsync(Arg.Do<NotificationIntent>(persistedGraphs.Add), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult<NotificationIntent?>(call.Arg<NotificationIntent>()));
+        var templateFactory = new NotificationFanoutRecipientTemplateFactory();
+        var recipientService = new NotificationFanoutRecipientMaterializationService(
+            userRepository,
+            privacyErasureStateRepository,
+            preferenceResolver,
+            Substitute.For<IFanoutAttendeeLocationAuthorizationService>(),
+            templateFactory,
+            new RecipientNotificationMaterializer(
+                graphRepository,
+                new ImmediateUnitOfWork(),
+                privacyErasureStateRepository));
+        var processor = new NotificationFanoutPageProcessor(
+            fixture.OccurrenceRepository,
+            fixture.RegistrationIntentRepository,
+            fixture.RunRepository,
+            recipientService,
+            templateFactory,
+            new FixedTimeProvider(new DateTime(2026, 7, 19, 12, 0, 0, DateTimeKind.Utc)));
+
+        NotificationFanoutPageProcessingResult result = await processor.ProcessAsync(
+            fixture.Claim,
+            pageSize: 2,
+            fixture.LeaseDuration);
+
+        await Assert.That(result.Outcome).IsEqualTo(NotificationFanoutPageProcessingOutcome.Completed);
+        await Assert.That(result.RecipientsMaterialized).IsEqualTo(1);
+        await Assert.That(result.NotificationsCreated).IsEqualTo(1);
+        await Assert.That(persistedGraphs).Count().IsEqualTo(1);
+        await Assert.That(persistedGraphs[0].RecipientUserId).IsEqualTo(active.UserId);
+        await userRepository.DidNotReceive().GetUserWithDetails(fenced.UserId, Arg.Any<CancellationToken>());
+        await fixture.RunRepository.Received(1).TryCheckpointAsync(
+            Arg.Any<NotificationFanoutClaim>(),
+            null,
+            new NotificationFanoutAudienceCursor(active.FirstEligibleRegistrationCreatedAt, active.UserId),
+            2,
+            1,
             Arg.Any<DateTime>(),
             Arg.Any<CancellationToken>());
     }
@@ -476,5 +625,35 @@ public sealed class NotificationFanoutPageProcessorTests
     private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(utcNow, TimeSpan.Zero);
+    }
+
+    private static PrivacyErasureSaga CreateFencedSaga(Guid userId)
+    {
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        return PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc);
+    }
+
+    private sealed class ImmediateUnitOfWork : IUnitOfWork
+    {
+        public Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
     }
 }

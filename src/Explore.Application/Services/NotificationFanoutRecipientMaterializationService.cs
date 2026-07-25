@@ -12,6 +12,7 @@ namespace Explore.Application.Services;
 
 public sealed class NotificationFanoutRecipientMaterializationService(
     IUserRepository userRepository,
+    IPrivacyErasureStateRepository privacyErasureStateRepository,
     INotificationPreferenceResolver preferenceResolver,
     IFanoutAttendeeLocationAuthorizationService locationAuthorizationService,
     NotificationFanoutRecipientTemplateFactory templateFactory,
@@ -22,6 +23,11 @@ public sealed class NotificationFanoutRecipientMaterializationService(
         Guid recipientUserId,
         CancellationToken cancellationToken = default)
     {
+        if (await privacyErasureStateRepository.GetBySubjectAsync(recipientUserId, cancellationToken) is not null)
+        {
+            return RecipientNotificationMaterializationResult.Skipped();
+        }
+
         NotificationFanoutRecipientTemplate template = templateFactory.Parse(occurrence);
         User? user = await userRepository.GetUserWithDetails(recipientUserId, cancellationToken);
         RecipientEmailAddressResolution emailResolution = RecipientEmailAddressResolver.Resolve(user, recipientUserId);

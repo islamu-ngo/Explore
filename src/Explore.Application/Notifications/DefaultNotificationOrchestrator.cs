@@ -17,7 +17,9 @@ namespace Explore.Application.Notifications;
 
 public sealed class DefaultNotificationOrchestrator(
     INotificationOwnershipResolver ownershipResolver,
-    INotificationIntentRepository notificationIntentRepository) : INotificationOrchestrator
+    INotificationIntentRepository notificationIntentRepository,
+    IPrivacyErasureStateRepository privacyErasureStateRepository,
+    IUnitOfWork unitOfWork) : INotificationOrchestrator
 {
     public async Task<NotificationOrchestrationResult> EnqueueAsync(
         NotificationIntentDraft draft,
@@ -26,9 +28,14 @@ public sealed class DefaultNotificationOrchestrator(
         cancellationToken.ThrowIfCancellationRequested();
 
         var tenantId = draft.TenantId ?? throw new InvalidOperationException("Notification tenant id is required.");
-        _ = draft.UserId ?? throw new InvalidOperationException("Notification recipient user id is required.");
+        var recipientUserId = draft.UserId ?? throw new InvalidOperationException("Notification recipient user id is required.");
         var templateKey = RequireNonEmpty(draft.TemplateKey, "Notification template key is required.");
         var deduplicationKey = RequireNonEmpty(draft.DeduplicationKey, "Notification deduplication key is required.");
+
+        if (await IsFencedAsync(recipientUserId, cancellationToken))
+        {
+            return NotificationOrchestrationResult.Fenced();
+        }
 
         var decision = await ownershipResolver.ResolveAsync(draft, cancellationToken);
         var intent = CreateIntent(draft, decision, tenantId, templateKey, deduplicationKey);
@@ -66,9 +73,20 @@ public sealed class DefaultNotificationOrchestrator(
                 throw new InvalidOperationException($"Unsupported notification ownership '{decision.Ownership}'.");
         }
 
-        var savedIntent = await notificationIntentRepository.CreateIntentAsync(intent, cancellationToken);
-        return new NotificationOrchestrationResult(savedIntent, decision, delivery, delegation);
+        return await unitOfWork.ExecuteSerializableAsync(async token =>
+        {
+            if (await IsFencedAsync(recipientUserId, token))
+            {
+                return NotificationOrchestrationResult.Fenced();
+            }
+
+            var savedIntent = await notificationIntentRepository.CreateIntentAsync(intent, token);
+            return new NotificationOrchestrationResult(savedIntent, decision, delivery, delegation);
+        }, cancellationToken);
     }
+
+    private async Task<bool> IsFencedAsync(Guid recipientUserId, CancellationToken cancellationToken) =>
+        await privacyErasureStateRepository.GetBySubjectAsync(recipientUserId, cancellationToken) is not null;
 
     private static NotificationIntent CreateIntent(
         NotificationIntentDraft draft,

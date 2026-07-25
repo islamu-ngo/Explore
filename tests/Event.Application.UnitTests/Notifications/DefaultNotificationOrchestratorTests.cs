@@ -34,6 +34,58 @@ public sealed class DefaultNotificationOrchestratorTests
     }
 
     [Test]
+    public async Task EnqueueAsync_SkipsFencedRecipientBeforeOwnershipResolution()
+    {
+        var repository = new CapturingNotificationIntentRepository();
+        var privacyState = new FencedPrivacyErasureStateRepository();
+        var resolver = new FixedNotificationOwnershipResolver(
+            new NotificationOwnershipDecision(AppNotificationCategory.RegistrationLifecycle, AppNotificationOwnership.IslamuEvent));
+        var unitOfWork = new TrackingUnitOfWork();
+        var draft = CreateDraft(AppNotificationCategory.RegistrationLifecycle);
+        privacyState.Fence(draft.UserId!.Value);
+        var orchestrator = new DefaultNotificationOrchestrator(resolver, repository, privacyState, unitOfWork);
+
+        var result = await orchestrator.EnqueueAsync(draft);
+
+        await Assert.That(result.IsFenced).IsTrue();
+        await Assert.That(result.Intent).IsNull();
+        await Assert.That(result.Decision).IsNull();
+        await Assert.That(result.Delivery).IsNull();
+        await Assert.That(result.ExternalDelegation).IsNull();
+        await Assert.That(resolver.ResolveCallCount).IsEqualTo(0);
+        await Assert.That(repository.CreateAttempts).IsEqualTo(0);
+        await Assert.That(unitOfWork.SerializableExecutionCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task EnqueueAsync_SkipsRacedFenceInsideSerializableSaveBoundaryWithoutDelegation()
+    {
+        var repository = new CapturingNotificationIntentRepository();
+        var unitOfWork = new TrackingUnitOfWork();
+        var privacyState = new FencedPrivacyErasureStateRepository(() => unitOfWork.IsExecutingSerializable);
+        var resolver = new FixedNotificationOwnershipResolver(
+            new NotificationOwnershipDecision(
+                AppNotificationCategory.TrustSafetyModeration,
+                AppNotificationOwnership.ExternalWorkflowProvider,
+                ExternalWorkflowProviderKind: AppExternalWorkflowProviderKind.Coop,
+                RequiresLocalAudit: true),
+            draft => privacyState.Fence(draft.UserId!.Value));
+        var orchestrator = new DefaultNotificationOrchestrator(resolver, repository, privacyState, unitOfWork);
+
+        var result = await orchestrator.EnqueueAsync(CreateDraft(AppNotificationCategory.TrustSafetyModeration));
+
+        await Assert.That(result.IsFenced).IsTrue();
+        await Assert.That(result.Intent).IsNull();
+        await Assert.That(result.Decision).IsNull();
+        await Assert.That(result.Delivery).IsNull();
+        await Assert.That(result.ExternalDelegation).IsNull();
+        await Assert.That(resolver.ResolveCallCount).IsEqualTo(1);
+        await Assert.That(repository.CreateAttempts).IsEqualTo(0);
+        await Assert.That(unitOfWork.SerializableExecutionCount).IsEqualTo(1);
+        await Assert.That(privacyState.ChecksInsideSerializableBoundary).IsEquivalentTo([false, true]);
+    }
+
+    [Test]
     public async Task EnqueueAsync_CreatesAccountAuthorityDelegationWhenIslamuInitiated()
     {
         var repository = new CapturingNotificationIntentRepository();
@@ -137,7 +189,11 @@ public sealed class DefaultNotificationOrchestratorTests
         CapturingNotificationIntentRepository repository,
         NotificationOwnershipDecision decision)
     {
-        return new DefaultNotificationOrchestrator(new FixedNotificationOwnershipResolver(decision), repository);
+        return new DefaultNotificationOrchestrator(
+            new FixedNotificationOwnershipResolver(decision),
+            repository,
+            new FencedPrivacyErasureStateRepository(),
+            new TrackingUnitOfWork());
     }
 
     private static NotificationIntentDraft CreateDraft(
@@ -160,13 +216,19 @@ public sealed class DefaultNotificationOrchestratorTests
             ExternalCorrelationId: "external-correlation-safe-id");
     }
 
-    private sealed class FixedNotificationOwnershipResolver(NotificationOwnershipDecision decision)
+    private sealed class FixedNotificationOwnershipResolver(
+        NotificationOwnershipDecision decision,
+        Action<NotificationIntentDraft>? onResolve = null)
         : INotificationOwnershipResolver
     {
+        public int ResolveCallCount { get; private set; }
+
         public Task<NotificationOwnershipDecision> ResolveAsync(
             NotificationIntentDraft draft,
             CancellationToken cancellationToken = default)
         {
+            ResolveCallCount++;
+            onResolve?.Invoke(draft);
             return Task.FromResult(decision);
         }
     }
@@ -174,6 +236,7 @@ public sealed class DefaultNotificationOrchestratorTests
     private sealed class CapturingNotificationIntentRepository : INotificationIntentRepository
     {
         public NotificationIntent? CreatedIntent { get; private set; }
+        public int CreateAttempts { get; private set; }
 
         public Task<NotificationIntent?> GetById(Guid id) => Task.FromResult<NotificationIntent?>(CreatedIntent?.Id == id ? CreatedIntent : null);
 
@@ -196,6 +259,7 @@ public sealed class DefaultNotificationOrchestratorTests
             NotificationIntent intent,
             CancellationToken cancellationToken = default)
         {
+            CreateAttempts++;
             CreatedIntent = intent;
             return Task.FromResult(intent);
         }
@@ -229,5 +293,88 @@ public sealed class DefaultNotificationOrchestratorTests
         {
             return Task.FromResult(delegation);
         }
+    }
+
+    private sealed class FencedPrivacyErasureStateRepository(Func<bool>? isExecutingSerializable = null)
+        : IPrivacyErasureStateRepository
+    {
+        private readonly HashSet<Guid> _fencedSubjectIds = [];
+
+        public List<bool> ChecksInsideSerializableBoundary { get; } = [];
+
+        public void Fence(Guid subjectId) => _fencedSubjectIds.Add(subjectId);
+
+        public Task<PrivacyErasureSaga?> GetBySubjectAsync(Guid subjectId, CancellationToken cancellationToken)
+        {
+            ChecksInsideSerializableBoundary.Add(isExecutingSerializable?.Invoke() ?? false);
+            return Task.FromResult<PrivacyErasureSaga?>(
+                _fencedSubjectIds.Contains(subjectId) ? CreateFencedSaga(subjectId) : null);
+        }
+
+        public Task<PrivacyErasureSaga?> GetByIntentAsync(Guid intentId, CancellationToken cancellationToken) =>
+            Task.FromResult<PrivacyErasureSaga?>(null);
+
+        public Task<PrivacyErasureSaga?> FindByReceiptHashAsync(byte[] receiptHash, CancellationToken cancellationToken) =>
+            Task.FromResult<PrivacyErasureSaga?>(null);
+
+        public Task<int> ClearExpiredReceiptHashesAsync(
+            DateTime utcNow,
+            int batchSize,
+            bool dryRun,
+            CancellationToken cancellationToken) => Task.FromResult(0);
+
+        public Task<bool> HasCoverageAsync(Guid intentId, int policyVersion, CancellationToken cancellationToken) =>
+            Task.FromResult(false);
+
+        public Task AddSagaAsync(PrivacyErasureSaga saga, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task AddCoverageAsync(PrivacyErasurePolicyCoverage coverage, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task SaveChangesAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class TrackingUnitOfWork : IUnitOfWork
+    {
+        public int SerializableExecutionCount { get; private set; }
+        public bool IsExecutingSerializable { get; private set; }
+
+        public Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public async Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default)
+        {
+            SerializableExecutionCount++;
+            IsExecutingSerializable = true;
+            try
+            {
+                return await operation(ct);
+            }
+            finally
+            {
+                IsExecutingSerializable = false;
+            }
+        }
+    }
+
+    private static PrivacyErasureSaga CreateFencedSaga(Guid userId)
+    {
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        return PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc);
     }
 }

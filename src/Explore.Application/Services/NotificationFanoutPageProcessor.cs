@@ -143,6 +143,11 @@ public sealed class NotificationFanoutPageProcessor(
                         recipientsMaterialized,
                         notificationsCreated);
                 }
+                if (materialized is { IsSkipped: true })
+                {
+                    continue;
+                }
+
                 ValidateMaterialization(materialized, occurrence, member.UserId);
                 recipientsMaterialized = checked(recipientsMaterialized + 1);
                 if (materialized.Notification is not null)
@@ -249,6 +254,7 @@ public sealed class NotificationFanoutPageProcessor(
         Guid recipientUserId)
     {
         if (materialized is null
+            || materialized.IsSkipped
             || materialized.Intent is null
             || materialized.Notification is null
             || materialized.Intent.Id == Guid.Empty

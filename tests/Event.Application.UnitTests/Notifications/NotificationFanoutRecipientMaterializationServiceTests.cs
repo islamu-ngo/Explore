@@ -41,6 +41,9 @@ public sealed class NotificationFanoutRecipientMaterializationServiceTests
             : null;
         userRepository.GetUserWithDetails(recipientUserId, Arg.Any<CancellationToken>())
             .Returns(currentUser);
+        IPrivacyErasureStateRepository privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+        privacyErasureStateRepository.GetBySubjectAsync(recipientUserId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null);
         INotificationPreferenceResolver preferenceResolver = Substitute.For<INotificationPreferenceResolver>();
         preferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
             .Returns(call =>
@@ -80,6 +83,7 @@ public sealed class NotificationFanoutRecipientMaterializationServiceTests
             });
         var service = new NotificationFanoutRecipientMaterializationService(
             userRepository,
+            privacyErasureStateRepository,
             preferenceResolver,
             locationAuthorization,
             new NotificationFanoutRecipientTemplateFactory(),
@@ -118,6 +122,9 @@ public sealed class NotificationFanoutRecipientMaterializationServiceTests
                 },
                 EmailVerified = true
             });
+        IPrivacyErasureStateRepository privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+        privacyErasureStateRepository.GetBySubjectAsync(recipientUserId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null);
         INotificationPreferenceResolver preferenceResolver = Substitute.For<INotificationPreferenceResolver>();
         var locationAuthorization = Substitute.For<IFanoutAttendeeLocationAuthorizationService>();
         var materializer = Substitute.For<IRecipientNotificationMaterializer>();
@@ -143,6 +150,7 @@ public sealed class NotificationFanoutRecipientMaterializationServiceTests
             });
         var service = new NotificationFanoutRecipientMaterializationService(
             userRepository,
+            privacyErasureStateRepository,
             preferenceResolver,
             locationAuthorization,
             new NotificationFanoutRecipientTemplateFactory(),
@@ -157,6 +165,118 @@ public sealed class NotificationFanoutRecipientMaterializationServiceTests
         await Assert.That(captured.InApp!.IsRequired).IsTrue();
         await Assert.That(captured.EmailRequired).IsTrue();
         await Assert.That(captured.Email!.RecipientEmail).IsEqualTo("current-heavy@example.test");
+    }
+
+    [Test]
+    public async Task PersistedFenceSkipsRecipientBeforePiiLookup()
+    {
+        NotificationFanoutOccurrence occurrence = CreateOccurrence();
+        Guid recipientUserId = Guid.CreateVersion7();
+        IUserRepository userRepository = Substitute.For<IUserRepository>();
+        IPrivacyErasureStateRepository privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+        privacyErasureStateRepository
+            .GetBySubjectAsync(recipientUserId, Arg.Any<CancellationToken>())
+            .Returns(CreateFencedSaga(recipientUserId));
+        INotificationPreferenceResolver preferenceResolver = Substitute.For<INotificationPreferenceResolver>();
+        var locationAuthorization = Substitute.For<IFanoutAttendeeLocationAuthorizationService>();
+        var materializer = Substitute.For<IRecipientNotificationMaterializer>();
+        var service = new NotificationFanoutRecipientMaterializationService(
+            userRepository,
+            privacyErasureStateRepository,
+            preferenceResolver,
+            locationAuthorization,
+            new NotificationFanoutRecipientTemplateFactory(),
+            materializer);
+
+        RecipientNotificationMaterializationResult result =
+            await service.MaterializeAsync(occurrence, recipientUserId);
+
+        await Assert.That(result.IsSkipped).IsTrue();
+        await userRepository.DidNotReceive().GetUserWithDetails(recipientUserId, Arg.Any<CancellationToken>());
+        await preferenceResolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default);
+        await locationAuthorization.DidNotReceiveWithAnyArgs().AuthorizeAsync(default!, default);
+        await materializer.DidNotReceiveWithAnyArgs().MaterializeAsync(default!, default);
+    }
+
+    [Test]
+    public async Task CancellationDuringFenceLookupStopsBeforePiiLookup()
+    {
+        NotificationFanoutOccurrence occurrence = CreateOccurrence();
+        Guid recipientUserId = Guid.CreateVersion7();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        IUserRepository userRepository = Substitute.For<IUserRepository>();
+        IPrivacyErasureStateRepository privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+        privacyErasureStateRepository
+            .GetBySubjectAsync(recipientUserId, cancellation.Token)
+            .Returns(Task.FromCanceled<PrivacyErasureSaga?>(cancellation.Token));
+        var service = new NotificationFanoutRecipientMaterializationService(
+            userRepository,
+            privacyErasureStateRepository,
+            Substitute.For<INotificationPreferenceResolver>(),
+            Substitute.For<IFanoutAttendeeLocationAuthorizationService>(),
+            new NotificationFanoutRecipientTemplateFactory(),
+            Substitute.For<IRecipientNotificationMaterializer>());
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            service.MaterializeAsync(occurrence, recipientUserId, cancellation.Token));
+
+        await userRepository.DidNotReceive().GetUserWithDetails(recipientUserId, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task FenceRaisedAfterSelectionSkipsBeforeGraphPersist()
+    {
+        NotificationFanoutOccurrence occurrence = CreateOccurrence();
+        Guid recipientUserId = Guid.CreateVersion7();
+        IUserRepository userRepository = Substitute.For<IUserRepository>();
+        userRepository.GetUserWithDetails(recipientUserId, Arg.Any<CancellationToken>())
+            .Returns(new User
+            {
+                Id = recipientUserId,
+                Pii = new UserPii
+                {
+                    Email = "recipient@example.test",
+                    FirstName = "Recipient",
+                    LastName = "Fence"
+                },
+                EmailVerified = true
+            });
+        IPrivacyErasureStateRepository privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+        privacyErasureStateRepository
+            .GetBySubjectAsync(recipientUserId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null, CreateFencedSaga(recipientUserId));
+        INotificationPreferenceResolver preferenceResolver = Substitute.For<INotificationPreferenceResolver>();
+        preferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var request = call.Arg<NotificationPreferenceResolveRequest>();
+                return new NotificationPreferenceDecision(
+                    request.CategoryCode,
+                    request.ChannelCode,
+                    true,
+                    false,
+                    false,
+                    false,
+                    "Default",
+                    null);
+            });
+        var graphRepository = Substitute.For<IRecipientNotificationGraphRepository>();
+        var service = new NotificationFanoutRecipientMaterializationService(
+            userRepository,
+            privacyErasureStateRepository,
+            preferenceResolver,
+            Substitute.For<IFanoutAttendeeLocationAuthorizationService>(),
+            new NotificationFanoutRecipientTemplateFactory(),
+            new RecipientNotificationMaterializer(graphRepository, new ImmediateUnitOfWork(), privacyErasureStateRepository));
+
+        RecipientNotificationMaterializationResult result =
+            await service.MaterializeAsync(occurrence, recipientUserId);
+
+        await Assert.That(result.IsSkipped).IsTrue();
+        await privacyErasureStateRepository.Received(2)
+            .GetBySubjectAsync(recipientUserId, Arg.Any<CancellationToken>());
+        await graphRepository.DidNotReceiveWithAnyArgs().CreateGraphAsync(default!, default);
     }
 
     private static NotificationFanoutOccurrence CreateOccurrence()
@@ -213,5 +333,35 @@ public sealed class NotificationFanoutRecipientMaterializationServiceTests
             Guid.CreateVersion7(),
             $"event:{eventId:N}",
             null);
+    }
+
+    private static PrivacyErasureSaga CreateFencedSaga(Guid userId)
+    {
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        return PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc);
+    }
+
+    private sealed class ImmediateUnitOfWork : IUnitOfWork
+    {
+        public Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
     }
 }

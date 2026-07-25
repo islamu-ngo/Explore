@@ -7,6 +7,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Notifications;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using NSubstitute;
 
 namespace Event.Application.UnitTests.Notifications;
 
@@ -34,6 +35,54 @@ public sealed class RecipientNotificationMaterializerTests
         await Assert.That(email.StatusId).IsEqualTo((int)NotificationDeliveryStatusEnum.Queued);
         await Assert.That(result.Email.NotificationIntentId).IsEqualTo(result.Intent.Id);
         await Assert.That(result.Intent.RecipientUserId).IsEqualTo(request.Intent.UserId!.Value);
+    }
+
+    [Test]
+    public async Task MaterializeInCurrentTransactionAsyncSkipsFencedRecipientWithoutCreatingGraph()
+    {
+        RecipientNotificationMaterialization request = CreateRequest(includeEmail: true);
+        IPrivacyErasureStateRepository privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+        privacyErasureStateRepository
+            .GetBySubjectAsync(request.Intent.UserId!.Value, Arg.Any<CancellationToken>())
+            .Returns(CreateFencedSaga(request.Intent.UserId.Value));
+        var repository = new RecordingGraphRepository();
+        var materializer = new RecipientNotificationMaterializer(
+            repository,
+            new RecordingUnitOfWork(),
+            privacyErasureStateRepository);
+
+        RecipientNotificationMaterializationResult result =
+            await materializer.MaterializeInCurrentTransactionAsync(request);
+
+        await Assert.That(result.IsSkipped).IsTrue();
+        await Assert.That(result.Intent).IsNull();
+        await Assert.That(result.Deliveries).IsEmpty();
+        await Assert.That(result.Notification).IsNull();
+        await Assert.That(result.Email).IsNull();
+        await Assert.That(repository.Created).IsNull();
+    }
+
+    [Test]
+    public async Task MaterializeInCurrentTransactionAsyncSkipsWhenFenceAppearsBeforeGraphPersist()
+    {
+        RecipientNotificationMaterialization request = CreateRequest(includeEmail: true);
+        IPrivacyErasureStateRepository privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+        privacyErasureStateRepository
+            .GetBySubjectAsync(request.Intent.UserId!.Value, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null, CreateFencedSaga(request.Intent.UserId.Value));
+        var repository = new RecordingGraphRepository();
+        var materializer = new RecipientNotificationMaterializer(
+            repository,
+            new RecordingUnitOfWork(),
+            privacyErasureStateRepository);
+
+        RecipientNotificationMaterializationResult result =
+            await materializer.MaterializeInCurrentTransactionAsync(request);
+
+        await Assert.That(result.IsSkipped).IsTrue();
+        await privacyErasureStateRepository.Received(2)
+            .GetBySubjectAsync(request.Intent.UserId.Value, Arg.Any<CancellationToken>());
+        await Assert.That(repository.Created).IsNull();
     }
 
     [Test]
@@ -122,6 +171,35 @@ public sealed class RecipientNotificationMaterializerTests
         await Assert.That(repository.LoadCount).IsEqualTo(2);
         await Assert.That(repository.RepairCount).IsEqualTo(1);
         await Assert.That(result.Intent.Id).IsEqualTo(winner.Id);
+    }
+
+    [Test]
+    public async Task MaterializeAsyncFenceBeforeConflictRecoverySkipsDeliveryRepair()
+    {
+        RecipientNotificationMaterialization request = CreateRequest(includeEmail: true);
+        IPrivacyErasureStateRepository privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+        privacyErasureStateRepository
+            .GetBySubjectAsync(request.Intent.UserId!.Value, Arg.Any<CancellationToken>())
+            .Returns(
+                (PrivacyErasureSaga?)null,
+                null,
+                CreateFencedSaga(request.Intent.UserId.Value));
+        var repository = new RecordingGraphRepository
+        {
+            CreateFailure = new NotificationIntentDeduplicationConflictException(new InvalidOperationException("23505"))
+        };
+        var unitOfWork = new RecordingUnitOfWork();
+        var materializer = new RecipientNotificationMaterializer(
+            repository,
+            unitOfWork,
+            privacyErasureStateRepository);
+
+        RecipientNotificationMaterializationResult result = await materializer.MaterializeAsync(request);
+
+        await Assert.That(result.IsSkipped).IsTrue();
+        await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(2);
+        await Assert.That(repository.LoadCount).IsEqualTo(0);
+        await Assert.That(repository.RepairCount).IsEqualTo(0);
     }
 
     [Test]
@@ -338,6 +416,21 @@ public sealed class RecipientNotificationMaterializerTests
             StatusId = (int)NotificationDeliveryStatusEnum.Delivered
         });
         return winner;
+    }
+
+    private static PrivacyErasureSaga CreateFencedSaga(Guid userId)
+    {
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        return PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc);
     }
 
     private static EmailDispatchOutbox CloneEmail(EmailDispatchOutbox source) => new()
