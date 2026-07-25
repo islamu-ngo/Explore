@@ -7,6 +7,7 @@ using Explore.Domain;
 
 public interface IUiThemeRepository : IGenericRepository<UiTheme, Guid>
 {
+    Task<UiTheme?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
     Task ClearDefaultAsync(Guid? tenantId, Guid? excludingThemeId = null);
     Task<UiTheme?> GetByThemeKeyAsync(Guid? tenantId, string themeKey);
     Task<IReadOnlyList<UiTheme>> GetOwnedThemesAsync(Guid? tenantId, bool activeOnly = false);

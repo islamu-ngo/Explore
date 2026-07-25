@@ -16,6 +16,11 @@ public class UiThemeRepository : GenericRepository<UiTheme, Guid>, IUiThemeRepos
         _dbContext = dbContext;
     }
 
+    public Task<UiTheme?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        _dbContext.UiThemes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(theme => theme.Id == id, cancellationToken);
+
     public async Task ClearDefaultAsync(Guid? tenantId, Guid? excludingThemeId = null)
     {
         var defaults = await _dbContext.UiThemes
