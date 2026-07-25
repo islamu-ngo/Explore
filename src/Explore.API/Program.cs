@@ -314,6 +314,7 @@ if (!isOpenApiGeneration)
     {
         builder.Services.AddHostedService<NotificationFanoutProcessor>();
         builder.Services.AddHostedService<IdempotencyCleanupProcessor>();
+        builder.Services.AddHostedService<PrivacyErasureCredentialCleanupProcessor>();
         builder.Services.AddHostedService<EmailDispatchRetentionCleanupProcessor>();
         builder.Services.AddHostedService<AiRetentionCleanupProcessor>();
         builder.Services.AddHostedService<WebhookRetentionCleanupProcessor>();

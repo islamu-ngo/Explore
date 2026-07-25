@@ -79,6 +79,7 @@ public static class InfrastructureServicesRegistration
 
         services.AddScoped<IPrivacyErasureReplayService, PrivacyErasureReplayService>();
         services.AddScoped<IPrivacyErasureProviderLocatorProtector, PrivacyErasureProviderLocatorProtector>();
+        services.AddScoped<IPrivacyErasureCredentialCleanupService, PrivacyErasureCredentialCleanupService>();
 
         services.AddOptions<ManagedControlPlaneOptions>()
             .Bind(configuration.GetSection(ManagedControlPlaneOptions.SectionName))

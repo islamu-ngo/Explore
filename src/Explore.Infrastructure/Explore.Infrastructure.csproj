@@ -10,6 +10,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Explore.API" />
     <InternalsVisibleTo Include="Explore.Infrastructure.Tests" />
+    <InternalsVisibleTo Include="Event.Persistence.IntegrationTests" />
   </ItemGroup>
 
   <ItemGroup>
