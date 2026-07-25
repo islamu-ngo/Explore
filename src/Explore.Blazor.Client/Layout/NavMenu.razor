@@ -3,9 +3,12 @@
 @using Explore.Blazor.Client.Routing.ControlPlane
 @*
     NavMenu Component - BEM Methodology
-    Block: navbar
+    Block: navbar / navbar--search-active
     Elements: __content, __brand, __brand-icon, __brand-text, __brand-highlight,
-              __links, __link, __actions, __theme-toggle, __create-event-btn, __login-btn,
+              __brand-text--stackable, __brand-part-top, __brand-part-bottom,
+              __search, __search-toggle, __search-overlay, __search-overlay-input,
+              __search-back-btn, __links, __link, __actions, __theme-toggle,
+              __create-event-btn, __login-btn,
               __user-dropdown, __user-btn, __user-avatar, __user-name, __user-arrow,
               __dropdown-menu, __dropdown-header, __dropdown-divider, __dropdown-section-label,
               __dropdown-item, __dropdown-item-label, __dropdown-item-arrow,
@@ -13,11 +16,38 @@
               __dropdown-submenu-action, __dropdown-submenu-empty, __dropdown-submenu-divider,
               __dropdown-submenu-create, __dropdown-overlay
     Modifiers: __link--active, __dropdown-menu--open, __dropdown-item--danger,
-               __dropdown-item--expandable, __dropdown-submenu-name--text
+               __dropdown-item--expandable, __dropdown-submenu-name--text,
+               __brand-text--stackable, navbar--search-active
 *@
 
-<div class="navbar">
-    <div class="navbar__content">
+<div class="navbar @(_isSearchOverlayOpen ? "navbar--search-active" : "")">
+    @if (_isSearchOverlayOpen)
+    {
+        @* YouTube-style full-width search overlay — shown on tablet/mobile when search is opened *@
+        <div class="navbar__search-overlay" role="search">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                           Color="Color.Inherit"
+                           OnClick="CloseSearchOverlay"
+                           Title="Close search"
+                           Class="navbar__search-back-btn"
+                           aria-label="Back to navigation" />
+            <div class="navbar__search-overlay-input">
+                <MudTextField @ref="_overlaySearchField"
+                              T="string"
+                              Placeholder="@SearchPlaceholder"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Medium"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="navbar__search-input"
+                              @bind-Value="SearchQuery"
+                              @onkeyup="@HandleSearchKeyPress" />
+            </div>
+        </div>
+    }
+    <div class="navbar__content @(_isSearchOverlayOpen ? "navbar__content--hidden" : "")">
+
         <!-- Workspace navigation toggle (shown only when the active workspace has navigation) -->
         @if (HasWorkspaceNavigation)
         {
@@ -31,7 +61,7 @@
                             aria-label="Toggle sidebar navigation" />
         }
 
-        <!-- Brand -->
+        @* Brand — logo is ALWAYS visible; acts as quicklink to home *@
         <a href="/" class="navbar__brand" aria-label="Home">
             @if (!string.IsNullOrWhiteSpace(_brandLogoUrl))
             {
@@ -41,11 +71,28 @@
             {
                 <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" Class="navbar__brand-icon" />
             }
-            <div class="navbar__brand-text">@_brandDisplayName</div>
+
+            @if (!string.IsNullOrWhiteSpace(_brandDisplayName))
+            {
+                @if (CanStackBrandName(out var topPart, out var bottomPart))
+                {
+                    @* Two-part name: stacks vertically at intermediate widths, hidden on mobile *@
+                    <div class="navbar__brand-text navbar__brand-text--stackable" title="@_brandDisplayName" aria-label="@_brandDisplayName">
+                        <span class="navbar__brand-part-top">@topPart</span>
+                        <span class="navbar__brand-part-bottom">@bottomPart</span>
+                    </div>
+                }
+                else
+                {
+                    @* Single-word or multi-word (>2): hide on mobile, keep full text on desktop *@
+                    <div class="navbar__brand-text" title="@_brandDisplayName">@_brandDisplayName</div>
+                }
+            }
         </a>
 
         @if (ShowGlobalSearch)
         {
+            @* Desktop search bar — hidden on tablet/mobile via CSS (> 840px only) *@
             <div class="navbar__search">
                 <MudTextField @ref="_searchField"
                               T="string"
@@ -64,6 +111,7 @@
                        KeyModifiers="@(new[] { JsKeyModifier.ControlLeft })"
                        OnHotkeyPressed="FocusSearchAsync" />
         }
+
 
         <!-- Center Navigation -->
         <div class="navbar__links">
@@ -91,6 +139,17 @@
 
         <!-- Right Actions -->
         <div class="navbar__actions">
+            @* Search icon button — visible only on tablet/mobile (≤840px, CSS-gated).
+               Placed first in actions so it sits left of language/theme pickers. *@
+            @if (ShowGlobalSearch)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Search"
+                               Color="Color.Inherit"
+                               OnClick="OpenSearchOverlay"
+                               Title="Search"
+                               Class="navbar__search-toggle"
+                               aria-label="Open search" />
+            }
             <AuthorizeView>
                 <Authorized>
                     <div class="navbar__desktop-preference-actions">
@@ -393,9 +452,10 @@
                         </MudButton>
                     }
                     <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Class="navbar__login-btn"
+                                Size="Size.Small"
                                 StartIcon="@Icons.Material.Filled.Login"
                                 OnClick="StartLogin">
-                        Login
+                        Sign in
                     </MudButton>
 
                     @* AI Assistant toggle follows tenant audience policy and the current user's preference. *@

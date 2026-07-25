@@ -72,6 +72,7 @@ public partial class NavMenu : IDisposable
     protected UiShellState UiShellState { get; set; } = null!;
 
     private bool _dropdownOpen = false;
+    private bool _isSearchOverlayOpen = false;
     private UserDto? _currentUser;
     private bool _userLoaded = false;
     private string _brandDisplayName = string.Empty;
@@ -79,6 +80,7 @@ public partial class NavMenu : IDisposable
     private string _eventCatalogLabel = "events";
     public string SearchQuery { get; set; } = "";
     private MudTextField<string> _searchField = null!;
+    private MudTextField<string> _overlaySearchField = null!;
     private IReadOnlyList<TenantNavigationLinkDto> _navigationLinks = [];
     private EventCreationEligibility _eventCreationEligibility = EventCreationEligibility.NotEligible;
     private bool _isSingleTenantMode = true;
@@ -143,7 +145,59 @@ public partial class NavMenu : IDisposable
             {
                 Nav.NavigateTo(SearchRoute);
             }
+
+            // Close search overlay after submitting on mobile/tablet
+            if (_isSearchOverlayOpen)
+            {
+                _isSearchOverlayOpen = false;
+            }
         }
+        else if (e.Key == "Escape" && _isSearchOverlayOpen)
+        {
+            CloseSearchOverlay();
+        }
+    }
+
+    private void OpenSearchOverlay()
+    {
+        _isSearchOverlayOpen = true;
+        // Auto-focus the overlay search input after Blazor re-renders
+        _ = InvokeAsync(async () =>
+        {
+            await Task.Yield(); // Let Blazor render the overlay
+            await _overlaySearchField.FocusAsync();
+        });
+    }
+
+    private void CloseSearchOverlay()
+    {
+        _isSearchOverlayOpen = false;
+        SearchQuery = string.Empty;
+    }
+
+    /// <summary>
+    /// Checks if the brand display name is exactly two space-separated words.
+    /// If so, outputs the first word as <paramref name="top"/> and second as <paramref name="bottom"/>
+    /// so the template can render them stacked vertically on intermediate viewport widths.
+    /// Returns false when the brand name is empty, a single word, or has more than two parts.
+    /// </summary>
+    private bool CanStackBrandName(out string top, out string bottom)
+    {
+        top = string.Empty;
+        bottom = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(_brandDisplayName))
+            return false;
+
+        var parts = _brandDisplayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 2)
+        {
+            top = parts[0];
+            bottom = parts[1];
+            return true;
+        }
+
+        return false;
     }
 
     private string SearchRoute => IsStudioWorkspace ? "/studio/events" : "/events";
