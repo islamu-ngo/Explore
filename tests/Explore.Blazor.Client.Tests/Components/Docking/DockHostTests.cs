@@ -417,7 +417,7 @@ public sealed class DockHostTests : IDisposable
         var dockedPanelId = new DockPanelId("workspace.mobile-overlay");
         _dockLayoutState.Register(CreateDescriptor(dockedPanelId, DockScope.Workspace, DockSide.End, DockMode.Docked, order: 10), CreateContent("Mobile overlay panel"));
         _dockLayoutState.UpdateViewport(390, isMobile: true);
-        _dockLayoutState.Open(dockedPanelId);
+        _dockLayoutState.Open(dockedPanelId, DockLayoutChangeReason.UserAction);
 
         var cut = _ctx.Render<DockOverlayHost>(parameters => parameters
             .Add(component => component.Scope, DockScope.Workspace)
@@ -426,6 +426,64 @@ public sealed class DockHostTests : IDisposable
         await Assert.That(cut.Markup).Contains("Mobile overlay panel");
         await Assert.That(cut.Find("[data-dock-panel-id='workspace.mobile-overlay']").GetAttribute("data-dock-mode")).IsEqualTo("temporary");
         await Assert.That(cut.FindAll("[data-testid='dock-resize-handle']").Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task DockOverlayHost_Mobile_ProjectedDockedPanelDoesNotOpenOverlayByDefault()
+    {
+        var dockedPanelId = new DockPanelId("workspace.mobile-default-closed");
+        _dockLayoutState.Register(CreateDescriptor(dockedPanelId, DockScope.Workspace, DockSide.Start, DockMode.Docked, order: 10), CreateContent("Default closed panel"));
+        _dockLayoutState.Open(dockedPanelId, DockLayoutChangeReason.Refresh);
+        _dockLayoutState.UpdateViewport(390, isMobile: true);
+
+        var cut = _ctx.Render<DockOverlayHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace)
+            .Add(component => component.IsMobile, true));
+
+        await Assert.That(cut.Markup).DoesNotContain("Default closed panel");
+    }
+
+    [Test]
+    public async Task DockOverlayHost_DesktopResizedToMobile_ProjectedDockedPanelDoesNotOpenOverlay()
+    {
+        var dockedPanelId = new DockPanelId("workspace.desktop-resize-mobile");
+        _dockLayoutState.Register(CreateDescriptor(dockedPanelId, DockScope.Workspace, DockSide.Start, DockMode.Docked, order: 10), CreateContent("Resize test panel"));
+        _dockLayoutState.UpdateViewport(1440, isMobile: false);
+        _dockLayoutState.Open(dockedPanelId, DockLayoutChangeReason.Refresh);
+
+        _dockLayoutState.UpdateViewport(390, isMobile: true);
+
+        var cut = _ctx.Render<DockOverlayHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace)
+            .Add(component => component.IsMobile, true));
+
+        await Assert.That(cut.Markup).DoesNotContain("Resize test panel");
+    }
+
+    [Test]
+    public async Task DockOverlayHost_OpeningEndPanel_UndocksStartPanelWithoutOpeningOverlayDrawer()
+    {
+        var startPanelId = new DockPanelId("workspace.tablet-start");
+        var endPanelId = new DockPanelId("workspace.tablet-end");
+
+        _dockLayoutState.Register(CreateDescriptor(startPanelId, DockScope.Workspace, DockSide.Start, DockMode.Docked, defaultWidth: 240, order: 10), CreateContent("Tablet start panel"));
+        _dockLayoutState.Register(CreateDescriptor(endPanelId, DockScope.Workspace, DockSide.End, DockMode.Docked, defaultWidth: 360, order: 20), CreateContent("Tablet end panel"));
+
+        _dockLayoutState.UpdateViewport(900, isMobile: false, DockScope.Workspace, minimumContentWidth: 375);
+        _dockLayoutState.Open(startPanelId, DockLayoutChangeReason.Refresh);
+
+        await Assert.That(_dockLayoutState.ShouldRenderDockedPanelAsOverlay(_dockLayoutState.GetPanel(startPanelId)!)).IsFalse();
+
+        _dockLayoutState.Open(endPanelId, DockLayoutChangeReason.UserAction);
+
+        await Assert.That(_dockLayoutState.ShouldRenderDockedPanelAsOverlay(_dockLayoutState.GetPanel(startPanelId)!)).IsTrue();
+
+        var cut = _ctx.Render<DockOverlayHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace)
+            .Add(component => component.IsMobile, false));
+
+        await Assert.That(cut.Markup).DoesNotContain("Tablet start panel");
+        await Assert.That(_dockLayoutState.GetPanel(startPanelId)!.State.IsActive).IsFalse();
     }
 
     [Test]
@@ -919,7 +977,8 @@ public sealed class DockHostTests : IDisposable
         DockMode mode = DockMode.Docked,
         int order = 10,
         bool isResizable = true,
-        DockPanelStackStrategy? stackStrategy = null)
+        DockPanelStackStrategy? stackStrategy = null,
+        int defaultWidth = 320)
     {
         return new DockPanelDescriptor(
             id,
@@ -928,7 +987,7 @@ public sealed class DockHostTests : IDisposable
             mode,
             $"Panel {id.Value}",
             $"Panel {id.Value}",
-            DefaultWidth: 320,
+            DefaultWidth: defaultWidth,
             MinWidth: 240,
             MaxWidth: 520,
             order,

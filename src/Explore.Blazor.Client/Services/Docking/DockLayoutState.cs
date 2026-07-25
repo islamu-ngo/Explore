@@ -13,6 +13,7 @@ public sealed class DockLayoutState : IDockPanelRegistry
 
     private readonly Dictionary<DockPanelId, DockPanelEntry> _entries = [];
     private readonly Dictionary<DockScope, int> _minimumContentWidths = [];
+    private readonly HashSet<DockPanelId> _userActivatedInOverlay = [];
     private int _viewportWidth;
     private bool _isMobileViewport;
 
@@ -48,6 +49,7 @@ public sealed class DockLayoutState : IDockPanelRegistry
 
     public void Unregister(DockPanelId id)
     {
+        _userActivatedInOverlay.Remove(id);
         if (_entries.Remove(id))
         {
             NotifyChanged(DockLayoutChangeReason.Registration);
@@ -106,10 +108,26 @@ public sealed class DockLayoutState : IDockPanelRegistry
         NotifyChanged(DockLayoutChangeReason.Refresh);
     }
 
-    public void Open(DockPanelId id)
+    public void Open(DockPanelId id, DockLayoutChangeReason reason = DockLayoutChangeReason.UserAction)
     {
         var activeEntry = RequireEntry(id);
         var changed = false;
+
+        if (reason is DockLayoutChangeReason.UserAction)
+        {
+            foreach (var entry in _entries.Values)
+            {
+                if (IsActivationGroupEntry(entry, activeEntry))
+                {
+                    _userActivatedInOverlay.Remove(entry.Descriptor.Id);
+                }
+            }
+
+            if (ShouldRenderDockedPanelAsOverlay(activeEntry))
+            {
+                _userActivatedInOverlay.Add(id);
+            }
+        }
 
         foreach (var entry in _entries.Values.ToArray())
         {
@@ -118,26 +136,26 @@ public sealed class DockLayoutState : IDockPanelRegistry
                 continue;
             }
 
-            var shouldBeOpen = entry.Descriptor.Id == id || entry.State.IsOpen;
-            var shouldBeActive = entry.Descriptor.Id == id;
+            var shouldItemBeOpen = entry.Descriptor.Id == id || entry.State.IsOpen;
+            var shouldItemBeActive = entry.Descriptor.Id == id;
             var nextState = entry.State with
             {
-                IsOpen = shouldBeOpen,
-                IsActive = shouldBeActive
+                IsOpen = shouldItemBeOpen,
+                IsActive = shouldItemBeActive
             };
 
-            if (entry.State == nextState)
+            if (entry.State != nextState)
             {
-                continue;
+                SetEntryState(entry.Descriptor.Id, nextState);
+                changed = true;
             }
-
-            SetEntryState(entry.Descriptor.Id, nextState);
-            changed = true;
         }
+
+        SanitizeOverlayActiveStates();
 
         if (changed)
         {
-            NotifyChanged(DockLayoutChangeReason.UserAction);
+            NotifyChanged(reason);
         }
     }
 
@@ -169,13 +187,41 @@ public sealed class DockLayoutState : IDockPanelRegistry
         _viewportWidth = normalizedWidth;
         _isMobileViewport = isMobile;
 
+        SanitizeOverlayActiveStates();
+
         if (viewportChanged)
         {
             NotifyChanged(DockLayoutChangeReason.ViewportPolicy);
         }
     }
 
-    public void Close(DockPanelId id)
+    private void SanitizeOverlayActiveStates()
+    {
+        foreach (var entry in _entries.Values.ToArray())
+        {
+            if (entry.State.Mode != DockMode.Docked)
+            {
+                continue;
+            }
+
+            var isOverlay = ShouldRenderDockedPanelAsOverlay(entry);
+            if (!isOverlay)
+            {
+                _userActivatedInOverlay.Remove(entry.Descriptor.Id);
+            }
+
+            var expectedActive = isOverlay
+                ? entry.State.IsOpen && _userActivatedInOverlay.Contains(entry.Descriptor.Id)
+                : entry.State.IsOpen;
+
+            if (entry.State.IsActive != expectedActive)
+            {
+                SetEntryState(entry.Descriptor.Id, entry.State with { IsActive = expectedActive });
+            }
+        }
+    }
+
+    public void Close(DockPanelId id, DockLayoutChangeReason reason = DockLayoutChangeReason.UserAction)
     {
         var entry = RequireEntry(id);
 
@@ -184,12 +230,27 @@ public sealed class DockLayoutState : IDockPanelRegistry
             throw new InvalidOperationException($"Dock panel '{id}' cannot be closed.");
         }
 
-        UpdateState(id, state => state with { IsOpen = false, IsActive = false });
+        _userActivatedInOverlay.Remove(id);
+        UpdateState(id, state => state with { IsOpen = false, IsActive = false }, reason);
+        SanitizeOverlayActiveStates();
     }
 
     public void Toggle(DockPanelId id)
     {
         var entry = RequireEntry(id);
+
+        if (ShouldRenderDockedPanelAsOverlay(entry))
+        {
+            if (entry.State.IsOpen && entry.State.IsActive)
+            {
+                Close(id);
+            }
+            else
+            {
+                Open(id, DockLayoutChangeReason.UserAction);
+            }
+            return;
+        }
 
         if (entry.State.IsOpen)
         {

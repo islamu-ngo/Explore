@@ -692,7 +692,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     private void CloseShellWorkspaceNav()
     {
-        SyncPanelState(ShellDockPanels.WorkspaceNavId, shouldBeOpen: false);
+        SyncPanelState(ShellDockPanels.WorkspaceNavId, shouldBeOpen: false, reason: DockLayoutChangeReason.UserAction);
     }
 
     private void SyncWorkspaceNavigationPolicyState(bool shouldBeOpen)
@@ -702,7 +702,13 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
         try
         {
-            SyncPanelState(ShellDockPanels.WorkspaceNavId, shouldBeOpen);
+            var panel = DockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId);
+            if (shouldBeOpen && panel is not null && (DockLayoutState.IsMobileViewport || DockLayoutState.ShouldRenderDockedPanelAsOverlay(panel)))
+            {
+                shouldBeOpen = false;
+            }
+
+            SyncPanelState(ShellDockPanels.WorkspaceNavId, shouldBeOpen, reason: DockLayoutChangeReason.ViewportPolicy);
         }
         finally
         {
@@ -723,7 +729,8 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         {
             SyncPanelState(
                 ShellDockPanels.AiAssistantId,
-                !_hideChrome && !IsAiWorkspace && AiAssistantState.IsAvailable && AiAssistantState.IsOpen);
+                !_hideChrome && !IsAiWorkspace && AiAssistantState.IsAvailable && AiAssistantState.IsOpen,
+                reason: DockLayoutChangeReason.Refresh);
         }
         finally
         {
@@ -731,7 +738,10 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         }
     }
 
-    private void SyncPanelState(DockPanelId id, bool shouldBeOpen)
+    private void SyncPanelState(
+        DockPanelId id,
+        bool shouldBeOpen,
+        DockLayoutChangeReason reason = DockLayoutChangeReason.Refresh)
     {
         var panel = DockLayoutState.GetPanel(id);
 
@@ -742,11 +752,11 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
         if (shouldBeOpen)
         {
-            DockLayoutState.Open(id);
+            DockLayoutState.Open(id, reason);
             return;
         }
 
-        DockLayoutState.Close(id);
+        DockLayoutState.Close(id, reason);
     }
 
     private void OnAnnouncementVisibilityChanged(bool isVisible)

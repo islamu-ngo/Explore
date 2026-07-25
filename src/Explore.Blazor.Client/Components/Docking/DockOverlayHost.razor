@@ -159,9 +159,22 @@
 
     private bool IsOverlayEntry(DockPanelEntry entry)
     {
-        return entry.State.IsOpen
-            && (entry.State.Mode is DockMode.Overlay or DockMode.Temporary or DockMode.Inspector
-                || DockLayoutState.ShouldRenderDockedPanelAsOverlay(entry));
+        if (!entry.State.IsOpen)
+        {
+            return false;
+        }
+
+        if (entry.State.Mode is DockMode.Overlay or DockMode.Temporary or DockMode.Inspector)
+        {
+            return true;
+        }
+
+        if (DockLayoutState.ShouldRenderDockedPanelAsOverlay(entry))
+        {
+            return entry.State.IsActive;
+        }
+
+        return false;
     }
 
     private DockPanelEntry GetEffectiveOverlayEntry(DockPanelEntry entry)
