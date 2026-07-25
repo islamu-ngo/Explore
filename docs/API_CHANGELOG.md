@@ -6,6 +6,7 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 ## 2026-07-25
 
 - Privacy-erasure contract finalization: `DELETE /api/user` now returns `202 Accepted`, `Location`, `Retry-After`, and a one-time receipt after local commit. The receipt-status route is `GET /api/privacy-erasure/status`, documented in OpenAPI with the custom `PrivacyErasureReceipt` `apiKey` scheme on the `Authorization` header (`Authorization: ErasureReceipt <receipt>`), marked `private, no-store`, and bounded to `fenced`, `provider_pending`, or `completed` plus aggregate provider-work counts/timestamps. Missing, invalid, wrong, and expired receipts all collapse to the same `401` challenge. The API boundary covers durable provider-work reconciliation and cache-convergence signaling, but specialized provider execution and later compaction/retention follow-ups remain outside the user-facing contract where they are not yet complete.
+- Wire-compatible generated-client correction: the EventLocation management review collection now emits `HalCollectionEmbeddedOfEventLocationManagementDto.items` as `HalResourceOfEventLocationManagementDto[]` instead of an untyped array. The wire payload and route behavior are unchanged; regenerated NSwag clients use `ICollection<HalResourceOfEventLocationManagementDto>` rather than `ICollection<object>`, so source consumers may need to recompile or update assignments.
 
 ## 2026-07-24
 

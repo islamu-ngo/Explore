@@ -89251,7 +89251,7 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("items")]
-        public System.Collections.Generic.ICollection<object>? Items { get; set; } = default!;
+        public System.Collections.Generic.ICollection<HalResourceOfEventLocationManagementDto>? Items { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

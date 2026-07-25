@@ -275,6 +275,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfEventCustomPropertyDefinitionListDto"] = "HalResourceOfEventCustomPropertyDefinitionListDto",
         ["HalCollectionEmbeddedOfEventDayListDto"] = "HalResourceOfEventDayListDto",
         ["HalCollectionEmbeddedOfEventListDto"] = "HalResourceOfEventListDto",
+        ["HalCollectionEmbeddedOfEventLocationManagementDto"] = "HalResourceOfEventLocationManagementDto",
         ["HalCollectionEmbeddedOfEventReportOptionsDto"] = "HalResourceOfEventReportOptionsDto",
         ["HalCollectionEmbeddedOfMyEventReportDto"] = "HalResourceOfMyEventReportDto",
         ["HalCollectionEmbeddedOfModerationReportQueueItemDto"] = "HalResourceOfModerationReportQueueItemDto",
