@@ -32,6 +32,7 @@ public sealed class IntegrationSyncDrainServiceTests
             .Returns([outbox]);
         fixture.Repository.TryMarkAsProcessing(outbox.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(true);
+        fixture.ConfigureActiveClaim(outbox);
 
         IntegrationSyncDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
 
@@ -60,6 +61,77 @@ public sealed class IntegrationSyncDrainServiceTests
     }
 
     [Test]
+    public async Task ProcessBatchAsync_WhenClaimDisappearsAfterClaim_ReturnsAlreadyClaimedWithoutListmonkCall()
+    {
+        var outbox = CreateOutbox();
+        var fixture = new Fixture(_ => throw new InvalidOperationException("HTTP should not be called."));
+        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns([outbox]);
+        fixture.Repository.TryMarkAsProcessing(outbox.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        fixture.ConfigureMissingActiveClaim(outbox);
+
+        IntegrationSyncDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
+
+        await Assert.That(result.AlreadyClaimed).IsEqualTo(1);
+        await Assert.That(fixture.Handler.CallCount).IsEqualTo(0);
+        await fixture.PrivacyErasureStateRepository.DidNotReceiveWithAnyArgs().GetBySubjectAsync(default, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsCompleted(default, default, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsFailed(default, default!, default, default, default, default, default);
+    }
+
+    [Test]
+    public async Task ProcessBatchAsync_WhenUserIsFencedAfterClaim_DeadLettersWithoutListmonkCall()
+    {
+        var outbox = CreateOutbox();
+        var fixture = new Fixture(_ => throw new InvalidOperationException("HTTP should not be called."));
+        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns([outbox]);
+        fixture.Repository.TryMarkAsProcessing(outbox.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        fixture.ConfigureActiveClaim(outbox);
+        fixture.PrivacyErasureStateRepository.GetBySubjectAsync(outbox.UserId!.Value, Arg.Any<CancellationToken>())
+            .Returns(CreateFencedSaga(outbox.UserId.Value));
+
+        IntegrationSyncDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
+
+        await Assert.That(result.DeadLettered).IsEqualTo(1);
+        await Assert.That(fixture.Handler.CallCount).IsEqualTo(0);
+        await fixture.PrivacyErasureStateRepository.Received(1).GetBySubjectAsync(outbox.UserId.Value, Arg.Any<CancellationToken>());
+        await fixture.Repository.Received(1).MarkAsFailed(
+            outbox.Id,
+            "Integration sync was not sent because the subscriber is subject to privacy erasure.",
+            false,
+            Arg.Any<TimeSpan>(),
+            5,
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessBatchAsync_WhenFenceCheckIsCancelled_DoesNotCallListmonkOrSettleClaim()
+    {
+        var outbox = CreateOutbox();
+        var fixture = new Fixture(_ => throw new InvalidOperationException("HTTP should not be called."));
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        fixture.Repository.GetPendingBatch(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns([outbox]);
+        fixture.Repository.TryMarkAsProcessing(outbox.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        fixture.ConfigureActiveClaim(outbox);
+        fixture.PrivacyErasureStateRepository.GetBySubjectAsync(outbox.UserId!.Value, Arg.Any<CancellationToken>())
+            .Returns(Task.FromCanceled<PrivacyErasureSaga?>(cancellation.Token));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            fixture.Service.ProcessBatchAsync(cancellation.Token));
+
+        await Assert.That(fixture.Handler.CallCount).IsEqualTo(0);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsCompleted(default, default, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsFailed(default, default!, default, default, default, default, default);
+    }
+
+    [Test]
     public async Task ProcessBatchAsync_WhenListmonkReturnsRetryableFailure_SchedulesRetry()
     {
         var outbox = CreateOutbox();
@@ -68,6 +140,7 @@ public sealed class IntegrationSyncDrainServiceTests
             .Returns([outbox]);
         fixture.Repository.TryMarkAsProcessing(outbox.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(true);
+        fixture.ConfigureActiveClaim(outbox);
 
         IntegrationSyncDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
 
@@ -91,6 +164,7 @@ public sealed class IntegrationSyncDrainServiceTests
             .Returns([outbox]);
         fixture.Repository.TryMarkAsProcessing(outbox.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(true);
+        fixture.ConfigureActiveClaim(outbox);
 
         IntegrationSyncDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
 
@@ -112,6 +186,7 @@ public sealed class IntegrationSyncDrainServiceTests
         {
             Id = Guid.CreateVersion7(),
             TenantId = Guid.CreateVersion7(),
+            UserId = Guid.CreateVersion7(),
             Kind = IntegrationKind.Listmonk,
             SourceType = "event_registration_intent",
             SourceId = Guid.CreateVersion7(),
@@ -123,6 +198,21 @@ public sealed class IntegrationSyncDrainServiceTests
             AttemptCount = 1,
             MaxAttempts = 5
         };
+    }
+
+    private static PrivacyErasureSaga CreateFencedSaga(Guid userId)
+    {
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        return PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc);
     }
 
     private static HttpResponseMessage JsonResponse(HttpStatusCode statusCode, string json)
@@ -139,6 +229,9 @@ public sealed class IntegrationSyncDrainServiceTests
         {
             Handler = new RecordingMessageHandler(responseFactory);
             Repository = Substitute.For<IIntegrationSyncOutboxRepository>();
+            PrivacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
+            PrivacyErasureStateRepository.GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                .Returns((PrivacyErasureSaga?)null);
             Repository.MarkAsCompleted(Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
                 .Returns(Task.CompletedTask);
             Repository.MarkAsFailed(
@@ -188,6 +281,7 @@ public sealed class IntegrationSyncDrainServiceTests
 
             var services = new ServiceCollection();
             services.AddSingleton(Repository);
+            services.AddSingleton(PrivacyErasureStateRepository);
             services.AddSingleton(settingsResolver);
             services.AddSingleton(secretResolver);
             services.AddSingleton(httpClientFactory);
@@ -209,8 +303,29 @@ public sealed class IntegrationSyncDrainServiceTests
 
         public RecordingMessageHandler Handler { get; }
         public IIntegrationSyncOutboxRepository Repository { get; }
+        public IPrivacyErasureStateRepository PrivacyErasureStateRepository { get; }
         public IntegrationSyncDrainService Service { get; }
         private ServiceProvider ServiceProvider { get; }
+
+        public void ConfigureActiveClaim(IntegrationSyncOutbox outbox)
+        {
+            Repository.GetActiveClaimAsync(
+                    outbox.TenantId,
+                    outbox.Id,
+                    Arg.Any<Guid>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(outbox);
+        }
+
+        public void ConfigureMissingActiveClaim(IntegrationSyncOutbox outbox)
+        {
+            Repository.GetActiveClaimAsync(
+                    outbox.TenantId,
+                    outbox.Id,
+                    Arg.Any<Guid>(),
+                    Arg.Any<CancellationToken>())
+                .Returns((IntegrationSyncOutbox?)null);
+        }
     }
 
     private sealed class RecordingMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory) : HttpMessageHandler

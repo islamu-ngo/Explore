@@ -1,6 +1,7 @@
 // ABOUTME: PostgreSQL proofs for provider-backed local user metadata erasure.
 // ABOUTME: Verifies exact-subject clearing, tombstones, and unrelated-row isolation across tenants.
 
+using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
@@ -8,7 +9,7 @@ using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
-using Event.Persistence.IntegrationTests.Fixtures;
+using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using TUnit.Core;
 using TUnit.Core.Interfaces;
@@ -25,6 +26,7 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
     public async Task ProviderBackedLocalMetadata_ErasesExactSubjectAcrossTenantsWithoutTouchingUnrelatedRows()
     {
         await using var seedContext = fixture.CreateDbContext();
+        await LookupTableSeeder.SeedAsync(seedContext, CancellationToken.None);
         var tenantA = CreateTenant("provider-metadata-a");
         var tenantB = CreateTenant("provider-metadata-b");
         var owner = CreateUser("provider-metadata-owner");
@@ -83,7 +85,7 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
             CreateWebPushDispatch(tenantA, unrelated, unrelatedPushSubscription, notificationCategory, "{\"unrelated\":1}"));
 
         var notificationCategoryLookup = await seedContext.NotificationCategories
-            .SingleAsync(category => category.MasterCode == "ACCOUNT_SECURITY");
+            .SingleAsync(category => category.Id == (int)NotificationCategoryEnum.IdentityLifecycle);
         var notificationOwnershipType = await seedContext.NotificationOwnershipTypes
             .SingleAsync(type => type.MasterCode == "ACCOUNT_AUTHORITY");
         var notificationRecipientKind = await seedContext.NotificationRecipientKinds
@@ -130,6 +132,16 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
             ownerEmailWithoutLocator,
             CreateEmailDispatch(tenantB, owner, ownerNotificationIntentB, "owner-b@example.invalid", "Owner B subject", "owner body B"),
             CreateEmailDispatch(tenantA, unrelated, unrelatedNotificationIntent, "unrelated@example.invalid", "Unrelated subject", "Unrelated body"));
+        IntegrationSyncOutbox unrelatedIntegrationSyncSeed = CreateIntegrationSync(
+            tenantA,
+            unrelated,
+            "unrelated@example.invalid",
+            "Unrelated",
+            "{\"email\":\"unrelated@example.invalid\"}");
+        seedContext.IntegrationSyncOutbox.AddRange(
+            CreateIntegrationSync(tenantA, owner, "owner-a@example.invalid", "Owner A", "{\"email\":\"owner-a@example.invalid\"}"),
+            CreateIntegrationSync(tenantB, owner, "owner-b@example.invalid", "Owner B", "{\"email\":\"owner-b@example.invalid\"}"),
+            unrelatedIntegrationSyncSeed);
 
         var fileType = await seedContext.FileTypes.FirstAsync();
         var ownerStorageA = CreateStorageObject(tenantA, userActorA, fileType, null, "Owner A", "Owner A");
@@ -151,6 +163,11 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         seedContext.WebhookEndpoints.AddRange(ownerEndpointA, ownerEndpointB, unrelatedEndpointSeed);
 
         await seedContext.SaveChangesAsync();
+        string unrelatedIntegrationPayloadBefore = await seedContext.IntegrationSyncOutbox
+            .AsNoTracking()
+            .Where(row => row.Id == unrelatedIntegrationSyncSeed.Id)
+            .Select(row => row.SubscriberPayloadJson)
+            .SingleAsync();
 
         await using var runtimeContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantA.Id));
         var repository = new UserLocationPrivacyErasureRepository(runtimeContext);
@@ -200,6 +217,16 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         await Assert.That(ownerEmailCount).IsEqualTo(0);
         await Assert.That(unrelatedEmail.ProviderMessageId).IsNotNull();
         await Assert.That(unrelatedEmail.RecipientEmail).IsEqualTo("unrelated@example.invalid");
+
+        await Assert.That(await runtimeContext.IntegrationSyncOutbox
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .CountAsync(row => row.UserId == owner.Id)).IsEqualTo(0);
+        IntegrationSyncOutbox unrelatedIntegrationSync = await runtimeContext.IntegrationSyncOutbox
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(row => row.UserId == unrelated.Id);
+        await Assert.That(unrelatedIntegrationSync.SubscriberEmail).IsEqualTo("unrelated@example.invalid");
+        await Assert.That(unrelatedIntegrationSync.SubscriberName).IsEqualTo("Unrelated");
+        await Assert.That(unrelatedIntegrationSync.SubscriberPayloadJson).IsEqualTo(unrelatedIntegrationPayloadBefore);
 
         StorageObject[] ownerObjects = await runtimeContext.StorageObjects
             .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
@@ -271,6 +298,123 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         await Assert.That(exception.ParamName).IsEqualTo("subjectId");
     }
 
+    [Test]
+    public async Task IntegrationSyncActiveClaim_ReloadsOnlyExactTenantProcessingLease()
+    {
+        await using var seedContext = fixture.CreateDbContext();
+        var tenantA = CreateTenant("integration-sync-claim-a");
+        var tenantB = CreateTenant("integration-sync-claim-b");
+        var owner = CreateUser("integration-sync-claim-owner");
+        seedContext.AddRange(tenantA, tenantB, owner);
+
+        Guid activeLeaseToken = Guid.CreateVersion7();
+        IntegrationSyncOutbox activeRow = CreateIntegrationSync(
+            tenantA,
+            owner,
+            "owner@example.invalid",
+            "Owner",
+            "{\"email\":\"owner@example.invalid\"}");
+        activeRow.Status = IntegrationSyncStatus.Processing;
+        activeRow.ProcessingLeaseToken = activeLeaseToken;
+
+        IntegrationSyncOutbox pendingRow = CreateIntegrationSync(
+            tenantB,
+            owner,
+            "pending@example.invalid",
+            "Pending",
+            "{\"email\":\"pending@example.invalid\"}");
+        pendingRow.ProcessingLeaseToken = activeLeaseToken;
+        seedContext.IntegrationSyncOutbox.AddRange(activeRow, pendingRow);
+        await seedContext.SaveChangesAsync();
+
+        await using var runtimeContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantA.Id));
+        var repository = new IntegrationSyncOutboxRepository(runtimeContext);
+
+        IntegrationSyncOutbox? activeClaim = await repository.GetActiveClaimAsync(
+            tenantA.Id,
+            activeRow.Id,
+            activeLeaseToken,
+            CancellationToken.None);
+        IntegrationSyncOutbox? wrongTenant = await repository.GetActiveClaimAsync(
+            tenantB.Id,
+            activeRow.Id,
+            activeLeaseToken,
+            CancellationToken.None);
+        IntegrationSyncOutbox? staleLease = await repository.GetActiveClaimAsync(
+            tenantA.Id,
+            activeRow.Id,
+            Guid.CreateVersion7(),
+            CancellationToken.None);
+        IntegrationSyncOutbox? pendingClaim = await repository.GetActiveClaimAsync(
+            tenantB.Id,
+            pendingRow.Id,
+            activeLeaseToken,
+            CancellationToken.None);
+
+        await Assert.That(activeClaim?.Id).IsEqualTo(activeRow.Id);
+        await Assert.That(wrongTenant).IsNull();
+        await Assert.That(staleLease).IsNull();
+        await Assert.That(pendingClaim).IsNull();
+    }
+
+    [Test]
+    public async Task IntegrationSyncActiveClaim_AfterExactUserErasureReloadIsAbsentAndUnrelatedClaimRemains()
+    {
+        await using var seedContext = fixture.CreateDbContext();
+        var tenantA = CreateTenant("integration-sync-erasure-a");
+        var tenantB = CreateTenant("integration-sync-erasure-b");
+        var owner = CreateUser("integration-sync-erasure-owner");
+        var unrelated = CreateUser("integration-sync-erasure-unrelated");
+        seedContext.AddRange(tenantA, tenantB, owner, unrelated);
+
+        Guid ownerLeaseToken = Guid.CreateVersion7();
+        IntegrationSyncOutbox ownerRow = CreateIntegrationSync(
+            tenantA,
+            owner,
+            "owner-erasure@example.invalid",
+            "Owner Erasure",
+            "{\"email\":\"owner-erasure@example.invalid\"}");
+        ownerRow.Status = IntegrationSyncStatus.Processing;
+        ownerRow.ProcessingLeaseToken = ownerLeaseToken;
+
+        Guid unrelatedLeaseToken = Guid.CreateVersion7();
+        IntegrationSyncOutbox unrelatedRow = CreateIntegrationSync(
+            tenantB,
+            unrelated,
+            "unrelated-erasure@example.invalid",
+            "Unrelated Erasure",
+            "{\"email\":\"unrelated-erasure@example.invalid\"}");
+        unrelatedRow.Status = IntegrationSyncStatus.Processing;
+        unrelatedRow.ProcessingLeaseToken = unrelatedLeaseToken;
+        seedContext.IntegrationSyncOutbox.AddRange(ownerRow, unrelatedRow);
+        await seedContext.SaveChangesAsync();
+
+        await using var runtimeContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantA.Id));
+        var outboxRepository = new IntegrationSyncOutboxRepository(runtimeContext);
+        var erasureRepository = new UserLocationPrivacyErasureRepository(runtimeContext);
+
+        IntegrationSyncOutbox? claimBeforeErasure = await outboxRepository.GetActiveClaimAsync(
+            tenantA.Id,
+            ownerRow.Id,
+            ownerLeaseToken,
+            CancellationToken.None);
+        await erasureRepository.EraseProviderBackedLocalUserMetadataAsync(owner.Id, CancellationToken.None);
+        IntegrationSyncOutbox? claimAfterErasure = await outboxRepository.GetActiveClaimAsync(
+            tenantA.Id,
+            ownerRow.Id,
+            ownerLeaseToken,
+            CancellationToken.None);
+        IntegrationSyncOutbox? unrelatedClaim = await outboxRepository.GetActiveClaimAsync(
+            tenantB.Id,
+            unrelatedRow.Id,
+            unrelatedLeaseToken,
+            CancellationToken.None);
+
+        await Assert.That(claimBeforeErasure?.Id).IsEqualTo(ownerRow.Id);
+        await Assert.That(claimAfterErasure).IsNull();
+        await Assert.That(unrelatedClaim?.Id).IsEqualTo(unrelatedRow.Id);
+    }
+
     private static Tenant CreateTenant(string slug) => new()
     {
         Id = Guid.CreateVersion7(),
@@ -340,20 +484,20 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         WebPushSubscription subscription,
         NotificationPreferenceCategory category,
         string payloadJson) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        TenantId = tenant.Id,
-        Tenant = tenant,
-        NotificationId = Guid.CreateVersion7(),
-        CategoryId = category.Id,
-        Category = category,
-        SubscriptionId = subscription.Id,
-        Subscription = subscription,
-        UserId = user.Id,
-        User = user,
-        PayloadJson = payloadJson,
-        CreatedAt = DateTime.UtcNow
-    };
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            NotificationId = Guid.CreateVersion7(),
+            CategoryId = category.Id,
+            Category = category,
+            SubscriptionId = subscription.Id,
+            Subscription = subscription,
+            UserId = user.Id,
+            User = user,
+            PayloadJson = payloadJson,
+            CreatedAt = DateTime.UtcNow
+        };
 
     private static NotificationIntent CreateNotificationIntent(
         Tenant tenant,
@@ -363,24 +507,24 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         NotificationRecipientKind recipientKind,
         NotificationIntentStatus status,
         string deduplicationKey) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        TenantId = tenant.Id,
-        Tenant = tenant,
-        CategoryId = category.Id,
-        Category = category,
-        OwnershipTypeId = ownershipType.Id,
-        OwnershipType = ownershipType,
-        RecipientKindId = recipientKind.Id,
-        RecipientKind = recipientKind,
-        StatusId = status.Id,
-        Status = status,
-        TemplateKey = "privacy-erasure-canary",
-        DeduplicationKey = deduplicationKey,
-        RecipientUserId = user.Id,
-        CreatedAt = DateTime.UtcNow,
-        IsDeleted = false
-    };
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            CategoryId = category.Id,
+            Category = category,
+            OwnershipTypeId = ownershipType.Id,
+            OwnershipType = ownershipType,
+            RecipientKindId = recipientKind.Id,
+            RecipientKind = recipientKind,
+            StatusId = status.Id,
+            Status = status,
+            TemplateKey = "privacy-erasure-canary",
+            DeduplicationKey = deduplicationKey,
+            RecipientUserId = user.Id,
+            CreatedAt = DateTime.UtcNow,
+            IsDeleted = false
+        };
 
     private static EmailDispatchOutbox CreateEmailDispatch(
         Tenant tenant,
@@ -389,27 +533,52 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         string recipientEmail,
         string subject,
         string body) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        TenantId = tenant.Id,
-        Tenant = tenant,
-        Kind = EmailDispatchKind.OrganizerNotification,
-        SourceType = "privacy-erasure-canary",
-        SourceId = Guid.CreateVersion7(),
-        NotificationIntentId = intent.Id,
-        NotificationIntent = intent,
-        RecipientUserId = user.Id,
-        RecipientAddressSource = RecipientAddressSource.TenantUserVerifiedEmail,
-        RecipientEmail = recipientEmail,
-        Subject = subject,
-        PlainTextBody = body,
-        HtmlBody = $"<p>{body}</p>",
-        ReplyTo = "reply@example.invalid",
-        ProviderMessageId = $"provider-{Guid.NewGuid():N}",
-        CorrelationId = $"corr-{Guid.NewGuid():N}",
-        Status = EmailDispatchStatus.Sent,
-        CreatedAt = DateTime.UtcNow
-    };
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            Kind = EmailDispatchKind.OrganizerNotification,
+            SourceType = "privacy-erasure-canary",
+            SourceId = Guid.CreateVersion7(),
+            NotificationIntentId = intent.Id,
+            NotificationIntent = intent,
+            RecipientUserId = user.Id,
+            RecipientAddressSource = RecipientAddressSource.TenantUserVerifiedEmail,
+            RecipientEmail = recipientEmail,
+            Subject = subject,
+            PlainTextBody = body,
+            HtmlBody = $"<p>{body}</p>",
+            ReplyTo = "reply@example.invalid",
+            ProviderMessageId = $"provider-{Guid.NewGuid():N}",
+            CorrelationId = $"corr-{Guid.NewGuid():N}",
+            Status = EmailDispatchStatus.Sent,
+            CreatedAt = DateTime.UtcNow
+        };
+
+    private static IntegrationSyncOutbox CreateIntegrationSync(
+        Tenant tenant,
+        User user,
+        string subscriberEmail,
+        string subscriberName,
+        string subscriberPayloadJson) => new()
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            UserId = user.Id,
+            User = user,
+            Kind = IntegrationKind.Listmonk,
+            SourceType = "privacy-erasure-canary",
+            SourceId = Guid.CreateVersion7(),
+            SubscriberEmail = subscriberEmail,
+            SubscriberName = subscriberName,
+            SubscriberPayloadJson = subscriberPayloadJson,
+            ListmonkListId = 42,
+            PreconfirmSubscriptions = true,
+            Status = IntegrationSyncStatus.Pending,
+            MaxAttempts = 5,
+            CreatedAt = DateTime.UtcNow
+        };
 
     private static StorageObject CreateStorageObject(
         Tenant tenant,
@@ -418,27 +587,27 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         string? objectKey,
         string fullName,
         string safeDisplayName) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        TenantId = tenant.Id,
-        Tenant = tenant,
-        ActorId = actor.Id,
-        Actor = actor,
-        FileTypeId = fileType.Id,
-        FileType = fileType,
-        Provider = "s3_compatible",
-        Uri = objectKey is null ? string.Empty : $"/storage/{objectKey}",
-        ObjectKey = objectKey,
-        FullName = fullName,
-        SafeDisplayName = safeDisplayName,
-        Extension = ".png",
-        Visibility = StorageObjectVisibilities.PrivateOwner,
-        Purpose = StorageObjectPurposes.ProfileImage,
-        LifecycleState = StorageObjectLifecycleStates.Active,
-        Size = 128,
-        CreatedAt = DateTime.UtcNow,
-        ConcurrencyStamp = Guid.CreateVersion7()
-    };
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            ActorId = actor.Id,
+            Actor = actor,
+            FileTypeId = fileType.Id,
+            FileType = fileType,
+            Provider = "s3_compatible",
+            Uri = objectKey is null ? string.Empty : $"/storage/{objectKey}",
+            ObjectKey = objectKey,
+            FullName = fullName,
+            SafeDisplayName = safeDisplayName,
+            Extension = ".png",
+            Visibility = StorageObjectVisibilities.PrivateOwner,
+            Purpose = StorageObjectPurposes.ProfileImage,
+            LifecycleState = StorageObjectLifecycleStates.Active,
+            Size = 128,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
 
     private static WebhookConsumer CreateWebhookConsumer(
         Tenant tenant,
@@ -447,22 +616,22 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         WebhookConsumerStatusLookup status,
         WebhookProviderModeLookup providerMode,
         string externalProviderAppId) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        TenantId = tenant.Id,
-        Tenant = tenant,
-        OwnerUserId = owner.Id,
-        ConsumerKindId = kind.Id,
-        ConsumerKindLookup = kind,
-        StatusId = status.Id,
-        StatusLookup = status,
-        ProviderModeId = providerMode.Id,
-        ProviderModeLookup = providerMode,
-        Name = $"consumer-{externalProviderAppId}",
-        ExternalProviderAppId = externalProviderAppId,
-        ConfigurationVersion = 1,
-        CreatedAt = DateTime.UtcNow
-    };
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            OwnerUserId = owner.Id,
+            ConsumerKindId = kind.Id,
+            ConsumerKindLookup = kind,
+            StatusId = status.Id,
+            StatusLookup = status,
+            ProviderModeId = providerMode.Id,
+            ProviderModeLookup = providerMode,
+            Name = $"consumer-{externalProviderAppId}",
+            ExternalProviderAppId = externalProviderAppId,
+            ConfigurationVersion = 1,
+            CreatedAt = DateTime.UtcNow
+        };
 
     private static WebhookEndpoint CreateWebhookEndpoint(
         Tenant tenant,
@@ -470,24 +639,24 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         WebhookEndpointStatusLookup status,
         string url,
         string? providerEndpointId) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        TenantId = tenant.Id,
-        Tenant = tenant,
-        ConsumerId = consumer.Id,
-        Consumer = consumer,
-        StatusId = status.Id,
-        StatusLookup = status,
-        Url = url,
-        SecretRef = $"secret-{Guid.NewGuid():N}",
-        SecretVersion = 1,
-        SecretActivatedAt = DateTime.UtcNow,
-        ProviderEndpointId = providerEndpointId,
-        MaxAttempts = 8,
-        TimeoutSeconds = 15,
-        ConfigurationVersion = 1,
-        CreatedAt = DateTime.UtcNow
-    };
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            ConsumerId = consumer.Id,
+            Consumer = consumer,
+            StatusId = status.Id,
+            StatusLookup = status,
+            Url = url,
+            SecretRef = $"secret-{Guid.NewGuid():N}",
+            SecretVersion = 1,
+            SecretActivatedAt = DateTime.UtcNow,
+            ProviderEndpointId = providerEndpointId,
+            MaxAttempts = 8,
+            TimeoutSeconds = 15,
+            ConfigurationVersion = 1,
+            CreatedAt = DateTime.UtcNow
+        };
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
 }

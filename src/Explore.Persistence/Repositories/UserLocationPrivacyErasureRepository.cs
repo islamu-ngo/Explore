@@ -157,6 +157,10 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .IgnoreAllFilters(reason)
             .Where(value => value.RecipientUserId == subjectId)
             .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.IntegrationSyncOutbox
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
         await dbContext.StorageObjects
             .IgnoreAllFilters(reason)
             .Where(value => value.Actor != null

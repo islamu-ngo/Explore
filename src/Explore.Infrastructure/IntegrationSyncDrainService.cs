@@ -16,6 +16,8 @@ public sealed class IntegrationSyncDrainService(
     IOptions<IntegrationSyncProcessorSettings> settings,
     ILogger<IntegrationSyncDrainService> logger) : IIntegrationSyncDrainService
 {
+    private const string PrivacyErasureFencedMessage = "Integration sync was not sent because the subscriber is subject to privacy erasure.";
+
     private readonly IntegrationSyncProcessorSettings _settings = settings.Value;
 
     public async Task<IntegrationSyncDrainResult> ProcessBatchAsync(CancellationToken cancellationToken)
@@ -74,32 +76,65 @@ public sealed class IntegrationSyncDrainService(
         IntegrationSyncOutbox outbox,
         CancellationToken cancellationToken)
     {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var repository = scope.ServiceProvider.GetRequiredService<IIntegrationSyncOutboxRepository>();
-        var listmonkSyncService = scope.ServiceProvider.GetRequiredService<ListmonkSyncService>();
         var startedAt = DateTime.UtcNow;
         var leaseToken = Guid.CreateVersion7();
 
-        var claimed = await repository.TryMarkAsProcessing(outbox.Id, leaseToken, startedAt, cancellationToken);
-        if (!claimed)
+        {
+            await using var claimScope = scopeFactory.CreateAsyncScope();
+            var claimRepository = claimScope.ServiceProvider.GetRequiredService<IIntegrationSyncOutboxRepository>();
+            var claimed = await claimRepository.TryMarkAsProcessing(outbox.Id, leaseToken, startedAt, cancellationToken);
+            if (!claimed)
+            {
+                return new IntegrationSyncSingleDrainResult(IntegrationSyncDrainOutcome.AlreadyClaimed, outbox.Id);
+            }
+        }
+
+        await using var executionScope = scopeFactory.CreateAsyncScope();
+        var repository = executionScope.ServiceProvider.GetRequiredService<IIntegrationSyncOutboxRepository>();
+        var activeClaim = await repository.GetActiveClaimAsync(
+            outbox.TenantId,
+            outbox.Id,
+            leaseToken,
+            cancellationToken);
+        if (activeClaim is null)
         {
             return new IntegrationSyncSingleDrainResult(IntegrationSyncDrainOutcome.AlreadyClaimed, outbox.Id);
         }
 
-        var syncResult = await listmonkSyncService.SyncSubscriberAsync(outbox, cancellationToken);
-        if (syncResult.Succeeded)
+        if (activeClaim.UserId is not Guid userId)
         {
-            await repository.MarkAsCompleted(outbox.Id, DateTime.UtcNow, cancellationToken);
-            return new IntegrationSyncSingleDrainResult(IntegrationSyncDrainOutcome.Completed, outbox.Id);
+            return new IntegrationSyncSingleDrainResult(IntegrationSyncDrainOutcome.AlreadyClaimed, activeClaim.Id);
         }
 
-        var failedAttemptCount = outbox.AttemptCount + 1;
-        var maxAttempts = Math.Min(outbox.MaxAttempts, _settings.MaxAttemptCount);
+        var privacyErasureStateRepository = executionScope.ServiceProvider.GetRequiredService<IPrivacyErasureStateRepository>();
+        if (await privacyErasureStateRepository.GetBySubjectAsync(userId, cancellationToken) is not null)
+        {
+            await repository.MarkAsFailed(
+                activeClaim.Id,
+                PrivacyErasureFencedMessage,
+                false,
+                TimeSpan.Zero,
+                _settings.MaxAttemptCount,
+                DateTime.UtcNow,
+                cancellationToken);
+            return new IntegrationSyncSingleDrainResult(IntegrationSyncDrainOutcome.DeadLettered, activeClaim.Id);
+        }
+
+        var listmonkSyncService = executionScope.ServiceProvider.GetRequiredService<ListmonkSyncService>();
+        var syncResult = await listmonkSyncService.SyncSubscriberAsync(activeClaim, cancellationToken);
+        if (syncResult.Succeeded)
+        {
+            await repository.MarkAsCompleted(activeClaim.Id, DateTime.UtcNow, cancellationToken);
+            return new IntegrationSyncSingleDrainResult(IntegrationSyncDrainOutcome.Completed, activeClaim.Id);
+        }
+
+        var failedAttemptCount = activeClaim.AttemptCount;
+        var maxAttempts = Math.Min(activeClaim.MaxAttempts, _settings.MaxAttemptCount);
         var willDeadLetter = !syncResult.IsRetryable || failedAttemptCount >= maxAttempts;
         var retryDelay = TimeSpan.FromSeconds(_settings.CalculateRetryDelay(failedAttemptCount));
 
         await repository.MarkAsFailed(
-            outbox.Id,
+            activeClaim.Id,
             syncResult.ErrorMessage ?? "Listmonk sync failed.",
             syncResult.IsRetryable,
             retryDelay,
@@ -109,6 +144,6 @@ public sealed class IntegrationSyncDrainService(
 
         return new IntegrationSyncSingleDrainResult(
             willDeadLetter ? IntegrationSyncDrainOutcome.DeadLettered : IntegrationSyncDrainOutcome.RetryScheduled,
-            outbox.Id);
+            activeClaim.Id);
     }
 }

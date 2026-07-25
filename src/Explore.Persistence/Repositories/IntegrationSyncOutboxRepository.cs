@@ -54,6 +54,24 @@ public sealed class IntegrationSyncOutboxRepository(ExploreDbContext dbContext) 
         return updated > 0;
     }
 
+    public Task<IntegrationSyncOutbox?> GetActiveClaimAsync(
+        Guid tenantId,
+        Guid id,
+        Guid leaseToken,
+        CancellationToken cancellationToken)
+    {
+        return dbContext.IntegrationSyncOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.IntegrationSyncWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(outbox =>
+                outbox.TenantId == tenantId &&
+                outbox.Id == id &&
+                outbox.Status == IntegrationSyncStatus.Processing &&
+                outbox.ProcessingLeaseToken == leaseToken &&
+                outbox.UserId != null,
+                cancellationToken);
+    }
+
     public async Task MarkAsCompleted(Guid id, DateTime completedAt, CancellationToken cancellationToken)
     {
         await dbContext.IntegrationSyncOutbox
