@@ -6,8 +6,8 @@ ABOUTME: Defines event/RSVP mapping, exhaustive description, strongRef ordering,
 > **Audience:** Contributors | Integrators | AI agents
 > **Status:** Implemented
 > **Owner:** Federation
-> **Last Verified:** 2026-07-19
-> **Source Anchors:** `schemas/lexicons/`, `src/Explore.Infrastructure/Explore.Infrastructure.csproj`, `src/Explore.Infrastructure/Services/Federation/`, `src/Explore.Application/Features/Federation/Atproto/`
+> **Last Verified:** 2026-07-25
+> **Source Anchors:** `schemas/lexicons/`, `src/Explore.Infrastructure/Explore.Infrastructure.csproj`, `src/Explore.Infrastructure/Services/Federation/`, `src/Explore.Application/Features/Federation/Atproto/`, `src/Explore.Persistence/Repositories/AtprotoJetstreamRepository.cs`
 
 ## Purpose
 
@@ -44,6 +44,8 @@ ISLAMU uses one record for the complete public event graph:
 
 `federation.atproto_event_validation_profile=community_lexicon` relaxes only which local business fields must be present to publish: title, tenant, owner, and status remain required. It does not relax validation of supplied values, authorization, moderation, privacy, complete source-field disposition, or final record validation.
 
+For inbound records, `name` and `createdAt` are likewise the only required producer values. Accepted source JSON is retained completely in `AtprotoRecord.RecordJson`; a separate validated import plan maps compatible fields into one tenant-local `Event` and one implicit `EventSession`. This includes canonical slug generation, UTC/IANA-aware scheduling, mode/status/RSVP mapping, the first safe source URI, and an optional CID-verified thumbnail. Producer extensions with no compatible local field remain in the canonical JSON. See [FEDERATION.md](FEDERATION.md#inbound-event-import-and-database-materialization) for the complete mapping and lifecycle.
+
 ## Community RSVP Record
 
 The vendored RSVP lexicon requires `subject` and `status`. Its `strongRef` subject requires an event URI and CID; its vocabulary recognizes `#interested`, `#going`, and `#notgoing` for inbound interoperability.
@@ -61,7 +63,7 @@ The local outbound contract is intentionally narrower:
 
 Lexicons define wire shapes, not mutation authority. Local event and registration lifecycle handlers are the only outbound authority and write immutable `PdsSyncOutbox` intents inside the local transaction. CarpaNet PDS I/O happens only after commit and under a renewable fenced worker claim.
 
-Inbound records are globally canonical by DID, collection, and record key with one current source version. Canonical materialization, typed event projection, tenant presentation, tombstone/quarantine effects, and cursor advancement are atomic under the one leased consumer. Tenant discovery remains separately gated by the effective `federation.atproto_events_enabled` capability.
+Inbound records are globally canonical by DID, collection, and record key with one current source version. `ImportAtprotoFederatedEventCommand` builds one validated plan per visible tenant; canonical materialization, typed event projection, tenant presentation, tenant-local `Event`/`EventSession`, optional thumbnail `StorageObject`, tombstone/quarantine effects, and cursor advancement are atomic under the one leased consumer. Bounded PDS snapshot reconciliation uses the same plan factory and persistence path. Tenant discovery remains separately gated by the effective `federation.atproto_events_enabled` capability, and inbound imports never enqueue an outbound echo.
 
 ## Evolution Rules
 

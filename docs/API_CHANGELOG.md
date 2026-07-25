@@ -3,6 +3,10 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## 2026-07-25
+
+- Privacy-erasure contract finalization: `DELETE /api/user` now returns `202 Accepted`, `Location`, `Retry-After`, and a one-time receipt after local commit. The receipt-status route is `GET /api/privacy-erasure/status`, documented in OpenAPI with the custom `PrivacyErasureReceipt` `apiKey` scheme on the `Authorization` header (`Authorization: ErasureReceipt <receipt>`), marked `private, no-store`, and bounded to `fenced`, `provider_pending`, or `completed` plus aggregate provider-work counts/timestamps. Missing, invalid, wrong, and expired receipts all collapse to the same `401` challenge. The API boundary covers durable provider-work reconciliation and cache-convergence signaling, but specialized provider execution and later compaction/retention follow-ups remain outside the user-facing contract where they are not yet complete.
+
 ## 2026-07-24
 
 - Breaking instance-secret read hardening for API version `0.1`: `GET /api/instance/settings/smtp` no longer exposes `username` or `password` in `InstanceSmtpSettingsDto`; clients use `usernameConfigured` and `passwordConfigured`, then send replacement credentials only through `PatchInstanceSmtpSettingsDto.configuration`. `GET /api/instance/settings/ai-assistant` replaces readable `apiKey` with `apiKeyConfigured`; model discovery may carry a transient key, while persisted replacement keys are accepted only through `PatchAiAssistantGovernanceSettingsDto.providerConfiguration`. Instance governance reads never return persisted key material. Regenerate clients from `schemas/openapi_islamu-event.json`; there is no compatibility window before v1.0.

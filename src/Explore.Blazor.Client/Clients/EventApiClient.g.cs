@@ -3608,7 +3608,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Auth Provider Configuration
         /// </summary>
         /// <remarks>
-        /// Updates auth provider configuration. Requires instance administrator and blocks self-lockout.
+        /// Updates auth provider configuration during active setup-secret bootstrap or by an instance administrator. Instance-admin updates block self-lockout.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -3685,7 +3685,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Authorization Provider Configuration
         /// </summary>
         /// <remarks>
-        /// Updates authorization provider configuration. Requires instance administrator.
+        /// Updates authorization provider configuration during active setup-secret bootstrap or by an instance administrator.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -47462,7 +47462,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Auth Provider Configuration
         /// </summary>
         /// <remarks>
-        /// Updates auth provider configuration. Requires instance administrator and blocks self-lockout.
+        /// Updates auth provider configuration during active setup-secret bootstrap or by an instance administrator. Instance-admin updates block self-lockout.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -48179,7 +48179,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Authorization Provider Configuration
         /// </summary>
         /// <remarks>
-        /// Updates authorization provider configuration. Requires instance administrator.
+        /// Updates authorization provider configuration during active setup-secret bootstrap or by an instance administrator.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>

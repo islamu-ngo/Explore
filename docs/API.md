@@ -32,16 +32,23 @@ For task-first integration guidance, use [API_COOKBOOK.md](API_COOKBOOK.md). Gen
 ### Account Erasure
 
 `DELETE /api/user` requires normal login authorization plus a UUIDv7
-`Idempotency-Key` header. It returns `202 Accepted`, a `Location` header for
-`/api/privacy-erasure/status`, `Retry-After`, and a short-lived receipt exactly
-once. `202` means the authority fact and local workflow were accepted; it does
-not claim that post-commit provider work has finished.
+`Idempotency-Key` header. On first acceptance it returns `202 Accepted`,
+`Location: /api/privacy-erasure/status`, `Retry-After: 5`, and a short-lived
+receipt in the body. The receipt is revealed exactly once; repeat submissions
+for the same intent return the accepted status without minting a second
+receipt.
 
-After login removal, query status with
-`Authorization: ErasureReceipt <receipt>`. The status route uses a dedicated
-authentication scheme and returns only bounded state codes, aggregate provider
-counts, and timestamps. Responses are `private, no-store`. Missing, invalid,
-wrong, and expired receipts all return `401` without revealing subject state.
+`GET /api/privacy-erasure/status` is the receipt-authenticated status route.
+Send `Authorization: ErasureReceipt <receipt>`; OpenAPI documents the
+`PrivacyErasureReceipt` `apiKey` scheme on the `Authorization` header, not
+bearer auth. Responses are `private, no-store` and only expose bounded
+`fenced`, `provider_pending`, or `completed` status plus aggregate provider-work
+counts and settlement timestamps. Missing, invalid, wrong, and expired receipts
+all return `401` without revealing whether the subject or receipt exists.
+
+The status DTO is intentionally bounded: it does not expose provider locators,
+payloads, or raw failure text. Provider settlement and replay are worker-owned
+concerns; this route only reports the current fence state.
 
 The optional MCP adapter is not an OpenAPI controller group. It is mapped at the startup `Mcp:EndpointPath` only when `Mcp:Enabled=true`, then gated at runtime by hierarchical `mcp.enabled` settings after tenant/auth resolution. The endpoint is mapped anonymously so MCP SDK authorization filters can expose anonymous-safe registry discovery and public event list/detail/program/session read tools, while protected reads such as `list_my_events`, `get_event_creation_context`, `get_event_publish_readiness`, the `event_management_context` resource template, program/custom-property/registration/team/template/sync context tools, and other scoped tools/resources/prompts still require a valid bearer or API-key principal. API keys need `mcp:read` plus event read-equivalent scope authority for those protected event-management reads. Runtime MCP governance never changes endpoint path or stateless transport mode.
 
@@ -964,6 +971,7 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
     - `POST /api/a/t` — anonymous-safe analytics relay for relay transport mode
 6. Federation:
    - `GET /api/event` — anonymous typed local/federated event discovery; federated items appear only for an effectively enabled tenant and are de-duplicated against local ATProto ownership.
+   - Accepted inbound community events are imported internally through `ImportAtprotoFederatedEventCommand` into tenant-local `Event` and `EventSession` rows. There is no public ATProto-import endpoint; the normal event/session read APIs expose the mapped aggregates, while the canonical record retains the complete accepted source JSON.
    - `GET /api/event/federated/{atprotoRecordId}/source` — anonymous, rate-limited redirect to the currently tenant-visible bounded HTTPS source. Clients render this action only from the item-level `source` HAL relation.
    - `GET /api/event/my` — authenticated local event list with optional `atprotoDeliveryStatus` and stable `atprotoDeliveryFailureCode`; no provider body is returned.
    - `GET|PUT|DELETE /api/settings/instance/atproto-federation...` — instance administrator read/update/reset and lock/unlock operations for the two administrator ATProto federation settings, with HAL as action authority.
