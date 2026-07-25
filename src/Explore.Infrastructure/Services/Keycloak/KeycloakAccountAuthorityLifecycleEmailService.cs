@@ -81,6 +81,15 @@ public sealed class KeycloakAccountAuthorityLifecycleEmailService(
 
         var draft = CreateDraft(action, request, lifecycle.AccountAuthorityKind);
         var orchestration = await notificationOrchestrator.EnqueueAsync(draft, cancellationToken);
+        if (orchestration.IsFenced)
+        {
+            return CreateResult(
+                AccountAuthorityLifecycleEmailStatus.Disabled,
+                action,
+                lifecycle.AccountAuthorityKind,
+                reasonCode: "account_authority_lifecycle_email_unavailable");
+        }
+
         var api = CreateApi(baseUri!);
 
         try

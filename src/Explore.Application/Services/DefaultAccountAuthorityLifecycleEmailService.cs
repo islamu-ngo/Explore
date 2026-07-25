@@ -63,6 +63,14 @@ public sealed class DefaultAccountAuthorityLifecycleEmailService(
 
         var draft = CreateDraft(action, request, settings.AccountAuthorityKind);
         var orchestration = await notificationOrchestrator.EnqueueAsync(draft, cancellationToken);
+        if (orchestration.IsFenced)
+        {
+            return CreateResult(
+                AccountAuthorityLifecycleEmailStatus.Disabled,
+                action,
+                settings.AccountAuthorityKind,
+                ReasonCode: "account_authority_lifecycle_email_unavailable");
+        }
 
         return CreateResult(
             AccountAuthorityLifecycleEmailStatus.DelegationRecorded,
