@@ -59,7 +59,7 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
             throw new ArgumentException("Storage write byte limits cannot be negative.", nameof(request));
         }
 
-        var objectKey = BuildObjectKey(request.TenantId, request.Extension);
+        var objectKey = ResolveWriteObjectKey(request.TenantId, request.Extension, request.ObjectKey);
         var finalPath = ResolveObjectPath(objectKey);
         var directory = Path.GetDirectoryName(finalPath)
             ?? throw new InvalidOperationException("Unable to resolve storage object directory.");
@@ -379,6 +379,22 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
         return string.Create(
             CultureInfo.InvariantCulture,
             $"tenants/{tenantId:N}/{utcNow:yyyy/MM/dd}/{Guid.CreateVersion7():N}{safeExtension}");
+    }
+
+    private static string ResolveWriteObjectKey(Guid tenantId, string? extension, string? objectKey)
+    {
+        if (string.IsNullOrWhiteSpace(objectKey))
+        {
+            return BuildObjectKey(tenantId, extension);
+        }
+
+        var normalized = objectKey.Trim();
+        if (!normalized.StartsWith($"tenants/{tenantId:N}/", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Storage object key must belong to the requested tenant.", nameof(objectKey));
+        }
+
+        return normalized;
     }
 
     private static string NormalizeExtension(string? extension)

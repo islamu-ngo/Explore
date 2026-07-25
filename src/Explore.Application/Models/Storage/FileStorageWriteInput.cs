@@ -10,4 +10,5 @@ public sealed record FileStorageWriteInput(
     string SafeDisplayName,
     string? Extension,
     long? ExpectedSizeBytes,
-    long? MaxSizeBytes);
+    long? MaxSizeBytes,
+    string? ObjectKey = null);

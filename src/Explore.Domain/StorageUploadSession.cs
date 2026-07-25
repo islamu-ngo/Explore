@@ -45,6 +45,21 @@ public class StorageUploadSession : ITenantEntity, IAuditableEntity, IConcurrenc
     public Guid? UpdatedBy { get; set; }
     public Guid ConcurrencyStamp { get; set; }
 
+    public void ReserveObjectKey(string objectKey)
+    {
+        if (Status != StorageUploadSessionStates.Reserved)
+        {
+            throw new InvalidOperationException("Only reserved upload sessions can reserve an object key.");
+        }
+
+        if (string.IsNullOrWhiteSpace(objectKey))
+        {
+            throw new ArgumentException("A storage object key is required.", nameof(objectKey));
+        }
+
+        ObjectKey = objectKey;
+    }
+
     public void MarkUploading(DateTime utcNow)
     {
         if (Status != StorageUploadSessionStates.Reserved)

@@ -24,6 +24,7 @@ public class FinalizeStorageUploadSessionCommandHandler
     private readonly IStorageUploadSessionRepository _uploadSessionRepository;
     private readonly IStorageUsageCounterRepository _usageCounterRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
@@ -35,6 +36,7 @@ public class FinalizeStorageUploadSessionCommandHandler
         IStorageUploadSessionRepository uploadSessionRepository,
         IStorageUsageCounterRepository usageCounterRepository,
         IStorageObjectRepository storageObjectRepository,
+        IPrivacyErasureStateRepository privacyErasureStateRepository,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
@@ -45,6 +47,7 @@ public class FinalizeStorageUploadSessionCommandHandler
         _uploadSessionRepository = uploadSessionRepository;
         _usageCounterRepository = usageCounterRepository;
         _storageObjectRepository = storageObjectRepository;
+        _privacyErasureStateRepository = privacyErasureStateRepository;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
@@ -67,6 +70,12 @@ public class FinalizeStorageUploadSessionCommandHandler
             _metrics.RecordStorageUploadSession(null, "finalize", "failed", "validation_failed");
 
             return Failure("Upload finalization failed.", ["A readable upload content stream is required."]);
+        }
+
+        Guid? userId = _currentUserService.UserId;
+        if (await IsFencedAsync(userId, cancellationToken))
+        {
+            return FencedFailure();
         }
 
         var tenantId = _tenantContext.TenantId;
@@ -129,6 +138,12 @@ public class FinalizeStorageUploadSessionCommandHandler
                 return failure;
             }
 
+            if (await IsFencedAsync(session.UserId, cancellationToken))
+            {
+                await FailFencedSessionAsync(session.Id, tenantId, cancellationToken);
+                return FencedFailure();
+            }
+
             var provider = _providerResolver.GetRequired(session.Provider);
             var writeResult = await provider.WriteAsync(
                 new FileStorageWriteInput(
@@ -138,8 +153,15 @@ public class FinalizeStorageUploadSessionCommandHandler
                     session.SafeDisplayName,
                     session.Extension,
                     session.ExpectedSizeBytes,
-                    session.ExpectedSizeBytes),
+                    session.ExpectedSizeBytes,
+                    session.ObjectKey),
                 cancellationToken);
+
+            if (await IsFencedAsync(session.UserId, cancellationToken))
+            {
+                await FailFencedSessionAsync(session.Id, tenantId, cancellationToken);
+                return FencedFailure();
+            }
 
             var writeResultErrors = ValidateWriteResult(session, tenantId, writeResult);
             if (writeResultErrors.Count > 0)
@@ -289,6 +311,7 @@ public class FinalizeStorageUploadSessionCommandHandler
                 FailureCodes.StorageUploadContentTypeMismatch);
         }
 
+        session.ReserveObjectKey(BuildReservedObjectKey(session));
         session.MarkUploading(utcNow);
         await _uploadSessionRepository.Update(session);
 
@@ -414,7 +437,8 @@ public class FinalizeStorageUploadSessionCommandHandler
         var expectedObjectKeyPrefix = $"tenants/{tenantId:N}/";
         if (string.IsNullOrWhiteSpace(writeResult.ObjectKey) ||
             !StorageObjectMetadataValidation.BeValidObjectKey(writeResult.ObjectKey) ||
-            !writeResult.ObjectKey.StartsWith(expectedObjectKeyPrefix, StringComparison.Ordinal))
+            !writeResult.ObjectKey.StartsWith(expectedObjectKeyPrefix, StringComparison.Ordinal) ||
+            !string.Equals(writeResult.ObjectKey, session.ObjectKey, StringComparison.Ordinal))
         {
             errors.Add("Storage provider returned an invalid object key.");
         }
@@ -531,6 +555,32 @@ public class FinalizeStorageUploadSessionCommandHandler
             ? safeDisplayName[(dotIndex + 1)..].ToLowerInvariant()
             : "bin";
     }
+
+    private static string BuildReservedObjectKey(StorageUploadSession session) =>
+        $"tenants/{session.TenantId:N}/uploads/{session.Id:N}.{ResolveRequiredExtension(session.Extension, session.SafeDisplayName)}";
+
+    private async Task<bool> IsFencedAsync(Guid? userId, CancellationToken cancellationToken) =>
+        userId is Guid subjectId &&
+        await _privacyErasureStateRepository.GetBySubjectAsync(subjectId, cancellationToken) is not null;
+
+    private async Task FailFencedSessionAsync(
+        Guid uploadSessionId,
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        _ = await _unitOfWork.ExecuteInTransactionAsync(
+            async ct => await FailSessionAsync(
+                uploadSessionId,
+                tenantId,
+                FailureCodes.PrivacyErasureInProgress,
+                "Upload finalization was blocked by privacy erasure.",
+                null,
+                ct),
+            cancellationToken);
+    }
+
+    private static BaseCommandResponse<StorageUploadSessionDto> FencedFailure() =>
+        Failure("Upload finalization failed.", []);
 
     private bool IsAccessibleSession(StorageUploadSession? session, Guid tenantId)
         => session is not null &&
