@@ -25,7 +25,7 @@ public class SetupSecretForwardingHandler : DelegatingHandler
         var path = request.RequestUri?.AbsolutePath ?? string.Empty;
         _ = request.Headers.Remove("X-Setup-Secret");
 
-        if (!RequiresSetupSecret(path))
+        if (!RequiresSetupSecret(request.Method.Method, path))
         {
             return base.SendAsync(request, cancellationToken);
         }
@@ -39,8 +39,15 @@ public class SetupSecretForwardingHandler : DelegatingHandler
         return base.SendAsync(request, cancellationToken);
     }
 
-    private static bool RequiresSetupSecret(string path)
+    private static bool RequiresSetupSecret(string method, string path)
     {
+        if (HttpMethods.IsPatch(method)
+            && (path.Equals("/api/instance/settings/auth-provider", StringComparison.OrdinalIgnoreCase)
+                || path.Equals("/api/instance/settings/authz-provider", StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
         const string onboardingBasePath = "/api/InstanceOnboarding/";
 
         if (!path.StartsWith(onboardingBasePath, StringComparison.OrdinalIgnoreCase))

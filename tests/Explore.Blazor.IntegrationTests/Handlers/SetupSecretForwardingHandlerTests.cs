@@ -316,6 +316,111 @@ public class SetupSecretForwardingHandlerTests
         await Assert.That(innerHandler.CapturedRequest.Headers.GetValues("X-Setup-Secret").Single()).IsEqualTo("session-secret-999");
     }
 
+    [Test]
+    [Arguments("/api/instance/settings/auth-provider")]
+    [Arguments("/api/instance/settings/authz-provider")]
+    public async Task SendAsync_CanonicalInstanceProviderPatch_WithInboundHeaderAndSessionSecret_ForwardsTrustedSecret(
+        string path)
+    {
+        var userId = Guid.NewGuid().ToString();
+        var httpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(
+                new ClaimsIdentity(
+                [
+                    new Claim("sub", userId),
+                    new Claim(ClaimTypes.NameIdentifier, userId)
+                ],
+                authenticationType: "Test"))
+        };
+
+        var sessionService = new SetupSecretSessionService();
+        sessionService.SetForUser(userId, "trusted-instance-settings-secret");
+
+        var innerHandler = new CapturingHandler();
+        using var handler = CreateHandler(httpContext, sessionService, innerHandler);
+
+        using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"https://api.example.com{path}?source=test");
+        request.Headers.Add("X-Setup-Secret", "client-controlled-secret");
+
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.RequestUri!.Query).IsEqualTo("?source=test");
+        await Assert.That(innerHandler.CapturedRequest.Headers.GetValues("X-Setup-Secret").Single())
+            .IsEqualTo("trusted-instance-settings-secret");
+    }
+
+    [Test]
+    [Arguments("GET", "/api/instance/settings/auth-provider")]
+    [Arguments("PUT", "/api/instance/settings/auth-provider")]
+    [Arguments("DELETE", "/api/instance/settings/auth-provider")]
+    [Arguments("PATCH", "/api/instance/settings/auth-provider/")]
+    [Arguments("PATCH", "/api/instance/settings/auth-provider/child")]
+    [Arguments("PATCH", "/api/instance/settings/auth-provider-extra")]
+    [Arguments("GET", "/api/instance/settings/authz-provider")]
+    [Arguments("PUT", "/api/instance/settings/authz-provider")]
+    [Arguments("DELETE", "/api/instance/settings/authz-provider")]
+    [Arguments("PATCH", "/api/instance/settings/authz-provider/")]
+    [Arguments("PATCH", "/api/instance/settings/authz-provider/child")]
+    [Arguments("PATCH", "/api/instance/settings/authz-provider-extra")]
+    public async Task SendAsync_NonCanonicalInstanceProviderRequest_StripsClientHeaderWithoutAddingTrustedSecret(
+        string method,
+        string path)
+    {
+        var userId = Guid.NewGuid().ToString();
+        var httpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(
+                new ClaimsIdentity(
+                [new Claim("sub", userId)],
+                authenticationType: "Test"))
+        };
+
+        var sessionService = new SetupSecretSessionService();
+        sessionService.SetForUser(userId, "trusted-instance-settings-secret");
+
+        var innerHandler = new CapturingHandler();
+        using var handler = CreateHandler(httpContext, sessionService, innerHandler);
+
+        using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
+        using var request = new HttpRequestMessage(
+            new HttpMethod(method),
+            $"https://api.example.com{path}?source=test");
+        request.Headers.Add("X-Setup-Secret", "client-controlled-secret");
+
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsFalse();
+    }
+
+    [Test]
+    [Arguments("/api/instance/settings/auth-provider")]
+    [Arguments("/api/instance/settings/authz-provider")]
+    public async Task SendAsync_CanonicalInstanceProviderPatch_WithoutResolverSecret_DoesNotForwardClientHeader(
+        string path)
+    {
+        var httpContext = new DefaultHttpContext();
+        var sessionService = new SetupSecretSessionService();
+        var innerHandler = new CapturingHandler();
+        using var handler = CreateHandler(httpContext, sessionService, innerHandler);
+
+        using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"https://api.example.com{path}?source=test");
+        request.Headers.Add("X-Setup-Secret", "client-controlled-secret");
+
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsFalse();
+    }
+
     private static SetupSecretForwardingHandler CreateHandler(
         DefaultHttpContext httpContext,
         SetupSecretSessionService sessionService,

@@ -3,6 +3,7 @@
 
 using System.Net;
 using Explore.Blazor.IntegrationTests.Fixtures;
+using Explore.Blazor.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -10,11 +11,14 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Explore.Blazor.IntegrationTests.Endpoints;
 
+[NotInParallel("BffApiProxySetupSecret")]
 public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 {
     private readonly ProxyUpstream _upstream = new();
@@ -28,6 +32,12 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
         _factory = new BlazorBffWebApplicationFactory().WithWebHostBuilder(builder =>
         {
             builder.UseSetting("ExploreApi:BaseUrl", _upstream.BaseAddress);
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<ISetupSecretResolver>();
+                services.AddSingleton<ISetupSecretResolver>(new FixedSetupSecretResolver(
+                    "trusted-yarp-instance-settings-secret"));
+            });
         });
 
         _client = _factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -89,6 +99,50 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
         (await response.Content.ReadAsStringAsync()).Should().Contain("subscribed");
     }
 
+    [Test]
+    [Arguments("/api/instance/settings/auth-provider")]
+    [Arguments("/api/instance/settings/authz-provider")]
+    public async Task InstanceProviderPatch_CanonicalPath_ForwardsOnlyResolverSecret(string path)
+    {
+        _upstream.ResetCapture();
+        using var request = CreateProxyRequest(HttpMethod.Patch, $"{path}?source=test");
+        request.Headers.Add("X-Setup-Secret", "browser-controlled-secret");
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        _upstream.LastPathAndQuery.Should().Be($"{path}?source=test");
+        _upstream.LastSetupSecret.Should().Be("trusted-yarp-instance-settings-secret");
+    }
+
+    [Test]
+    [Arguments("GET", "/api/instance/settings/auth-provider")]
+    [Arguments("PUT", "/api/instance/settings/auth-provider")]
+    [Arguments("DELETE", "/api/instance/settings/auth-provider")]
+    [Arguments("PATCH", "/api/instance/settings/auth-provider/")]
+    [Arguments("PATCH", "/api/instance/settings/auth-provider/child")]
+    [Arguments("PATCH", "/api/instance/settings/auth-provider-extra")]
+    [Arguments("GET", "/api/instance/settings/authz-provider")]
+    [Arguments("PUT", "/api/instance/settings/authz-provider")]
+    [Arguments("DELETE", "/api/instance/settings/authz-provider")]
+    [Arguments("PATCH", "/api/instance/settings/authz-provider/")]
+    [Arguments("PATCH", "/api/instance/settings/authz-provider/child")]
+    [Arguments("PATCH", "/api/instance/settings/authz-provider-extra")]
+    public async Task InstanceProviderRequest_NonCanonicalMethodOrPath_StripsSetupSecret(
+        string method,
+        string path)
+    {
+        _upstream.ResetCapture();
+        using var request = CreateProxyRequest(new HttpMethod(method), $"{path}?source=test");
+        request.Headers.Add("X-Setup-Secret", "browser-controlled-secret");
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        _upstream.LastPathAndQuery.Should().Be($"{path}?source=test");
+        _upstream.LastSetupSecret.Should().BeNull();
+    }
+
     public async ValueTask DisposeAsync()
     {
         _client.Dispose();
@@ -101,6 +155,13 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
         var request = new HttpRequestMessage(method, path);
         request.Headers.Add(TestAuthHandler.AuthHeaderName, _authHeader);
         request.Headers.Add("Cookie", ".AspNetCore.Cookies=test-session");
+        return request;
+    }
+
+    private HttpRequestMessage CreateProxyRequest(HttpMethod method, string path)
+    {
+        var request = new HttpRequestMessage(method, path);
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, _authHeader);
         return request;
     }
 
@@ -151,6 +212,10 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         public string BaseAddress { get; private set; } = string.Empty;
 
+        public string? LastPathAndQuery { get; private set; }
+
+        public string? LastSetupSecret { get; private set; }
+
         public async Task StartAsync()
         {
             var builder = WebApplication.CreateBuilder();
@@ -160,6 +225,12 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
             _app.MapGet("/api/notification/web-push/config", () => Results.Json(new { publicKey = "test-public-key" }));
             _app.MapPost("/api/notification/web-push/subscriptions", () => Results.Json(new { status = "subscribed" }, statusCode: StatusCodes.Status201Created));
             _app.MapDelete("/api/notification/web-push/subscriptions/{subscriptionId:guid}", () => Results.Json(new { status = "unsubscribed" }));
+            _app.Map("/{**path}", (HttpContext context) =>
+            {
+                LastPathAndQuery = $"{context.Request.Path}{context.Request.QueryString}";
+                LastSetupSecret = context.Request.Headers["X-Setup-Secret"].FirstOrDefault();
+                return Results.Ok();
+            });
 
             await _app.StartAsync();
             BaseAddress = _app.Services
@@ -170,12 +241,30 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
                 .Single();
         }
 
+        public void ResetCapture()
+        {
+            LastPathAndQuery = null;
+            LastSetupSecret = null;
+        }
+
         public async ValueTask DisposeAsync()
         {
             if (_app is not null)
             {
                 await _app.DisposeAsync();
             }
+        }
+    }
+
+    private sealed class FixedSetupSecretResolver(string? secret) : ISetupSecretResolver
+    {
+        public SetupSecretResolutionResult Resolve(
+            HttpContext? httpContext = null,
+            HttpRequestMessage? outboundRequest = null)
+        {
+            return string.IsNullOrWhiteSpace(secret)
+                ? SetupSecretResolutionResult.NotFound("test_secret_missing")
+                : SetupSecretResolutionResult.FoundFrom(SetupSecretSource.ServerSideSetupSession, secret);
         }
     }
 }

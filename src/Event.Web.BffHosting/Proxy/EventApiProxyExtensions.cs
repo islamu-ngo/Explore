@@ -206,7 +206,7 @@ public static class EventApiProxyExtensions
 
         _ = context.ProxyRequest.Headers.Remove(EventBffHeaderNames.SetupSecret);
 
-        if (!RequiresSetupSecret(httpContext.Request.Path))
+        if (!RequiresSetupSecret(httpContext.Request.Method, httpContext.Request.Path))
         {
             return;
         }
@@ -219,8 +219,21 @@ public static class EventApiProxyExtensions
         }
     }
 
-    private static bool RequiresSetupSecret(PathString path)
+    private static bool RequiresSetupSecret(string method, PathString path)
     {
+        if (HttpMethods.IsPatch(method)
+            && (string.Equals(
+                    path.Value,
+                    "/api/instance/settings/auth-provider",
+                    StringComparison.OrdinalIgnoreCase)
+                || string.Equals(
+                    path.Value,
+                    "/api/instance/settings/authz-provider",
+                    StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
         return path.StartsWithSegments("/api/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
             || path.StartsWithSegments("/api/InstanceOnboarding/validate-secret", StringComparison.OrdinalIgnoreCase)
             || path.StartsWithSegments(
