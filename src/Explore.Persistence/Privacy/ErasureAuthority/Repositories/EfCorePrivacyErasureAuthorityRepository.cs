@@ -1,16 +1,19 @@
 // ABOUTME: Calls the retained authority's fixed SECURITY DEFINER append and read functions through its DbContext connection.
 // ABOUTME: Preserves the runtime role's function-only boundary and never performs ordinary DbSet table access.
 
+using Explore.Application.Configuration;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Npgsql;
 using NpgsqlTypes;
 
 namespace Explore.Persistence.Privacy.ErasureAuthority.Repositories;
 
 public sealed class EfCorePrivacyErasureAuthorityRepository(
-    PrivacyErasureAuthorityDbContext dbContext) : IPrivacyErasureAuthority
+    PrivacyErasureAuthorityDbContext dbContext,
+    IOptions<PrivacyErasureOptions> options) : IPrivacyErasureAuthority
 {
     public const int MaximumReadBatchSize = 500;
 
@@ -29,6 +32,7 @@ public sealed class EfCorePrivacyErasureAuthorityRepository(
             command.Parameters.AddWithValue("subject_id", NpgsqlDbType.Uuid, intent.SubjectId);
             command.Parameters.AddWithValue("reason_code", NpgsqlDbType.Smallint, (short)intent.ReasonCode);
             command.Parameters.AddWithValue("policy_version", NpgsqlDbType.Integer, intent.PolicyVersion);
+            command.Parameters.AddWithValue("authority_retention", NpgsqlDbType.Interval, options.Value.AuthorityRetention);
             try
             {
                 await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken);

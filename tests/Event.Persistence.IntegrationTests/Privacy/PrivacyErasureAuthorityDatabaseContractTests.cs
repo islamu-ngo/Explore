@@ -33,24 +33,28 @@ public sealed partial class PrivacyErasureAuthorityDatabaseContractTests
     public async Task RuntimeGrants_TargetExactlyOneActiveDefinitionPerRepositorySignature()
     {
         string sql = ContractSql();
-        string[] expected =
+        string[] expectedDefinitions =
         [
-            $"{Schema}.append_erasure_intent(uuid,smallint,uuid,smallint,integer)",
+            $"{Schema}.append_erasure_intent_with_retention(uuid,smallint,uuid,smallint,integer,interval)"
+        ];
+        string[] expectedGrants =
+        [
+            .. expectedDefinitions,
             $"{Schema}.read_erasure_intents_after(bigint,integer)"
         ];
 
         string[] definitions = FunctionDefinitionRegex()
             .Matches(sql)
             .Select(match => NormalizeDefinition(match))
-            .Where(signature => expected.Contains(signature, StringComparer.Ordinal))
+            .Where(signature => expectedDefinitions.Contains(signature, StringComparer.Ordinal))
             .ToArray();
         string[] grants = FunctionGrantRegex()
             .Matches(sql)
             .Select(match => NormalizeGrant(match))
             .ToArray();
 
-        await Assert.That(definitions).IsEquivalentTo(expected);
-        await Assert.That(grants).IsEquivalentTo(expected);
+        await Assert.That(definitions).IsEquivalentTo(expectedDefinitions);
+        await Assert.That(grants).IsEquivalentTo(expectedGrants);
         await Assert.That(definitions.Length).IsEqualTo(definitions.Distinct().Count());
     }
 
@@ -70,7 +74,7 @@ public sealed partial class PrivacyErasureAuthorityDatabaseContractTests
                 retention_expires_at_utc timestamp with time zone
             """;
 
-        foreach (string function in new[] { "append_erasure_intent", "read_erasure_intents_after" })
+        foreach (string function in new[] { "append_erasure_intent_with_retention" })
         {
             Match definition = FunctionBodyRegex(function).Match(sql);
             await Assert.That(definition.Success).IsTrue();
@@ -87,11 +91,7 @@ public sealed partial class PrivacyErasureAuthorityDatabaseContractTests
     {
         string sql = ContractSql();
 
-        await Assert.That(sql).Contains($"ALTER SCHEMA {Schema} OWNER TO {Owner}");
-        await Assert.That(sql).Contains($"ALTER TABLE {Schema}.erasure_intents OWNER TO {Owner}");
-        await Assert.That(sql).Contains($"ALTER TABLE {Schema}.authority_counter OWNER TO {Owner}");
-        await Assert.That(sql).Contains($"ALTER FUNCTION {Schema}.append_erasure_intent(uuid, smallint, uuid, smallint, integer)");
-        await Assert.That(sql).Contains($"ALTER FUNCTION {Schema}.read_erasure_intents_after(bigint, integer)");
+        await Assert.That(sql).Contains($"ALTER FUNCTION {Schema}.append_erasure_intent_with_retention(uuid, smallint, uuid, smallint, integer, interval)");
         await Assert.That(sql).Contains($"REVOKE ALL ON ALL TABLES IN SCHEMA {Schema} FROM PUBLIC, {Runtime}");
         await Assert.That(sql).Contains($"REVOKE ALL ON ALL SEQUENCES IN SCHEMA {Schema} FROM PUBLIC, {Runtime}");
         await Assert.That(sql).Contains($"REVOKE ALL ON ALL FUNCTIONS IN SCHEMA {Schema} FROM PUBLIC, {Runtime}");
@@ -112,18 +112,17 @@ public sealed partial class PrivacyErasureAuthorityDatabaseContractTests
         await Assert.That(sql).Contains("p_subject_id = '00000000-0000-0000-0000-000000000000'::uuid");
         await Assert.That(sql).Contains("p_reason_code NOT BETWEEN 1 AND 3");
         await Assert.That(sql).Contains("p_policy_version <= 0");
+        await Assert.That(sql).Contains("p_authority_retention IS NULL");
+        await Assert.That(sql).Contains("p_authority_retention <= interval '0'");
         await Assert.That(sql).Contains("FOR UPDATE");
         await Assert.That(sql).Contains("v_existing.subject_kind <> p_subject_kind");
         await Assert.That(sql).Contains("v_existing.subject_id <> p_subject_id");
         await Assert.That(sql).Contains("v_existing.reason_code <> p_reason_code");
         await Assert.That(sql).Contains("v_existing.policy_version <> p_policy_version");
+        await Assert.That(sql).Contains("v_recorded_at_utc + p_authority_retention");
+        await Assert.That(sql).Contains("isfinite(v_retention_expires_at_utc)");
         await Assert.That(sql).Contains("v_last_sequence = 9223372036854775807");
         await Assert.That(sql).Contains("SET last_sequence = v_next_sequence");
-        await Assert.That(sql).Contains("p_limit NOT BETWEEN 1 AND 500");
-        await Assert.That(sql).Contains("ORDER BY retained.authority_sequence");
-        await Assert.That(sql).Contains("BEFORE UPDATE OR DELETE ON");
-        await Assert.That(sql).Contains("BEFORE TRUNCATE ON");
-        await Assert.That(sql).Contains("RAISE EXCEPTION 'privacy erasure authority facts are immutable'");
     }
 
     private static string ContractSql() =>

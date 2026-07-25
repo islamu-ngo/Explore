@@ -9,7 +9,8 @@ public static class PrivacyErasureAuthorityDatabaseContract
     public const string OwnerRole = "privacy_erasure_authority_owner";
     public const string MigratorRole = "privacy_erasure_authority_migrator";
     public const string RuntimeRole = "privacy_erasure_authority_runtime";
-    public const string AppendFunction = "append_erasure_intent";
+    public const string LegacyAppendFunction = "append_erasure_intent";
+    public const string AppendFunction = "append_erasure_intent_with_retention";
     public const string ReadFunction = "read_erasure_intents_after";
 
     public static string AppendFunctionSql =>
@@ -91,7 +92,7 @@ public static class PrivacyErasureAuthorityDatabaseContract
         FOR EACH STATEMENT
         EXECUTE FUNCTION {SchemaName}.reject_erasure_intent_mutation();
 
-        CREATE OR REPLACE FUNCTION {SchemaName}.{AppendFunction}(
+        CREATE OR REPLACE FUNCTION {SchemaName}.{LegacyAppendFunction}(
             p_intent_id uuid,
             p_subject_kind smallint,
             p_subject_id uuid,
@@ -213,7 +214,7 @@ public static class PrivacyErasureAuthorityDatabaseContract
                       retained.retention_expires_at_utc;
         END;
         $function$;
-        ALTER FUNCTION {SchemaName}.{AppendFunction}(uuid, smallint, uuid, smallint, integer)
+        ALTER FUNCTION {SchemaName}.{LegacyAppendFunction}(uuid, smallint, uuid, smallint, integer)
             OWNER TO {OwnerRole};
 
         CREATE OR REPLACE FUNCTION {SchemaName}.{ReadFunction}(
@@ -267,6 +268,153 @@ public static class PrivacyErasureAuthorityDatabaseContract
             OWNER TO {OwnerRole};
         """;
 
+    private static string FiniteRetentionAppendFunctionSql { get; } = $"""
+        CREATE OR REPLACE FUNCTION {SchemaName}.{AppendFunction}(
+            p_intent_id uuid,
+            p_subject_kind smallint,
+            p_subject_id uuid,
+            p_reason_code smallint,
+            p_policy_version integer,
+            p_authority_retention interval)
+        RETURNS TABLE
+        (
+            authority_sequence bigint,
+            intent_id uuid,
+            subject_kind smallint,
+            subject_id uuid,
+            reason_code smallint,
+            policy_version integer,
+            requested_at_utc timestamp with time zone,
+            recorded_at_utc timestamp with time zone,
+            retention_expires_at_utc timestamp with time zone
+        )
+        LANGUAGE plpgsql
+        SECURITY DEFINER
+        SET search_path = pg_catalog, {SchemaName}
+        AS $function$
+        DECLARE
+            v_existing {SchemaName}.erasure_intents%ROWTYPE;
+            v_last_sequence bigint;
+            v_next_sequence bigint;
+            v_recorded_at_utc timestamp with time zone;
+            v_retention_expires_at_utc timestamp with time zone;
+        BEGIN
+            IF p_intent_id IS NULL
+               OR p_intent_id = '00000000-0000-0000-0000-000000000000'::uuid
+               OR substring(p_intent_id::text from 15 for 1) <> '7'
+               OR substring(p_intent_id::text from 20 for 1) NOT IN ('8', '9', 'a', 'b') THEN
+                RAISE EXCEPTION 'IntentId must be an RFC 4122 UUIDv7 value'
+                    USING ERRCODE = '22023';
+            END IF;
+
+            IF p_subject_kind IS NULL OR p_subject_kind <> 1 THEN
+                RAISE EXCEPTION 'Only User privacy erasure is executable'
+                    USING ERRCODE = '22023';
+            END IF;
+
+            IF p_subject_id IS NULL
+               OR p_subject_id = '00000000-0000-0000-0000-000000000000'::uuid THEN
+                RAISE EXCEPTION 'SubjectId must be an opaque non-empty identifier'
+                    USING ERRCODE = '22023';
+            END IF;
+
+            IF p_reason_code IS NULL OR p_reason_code NOT BETWEEN 1 AND 3 THEN
+                RAISE EXCEPTION 'ReasonCode must be a defined erasure reason'
+                    USING ERRCODE = '22023';
+            END IF;
+
+            IF p_policy_version IS NULL OR p_policy_version <= 0 THEN
+                RAISE EXCEPTION 'PolicyVersion must be positive'
+                    USING ERRCODE = '22023';
+            END IF;
+
+            SELECT counter.last_sequence
+            INTO v_last_sequence
+            FROM {SchemaName}.authority_counter AS counter
+            WHERE counter.singleton
+            FOR UPDATE;
+
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'Erasure authority counter is unavailable'
+                    USING ERRCODE = '55000';
+            END IF;
+
+            SELECT retained.*
+            INTO v_existing
+            FROM {SchemaName}.erasure_intents AS retained
+            WHERE retained.intent_id = p_intent_id;
+
+            IF FOUND THEN
+                IF v_existing.subject_kind <> p_subject_kind
+                   OR v_existing.subject_id <> p_subject_id
+                   OR v_existing.reason_code <> p_reason_code
+                   OR v_existing.policy_version <> p_policy_version THEN
+                    RAISE EXCEPTION 'IntentId is already retained with a different payload'
+                        USING ERRCODE = '22023';
+                END IF;
+
+                RETURN QUERY
+                SELECT retained.authority_sequence,
+                       retained.intent_id,
+                       retained.subject_kind,
+                       retained.subject_id,
+                       retained.reason_code,
+                       retained.policy_version,
+                       retained.requested_at_utc,
+                       retained.recorded_at_utc,
+                       retained.retention_expires_at_utc
+                FROM {SchemaName}.erasure_intents AS retained
+                WHERE retained.intent_id = p_intent_id;
+                RETURN;
+            END IF;
+
+            IF p_authority_retention IS NULL
+               OR p_authority_retention <= interval '0' THEN
+                RAISE EXCEPTION 'Authority retention must be a positive interval'
+                    USING ERRCODE = '22023';
+            END IF;
+
+            v_recorded_at_utc := clock_timestamp();
+            v_retention_expires_at_utc := v_recorded_at_utc + p_authority_retention;
+            IF NOT isfinite(v_retention_expires_at_utc)
+               OR v_retention_expires_at_utc <= v_recorded_at_utc THEN
+                RAISE EXCEPTION 'Authority retention must produce a finite future expiry'
+                    USING ERRCODE = '22023';
+            END IF;
+
+            IF v_last_sequence = 9223372036854775807 THEN
+                RAISE EXCEPTION 'Erasure authority sequence is exhausted'
+                    USING ERRCODE = '22003';
+            END IF;
+
+            v_next_sequence := v_last_sequence + 1;
+            UPDATE {SchemaName}.authority_counter AS counter
+            SET last_sequence = v_next_sequence
+            WHERE counter.singleton;
+
+            RETURN QUERY
+            INSERT INTO {SchemaName}.erasure_intents AS retained
+                (authority_sequence, intent_id, subject_kind, subject_id, reason_code,
+                 policy_version, requested_at_utc, recorded_at_utc, retention_expires_at_utc)
+            VALUES
+                (v_next_sequence, p_intent_id, p_subject_kind, p_subject_id, p_reason_code,
+                 p_policy_version, statement_timestamp(), v_recorded_at_utc,
+                 v_retention_expires_at_utc)
+            RETURNING retained.authority_sequence,
+                      retained.intent_id,
+                      retained.subject_kind,
+                      retained.subject_id,
+                      retained.reason_code,
+                      retained.policy_version,
+                      retained.requested_at_utc,
+                      retained.recorded_at_utc,
+                      retained.retention_expires_at_utc;
+        END;
+        $function$;
+        ALTER FUNCTION {SchemaName}.{AppendFunction}(uuid, smallint, uuid, smallint, integer, interval)
+            OWNER TO {OwnerRole};
+        """;
+
     public static string RuntimeAclSql { get; } = $"""
         REVOKE ALL ON SCHEMA {SchemaName} FROM PUBLIC;
         REVOKE ALL ON SCHEMA {SchemaName} FROM {RuntimeRole};
@@ -280,7 +428,7 @@ public static class PrivacyErasureAuthorityDatabaseContract
         ALTER DEFAULT PRIVILEGES FOR ROLE {OwnerRole} IN SCHEMA {SchemaName}
             REVOKE ALL ON FUNCTIONS FROM PUBLIC, {RuntimeRole};
         GRANT USAGE ON SCHEMA {SchemaName} TO {RuntimeRole};
-        GRANT EXECUTE ON FUNCTION {SchemaName}.{AppendFunction}(uuid, smallint, uuid, smallint, integer)
+        GRANT EXECUTE ON FUNCTION {SchemaName}.{AppendFunction}(uuid, smallint, uuid, smallint, integer, interval)
             TO {RuntimeRole};
         GRANT EXECUTE ON FUNCTION {SchemaName}.{ReadFunction}(bigint, integer)
             TO {RuntimeRole};
@@ -299,9 +447,19 @@ public static class PrivacyErasureAuthorityDatabaseContract
         $contract$;
         """;
 
+    public static string FiniteRetentionRollbackSql { get; } = $"""
+        REVOKE ALL ON FUNCTION {SchemaName}.{AppendFunction}(uuid, smallint, uuid, smallint, integer, interval)
+            FROM PUBLIC, {RuntimeRole};
+        DROP FUNCTION {SchemaName}.{AppendFunction}(uuid, smallint, uuid, smallint, integer, interval);
+        GRANT EXECUTE ON FUNCTION {SchemaName}.{LegacyAppendFunction}(uuid, smallint, uuid, smallint, integer)
+            TO {RuntimeRole};
+        GRANT EXECUTE ON FUNCTION {SchemaName}.{ReadFunction}(bigint, integer)
+            TO {RuntimeRole};
+        """;
+
     public static string MigrationSql { get; } = $"""
         {RoleProvisioningSql}
-        {AuthorityObjectsSql}
+        {FiniteRetentionAppendFunctionSql}
         {RuntimeAclSql}
         {RoleIsolationSql}
         """;

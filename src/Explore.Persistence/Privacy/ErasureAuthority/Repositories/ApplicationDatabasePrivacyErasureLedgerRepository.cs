@@ -10,7 +10,8 @@ namespace Explore.Persistence.Privacy.ErasureAuthority.Repositories;
 
 public sealed class ApplicationDatabasePrivacyErasureLedgerRepository(
     ExploreDbContext dbContext,
-    TimeProvider timeProvider) : IPrivacyErasureLedgerRepository
+    TimeProvider timeProvider,
+    TimeSpan authorityRetention) : IPrivacyErasureLedgerRepository
 {
     public async Task<PrivacyErasureIntent> AppendAsync(
         PrivacyErasureRequest intent,
@@ -34,7 +35,8 @@ public sealed class ApplicationDatabasePrivacyErasureLedgerRepository(
             intent.ReasonCode,
             intent.PolicyVersion,
             now,
-            now);
+            now,
+            now + authorityRetention);
         dbContext.PrivacyErasureIntents.Add(fact);
         await dbContext.SaveChangesAsync(cancellationToken);
         return fact;

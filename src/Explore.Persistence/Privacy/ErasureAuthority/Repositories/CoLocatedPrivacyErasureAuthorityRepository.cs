@@ -2,16 +2,19 @@
 // ABOUTME: Commits each append independently before the application mutation transaction begins.
 
 using System.Data;
+using Explore.Application.Configuration;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Persistence.Privacy.ErasureAuthority.Repositories;
 
 public sealed class CoLocatedPrivacyErasureAuthorityRepository(
     IDbContextFactory<ExploreDbContext> dbContextFactory,
-    TimeProvider timeProvider) : IPrivacyErasureAuthority
+    TimeProvider timeProvider,
+    IOptions<PrivacyErasureOptions> options) : IPrivacyErasureAuthority
 {
     public async Task<PrivacyErasureIntent> AppendAsync(
         PrivacyErasureRequest intent,
@@ -31,7 +34,8 @@ public sealed class CoLocatedPrivacyErasureAuthorityRepository(
                 cancellationToken);
             var repository = new ApplicationDatabasePrivacyErasureLedgerRepository(
                 context,
-                timeProvider);
+                timeProvider,
+                options.Value.AuthorityRetention);
             PrivacyErasureIntent fact = await repository.AppendAsync(intent, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return fact;
@@ -47,7 +51,8 @@ public sealed class CoLocatedPrivacyErasureAuthorityRepository(
             await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var repository = new ApplicationDatabasePrivacyErasureLedgerRepository(
             context,
-            timeProvider);
+            timeProvider,
+            options.Value.AuthorityRetention);
         return await repository.ReadAfterAsync(authoritySequence, limit, cancellationToken);
     }
 }
