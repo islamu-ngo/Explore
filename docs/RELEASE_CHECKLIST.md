@@ -74,7 +74,7 @@ Use `Not applicable` only when the change has no release-impact category. If the
 ## Migration And Data Contract
 
 - [ ] New EF migrations are named, reviewed, and tied to the feature/release.
-- [ ] Migration impact is documented: additive, data backfill, destructive, or rollback-sensitive.
+- [ ] Migration impact is documented: additive, data backfill, destructive, or rollback-sensitive. Do not claim below-floor compaction or DR rehearsal coverage, or any RPO/RTO number, until it is shipped and linked in evidence.
 - [ ] Data-protection/key storage impact is documented if changed.
 - [ ] Seed data or lookup table changes are documented.
 - [ ] Rollback strategy is documented in release notes.
@@ -92,9 +92,9 @@ Use `Not applicable` only when the change has no release-impact category. If the
 - [ ] Authentication/authorization changes are documented in `SECURITY.md` or `AUTHORIZATION_PATTERNS.md`.
 - [ ] Rate-limit, timeout, forwarded-header, CORS, or proxy changes are documented.
 - [ ] Health-check, metrics, logging, or tracing changes are documented in `OPERATIONS.md`.
-- [ ] Backup/restore impact is documented in `BACKUP_RESTORE_UPGRADE.md` when data shape changes.
+- [ ] Backup/restore impact is documented in `BACKUP_RESTORE_UPGRADE.md` when data shape changes. The doc must preserve the CoLocated limitation, the external application-only custom-format restore proof, and the restore-both-databases caveat.
 - [ ] Known vulnerabilities or dependency warnings are triaged.
-- [ ] Secret scanning, push protection, Dependabot security updates, dependency graph, and CodeQL alerts are enabled or explicitly waived at repository/organization level.
+- [ ] Secret scanning, push protection, Dependabot security updates, dependency graph, and CodeQL alerts are enabled or explicitly waived at repository/organization level. Current credential rotation status is documented as restart-based when that is the proven behavior; do not imply live reload or zero-downtime rotation unless it is separately proven.
 
 ## CI/CD Evidence Contract
 

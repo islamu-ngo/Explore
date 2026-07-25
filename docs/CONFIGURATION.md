@@ -758,6 +758,12 @@ Refresh behavior binds from `SecretRefresh` and runs via hosted `SecretRefreshSe
 | `PROVISIONING_MODE` | unset | Trusted values are managed-provider modes such as `managed-provider`, `managed_provider`, `managed-hosting`, or `managed`. Other values do not disable setup-secret validation. |
 | `MANAGED_CLIENT_EXTERNAL_PROVIDER` | unset | Stable external provider key for the managed provisioning operator, for example an ERP or hosting-provider key. Required when `SETUP_SECRET_REQUIRED=false`. |
 | `PHYSICAL_TENANCY_MODE` | unset | Deployment posture such as shared database or dedicated deployment. Required when `SETUP_SECRET_REQUIRED=false` so the operator has declared the physical tenancy model. |
+| `CONTROL_PLANE_MANAGED_MODE` | `false` | Enables managed-control-plane bootstrap. When true, API maps `ManagedControlPlane:*` settings and runs managed registration/provisioning workers under bounded policy. |
+| `CONTROL_PLANE_URL` | unset | Optional only when managed mode is enabled. URL for the control plane API (must be absolute HTTPS or HTTP loopback). |
+| `CONTROL_PLANE_INSTANCE_ID` | unset | Required when managed mode is enabled; parsed as deployment `Guid`. |
+| `CONTROL_PLANE_REGISTRATION_TOKEN` | unset | Directional bootstrap credential material for the initial registration exchange. |
+| `CONTROL_PLANE_MAXIMUM_TENANT_COUNT` | unset | Upper capacity bound for managed tenant allocation. |
+| `CONTROL_PLANE_TENANT_ADMINISTRATOR_SIGN_IN_URL` | unset | Optional absolute HTTPS (or loopback) URL used for directed tenant-administrator sign-in experiences. |
 
 Important safety behavior:
 
@@ -776,8 +782,14 @@ After authentication, onboarding is presented as one server-derived task overvie
 
 - `DEPLOYMENT_MODE` (Infisical `/api`) -> `Deployment:Mode` (`single_tenant`/`multi_tenant` normalized to `SingleTenant`/`MultiTenant`)
 - `MCP_ENABLED`, `MCP_ENDPOINT_PATH`, `MCP_STATELESS`, `MCP_ENABLE_LEGACY_SSE` (Infisical `/api` or `/mcp`) -> `Mcp:Enabled`, `Mcp:EndpointPath`, `Mcp:Stateless`, `Mcp:EnableLegacySse`; when absent, defaults are `true`, `/mcp`, `true`, and `true`; bare endpoint paths such as `mcp` normalize to `/mcp`, and `MCP_ENABLE_LEGACY_SSE` is a startup ceiling only
-- `KEYCLOAK_ENDPOINT` + `KEYCLOAK_REALM` (Infisical `/keycloak`) -> `Keycloak:Authority`, `Keycloak:MetadataAddress`, `Keycloak:AuthorizationUrl`
+- `KEYCLOAK_ENDPOINT` + `KEYCLOAK_REALM` (Infisical `/keycloak`) -> `Keycloak:Authority`, `Keycloak:MetadataAddress`
 - Keycloak mapper defaults -> `Keycloak:Audience=islamu-event-api`, `Keycloak:RequireHttpsMetadata=true`
+- `CONTROL_PLANE_MANAGED_MODE` -> `ManagedControlPlane:Enabled`
+- `CONTROL_PLANE_URL` -> `ManagedControlPlane:ControlPlaneUrl`
+- `CONTROL_PLANE_INSTANCE_ID` -> `ManagedControlPlane:ManagedInstanceId`
+- `CONTROL_PLANE_REGISTRATION_TOKEN` -> `ManagedControlPlane:RegistrationToken`
+- `CONTROL_PLANE_MAXIMUM_TENANT_COUNT` -> `ManagedControlPlane:MaximumTenantCount`
+- `CONTROL_PLANE_TENANT_ADMINISTRATOR_SIGN_IN_URL` -> `ManagedControlPlane:TenantAdministratorSignInUrl`
 - `AUTHORIZATION_PROVIDER` (Infisical `/api` or `/cerbos`) -> `Authorization:Provider` (blank, `local`, or `cerbos`)
 - `CERBOS_GRPC_ENDPOINT` (Infisical `/cerbos`) -> `Cerbos:GrpcEndpoint`
 - `CERBOS_USE_POLICY_SCOPE` (Infisical `/cerbos`) -> `Cerbos:UsePolicyScope` (`true`/`false`, also accepts `1`/`0`, `yes`/`no`, `on`/`off`)

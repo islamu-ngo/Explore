@@ -122,6 +122,8 @@ Choose the contract before restoring:
 
 The authority currently has no update, delete, or pruning surface. Retain its immutable intents and counter indefinitely; at minimum, they must outlive every application backup, replica snapshot, object-store backup, and disaster-recovery artifact that could reintroduce pre-erasure state. Application checkpoints are also append-only evidence. General correction outbox retention follows the outbox runbook, but failed and dead-lettered corrections remain until operators reconcile them.
 
+Below-floor compaction and DR rehearsals are still pending until shipped; do not infer RPO/RTO or compaction guarantees from this runbook.
+
 If startup replay fails:
 
 1. Keep the API and BFF out of service. A failed process, refused socket, and absent readiness response are the expected safe state.
@@ -141,7 +143,7 @@ Prompt injection is not applicable to this recovery path: startup consumes typed
 4. Start in a non-production environment with production-like secrets and data shape.
 5. Apply migrations through the deployment path:
    - Aspire/local-dev uses `Event.MigrationService` before API/Blazor start.
-   - Docker Compose does not currently include `Event.MigrationService`; `Explore.API` applies migrations on startup outside `Testing`.
+   - Docker Compose does not lack `Event.MigrationService`: the `privacy-erasure-external` profile includes the one-shot service for `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase`; otherwise `Explore.API` applies application migrations on startup outside `Testing`.
 6. Start the upgraded stack:
 
    ```bash
@@ -187,7 +189,7 @@ Rollback depends on whether migrations are reversible:
 | Backward-compatible migration ran | Revert images only if release notes say the old version tolerates the new schema. |
 | Destructive or non-reversible migration ran | Restore database/object-storage backups and then revert images. |
 | Storage reconciliation mutations ran against the wrong object store | Stop write traffic, disable destructive reconciliation flags, restore database and object-storage backups from the same manifest, then restart with dry-run reconciliation. |
-| Secret/key rotation changed runtime identity | Restore matching secret-provider values before restarting old images. |
+| Secret/key rotation changed runtime identity | Restore matching secret-provider values before restarting old images. Rotation is restart-based today; do not claim live reload. |
 
 If release notes do not explicitly state that a rollback is image-only safe, assume a database restore is required.
 

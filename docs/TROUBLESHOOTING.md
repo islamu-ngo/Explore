@@ -362,6 +362,17 @@ Checks:
 5. Verify `IOutboxMessageDispatcher` registration — the general outbox path should resolve `CompositeOutboxMessageDispatcher`, which routes internal notification fanout, moderation fanout, and report provider sync messages. Retired external broker event types should fail closed instead of being marked complete.
 6. Check `MaxRetryCount` setting — messages retry with exponential backoff before dead-lettering.
 
+## Privacy Erasure Issues
+
+**Symptoms:** `DELETE /api/user` returned `202` but the receipt-status route still reports `provider_pending`, `/health` shows privacy-erasure degradation, replay lag grows, or provider work/dead letters remain uncleared.
+
+Checks:
+1. Query `/health` and inspect the `privacy-erasure` check only. It reports `topology`, `restoreReplayProtection`, `replayCaughtUp`, `providerDue`, `providerUnknown`, `providerDeadLettered`, `cacheConvergenceIncomplete`, and `cacheConvergenceDeadLettered`. Do not copy subject ids, locators, payloads, endpoints, or exception text into tickets.
+2. For user-facing status, call `GET /api/privacy-erasure/status` with `Authorization: ErasureReceipt <receipt>`. Missing, invalid, wrong, and expired receipts all return `401` and must be treated identically.
+3. If `replayCaughtUp` is false, the retained authority checkpoint is behind the replay fence; allow replay to finish before retrying the request. The API should still return bounded status, not raw replay detail.
+4. If `providerUnknown` is non-zero, use the provider-work reconciliation path; `Unknown` is the expected ambiguous-ack state. `providerDeadLettered` and `providerDue` indicate operator action or worker lag, not user-visible failure detail.
+5. If `cacheConvergenceIncomplete` or `cacheConvergenceDeadLettered` is non-zero, the erased user may still be visible through stale cache until the outbox-backed cache invalidation work catches up; do not republish subject data to force it.
+
 ## Email Dispatch Issues
 
 **Symptoms:** Registration confirmation email does not arrive, `email-dispatch` readiness is degraded/unhealthy, or RabbitMQ dispatch/DLQ counts grow.

@@ -27,7 +27,7 @@ Each project has a specific role. Run individually — never use solution-level 
 | `Event.Domain.UnitTests` | Domain | Entity invariants, value objects, domain logic | No |
 | `Event.Application.UnitTests` | Application | Handler logic, validation, mapping | No |
 | `Event.Architecture.Tests` | Cross-cutting | Convention enforcement via reflection | No |
-| `Explore.Secrets.UnitTests` | Infrastructure | Secret provider logic, encryption, rotation | No |
+| `Explore.Secrets.UnitTests` | Infrastructure | Secret provider logic, encryption, restart-based credential rotation | No |
 | `Explore.Infrastructure.Tests` | Infrastructure | Provider adapters, configuration resolvers, authorization fallback behavior, and focused provider runtime checks | No for `Category!=Runtime`; Docker/Mailpit/RabbitMQ for runtime lanes |
 | `Event.Persistence.IntegrationTests` | Persistence | EF Core queries, repository behavior, migrations | PostgreSQL |
 | `Event.API.IntegrationTests` | API | HTTP endpoints, middleware, auth flows | Full stack |
@@ -59,6 +59,19 @@ dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.Integ
 dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 
 ```
+
+### Privacy-erasure DBML schema maintenance
+
+`schemas/islamu-event.md` is a maintained DBML reference. Update its
+privacy-erasure lifecycle tables and relationships in the same change as their
+EF Core model or migration, then run the focused architecture contract:
+
+```bash
+dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/PrivacyErasureContractArchitectureTests/*" --minimum-expected-tests 1
+```
+
+The contract requires the three lifecycle tables to remain documented; EF Core
+migrations and their model snapshot remain the authoritative database shape.
 
 ### Event Lifecycle Focused Verification
 
@@ -123,12 +136,12 @@ dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTest
 container fixture. It proves the authority append commits outside the failing
 application transaction, replay converges once, concurrent appends allocate a
 contiguous sequence from fresh contexts, and
-`RestoreReplayProtection == false`.
+`RestoreReplayProtection == false`. It does not prove whole-database restore replay protection, and it does not claim any benefit if both databases are restored together.
 
 `ExternalDatabasePrivacyErasureAuthorityTests` and
 `ExternalDatabasePrivacyErasureRestoreTests` use an explicit application
 container plus a distinct authority container. They prove function-only
-runtime ACLs, fresh-context concurrent allocation, and the real restore path.
+runtime ACLs, fresh-context concurrent allocation, and the real application-only restore path.
 The restore fixture applies application migrations, seeds PII, executes
 `pg_dump --format=custom` inside the application container, creates a unique
 fixture-owned database from `template0`, and runs `pg_restore --exit-on-error`
@@ -136,7 +149,7 @@ without `--clean`. The test observes PII in the restored database before
 replay, then verifies re-erasure, one local mirror/checkpoint/outbox convergence,
 repeat idempotency, and an exact-field-equivalent authority fact snapshot.
 The fixture disposes only its own Testcontainers; it never drops an operator or
-user database, volume, container, or backup.
+user database, volume, container, or backup. This is the proven external application-only restore drill, and the authority database remains untouched throughout it.
 
 Run the three nonzero selectors explicitly:
 
@@ -148,11 +161,13 @@ dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence
 
 `Explore.Infrastructure.Tests` intentionally has both fast no-infrastructure tests and Docker-backed runtime tests. Docker-backed classes are `[Explicit]`, so an unfiltered developer run stays fast; a positive `Runtime`, `Email`, or `RabbitMQ` category filter opts into the matching container lane. Use `Category!=Runtime` for the fast local/PR lane. Use the `Email` category when changing SMTP or EmailDispatch behavior; it includes no-container configuration failure tests, Mailpit-backed SMTP/drain tests, and RabbitMQ consumer tests that deliver to Mailpit. Use the `RabbitMQ` category when changing optional broker transport, topology, publish-confirm, consumer settlement, DLQ replay, or parking behavior.
 
+Credential rotation coverage is restart-based today: the owning service reloads on restart or redeploy, not through live in-process refresh.
+
 ### Disabled Test Governance
 
 Disabled tests are allowed only when the test still expresses required future behavior and cannot run in the current lane. Do not comment out `[Test]`; either keep the test active, mark it with `[Skip("Category: ... Removal: ...")]`, or delete it when the behavior is obsolete or unnecessary.
 
-Use `[Explicit]` for valid, intentionally opt-in runtime or release-rehearsal tests whose infrastructure or duration makes them unsuitable for an unfiltered developer run. Keep a positive category filter documented so the evidence remains runnable.
+Use `[Explicit]` for valid, intentionally opt-in runtime or release-rehearsal tests whose infrastructure or duration makes them unsuitable for an unfiltered developer run. Keep a positive category filter documented so the evidence remains runnable. Below-floor compaction and DR rehearsals are pending until shipped; do not treat them as covered test evidence yet.
 
 Skip reason requirements:
 

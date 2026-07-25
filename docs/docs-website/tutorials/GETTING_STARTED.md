@@ -32,7 +32,7 @@ Install Aspire CLI when `aspire` is not already available:
 
 First run note:
 - if instance onboarding is incomplete, `/` redirects to `/setup`.
-- when `SETUP_SECRET` is not provided, API generates one at startup, prints it in API logs, and keeps it valid for 60 minutes.
+- when `SETUP_SECRET` is not provided, API generates one at startup and keeps it valid for 60 minutes. It is never printed to logs or terminal output.
 
 Optional profiles:
 - Storage: `docker compose --profile storage up -d`

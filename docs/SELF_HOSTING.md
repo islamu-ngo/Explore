@@ -6,7 +6,7 @@ ABOUTME: Covers infrastructure services, setup secret, migrations, health checks
 > **Audience:** Operators
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-03
+> **Last Verified:** 2026-07-24
 > **Source Anchors:** `docker-compose.yml`, `Explore.AppHost/AppHost.cs`, `Event.MigrationService/`, `Explore.API/Program.cs`, `Explore.API/Controllers/InstanceSettingsController.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakBootstrapService.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`
 
 This guide covers running ISLAMU Event outside the Aspire developer loop. The repository `docker-compose.yml` is the current self-hosting source of truth.
@@ -23,6 +23,8 @@ This guide covers running ISLAMU Event outside the Aspire developer loop. The re
 | Keycloak Init | Yes | `keycloak-init` | One-shot client-secret synchronization after realm import | internal |
 | API | Yes | `islamu-event-api` | REST API, migrations, health, metrics, local storage volume | `7039:8080` |
 | Blazor BFF | Yes | `islamu-event-ui` | Server host, embedded admin-host shell, and YARP proxy to API | `7002:8080` |
+| Event.MigrationService | Optional | `event-migrationservice` | Applies privacy-erasure authority migrations when external topology is enabled | internal |
+| Privacy Erasure DB | Optional | `privacy-erasure-db` | External authority database for external database topology | internal |
 | MinIO | Optional | `minio`, `minio-init` | S3-compatible storage profile when an instance selects optional S3 mode | `9005:9000`, `9006:9001` |
 | Cerbos | Optional | `cerbos` | External authorization PDP profile | `3592:3592`, `3593:3593` |
 | Svix | Optional | `svix-db`, `svix` | Outgoing webhook provider profile | `8071:8071` |
@@ -34,6 +36,7 @@ Profiles:
 
 - `storage` starts MinIO and creates the configured bucket for optional S3-compatible mode. It is not required for local-first storage.
 - `authz` starts Cerbos for deployments that select Cerbos authorization. It mounts `cerbos/config/.cerbos.yaml`, `cerbos/init/cerbos-schema.sql`, and `cerbos/policies/` from this repository so local infrastructure always uses the checked-in policy package. The Cerbos PostgreSQL profile uses the Postgres 18 parent data mount (`/var/lib/postgresql`) so local upgrades do not fail on the legacy `/var/lib/postgresql/data` mount boundary.
+- `privacy-erasure-external` starts `privacy-erasure-db` and `event-migrationservice` for ExternalDatabase privacy-erasure topology. It applies external authority schema work before API startup and requires both migrator and runtime authority credentials.
 - `webhooks` starts local Svix and its PostgreSQL database for outgoing webhook-provider testing.
 - `moderation` starts local Coop for moderation review-queue testing with an isolated PostgreSQL database. `COOP_UI_URL` defaults to `http://localhost:8082`, matching the local Coop port; the local profile also supplies Coop's `DATABASE_*`, `SESSION_SECRET`, `OTEL_SERVICE_NAME`, placeholder Scylla client settings, and no-op warehouse/analytics adapter defaults so the provider image can boot without ClickHouse or production secrets. Keep `REPORTING_MODE=LocalOnly` unless provider endpoints are intentionally enabled.
 - `osprey` starts `ghcr.io/roostorg/osprey/osprey-coordinator:latest` by default. It exposes coordinator ports, not the app's HTTP-compatible `Reporting:Osprey` facade. Keep `REPORTING_OSPREY_ENABLED=false` unless you provide a compatible HTTP facade or adapter endpoint.
@@ -105,7 +108,93 @@ Email dispatch modes:
    docker compose --profile osprey up -d
    ```
 
-8. Open Blazor at `http://localhost:7002` and API at `http://localhost:7039`.
+8. For external privacy-erasure topology, set authority topology + migrator/runtime secrets first, then run:
+
+   ```bash
+   PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase \
+   docker compose --profile privacy-erasure-external up -d privacy-erasure-db event-migrationservice
+   ```
+
+9. Open Blazor at `http://localhost:7002` and API at `http://localhost:7039`.
+
+## Deployment Scenarios (From Minimal To Advanced)
+
+Use this section to match infra to operator intent before copying `.env.example`.
+
+Infrastructure floor rules for minimal operators:
+
+- Core launch requires API + Blazor + PostgreSQL and working identity bootstrap.
+- `event-migrationservice` is only mandatory for `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase`; in that case keep `privacy-erasure-db` and profile `privacy-erasure-external`.
+
+### 1) Minimal self-hosted instance (small org, fast start)
+
+Goal: lowest maintenance footprint for one operator/environment.
+
+- **Deployment mode:** single-tenant (`DEPLOYMENT_MODE` unset).
+- **Services required by this document’s compose baseline:** `postgres`, `redis` (optional in one-node mode), `mailpit`, `keycloak`, `keycloak-init`, `islamu-event-api`, `islamu-event-ui`.
+- **Migrations:** API startup performs `ExploreDbContext` and data-protection migrations.
+- **Auth path:** Local-first or local RBAC (`AUTHORIZATION_PROVIDER` unset).
+- **Optional services to add only if needed:** `storage`, `authz`, `webhooks`, `localization`, `moderation`, `osprey`.
+
+Environment posture:
+- Keep Redis optional unless you need shared cache/sessions across replicas.
+- Keep `reporting` in local fallback posture (`REPORTING_MODE` should stay `LocalOnly` for this profile).
+- Keep MCP mapped by default; override only if the operator intentionally does not want `/mcp`.
+
+### 2) Small SaaS/community platform (single infrastructure, multi-tenant)
+
+Goal: launch one SaaS/community platform with tenant boundaries and stronger admin controls.
+
+- **Deployment mode:** `DEPLOYMENT_MODE=multi_tenant`.
+- **Core stack:** same as baseline plus tenant-aware routing posture via Blazor admin hosts and tenant resolution.
+- **Auth path:** choose `AUTHORIZATION_PROVIDER=cerbos` (recommended) with `AUTHORIZATION_PROVIDER=cerbos docker compose --profile authz up -d`; set `AUTHORIZATION_PROVIDER=local` if you want pure deployment-owned Local RBAC.
+- **Ops posture:** keep Redis, mail, and cache-backed health checks healthy; run migration tasks through API startup or a separate orchestrator.
+
+Recommended `Blazor/API` posture:
+- `Bff:AdminHosts` points to the dedicated control-plane host.
+- `AUTHORIZATION_PROVIDER` controls the setup choice page and onboarding failover behavior.
+- Consider optional tenant admin override controls (`governance.lock_tenant_*`) only after initial rollout.
+
+### 3) Discovery-centric event platform (open discovery + federation enabled)
+
+Goal: social/community discovery where attendees discover and sync public event/RSVP activity.
+
+- Keep scenario 2 multi-tenant posture.
+- Enable federation switches and ATProto worker stack:
+  - `federation.atproto_events_enabled=true`
+  - `federation.atproto_event_validation_profile` as required
+  - `Atproto:Jetstream` and `Atproto:PdsSync` worker settings tuned for your workload
+  - `ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS`, `ATPROTO_SESSION_ENCRYPTION_KEYRING`, `ATPROTO_SESSION_JWT_PRIVATE_JWKS` present for bounded OAuth/session security
+- Keep strict outbound and discovery egress posture and verify `atproto-authentication` readiness before release.
+- This profile generally needs stronger observability and stronger rate/cleanup budgets than scenario 1.
+
+### 4) Organization-centric event platform (closed/curated experience)
+
+Goal: private events with administrative curation over discovery.
+
+- Start from single-tenant (or controlled multi-tenant) mode.
+- Keep `federation.atproto_events_enabled=false` unless your product decision requires discovery.
+- Keep `federation.atproto_publish_my_events` user consent off by default.
+- Favor strict onboarding controls, invitation/review flows, and manual tenant/content moderation over global discovery input.
+
+### 5) Managed-provider onboarding path
+
+Goal: delegated platform onboarding through trusted managed-provider automation.
+
+- Set together:
+  - `PROVISIONING_TRUSTED=true`
+  - `PROVISIONING_MODE` in `managed-provider`, `managed_provider`, `managed-hosting`, or `managed`
+  - `MANAGED_CLIENT_EXTERNAL_PROVIDER` (stable partner ID)
+  - `PHYSICAL_TENANCY_MODE` (deployment posture marker)
+- With those keys present, `SETUP_SECRET_REQUIRED=false` is allowed, but setup endpoints still require setup-token authority (they do not become anonymous).
+
+### 6) Advanced isolation and optional isolation-by-service stack
+
+Goal: higher scale/compliance.
+
+- Keep scenario 2 or 4 as base posture.
+- Add `authz`, `webhooks`, and `storage` profiles explicitly and keep all provider endpoints behind explicit readiness gates.
+- Add tenant-scale Redis, RabbitMQ, and separate identity/policy/storage databases only when required by capacity and risk profile.
 
 ## Required Environment Keys
 
@@ -205,6 +294,21 @@ Enable destructive cleanup only after reviewing dry-run output, confirming backu
 | `DEPLOYMENT_MODE` | API | Optional first-run mode; omit for single-tenant, set `multi_tenant` before first launch for multi-tenant. |
 | `SETUP_SECRET` | API | Env-only setup secret for interactive first-run onboarding. If absent, the API uses an internal random fallback that is never printed; set this value and restart before using `/setup`. |
 | `SETUP_SECRET_REQUIRED` | API | Optional. Defaults to `true`; `false` only takes effect with trusted managed-provider provisioning keys and never makes setup endpoints anonymous. |
+| `CONTROL_PLANE_PUBLIC_ORIGIN` | API/UI/Blazor | Control-plane admin host (e.g., `http://admin.localhost:7002`) used for BFF admin-host registration and governance URL generation. |
+| `CONTROL_PLANE_MANAGED_MODE` | API | Maps to `ManagedControlPlane:Enabled`; set together with control-plane keys only when managed control-plane onboarding is explicitly enabled. |
+| `CONTROL_PLANE_URL` | API | Maps to `ManagedControlPlane:ControlPlaneUrl`; operator-owned control-plane endpoint for managed hosting workflows. |
+| `CONTROL_PLANE_INSTANCE_ID` | API | Maps to `ManagedControlPlane:ManagedInstanceId`; bind to the managed tenant/operator record identifier. |
+| `CONTROL_PLANE_REGISTRATION_TOKEN` | API | Maps to `ManagedControlPlane:RegistrationToken`; rotate with control-plane ownership lifecycle. |
+| `CONTROL_PLANE_MAXIMUM_TENANT_COUNT` | API | Maps to `ManagedControlPlane:MaximumTenantCount`; controls managed-mode tenant hard ceiling at bootstrap. |
+| `CONTROL_PLANE_TENANT_ADMINISTRATOR_SIGN_IN_URL` | API | Maps to `ManagedControlPlane:TenantAdministratorSignInUrl`; optional operator-managed tenant sign-in landing URL. |
+| `PROVISIONING_TRUSTED` | API | Required for managed-provider shortcut mode; must be `true` with validated provisioning mode and tenant model declarations before `SETUP_SECRET_REQUIRED=false` becomes effective. |
+| `PROVISIONING_MODE` | API | Required for managed-provider shortcut mode. Accepted case-insensitive values include `managed-provider`, `managed_provider`, `managed-hosting`, and `managed`. |
+| `MANAGED_CLIENT_EXTERNAL_PROVIDER` | API | External operator provider identifier required for trusted managed bootstrap. |
+| `PHYSICAL_TENANCY_MODE` | API | Required for trusted managed bootstrap when using `SETUP_SECRET_REQUIRED=false`. |
+| `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY` | API | `CoLocated` (default) or `ExternalDatabase`; when external, migration service topology must be provisioned separately. |
+| `PRIVACY_ERASURE_AUTHORITY_RUNTIME_CONNECTION_STRING` | API | Runtime-only authority connection for API use in external topology; keep migrations credentials out of API runtime service env. |
+| `PRIVACY_ERASURE_AUTHORITY_MIGRATOR_CONNECTION_STRING` | API | Migrator connection for `event-migrationservice` when external authority topology is enabled. |
+| `PRIVACY_ERASURE_AUTHORITY_DB_*` (`_USERNAME`, `_PASSWORD`, `_DATABASE`) | API/Compose | Required for external authority DB bootstrap in Compose profile; values remain blank in optional local defaults until explicitly provisioned. |
 | `USE_COMMERCIAL_LUCKYPENNY`, `LUCKYPENNY_LICENSE_KEY`, `AUTOMAPPER_COMMERCIAL_VERSION`, `MEDIATR_COMMERCIAL_VERSION` | API | Optional commercial package/license controls. Keep disabled unless intentionally using commercial AutoMapper/MediatR builds. |
 | `API_ENDPOINT` | Blazor | API base URL fallback for BFF proxying outside Aspire. |
 
@@ -310,7 +414,7 @@ Compose accepts the Infisical-compatible `/ai` keys `AI_PROVIDER`, `AI_ENDPOINT`
 | `AiProvider:AzureTenantId` | Optional tenant ID for `DefaultAzureCredential`. |
 | `AiProvider:AllowLocalProviderEndpoints` | Explicit opt-in for loopback/private provider URLs in local-model deployments. Keep disabled for public SaaS providers. |
 | `AiRetentionCleanup:*` | Static scheduler settings for tenant-scoped AI conversation retention cleanup. The per-tenant retention window remains `ai_assistant.retention_days`. |
-| `Mcp:*` | Optional API-hosted Model Context Protocol adapter posture. Disabled by default. |
+| `Mcp:*` | Optional API-hosted Model Context Protocol adapter posture. Mapped by default through startup at `/mcp`; set `Mcp:Enabled=false` to unmap. |
 
 Operational notes:
 

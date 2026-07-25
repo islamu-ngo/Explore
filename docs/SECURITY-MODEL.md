@@ -6,8 +6,8 @@ ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and f
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Mixed
 > **Owner:** Security
-> **Last Verified:** 2026-07-23
-> **Source Anchors:** `Explore.API/Extensions/AuthenticationExtensions.cs`, `Explore.API/Extensions/CorsExtensions.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Blazor/Components/ControlPlane/`, `Event.Web.BffHosting/Authentication/EventBffAuthenticationExtensions.cs`, `Event.Web.BffHosting/Proxy/EventApiProxyExtensions.cs`, `Explore.Application/Services/ApiKeyHashing.cs`, `Explore.Application/Telemetry/BusinessMetrics.cs`, `Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs`, `Explore.Infrastructure/Services/FallbackAuthorizationService.cs`, `Explore.Persistence/Privacy/ErasureAuthority/`, `docs/AUTHORIZATION.md`
+> **Last Verified:** 2026-07-25
+> **Source Anchors:** `Explore.API/BackgroundServices/PrivacyErasureStartupGate.cs`, `Explore.API/BackgroundServices/PrivacyErasureCredentialCleanupProcessor.cs`, `Explore.API/Controllers/PrivacyErasureController.cs`, `Explore.API/HealthChecks/PrivacyErasureReadinessHealthCheck.cs`, `Explore.Application/Services/RetainedAuthorityPrivacyErasureWorkflow.cs`, `Explore.Infrastructure/PrivacyErasureCredentialCleanupService.cs`, `Explore.Infrastructure/Services/Privacy/PrivacyErasureReplayService.cs`, `Explore.Persistence/Repositories/PrivacyErasureProviderWorkRepository.cs`, `Explore.Domain/PrivacyErasure*.cs`, `docs/AUTHORIZATION.md`
 
 ## Security Model
 
@@ -20,42 +20,48 @@ The platform uses a BFF model:
 
 ## Privacy-erasure Authority Boundary
 
-The platform runs one authority-first User-erasure workflow with two storage
-topologies. `CoLocated` stores the authority ledger in the application
-database and reports `restoreReplayProtection=false`: its separately committed
-append survives an application-mutation rollback, but restoring the whole
-database to a pre-erasure backup can restore both PII and the authority state
-needed to remove it. `ExternalDatabase` reports the capability as true only
-when the authority database is operated outside the application restore set;
-restoring both databases together provides no replay protection.
+The platform ships one authority-first User-erasure workflow with two storage
+topologies. Co-located authority keeps the ledger beside the application
+database; external authority keeps the ledger outside the application restore
+set and is the only topology with restore replay protection. Restoring the whole
+application database can still restore both PII and the co-located authority
+state, so the topology choice matters.
 
-The external PostgreSQL runtime role has schema usage and `EXECUTE` only on
-`privacy_erasure_authority.append_erasure_intent(...)` and
-`privacy_erasure_authority.read_erasure_intents_after(...)`. It has no direct
-`SELECT`, `INSERT`, `UPDATE`, `DELETE`, or `TRUNCATE` authority-table access.
-Dedicated migrator credentials own schema and grant management; the API
-runtime credential does not migrate. Authority facts are typed, immutable,
-monotonic User facts containing opaque identifiers and bounded policy/reason
-codes, never email, names, addresses, arbitrary JSON, SQL, or executable
-selectors. Opaque subject and intent identifiers remain linkable personal data
-and must be protected accordingly.
+Authority facts are typed, immutable, monotonic User facts with bounded policy
+and reason codes only. They do not carry names, email, addresses, arbitrary
+JSON, SQL, or executable selectors. The runtime authority role is function-only;
+the migrator role owns schema and grant management.
 
-The User fence and SHA-256 receipt hash are persisted before any PII
+The local User fence and SHA-256 receipt hash are persisted before any PII
 enumeration. Local dispositions, policy-version coverage, checkpoint advance,
-and receipt status execute in one serializable application transaction. Remote
-provider calls never run in that transaction. Account deletion returns `202`
-with a short-lived receipt only after local commit; subsequent status access
-uses the dedicated `PrivacyErasureReceipt` authentication scheme and
-`private, no-store` responses. Receipt verification uses fixed-time hash
-comparison, and invalid, mismatched, or expired receipts fail without exposing
-whether a subject or intent exists.
+and receipt status run in one serializable transaction. Remote provider calls
+do not run in that transaction. Account deletion returns a short-lived receipt
+only after local commit; status access uses the dedicated receipt auth scheme,
+is not cacheable, and stays free of subject or intent existence leaks.
 
-The PostgreSQL 18 restore proof takes a real pre-erasure custom-format
-application dump, restores it into a fresh database created from `template0`,
-and leaves the external authority untouched. Replay removes the restored PII
-and converges the local mirror, checkpoint, and outbox once; a repeated replay
-is a no-op. This proves the implementation mechanism, not that any configured
-deployment has an independent backup lifecycle.
+Startup replay reads the retained authority before host start, refuses sequence
+gaps or checkpoint mismatch, reapplies uncaptured policy versions, and leaves a
+fresh application database at sequence zero. A repeated replay is a no-op once
+the checkpoint matches the retained authority.
+
+Provider work claims use serializable lease fences and a monotonic fence token.
+Stale claims cannot settle a newer claim, and unknown work can only be moved by
+explicit reconciliation to completed or retry-scheduled state. Expired provider
+locators and receipt hashes are cleared by bounded cleanup, with dry-run support
+for operator review.
+
+The readiness check reports only topology, restore-replay protection, caught-up
+state, and aggregate provider/cache backlog counts. Remaining gaps are explicit:
+no generalized compaction, no legal hold, and no claim that co-located restore
+survives an application restore.
+
+The restore proof uses a real pre-erasure application dump, restores it into a
+fresh database, and leaves the external authority untouched. Replay removes the
+restored PII and converges the local mirror, checkpoint, and outbox once; a
+repeated replay is a no-op. This proves the implementation mechanism, not that
+any configured deployment has an independent backup lifecycle.
+
+See [Privacy Erasure](PRIVACY_ERASURE.md) for the workflow and operator checklist.
 
 ## Security CI Gates
 

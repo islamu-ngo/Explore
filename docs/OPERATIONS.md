@@ -19,6 +19,7 @@ This page is the operational reference for implemented runtime behavior. Task pr
 | Back up, restore, upgrade, or roll back | [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) | You are preparing a release, recovering an environment, or testing disaster recovery. |
 | Diagnose repeated symptoms | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | You have a concrete failure such as `401`, `429`, `504`, unhealthy readiness, setup-secret errors, or secret-provider failures. |
 | Validate release readiness | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | A change affects migrations, configuration, secrets, security, upgrade paths, or operator docs. |
+| Review privacy-erasure workflow | [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) | You need the current authority-first erasure flow, replay gate, receipt/status behavior, provider-work fences, cleanup, or operator gaps. |
 
 ## Localization Static Bundle Operations
 
@@ -137,7 +138,7 @@ dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj --launch-profile
 
 `local-full` uses persistent container lifetimes and named volumes for heavy stateful resources so local database, Keycloak, MinIO, RabbitMQ, PgAdmin, and observability state survive AppHost restarts. Every non-isolated named profile publishes API HTTPS on `https://localhost:7039` and Blazor HTTPS on `https://localhost:7177`; internal HTTP endpoints remain dynamically allocated for Aspire service discovery. Isolated runs publish dynamic localhost ports, so use `aspire describe <resource> --format Table` instead of hardcoding resource endpoints. Local Keycloak initialization derives exact login, web-origin, and logout values from the allocated Blazor HTTP/HTTPS ports, so OIDC remains usable in isolated runs without wildcard callbacks.
 
-PgAdmin is available as the `pgadmin` browser resource in `local-full` with development credentials `admin@openislamu.org` / `admin`. It imports the PostgreSQL servers from `Explore.AppHost/Config/pgadmin/servers.json`; inside PgAdmin, use container-network hosts `postgres`, `cerbos-db`, `svix-postgres`, and `coop-postgres` on port `5432`, not Aspire dashboard endpoint strings such as `tcp://localhost:35305`. The fixed-password Cerbos, Svix, and Coop databases are covered by `Explore.AppHost/Config/pgadmin/pgpass`; the app `postgres` server may still prompt for the Aspire-generated local database password.
+PgAdmin is available as the `pgadmin` browser resource in `local-full`. Credentials are supplied by AppHost/local configuration; retrieve the current username and password from the running local environment. It imports the PostgreSQL servers from `Explore.AppHost/Config/pgadmin/servers.json`; inside PgAdmin, use container-network hosts `postgres`, `cerbos-db`, `svix-postgres`, and `coop-postgres` on port `5432`, not Aspire dashboard endpoint strings such as `tcp://localhost:35305`. The fixed-password Cerbos, Svix, and Coop databases are covered by `Explore.AppHost/Config/pgadmin/pgpass`; the app `postgres` server may still prompt for the Aspire-generated local database password.
 
 To reset only the local app database while keeping the persistent Postgres container/volume, connect to the `postgres` server and drop/recreate `islamu_event_db`. The Aspire resource alias is `islamu-event-db` because resource names cannot contain underscores. Do not delete the `islamu-event-postgres-data` volume unless you also want to rotate the generated Postgres credentials and lose every database in that server.
 
@@ -228,48 +229,17 @@ Event/session lifecycle migration notes:
 - Rollback is development-only and not data-preserving for unscheduled draft rows. Before downgrading past this migration, either delete/resolve unscheduled draft sessions or schedule them through the normal command path so non-null schedule columns can be restored safely.
 - Public outputs must continue to use the published/scheduled session gate. Operator backfills or imports may create structurally valid draft rows, but publication and session publish readiness remain Application-layer checks.
 
-### ELP-525 retained location-erasure startup gate
+### Privacy-erasure startup replay
 
-`Explore.API` resolves `IPrivacyErasureReplayService` after application migrations and seeding but before `app.Run()` in both authority topologies. The gate reads the newest immutable application checkpoint, verifies it against the retained PostgreSQL authority, and reapplies every intent not covered by the current compiled policy version. A fresh application database starts at sequence zero. Sequence gaps, checkpoint mismatch, authority unavailability, or replay failure block startup. Each intent atomically commits current local dispositions, policy coverage, the monotonic checkpoint when required, and PII-free correction outbox rows; post-commit cache tags are then invalidated.
+`Explore.API` resolves `IPrivacyErasureReplayService` after application migrations and seeding but before `app.Run()` in both authority topologies. The gate reads the newest immutable application checkpoint, verifies it against the retained authority, and reapplies every intent not covered by the current compiled policy version. A fresh application database starts at sequence zero. Sequence gaps, checkpoint mismatch, authority unavailability, or replay failure block startup.
 
-Startup is closed when the authority is unavailable, the local checkpoint cannot be found at the same authority sequence and intent ID, the next sequence is missing, replay is cancelled, the application transaction fails, or synchronous cache invalidation fails. On every restart with an existing checkpoint, replay verifies that checkpoint against the authority and re-invalidates its user and location/event cache surface before reading later facts. This makes a post-commit cache outage retryable instead of letting a durable checkpoint hide stale distributed-cache state. The API never reaches host start in those cases, so Kestrel, MCP, readiness, outbox processing, PDS/federation workers, and every other hosted service remain unavailable. The Blazor BFF therefore has no live API proxy target. This ordering relies on the Generic Host boundary: `Build()` creates the host, while `Run`/`Start` starts its hosted services, including the HTTP server. See the official [ASP.NET Core Generic Host lifecycle](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/host/generic-host?view=aspnetcore-10.0) and [hosted-service startup ordering](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/host/hosted-services?view=aspnetcore-10.0).
+Startup is closed when the authority is unavailable, the local checkpoint cannot be matched to the retained authority sequence, the next sequence is missing, replay is cancelled, the application transaction fails, or synchronous cache invalidation fails. On every restart with an existing checkpoint, replay verifies that checkpoint against the authority and re-invalidates the cached privacy-erasure surface before reading later facts. This makes a post-commit cache outage retryable instead of letting a durable checkpoint hide stale distributed-cache state. The API never reaches host start in those cases, so health, outbox processing, and worker services remain unavailable until replay succeeds. This ordering relies on the Generic Host boundary: `Build()` creates the host, while `Run`/`Start` starts its hosted services, including the HTTP server.
 
-Required configuration is `LocationPrivacy:ErasureAuthority:ConnectionString` (`LocationPrivacy__ErasureAuthority__ConnectionString` in environment form). Treat it as a secret. Never log it, its endpoint, retained opaque identifiers, or provider exception text. The API emits only the bounded exception type when the gate fails.
+Required authority configuration is secret. Never log the connection details, retained opaque identifiers, or provider exception text. The API emits only the bounded exception type when the gate fails.
 
-Operator evidence uses two database sessions because the authority is deliberately outside the application restore set. Run authority queries with its backup/owner role; the runtime role is function-only and cannot read tables:
+Operator evidence uses two read-only database sessions because the authority is deliberately outside the application restore set. Compare the retained authority sequence, the local checkpoint sequence, and the presence of correction/outbox convergence evidence before declaring the gate complete. The authority role remains function-only.
 
-```sql
--- Authority database: an empty ledger is valid; otherwise sequence must start at 1 with no gaps.
-SELECT COUNT(*) AS retained_count,
-       COALESCE(MIN(authority_sequence), 0) AS first_sequence,
-       COALESCE(MAX(authority_sequence), 0) AS authority_watermark,
-       COUNT(*) = COALESCE(MAX(authority_sequence), 0) AS contiguous_from_one
-FROM privacy_erasure_authority.erasure_intents;
-
-SELECT last_sequence AS counter_watermark
-FROM privacy_erasure_authority.authority_counter
-WHERE singleton;
-```
-
-```sql
--- Application database: capture this before startup and again after a successful gate.
-SELECT COALESCE(MAX(authority_sequence), 0) AS application_watermark,
-       COUNT(*) AS checkpoint_count
-FROM location_privacy_erasure_replay_checkpoints;
-
-SELECT authority_sequence, intent_id, applied_at_utc
-FROM location_privacy_erasure_replay_checkpoints
-ORDER BY authority_sequence DESC
-LIMIT 1;
-
-SELECT event_type, status, COUNT(*) AS message_count
-FROM outbox_messages
-WHERE event_type IN ('LocationPiiErased', 'LocationPrivacyCorrectionRequested')
-GROUP BY event_type, status
-ORDER BY event_type, status;
-```
-
-Before exposing readiness, require `application_watermark = authority_watermark`, the latest `(authority_sequence, intent_id)` to match the authority fact returned for that sequence, restored physical canaries to be tombstoned with no `location_pii` row, and correction outbox evidence to exist. Replay invalidates application HybridCache tags synchronously. Once the gate succeeds and the host starts, the normal idempotent outbox processor drains correction rows; inspect `Failed` and `DeadLettered` rows before declaring external projections converged.
+Before exposing readiness, require the local checkpoint to match the retained authority, restored canaries to be tombstoned, and correction outbox evidence to exist. Replay invalidates application cache state synchronously. Once the gate succeeds and the host starts, the normal idempotent outbox processor drains correction rows; inspect failed and dead-lettered rows before declaring external projections converged.
 
 For local orchestration, `aspire start --isolated --apphost src/Explore.AppHost/Explore.AppHost.csproj` waits for a stable AppHost state and surfaces early startup failures; inspect with `aspire describe` and `aspire logs explore-api`. Do not infer success from an “app starting” log: prove the socket and the two database watermarks. See the official [Aspire `start` command](https://aspire.dev/reference/cli/commands/aspire-start/).
 
@@ -315,6 +285,8 @@ Readiness interpretation:
 Operational rules:
 
 - Privacy-erasure readiness exposes only topology, restore capability, replay-caught-up state, and aggregate due/unknown/dead-letter counts. It never exposes intent IDs, subject IDs, provider targets, endpoints, payloads, credentials, connection details, or exception text.
+- Privacy-erasure cleanup is finite and bounded: receipt hashes and provider locators expire, and the cleanup worker can run in dry-run mode before mutation. Do not describe compaction or legal hold as shipped; those remain gaps.
+- Unknown provider work is not self-healing. Explicit reconciliation may move it to completed or retry-scheduled state, and dead-lettered work stays operator attention.
 
 - Point load balancer readiness checks at `/health` and liveness checks at `/alive`.
 - Treat `Degraded` as deployable only when the affected dependency is optional for the deployment mode and the response body clearly identifies the dependency.
