@@ -70,7 +70,7 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
         var heading = cut.Find("h1");
         var trigger = cut.Find("[data-testid='home-discovery-context-trigger']");
         await Assert.That(heading.TextContent).Contains("Browsing events in");
-        await Assert.That(cut.Find(".hero-carousel__inner .home-discovery__context-heading")).IsNotNull();
+        await Assert.That(cut.Find(".hero-carousel__persistent-header .home-discovery__context-heading")).IsNotNull();
         await Assert.That(cut.Markup).DoesNotContain("Discover events");
         await Assert.That(trigger.TextContent).Contains("Brussels");
         await Assert.That(trigger.GetAttribute("aria-expanded")).IsEqualTo("false");
