@@ -1,11 +1,11 @@
 // ABOUTME: Machine-checks the test-only User-PII inventory against EF and designated provider surfaces.
 // ABOUTME: Rejects omissions, malformed classifications, and any attempt to turn governance metadata into deletion SQL.
 
+using System.Text.RegularExpressions;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
-using System.Text.RegularExpressions;
 using TUnit.Core;
 
 namespace Event.Architecture.Tests.Privacy;

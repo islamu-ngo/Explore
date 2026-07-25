@@ -1,8 +1,8 @@
 // ABOUTME: Verifies onboarding and instance probe operations expose concrete success response schemas.
 // ABOUTME: Prevents generated API methods from regressing to untyped object return values.
 
-using System.Text.Json;
 using System.Reflection;
+using System.Text.Json;
 using Explore.API.Controllers;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Footer;

@@ -1,14 +1,14 @@
 // ABOUTME: Rendered tests for compact path-based Personal Settings navigation.
 // ABOUTME: Prevents query-state and large sidebar navigation from returning.
 
-using Explore.Blazor.Client.Pages.Events;
+using Blazouter.Models;
+using Blazouter.Services;
 using Explore.Blazor.Client.Components.Webhooks;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Pages.Admin.Components;
+using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Pages.User.Components;
-using Blazouter.Models;
-using Blazouter.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Explore.Blazor.Client.Tests.Pages.User;

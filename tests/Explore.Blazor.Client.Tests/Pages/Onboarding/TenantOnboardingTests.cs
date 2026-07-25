@@ -181,7 +181,7 @@ public sealed class TenantOnboardingTests : IDisposable
         {
             RequireContains(cut.Markup, "Tenant onboarding is complete");
             RequireContains(cut.Markup, "Open tenant settings");
-        RequireContains(cut.Markup, "href=\"/settings/admin\"");
+            RequireContains(cut.Markup, "href=\"/settings/admin\"");
             RequireContains(cut.Markup, "href=\"/events\"");
 
             if (cut.FindAll("[role='status']").Count == 0)
@@ -220,7 +220,7 @@ public sealed class TenantOnboardingTests : IDisposable
             RequireContains(cut.Markup, "Open control plane");
             RequireContains(cut.Markup, $"href=\"{ControlPlaneRoutes.Overview}\"");
             RequireContains(cut.Markup, "href=\"/events\"");
-        RequireDoesNotContain(cut.Markup, "/settings/admin");
+            RequireDoesNotContain(cut.Markup, "/settings/admin");
         });
 
         _ = _tenantOnboardingService.Received(1).CompleteAsync(Arg.Any<TenantPolicySettingsDto>());
@@ -270,7 +270,7 @@ public sealed class TenantOnboardingTests : IDisposable
         {
             RequireAlertContains(cut, safeMessage);
             RequireDoesNotContain(cut.Markup, "Tenant onboarding is complete");
-        RequireDoesNotContain(cut.Markup, "/settings/admin");
+            RequireDoesNotContain(cut.Markup, "/settings/admin");
             RequireDoesNotContain(cut.Markup, ControlPlaneRoutes.Overview);
         });
 

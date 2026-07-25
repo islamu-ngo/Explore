@@ -1,8 +1,8 @@
 // ABOUTME: Unit tests for the secure public event Open Graph image query.
 // ABOUTME: Proves public eligibility, tenant-effective branding, trusted stream use, fallback, disposal, and cancellation.
 
-using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.Events.Handlers.Queries;
 using Explore.Application.Features.Events.OpenGraph;

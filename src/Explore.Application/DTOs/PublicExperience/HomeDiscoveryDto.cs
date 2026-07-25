@@ -1,9 +1,9 @@
 // ABOUTME: Composite public-home discovery read model with bounded event sections and safe status metadata.
 // ABOUTME: Reserves future proximity fields as null while exposing only coarse area context in this release.
 
+using System.Text.Json.Serialization;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Models.PublicExperience;
-using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.PublicExperience;
 
