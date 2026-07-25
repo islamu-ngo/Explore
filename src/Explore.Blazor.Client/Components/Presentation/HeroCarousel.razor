@@ -37,6 +37,8 @@
             @for (var index = 0; index < _slides.Count; index++)
             {
                 var slide = _slides[index];
+                var actorProfileUrl = GetActorProfileUrl(slide);
+                var externalEventUrl = GetExternalEventUrl(slide);
                 var isActive = index == _selectedIndex;
                 var isLeaving = _leavingIndex == index;
                 var isIncoming = _incomingIndex == index;
@@ -72,6 +74,12 @@
                                  @onerror="() => HandleImageError(index)" />
                             <div class="hero-carousel__scrim"></div>
                         </div>
+                        @if (GetEventUrl(slide) is { } slideUrl)
+                        {
+                            <a class="hero-carousel__slide-link"
+                               href="@slideUrl"
+                               aria-label="@GetEventLinkLabel(slide)"></a>
+                        }
                         <div class="hero-carousel__inner @(HeaderContent is not null ? "hero-carousel__inner--with-header" : null)">
                             <div class="hero-carousel__poster-frame">
                                 <img class="hero-carousel__poster-image"
@@ -84,7 +92,20 @@
                                      decoding="async"
                                      @onerror="() => HandleImageError(index)" />
                             </div>
-                            <div class="hero-carousel__content">
+                            <div class="hero-carousel__content @(externalEventUrl is not null ? "hero-carousel__content--with-external-link" : null)">
+                                @if (externalEventUrl is not null)
+                                {
+                                    <a class="hero-carousel__external-link"
+                                       href="@externalEventUrl"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       aria-label="@GetExternalEventLinkLabel(slide)"
+                                       @onclick:stopPropagation="true"
+                                       @onkeydown:stopPropagation="true">
+                                        <span>Open</span>
+                                        <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" aria-hidden="true" />
+                                    </a>
+                                }
                                 <h2 class="hero-carousel__title">@slide.Title</h2>
                                 <div class="hero-carousel__badges" aria-label="Event classifications">
                                     @foreach (var badge in GetBadges(slide))
@@ -97,14 +118,34 @@
                                 {
                                     <p class="hero-carousel__description">@slide.Description</p>
                                 }
+                                @if (actorProfileUrl is not null && !string.IsNullOrWhiteSpace(slide.ActorDisplayName))
+                                {
+                                    <a class="hero-carousel__actor-link"
+                                       href="@actorProfileUrl"
+                                       aria-label="@($"View {slide.ActorDisplayName}'s profile")"
+                                       @onclick:stopPropagation="true"
+                                       @onkeydown:stopPropagation="true">
+                                        @if (!string.IsNullOrWhiteSpace(slide.ActorProfilePictureUri))
+                                        {
+                                            <img class="hero-carousel__actor-image"
+                                                 src="@slide.ActorProfilePictureUri"
+                                                 alt=""
+                                                 width="32"
+                                                 height="32"
+                                                 loading="lazy"
+                                                 decoding="async" />
+                                        }
+                                        else
+                                        {
+                                            <span class="hero-carousel__actor-fallback" aria-hidden="true">
+                                                @slide.ActorDisplayName.Trim()[0]
+                                            </span>
+                                        }
+                                        <span class="hero-carousel__actor-name">@slide.ActorDisplayName</span>
+                                    </a>
+                                }
                             </div>
                         </div>
-                        @if (GetEventUrl(slide) is { } slideUrl)
-                        {
-                            <a class="hero-carousel__slide-link"
-                               href="@slideUrl"
-                               aria-label="@GetEventLinkLabel(slide)"></a>
-                        }
                 </article>
             }
             </div>
@@ -281,10 +322,7 @@
 
     private static string GetMetadata(EventListDto slide)
     {
-        var date = slide.FirstSessionDate?.ToString("ddd, MMM d") ?? "Date to be announced";
-        return string.IsNullOrWhiteSpace(slide.ActorDisplayName)
-            ? date
-            : $"{date} · {slide.ActorDisplayName}";
+        return slide.FirstSessionDate?.ToString("ddd, MMM d") ?? "Date to be announced";
     }
 
     private static string GetPosterAlt(EventListDto slide) => $"Poster for {slide.Title}";
@@ -298,6 +336,26 @@
     private static string? GetEventUrl(EventListDto slide) => slide.IsFederatedDiscoveryEvent()
         ? slide.GetHalHref("source")
         : EventUrlHelper.BuildPublicPath(slide.Slug, slide.PublicCode) ?? "/events";
+
+    private static string? GetExternalEventUrl(EventListDto slide) =>
+        EventUrlHelper.GetSafeExternalUrl(slide.EventUrl)
+        ?? (slide.IsFederatedDiscoveryEvent() ? slide.GetHalHref("source") : null);
+
+    private static string GetExternalEventLinkLabel(EventListDto slide) =>
+        $"Open {slide.Title} on its external platform in a new tab";
+
+    private static string? GetActorProfileUrl(EventListDto slide)
+    {
+        if (slide.ActorId is not Guid actorId)
+            return null;
+
+        return slide.ActorTypeId switch
+        {
+            2 => $"/organization/profile/{actorId}",
+            4 => $"/group/profile/{actorId}",
+            _ => null
+        };
+    }
 
     public ValueTask DisposeAsync()
     {

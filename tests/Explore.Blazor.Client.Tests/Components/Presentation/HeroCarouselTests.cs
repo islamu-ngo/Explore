@@ -112,7 +112,51 @@ public sealed class HeroCarouselTests : IDisposable
     }
 
     [Test]
-    public async Task ActiveSlideIsOneAccessibleEventLinkWithoutNestedCallToAction()
+    public async Task HeroCarouselRendersLinkedActorIdentityBelowDescription()
+    {
+        var actorId = Guid.NewGuid();
+        var events = CreateEvents(1);
+        events[0].ActorId = actorId;
+        events[0].ActorTypeId = 2;
+        events[0].ActorDisplayName = "Community organizer";
+        events[0].ActorProfilePictureUri = "https://example.test/actors/community-organizer.webp";
+
+        var cut = _ctx.RenderMudComponent<HeroCarousel>(parameters => parameters
+            .Add(component => component.Events, events));
+        var content = cut.Find(".hero-carousel__content");
+        var actorLink = cut.Find("a.hero-carousel__actor-link");
+        var actorImage = actorLink.QuerySelector("img")!;
+
+        await Assert.That(actorLink.GetAttribute("href")).IsEqualTo($"/organization/profile/{actorId}");
+        await Assert.That(actorLink.GetAttribute("aria-label")).IsEqualTo("View Community organizer's profile");
+        await Assert.That(actorLink.TextContent.Trim()).IsEqualTo("Community organizer");
+        await Assert.That(actorImage.GetAttribute("src")).IsEqualTo(events[0].ActorProfilePictureUri);
+        await Assert.That(actorImage.GetAttribute("alt")).IsEqualTo(string.Empty);
+        await Assert.That(content.InnerHtml.IndexOf("hero-carousel__description", StringComparison.Ordinal))
+            .IsLessThan(content.InnerHtml.IndexOf("hero-carousel__actor-link", StringComparison.Ordinal));
+    }
+
+    [Test]
+    public async Task HeroCarouselRendersOnlySafeExternalEventAction()
+    {
+        var events = CreateEvents(2);
+        events[0].EventUrl = "https://community.example/events/featured";
+        events[1].EventUrl = "javascript:alert('unsafe')";
+
+        var cut = _ctx.RenderMudComponent<HeroCarousel>(parameters => parameters
+            .Add(component => component.Events, events));
+        var externalLink = cut.Find("a.hero-carousel__external-link");
+
+        await Assert.That(externalLink.GetAttribute("href")).IsEqualTo(events[0].EventUrl);
+        await Assert.That(externalLink.GetAttribute("target")).IsEqualTo("_blank");
+        await Assert.That(externalLink.GetAttribute("rel")).IsEqualTo("noopener noreferrer");
+        await Assert.That(externalLink.GetAttribute("aria-label"))
+            .IsEqualTo("Open Featured event 1 on its external platform in a new tab");
+        await Assert.That(cut.FindAll("a.hero-carousel__external-link").Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task ActiveSlideKeepsPrimaryEventLinkIndependentFromSecondaryActions()
     {
         var cut = Render(1);
         var slide = cut.Find("[data-testid='hero-slide']:not([hidden])");
