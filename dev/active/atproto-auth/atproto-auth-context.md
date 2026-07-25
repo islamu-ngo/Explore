@@ -3,9 +3,9 @@
 
 # AT Protocol Integration — Context
 
-Last Updated: 2026-07-23 Europe/Brussels
+Last Updated: 2026-07-25 Europe/Brussels
 
-## SESSION PROGRESS (2026-07-23 Europe/Brussels)
+## SESSION PROGRESS (2026-07-25 Europe/Brussels)
 
 ### COMPLETED
 
@@ -15,7 +15,7 @@ Last Updated: 2026-07-23 Europe/Brussels
 - Confirmed the existing Release build is green: 0 errors, 326 existing warnings.
 - Created the repository-grounded six-phase OAuth plan and synchronized task checklist.
 - Re-baselined the workstream to twelve phases after the user's federation clarification.
-- Re-baselined the workstream to fifteen phases after the user's event backfilling, PDS-decoupled dual identity, and tenant-local inbound-import requirements.
+- Re-baselined the workstream to sixteen phases after approving the extensible inbound-import slice for producer extensions, canonical slugs/timezones, and provider-neutral thumbnails.
 - Verified both local publication seams use IUnitOfWork and that current EventPublish readiness is stricter than the community lexicon's required `name` and `createdAt`.
 - Verified the full event graph spans sessions, days, agenda, locations/rooms, lookups, aspects, categories/tags, speakers/languages, and event/session custom-property EAV values.
 - Re-queried Context7 /drasticactions/carpanet for RestoreSessionAsync, repository record operations, and Jetstream WantedCollections/cursor/commit behavior.
@@ -40,22 +40,23 @@ Last Updated: 2026-07-23 Europe/Brussels
 - Completed atomic encrypted OAuth refresh persistence through the shared exact-scope PostgreSQL advisory lock and repository-backed CarpaNet session store. Real PostgreSQL refresh/store coverage passed 6/6 and the lock pair repeated 2/2. Evidence: `.omo/evidence/atproto-auth/task-19/`.
 - Completed universal PDS and authorization-server discovery. Provider-neutral tests cover distinct PDS/issuer origins, `did:plc`, hostname-only `did:web`, strict single-service validation, deterministic cache remapping, and token substitution rejection. Evidence: `.omo/evidence/atproto-auth/task-20/`.
 - Completed tenant-local inbound Event/EventSession materialization through one validated internal CQRS mapping shared by Jetstream and PDS recovery. Real PostgreSQL proved 22/22 cases twice, including exact-one concurrency, stable replay/update IDs, Unicode-safe description summary, source EventUrl/createdAt, tenant-scoped absence/tombstone handling, commit-fence rollback, and zero outbound echo. Final independent evidence: `.omo/evidence/atproto-auth/task21/final-adversarial-verify.md`.
+- Completed Phase 16 / Task 16.1 (Todo 22) with lossless `AtprotoRecord.RecordJson`, semantic Event/EventSession mapping, stable slugs, valid timezone projection, authoritative `media[].content` plus generic `media[].blob`, verified DID/PDS `getBlob`, registered storage, atomic Event/StorageObject linkage, replay/tombstone/PDS parity, and zero echo. Evidence: `.omo/evidence/atproto-auth/task22/executor-repair.md`, `.omo/evidence/atproto-auth/task22/final-adversarial-verify.md`, `.omo/evidence/atproto-auth/task22/debug-container-runtime.md`.
 
 ### IN PROGRESS
 
-- Todo 22 canonical full-project, generated-contract, migration, and deterministic integration verification.
+- Todo 23 canonical Release build, all-nine-project matrix, generated contracts/migrations, and deterministic integration smoke.
 
 ### NEXT
 
-1. Freeze one attributable ATProto-relevant source snapshot after concurrent dynamic-event UI writes settle.
-2. Run Todo 22's Release build, all nine per-project commands, locked/generated contract and migration checks, and deterministic fake-service/Testcontainers smoke.
+1. Freeze the attributable snapshot for Todo 23 without changing the completed canonical record authority or absorbing dynamic-event UI work.
+2. Run Todo 23's canonical Release build, all nine per-project commands, locked/generated contract and migration checks, and deterministic fake-service/Testcontainers smoke.
 3. Complete F1-F4 against the verified snapshot.
 
 ### BLOCKERS
 
 - No environment blocker remains. Docker/Testcontainers is available and supplied the required real PostgreSQL evidence for Todos 18 and 19.
-- The shared worktree is still receiving unrelated dynamic-event-management UI changes. Phase 15 must avoid those paths, and Todo 22 must run on a frozen attributable snapshot without editing or absorbing that workstream.
-- The 2026-07-19 broad matrix below is historical, not a current failure list. Its former shared-tree failures must be re-evaluated by Todo 22 rather than assumed fixed or still failing.
+- The shared worktree is still receiving unrelated dynamic-event-management UI changes. Todo 23 must run on a frozen attributable snapshot without editing or absorbing that workstream.
+- The 2026-07-19 broad matrix below is historical, not a current failure list. Its former shared-tree failures must be re-evaluated by Todo 23 rather than assumed fixed or still failing.
 
 ### ACCEPTED PRODUCT CONSTRAINT
 
@@ -65,7 +66,7 @@ Last Updated: 2026-07-23 Europe/Brussels
 
 1. Read this context and atproto-auth-tasks.md.
 2. Read only the current phase, constraints, or changed decisions from atproto-auth-plan.md.
-3. Start from Todo 22, the first unchecked top-level ATProto execution-plan gate.
+3. Start from Todo 23, the current canonical verification gate after completed Phase 16 / Task 16.1.
 4. Keep tasks current during implementation. Update context/plan only at their defined triggers.
 5. Preserve ADR-015's DB-first, one-capability, exhaustive-description, consent, canonical-ingress, exact two-collection, and atomic tenant-local import invariants through final verification.
 
@@ -73,12 +74,12 @@ Last Updated: 2026-07-23 Europe/Brussels
 
 | Field | Value |
 |---|---|
-| Overall status | 33/33 implementation tasks complete; 21/26 execution-plan gates complete; canonical verification and F1-F4 remain |
-| Completed implementation tasks | 33/33 completed tasks |
-| Current priority | Todo 22 canonical verification and deterministic integration smoke |
-| Next executable slice | Run Todo 22, then F1-F4 |
+| Overall status | 34/34 implementation tasks complete; 22/27 execution-plan gates complete; Phase 16 / Task 16.1 is complete; five top-level gates remain: Todo 23 plus F1-F4 |
+| Completed implementation tasks | 34/34 completed tasks |
+| Current priority | Todo 23 canonical Release build, all-nine-project matrix, generated contracts/migrations, and deterministic smoke |
+| Next executable slice | Run Todo 23, then F1-F4 |
 | OAuth implementation | Complete in Phases 1-6; live-provider release evidence remains outside automated gates |
-| Federation implementation | Phases 7-15 complete, including tenant-local inbound aggregate import |
+| Federation implementation | Phases 7-16 complete; canonical import is lossless, semantically mapped, timezone-aware, thumbnail-capable, replay/tombstone-safe, and zero-echo |
 | Baseline build | Fresh green baseline at HEAD aefa7797 on 2026-07-18; 25 projects, 0 errors, 0 warnings |
 
 ## Current Focused Verification Addendum — 2026-07-22
@@ -89,7 +90,15 @@ Last Updated: 2026-07-23 Europe/Brussels
 - Atomic encrypted OAuth refresh: real PostgreSQL 6/6 with lock pair repeated 2/2; security gateway 12/12, encrypted store 6/6, writer 12/12, and architecture boundaries are green.
 - Universal discovery: auth flow 17/17, session binding 6/6, cache 2/2 twice, transport 23/23, linked-account handler 5/5, architecture 29/29, and bounded 10,000-entry cache/cross-lease probes.
 
-These results close implementation Tasks 13.1-14.1. They do not replace Todo 22's canonical build and all-nine-project matrix.
+These historical results close implementation Tasks 13.1-14.1. They do not replace the current Todo 23 canonical build and all-nine-project matrix.
+
+## Phase 16 / Task 16.1 Completion Contract
+
+- `AtprotoRecord.RecordJson` remains the lossless canonical source for every producer field. Unsupported, malformed, producer-specific, and future fields stay in the nested JSON even when no local column exists.
+- Only semantically compatible values map to local `Event` and `EventSession` fields. Normal `SlugGenerator.FromTitle(name, "event")` and implicit-session fallback provide canonical stable slugs; valid IANA timezones participate in the session projection.
+- A valid `media[].content` thumbnail, with generic `media[].blob` fallback, is resolved through the verified DID/PDS boundary, fetched with bounded `com.atproto.sync.getBlob` checks outside the EF transaction, staged through registered storage, and atomically linked via `Event.FeaturedImageId` and `StorageObject`. Optional media failures do not block canonical import; replacement and tombstone invoke existing cleanup.
+- Focused completion evidence is factory 3/3, thumbnail gateway 24/24, PDS gateway 38/38, real production pipeline 1/1, and retained real PostgreSQL 31/31. Runtime cleanup returned to 23 containers/121 volumes.
+- Todo 23 is the current final matrix; it is not complete and must verify Task 22 alongside all nine project commands, generated contracts, migrations, and deterministic integration smoke before F1-F4.
 
 ## Historical Canonical Verification Matrix — 2026-07-19
 
@@ -375,12 +384,12 @@ These are binding requirements assigned to Phases 7-14:
 
 ## Handoff Notes
 
-### Phases 13-15 completion handoff — 2026-07-23 Europe/Brussels
+### Historical Phases 13-15 completion handoff — 2026-07-23 Europe/Brussels (superseded status snapshot)
 
-- **Current state:** All 33 implementation tasks are complete and independently verified. `.omo/plans/atproto-auth.md` has Todos 1-21 checked; canonical Todo 22 and F1-F4 remain open.
+- **Historical snapshot:** All 33 implementation tasks were complete and independently verified at this handoff. The plan then had the first 21 Todos checked; canonical Todo 22 and F1-F4 remained open before Phase 16 was approved.
 - **Implemented architecture:** Recovery settings reuse the five-tier governance engine; Jetstream updates one globally leased socket in place; Full recovery validates bounded signed PDS repository snapshots into canonical inbound records/presentations; OAuth rotations persist one complete encrypted CarpaNet session under the existing PostgreSQL lock; OAuth discovery follows verified handle/DID/PDS/protected-resource/issuer metadata without provider branches. Validated Jetstream and PDS event plans now atomically materialize one tenant Event and exactly one EventSession without outbound echo.
 - **Verification:** Real PostgreSQL recovery passed 4/4 twice, refresh persistence passed 6/6, and inbound aggregate materialization passed 22/22 twice under independent verification. Provider-neutral discovery, cache, transport, session binding, discovery de-duplication, and architecture matrices are green. Exact evidence lives under `.omo/evidence/atproto-auth/task-16/` through `task21/`.
-- **Next action:** Execute Todo 22's canonical build, all nine test projects, generated-contract/migration checks, and deterministic integration smoke before F1-F4.
+- **Historical next action:** Execute the then-planned Todo 22 canonical build, all nine test projects, generated-contract/migration checks, and deterministic integration smoke before F1-F4.
 - **Blockers:** No environment blocker. Preserve and exclude the concurrent dynamic-event-management UI workstream when attributing changes or failures.
 - **Cleanup:** No ATProto-owned process, test container, PostgreSQL/Ryuk resource, port, browser, PTY, temporary report, or credential remains; Docker itself was left available as user-provided infrastructure.
 

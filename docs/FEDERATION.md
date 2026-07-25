@@ -6,8 +6,8 @@ ABOUTME: Covers DB-first PDS delivery, exhaustive projection, Jetstream discover
 > **Audience:** Contributors | Integrators | AI agents
 > **Status:** Implemented AT Protocol integration; ActivityPub/PDS hosting remain roadmap
 > **Owner:** API
-> **Last Verified:** 2026-07-19
-> **Source Anchors:** `src/Explore.API/Controllers/AtprotoSessionController.cs`, `src/Explore.API/Controllers/EventController.cs`, `src/Explore.API/BackgroundServices/PdsSyncWorker.cs`, `src/Explore.Blazor/Authentication/AtprotoAuthenticationHandler.cs`, `src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamSubscriber.cs`, `src/Explore.Application/Features/Federation/Atproto/`, `docs/LEXICONS.md`, `docs/OUTBOX_PATTERN.md`
+> **Last Verified:** 2026-07-25
+> **Source Anchors:** `src/Explore.API/Controllers/AtprotoSessionController.cs`, `src/Explore.API/Controllers/EventController.cs`, `src/Explore.API/BackgroundServices/PdsSyncWorker.cs`, `src/Explore.Blazor/Authentication/AtprotoAuthenticationHandler.cs`, `src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamSubscriber.cs`, `src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamRuntimeStore.cs`, `src/Explore.Infrastructure/Services/Federation/AtprotoThumbnailBlobGateway.cs`, `src/Explore.Application/Features/Federation/Atproto/Handlers/Commands/ImportAtprotoFederatedEventCommandHandler.cs`, `src/Explore.Application/Features/Federation/Atproto/Services/AtprotoFederatedEventImportPlanFactory.cs`, `src/Explore.Persistence/Repositories/AtprotoJetstreamRepository.cs`, `docs/LEXICONS.md`, `docs/OUTBOX_PATTERN.md`
 
 ## Status
 
@@ -27,7 +27,7 @@ AT Protocol OAuth authentication is implemented for accounts that are already li
 - **Safe public API**: `GET /api/event` returns a typed local-or-federated discovery collection. Federated items receive only a policy-produced `source` relation to `GET /api/event/federated/{atprotoRecordId}/source`; no raw `AtprotoRecord` read or mutation API exists.
 - **Governance**: `federation.atproto_events_enabled` controls inbound tenant presentation/stream demand and eligible outbound enqueue. `federation.atproto_event_validation_profile` selects platform or community-lexicon publication requirements, subject to instance locks; the community profile relaxes only required local business fields. `federation.atproto_publish_my_events` remains self-scoped user consent.
 - **Projection**: one typed community event record maps native lexicon fields and renders every other public event value—including all sessions, aspects, resolved lookups, and EAV values—into one deterministic description. Coverage, privacy, or exact-size failures prevent enqueue; values are never silently dropped or truncated.
-- **Inbound ingestion**: one leased CarpaNet Jetstream consumer accepts exactly the community event and RSVP collections from a fixed endpoint. An empty DID filter discovers all public publishers of those collections; a configured `AllowedDids` list restricts ingestion to curated publishers. The consumer persists one global canonical DID/collection/record-key row with its current source version, typed event projection, tenant presentation, tombstone/quarantine effects, and cursor state atomically.
+- **Inbound ingestion and local import**: one leased CarpaNet Jetstream consumer accepts exactly the community event and RSVP collections from a fixed endpoint. An empty DID filter discovers all public publishers of those collections; a configured `AllowedDids` list restricts ingestion to curated publishers. Accepted event records keep one global canonical DID/collection/record-key row and the complete source JSON, then an internal MediatR command creates or updates one tenant-local `Event` and one `EventSession` for each visible tenant. Canonical state, typed projection, tenant presentation, local aggregates, tombstone/quarantine effects, and cursor advancement commit atomically.
 - **Outbound delivery**: event lifecycle handlers atomically commit the local publication and immutable `PdsSyncOutbox` intent. A fenced worker rechecks capability, self-consent, linked session, source version, payload, and public-location privacy immediately before CarpaNet PDS I/O, then settles URI/CID and links the canonical record back to the committed local event.
 - **Client surfaces**: instance administrators manage defaults/locks, unlocked tenant administrators manage effective capability/profile, and users manage only their own publication consent. Federated cards and local delivery status use text plus color and render actions only from HAL.
 - **Authorization fallback**: local fallback authorization treats actor records as read-only for authenticated users and denies ATProto record/indexed DID writes except for instance-admin bypass.
@@ -139,6 +139,102 @@ The diagram below is a product-level illustration, not the record-shape contract
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+## Inbound Event Import And Database Materialization
+
+Inbound federation is an internal import path, not a public create endpoint and not a second outbound publication path. The application deliberately keeps two representations:
+
+1. **Canonical protocol record** — `AtprotoRecord` owns the global DID, collection, record key, CID, AT URI, source cursor/version, tombstone state, complete accepted `RecordJson`, and `RecordHash`. `AtprotoEventProjection` stores bounded fields used by discovery.
+2. **Tenant-local application aggregates** — one normal `Event` and one implicit `EventSession` are created or synchronized for every tenant whose `AtprotoRecordTenantPresentation` is visible. These rows participate in the normal event/session data model and are linked back through `Event.AtprotoRecordId`.
+
+This separation is the no-data-loss boundary. Semantically compatible fields become first-class local values; producer-specific, unsupported, or future fields remain available in the canonical JSON rather than being forced into unrelated columns. Structurally invalid records are not imported: they are quarantined with bounded hashes and reason codes.
+
+### Runtime Flow
+
+```text
+Jetstream commit or bounded PDS snapshot
+    -> generated community-calendar parsing and semantic validation
+    -> canonical AtprotoRecord + typed AtprotoEventProjection
+    -> AtprotoJetstreamRuntimeStore
+    -> MediatR: ImportAtprotoFederatedEventCommand
+    -> AtprotoFederatedEventImportPlanFactory
+       -> manually instantiated AtprotoFederatedEventImportInputValidator
+       -> one plan per visible tenant
+    -> optional thumbnail fetch/stage through the verified DID/PDS boundary
+    -> AtprotoJetstreamRepository fenced transaction
+       -> canonical record/projection/presentation
+       -> tenant Actor + Event + EventSession (+ StorageObject when valid)
+       -> cursor or complete-snapshot settlement
+```
+
+`ReconcileAtprotoPdsSnapshotsCommandHandler` uses the same import-plan factory, thumbnail boundary, and persistence transaction. Recovery therefore cannot produce a different local shape from live Jetstream ingestion.
+
+### Import Validation
+
+The local import validator mirrors the community lexicon's minimal contract while protecting the ISLAMU data model:
+
+- `name` and `createdAt` are the only required producer values; `name` must be non-empty and at most 200 characters.
+- Optional `description` is bounded to 4,000 characters.
+- Optional source URIs must pass the hardened external-URI policy.
+- Optional mode and status tokens must be members of the supported community calendar sets.
+- When both are present, `endsAt` must be later than `startsAt`.
+- Only visible tenant presentations generate local import plans.
+
+Validators are instantiated inside the Application path, following the repository's CQRS convention. Repositories receive validated plans and return/persist entities; they do not expose DTO-shaped import logic.
+
+### Lexicon-To-Application Mapping
+
+| Community calendar value | Canonical/typed storage | Local application mapping |
+| --- | --- | --- |
+| DID + collection + record key + CID + source cursor | `AtprotoRecord` identity and source version | `Event.AtprotoRecordId`; `ProvenanceSource = "atproto"`; `ProvenanceExternalId` is the bounded AT URI |
+| Complete accepted record | `AtprotoRecord.RecordJson` plus SHA-256 `RecordHash` | Remains the lossless source for producer extensions that have no compatible local field |
+| `name` | `AtprotoEventProjection.Name` | `Event.Title` and `EventSession.Title` |
+| `name`-derived identifier | N/A | On first import, `Event.Slug = SlugGenerator.FromTitle(name, "event")`; the implicit session uses `SlugGenerator.FromTitle($"{name}-session-1", "session")`. Later source updates preserve those stable slugs |
+| `description` | `AtprotoEventProjection.Description` | Full value in `Event.Content`; a Unicode-safe first 150 runes in `Event.Description`; the implicit session does not duplicate it |
+| `createdAt` | `AtprotoEventProjection.CreatedAt` | `Event.CreatedAt` and `EventSession.CreatedAt`, converted to UTC |
+| `startsAt` / `endsAt` | Typed projection timestamps | `EventSession.StartTime`, `EndTime`, and `EndTimeType`; the parent event recalculates its schedule summary from the session |
+| `timezone` | Complete value remains in `RecordJson` | A valid IANA zone is normalized into `Event.EventTimeZoneId`, `Event.Timezone`, and session local-time projections; absent or invalid values fall back to UTC |
+| `mode` | Normalized projection token | `#virtual` -> Digital, `#hybrid` -> Hybrid, `#inperson` or absent -> Local |
+| `status` | Normalized projection token | `#scheduled`, `#rescheduled`, or absent -> Published; `#cancelled` -> Cancelled; `#planned` / `#postponed` -> Draft, for both event and session |
+| `rsvpExpected` | Typed nullable boolean | `Event.IsRegistrationRequired`, defaulting to `false` |
+| `uris[]` | All entries remain in `RecordJson`; first hardened external URI becomes `AtprotoEventProjection.SourceUrl` | `Event.EventUrl` receives that first safe source URL |
+| `locations[]` | Bounded human-readable `AtprotoEventProjection.LocationSummary`; complete structures remain in `RecordJson` | No synthetic local venue is created because location variants do not necessarily satisfy the local location/privacy model |
+| `media[]` thumbnail | Blob metadata remains in `RecordJson`; a validated candidate carries DID, CID, MIME type, and declared size | Verified bytes become a public event-image `StorageObject`, linked through `Event.FeaturedImageId` |
+| `theme`, `preferences`, `createdWith`, `bskyPostRef`, additional URIs/media, aspect ratios, and future producer extensions | Complete accepted values remain in `AtprotoRecord.RecordJson` | No unrelated relational field is invented; future mappings can be added without losing the original record |
+
+Imported events are public and owned by a tenant-local federated `Actor` keyed by the source DID. The actor uses the normal actor model, while protocol identity remains canonical in `AtprotoRecord`.
+
+### Thumbnail Blob Boundary
+
+The importer looks for the first `media[]` entry whose `role` is `thumbnail`. The community record's authoritative shape uses `media[].content`; the parser also tolerates the generic `media[].blob` shape. A usable blob must contain:
+
+- `$type: "blob"`;
+- `ref.$link` with a structurally valid CID;
+- an `image/*` MIME type;
+- a positive declared size within the configured bound.
+
+The command handler fetches and stages the optional image before opening the EF transaction:
+
+1. Resolve the record DID without cache and require exactly one bound `AtprotoPersonalDataServer` service.
+2. Apply the hardened HTTPS/SSRF policy to the PDS origin.
+3. Fetch `com.atproto.sync.getBlob` with the DID and CID.
+4. Require successful status, exact MIME type, exact declared/actual byte count, the configured maximum size, and a constant-time SHA-256/CID match.
+5. Write through the registered provider-neutral `IFileStorageProvider`.
+6. Inside the fenced database transaction, create a tenant-owned public-image `StorageObject` and set `Event.FeaturedImageId`.
+
+Missing or invalid optional media fails soft: the event still imports and the original media metadata remains in `RecordJson`. If the database apply is rejected or throws, staged but unconsumed bytes are deleted. Replacement marks the previous image for lifecycle deletion; a record tombstone clears the featured image and requests deletion of owned storage objects.
+
+### Atomicity, Replay, And Tombstones
+
+- The consumer lease token and monotonic fence are rechecked before commit.
+- Canonical record/projection changes, tenant presentation, `Event`, `EventSession`, optional `StorageObject`, quarantine effects, and cursor advancement share one transaction.
+- Local identity is `(TenantId, AtprotoRecordId)`, so replay updates the existing aggregate instead of duplicating it.
+- A healthy imported event is preserved when an older or non-authoritative replay does not permit replacement.
+- A current update synchronizes mapped fields and revives previously tombstoned rows.
+- A canonical event tombstone soft-deletes the tenant-local event and all its sessions, clears `FeaturedImageId`, and requests storage deletion.
+- Inbound imports never enqueue `PdsSyncOutbox` and never echo the source record back to a PDS.
+
+After a successful mutation, the discovery cache is invalidated. Public discovery de-duplicates the canonical projection against the tenant-local event linked by `AtprotoRecordId`, so clients see one event rather than a projection/import pair.
 
 ## CID
 ```

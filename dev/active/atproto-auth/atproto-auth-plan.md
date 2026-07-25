@@ -3,21 +3,21 @@
 
 # AT Protocol Integration — Implementation Plan
 
-Last Updated: 2026-07-23 Europe/Brussels
+Last Updated: 2026-07-25 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** Write an implementation plan under dev/active for the ATProto implementation, follow dev/report/atproto-report.md strictly, use CarpaNet documentation from /home/amir/dev/Github/CarpaNet/docs/docs and Context7, ignore backward compatibility because the product is still in development, and preserve repository conventions, Clean Architecture, security, and maintainability. The 2026-07-18 clarification makes ATProto Events one governed capability for both fetch and publication, requires local-DB-first publication, requires every non-native public event field in the single event record description, and adds an administrator-selectable community-lexicon validation profile.
 - **Task directory:** dev/active/atproto-auth/
-- **Planning status:** All 33 implementation tasks across fifteen phases are complete and evidence-backed. The user's 2026-07-23 clarification superseded ADR-015's read-model-only inbound boundary: each accepted inbound event now materializes a tenant-local `Event` and exactly one `EventSession`. The execution plan is 21/26 top-level gates complete; canonical full-project verification and F1-F4 remain open.
-- **Completed implementation tasks:** 33/33. Recovery, refresh durability, universal discovery, and tenant-local inbound aggregate materialization are independently confirmed under `.omo/evidence/atproto-auth/task-16/` through `task21/`.
-- **Current priority:** Run Todo 22's canonical Release build, all nine project test commands, contract/migration checks, and deterministic integration smoke.
+- **Planning status:** 34/34 implementation tasks are complete and evidence-backed. The user's 2026-07-23 clarification superseded ADR-015's read-model-only inbound boundary: each accepted inbound event now materializes a tenant-local `Event` and exactly one `EventSession`. The execution plan is 22/27 top-level gates complete; Phase 16 / Task 16.1 is complete, and five top-level gates remain: Todo 23 plus F1-F4.
+- **Completed implementation tasks:** 34/34. Recovery, refresh durability, universal discovery, tenant-local inbound aggregate materialization, and extensible import are independently confirmed under `.omo/evidence/atproto-auth/task-16/` through `task22/`.
+- **Current priority:** Todo 23: canonical Release build, all nine project commands, locked/generated contracts, migration checks, and deterministic integration smoke. This is not yet an all-project green claim.
 - **Primary source:** dev/report/atproto-report.md, revision 3 dated 2026-07-18.
 - **Matched intents:** bff-auth-bug, add-write-endpoint, add-get-endpoint, add-cqrs-handler, add-ef-migration, update-repository-query, openapi-contract-change, add-hal-link, blazor-component-affordance, and external-infrastructure-bootstrap.
 - **Relevant skills:** implementation-plan, agentic-research, clean-architecture-rules, auth-patterns, blazor-bff-patterns, cqrs-mediatr-guidelines, dotnet-efcore-guidelines, outbox-pattern, error-tracking, blazor-ui-conventions, and lsp.
 - **Relevant rules:** AGENTS.md; docs/QUICK_REFERENCE.md; docs/GOVERNANCE.md; .claude/rules/application-layer.md; api-controllers.md; api-hateoas.md; blazor-server.md; blazor-client.md; domain-layer.md; efcore-persistence.md; efcore-migrations.md; and tests.md.
 - **Primary layers:** Domain, Application, Persistence, Infrastructure, API, Blazor BFF, generated Blazor client contracts, configuration/secrets, and documentation.
-- **Complexity:** XL. The work crosses two authentication trust boundaries, multi-tenant BFF routing, OAuth state and DPoP credential persistence, asymmetric key rotation, EF Core schema, transactional outbox delivery, community-lexicon projection, Jetstream ingestion and snapshot recovery, tenant-local aggregate import, public HAL/OpenAPI, and nine test projects across fifteen dependency-ordered phases.
+- **Complexity:** XL. The work crosses two authentication trust boundaries, multi-tenant BFF routing, OAuth state and DPoP credential persistence, asymmetric key rotation, EF Core schema, transactional outbox delivery, community-lexicon projection, Jetstream ingestion and snapshot recovery, tenant-local aggregate import, public HAL/OpenAPI, and nine test projects across sixteen dependency-ordered phases.
 - **Compatibility posture:** Breaking cleanup is authorized for this development-stage feature. Do not add aliases, dual reads/writes, deprecated endpoints, compatibility DTOs, migration shims, or compatibility-only tests.
 
 ## 1. Executive Summary
@@ -1184,7 +1184,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 
 - **Goal:** Implement governed downtime recovery, in-place Jetstream filter updates, bounded current PDS snapshot reconciliation, and atomic encrypted OAuth refresh persistence.
 - **Depends on:** Phase 12.
-- **Progress:** Implementation complete and independently verified in Todos 16-19. The Phase 13 broad build/project gate remains part of Todo 22.
+- **Progress:** Implementation complete and independently verified in Todos 16-19. The Phase 13 broad build/project gate is deferred to the current Todo 23 matrix after completed Todo 22.
 - **Related skills/rules:** clean-architecture-rules, cqrs-mediatr-guidelines, dotnet-efcore-guidelines.
 - **Acceptance criteria:**
   - Tenant admin can toggle backfill enabled and select between downtime-only and full modes.
@@ -1270,7 +1270,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 
 - **Goal:** Ensure PDS independence (Bluesky, Eurosky, self-hosted) and maintain clean abstractions to support future Keycloak + local PDS integration without breaking changes.
 - **Depends on:** Phase 13.
-- **Progress:** Implementation complete and independently verified in Todo 20. The Phase 14 broad build/project gate remains part of Todo 22.
+- **Progress:** Implementation complete and independently verified in Todo 20. The Phase 14 broad build/project gate is deferred to the current Todo 23 matrix after completed Todo 22.
 - **Related skills/rules:** clean-architecture-rules, auth-patterns.
 - **Acceptance criteria:**
   - Authentication works with accounts in Eurosky, self-hosted, or Bluesky PDS endpoints.
@@ -1302,7 +1302,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 
 - **Goal:** Materialize every accepted tenant-visible ATProto event into the normal Event model with exactly one EventSession while retaining the global canonical record as protocol authority.
 - **Depends on:** Phases 10, 11, 13.3, and 14.
-- **Progress:** Implementation complete and independently confirmed in Todo 21. Canonical all-project verification remains owned by Todo 22.
+- **Progress:** Implementation complete and independently confirmed in Todo 21. Canonical all-project verification remains owned by the current Todo 23 matrix after completed Todo 22.
 - **Related skills/rules:** clean-architecture-rules, cqrs-mediatr-guidelines, dotnet-efcore-guidelines, application-layer.md, efcore-persistence.md, tests.md.
 - **Acceptance criteria:**
   - A dedicated internal command/handler manually instantiates a validator whose only required lexicon fields are name and createdAt; every optional supplied field remains validated.
@@ -1316,6 +1316,28 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
   - dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
   - dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
 - **Rollback / failure handling:** The canonical record/projection/presentation transaction remains authoritative; any aggregate-import failure rolls the whole fenced apply back so replay can retry.
+
+### Phase 16: Extensible Inbound Calendar Import
+
+- **Goal:** Extend tenant-local inbound event materialization without narrowing the canonical producer record: map semantically compatible fields to local aggregates, derive normal canonical slugs and timezone-aware sessions, and ingest provider-neutral thumbnail blobs.
+- **Depends on:** Phase 15.
+- **Progress:** Task 16.1 is **COMPLETE** as Todo 22, independently confirmed in `.omo/evidence/atproto-auth/task22/executor-repair.md`, `.omo/evidence/atproto-auth/task22/final-adversarial-verify.md`, and `.omo/evidence/atproto-auth/task22/debug-container-runtime.md`. Todo 23 remains the canonical verification gate.
+- **Canonical preservation rule:** `AtprotoRecord.RecordJson` retains the complete source JSON, including unsupported, malformed, producer-specific, and future fields. Only semantically compatible values map to local `Event` / `EventSession` fields; unsupported or future fields are not discarded and do not block import.
+- **Thumbnail boundary:** A valid `media[].content` thumbnail blob (with provider-neutral `media[].blob` fallback) is resolved through the verified DID/PDS boundary, fetched with `com.atproto.sync.getBlob` outside the EF transaction, bounded by CID/MIME/declared/actual size, written through registered storage, and linked atomically to `Event.FeaturedImageId` and the tenant-owned `StorageObject`. Missing or invalid optional media remains lossless canonical JSON and fails soft.
+- **Acceptance criteria:**
+  - Canonical JSON equality survives Jetstream create/update/replay and complete PDS reconciliation for standard, producer-specific, and unknown nested fields.
+  - Compatible name, description, createdAt, safe URI, schedule, valid IANA timezone, mode, status, RSVP expectation, and thumbnail metadata map deterministically without changing replay identities.
+  - Event and EventSession slugs use the normal `SlugGenerator.FromTitle(name, "event")` and implicit-session fallback and remain stable across replay/update.
+  - Thumbnail fetch/storage/linking is provider-neutral, tenant-owned, bounded, cancellable, and lifecycle-cleaned on replacement/tombstone; no outbound federation work is created.
+- **Evidence:** Factory 3/3, thumbnail gateway 24/24, PDS gateway 38/38, real production pipeline 1/1, retained real PostgreSQL 31/31, and cleanup baseline restored to 23 containers/121 volumes. These are focused Task 22 results, not Todo 23 completion.
+- **Phase-end verification:** Todo 23 runs the canonical Release build, all nine project commands, generated-contract/migration checks, and deterministic integration smoke after Task 16.1.
+- **Rollback / failure handling:** Preserve the canonical record and prior aggregate state when optional extension or blob work fails; clean staged objects and retry through the existing fenced transaction without orphaning storage.
+
+### Todo 23: Canonical verification gate (CURRENT)
+
+- Run the final Release build, all nine per-project test commands, locked restore, generated OpenAPI/client inspection, migration/pending-model checks, and deterministic fake AS/PDS/Jetstream plus Testcontainers smoke.
+- Keep this gate after completed Phase 16 / Task 16.1 so the matrix verifies the lossless extension mapping, canonical slugs/timezones, and provider-neutral thumbnail lifecycle at the final attributable snapshot. Do not claim this gate complete until its own evidence exists.
+- F1-F4 remain the final plan-compliance, quality, real-surface QA, and scope-fidelity checks after Todo 23.
 
 #### Task 15.1: Materialize accepted ATProto events as Event aggregates with one EventSession
 
@@ -1361,7 +1383,7 @@ Each phase owns focused tests with its implementation tasks, then runs one Relea
 | 14 | Explore.Blazor.IntegrationTests | Proves universal PDS OAuth routing and dynamic provider discovery. |
 | 15 | Event.Persistence.IntegrationTests | Proves atomic canonical-to-Event/EventSession import, mapping, replay, update, tombstone, tenant isolation, and rollback against PostgreSQL. |
 
-Intent-mandated projects are distributed across the fifteen phases. Repeated test projects have distinct bounded purposes recorded above. The report's Bluesky/Eurosky/self-hosted-PDS matrix is release evidence outside these implementation phase gates; it is not scheduled as browser/manual/live-service verification in this plan.
+Intent-mandated projects are distributed across the sixteen phases. Repeated test projects have distinct bounded purposes recorded above. The report's Bluesky/Eurosky/self-hosted-PDS matrix is release evidence outside these implementation phase gates; it is not scheduled as browser/manual/live-service verification in this plan.
 
 ## 8. Documentation, Configuration, And Operations Impact
 
@@ -1499,7 +1521,7 @@ Intent-mandated projects are distributed across the fifteen phases. Repeated tes
 
 ### Automated phase gates
 
-Each of the fifteen phases is complete only when all its tasks are checked and its declared Release build/test gates pass. No separate manual/browser/live-provider gate is part of this plan.
+Each of the sixteen phases is complete only when all its tasks are checked and its declared Release build/test gates pass. No separate manual/browser/live-provider gate is part of this plan; Todo 23 owns the final canonical matrix.
 
 ## 15. Implementation Agent Contract — KEEP DEV DOCS CURRENT
 

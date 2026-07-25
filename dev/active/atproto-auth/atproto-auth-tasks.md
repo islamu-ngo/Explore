@@ -1,22 +1,22 @@
-<!-- ABOUTME: Executable checklist for the fifteen-phase AT Protocol OAuth and event-federation implementation. -->
+<!-- ABOUTME: Executable checklist for the sixteen-phase AT Protocol OAuth and event-federation implementation. -->
 <!-- ABOUTME: Tracks DB-first publication, canonical ingress, tenant-local event import, HAL, and phase gates. -->
 
 # AT Protocol Integration — Task Checklist
 
-Last Updated: 2026-07-23 Europe/Brussels
+Last Updated: 2026-07-25 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** All 33/33 implementation tasks are complete and independently verified. The durable execution plan is 21/26 top-level gates complete; canonical full-project verification and F1-F4 remain.
-- **Completed:** 33/33 implementation tasks; Phase 15 implementation is complete.
-- **Current priority:** Run Todo 22's canonical Release build, all nine project commands, contract/migration checks, and deterministic integration smoke.
-- **Next recommended slice:** Freeze the attributable ATProto snapshot for Todo 22, then complete F1-F4.
+- **Overall status:** 34/34 implementation tasks are complete and independently verified. The durable execution plan is 22/27 top-level gates complete; Phase 16 / Task 16.1 (Todo 22) is complete; the remaining matrix is Todo 23 plus F1-F4.
+- **Completed:** 34/34 implementation tasks; Phase 16 / Task 16.1 is complete with focused and retained real PostgreSQL evidence.
+- **Current priority:** Todo 23: canonical Release build, all nine project commands, contract/migration checks, and deterministic integration smoke. No final all-project green claim is made yet.
+- **Next recommended slice:** Freeze the attributable snapshot for Todo 23, then complete F1-F4.
 - **OAuth scope:** Phases 1-6.
-- **Federation scope:** Phases 7-15 complete; canonical ingress atomically materializes tenant-local Event/EventSession aggregates.
+- **Federation scope:** Phases 7-16 complete; canonical ingress preserves unsupported/future producer fields in `AtprotoRecord.RecordJson` and maps only semantically compatible fields locally.
 
-## Progress Reconciliation — 2026-07-22
+## Progress Reconciliation — 2026-07-25
 
-- Todos 16-21 are confirmed in `.omo/start-work/ledger.jsonl`; five top-level gates remain: Todo 22 and F1-F4.
+- Todos 16-22 are confirmed in `.omo/start-work/ledger.jsonl`; five top-level gates remain: Todo 23 (current canonical matrix) and F1-F4.
 - Phase 13.1 settings passed Application 17/17, Infrastructure 13/13, API 8/8, Architecture 9/9, PostgreSQL 1/1, and both bUnit administration surfaces 25/25 combined.
 - Phase 13.2 held one Jetstream session while updating filters in place; its subscriber/readiness/runtime-store matrix passed 30/30, including coalescing, failure reconnect, cursor preservation, and cancellation cleanup.
 - Phase 13.3 passed the real PostgreSQL PDS snapshot reconciliation matrix 4/4 twice after correcting one test-only JSONB comparison to semantic JSON equality.
@@ -579,6 +579,31 @@ Focused independent evidence is green: Application handlers 62/62, planners/proc
 - [ ] dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
 - [ ] dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
 - [ ] dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
+
+## Phase 16: Extensible Inbound Calendar Import — IMPLEMENTATION COMPLETE
+
+- [x] **16.1 Preserve and map extensible inbound calendar fields, canonical slugs, timezones, and thumbnail blobs (Todo 22)**
+  - **Status:** Complete and independently confirmed. Evidence: `.omo/evidence/atproto-auth/task22/executor-repair.md`, `.omo/evidence/atproto-auth/task22/final-adversarial-verify.md`, and `.omo/evidence/atproto-auth/task22/debug-container-runtime.md`.
+  - **Scope:** Preserve the complete source record in `AtprotoRecord.RecordJson`; map only semantically compatible values with normal `SlugGenerator.FromTitle(name, "event")` and implicit-session fallback; map valid IANA timezones; resolve authoritative `media[].content` with generic `media[].blob` compatibility through the verified DID/PDS boundary, bounded `getBlob`, and registered storage.
+  - **Acceptance:**
+    - [x] Exact canonical JSON equality survives Jetstream and complete PDS reconciliation for standard, producer-specific, unknown nested, and prompt-like fields.
+    - [x] Imported Event/EventSession slugs are normal, deterministic, and stable across replay/update; malformed optional extensions fail soft and remain raw.
+    - [x] Valid thumbnail blobs are CID/MIME/declared-size/actual-size checked, staged through registered storage, and linked atomically through `Event.FeaturedImageId` and tenant-owned `StorageObject`; replacement/tombstone cleanup uses the existing lifecycle.
+    - [x] Missing, unsupported, malformed, oversized, mismatched, hung, or cancelled optional blob work never loses the canonical record, leaves partial state, or enqueues outbound PDS work.
+  - **Focused evidence:** factory 3/3, thumbnail gateway 24/24, PDS gateway 38/38, real production pipeline 1/1, retained real PostgreSQL 31/31; cleanup restored the 23-container/121-volume baseline.
+  - **Dependencies:** Phase 15.
+
+### Phase 16 Verification — DEFERRED TO TODO 23
+
+- [ ] Canonical Release build, all nine per-project commands, generated-contract/migration checks, and deterministic fake-service/Testcontainers smoke after Task 16.1.
+
+## Todo 23: Canonical Verification Matrix — CURRENT
+
+- [ ] Run the final locked Release build and every project command from `docs/TESTING.md` with nonzero discovered counts.
+- [ ] Inspect generated OpenAPI/client contracts and pending migrations; verify the Phase 16 canonical JSON, slug/timezone, thumbnail, replacement, tombstone, and zero-outbound-echo scenarios at the frozen attributable snapshot.
+- [ ] Complete F1-F4 plan-compliance, code-quality, real-surface QA, and scope-fidelity checks after the matrix passes.
+
+Todo 23 is not complete; its final matrix and F1-F4 remain the five open top-level gates.
 
 ## Remaining / Deferred Work
 
