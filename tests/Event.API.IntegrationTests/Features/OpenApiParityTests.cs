@@ -22,6 +22,8 @@ public sealed class OpenApiParityTests
     private const string KeycloakAuthorizationUrl = "https://auth.example.com/realms/ISLAMU/protocol/openid-connect/auth";
     private const string ManagedControlPlaneScheme = "ManagedControlPlane";
     private const string ManagedControlPlaneHeader = "X-Control-Plane-Key";
+    private const string PrivacyErasureReceiptScheme = "PrivacyErasureReceipt";
+    private const string PrivacyErasureReceiptHeader = "Authorization";
 
     private static readonly OperationSelector[] CanaryOperations =
     [
@@ -43,6 +45,9 @@ public sealed class OpenApiParityTests
     ];
 
     private static readonly OperationSelector UnrelatedAnonymousOperation = new("/api/event", "get");
+
+    private static readonly OperationSecurityExpectation PrivacyErasureStatusSecurityExpectation =
+        new(new("/api/privacy-erasure/status", "get"), [PrivacyErasureReceiptScheme]);
 
     private static readonly string[] RepresentativeHalComponentSchemas =
     [
@@ -194,6 +199,26 @@ public sealed class OpenApiParityTests
     }
 
     [Test]
+    public async Task NativeAndSwashbuckleDocs_MatchPrivacyErasureReceiptSecurity()
+    {
+        using var nativeDocument = await GetOpenApiDocumentAsync(NativeOpenApiEndpoint);
+        using var swashbuckleDocument = await GetOpenApiDocumentAsync(SwashbuckleOpenApiEndpoint);
+
+        var differences = new List<string>();
+        ComparePrivacyErasureReceiptSecurityScheme(nativeDocument, swashbuckleDocument, differences);
+        CompareEffectiveOperationSecurity(
+            PrivacyErasureStatusSecurityExpectation,
+            nativeDocument,
+            swashbuckleDocument,
+            differences);
+
+        await Assert.That(differences)
+            .IsEmpty()
+            .Because("The receipt-only status route must document only its bounded Authorization: ErasureReceipt <receipt> scheme, not inherited bearer authentication. "
+                + string.Join("; ", differences));
+    }
+
+    [Test]
     public async Task NativeAndSwashbuckleDocs_MatchRequestBodyVersionedContentAliases()
     {
         using var nativeDocument = await GetOpenApiDocumentAsync(NativeOpenApiEndpoint);
@@ -304,6 +329,40 @@ public sealed class OpenApiParityTests
             || GetStringProperty(nativeScheme, "name") != ManagedControlPlaneHeader)
         {
             differences.Add("Managed Control Plane security scheme must be an X-Control-Plane-Key header apiKey");
+        }
+    }
+
+    private static void ComparePrivacyErasureReceiptSecurityScheme(
+        JsonDocument nativeDocument,
+        JsonDocument swashbuckleDocument,
+        List<string> differences)
+    {
+        if (!TryGetSecurityScheme(nativeDocument, PrivacyErasureReceiptScheme, out var nativeScheme))
+        {
+            differences.Add($"native document is missing components.securitySchemes.{PrivacyErasureReceiptScheme}");
+            return;
+        }
+
+        if (!TryGetSecurityScheme(swashbuckleDocument, PrivacyErasureReceiptScheme, out var swashbuckleScheme))
+        {
+            differences.Add($"Swashbuckle document is missing components.securitySchemes.{PrivacyErasureReceiptScheme}");
+            return;
+        }
+
+        CompareString("Privacy-erasure receipt security scheme", "type", nativeScheme, swashbuckleScheme, differences);
+        CompareString("Privacy-erasure receipt security scheme", "in", nativeScheme, swashbuckleScheme, differences);
+        CompareString("Privacy-erasure receipt security scheme", "name", nativeScheme, swashbuckleScheme, differences);
+        CompareString("Privacy-erasure receipt security scheme", "description", nativeScheme, swashbuckleScheme, differences);
+
+        string? nativeDescription = GetStringProperty(nativeScheme, "description");
+        if (GetStringProperty(nativeScheme, "type") != "apiKey"
+            || GetStringProperty(nativeScheme, "in") != "header"
+            || GetStringProperty(nativeScheme, "name") != PrivacyErasureReceiptHeader
+            || nativeDescription is null
+            || !nativeDescription.Contains("Authorization: ErasureReceipt <receipt>", StringComparison.Ordinal)
+            || nativeDescription.Contains("Bearer", StringComparison.OrdinalIgnoreCase))
+        {
+            differences.Add("Privacy-erasure receipt security scheme must be a non-bearer Authorization header apiKey documented as Authorization: ErasureReceipt <receipt>");
         }
     }
 

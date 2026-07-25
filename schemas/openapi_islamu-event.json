@@ -36862,7 +36862,7 @@
           "InstanceSettings"
         ],
         "summary": "Update Auth Provider Configuration",
-        "description": "Updates auth provider configuration. Requires instance administrator and blocks self-lockout.",
+        "description": "Updates auth provider configuration during active setup-secret bootstrap or by an instance administrator. Instance-admin updates block self-lockout.",
         "operationId": "UpdateInstanceAuthProviderConfiguration",
         "parameters": [
           {
@@ -37438,7 +37438,7 @@
           "InstanceSettings"
         ],
         "summary": "Update Authorization Provider Configuration",
-        "description": "Updates authorization provider configuration. Requires instance administrator.",
+        "description": "Updates authorization provider configuration during active setup-secret bootstrap or by an instance administrator.",
         "operationId": "UpdateInstanceAuthorizationProviderConfiguration",
         "parameters": [
           {
@@ -47158,6 +47158,11 @@
             }
           }
         },
+        "security": [
+          {
+            "PrivacyErasureReceipt": [ ]
+          }
+        ],
         "x-endpoint-class": "Authenticated"
       }
     },
@@ -111583,6 +111588,12 @@
         "type": "apiKey",
         "description": "Directional managed Control Plane credential.",
         "name": "X-Control-Plane-Key",
+        "in": "header"
+      },
+      "PrivacyErasureReceipt": {
+        "type": "apiKey",
+        "description": "Short-lived privacy-erasure receipt. Send Authorization: ErasureReceipt <receipt>. Do not store the receipt.",
+        "name": "Authorization",
         "in": "header"
       }
     }

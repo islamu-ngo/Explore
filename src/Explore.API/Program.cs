@@ -275,11 +275,13 @@ builder.Services.AddOpenApi("islamu-event", options =>
     });
     options.AddDocumentTransformer<Explore.API.OpenApi.KeycloakOpenApiSecurityTransformer>();
     options.AddDocumentTransformer<Explore.API.OpenApi.ManagedControlPlaneOpenApiSecurityTransformer>();
+    options.AddDocumentTransformer<Explore.API.OpenApi.PrivacyErasureReceiptOpenApiSecurityTransformer>();
     options.AddDocumentTransformer<Explore.API.OpenApi.HalDtoSchemaTransformer>();
     options.AddDocumentTransformer<Explore.API.OpenApi.OpenApiStringEnumDocumentTransformer>();
     options.AddDocumentTransformer<Explore.API.OpenApi.OperationIdInvariantTransformer>();
     options.AddOperationTransformer<Explore.API.OpenApi.EndpointClassificationTransformer>();
     options.AddOperationTransformer<Explore.API.OpenApi.ManagedControlPlaneOpenApiSecurityTransformer>();
+    options.AddOperationTransformer<Explore.API.OpenApi.PrivacyErasureReceiptOpenApiSecurityTransformer>();
     options.AddOperationTransformer<Explore.API.OpenApi.StorageUploadRequestBodyTransformer>();
     options.AddOperationTransformer<Explore.API.OpenApi.EventOpenGraphImageResponseTransformer>();
 });

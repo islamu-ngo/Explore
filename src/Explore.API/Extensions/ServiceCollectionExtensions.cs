@@ -31,9 +31,13 @@ internal static class ServiceCollectionExtensions
             // the same public content negotiation contract.
             options.OperationFilter<OpenApiVersionedContentTypesOperationFilter>();
             options.OperationFilter<ManagedControlPlaneOpenApiSecurityTransformer>();
+            options.OperationFilter<PrivacyErasureReceiptOpenApiSecurityTransformer>();
             options.AddSecurityDefinition(
                 ManagedControlPlaneOpenApiSecurityTransformer.SecuritySchemeName,
                 ManagedControlPlaneOpenApiSecurityTransformer.CreateSecurityScheme());
+            options.AddSecurityDefinition(
+                PrivacyErasureReceiptOpenApiSecurityTransformer.SecuritySchemeName,
+                PrivacyErasureReceiptOpenApiSecurityTransformer.CreateSecurityScheme());
 
             // Register the Keycloak OAuth2 security definition only when the authorization URL
             // is configured. In test/dev environments where Keycloak is not wired up, we skip this

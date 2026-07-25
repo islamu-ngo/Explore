@@ -500,7 +500,7 @@
 | 472 | `/api/organizationreview` | `POST` | `CreateOrganizationReview` | _(none)_ | OrganizationReview | `CreateOrganizationReview` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
 | 473 | `/api/organizationreview/user/{userId}` | `GET` | `GetOrganizationReviewsByUser` | _(none)_ | OrganizationReview | `GetOrganizationReviewsByUser` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
 | 474 | `/api/organizationreview/{organizationId}` | `GET` | `GetOrganizationReviewsByOrganization` | _(none)_ | OrganizationReview | `GetOrganizationReviewsByOrganization` | `Public` | no | _(none)_ | _(none)_ | `ListData` |
-| 475 | `/api/privacy-erasure/status` | `GET` | `GetPrivacyErasureStatus` | _(none)_ | PrivacyErasure | `GetPrivacyErasureStatus` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 475 | `/api/privacy-erasure/status` | `GET` | `GetPrivacyErasureStatus` | _(none)_ | PrivacyErasure | `GetPrivacyErasureStatus` | `Authenticated` | yes | _(none)_ | _(none)_ | _(none)_ |
 | 476 | `/api/public-experience/home` | `GET` | `GetHomeDiscovery` | Get Home Discovery | PublicExperience | `GetHomeDiscovery` | `Public` | no | _(none)_ | _(none)_ | `PublicHomeDiscovery` |
 | 477 | `/api/publicexperience/settings` | `GET` | `GetPublicExperienceSettings` | Get Public Experience Settings | PublicExperience | `GetPublicExperienceSettings` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
 | 478 | `/api/publicexperience/shell` | `GET` | `GetPublicExperienceShell` | Get Public Experience Shell | PublicExperience | `GetPublicExperienceShell` | `Public` | no | _(none)_ | _(none)_ | `PublicExperienceShell` |
