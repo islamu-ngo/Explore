@@ -5,9 +5,11 @@ using Explore.API.Hateoas;
 using Explore.API.Mcp;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventDay;
+using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.EventProgram;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionGroup;
@@ -175,13 +177,13 @@ public sealed class EventLocationPrivacyMcpContractTests
                     Id = Guid.NewGuid(),
                     EventId = eventId,
                     EventTitle = "Privacy contract event",
-                    LocationFullName = "PRIVATE-VENUE"
+                    EventLocation = CreateSuppressedPublicLocation()
                 }
             });
         var gateway = Substitute.For<IAiContextGateway>();
         gateway.SanitizeMany(Arg.Any<IReadOnlyList<AiContextSanitizationInput>>())
             .Returns(call => call.Arg<IReadOnlyList<AiContextSanitizationInput>>()!
-                .Select(DiscloseAll)
+                .Select(DisclosePrivateVenue)
                 .ToArray());
 
         var act = () => CreateTools(mediator, gateway).ListPublicEventSessionsAsync(eventId);
@@ -207,7 +209,8 @@ public sealed class EventLocationPrivacyMcpContractTests
                 {
                     Id = Guid.NewGuid(),
                     EventId = eventId,
-                    EventTitle = $"Privacy contract event {index}"
+                    EventTitle = $"Privacy contract event {index}",
+                    EventLocation = CreateSuppressedPublicLocation()
                 })
                 .ToList());
         var gateway = Substitute.For<IAiContextGateway>();
@@ -364,6 +367,24 @@ public sealed class EventLocationPrivacyMcpContractTests
                 .ToArray(),
             [],
             []);
+
+    private static AiContextSanitizedEnvelope DisclosePrivateVenue(AiContextSanitizationInput input) =>
+        AiContextSanitizedEnvelope.Success(
+            input.EntityName,
+            input.Fields
+                .Select(field => new AiContextDisclosedField(
+                    field.Key,
+                    field.Key == nameof(EventLocationPublicFieldsDto.VenueName) ? "PRIVATE-VENUE" : field.Value,
+                    AiContextDisclosureRuleEnum.Allow))
+                .ToArray(),
+            [],
+            []);
+
+    private static EventLocationPublicDto CreateSuppressedPublicLocation() =>
+        EventLocationPublicDto.FromDisclosureResult(EventLocationDisclosureResult.Suppressed(
+            Guid.NewGuid(),
+            EventLocationDisclosurePurpose.Public,
+            EventLocationDisclosureState.Hidden));
 
     private static EventDto CreatePublishedEvent(Guid eventId) => new()
     {
