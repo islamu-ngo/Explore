@@ -451,7 +451,7 @@ public sealed class EmailDispatchDrainServiceTests
         await Assert.That(sentMessage).IsNotNull();
         await Assert.That(sentMessage!.CustomHeaders.ContainsKey("List-Unsubscribe")).IsFalse();
         await Assert.That(sentMessage.PlainTextBody).DoesNotContain("unsubscribe");
-        await Assert.That(sentMessage.HtmlBody).DoesNotContain("unsubscribe");
+        await Assert.That(sentMessage.HtmlBody ?? string.Empty).DoesNotContain("unsubscribe");
         fixture.UnsubscribeTokenService.DidNotReceiveWithAnyArgs()
             .GenerateToken(default!, default);
     }

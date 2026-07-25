@@ -418,7 +418,12 @@ public sealed class EmailDispatchHealthCheckTests
                 Arg.Any<DateTime>(),
                 Arg.Any<int>(),
                 Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(dueDispatchByTenant ?? (IReadOnlyDictionary<Guid, int>)new Dictionary<Guid, int>()));
+            .Returns(call => Task.FromResult<IReadOnlyDictionary<Guid, int>>(
+                (dueDispatchByTenant ?? new Dictionary<Guid, int>())
+                .OrderByDescending(entry => entry.Value)
+                .ThenBy(entry => entry.Key)
+                .Take(call.ArgAt<int>(1))
+                .ToDictionary()));
 
         var services = new ServiceCollection()
             .AddSingleton(repository)

@@ -12,6 +12,7 @@ namespace Explore.Blazor.Client.Tests.Components.EventReporting;
 public sealed class ReportEventDialogTests : IDisposable
 {
     private readonly BlazorTestContext _ctx = new();
+    private IRenderedComponent<MudDialogProvider>? _dialogProvider;
 
     [Test]
     public async Task Render_WhenDetailsEmpty_DisablesSubmitUntilDetailsAreProvided()
@@ -54,9 +55,9 @@ public sealed class ReportEventDialogTests : IDisposable
         var cut = RenderDialog(eventId);
         cut.WaitForState(() => !GetPrivateField<bool>(cut.Instance, "_isLoadingOptions"), TimeSpan.FromSeconds(3));
 
-        var choices = cut.FindComponents<MudCheckBox<bool>>();
+        var choices = _dialogProvider!.FindAll("input[type='checkbox']");
         await Assert.That(choices.Count).IsEqualTo(2);
-        await Assert.That(choices.All(choice => choice.Instance.Value is false)).IsTrue();
+        await Assert.That(choices.All(choice => !choice.HasAttribute("checked"))).IsTrue();
         await Assert.That(cut.Markup).Contains("Email preferences");
         await Assert.That(cut.Markup).Contains("Case updates");
         await Assert.That(cut.Markup).Contains("acknowledgement, status updates, and the final outcome");
@@ -111,17 +112,29 @@ public sealed class ReportEventDialogTests : IDisposable
 
         await InvokePrivateTaskAsync(cut.Instance, "SubmitAsync");
         await InvokePrivateTaskAsync(cut.Instance, "SubmitAsync");
+        cut.Render();
 
-        await Assert.That(cut.FindAll("[role='alert']").Count).IsEqualTo(1);
+        await Assert.That(_dialogProvider!.FindAll("[role='alert']").Count).IsEqualTo(1);
         await announcer.DidNotReceive().AnnounceAssertiveAsync(Arg.Any<string>());
     }
 
     public void Dispose() => _ctx.Dispose();
 
-    private IRenderedComponent<ReportEventDialog> RenderDialog(Guid eventId) =>
-        _ctx.RenderMudComponent<ReportEventDialog>(parameters => parameters
-            .Add(component => component.EventId, eventId)
-            .Add(component => component.EventTitle, "Community Program"));
+    private IRenderedComponent<ReportEventDialog> RenderDialog(Guid eventId)
+    {
+        _dialogProvider = _ctx.Render<MudDialogProvider>();
+        var parameters = new DialogParameters<ReportEventDialog>
+        {
+            { component => component.EventId, eventId },
+            { component => component.EventTitle, "Community Program" }
+        };
+        var dialogService = _ctx.Services.GetRequiredService<IDialogService>();
+        _ = dialogService.ShowAsync<ReportEventDialog>("Report event", parameters);
+        _dialogProvider.WaitForState(
+            () => _dialogProvider.FindComponents<ReportEventDialog>().Count == 1,
+            TimeSpan.FromSeconds(3));
+        return _dialogProvider.FindComponent<ReportEventDialog>();
+    }
 
     private IEventReportingService RegisterReportingService(Guid eventId)
     {

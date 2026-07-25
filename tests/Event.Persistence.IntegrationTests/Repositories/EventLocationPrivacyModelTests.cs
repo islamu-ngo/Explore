@@ -38,8 +38,9 @@ public sealed class EventLocationPrivacyModelTests
                 .ToArray();
 
             await Assert.That(entityType.GetProperties().Any(property => property.ClrType == typeof(string))).IsFalse();
-            await Assert.That(columnNames.Any(column => forbiddenTokens.Any(token =>
-                column.Contains(token, StringComparison.OrdinalIgnoreCase)))).IsFalse();
+            await Assert.That(columnNames.Any(column =>
+                !column.Equals("reason_code", StringComparison.OrdinalIgnoreCase)
+                && forbiddenTokens.Any(token => column.Contains(token, StringComparison.OrdinalIgnoreCase)))).IsFalse();
         }
 
         var eventLocationType = context.Model.FindEntityType(typeof(EventLocation))

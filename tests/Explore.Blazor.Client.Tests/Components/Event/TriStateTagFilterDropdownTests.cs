@@ -87,14 +87,14 @@ public class TriStateTagFilterDropdownTests : IDisposable
         var markupBefore = cut.Markup;
 
         // Click trigger to open — should change EndIcon and overlay visibility
-        var triggerButton = cut.Find(".tri-state-tag-filter__trigger");
+        var triggerButton = cut.Find("[role='button']");
         await cut.InvokeAsync(() => triggerButton.Click());
 
         var markupAfterOpen = cut.Markup;
         await Assert.That(markupAfterOpen).IsNotEqualTo(markupBefore);
 
         // Click trigger to close — markup should revert from the open state
-        triggerButton = cut.Find(".tri-state-tag-filter__trigger");
+        triggerButton = cut.Find("[role='button']");
         await cut.InvokeAsync(() => triggerButton.Click());
 
         var markupAfterClose = cut.Markup;

@@ -971,9 +971,19 @@ public sealed class AtprotoJetstreamSubscriberTests
                 {
                     using CancellationTokenRegistration registration = cancellationToken.Register(
                         () => source.CancellationObserved = true);
-                    await foreach (JetstreamEvent value in _pushedEvents.Reader.ReadAllAsync(cancellationToken))
+                    try
                     {
-                        yield return value;
+                        await foreach (JetstreamEvent value in _pushedEvents.Reader.ReadAllAsync(cancellationToken))
+                        {
+                            yield return value;
+                        }
+                    }
+                    finally
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            source.CancellationObserved = true;
+                        }
                     }
                 }
             }
