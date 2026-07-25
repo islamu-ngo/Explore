@@ -1,10 +1,10 @@
 // ABOUTME: bUnit tests for provider-neutral instance and tenant storage settings sections.
 // ABOUTME: Verifies HAL-gated actions and locked tenant storage states in admin UI components.
 
-using InstanceStorageRouteDto = Explore.Blazor.Client.Clients.Routes;
-using TenantStorageRouteDto = Explore.Blazor.Client.Clients.Routes2;
 using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
 using MudBlazor;
+using InstanceStorageRouteDto = Explore.Blazor.Client.Clients.Routes;
+using TenantStorageRouteDto = Explore.Blazor.Client.Clients.Routes2;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 

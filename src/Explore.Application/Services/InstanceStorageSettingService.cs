@@ -5,6 +5,7 @@ using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Storage;
 using Explore.Application.Models.Storage;
@@ -88,72 +89,78 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
         };
     }
 
-    public async Task ApplySettingsAsync(InstanceStorageSettingsDto settings)
+    public async Task ApplySettingsAsync(InstanceStorageSettingsDto settings, PatchInstanceStorageSettingsDto patch)
     {
-        var provider = NormalizeProvider(settings.Provider);
-
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.Provider,
-            JsonSerializer.Serialize(provider), SettingValueType.String, false,
-            "ObjectStorage", 1, "Selected storage provider. Local filesystem is default; S3-compatible storage is optional.");
-
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.DefaultMaxUploadBytes,
-            JsonSerializer.Serialize(settings.DefaultMaxUploadBytes), SettingValueType.Long, false,
-            "ObjectStorage", 2, "Default maximum upload size in bytes for tenant storage policy.");
-
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes,
-            JsonSerializer.Serialize(settings.DefaultTenantQuotaBytes), SettingValueType.Long, false,
-            "ObjectStorage", 3, "Default tenant storage quota in bytes.");
-
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.InstanceMaxUploadBytes,
-            JsonSerializer.Serialize(settings.InstanceMaxUploadBytes), SettingValueType.Long, false,
-            "ObjectStorage", 4, "Instance-wide upload ceiling in bytes; tenant overrides cannot exceed this value.");
-
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.TenantDelegation.LockStorage,
-            JsonSerializer.Serialize(settings.LockTenantStorage), SettingValueType.Boolean, false,
-            "Governance", 5, "Lock tenant-level storage overrides when running multi-tenant deployments.");
-
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.RouteMatrix,
-            JsonSerializer.Serialize(ToRouteMatrix(settings.Routes)), SettingValueType.Json, false,
-            "ObjectStorage", 6, "Server-side route matrix that maps image, document, and general uploads to providers and byte limits.");
-
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.Endpoint,
-            JsonSerializer.Serialize(settings.S3Endpoint.Trim()), SettingValueType.String, false,
-            "ObjectStorage", 7, "S3-compatible endpoint URL (e.g., https://fsn1.your-objectstorage.com)");
-
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.PublicEndpoint,
-            JsonSerializer.Serialize(settings.S3PublicEndpoint.Trim()), SettingValueType.String, false,
-            "ObjectStorage", 8, "Public endpoint for S3-compatible public object access when configured.");
-
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.BucketName,
-            JsonSerializer.Serialize(settings.S3BucketName.Trim()), SettingValueType.String, false,
-            "ObjectStorage", 9, "S3 bucket name for object storage");
-
-        if (!string.IsNullOrWhiteSpace(settings.S3AccessKeyId))
+        if (patch.Policy.HasValue)
         {
-            await UpsertSystemSettingAsync(InfrastructureSecretSettingKeys.Storage.AccessKeyId,
-                JsonSerializer.Serialize(settings.S3AccessKeyId.Trim()), SettingValueType.String, false,
-                "ObjectStorage", 10, "S3 access key ID for authentication");
+            var provider = NormalizeProvider(settings.Provider);
+
+            await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.Provider,
+                JsonSerializer.Serialize(provider), SettingValueType.String, false,
+                "ObjectStorage", 1, "Selected storage provider. Local filesystem is default; S3-compatible storage is optional.");
+
+            await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.DefaultMaxUploadBytes,
+                JsonSerializer.Serialize(settings.DefaultMaxUploadBytes), SettingValueType.Long, false,
+                "ObjectStorage", 2, "Default maximum upload size in bytes for tenant storage policy.");
+
+            await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes,
+                JsonSerializer.Serialize(settings.DefaultTenantQuotaBytes), SettingValueType.Long, false,
+                "ObjectStorage", 3, "Default tenant storage quota in bytes.");
+
+            await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.InstanceMaxUploadBytes,
+                JsonSerializer.Serialize(settings.InstanceMaxUploadBytes), SettingValueType.Long, false,
+                "ObjectStorage", 4, "Instance-wide upload ceiling in bytes; tenant overrides cannot exceed this value.");
+
+            await UpsertSystemSettingAsync(GovernanceSettingKeys.TenantDelegation.LockStorage,
+                JsonSerializer.Serialize(settings.LockTenantStorage), SettingValueType.Boolean, false,
+                "Governance", 5, "Lock tenant-level storage overrides when running multi-tenant deployments.");
+
+            await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.RouteMatrix,
+                JsonSerializer.Serialize(ToRouteMatrix(settings.Routes)), SettingValueType.Json, false,
+                "ObjectStorage", 6, "Server-side route matrix that maps image, document, and general uploads to providers and byte limits.");
         }
 
-        if (!string.IsNullOrWhiteSpace(settings.S3SecretAccessKey))
+        if (patch.S3Configuration.HasValue)
         {
-            await UpsertSystemSettingAsync(InfrastructureSecretSettingKeys.Storage.SecretAccessKey,
-                JsonSerializer.Serialize(settings.S3SecretAccessKey.Trim()), SettingValueType.String, false,
-                "ObjectStorage", 11, "S3 secret access key for authentication");
+            await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.Endpoint,
+                JsonSerializer.Serialize(settings.S3Endpoint.Trim()), SettingValueType.String, false,
+                "ObjectStorage", 7, "S3-compatible endpoint URL (e.g., https://fsn1.your-objectstorage.com)");
+
+            await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.PublicEndpoint,
+                JsonSerializer.Serialize(settings.S3PublicEndpoint.Trim()), SettingValueType.String, false,
+                "ObjectStorage", 8, "Public endpoint for S3-compatible public object access when configured.");
+
+            await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.BucketName,
+                JsonSerializer.Serialize(settings.S3BucketName.Trim()), SettingValueType.String, false,
+                "ObjectStorage", 9, "S3 bucket name for object storage");
+
+            if (!string.IsNullOrWhiteSpace(settings.S3AccessKeyId))
+            {
+                await UpsertSystemSettingAsync(InfrastructureSecretSettingKeys.Storage.AccessKeyId,
+                    JsonSerializer.Serialize(settings.S3AccessKeyId.Trim()), SettingValueType.String, false,
+                    "ObjectStorage", 10, "S3 access key ID for authentication");
+            }
+
+            if (!string.IsNullOrWhiteSpace(settings.S3SecretAccessKey))
+            {
+                await UpsertSystemSettingAsync(InfrastructureSecretSettingKeys.Storage.SecretAccessKey,
+                    JsonSerializer.Serialize(settings.S3SecretAccessKey.Trim()), SettingValueType.String, false,
+                    "ObjectStorage", 11, "S3 secret access key for authentication");
+            }
+
+            await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.Region,
+                JsonSerializer.Serialize(settings.S3Region.Trim()), SettingValueType.String, false,
+                "ObjectStorage", 12, "S3 region identifier (e.g., fsn1 for Hetzner, us-east-1 for AWS)");
+
+            await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.ForcePathStyle,
+                JsonSerializer.Serialize(settings.S3ForcePathStyle), SettingValueType.Boolean, false,
+                "ObjectStorage", 13, "Use path-style URLs (required by most non-AWS S3 providers)");
+
+            await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes,
+                JsonSerializer.Serialize(settings.S3UploadUrlExpirationMinutes > 0 ? settings.S3UploadUrlExpirationMinutes : 60),
+                SettingValueType.Integer, false,
+                "ObjectStorage", 14, "Legacy S3 presigned upload URL expiration time in minutes");
         }
-
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.Region,
-            JsonSerializer.Serialize(settings.S3Region.Trim()), SettingValueType.String, false,
-            "ObjectStorage", 12, "S3 region identifier (e.g., fsn1 for Hetzner, us-east-1 for AWS)");
-
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.ForcePathStyle,
-            JsonSerializer.Serialize(settings.S3ForcePathStyle), SettingValueType.Boolean, false,
-            "ObjectStorage", 13, "Use path-style URLs (required by most non-AWS S3 providers)");
-
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes,
-            JsonSerializer.Serialize(settings.S3UploadUrlExpirationMinutes > 0 ? settings.S3UploadUrlExpirationMinutes : 60),
-            SettingValueType.Integer, false,
-            "ObjectStorage", 14, "Legacy S3 presigned upload URL expiration time in minutes");
     }
 
     public async Task<InstanceStorageProviderStatusDto> TestProviderAsync(CancellationToken cancellationToken = default)

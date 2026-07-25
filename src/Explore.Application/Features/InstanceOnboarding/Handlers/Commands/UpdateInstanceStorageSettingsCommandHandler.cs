@@ -92,7 +92,7 @@ public class UpdateInstanceStorageSettingsCommandHandler : IRequestHandler<Updat
             return response;
         }
 
-        await _storageSettingService.ApplySettingsAsync(settings);
+        await _storageSettingService.ApplySettingsAsync(settings, request.Patch);
 
         // Invalidate S3 config cache so optional S3 provider changes take effect immediately.
         _s3ConfigResolver.InvalidateCache();

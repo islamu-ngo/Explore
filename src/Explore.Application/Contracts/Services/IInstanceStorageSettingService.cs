@@ -2,6 +2,7 @@
 // ABOUTME: Exposes redacted settings, provider health, and usage recalculation operations.
 
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.Instance;
 
 namespace Explore.Application.Contracts.Services;
 
@@ -20,7 +21,7 @@ public interface IInstanceStorageSettingService
     /// Applies storage settings to SystemSetting records.
     /// </summary>
     /// <param name="settings">The storage settings to apply.</param>
-    Task ApplySettingsAsync(InstanceStorageSettingsDto settings);
+    Task ApplySettingsAsync(InstanceStorageSettingsDto settings, PatchInstanceStorageSettingsDto patch);
 
     Task<InstanceStorageProviderStatusDto> TestProviderAsync(CancellationToken cancellationToken = default);
 
