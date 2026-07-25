@@ -68,6 +68,7 @@ public static class InfrastructureServicesRegistration
         services.AddSingleton<IValidateOptions<AtprotoJetstreamOptions>, AtprotoJetstreamOptionsValidator>();
         services.AddSingleton<IAtprotoJetstreamEventSource, CarpaNetJetstreamEventSource>();
         services.AddSingleton<IAtprotoJetstreamRuntimeStore, AtprotoJetstreamRuntimeStore>();
+        services.AddScoped<IAtprotoThumbnailBlobGateway, AtprotoThumbnailBlobGateway>();
         services.AddScoped<AtprotoOAuthClientFactory>();
         services.AddScoped<AtprotoCoreClientFactory>();
         services.AddScoped<AtprotoSessionEnvelopeProtector>();
