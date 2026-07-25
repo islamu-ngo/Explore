@@ -28,6 +28,7 @@ public sealed class ProcessAiRunCommandHandlerTests
     private readonly Guid _conversationId = Guid.CreateVersion7();
     private readonly Guid _runId = Guid.CreateVersion7();
     private readonly IAiConversationRepository _conversationRepository = Substitute.For<IAiConversationRepository>();
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
     private readonly IHierarchicalSettingsResolver _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
     private readonly IAiChatProvider _chatProvider = Substitute.For<IAiChatProvider>();
     private readonly IMediator _mediator = Substitute.For<IMediator>();
@@ -80,6 +81,63 @@ public sealed class ProcessAiRunCommandHandlerTests
             payload.Options.StreamingEnabled == false &&
             payload.Messages.Any(message => message.Role == AiMessageRole.User && message.Content.Contains("Plan the event"))),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenConversationUserIsFenced_DoesNotSendProviderPrompt()
+    {
+        var conversation = CreateQueuedConversation();
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+        _privacyErasureStateRepository.GetBySubjectAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(CreateFencedSaga(_userId));
+
+        await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
+
+        await Assert.That(conversation.Status).IsEqualTo(AiConversationStatus.Active);
+        await Assert.That(conversation.Messages.Count).IsEqualTo(1);
+        await Assert.That(conversation.ProposedActions.Count).IsEqualTo(0);
+        await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Failed);
+        await Assert.That(conversation.Runs.Single().FailureCode).IsEqualTo("privacy_erasure_fenced");
+        await Assert.That(conversation.Runs.Single().FailureMessage).IsEqualTo("AI assistant processing is unavailable.");
+        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
+        await _conversationRepository.Received(1).Update(conversation);
+    }
+
+    [Test]
+    public async Task Handle_WhenConversationUserIsFencedAfterProviderResponse_DoesNotPersistProviderOutput()
+    {
+        var reloadedUserId = Guid.CreateVersion7();
+        var startingConversation = CreateQueuedConversation();
+        var fencedConversation = CreateQueuedConversation();
+        fencedConversation.UserId = reloadedUserId;
+        fencedConversation.Runs.Single().Start(DateTime.UtcNow.AddSeconds(-1));
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(startingConversation, fencedConversation);
+        _privacyErasureStateRepository.GetBySubjectAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null);
+        _privacyErasureStateRepository.GetBySubjectAsync(reloadedUserId, Arg.Any<CancellationToken>())
+            .Returns(CreateFencedSaga(reloadedUserId));
+        _chatProvider.SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>())
+            .Returns(AiChatProviderResult.Success(new AiChatResponse(
+                "Provider text that must not persist",
+                [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Provider draft\"}")],
+                new AiTokenUsage(1, 2, 3))));
+
+        await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
+
+        await _chatProvider.Received(1).SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
+        await Assert.That(fencedConversation.Status).IsEqualTo(AiConversationStatus.Active);
+        await Assert.That(fencedConversation.Messages.Count).IsEqualTo(1);
+        await Assert.That(fencedConversation.Messages.Single().Content).IsEqualTo("Plan the event");
+        await Assert.That(fencedConversation.ProposedActions.Count).IsEqualTo(0);
+        await Assert.That(fencedConversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Failed);
+        await Assert.That(fencedConversation.Runs.Single().FailureCode).IsEqualTo("privacy_erasure_fenced");
+        await Assert.That(fencedConversation.Runs.Single().FailureMessage).IsEqualTo("AI assistant processing is unavailable.");
+        await _conversationRepository.Received(1).Update(startingConversation);
+        await _conversationRepository.Received(1).Update(fencedConversation);
+        await _privacyErasureStateRepository.Received(1).GetBySubjectAsync(_userId, Arg.Any<CancellationToken>());
+        await _privacyErasureStateRepository.Received(1).GetBySubjectAsync(reloadedUserId, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -339,7 +397,7 @@ public sealed class ProcessAiRunCommandHandlerTests
     }
 
     private ProcessAiRunCommandHandler CreateHandler()
-        => new(_conversationRepository, _settingsResolver, _chatProvider, _mediator, _contextGateway, _providerTrustResolver);
+        => new(_conversationRepository, _privacyErasureStateRepository, _settingsResolver, _chatProvider, _mediator, _contextGateway, _providerTrustResolver);
 
     private ProcessAiRunCommand CreateCommand(string mode = AiAssistantInteractionModes.Build)
         => new()
@@ -389,6 +447,21 @@ public sealed class ProcessAiRunCommandHandlerTests
         });
 
         return conversation;
+    }
+
+    private static PrivacyErasureSaga CreateFencedSaga(Guid userId)
+    {
+        var nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        return PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc);
     }
 
     private static AiAssistantSettingGroup CreateSettings(

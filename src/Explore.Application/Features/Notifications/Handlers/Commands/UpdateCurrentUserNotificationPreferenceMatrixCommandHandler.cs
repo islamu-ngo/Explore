@@ -1,5 +1,5 @@
-// ABOUTME: Handles authenticated-user notification preference cell saves.
-// ABOUTME: Validates required and locked cells before writing user-scoped overrides transactionally.
+// ABOUTME: Updates privacy-unfenced user category-by-channel notification preferences.
+// ABOUTME: Enforces required categories, broader locks, and an atomic persisted fence before writes.
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -14,6 +14,7 @@ public sealed class UpdateCurrentUserNotificationPreferenceMatrixCommandHandler(
     INotificationChannelPreferenceRepository preferenceRepository,
     INotificationPreferenceResolver resolver,
     IUnitOfWork unitOfWork,
+    IPrivacyErasureStateRepository privacyErasureStateRepository,
     ITenantContext tenantContext,
     ICurrentUserService currentUserService)
     : IRequestHandler<UpdateCurrentUserNotificationPreferenceMatrixCommand, BaseCommandResponse<Guid>>
@@ -28,9 +29,18 @@ public sealed class UpdateCurrentUserNotificationPreferenceMatrixCommandHandler(
             return Failure("User not authenticated.");
         }
 
+        if (await IsFencedAsync(userId.Value, cancellationToken))
+        {
+            return FencedFailure();
+        }
+
         if (request.Cells.Count == 0)
         {
-            return Failure("At least one preference cell is required.");
+            return await unitOfWork.ExecuteSerializableAsync(async token =>
+                await IsFencedAsync(userId.Value, token)
+                    ? FencedFailure()
+                    : Failure("At least one preference cell is required."),
+                cancellationToken);
         }
 
         var categories = (await preferenceRepository.ListCategoriesAsync(cancellationToken))
@@ -82,12 +92,21 @@ public sealed class UpdateCurrentUserNotificationPreferenceMatrixCommandHandler(
 
         if (errors.Count > 0)
         {
-            return Failure("Notification preference update failed.", errors);
+            return await unitOfWork.ExecuteSerializableAsync(async token =>
+                await IsFencedAsync(userId.Value, token)
+                    ? FencedFailure()
+                    : Failure("Notification preference update failed.", errors),
+                cancellationToken);
         }
 
-        Guid lastId = Guid.Empty;
-        await unitOfWork.ExecuteInTransactionAsync(async token =>
+        return await unitOfWork.ExecuteSerializableAsync(async token =>
         {
+            if (await IsFencedAsync(userId.Value, token))
+            {
+                return FencedFailure();
+            }
+
+            Guid lastId = Guid.Empty;
             foreach (var cell in validated)
             {
                 var preference = await preferenceRepository.UpsertUserPreferenceAsync(
@@ -99,15 +118,24 @@ public sealed class UpdateCurrentUserNotificationPreferenceMatrixCommandHandler(
                     token);
                 lastId = preference.Id;
             }
-        }, cancellationToken);
 
-        return new BaseCommandResponse<Guid>
-        {
-            Id = lastId,
-            Success = true,
-            Message = "Notification preferences updated."
-        };
+            return new BaseCommandResponse<Guid>
+            {
+                Id = lastId,
+                Success = true,
+                Message = "Notification preferences updated."
+            };
+        }, cancellationToken);
     }
+
+    private async Task<bool> IsFencedAsync(Guid userId, CancellationToken cancellationToken) =>
+        await privacyErasureStateRepository.GetBySubjectAsync(userId, cancellationToken) is not null;
+
+    private static BaseCommandResponse<Guid> FencedFailure() => new()
+    {
+        Success = false,
+        Message = "Notification preference update failed."
+    };
 
     private static BaseCommandResponse<Guid> Failure(string message, List<string>? errors = null)
     {

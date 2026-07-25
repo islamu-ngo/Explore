@@ -23,7 +23,11 @@ namespace Explore.Application.Features.AiAssistant.Handlers.Commands;
 
 public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCommand>
 {
+    private const string PrivacyErasureFencedFailureCode = "privacy_erasure_fenced";
+    private const string PrivacyErasureFencedFailureMessage = "AI assistant processing is unavailable.";
+
     private readonly IAiConversationRepository _conversationRepository;
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository;
     private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly IMediator _mediator;
     private readonly AiPromptContextBuilder _promptContextBuilder;
@@ -33,6 +37,7 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
 
     public ProcessAiRunCommandHandler(
         IAiConversationRepository conversationRepository,
+        IPrivacyErasureStateRepository privacyErasureStateRepository,
         IHierarchicalSettingsResolver settingsResolver,
         IAiChatProvider chatProvider,
         IMediator mediator,
@@ -40,6 +45,7 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
         IAiProviderTrustResolver providerTrustResolver)
     {
         _conversationRepository = conversationRepository;
+        _privacyErasureStateRepository = privacyErasureStateRepository;
         _settingsResolver = settingsResolver;
         _mediator = mediator;
         _contextGateway = contextGateway;
@@ -69,6 +75,17 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
 
         if (!TryGetQueuedRun(conversation, request.TenantId, request.RunId, out var run))
         {
+            return;
+        }
+
+        if (await IsFencedAsync(conversation!.UserId, cancellationToken))
+        {
+            await FailAndActivateAsync(
+                conversation,
+                run!,
+                PrivacyErasureFencedFailureCode,
+                PrivacyErasureFencedFailureMessage,
+                cancellationToken);
             return;
         }
 
@@ -136,6 +153,17 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
             return;
         }
 
+        if (await IsFencedAsync(latestConversation!.UserId, CancellationToken.None))
+        {
+            await FailAndActivateAsync(
+                latestConversation,
+                latestRun!,
+                PrivacyErasureFencedFailureCode,
+                PrivacyErasureFencedFailureMessage,
+                CancellationToken.None);
+            return;
+        }
+
         if (!providerResolution.Succeeded || providerResolution.Response is null || providerResolution.ParseResult is null)
         {
             var errorCode = providerResolution.FailureCode ?? "provider_failure";
@@ -200,6 +228,9 @@ public sealed class ProcessAiRunCommandHandler : IRequestHandler<ProcessAiRunCom
         conversation.Activate(failedAt);
         await _conversationRepository.Update(conversation);
     }
+
+    private async Task<bool> IsFencedAsync(Guid userId, CancellationToken cancellationToken) =>
+        await _privacyErasureStateRepository.GetBySubjectAsync(userId, cancellationToken) is not null;
 
     private static bool TryGetQueuedRun(
         AiConversation? conversation,

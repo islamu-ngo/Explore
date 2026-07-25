@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for notification preference matrix query and command handlers.
-// ABOUTME: Covers current-user projection, required cell protection, and mute lock behavior.
+// ABOUTME: Unit tests for privacy-fenced notification preference matrix handlers.
+// ABOUTME: Covers atomic user writes, projections, required cells, and mute lock behavior.
 
 namespace Event.Application.UnitTests.Notifications;
 
@@ -27,6 +27,7 @@ public sealed class NotificationPreferenceMatrixHandlerTests
     private readonly INotificationPreferenceProfileRepository _profileRepository = Substitute.For<INotificationPreferenceProfileRepository>();
     private readonly INotificationPreferenceResolver _resolver = Substitute.For<INotificationPreferenceResolver>();
     private readonly IGroupRepository _groupRepository = Substitute.For<IGroupRepository>();
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly RecordingUnitOfWork _unitOfWork = new();
@@ -83,6 +84,7 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             _preferenceRepository,
             _resolver,
             _unitOfWork,
+            _privacyErasureStateRepository,
             _tenantContext,
             _currentUserService);
 
@@ -99,7 +101,7 @@ public sealed class NotificationPreferenceMatrixHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
         await Assert.That(result.Errors!).Contains("Category 'account-security' is required and cannot be disabled.");
-        await Assert.That(_unitOfWork.ExecuteCount).IsEqualTo(0);
+        await Assert.That(_unitOfWork.ExecuteCount).IsEqualTo(1);
         await _preferenceRepository.DidNotReceive().UpsertUserPreferenceAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
@@ -143,6 +145,7 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             _preferenceRepository,
             _resolver,
             _unitOfWork,
+            _privacyErasureStateRepository,
             _tenantContext,
             _currentUserService);
 
@@ -163,6 +166,169 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             UserId,
             (int)NotificationPreferenceCategoryEnum.Marketing,
             (int)NotificationPreferenceChannelEnum.Email,
+            true,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Save_WhenFenceAppearsBeforeTransactionDoesNotWritePreferences()
+    {
+        SetupMetadata();
+        _resolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new NotificationPreferenceDecision(
+                NotificationPreferenceCategoryCodes.Marketing,
+                NotificationPreferenceChannelCodes.Email,
+                IsEnabled: false,
+                IsRequired: false,
+                IsLocked: false,
+                IsMuted: false,
+                EffectiveSourceScope: "Default",
+                LockReason: null));
+        _privacyErasureStateRepository
+            .GetBySubjectAsync(UserId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null, CreatePrivacyErasureSaga());
+        var handler = new UpdateCurrentUserNotificationPreferenceMatrixCommandHandler(
+            _preferenceRepository,
+            _resolver,
+            _unitOfWork,
+            _privacyErasureStateRepository,
+            _tenantContext,
+            _currentUserService);
+
+        var result = await handler.Handle(new UpdateCurrentUserNotificationPreferenceMatrixCommand
+        {
+            Cells = [new UpdateNotificationPreferenceCellDto
+            {
+                CategoryCode = NotificationPreferenceCategoryCodes.Marketing,
+                ChannelCode = NotificationPreferenceChannelCodes.Email,
+                IsEnabled = true
+            }]
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Notification preference update failed.");
+        await Assert.That(result.Errors).IsNull();
+        await Assert.That(_unitOfWork.ExecuteCount).IsEqualTo(1);
+        await _privacyErasureStateRepository.Received(2)
+            .GetBySubjectAsync(UserId, Arg.Any<CancellationToken>());
+        await _preferenceRepository.DidNotReceive().UpsertUserPreferenceAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Save_WhenFenceAppearsDuringValidationMasksDetailedErrors()
+    {
+        SetupMetadata();
+        _privacyErasureStateRepository
+            .GetBySubjectAsync(UserId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null, CreatePrivacyErasureSaga());
+        var handler = new UpdateCurrentUserNotificationPreferenceMatrixCommandHandler(
+            _preferenceRepository,
+            _resolver,
+            _unitOfWork,
+            _privacyErasureStateRepository,
+            _tenantContext,
+            _currentUserService);
+
+        var result = await handler.Handle(new UpdateCurrentUserNotificationPreferenceMatrixCommand
+        {
+            Cells = [new UpdateNotificationPreferenceCellDto
+            {
+                CategoryCode = NotificationPreferenceCategoryCodes.AccountSecurity,
+                ChannelCode = NotificationPreferenceChannelCodes.Email,
+                IsEnabled = false
+            }]
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Notification preference update failed.");
+        await Assert.That(result.Errors).IsNull();
+        await Assert.That(_unitOfWork.ExecuteCount).IsEqualTo(1);
+        await _preferenceRepository.DidNotReceive().UpsertUserPreferenceAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Save_WhenSerializableDelegateRetriesReplaysEveryCellAndReturnsFinalResult()
+    {
+        SetupMetadata();
+        _unitOfWork.RetryNextSerializableExecution = true;
+        _resolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => new NotificationPreferenceDecision(
+                call.ArgAt<NotificationPreferenceResolveRequest>(0).CategoryCode,
+                call.ArgAt<NotificationPreferenceResolveRequest>(0).ChannelCode,
+                IsEnabled: false,
+                IsRequired: false,
+                IsLocked: false,
+                IsMuted: false,
+                EffectiveSourceScope: "Default",
+                LockReason: null));
+        var emailId = Guid.Parse("018f0000-0000-7000-8000-000000000020");
+        var inAppId = Guid.Parse("018f0000-0000-7000-8000-000000000021");
+        _preferenceRepository.UpsertUserPreferenceAsync(
+                TenantId,
+                UserId,
+                (int)NotificationPreferenceCategoryEnum.Marketing,
+                Arg.Any<int>(),
+                true,
+                Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new NotificationChannelPreference
+            {
+                Id = call.ArgAt<int>(3) == (int)NotificationPreferenceChannelEnum.Email ? emailId : inAppId,
+                TenantId = TenantId,
+                Tenant = null!,
+                ScopeId = (int)ConfigurationScopeEnum.User,
+                Scope = null!,
+                UserId = UserId,
+                CategoryId = (int)NotificationPreferenceCategoryEnum.Marketing,
+                Category = null!,
+                ChannelId = call.ArgAt<int>(3),
+                Channel = null!,
+                IsEnabled = true
+            }));
+        var handler = new UpdateCurrentUserNotificationPreferenceMatrixCommandHandler(
+            _preferenceRepository,
+            _resolver,
+            _unitOfWork,
+            _privacyErasureStateRepository,
+            _tenantContext,
+            _currentUserService);
+
+        var result = await handler.Handle(new UpdateCurrentUserNotificationPreferenceMatrixCommand
+        {
+            Cells =
+            [
+                new UpdateNotificationPreferenceCellDto
+                {
+                    CategoryCode = NotificationPreferenceCategoryCodes.Marketing,
+                    ChannelCode = NotificationPreferenceChannelCodes.Email,
+                    IsEnabled = true
+                },
+                new UpdateNotificationPreferenceCellDto
+                {
+                    CategoryCode = NotificationPreferenceCategoryCodes.Marketing,
+                    ChannelCode = NotificationPreferenceChannelCodes.InApp,
+                    IsEnabled = true
+                }
+            ]
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id).IsEqualTo(inAppId);
+        await Assert.That(_unitOfWork.ExecuteCount).IsEqualTo(1);
+        await Assert.That(_unitOfWork.SerializableAttemptCount).IsEqualTo(2);
+        await _preferenceRepository.Received(2).UpsertUserPreferenceAsync(
+            TenantId,
+            UserId,
+            (int)NotificationPreferenceCategoryEnum.Marketing,
+            (int)NotificationPreferenceChannelEnum.Email,
+            true,
+            Arg.Any<CancellationToken>());
+        await _preferenceRepository.Received(2).UpsertUserPreferenceAsync(
+            TenantId,
+            UserId,
+            (int)NotificationPreferenceCategoryEnum.Marketing,
+            (int)NotificationPreferenceChannelEnum.InApp,
             true,
             Arg.Any<CancellationToken>());
     }
@@ -351,9 +517,26 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             ]));
     }
 
+    private static PrivacyErasureSaga CreatePrivacyErasureSaga()
+    {
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            UserId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        return PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc);
+    }
+
     private sealed class RecordingUnitOfWork : IUnitOfWork
     {
         public int ExecuteCount { get; private set; }
+        public int SerializableAttemptCount { get; private set; }
+        public bool RetryNextSerializableExecution { get; set; }
 
         public async Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken = default)
         {
@@ -367,9 +550,20 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             return await operation(cancellationToken);
         }
 
-        public Task<T> ExecuteSerializableAsync<T>(
+        public async Task<T> ExecuteSerializableAsync<T>(
             Func<CancellationToken, Task<T>> operation,
-            CancellationToken cancellationToken = default) =>
-            ExecuteInTransactionAsync(operation, cancellationToken);
+            CancellationToken cancellationToken = default)
+        {
+            ExecuteCount++;
+            SerializableAttemptCount++;
+            if (RetryNextSerializableExecution)
+            {
+                RetryNextSerializableExecution = false;
+                await operation(cancellationToken);
+                SerializableAttemptCount++;
+            }
+
+            return await operation(cancellationToken);
+        }
     }
 }
