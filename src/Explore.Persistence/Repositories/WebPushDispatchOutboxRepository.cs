@@ -126,6 +126,27 @@ public sealed class WebPushDispatchOutboxRepository : IWebPushDispatchOutboxRepo
         return updated > 0;
     }
 
+    public Task<WebPushDispatchOutbox?> GetActiveClaimAsync(
+        Guid tenantId,
+        Guid dispatchId,
+        Guid leaseToken,
+        CancellationToken cancellationToken = default)
+    {
+        return _dbContext.WebPushDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebPushWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Include(row => row.Category)
+            .Include(row => row.User)
+            .FirstOrDefaultAsync(row =>
+                row.TenantId == tenantId &&
+                row.Id == dispatchId &&
+                row.Status == WebPushDispatchStatus.Processing &&
+                row.ProcessingLeaseToken == leaseToken &&
+                row.User != null &&
+                !row.User.IsDeleted,
+                cancellationToken);
+    }
+
     public async Task<bool> MarkAsDelivered(Guid id, Guid leaseToken, DateTime deliveredAt, CancellationToken cancellationToken = default)
     {
         var updated = await _dbContext.WebPushDispatchOutbox

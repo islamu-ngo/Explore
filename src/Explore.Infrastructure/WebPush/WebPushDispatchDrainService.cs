@@ -23,6 +23,8 @@ public sealed class WebPushDispatchDrainService(
     private const string ProcessingLeaseExpiredMessage = "Web Push dispatch processing lease expired before a durable outcome was recorded.";
     private const string PreferenceDisabledFailureCategory = "recipient_notification_preference_disabled";
     private const string PreferenceDisabledMessage = "Recipient disabled this notification category and push channel; Web Push send was skipped before provider handoff.";
+    private const string PrivacyErasureFencedFailureCategory = "privacy_erasure_fenced";
+    private const string PrivacyErasureFencedMessage = "Web Push dispatch was skipped because the recipient is subject to privacy erasure.";
     private const string MissingSubscriptionFailureCategory = "web_push_subscription_missing";
     private const string MissingSubscriptionMessage = "Active Web Push subscription was missing before provider handoff.";
     private const string TimeToLiveExpiredFailureCategory = "web_push_ttl_expired";
@@ -80,24 +82,47 @@ public sealed class WebPushDispatchDrainService(
 
     private async Task<WebPushDispatchDrainOutcome> ProcessDispatchAsync(WebPushDispatchOutbox dispatch, CancellationToken cancellationToken)
     {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var dispatchRepository = scope.ServiceProvider.GetRequiredService<IWebPushDispatchOutboxRepository>();
-        var subscriptionRepository = scope.ServiceProvider.GetRequiredService<IWebPushSubscriptionRepository>();
-        var preferenceResolver = scope.ServiceProvider.GetRequiredService<INotificationPreferenceResolver>();
-        var sender = scope.ServiceProvider.GetRequiredService<IWebPushNotificationSender>();
-
         var now = DateTime.UtcNow;
         var leaseToken = Guid.CreateVersion7();
-        if (!await dispatchRepository.TryMarkAsProcessing(dispatch.Id, leaseToken, now, cancellationToken))
         {
-            return WebPushDispatchDrainOutcome.AlreadyClaimed;
+            await using var claimScope = scopeFactory.CreateAsyncScope();
+            var claimRepository = claimScope.ServiceProvider.GetRequiredService<IWebPushDispatchOutboxRepository>();
+            if (!await claimRepository.TryMarkAsProcessing(dispatch.Id, leaseToken, now, cancellationToken))
+            {
+                return WebPushDispatchDrainOutcome.AlreadyClaimed;
+            }
         }
 
-        var categoryCode = dispatch.Category?.MasterCode;
+        await using var executionScope = scopeFactory.CreateAsyncScope();
+        var dispatchRepository = executionScope.ServiceProvider.GetRequiredService<IWebPushDispatchOutboxRepository>();
+        var activeDispatch = await dispatchRepository.GetActiveClaimAsync(
+            dispatch.TenantId,
+            dispatch.Id,
+            leaseToken,
+            cancellationToken);
+        if (activeDispatch is null)
+        {
+            return WebPushDispatchDrainOutcome.StaleLease;
+        }
+
+        var privacyErasureStateRepository = executionScope.ServiceProvider.GetRequiredService<IPrivacyErasureStateRepository>();
+        if (await privacyErasureStateRepository.GetBySubjectAsync(activeDispatch.UserId, cancellationToken) is not null)
+        {
+            var skipped = await dispatchRepository.MarkAsSkipped(
+                activeDispatch.Id,
+                leaseToken,
+                PrivacyErasureFencedFailureCategory,
+                PrivacyErasureFencedMessage,
+                DateTime.UtcNow,
+                cancellationToken);
+            return skipped ? WebPushDispatchDrainOutcome.Skipped : WebPushDispatchDrainOutcome.StaleLease;
+        }
+
+        var categoryCode = activeDispatch.Category?.MasterCode;
         if (string.IsNullOrWhiteSpace(categoryCode))
         {
             await dispatchRepository.MarkAsFailed(
-                dispatch.Id,
+                activeDispatch.Id,
                 leaseToken,
                 "web_push_category_missing",
                 "Web Push dispatch category metadata was unavailable.",
@@ -110,11 +135,11 @@ public sealed class WebPushDispatchDrainService(
         }
 
         var deliveryPolicy = WebPushDeliveryPolicy.For(categoryCode);
-        var expiresAt = dispatch.CreatedAt.AddSeconds(deliveryPolicy.TimeToLiveSeconds);
+        var expiresAt = activeDispatch.CreatedAt.AddSeconds(deliveryPolicy.TimeToLiveSeconds);
         if (expiresAt <= now)
         {
             await dispatchRepository.MarkAsSkipped(
-                dispatch.Id,
+                activeDispatch.Id,
                 leaseToken,
                 TimeToLiveExpiredFailureCategory,
                 TimeToLiveExpiredMessage,
@@ -123,10 +148,11 @@ public sealed class WebPushDispatchDrainService(
             return WebPushDispatchDrainOutcome.Skipped;
         }
 
+        var preferenceResolver = executionScope.ServiceProvider.GetRequiredService<INotificationPreferenceResolver>();
         var decision = await preferenceResolver.ResolveAsync(
             new NotificationPreferenceResolveRequest(
-                dispatch.TenantId,
-                dispatch.UserId,
+                activeDispatch.TenantId,
+                activeDispatch.UserId,
                 null,
                 null,
                 categoryCode,
@@ -136,7 +162,7 @@ public sealed class WebPushDispatchDrainService(
         if (!decision.IsEnabled)
         {
             await dispatchRepository.MarkAsSkipped(
-                dispatch.Id,
+                activeDispatch.Id,
                 leaseToken,
                 PreferenceDisabledFailureCategory,
                 PreferenceDisabledMessage,
@@ -145,11 +171,15 @@ public sealed class WebPushDispatchDrainService(
             return WebPushDispatchDrainOutcome.Skipped;
         }
 
-        var subscription = await subscriptionRepository.GetActiveByIdAsync(dispatch.TenantId, dispatch.SubscriptionId, cancellationToken);
+        var subscriptionRepository = executionScope.ServiceProvider.GetRequiredService<IWebPushSubscriptionRepository>();
+        var subscription = await subscriptionRepository.GetActiveByIdAsync(
+            activeDispatch.TenantId,
+            activeDispatch.SubscriptionId,
+            cancellationToken);
         if (subscription is null)
         {
             await dispatchRepository.MarkAsFailed(
-                dispatch.Id,
+                activeDispatch.Id,
                 leaseToken,
                 MissingSubscriptionFailureCategory,
                 MissingSubscriptionMessage,
@@ -161,17 +191,18 @@ public sealed class WebPushDispatchDrainService(
             return WebPushDispatchDrainOutcome.DeadLettered;
         }
 
+        var sender = executionScope.ServiceProvider.GetRequiredService<IWebPushNotificationSender>();
         var sendResult = await sender.SendAsync(new WebPushSendEnvelope(
             subscription.Endpoint,
             subscription.P256Dh,
             subscription.AuthSecret,
             BuildPayloadJson(deliveryPolicy.Topic),
-            dispatch.Id.ToString(),
+            activeDispatch.Id.ToString(),
             Math.Max(1, (int)Math.Floor((expiresAt - DateTime.UtcNow).TotalSeconds)),
             deliveryPolicy.Topic,
             deliveryPolicy.Urgency), cancellationToken);
 
-        return await PersistSendResultAsync(dispatch, leaseToken, sendResult, expiresAt, cancellationToken);
+        return await PersistSendResultAsync(activeDispatch, leaseToken, sendResult, expiresAt, cancellationToken);
     }
 
     private async Task<WebPushDispatchDrainOutcome> PersistSendResultAsync(
