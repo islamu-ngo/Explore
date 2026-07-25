@@ -205,6 +205,9 @@ It must not expose hosts, database names, users, connection strings, identifiers
 | D14 | Return asynchronous `202` with a short-lived once-revealed receipt | Login may be removed before external settlement; storing only a hash limits credential exposure |
 | D15 | Delete only platform-managed upstream identities; revoke or unlink externally managed identities | Avoids destructive authority beyond platform ownership |
 | D16 | Retain linkable authority identifiers only for the resurrection-capable backup horizon plus the approved margin | Restore protection has a finite operational boundary and must not become indefinite tracking |
+| D17 | Compact only an expired contiguous authority prefix behind a metadata-only floor; reject application checkpoints below that floor before traffic | Preserves sequence monotonicity and bounded in-horizon restore protection without retaining a subject-bearing replay snapshot |
+| D18 | Legal holds retain non-relinkable pseudonymized evidence with bounded reason codes, mandatory review/expiry, and no extension of the replay horizon | Preserves approved evidence without turning legal hold into indefinite subject tracking |
+| D19 | Keep `ExternalDatabase` to `CoLocated` downgrade unsupported | Downgrade removes independent restore protection and has no approved safe automation contract |
 
 Rejected alternatives:
 
@@ -216,6 +219,8 @@ Rejected alternatives:
 - Add a generic provider plugin or arbitrary erasure instruction interpreter: rejected because compiled specialized handlers are safer and already match repository patterns.
 - Perform provider cleanup inline with the request transaction: rejected because remote uncertainty must not roll back completed local erasure.
 - Return synchronous deletion success before provider status is knowable: rejected because it would misrepresent completion.
+- Retain a subject-bearing compaction snapshot: rejected because it would preserve the identifiers that bounded retention is intended to destroy.
+- Recover an application backup whose checkpoint is below the compaction floor: rejected because the erased-subject identifiers required for safe replay have intentionally expired; readiness must fail closed instead.
 
 ## 4. Implementation Phases and Tasks
 
@@ -312,6 +317,18 @@ Goal: make one- and two-database deployments operable with explicit guarantees a
 - **OREA-610:** Implement bounded authority/receipt/provider credential retention, dry-run cleanup, legal-hold pseudonymization, backup-horizon configuration, and secret rotation without identifier leakage.
 - **OREA-620:** Document and test backup ordering, RPO/RTO, authority loss/corruption recovery, credential rotation, `CoLocated` to `ExternalDatabase` cutover, unsafe downgrade acknowledgement, forward repair, and old-backup restore. Do not claim `ExternalDatabase` restore safety unless its restore domain is independent.
 
+Approved compaction execution order (2026-07-25):
+
+1. Accept finite-expiry and receipt/locator-cleanup prerequisites through independent real-runtime gates.
+2. PIN current replay/ACL/restore behavior and add failing floor, hold-evidence, and stale-checkpoint tests without committing a red tree.
+3. Add one metadata-only monotonic floor record and one bounded, non-relinkable legal-hold evidence record with no subject-bearing fields.
+4. Add separate additive application/external migrations and one constrained compaction function that advances the floor and removes only its expired contiguous prefix in one transaction. Reuse the existing function-only runtime and owner/migrator privilege model; add no digest chain, compactor role, topology latch, or hold-management API.
+5. Keep compaction independent from receipt/locator cleanup and normal replay/apply. Add dry-run-first scheduling plus floor-aware startup/readiness validation; checkpoints below the floor fail before traffic.
+6. Prove contiguous-prefix compaction, cancellation rollback, below-floor old-backup rejection, restart-based credential rotation, and `CoLocated` to `ExternalDatabase` forward copy against real PostgreSQL. `ExternalDatabase` to `CoLocated` remains unsupported by contract; add no downgrade workflow or override.
+7. Manually converge DBML and operator contracts with their authoritative EF migrations/model snapshot, then run independent plan, security/database, real-runtime, and scope/migration-history closure reviews against one final snapshot.
+
+The first successful floor advancement is a forward-only rollback barrier: old binaries, migration downgrade, and application checkpoints below the floor must fail closed. The authority counter never decreases, retained facts remain contiguous above the floor, and no subject-bearing replay snapshot, denylist, digest chain, or partial schema generator is permitted.
+
 ```bash
 dotnet build --configuration Release --verbosity quiet
 dotnet test --project tests/Explore.Secrets.Tests/Explore.Secrets.Tests.csproj --configuration Release --verbosity quiet
@@ -322,6 +339,7 @@ dotnet test --project tests/Explore.Secrets.Tests/Explore.Secrets.Tests.csproj -
 Goal: leave one authoritative, testable enterprise contract with no obsolete ownership or terminology.
 
 - **OREA-700:** Converge the PII inventory, schemas, OpenAPI/generated contracts, API changelog, configuration, privacy, security, self-hosting, deployment, backup/restore, secrets, outbox, operations, troubleshooting, and testing documentation. UUIDs remain linkable personal data; minimized does not mean anonymous.
+  The DBML schema remains a maintained documentation artifact: update lifecycle tables and relationships with their EF Core model or migration, and retain the focused architecture contract rather than adding a partial generator.
 - **OREA-710:** Remove obsolete location-specific authority names, legacy behavior-mode configuration, duplicate workstream ownership, and unclassified User-PII copies. Prove every current local/external copy maps to one implemented disposition and every producer maps to the shared fence.
 - **OREA-720:** Record final evidence for normal deletion, concurrency, rollback, duplicate/ambiguous append, provider unknown/reconciliation, tenant substitution, receipt expiry, policy upgrade, both topologies, old-backup replay, unrelated-user preservation, and zero PII resurrection.
 

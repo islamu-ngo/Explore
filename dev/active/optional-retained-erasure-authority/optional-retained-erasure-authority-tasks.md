@@ -3,14 +3,14 @@
 
 # Platform Privacy Erasure Authority — Tasks
 
-Last Updated: 2026-07-23 Europe/Brussels
+Last Updated: 2026-07-24 Europe/Brussels
 
 ## Status
 
 - Overall: implementation in progress; Phase 1 governance, inventory, and topology contract accepted with attributed baseline failures.
 - Completed: 10 of 21 consolidated tasks (`OREA-100`, `OREA-110`, `OREA-120`, `OREA-200`, `OREA-210`, `OREA-220`, `OREA-300`, `OREA-500`, `OREA-510`, `OREA-600`).
 - Current phase: Phase 3 PostgreSQL acceptance and Phase 4 specialized provider settlement remain the critical path; provider-backed local clearing is implemented.
-- Current blocker: Docker is unavailable at `/var/run/docker.sock`, so Phase 3 PostgreSQL rollback, replay, tenant-isolation, unrelated-user, retained-audit, and provider-metadata canaries cannot start.
+- Current blocker: no Docker daemon is reachable and neither the active Docker Desktop socket nor `/var/run/docker.sock` exists, so the remaining PostgreSQL acceptance canaries cannot start. A bounded three-hypothesis runtime investigation confirmed this is a deterministic host-runtime blocker, not Testcontainers bootstrap timing or load flakiness.
 - Ownership blocker: resolved by `OREA-120`; the historical `.omo` plan is no longer active.
 - Runtime verification: the current root Release build passes with 0 errors; protected provider-work materialization, capture-before-clear ordering, provider-backed local clearing, and all fast Phase 3 focused selectors pass. PostgreSQL execution remains blocked by Docker.
 - Planning verification: governance, inventory, topology, scoped diff, and independent Phase 1 evidence passed.
@@ -283,6 +283,15 @@ OREA-420 local producer-fence slice:
 - `CreateEventRegistrationCommandHandler` checks persisted state before validation, masks every pre-transaction response through another persisted check, and checks again inside its existing serializable transaction. The transaction-race test proves no registration, notification materialization, or webhook work starts; the validation-race test proves detailed errors are suppressed after a concurrent fence.
 - `CreateStorageUploadSessionCommandHandler` checks the authenticated User before validation and policy disclosure, then checks again inside a serializable quota-reservation transaction before idempotent replay, quota mutation, or session creation. The handler captures one request User id so the fence subject and persisted `StorageUploadSession.UserId` cannot diverge.
 - Producer verification: registration handler tests 21/21, storage handler tests 28/28, `Explore.Application` Release build 0 warnings/0 errors, Clean Architecture 15/15, canonical root Release build 0 errors, focused diagnostics and `git diff --check` clean. A transient concurrent compile failure in `GetPublicEventOpenGraphImageRequestHandlerTests.cs` cleared before the final rerun and did not affect OREA files. Independent blocking-only reviews pass for both registration and storage producer fences.
+- `UpdateCurrentUserAppearancePreferencesCommandHandler` now masks raced validation/theme errors, uses a cancellable no-tracking theme lookup, rechecks the persisted fence inside one serializable transaction, and commits all four `UserPreference` sparse-override operations atomically before invalidating the user cache. Focused tests pass 11/11, including transaction race, validation disclosure, exact cancellation propagation, retry-stable timestamps, and failed-write cache safety; Persistence builds with 0 errors and independent re-review passes.
+- `UpdateCurrentUserNotificationPreferenceMatrixCommandHandler` now makes the final raced metadata/lock error decision and all `NotificationChannelPreference` upserts inside serializable scopes after rechecking persisted erasure state. Focused matrix tests pass 9/9, including validation-disclosure and two-cell retry replay coverage; the repaired slice passes independent review, the Application build is clean, the architecture suite passes 301/302 with one documented skip, and diagnostics/diff checks are clean. The latest root build is blocked only by concurrent ATProto test work referencing the absent `AtprotoThumbnailBlobGateway`; the earlier integrated OREA root build passed.
+- Provider-work `Unknown` reconciliation is now persisted under the exact lease fence in one serializable transaction. `Completed` advances the matching saga exactly once, `NotCompleted` requeues without advancing progress, and stale/repeated fences are no-ops. The real PostgreSQL reconciliation selector passes 1/1 and independent adversarial verification is confirmed; this advances OREA-400 but does not supply the still-missing specialized lifecycle worker, retry policy, or provider adapters.
+- Shared recipient notification materialization now checks the persisted fence before User/email lookup and again inside graph creation and duplicate-repair transactions. Fenced recipients create no notification/email graph but still advance fanout cursors; focused classes pass 36/36 and independent verification is confirmed.
+- Local webhook delivery now rehydrates the exact tenant/target/lease/fence claim and requires an active endpoint before governance, payload, secret, SSRF, or HTTP work. The focused drain lane passes 18/18, the real PostgreSQL archive-after-claim canary passes, and independent verification is confirmed.
+- Legacy event-published fanout now checks each subscriber before preference/subscription reads and inside a serializable per-recipient write boundary, including duplicate Web Push repair. Focused unit lanes pass 6/6 and 5/5, the real integration lane passes 2/2, and independent verification is confirmed.
+- `ProcessAiRunCommandHandler` now checks the loaded persisted conversation owner before provider work and the reloaded owner before persisting provider output. Focused tests pass 13/13, the full Application suite passes 3,046 tests, and independent verification is confirmed. AI conversation/message/action erasure and provider-retained-context settlement remain open OREA-310/410 work.
+- Web Push post-claim rehydration and direct notification orchestration fences are implemented with green focused tests, but their independent PostgreSQL gates could not reproduce while Docker was unavailable. They remain verification-blocked rather than accepted; rerun `WebPushFoundationPersistenceTests` and `NotificationIntentRepositoryTests` when Testcontainers is reachable.
+- Storage finalization now reserves one deterministic tenant-scoped object key on `StorageUploadSession` before provider I/O, requires both Local and S3 providers to use that exact key, and rechecks the persisted erasure fence immediately before and after provider acknowledgement. The erasure adapter captures upload-session keys into protected ObjectStorage provider work before clearing the session owner, locator, filenames, idempotency key, checksum, and audit User ids, and releases only the erased subject's quota reservations; unrelated sessions remain unchanged. Domain 5/5, Application 29/29, provider 12/12, Architecture 302/303 with one documented skip, persistence test-project compilation, Release build, diagnostics, diff-check, and independent race/privacy review pass. The exact PostgreSQL provider-metadata body remains Docker-blocked, so this is accepted partial OREA-310/420 evidence rather than completed provider settlement.
 - This is partial progress only; the first OREA-420 checkbox remains open until every inventory-listed local producer and worker is fenced.
 ```
 
@@ -371,9 +380,9 @@ Focused evidence:
 
 ### OREA-700 — Contract and operator documentation
 
-- [ ] Converge PII inventory, schemas, OpenAPI/generated contracts, API changelog, configuration, privacy, security, outbox, testing, operations, troubleshooting, self-hosting, deployment, secrets, and backup/restore docs.
-- [ ] Document that UUIDs and minimized authority facts remain linkable personal data.
-- [ ] Ensure every documented key, startup sequence, receipt state, retention action, and restore guarantee matches shipped behavior.
+- [x] Converge PII inventory, schemas, OpenAPI/generated contracts, API changelog, configuration, privacy, security, outbox, testing, operations, troubleshooting, self-hosting, deployment, secrets, and backup/restore docs.
+- [x] Document that UUIDs and minimized authority facts remain linkable personal data.
+- [x] Ensure every documented key, startup sequence, receipt state, retention action, and restore guarantee matches shipped behavior.
 
 ### OREA-710 — Ownership and completeness enforcement
 
@@ -397,7 +406,11 @@ Focused evidence:
 Evidence:
 
 ```text
-Pending.
+OREA-700 partial convergence:
+- Native and Swashbuckle OpenAPI now attach only the custom `PrivacyErasureReceipt` `Authorization` api-key scheme to `GET /api/privacy-erasure/status`; no bearer semantics, credential value, or unrelated-operation inheritance is introduced. The focused parity canary and independent review pass.
+- `schemas/islamu-event.md` now documents `privacy_erasure_sagas`, `privacy_erasure_provider_work`, and `privacy_erasure_policy_coverage`. The focused architecture contract guards their presence; the DBML is maintained with its EF Core model or migration, not by a partial snapshot parser. OREA-700 remains open for its broader documentation convergence.
+- 2026-07-25 schema-maintenance cleanup removed the untracked root snapshot parser and its generated-file workflow. `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/PrivacyErasureContractArchitectureTests/*" --minimum-expected-tests 1` completed successfully; the project emitted 248 pre-existing analyzer warnings.
+- Independent documentation review passes after correcting the manual DBML maintenance header and removing the explicit local PgAdmin credential pair. `docs/PRIVACY_ERASURE.md` explicitly records that UUIDs and minimized authority facts remain linkable personal data until bounded retention expires. OREA-700 is complete; OREA-710/720 remain open.
 ```
 
 ## Deferred / Explicitly Out of Scope
@@ -416,6 +429,7 @@ Pending.
 | 2026-07-22 | Canonical intent mandated the old `ApplicationDatabase` default | Resolved; intent now requires one authority-first workflow with `CoLocated` / `ExternalDatabase`, while `OREA-100` inventory reconciliation and every `OREA-110` runtime/product task remain incomplete |
 | 2026-07-22 | Existing broader `.omo` plan defaulted to the old mode model and owned unfinished platform erasure | Resolved by `OREA-120`; valid scope/evidence is represented here and the `.omo` plan is historical |
 | 2026-07-22 | Event Location planning owned global erasure/topology work | Resolved by `OREA-120`; only the typed EventLocation adapter boundary remains there |
+| 2026-07-25 | Bounded retention could not prune an append-only sequence-zero replay stream without creating startup gaps | Resolved by explicit approval of the recommended contract: 365-day horizon plus 30-day margin, metadata-only contiguous compaction floor, fail-closed checkpoints below the floor, non-relinkable reviewed/expiring legal-hold evidence, and unsupported `ExternalDatabase` to `CoLocated` downgrade |
 
 ## Maintenance Contract
 

@@ -1,5 +1,5 @@
 // ABOUTME: DBML schema reference for the ISLAMU Event platform database.
-// ABOUTME: Generated from domain entities and EF Core configurations — entities are the source of truth.
+// ABOUTME: DBML is maintained alongside authoritative EF Core migrations/model snapshot.
 
 Project islamu_event {
   database_type: 'PostgreSQL'
@@ -2817,6 +2817,75 @@ Table "privacy_erasure_authority"."erasure_intents" {
   Note: 'Immutable typed User-erasure facts for CoLocated authority/application-mirror storage and ExternalDatabase authority storage. Checks enforce positive sequence, UUIDv7/RFC variant identity, non-empty opaque subject, closed reasons, positive policy version, recording order, and bounded retention. External runtime access is only through approved append/read functions; direct table SELECT and DML are denied.'
 }
 
+// Privacy Erasure Lifecycle
+Table "privacy_erasure_sagas" {
+  "intent_id" uuid [pk, not null]
+  "completed_at_utc" timestamptz
+  "completed_provider_work_count" int [not null]
+  "concurrency_token" uuid [not null]
+  "fence_token" bigint [not null]
+  "fenced_at_utc" timestamptz [not null]
+  "local_settled_at_utc" timestamptz
+  "policy_version" int [not null]
+  "provider_work_count" int [not null]
+  "receipt_expires_at_utc" timestamptz [not null]
+  "receipt_hash" bytea
+  "status" smallint [not null]
+  "subject_id" uuid [not null]
+  "subject_kind" smallint [not null]
+  "updated_at_utc" timestamptz [not null]
+
+  indexes {
+    receipt_hash [unique, name: 'ix_privacy_erasure_sagas_receipt_hash']
+    (subject_kind, subject_id) [unique, name: 'ix_privacy_erasure_sagas_subject_kind_subject_id']
+    (intent_id, subject_kind, policy_version) [unique, name: 'ix_privacy_erasure_sagas_intent_id_subject_kind_policy_version']
+  }
+}
+
+Table "privacy_erasure_provider_work" {
+  "id" uuid [pk, not null]
+  "action" smallint [not null]
+  "attempt_count" int [not null]
+  "completed_at_utc" timestamptz
+  "created_at_utc" timestamptz [not null]
+  "dead_lettered_at_utc" timestamptz
+  "intent_id" uuid [not null]
+  "last_failure_code" varchar(100)
+  "lease_expires_at_utc" timestamptz
+  "lease_fence" bigint [not null]
+  "lease_owner" varchar(100)
+  "lease_token" uuid
+  "locator_expires_at_utc" timestamptz [not null]
+  "locator_kind" smallint [not null]
+  "locator_protection_version" int [not null]
+  "next_attempt_at_utc" timestamptz
+  "protected_locator" varchar(8192)
+  "provider_kind" smallint [not null]
+  "status" smallint [not null]
+  "subject_id" uuid [not null]
+  "subject_kind" smallint [not null]
+  "target_id" uuid
+  "tenant_id" uuid
+  "unknown_at_utc" timestamptz
+  "updated_at_utc" timestamptz [not null]
+
+  indexes {
+    (status, next_attempt_at_utc, lease_expires_at_utc) [name: 'ix_privacy_erasure_provider_work_status_next_attempt_at_utc_le']
+    (intent_id, provider_kind, action, tenant_id, target_id) [unique, name: 'ix_privacy_erasure_provider_work_intent_id_provider_kind_actio']
+  }
+}
+
+Table "privacy_erasure_policy_coverage" {
+  "intent_id" uuid [pk, not null]
+  "subject_kind" smallint [pk, not null]
+  "policy_version" int [pk, not null]
+  "covered_at_utc" timestamptz [not null]
+}
+
+// Privacy Erasure Lifecycle Relationships
+Ref: "privacy_erasure_sagas"."intent_id" - "privacy_erasure_authority"."erasure_intents"."intent_id" [delete: restrict]
+Ref: "privacy_erasure_provider_work"."intent_id" > "privacy_erasure_sagas"."intent_id" [delete: restrict]
+Ref: "privacy_erasure_policy_coverage"."intent_id" > "privacy_erasure_authority"."erasure_intents"."intent_id" [delete: restrict]
 // ============================================================
 // Actors
 // ============================================================
