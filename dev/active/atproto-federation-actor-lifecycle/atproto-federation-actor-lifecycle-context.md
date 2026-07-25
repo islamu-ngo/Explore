@@ -17,6 +17,7 @@ Last Updated: 2026-07-25 Europe/Brussels
 - Established the proposed model: global Actor, separate ActorTenantPresence, optional User, `User.ActorId` as sole personal ownership link, explicit verified claim/merge, scoped moderation, and materialized-only public discovery.
 - Baseline Release build passed during planning with existing package vulnerability warnings.
 - Created the synchronized plan/context/tasks workstream. No runtime files were changed.
+- Planning verification passed: `git diff --check -- dev/active/atproto-federation-actor-lifecycle` returned clean, and `Event.Architecture.Tests` passed 302/302 executed tests with one documented skip; existing `System.Security.Cryptography.Xml` NU1903 warnings remain.
 
 ### IN PROGRESS
 
@@ -137,7 +138,7 @@ Every phase first runs `dotnet build --configuration Release --verbosity quiet`,
 - **Next action:** User reviews A1-A9 and approves or corrects the global Actor/migration model.
 - **Blockers:** Approval required because linked-account-only behavior is being superseded.
 - **Modified files:** The three files under `dev/active/atproto-federation-actor-lifecycle/` only.
-- **Validation:** Baseline Release build was green before these docs; focused planning-artifact checks remain to be recorded in the current session.
+- **Validation:** Baseline Release build was green; planning diff check is clean; Event.Architecture.Tests passed 302, failed 0, skipped 1 with existing package vulnerability warnings.
 - **Documentation impact:** Planning docs only. Runtime/API/schema docs are assigned to owning implementation tasks.
 - **Risks:** Actor FK classification, duplicate DID ownership conflict, nullable email breadth, merge collisions, and tenant-boundary leakage.
 - **Notes for next contributor/agent:** Do not rebuild OAuth, Jetstream, canonical records, outbox, recovery, or Event materialization. Begin with ADR-016/FK disposition, not auth code.
