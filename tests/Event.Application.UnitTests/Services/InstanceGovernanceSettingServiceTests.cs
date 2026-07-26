@@ -2,10 +2,14 @@
 // ABOUTME: Verifies batch resolution via IHierarchicalSettingsResolver, safe defaults, and normalization.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
+using Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
+using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Models.Common;
+using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Application.Settings;
 using Explore.Domain;
@@ -40,6 +44,93 @@ public class InstanceGovernanceSettingServiceTests
             _upsertService,
             _moduleCapabilityService,
             logger);
+    }
+
+    [Test]
+    public async Task UpsertLockAsync_WhenSettingExists_ReturnsSystemLockedNotificationWithoutPublishing()
+    {
+        const string key = GovernanceSettingKeys.Events.CardClickOpensDetailPage;
+        const string fallbackValue = "true";
+        const string persistedValue = "false";
+        var actorId = Guid.NewGuid();
+        var definition = Explore.Domain.Settings.SettingRegistry.Get(key)
+            ?? throw new InvalidOperationException($"Missing setting definition for {key}.");
+        var lockWrites = CaptureLockWrites(persistedValue);
+
+        SettingChangedNotification notification = await _upsertService.UpsertLockAsync(
+            key,
+            fallbackValue,
+            true,
+            actorId,
+            CancellationToken.None);
+
+        await Assert.That(lockWrites.Count).IsEqualTo(1);
+        var candidate = lockWrites.Single();
+        await Assert.That(candidate.SettingKey).IsEqualTo(key);
+        await Assert.That(candidate.Value).IsEqualTo(fallbackValue);
+        await Assert.That(candidate.ValueType).IsEqualTo(definition.ValueType);
+        await Assert.That(candidate.AllowedValues).IsEqualTo(
+            definition.AllowedValues is null ? null : SettingValueSerializer.Serialize(definition.AllowedValues));
+        await Assert.That(candidate.Description).IsEqualTo(definition.Description);
+        await Assert.That(candidate.Category).IsEqualTo(definition.Category);
+        await Assert.That(candidate.DisplayOrder).IsEqualTo(0);
+        await Assert.That(candidate.IsLocked).IsTrue();
+        await Assert.That(candidate.CreatedBy).IsEqualTo(actorId);
+        await Assert.That(candidate.UpdatedBy).IsEqualTo(actorId);
+        await _systemSettingRepository.DidNotReceive().GetByKey(
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await Assert.That(notification.Key).IsEqualTo(key);
+        await Assert.That(notification.OldValue).IsEqualTo(persistedValue);
+        await Assert.That(notification.NewValue).IsEqualTo(persistedValue);
+        await Assert.That(notification.Scope).IsEqualTo(SettingSource.SystemLocked);
+        await Assert.That(notification.ActorUserId).IsEqualTo(actorId);
+        await _mediator.DidNotReceive().Publish(
+            Arg.Any<SettingChangedNotification>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpsertLockAsync_WhenSettingIsMissingAndUnlocked_ReturnsSystemDefaultNotificationWithoutPublishing()
+    {
+        const string key = GovernanceSettingKeys.Events.CardClickOpensDetailPage;
+        const string fallbackValue = "true";
+        var actorId = Guid.NewGuid();
+        var definition = Explore.Domain.Settings.SettingRegistry.Get(key)
+            ?? throw new InvalidOperationException($"Missing setting definition for {key}.");
+        var lockWrites = CaptureLockWrites(persistedValue: null);
+
+        SettingChangedNotification notification = await _upsertService.UpsertLockAsync(
+            key,
+            fallbackValue,
+            false,
+            actorId,
+            CancellationToken.None);
+
+        await Assert.That(lockWrites.Count).IsEqualTo(1);
+        var candidate = lockWrites.Single();
+        await Assert.That(candidate.SettingKey).IsEqualTo(key);
+        await Assert.That(candidate.Value).IsEqualTo(fallbackValue);
+        await Assert.That(candidate.ValueType).IsEqualTo(definition.ValueType);
+        await Assert.That(candidate.AllowedValues).IsEqualTo(
+            definition.AllowedValues is null ? null : SettingValueSerializer.Serialize(definition.AllowedValues));
+        await Assert.That(candidate.Description).IsEqualTo(definition.Description);
+        await Assert.That(candidate.Category).IsEqualTo(definition.Category);
+        await Assert.That(candidate.DisplayOrder).IsEqualTo(0);
+        await Assert.That(candidate.IsLocked).IsFalse();
+        await Assert.That(candidate.CreatedBy).IsEqualTo(actorId);
+        await Assert.That(candidate.UpdatedBy).IsEqualTo(actorId);
+        await _systemSettingRepository.DidNotReceive().GetByKey(
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await Assert.That(notification.Key).IsEqualTo(key);
+        await Assert.That(notification.OldValue).IsNull();
+        await Assert.That(notification.NewValue).IsEqualTo(fallbackValue);
+        await Assert.That(notification.Scope).IsEqualTo(SettingSource.SystemDefault);
+        await Assert.That(notification.ActorUserId).IsEqualTo(actorId);
+        await _mediator.DidNotReceive().Publish(
+            Arg.Any<SettingChangedNotification>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -290,22 +381,40 @@ public class InstanceGovernanceSettingServiceTests
     }
 
     [Test]
-    public async Task ApplyModuleSettingsPatchAsync_WhenOneLeafIsSupplied_WritesOnlyThatKey()
+    public async Task ApplyModuleSettingsPatchAsync_WhenOneLeafIsSupplied_WritesOnlyThatKeyAndForwardsCancellation()
     {
         var writes = CaptureWrites();
+        var actorId = Guid.NewGuid();
+        using var transactionCancellation = new CancellationTokenSource();
 
         await _service.ApplyModuleSettingsPatchAsync(
-            null,
+            PlatformDefaults.DefaultTenantId,
             new PatchModuleSettingsDto
             {
                 EnableIslamicModule = OptionalUpdate<bool>.Set(false)
             },
             new ModuleSettingsDto { EnableIslamicModule = false, EnableTechModule = true },
-            Guid.NewGuid());
+            actorId,
+            transactionCancellation.Token);
 
         await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
             GovernanceSettingKeys.Modules.IslamicEnabled
         ]);
+        await _moduleCapabilityService.Received(1).SyncTenantModuleCapabilityPatchAsync(
+            PlatformDefaults.DefaultTenantId,
+            enableIslamic: false,
+            enableTech: null,
+            actorId,
+            transactionCancellation.Token);
+        await _systemSettingRepository.Received(1).UpsertAsync(
+            Arg.Is<SystemSetting>(setting => setting.SettingKey == GovernanceSettingKeys.Modules.IslamicEnabled),
+            transactionCancellation.Token);
+        await _moduleCapabilityService.DidNotReceive().SyncTenantModuleCapabilitiesAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<bool>(),
+            Arg.Any<bool>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -313,7 +422,7 @@ public class InstanceGovernanceSettingServiceTests
     {
         var writes = CaptureWrites();
 
-        await _service.ApplyEventPolicyPatchAsync(
+        IReadOnlyList<SettingChangedNotification> notifications = await _service.ApplyEventPolicyPatchAsync(
             new PatchEventPolicyDto
             {
                 AllowUserSubmittedEvents = OptionalUpdate<bool>.Set(false)
@@ -330,6 +439,12 @@ public class InstanceGovernanceSettingServiceTests
         await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
             GovernanceSettingKeys.Events.UserSubmissionEnabled
         ]);
+        await Assert.That(notifications.Select(notification => notification.Key)).IsEquivalentTo([
+            GovernanceSettingKeys.Events.UserSubmissionEnabled
+        ]);
+        await _mediator.DidNotReceive().Publish(
+            Arg.Any<SettingChangedNotification>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -357,27 +472,86 @@ public class InstanceGovernanceSettingServiceTests
     }
 
     [Test]
-    public async Task ApplyBrandingSettingsPatchAsync_WhenOneLeafIsSupplied_WritesOnlyThatKey()
+    public async Task ApplyBrandingSettingsPatchAsync_WhenValueAndLockAreSupplied_WritesAndReturnsOneNotification()
     {
         var writes = CaptureWrites();
 
-        await _service.ApplyBrandingSettingsPatchAsync(
+        IReadOnlyList<SettingChangedNotification> notifications = await _service.ApplyBrandingSettingsPatchAsync(
             new PatchBrandingSettingsDto
             {
-                DefaultBrandLogoUrl = OptionalUpdate<string?>.Set("  https://new.example/logo.svg  ")
+                DefaultBrandLogoUrl = OptionalUpdate<string?>.Set("  https://new.example/logo.svg  "),
+                LockTenantBrandLogoUrl = OptionalUpdate<bool>.Set(true)
             },
             new BrandingSettingsDto
             {
                 DefaultBrandDisplayName = "Current brand",
                 DefaultBrandLogoUrl = "  https://new.example/logo.svg  ",
                 DefaultBrandFaviconUrl = "https://current.example/favicon.svg",
-                DefaultBrandCustomCssUrl = "https://current.example/site.css"
+                DefaultBrandCustomCssUrl = "https://current.example/site.css",
+                LockTenantBrandLogoUrl = true
             },
             Guid.NewGuid());
 
         await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
             GovernanceSettingKeys.Branding.LogoUrl
         ]);
+        await Assert.That(writes.Single().IsLocked).IsTrue();
+        await Assert.That(notifications.Select(notification => notification.Key)).IsEquivalentTo([
+            GovernanceSettingKeys.Branding.LogoUrl
+        ]);
+        await Assert.That(notifications.Single().Scope).IsEqualTo(SettingSource.SystemLocked);
+        await _mediator.DidNotReceive().Publish(
+            Arg.Any<SettingChangedNotification>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateBrandingSettings_WhenProvisioningFails_DoesNotPublishValueNotification()
+    {
+        SetupEmptyBatchResolve();
+        _systemSettingRepository.UpsertAsync(
+                Arg.Any<SystemSetting>(),
+                Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        var actorId = Guid.NewGuid();
+        var adminContext = Substitute.For<IAdminContext>();
+        adminContext.IsInstanceAdminAsync(actorId, Arg.Any<CancellationToken>()).Returns(true);
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task>>()(call.Arg<CancellationToken>()));
+        var deploymentModeProvider = Substitute.For<IDeploymentModeProvider>();
+        deploymentModeProvider.IsSingleTenantAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var provisioningService = Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>();
+        provisioningService.EnsureTenantBrandingDocumentAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<Explore.Domain.Settings.Documents.TenantSettingsDocument>(
+                new InvalidOperationException("provisioning failed")));
+        var handler = new UpdateBrandingSettingsCommandHandler(
+            adminContext,
+            _service,
+            deploymentModeProvider,
+            provisioningService,
+            unitOfWork,
+            _mediator);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(
+            new UpdateBrandingSettingsCommand
+            {
+                UserId = actorId,
+                Patch = new PatchBrandingSettingsDto
+                {
+                    DefaultBrandDisplayName = OptionalUpdate<string?>.Set("Updated brand")
+                }
+            },
+            CancellationToken.None));
+
+        await _mediator.DidNotReceive().Publish(
+            Arg.Any<SettingChangedNotification>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -385,7 +559,7 @@ public class InstanceGovernanceSettingServiceTests
     {
         var writes = CaptureWrites();
 
-        await _service.ApplyDomainSettingsPatchAsync(
+        IReadOnlyList<SettingChangedNotification> notifications = await _service.ApplyDomainSettingsPatchAsync(
             new PatchDomainSettingsDto
             {
                 AdminHost = OptionalUpdate<string?>.Set("  admin.new.example  ")
@@ -401,6 +575,12 @@ public class InstanceGovernanceSettingServiceTests
         await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
             GovernanceSettingKeys.Domains.AdminHost
         ]);
+        await Assert.That(notifications.Select(notification => notification.Key)).IsEquivalentTo([
+            GovernanceSettingKeys.Domains.AdminHost
+        ]);
+        await _mediator.DidNotReceive().Publish(
+            Arg.Any<SettingChangedNotification>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -408,7 +588,7 @@ public class InstanceGovernanceSettingServiceTests
     {
         var writes = CaptureWrites();
 
-        await _service.ApplyTenantDelegationSettingsPatchAsync(
+        IReadOnlyList<SettingChangedNotification> notifications = await _service.ApplyTenantDelegationSettingsPatchAsync(
             false,
             new PatchTenantDelegationSettingsDto
             {
@@ -426,6 +606,12 @@ public class InstanceGovernanceSettingServiceTests
         await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
             GovernanceSettingKeys.TenantDelegation.LockStorage
         ]);
+        await Assert.That(notifications.Select(notification => notification.Key)).IsEquivalentTo([
+            GovernanceSettingKeys.TenantDelegation.LockStorage
+        ]);
+        await _mediator.DidNotReceive().Publish(
+            Arg.Any<SettingChangedNotification>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -456,7 +642,7 @@ public class InstanceGovernanceSettingServiceTests
     {
         var writes = CaptureWrites();
 
-        await _service.ApplyAiAssistantGovernanceSettingsPatchAsync(
+        IReadOnlyList<SettingChangedNotification> notifications = await _service.ApplyAiAssistantGovernanceSettingsPatchAsync(
             new PatchAiAssistantGovernanceSettingsDto
             {
                 ProviderConfiguration = OptionalUpdate<AiAssistantProviderConfigurationWriteDto>.Set(new()
@@ -488,6 +674,16 @@ public class InstanceGovernanceSettingServiceTests
             GovernanceSettingKeys.AiAssistant.ModelId,
             GovernanceSettingKeys.AiAssistant.AllowedModelIds
         ]);
+        await Assert.That(notifications.Select(notification => notification.Key)).IsEquivalentTo([
+            GovernanceSettingKeys.AiAssistant.Provider,
+            GovernanceSettingKeys.AiAssistant.EndpointUrl,
+            GovernanceSettingKeys.AiAssistant.ApiKey,
+            GovernanceSettingKeys.AiAssistant.ModelId,
+            GovernanceSettingKeys.AiAssistant.AllowedModelIds
+        ]);
+        await _mediator.DidNotReceive().Publish(
+            Arg.Any<SettingChangedNotification>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -495,7 +691,7 @@ public class InstanceGovernanceSettingServiceTests
     {
         var writes = CaptureWrites();
 
-        await _service.ApplyMcpGovernanceSettingsPatchAsync(
+        IReadOnlyList<SettingChangedNotification> notifications = await _service.ApplyMcpGovernanceSettingsPatchAsync(
             new PatchMcpGovernanceSettingsDto
             {
                 Enabled = OptionalUpdate<bool>.Set(false)
@@ -512,6 +708,12 @@ public class InstanceGovernanceSettingServiceTests
         await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
             GovernanceSettingKeys.Mcp.Enabled
         ]);
+        await Assert.That(notifications.Select(notification => notification.Key)).IsEquivalentTo([
+            GovernanceSettingKeys.Mcp.Enabled
+        ]);
+        await _mediator.DidNotReceive().Publish(
+            Arg.Any<SettingChangedNotification>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -543,8 +745,9 @@ public class InstanceGovernanceSettingServiceTests
     }
 
     [Test]
-    public async Task ApplyEventPolicySettingsPatchAsync_WhenOnlyLockIsSupplied_WritesCardClickLockMirror()
+    public async Task ApplyEventPolicySettingsPatchAsync_WhenOnlyLockIsSupplied_UsesLockUpsert()
     {
+        var lockWrites = CaptureLockWrites();
         var writes = CaptureWrites();
 
         await _service.ApplyEventPolicyPatchAsync(
@@ -559,15 +762,17 @@ public class InstanceGovernanceSettingServiceTests
             },
             Guid.NewGuid());
 
-        await Assert.That(writes.Count).IsEqualTo(1);
-        await Assert.That(writes[0].SettingKey).IsEqualTo(GovernanceSettingKeys.Events.CardClickOpensDetailPage);
-        await Assert.That(writes[0].Value).IsEqualTo("false");
-        await Assert.That(writes[0].IsLocked).IsTrue();
+        await Assert.That(lockWrites.Count).IsEqualTo(1);
+        await Assert.That(lockWrites[0].SettingKey).IsEqualTo(GovernanceSettingKeys.Events.CardClickOpensDetailPage);
+        await Assert.That(lockWrites[0].Value).IsEqualTo("false");
+        await Assert.That(lockWrites[0].IsLocked).IsTrue();
+        await Assert.That(writes).IsEmpty();
     }
 
     [Test]
     public async Task ApplyMcpGovernanceSettingsPatchAsync_WhenOnlyEnabledLockIsSupplied_UpdatesEnabledAndItsDelegationMirror()
     {
+        var lockWrites = CaptureLockWrites();
         var writes = CaptureWrites();
 
         await _service.ApplyMcpGovernanceSettingsPatchAsync(
@@ -584,20 +789,27 @@ public class InstanceGovernanceSettingServiceTests
             },
             Guid.NewGuid());
 
-        await Assert.That(writes.Count).IsEqualTo(2);
-        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
-            GovernanceSettingKeys.Mcp.Enabled,
-            GovernanceSettingKeys.TenantDelegation.LockMcp
+        await Assert.That(lockWrites.Count).IsEqualTo(1);
+        await Assert.That(lockWrites.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.Mcp.Enabled
         ]);
-        var enabled = writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.Mcp.Enabled);
+        var enabled = lockWrites.Single();
         await Assert.That(enabled.Value).IsEqualTo("true");
         await Assert.That(enabled.IsLocked).IsTrue();
-        await Assert.That(writes.Any(setting => setting.SettingKey == GovernanceSettingKeys.Mcp.EnableLegacySse)).IsFalse();
+        await Assert.That(lockWrites.Any(setting => setting.SettingKey == GovernanceSettingKeys.Mcp.EnableLegacySse)).IsFalse();
+        await Assert.That(writes.Count).IsEqualTo(1);
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.TenantDelegation.LockMcp
+        ]);
+        await _systemSettingRepository.DidNotReceive().UpsertAsync(
+            Arg.Is<SystemSetting>(setting => setting.SettingKey == GovernanceSettingKeys.Mcp.Enabled),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task ApplyMcpGovernanceSettingsPatchAsync_WhenOnlyLegacySseLockIsSupplied_UpdatesLegacySseAndItsDelegationMirror()
     {
+        var lockWrites = CaptureLockWrites();
         var writes = CaptureWrites();
 
         await _service.ApplyMcpGovernanceSettingsPatchAsync(
@@ -614,21 +826,39 @@ public class InstanceGovernanceSettingServiceTests
             },
             Guid.NewGuid());
 
-        await Assert.That(writes.Count).IsEqualTo(2);
-        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
-            GovernanceSettingKeys.Mcp.EnableLegacySse,
-            GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse
+        await Assert.That(lockWrites.Count).IsEqualTo(1);
+        await Assert.That(lockWrites.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.Mcp.EnableLegacySse
         ]);
-        var legacySse = writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.Mcp.EnableLegacySse);
+        var legacySse = lockWrites.Single();
         await Assert.That(legacySse.Value).IsEqualTo("true");
         await Assert.That(legacySse.IsLocked).IsTrue();
-        await Assert.That(writes.Any(setting => setting.SettingKey == GovernanceSettingKeys.Mcp.Enabled)).IsFalse();
+        await Assert.That(lockWrites.Any(setting => setting.SettingKey == GovernanceSettingKeys.Mcp.Enabled)).IsFalse();
+        await Assert.That(writes.Count).IsEqualTo(1);
+        await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse
+        ]);
+        await _systemSettingRepository.DidNotReceive().UpsertAsync(
+            Arg.Is<SystemSetting>(setting => setting.SettingKey == GovernanceSettingKeys.Mcp.EnableLegacySse),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task ApplyAiAssistantGovernanceSettingsPatchAsync_WhenOnlyLockIsSupplied_UpdatesAllGovernedRowsAndDelegationMirror()
     {
+        var lockWrites = CaptureLockWrites();
         var writes = CaptureWrites();
+        string[] governedKeys =
+        [
+            GovernanceSettingKeys.AiAssistant.Enabled,
+            GovernanceSettingKeys.AiAssistant.Provider,
+            GovernanceSettingKeys.AiAssistant.EndpointUrl,
+            GovernanceSettingKeys.AiAssistant.ApiKey,
+            GovernanceSettingKeys.AiAssistant.ModelId,
+            GovernanceSettingKeys.AiAssistant.AllowedModelIds,
+            GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess,
+            GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled
+        ];
 
         await _service.ApplyAiAssistantGovernanceSettingsPatchAsync(
             new PatchAiAssistantGovernanceSettingsDto
@@ -649,40 +879,35 @@ public class InstanceGovernanceSettingServiceTests
             },
             Guid.NewGuid());
 
-        await Assert.That(writes.Count).IsEqualTo(9);
+        await Assert.That(lockWrites.Count).IsEqualTo(8);
+        await Assert.That(lockWrites.Select(setting => setting.SettingKey)).IsEquivalentTo(governedKeys);
+        var governed = lockWrites.ToList();
+        await Assert.That(governed.All(setting => setting.IsLocked)).IsTrue();
+        await Assert.That(lockWrites.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.Enabled).Value)
+            .IsEqualTo("true");
+        await Assert.That(lockWrites.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.Provider).Value)
+            .IsEqualTo("\"openai\"");
+        await Assert.That(lockWrites.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.EndpointUrl).Value)
+            .IsEqualTo("\"\"");
+        await Assert.That(lockWrites.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.ApiKey).Value)
+            .IsEqualTo("\"current-key\"");
+        await Assert.That(lockWrites.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.ModelId).Value)
+            .IsEqualTo("\"current-model\"");
+        await Assert.That(lockWrites.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.AllowedModelIds).Value)
+            .IsEqualTo(SettingValueSerializer.Serialize(new List<string> { "current-model", "second-model" }));
+        await Assert.That(lockWrites.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess).Value)
+            .IsEqualTo("true");
+        await Assert.That(lockWrites.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled).Value)
+            .IsEqualTo("false");
+        await Assert.That(writes.Count).IsEqualTo(1);
         await Assert.That(writes.Select(setting => setting.SettingKey)).IsEquivalentTo([
-            GovernanceSettingKeys.AiAssistant.Enabled,
-            GovernanceSettingKeys.AiAssistant.Provider,
-            GovernanceSettingKeys.AiAssistant.EndpointUrl,
-            GovernanceSettingKeys.AiAssistant.ApiKey,
-            GovernanceSettingKeys.AiAssistant.ModelId,
-            GovernanceSettingKeys.AiAssistant.AllowedModelIds,
-            GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess,
-            GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled,
             GovernanceSettingKeys.TenantDelegation.LockAiAssistant
         ]);
-        var governed = writes
-            .Where(setting => setting.SettingKey != GovernanceSettingKeys.TenantDelegation.LockAiAssistant)
-            .ToList();
-        await Assert.That(governed.All(setting => setting.IsLocked)).IsTrue();
-        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.Enabled).Value)
-            .IsEqualTo("true");
-        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.Provider).Value)
-            .IsEqualTo("\"openai\"");
-        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.EndpointUrl).Value)
-            .IsEqualTo("\"\"");
-        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.ApiKey).Value)
-            .IsEqualTo("\"current-key\"");
-        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.ModelId).Value)
-            .IsEqualTo("\"current-model\"");
-        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.AllowedModelIds).Value)
-            .IsEqualTo(SettingValueSerializer.Serialize(new List<string> { "current-model", "second-model" }));
-        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess).Value)
-            .IsEqualTo("true");
-        await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled).Value)
-            .IsEqualTo("false");
         await Assert.That(writes.Single(setting => setting.SettingKey == GovernanceSettingKeys.TenantDelegation.LockAiAssistant).Value)
             .IsEqualTo("true");
+        await _systemSettingRepository.DidNotReceive().UpsertAsync(
+            Arg.Is<SystemSetting>(setting => governedKeys.Contains(setting.SettingKey, StringComparer.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -761,15 +986,22 @@ public class InstanceGovernanceSettingServiceTests
         _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
         var tenantId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
+        using var transactionCancellation = new CancellationTokenSource();
 
         await _service.ApplyModuleSettingsAsync(tenantId, new ModuleSettingsDto
         {
             EnableIslamicModule = true,
             EnableTechModule = false
-        }, actorId);
+        }, actorId, transactionCancellation.Token);
 
         await _moduleCapabilityService.Received(1).SyncTenantModuleCapabilitiesAsync(
-            tenantId, true, false, actorId);
+            tenantId, true, false, actorId, transactionCancellation.Token);
+        await _systemSettingRepository.Received(1).UpsertAsync(
+            Arg.Is<SystemSetting>(setting => setting.SettingKey == GovernanceSettingKeys.Modules.IslamicEnabled),
+            transactionCancellation.Token);
+        await _systemSettingRepository.Received(1).UpsertAsync(
+            Arg.Is<SystemSetting>(setting => setting.SettingKey == GovernanceSettingKeys.Modules.TechEnabled),
+            transactionCancellation.Token);
     }
 
     // ── Helpers ──────────────────────────────────────
@@ -809,6 +1041,16 @@ public class InstanceGovernanceSettingServiceTests
                 Arg.Do<SystemSetting>(setting => writes.Add(setting)),
                 Arg.Any<CancellationToken>())
             .Returns((string?)null);
+        return writes;
+    }
+
+    private List<SystemSetting> CaptureLockWrites(string? persistedValue = null)
+    {
+        var writes = new List<SystemSetting>();
+        _systemSettingRepository.UpsertLockAsync(
+                Arg.Do<SystemSetting>(setting => writes.Add(setting)),
+                Arg.Any<CancellationToken>())
+            .Returns(persistedValue);
         return writes;
     }
 

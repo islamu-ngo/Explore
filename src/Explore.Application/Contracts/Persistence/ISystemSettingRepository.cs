@@ -17,6 +17,8 @@ public interface ISystemSettingRepository
 
     Task<string?> UpsertAsync(SystemSetting setting, CancellationToken cancellationToken = default);
 
+    Task<string?> UpsertLockAsync(SystemSetting setting, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets all settings, optionally filtered by category.
     /// </summary>

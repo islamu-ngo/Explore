@@ -13,7 +13,8 @@ namespace Explore.Application.Features.Notifications.Handlers.Queries;
 public sealed class GetGroupNotificationPreferenceMatrixQueryHandler(
     INotificationChannelPreferenceRepository preferenceRepository,
     INotificationPreferenceResolver resolver,
-    IGroupRepository groupRepository,
+    IGroupTenantRepository groupTenantRepository,
+    IOrganizationTenantRepository organizationTenantRepository,
     ITenantContext tenantContext,
     ICurrentUserService currentUserService)
     : IRequestHandler<GetGroupNotificationPreferenceMatrixQuery, NotificationPreferenceMatrixDto>
@@ -33,8 +34,14 @@ public sealed class GetGroupNotificationPreferenceMatrixQueryHandler(
             };
         }
 
-        var group = await groupRepository.GetById(request.GroupId);
-        var organizationId = group?.ParentOrganizationId;
+        var group = await groupTenantRepository.GetByGroupAndTenant(
+            request.GroupId,
+            tenantContext.TenantId,
+            cancellationToken);
+        var parentOrganization = group?.ParentOrganizationTenantId is { } parentOrganizationTenantId
+            ? await organizationTenantRepository.GetById(parentOrganizationTenantId)
+            : null;
+        var organizationId = parentOrganization?.OrganizationId;
         var categories = await preferenceRepository.ListCategoriesAsync(cancellationToken);
         var channels = await preferenceRepository.ListChannelsAsync(cancellationToken);
         var resolveRequests = categories

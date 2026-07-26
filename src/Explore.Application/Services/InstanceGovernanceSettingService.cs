@@ -162,7 +162,8 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
     public async Task<InstanceGovernanceSettingApplyResult> ApplySettingsAsync(
         Guid? defaultTenantId,
         InstanceGovernanceSettings settings,
-        Guid? actorUserId)
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
         var locationPrivacyMutations = new List<LocationPrivacyGovernanceMutationResult>();
         var deferredNotifications = new List<SettingChangedNotification>();
@@ -180,7 +181,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         await ApplyAiAssistantGovernanceSettingsAsync(settings.AiAssistant, actorUserId);
         await ApplyMcpGovernanceSettingsAsync(settings.Mcp, actorUserId);
         await ApplyRenderPolicySettingsInternalAsync(settings.RenderPolicy, actorUserId);
-        await ApplyModuleSettingsAsync(defaultTenantId, settings.Modules, actorUserId);
+        await ApplyModuleSettingsAsync(defaultTenantId, settings.Modules, actorUserId, cancellationToken);
         await ApplyEventPolicyAsync(settings.EventPolicy, actorUserId);
         await ApplyOrganizationPolicyAsync(settings.OrganizationPolicy, actorUserId);
         await ApplyBrandingSettingsAsync(settings.Branding, actorUserId);
@@ -197,33 +198,47 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         return new(locationPrivacyMutations, deferredNotifications);
     }
 
-    public async Task ApplyModuleSettingsAsync(Guid? defaultTenantId, ModuleSettingsDto modules, Guid? actorUserId)
+    public async Task ApplyModuleSettingsAsync(
+        Guid? defaultTenantId,
+        ModuleSettingsDto modules,
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
         await _upsertService.UpsertValueAsync(
             GovernanceSettingKeys.Modules.IslamicEnabled,
-            SettingValueSerializer.Serialize(modules.EnableIslamicModule), actorUserId);
+            SettingValueSerializer.Serialize(modules.EnableIslamicModule),
+            actorUserId,
+            cancellationToken);
 
         await _upsertService.UpsertValueAsync(
             GovernanceSettingKeys.Modules.TechEnabled,
-            SettingValueSerializer.Serialize(modules.EnableTechModule), actorUserId);
+            SettingValueSerializer.Serialize(modules.EnableTechModule),
+            actorUserId,
+            cancellationToken);
 
         if (defaultTenantId.HasValue)
             await _moduleCapabilityService.SyncTenantModuleCapabilitiesAsync(
-                defaultTenantId.Value, modules.EnableIslamicModule, modules.EnableTechModule, actorUserId);
+                defaultTenantId.Value,
+                modules.EnableIslamicModule,
+                modules.EnableTechModule,
+                actorUserId,
+                cancellationToken);
     }
 
     public async Task ApplyModuleSettingsPatchAsync(
         Guid? defaultTenantId,
         PatchModuleSettingsDto patch,
         ModuleSettingsDto modules,
-        Guid? actorUserId)
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
         if (patch.EnableIslamicModule.HasValue)
         {
             await _upsertService.UpsertValueAsync(
                 GovernanceSettingKeys.Modules.IslamicEnabled,
                 SettingValueSerializer.Serialize(modules.EnableIslamicModule),
-                actorUserId);
+                actorUserId,
+                cancellationToken);
         }
 
         if (patch.EnableTechModule.HasValue)
@@ -231,13 +246,18 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             await _upsertService.UpsertValueAsync(
                 GovernanceSettingKeys.Modules.TechEnabled,
                 SettingValueSerializer.Serialize(modules.EnableTechModule),
-                actorUserId);
+                actorUserId,
+                cancellationToken);
         }
 
         if (defaultTenantId.HasValue && patch.HasChanges())
         {
-            await _moduleCapabilityService.SyncTenantModuleCapabilitiesAsync(
-                defaultTenantId.Value, modules.EnableIslamicModule, modules.EnableTechModule, actorUserId);
+            await _moduleCapabilityService.SyncTenantModuleCapabilityPatchAsync(
+                defaultTenantId.Value,
+                patch.EnableIslamicModule.HasValue ? modules.EnableIslamicModule : null,
+                patch.EnableTechModule.HasValue ? modules.EnableTechModule : null,
+                actorUserId,
+                cancellationToken);
         }
     }
 
@@ -261,43 +281,60 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             isLocked: ep.LockTenantEventCardClickBehavior, actorUserId);
     }
 
-    public async Task ApplyEventPolicyPatchAsync(
+    public async Task<IReadOnlyList<SettingChangedNotification>> ApplyEventPolicyPatchAsync(
         PatchEventPolicyDto patch,
         EventPolicyDto eventPolicy,
-        Guid? actorUserId)
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
+        var notifications = new List<SettingChangedNotification>();
         if (patch.AllowUserSubmittedEvents.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Events.UserSubmissionEnabled,
                 SettingValueSerializer.Serialize(eventPolicy.AllowUserSubmittedEvents),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
 
         if (patch.AllowOrganizationSubmittedEvents.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Events.OrganizationSubmissionEnabled,
                 SettingValueSerializer.Serialize(eventPolicy.AllowOrganizationSubmittedEvents),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
 
         if (patch.AllowGroupSubmittedEvents.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Events.GroupSubmissionEnabled,
                 SettingValueSerializer.Serialize(eventPolicy.AllowGroupSubmittedEvents),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
 
-        if (patch.EventCardClickOpensDetailPage.HasValue || patch.LockTenantEventCardClickBehavior.HasValue)
+        if (patch.EventCardClickOpensDetailPage.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Events.CardClickOpensDetailPage,
                 SettingValueSerializer.Serialize(eventPolicy.EventCardClickOpensDetailPage),
+                actorUserId,
                 isLocked: eventPolicy.LockTenantEventCardClickBehavior,
-                actorUserId);
+                cancellationToken: cancellationToken)).Notification);
         }
+        else if (patch.LockTenantEventCardClickBehavior.HasValue)
+        {
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.Events.CardClickOpensDetailPage,
+                SettingValueSerializer.Serialize(eventPolicy.EventCardClickOpensDetailPage),
+                eventPolicy.LockTenantEventCardClickBehavior,
+                actorUserId,
+                cancellationToken));
+        }
+
+        return notifications;
     }
 
     public async Task ApplyOrganizationPolicyAsync(OrganizationPolicyDto op, Guid? actorUserId)
@@ -385,51 +422,95 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             isLocked: b.LockTenantBrandCustomCssUrl, actorUserId);
     }
 
-    public async Task ApplyBrandingSettingsPatchAsync(
+    public async Task<IReadOnlyList<SettingChangedNotification>> ApplyBrandingSettingsPatchAsync(
         PatchBrandingSettingsDto patch,
         BrandingSettingsDto branding,
-        Guid? actorUserId)
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
+        var notifications = new List<SettingChangedNotification>();
         branding.DefaultBrandDisplayName = NormalizeRequiredDisplayName(branding.DefaultBrandDisplayName);
         branding.DefaultBrandLogoUrl = NormalizeOptionalUrl(branding.DefaultBrandLogoUrl);
         branding.DefaultBrandFaviconUrl = NormalizeOptionalUrl(branding.DefaultBrandFaviconUrl);
         branding.DefaultBrandCustomCssUrl = NormalizeOptionalUrl(branding.DefaultBrandCustomCssUrl);
 
-        if (patch.DefaultBrandDisplayName.HasValue || patch.LockTenantBrandDisplayName.HasValue)
+        if (patch.DefaultBrandDisplayName.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Branding.DisplayName,
                 SettingValueSerializer.Serialize(branding.DefaultBrandDisplayName),
+                actorUserId,
                 isLocked: branding.LockTenantBrandDisplayName,
-                actorUserId);
+                cancellationToken: cancellationToken)).Notification);
+        }
+        else if (patch.LockTenantBrandDisplayName.HasValue)
+        {
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.Branding.DisplayName,
+                SettingValueSerializer.Serialize(branding.DefaultBrandDisplayName),
+                branding.LockTenantBrandDisplayName,
+                actorUserId,
+                cancellationToken));
         }
 
-        if (patch.DefaultBrandLogoUrl.HasValue || patch.LockTenantBrandLogoUrl.HasValue)
+        if (patch.DefaultBrandLogoUrl.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Branding.LogoUrl,
                 SettingValueSerializer.Serialize(branding.DefaultBrandLogoUrl),
+                actorUserId,
                 isLocked: branding.LockTenantBrandLogoUrl,
-                actorUserId);
+                cancellationToken: cancellationToken)).Notification);
+        }
+        else if (patch.LockTenantBrandLogoUrl.HasValue)
+        {
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.Branding.LogoUrl,
+                SettingValueSerializer.Serialize(branding.DefaultBrandLogoUrl),
+                branding.LockTenantBrandLogoUrl,
+                actorUserId,
+                cancellationToken));
         }
 
-        if (patch.DefaultBrandFaviconUrl.HasValue || patch.LockTenantBrandFaviconUrl.HasValue)
+        if (patch.DefaultBrandFaviconUrl.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Branding.FaviconUrl,
                 SettingValueSerializer.Serialize(branding.DefaultBrandFaviconUrl),
+                actorUserId,
                 isLocked: branding.LockTenantBrandFaviconUrl,
-                actorUserId);
+                cancellationToken: cancellationToken)).Notification);
+        }
+        else if (patch.LockTenantBrandFaviconUrl.HasValue)
+        {
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.Branding.FaviconUrl,
+                SettingValueSerializer.Serialize(branding.DefaultBrandFaviconUrl),
+                branding.LockTenantBrandFaviconUrl,
+                actorUserId,
+                cancellationToken));
         }
 
-        if (patch.DefaultBrandCustomCssUrl.HasValue || patch.LockTenantBrandCustomCssUrl.HasValue)
+        if (patch.DefaultBrandCustomCssUrl.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Branding.CustomCssUrl,
                 SettingValueSerializer.Serialize(branding.DefaultBrandCustomCssUrl),
+                actorUserId,
                 isLocked: branding.LockTenantBrandCustomCssUrl,
-                actorUserId);
+                cancellationToken: cancellationToken)).Notification);
         }
+        else if (patch.LockTenantBrandCustomCssUrl.HasValue)
+        {
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.Branding.CustomCssUrl,
+                SettingValueSerializer.Serialize(branding.DefaultBrandCustomCssUrl),
+                branding.LockTenantBrandCustomCssUrl,
+                actorUserId,
+                cancellationToken));
+        }
+
+        return notifications;
     }
 
     public async Task ApplyDomainSettingsAsync(DomainSettingsDto d, Guid? actorUserId)
@@ -460,124 +541,153 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             isLocked: d.LockTenantCustomDomain, actorUserId);
     }
 
-    public async Task ApplyDomainSettingsPatchAsync(
+    public async Task<IReadOnlyList<SettingChangedNotification>> ApplyDomainSettingsPatchAsync(
         PatchDomainSettingsDto patch,
         DomainSettingsDto domains,
-        Guid? actorUserId)
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
+        var notifications = new List<SettingChangedNotification>();
         domains.InstanceBaseDomain = NormalizeOptionalHost(domains.InstanceBaseDomain);
         domains.AdminHost = NormalizeOptionalHost(domains.AdminHost);
 
         if (patch.InstanceBaseDomain.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Domains.InstanceBaseDomain,
                 SettingValueSerializer.Serialize(domains.InstanceBaseDomain),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
 
         if (patch.AdminHost.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Domains.AdminHost,
                 SettingValueSerializer.Serialize(domains.AdminHost),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
 
         if (patch.AllowTenantCustomDomains.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Domains.AllowTenantCustomDomain,
                 SettingValueSerializer.Serialize(domains.AllowTenantCustomDomains),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
 
         if (patch.LockTenantSubdomain.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add(await _upsertService.UpsertLockAsync(
                 GovernanceSettingKeys.Domains.TenantSubdomain,
                 SettingValueSerializer.Serialize(string.Empty),
-                isLocked: domains.LockTenantSubdomain,
-                actorUserId);
+                domains.LockTenantSubdomain,
+                actorUserId,
+                cancellationToken));
         }
 
         if (patch.LockTenantCustomDomain.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add(await _upsertService.UpsertLockAsync(
                 GovernanceSettingKeys.Domains.TenantCustomDomain,
                 SettingValueSerializer.Serialize(string.Empty),
-                isLocked: domains.LockTenantCustomDomain,
-                actorUserId);
+                domains.LockTenantCustomDomain,
+                actorUserId,
+                cancellationToken));
         }
+
+        return notifications;
     }
 
     public async Task ApplyTenantDelegationSettingsAsync(TenantDelegationSettingsDto delegation, Guid? actorUserId)
         => await ApplyTenantDelegationSettingsInternalAsync(delegation, false, actorUserId);
 
-    public async Task ApplyTenantDelegationSettingsPatchAsync(
+    public async Task<IReadOnlyList<SettingChangedNotification>> ApplyTenantDelegationSettingsPatchAsync(
         bool isMultiTenant,
         PatchTenantDelegationSettingsDto patch,
         TenantDelegationSettingsDto delegation,
-        Guid? actorUserId)
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
+        var notifications = new List<SettingChangedNotification>();
         delegation.DefaultPublicHomePage = NormalizeHomePage(delegation.DefaultPublicHomePage);
 
         if (patch.AllowTenantSelfServiceRegistration.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Tenants.SelfServiceRegistration,
                 SettingValueSerializer.Serialize(isMultiTenant && delegation.AllowTenantSelfServiceRegistration),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
 
         if (patch.AllowTenantWhiteLabeling.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Tenants.WhiteLabelingEnabled,
                 SettingValueSerializer.Serialize(isMultiTenant && delegation.AllowTenantWhiteLabeling),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
 
-        if (patch.DefaultPublicHomePage.HasValue || patch.LockTenantHomePagePreference.HasValue)
+        if (patch.DefaultPublicHomePage.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Routing.DefaultPublicHomePage,
                 SettingValueSerializer.Serialize(delegation.DefaultPublicHomePage),
+                actorUserId,
                 isLocked: delegation.LockTenantHomePagePreference,
-                actorUserId);
+                cancellationToken: cancellationToken)).Notification);
+        }
+        else if (patch.LockTenantHomePagePreference.HasValue)
+        {
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.Routing.DefaultPublicHomePage,
+                SettingValueSerializer.Serialize(delegation.DefaultPublicHomePage),
+                delegation.LockTenantHomePagePreference,
+                actorUserId,
+                cancellationToken));
         }
 
         if (patch.LockTenantSmtp.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.TenantDelegation.LockSmtp,
                 SettingValueSerializer.Serialize(delegation.LockTenantSmtp),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
 
         if (patch.LockTenantStorage.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.TenantDelegation.LockStorage,
                 SettingValueSerializer.Serialize(delegation.LockTenantStorage),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
 
         if (patch.LockTenantAnalytics.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.TenantDelegation.LockAnalytics,
                 SettingValueSerializer.Serialize(delegation.LockTenantAnalytics),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
 
         if (patch.LockTenantAiAssistant.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.TenantDelegation.LockAiAssistant,
                 SettingValueSerializer.Serialize(delegation.LockTenantAiAssistant),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
+
+        return notifications;
     }
 
     public async Task ApplyAdminPortalSettingsAsync(AdminPortalSettingsDto adminPortal, Guid? actorUserId)
@@ -691,11 +801,13 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             SettingValueSerializer.Serialize(aiAssistant.LockTenantAiAssistant), actorUserId);
     }
 
-    public async Task ApplyAiAssistantGovernanceSettingsPatchAsync(
+    public async Task<IReadOnlyList<SettingChangedNotification>> ApplyAiAssistantGovernanceSettingsPatchAsync(
         PatchAiAssistantGovernanceSettingsDto patch,
         AiAssistantGovernanceSettingsDto aiAssistant,
-        Guid? actorUserId)
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
+        var notifications = new List<SettingChangedNotification>();
         var provider = NormalizeAiAssistantProvider(aiAssistant.Provider, aiAssistant.Enabled);
         var usesOfficialProvider = provider == AiProviderDefaults.ProviderOpenAi
             || provider == AiProviderDefaults.ProviderAnthropic;
@@ -711,69 +823,140 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             ? NormalizeAiModelIds([modelId], aiAssistant.AllowedModelIds)
             : [];
 
-        if (patch.Enabled.HasValue || patch.LockTenantAiAssistant.HasValue)
+        if (patch.Enabled.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.AiAssistant.Enabled,
                 SettingValueSerializer.Serialize(aiAssistant.Enabled),
+                actorUserId,
                 isLocked: aiAssistant.LockTenantAiAssistant,
-                actorUserId);
+                cancellationToken: cancellationToken)).Notification);
+        }
+        else if (patch.LockTenantAiAssistant.HasValue)
+        {
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.AiAssistant.Enabled,
+                SettingValueSerializer.Serialize(aiAssistant.Enabled),
+                aiAssistant.LockTenantAiAssistant,
+                actorUserId,
+                cancellationToken));
         }
 
-        if (patch.ProviderConfiguration.HasValue || patch.LockTenantAiAssistant.HasValue)
+        if (patch.ProviderConfiguration.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.AiAssistant.Provider,
                 SettingValueSerializer.Serialize(provider),
+                actorUserId,
                 isLocked: aiAssistant.LockTenantAiAssistant,
-                actorUserId);
-            await _upsertService.UpsertValueAsync(
+                cancellationToken: cancellationToken)).Notification);
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.AiAssistant.EndpointUrl,
                 SettingValueSerializer.Serialize(endpointUrl),
+                actorUserId,
                 isLocked: aiAssistant.LockTenantAiAssistant,
-                actorUserId);
-            await _upsertService.UpsertValueAsync(
+                cancellationToken: cancellationToken)).Notification);
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.AiAssistant.ApiKey,
                 SettingValueSerializer.Serialize(apiKey),
+                actorUserId,
                 isLocked: aiAssistant.LockTenantAiAssistant,
-                actorUserId);
-            await _upsertService.UpsertValueAsync(
+                cancellationToken: cancellationToken)).Notification);
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.AiAssistant.ModelId,
                 SettingValueSerializer.Serialize(modelId),
+                actorUserId,
                 isLocked: aiAssistant.LockTenantAiAssistant,
-                actorUserId);
-            await _upsertService.UpsertValueAsync(
+                cancellationToken: cancellationToken)).Notification);
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.AiAssistant.AllowedModelIds,
                 SettingValueSerializer.Serialize(allowedModelIds),
+                actorUserId,
                 isLocked: aiAssistant.LockTenantAiAssistant,
-                actorUserId);
+                cancellationToken: cancellationToken)).Notification);
+        }
+        else if (patch.LockTenantAiAssistant.HasValue)
+        {
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.AiAssistant.Provider,
+                SettingValueSerializer.Serialize(provider),
+                aiAssistant.LockTenantAiAssistant,
+                actorUserId,
+                cancellationToken));
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.AiAssistant.EndpointUrl,
+                SettingValueSerializer.Serialize(endpointUrl),
+                aiAssistant.LockTenantAiAssistant,
+                actorUserId,
+                cancellationToken));
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.AiAssistant.ApiKey,
+                SettingValueSerializer.Serialize(apiKey),
+                aiAssistant.LockTenantAiAssistant,
+                actorUserId,
+                cancellationToken));
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.AiAssistant.ModelId,
+                SettingValueSerializer.Serialize(modelId),
+                aiAssistant.LockTenantAiAssistant,
+                actorUserId,
+                cancellationToken));
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.AiAssistant.AllowedModelIds,
+                SettingValueSerializer.Serialize(allowedModelIds),
+                aiAssistant.LockTenantAiAssistant,
+                actorUserId,
+                cancellationToken));
         }
 
-        if (patch.AllowAnonymousAccess.HasValue || patch.LockTenantAiAssistant.HasValue)
+        if (patch.AllowAnonymousAccess.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess,
                 SettingValueSerializer.Serialize(aiAssistant.AllowAnonymousAccess),
+                actorUserId,
                 isLocked: aiAssistant.LockTenantAiAssistant,
-                actorUserId);
+                cancellationToken: cancellationToken)).Notification);
+        }
+        else if (patch.LockTenantAiAssistant.HasValue)
+        {
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess,
+                SettingValueSerializer.Serialize(aiAssistant.AllowAnonymousAccess),
+                aiAssistant.LockTenantAiAssistant,
+                actorUserId,
+                cancellationToken));
         }
 
-        if (patch.ToolProposalsEnabled.HasValue || patch.LockTenantAiAssistant.HasValue)
+        if (patch.ToolProposalsEnabled.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled,
                 SettingValueSerializer.Serialize(aiAssistant.ToolProposalsEnabled),
+                actorUserId,
                 isLocked: aiAssistant.LockTenantAiAssistant,
-                actorUserId);
+                cancellationToken: cancellationToken)).Notification);
+        }
+        else if (patch.LockTenantAiAssistant.HasValue)
+        {
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled,
+                SettingValueSerializer.Serialize(aiAssistant.ToolProposalsEnabled),
+                aiAssistant.LockTenantAiAssistant,
+                actorUserId,
+                cancellationToken));
         }
 
         if (patch.LockTenantAiAssistant.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.TenantDelegation.LockAiAssistant,
                 SettingValueSerializer.Serialize(aiAssistant.LockTenantAiAssistant),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
+
+        return notifications;
     }
 
     public async Task ApplyMcpGovernanceSettingsAsync(McpGovernanceSettingsDto mcp, Guid? actorUserId)
@@ -797,44 +980,70 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             SettingValueSerializer.Serialize(mcp.LockTenantMcpLegacySse), actorUserId);
     }
 
-    public async Task ApplyMcpGovernanceSettingsPatchAsync(
+    public async Task<IReadOnlyList<SettingChangedNotification>> ApplyMcpGovernanceSettingsPatchAsync(
         PatchMcpGovernanceSettingsDto patch,
         McpGovernanceSettingsDto mcp,
-        Guid? actorUserId)
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
-        if (patch.Enabled.HasValue || patch.LockTenantMcp.HasValue)
+        var notifications = new List<SettingChangedNotification>();
+        if (patch.Enabled.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Mcp.Enabled,
                 SettingValueSerializer.Serialize(mcp.Enabled),
+                actorUserId,
                 isLocked: mcp.LockTenantMcp,
-                actorUserId);
+                cancellationToken: cancellationToken)).Notification);
+        }
+        else if (patch.LockTenantMcp.HasValue)
+        {
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.Mcp.Enabled,
+                SettingValueSerializer.Serialize(mcp.Enabled),
+                mcp.LockTenantMcp,
+                actorUserId,
+                cancellationToken));
         }
 
-        if (patch.EnableLegacySse.HasValue || patch.LockTenantMcpLegacySse.HasValue)
+        if (patch.EnableLegacySse.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.Mcp.EnableLegacySse,
                 SettingValueSerializer.Serialize(mcp.EnableLegacySse),
+                actorUserId,
                 isLocked: mcp.LockTenantMcpLegacySse,
-                actorUserId);
+                cancellationToken: cancellationToken)).Notification);
+        }
+        else if (patch.LockTenantMcpLegacySse.HasValue)
+        {
+            notifications.Add(await _upsertService.UpsertLockAsync(
+                GovernanceSettingKeys.Mcp.EnableLegacySse,
+                SettingValueSerializer.Serialize(mcp.EnableLegacySse),
+                mcp.LockTenantMcpLegacySse,
+                actorUserId,
+                cancellationToken));
         }
 
         if (patch.LockTenantMcp.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.TenantDelegation.LockMcp,
                 SettingValueSerializer.Serialize(mcp.LockTenantMcp),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
 
         if (patch.LockTenantMcpLegacySse.HasValue)
         {
-            await _upsertService.UpsertValueAsync(
+            notifications.Add((await _upsertService.UpsertValueWithDeferredInvalidationAsync(
                 GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse,
                 SettingValueSerializer.Serialize(mcp.LockTenantMcpLegacySse),
-                actorUserId);
+                actorUserId,
+                cancellationToken: cancellationToken)).Notification);
         }
+
+        return notifications;
     }
 
     public async Task ApplyRenderPolicySettingsAsync(RenderPolicySettingsDto renderPolicy, Guid? actorUserId)

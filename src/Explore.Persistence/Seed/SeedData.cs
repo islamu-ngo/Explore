@@ -94,10 +94,6 @@ public static class SeedData
             Address = "Parc Du Peterbos"
         },
         WebsiteUrl = "https://islamu.ngo",
-        ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
-        ApprovalStatus = null!,
-        TenantId = SeedIds.DefaultTenantId,
-        Tenant = null!,
         CreatedAt = SeedTimestamp
     };
 
@@ -114,10 +110,36 @@ public static class SeedData
             Address = "Tech Hub 1"
         },
         WebsiteUrl = "https://techcommunity.dev",
-        ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
-        ApprovalStatus = null!,
+        CreatedAt = SeedTimestamp
+    };
+
+    public static OrganizationTenant IslamuOrgTenant => new()
+    {
+        Id = SeedIds.IslamuOrgTenantId,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
+        OrganizationId = SeedIds.IslamuOrgId,
+        Organization = null!,
+        ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+        ApprovalStatus = null!,
+        IsVisible = true,
+        IsOrganizerEligible = true,
+        ApprovedAt = SeedTimestamp,
+        CreatedAt = SeedTimestamp
+    };
+
+    public static OrganizationTenant TechOrgTenant => new()
+    {
+        Id = SeedIds.TechOrgTenantId,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        OrganizationId = SeedIds.TechOrgId,
+        Organization = null!,
+        ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+        ApprovalStatus = null!,
+        IsVisible = true,
+        IsOrganizerEligible = true,
+        ApprovedAt = SeedTimestamp,
         CreatedAt = SeedTimestamp
     };
 
@@ -127,12 +149,9 @@ public static class SeedData
         Id = SeedIds.AdminUserActorId,
         ActorTypeId = (int)ActorTypeEnum.User,
         ActorType = null!,
-        TenantId = SeedIds.DefaultTenantId,
-        Tenant = null!,
         Pii = new ActorPii
         {
-            DisplayName = "Admin User",
-            Handle = "admin"
+            DisplayName = "Admin User"
         },
         Description = "Platform administrator",
         UserId = SeedIds.AdminUserId,
@@ -144,12 +163,9 @@ public static class SeedData
         Id = SeedIds.RegularUserActorId,
         ActorTypeId = (int)ActorTypeEnum.User,
         ActorType = null!,
-        TenantId = SeedIds.DefaultTenantId,
-        Tenant = null!,
         Pii = new ActorPii
         {
-            DisplayName = "Regular User",
-            Handle = "user"
+            DisplayName = "Regular User"
         },
         Description = "Regular platform user",
         UserId = SeedIds.RegularUserId,
@@ -161,12 +177,9 @@ public static class SeedData
         Id = SeedIds.ModeratorUserActorId,
         ActorTypeId = (int)ActorTypeEnum.User,
         ActorType = null!,
-        TenantId = SeedIds.DefaultTenantId,
-        Tenant = null!,
         Pii = new ActorPii
         {
-            DisplayName = "Moderator User",
-            Handle = "moderator"
+            DisplayName = "Moderator User"
         },
         Description = "Platform moderator",
         UserId = SeedIds.ModeratorUserId,
@@ -179,12 +192,9 @@ public static class SeedData
         Id = SeedIds.IslamuOrgActorId,
         ActorTypeId = (int)ActorTypeEnum.Organization,
         ActorType = null!,
-        TenantId = SeedIds.DefaultTenantId,
-        Tenant = null!,
         Pii = new ActorPii
         {
-            DisplayName = "ISLAMU",
-            Handle = "islamu"
+            DisplayName = "ISLAMU"
         },
         Description = "ISLAMU NGO - Islamic Learning and Media Union",
         UserId = null,
@@ -196,12 +206,9 @@ public static class SeedData
         Id = SeedIds.TechOrgActorId,
         ActorTypeId = (int)ActorTypeEnum.Organization,
         ActorType = null!,
-        TenantId = SeedIds.DefaultTenantId,
-        Tenant = null!,
         Pii = new ActorPii
         {
-            DisplayName = "Tech Community",
-            Handle = "techcommunity"
+            DisplayName = "Tech Community"
         },
         Description = "Tech Community Belgium",
         UserId = null,
@@ -298,8 +305,8 @@ public static class SeedData
     public static OrganizationMember AdminIslamuCreator => new()
     {
         Id = SeedIds.AdminIslamuCreatorId,
-        OrganizationId = SeedIds.IslamuOrgId,
-        Organization = null!,
+        OrganizationTenantId = SeedIds.IslamuOrgTenantId,
+        OrganizationTenant = null!,
         UserId = SeedIds.AdminUserId,
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
@@ -314,8 +321,8 @@ public static class SeedData
     public static OrganizationMember RegularIslamuMember => new()
     {
         Id = SeedIds.RegularIslamuMemberId,
-        OrganizationId = SeedIds.IslamuOrgId,
-        Organization = null!,
+        OrganizationTenantId = SeedIds.IslamuOrgTenantId,
+        OrganizationTenant = null!,
         UserId = SeedIds.RegularUserId,
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
@@ -330,8 +337,8 @@ public static class SeedData
     public static OrganizationMember ModeratorIslamuMod => new()
     {
         Id = SeedIds.ModeratorIslamuModId,
-        OrganizationId = SeedIds.IslamuOrgId,
-        Organization = null!,
+        OrganizationTenantId = SeedIds.IslamuOrgTenantId,
+        OrganizationTenant = null!,
         UserId = SeedIds.ModeratorUserId,
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
@@ -346,8 +353,8 @@ public static class SeedData
     public static OrganizationMember AdminTechCoOwner => new()
     {
         Id = SeedIds.AdminTechCoOwnerId,
-        OrganizationId = SeedIds.TechOrgId,
-        Organization = null!,
+        OrganizationTenantId = SeedIds.TechOrgTenantId,
+        OrganizationTenant = null!,
         UserId = SeedIds.AdminUserId,
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
@@ -362,8 +369,8 @@ public static class SeedData
     public static OrganizationMember RegularTechCreator => new()
     {
         Id = SeedIds.RegularTechCreatorId,
-        OrganizationId = SeedIds.TechOrgId,
-        Organization = null!,
+        OrganizationTenantId = SeedIds.TechOrgTenantId,
+        OrganizationTenant = null!,
         UserId = SeedIds.RegularUserId,
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
@@ -1121,6 +1128,8 @@ public static class SeedData
             AudienceAgeId = (int)spec.AudienceAge,
             ActorId = SeedIds.IslamuOrgActorId,
             Actor = null!,
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
+            OrganizerActorId = SeedIds.IslamuOrgActorId,
             Price = spec.Price,
             CurrencyCode = "EUR",
             FeaturedImageId = SeedIds.DefaultEventImageId,

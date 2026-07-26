@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
@@ -17,12 +18,18 @@ public class UpdateModuleSettingsCommandHandler : IRequestHandler<UpdateModuleSe
 {
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
+    private readonly IDeploymentModeProvider _deploymentModeProvider;
     private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateModuleSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
+    public UpdateModuleSettingsCommandHandler(
+        IAdminContext adminContext,
+        IInstanceGovernanceSettingService service,
+        IDeploymentModeProvider deploymentModeProvider,
+        IUnitOfWork unitOfWork)
     {
         _adminContext = adminContext;
         _service = service;
+        _deploymentModeProvider = deploymentModeProvider;
         _unitOfWork = unitOfWork;
     }
 
@@ -40,8 +47,11 @@ public class UpdateModuleSettingsCommandHandler : IRequestHandler<UpdateModuleSe
         if (request.Patch.EnableTechModule.HasValue)
             settings.Modules.EnableTechModule = request.Patch.EnableTechModule.Value;
 
+        Guid? defaultTenantId = await _deploymentModeProvider.IsSingleTenantAsync(cancellationToken)
+            ? PlatformDefaults.DefaultTenantId
+            : null;
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyModuleSettingsPatchAsync(null, request.Patch, settings.Modules, request.UserId), cancellationToken);
+            _service.ApplyModuleSettingsPatchAsync(defaultTenantId, request.Patch, settings.Modules, request.UserId, ct), cancellationToken);
         response.Success = true;
         response.Message = "Module settings updated successfully.";
         return response;
@@ -63,12 +73,14 @@ public class UpdateEventPolicyCommandHandler : IRequestHandler<UpdateEventPolicy
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMediator _mediator;
 
-    public UpdateEventPolicyCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
+    public UpdateEventPolicyCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork, IMediator mediator)
     {
         _adminContext = adminContext;
         _service = service;
         _unitOfWork = unitOfWork;
+        _mediator = mediator;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventPolicyCommand request, CancellationToken cancellationToken)
@@ -91,8 +103,13 @@ public class UpdateEventPolicyCommandHandler : IRequestHandler<UpdateEventPolicy
         if (request.Patch.LockTenantEventCardClickBehavior.HasValue)
             settings.EventPolicy.LockTenantEventCardClickBehavior = request.Patch.LockTenantEventCardClickBehavior.Value;
 
-        await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyEventPolicyPatchAsync(request.Patch, settings.EventPolicy, request.UserId), cancellationToken);
+        IReadOnlyList<SettingChangedNotification> notifications = [];
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            notifications = await _service.ApplyEventPolicyPatchAsync(request.Patch, settings.EventPolicy, request.UserId, ct);
+        }, cancellationToken);
+        foreach (SettingChangedNotification notification in notifications)
+            await _mediator.Publish(notification, cancellationToken);
         response.Success = true;
         response.Message = "Event policy updated successfully.";
         return response;
@@ -165,19 +182,22 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
     private readonly IDeploymentModeProvider _deploymentModeProvider;
     private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMediator _mediator;
 
     public UpdateBrandingSettingsCommandHandler(
         IAdminContext adminContext,
         IInstanceGovernanceSettingService service,
         IDeploymentModeProvider deploymentModeProvider,
         ITenantBrandingSettingsDocumentProvisioningService tenantBrandingProvisioningService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IMediator mediator)
     {
         _adminContext = adminContext;
         _service = service;
         _deploymentModeProvider = deploymentModeProvider;
         _tenantBrandingProvisioningService = tenantBrandingProvisioningService;
         _unitOfWork = unitOfWork;
+        _mediator = mediator;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateBrandingSettingsCommand request, CancellationToken cancellationToken)
@@ -206,9 +226,10 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
         if (request.Patch.LockTenantBrandCustomCssUrl.HasValue)
             settings.Branding.LockTenantBrandCustomCssUrl = request.Patch.LockTenantBrandCustomCssUrl.Value;
 
+        IReadOnlyList<SettingChangedNotification> notifications = [];
         await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            await _service.ApplyBrandingSettingsPatchAsync(request.Patch, settings.Branding, request.UserId);
+            notifications = await _service.ApplyBrandingSettingsPatchAsync(request.Patch, settings.Branding, request.UserId, ct);
 
             if (request.Patch.DefaultBrandDisplayName.HasValue
                 && await _deploymentModeProvider.IsSingleTenantAsync(ct))
@@ -219,6 +240,8 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
                     ct);
             }
         }, cancellationToken);
+        foreach (SettingChangedNotification notification in notifications)
+            await _mediator.Publish(notification, cancellationToken);
         response.Success = true;
         response.Message = "Branding settings updated successfully.";
         return response;
@@ -240,12 +263,14 @@ public class UpdateDomainSettingsCommandHandler : IRequestHandler<UpdateDomainSe
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMediator _mediator;
 
-    public UpdateDomainSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
+    public UpdateDomainSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork, IMediator mediator)
     {
         _adminContext = adminContext;
         _service = service;
         _unitOfWork = unitOfWork;
+        _mediator = mediator;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateDomainSettingsCommand request, CancellationToken cancellationToken)
@@ -268,8 +293,13 @@ public class UpdateDomainSettingsCommandHandler : IRequestHandler<UpdateDomainSe
         if (request.Patch.LockTenantCustomDomain.HasValue)
             settings.Domains.LockTenantCustomDomain = request.Patch.LockTenantCustomDomain.Value;
 
-        await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyDomainSettingsPatchAsync(request.Patch, settings.Domains, request.UserId), cancellationToken);
+        IReadOnlyList<SettingChangedNotification> notifications = [];
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            notifications = await _service.ApplyDomainSettingsPatchAsync(request.Patch, settings.Domains, request.UserId, ct);
+        }, cancellationToken);
+        foreach (SettingChangedNotification notification in notifications)
+            await _mediator.Publish(notification, cancellationToken);
         response.Success = true;
         response.Message = "Domain settings updated successfully.";
         return response;
@@ -291,12 +321,14 @@ public class UpdateTenantDelegationSettingsCommandHandler : IRequestHandler<Upda
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMediator _mediator;
 
-    public UpdateTenantDelegationSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
+    public UpdateTenantDelegationSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork, IMediator mediator)
     {
         _adminContext = adminContext;
         _service = service;
         _unitOfWork = unitOfWork;
+        _mediator = mediator;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateTenantDelegationSettingsCommand request, CancellationToken cancellationToken)
@@ -325,12 +357,18 @@ public class UpdateTenantDelegationSettingsCommandHandler : IRequestHandler<Upda
         if (request.Patch.LockTenantAiAssistant.HasValue)
             settings.TenantDelegation.LockTenantAiAssistant = request.Patch.LockTenantAiAssistant.Value;
 
-        await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyTenantDelegationSettingsPatchAsync(
+        IReadOnlyList<SettingChangedNotification> notifications = [];
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            notifications = await _service.ApplyTenantDelegationSettingsPatchAsync(
                 settings.DeploymentMode.Mode == DeploymentMode.MultiTenant,
                 request.Patch,
                 settings.TenantDelegation,
-                request.UserId), cancellationToken);
+                request.UserId,
+                ct);
+        }, cancellationToken);
+        foreach (SettingChangedNotification notification in notifications)
+            await _mediator.Publish(notification, cancellationToken);
         response.Success = true;
         response.Message = "Tenant delegation settings updated successfully.";
         return response;
@@ -399,12 +437,14 @@ public class UpdateMcpGovernanceSettingsCommandHandler : IRequestHandler<UpdateM
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMediator _mediator;
 
-    public UpdateMcpGovernanceSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
+    public UpdateMcpGovernanceSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork, IMediator mediator)
     {
         _adminContext = adminContext;
         _service = service;
         _unitOfWork = unitOfWork;
+        _mediator = mediator;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateMcpGovernanceSettingsCommand request, CancellationToken cancellationToken)
@@ -425,8 +465,13 @@ public class UpdateMcpGovernanceSettingsCommandHandler : IRequestHandler<UpdateM
         if (request.Patch.LockTenantMcpLegacySse.HasValue)
             settings.Mcp.LockTenantMcpLegacySse = request.Patch.LockTenantMcpLegacySse.Value;
 
-        await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyMcpGovernanceSettingsPatchAsync(request.Patch, settings.Mcp, request.UserId), cancellationToken);
+        IReadOnlyList<SettingChangedNotification> notifications = [];
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            notifications = await _service.ApplyMcpGovernanceSettingsPatchAsync(request.Patch, settings.Mcp, request.UserId, ct);
+        }, cancellationToken);
+        foreach (SettingChangedNotification notification in notifications)
+            await _mediator.Publish(notification, cancellationToken);
         response.Success = true;
         response.Message = "MCP governance settings updated successfully.";
         return response;
@@ -448,12 +493,14 @@ public class UpdateAiAssistantGovernanceSettingsCommandHandler : IRequestHandler
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMediator _mediator;
 
-    public UpdateAiAssistantGovernanceSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
+    public UpdateAiAssistantGovernanceSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork, IMediator mediator)
     {
         _adminContext = adminContext;
         _service = service;
         _unitOfWork = unitOfWork;
+        _mediator = mediator;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateAiAssistantGovernanceSettingsCommand request, CancellationToken cancellationToken)
@@ -486,8 +533,13 @@ public class UpdateAiAssistantGovernanceSettingsCommandHandler : IRequestHandler
         if (request.Patch.LockTenantAiAssistant.HasValue)
             settings.AiAssistant.LockTenantAiAssistant = request.Patch.LockTenantAiAssistant.Value;
 
-        await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyAiAssistantGovernanceSettingsPatchAsync(request.Patch, settings.AiAssistant, request.UserId), cancellationToken);
+        IReadOnlyList<SettingChangedNotification> notifications = [];
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            notifications = await _service.ApplyAiAssistantGovernanceSettingsPatchAsync(request.Patch, settings.AiAssistant, request.UserId, ct);
+        }, cancellationToken);
+        foreach (SettingChangedNotification notification in notifications)
+            await _mediator.Publish(notification, cancellationToken);
         response.Success = true;
         response.Message = "AI Assistant governance settings updated successfully.";
         return response;

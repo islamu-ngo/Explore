@@ -66,19 +66,19 @@ public class ModuleService : IModuleService
 
     public async Task<string?> GetModuleWizardSchemaUrlAsync(string moduleKey, CancellationToken cancellationToken = default)
     {
-        var module = await _moduleDefinitionRepository.GetByKey(moduleKey);
+        var module = await _moduleDefinitionRepository.GetByKey(moduleKey, cancellationToken);
         return module?.WizardSchemaUrl;
     }
 
     public async Task<bool> EnableModuleAsync(Guid tenantId, string moduleKey, Guid? enabledBy = null, CancellationToken cancellationToken = default)
     {
         // Check if module exists and is active
-        var module = await _moduleDefinitionRepository.GetByKey(moduleKey);
+        var module = await _moduleDefinitionRepository.GetByKey(moduleKey, cancellationToken);
         if (module == null || !module.IsActive)
             return false;
 
         // Check if capability already exists
-        var existing = await _tenantCapabilityRepository.GetByTenantAndModuleKey(tenantId, moduleKey);
+        var existing = await _tenantCapabilityRepository.GetByTenantAndModuleKey(tenantId, moduleKey, cancellationToken);
         if (existing != null)
         {
             // Re-enable if disabled
@@ -87,7 +87,7 @@ public class ModuleService : IModuleService
                 existing.IsEnabled = true;
                 existing.EnabledAt = DateTime.UtcNow;
                 existing.EnabledBy = enabledBy;
-                await _tenantCapabilityRepository.Update(existing);
+                await _tenantCapabilityRepository.Update(existing, cancellationToken);
                 InvalidateCache(tenantId);
             }
             return true;
@@ -105,20 +105,20 @@ public class ModuleService : IModuleService
             EnabledBy = enabledBy
         };
 
-        await _tenantCapabilityRepository.Create(capability);
+        await _tenantCapabilityRepository.Create(capability, cancellationToken);
         InvalidateCache(tenantId);
         return true;
     }
 
     public async Task<bool> DisableModuleAsync(Guid tenantId, string moduleKey, CancellationToken cancellationToken = default)
     {
-        var capability = await _tenantCapabilityRepository.GetByTenantAndModuleKey(tenantId, moduleKey);
+        var capability = await _tenantCapabilityRepository.GetByTenantAndModuleKey(tenantId, moduleKey, cancellationToken);
         if (capability == null)
             return false;
 
         // Soft disable - keep the record but mark as disabled
         capability.IsEnabled = false;
-        await _tenantCapabilityRepository.Update(capability);
+        await _tenantCapabilityRepository.Update(capability, cancellationToken);
         InvalidateCache(tenantId);
         return true;
     }

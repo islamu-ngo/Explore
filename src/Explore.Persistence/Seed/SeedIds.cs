@@ -40,6 +40,10 @@ public static class SeedIds
     public static readonly Guid AdminTechCoOwnerId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000045");
     public static readonly Guid RegularTechCreatorId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000046");
 
+    // ===== Organization Tenant Participations (Development) =====
+    public static readonly Guid IslamuOrgTenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000047");
+    public static readonly Guid TechOrgTenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000048");
+
     // ===== Tenant Users And Role Grants (Development) =====
     public static readonly Guid AdminTenantUserRoleGrantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000070");
     public static readonly Guid RegularTenantUserRoleGrantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000071");

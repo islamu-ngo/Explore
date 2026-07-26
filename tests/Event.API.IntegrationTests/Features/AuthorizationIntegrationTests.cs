@@ -199,14 +199,14 @@ public class AuthorizationIntegrationTests
 
         await using var scope = _fixture.Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        var organization = await db.Organizations
+        var organizationTenant = await db.OrganizationTenants
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .SingleAsync(o => o.Id == body!.Id);
+            .SingleAsync(value => value.OrganizationId == body!.Id);
 
-        await Assert.That(organization.ApprovalStatusId).IsEqualTo((int)ApprovalStatusEnum.Approved);
-        await Assert.That(organization.ApprovedBy).IsEqualTo(adminUserId);
-        await Assert.That(organization.ApprovedAt).IsNotNull();
+        await Assert.That(organizationTenant.ApprovalStatusId).IsEqualTo((int)ApprovalStatusEnum.Approved);
+        await Assert.That(organizationTenant.ApprovedBy).IsEqualTo(adminUserId);
+        await Assert.That(organizationTenant.ApprovedAt).IsNotNull();
     }
 
     private async Task SeedTenantAdminGrantAsync(Guid tenantId, Guid userId)

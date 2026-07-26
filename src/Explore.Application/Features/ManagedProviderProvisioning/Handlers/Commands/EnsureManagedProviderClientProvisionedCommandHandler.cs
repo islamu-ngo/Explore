@@ -39,8 +39,10 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
     ITenantUserRoleGrantRepository tenantUserRoleGrantRepository,
     IRoleRepository roleRepository,
     IOrganizationRepository organizationRepository,
+    IOrganizationTenantRepository organizationTenantRepository,
     IOrganizationMemberRepository organizationMemberRepository,
     IGroupRepository groupRepository,
+    IGroupTenantRepository groupTenantRepository,
     IGroupMemberRepository groupMemberRepository,
     IExternalBindingRepository externalBindingRepository,
     ITenantOnboardingStateRepository tenantOnboardingStateRepository,
@@ -229,6 +231,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         var tenantUserRoleGrantId = Guid.CreateVersion7();
         var organizerId = dto.Organizer == null ? (Guid?)null : Guid.CreateVersion7();
         var organizerActorId = dto.Organizer == null ? (Guid?)null : Guid.CreateVersion7();
+        var organizerParticipationId = dto.Organizer == null ? (Guid?)null : Guid.CreateVersion7();
         var organizerMembershipId = dto.Organizer == null ? (Guid?)null : Guid.CreateVersion7();
         var tenantAdministratorInvitationIntentId = managementRequest?.Administrator.Invitation is null
             ? (Guid?)null
@@ -241,7 +244,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         {
             var tenant = await CreateTenantAsync(dto, normalizedTenantSlug, tenantId);
             var user = await EnsureUserAsync(dto.ExternalAdmin, normalizedIdentityProvider, normalizedSubject, existingUser, userId);
-            var userActor = await EnsureUserActorAsync(dto.ExternalAdmin, tenant.Id, user, userActorId);
+            var userActor = await EnsureUserActorAsync(dto.ExternalAdmin, user, userActorId);
             var tenantUser = await EnsureTenantUserAsync(tenant.Id, user.Id, userActor.Id, tenantUserId, user.Id);
             var tenantUserProfile = await EnsureTenantUserProfileAsync(dto.ExternalAdmin, tenant.Id, tenantUser.Id, tenantUserProfileId, user.Id);
 
@@ -265,7 +268,15 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
             var tenantUserRoleGrant = await EnsureTenantAdminRoleGrantAsync(tenant.Id, tenantUser.Id, user.Id, tenantUserRoleGrantId);
             var organizerResult = dto.Organizer == null
                 ? (OrganizerId: (Guid?)null, ActorId: (Guid?)null, MembershipId: (Guid?)null)
-                : await CreateOrganizerAsync(dto.Organizer, tenant.Id, user.Id, organizerId!.Value, organizerActorId!.Value, organizerMembershipId!.Value, ct);
+                : await CreateOrganizerAsync(
+                    dto.Organizer,
+                    tenant.Id,
+                    user.Id,
+                    organizerId!.Value,
+                    organizerActorId!.Value,
+                    organizerParticipationId!.Value,
+                    organizerMembershipId!.Value,
+                    ct);
 
             await EnsureExternalBindingAsync(
                 normalizedProviderKey,
@@ -611,9 +622,9 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         });
     }
 
-    private async Task<Actor> EnsureUserActorAsync(ManagedProviderExternalAdminDto admin, Guid tenantId, User user, Guid userActorId)
+    private async Task<Actor> EnsureUserActorAsync(ManagedProviderExternalAdminDto admin, User user, Guid userActorId)
     {
-        var existingUserActor = await actorRepository.GetActorByUserIdAndTenantId(user.Id, tenantId);
+        var existingUserActor = await actorRepository.GetActorByUserId(user.Id);
         if (existingUserActor != null)
         {
             return existingUserActor;
@@ -624,31 +635,15 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
             Id = userActorId,
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
-            TenantId = tenantId,
-            Tenant = null!,
             UserId = user.Id,
-            OrganizationId = null,
-            GroupId = null,
             Pii = new ActorPii
             {
-                DisplayName = ResolveDisplayName(admin),
-                Handle = GenerateHandle(ResolveDisplayName(admin), "user")
+                DisplayName = ResolveDisplayName(admin)
             },
             CreatedAt = DateTime.UtcNow,
             CreatedBy = user.Id
         });
 
-        if (user.ActorId == null)
-        {
-            user.ActorId = userActor.Id;
-        }
-
-        if (user.DefaultActorId == null)
-        {
-            user.DefaultActorId = userActor.Id;
-        }
-
-        await userRepository.Update(user);
         return userActor;
     }
 
@@ -747,12 +742,28 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         Guid adminUserId,
         Guid organizerId,
         Guid organizerActorId,
+        Guid organizerParticipationId,
         Guid organizerMembershipId,
         CancellationToken cancellationToken)
     {
         return organizer.Kind == ManagedProviderOrganizerKindDto.Group
-            ? await CreateGroupOrganizerAsync(organizer, tenantId, adminUserId, organizerId, organizerActorId, organizerMembershipId)
-            : await CreateOrganizationOrganizerAsync(organizer, tenantId, adminUserId, organizerId, organizerActorId, organizerMembershipId, cancellationToken);
+            ? await CreateGroupOrganizerAsync(
+                organizer,
+                tenantId,
+                adminUserId,
+                organizerId,
+                organizerActorId,
+                organizerParticipationId,
+                organizerMembershipId)
+            : await CreateOrganizationOrganizerAsync(
+                organizer,
+                tenantId,
+                adminUserId,
+                organizerId,
+                organizerActorId,
+                organizerParticipationId,
+                organizerMembershipId,
+                cancellationToken);
     }
 
     private async Task<(Guid? OrganizerId, Guid? ActorId, Guid? MembershipId)> CreateOrganizationOrganizerAsync(
@@ -761,6 +772,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         Guid adminUserId,
         Guid organizationId,
         Guid actorId,
+        Guid participationId,
         Guid membershipId,
         CancellationToken cancellationToken)
     {
@@ -777,12 +789,6 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                 Postcode = organizer.Postcode?.Trim()
             },
             WebsiteUrl = organizer.WebsiteUrl?.Trim(),
-            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
-            ApprovalStatus = null!,
-            ApprovedAt = DateTime.UtcNow,
-            ApprovedBy = adminUserId,
-            TenantId = tenantId,
-            Tenant = null!,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = adminUserId
         });
@@ -792,27 +798,38 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
             Id = actorId,
             ActorTypeId = (int)ActorTypeEnum.Organization,
             ActorType = null!,
-            TenantId = tenantId,
-            Tenant = null!,
             OrganizationId = organization.Id,
             Pii = new ActorPii
             {
-                DisplayName = organization.FullName,
-                Handle = GenerateHandle(organization.FullName, "org")
+                DisplayName = organization.FullName
             },
             CreatedAt = DateTime.UtcNow,
             CreatedBy = adminUserId
         });
 
-        organization.ActorId = actor.Id;
-        await organizationRepository.Update(organization);
+        var participation = await organizationTenantRepository.Create(new OrganizationTenant
+        {
+            Id = participationId,
+            TenantId = tenantId,
+            Tenant = null!,
+            OrganizationId = organization.Id,
+            Organization = organization,
+            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+            ApprovalStatus = null!,
+            IsVisible = true,
+            IsOrganizerEligible = true,
+            ApprovedAt = DateTime.UtcNow,
+            ApprovedBy = adminUserId,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = adminUserId
+        });
 
         var existingMembership = await organizationMemberRepository.GetByOrganizationAndUser(organization.Id, adminUserId);
         var membership = existingMembership ?? await organizationMemberRepository.Create(new OrganizationMember
         {
             Id = membershipId,
-            OrganizationId = organization.Id,
-            Organization = null!,
+            OrganizationTenantId = participation.Id,
+            OrganizationTenant = participation,
             UserId = adminUserId,
             User = null!,
             RoleId = (int)RoleEnum.OrgAdmin,
@@ -832,6 +849,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         Guid adminUserId,
         Guid groupId,
         Guid actorId,
+        Guid participationId,
         Guid membershipId)
     {
         var group = await groupRepository.Create(new Group
@@ -839,10 +857,6 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
             Id = groupId,
             FullName = organizer.FullName.Trim(),
             Description = organizer.Description?.Trim(),
-            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
-            ApprovalStatus = null!,
-            TenantId = tenantId,
-            Tenant = null!,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = adminUserId
         });
@@ -852,27 +866,38 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
             Id = actorId,
             ActorTypeId = (int)ActorTypeEnum.Group,
             ActorType = null!,
-            TenantId = tenantId,
-            Tenant = null!,
             GroupId = group.Id,
             Pii = new ActorPii
             {
-                DisplayName = group.FullName,
-                Handle = GenerateHandle(group.FullName, "grp")
+                DisplayName = group.FullName
             },
             CreatedAt = DateTime.UtcNow,
             CreatedBy = adminUserId
         });
 
-        group.ActorId = actor.Id;
-        await groupRepository.Update(group);
+        var participation = await groupTenantRepository.Create(new GroupTenant
+        {
+            Id = participationId,
+            TenantId = tenantId,
+            Tenant = null!,
+            GroupId = group.Id,
+            Group = group,
+            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+            ApprovalStatus = null!,
+            IsVisible = true,
+            IsOrganizerEligible = true,
+            ApprovedAt = DateTime.UtcNow,
+            ApprovedBy = adminUserId,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = adminUserId
+        });
 
         var existingMembership = await groupMemberRepository.GetByGroupAndUser(group.Id, adminUserId);
         var membership = existingMembership ?? await groupMemberRepository.Create(new GroupMember
         {
             Id = membershipId,
-            GroupId = group.Id,
-            Group = null!,
+            GroupTenantId = participation.Id,
+            GroupTenant = participation,
             UserId = adminUserId,
             User = null!,
             RoleId = (int)RoleEnum.GroupAdmin,
@@ -1303,16 +1328,4 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         return string.IsNullOrWhiteSpace(fullName) ? admin.Email.Trim() : fullName;
     }
 
-    private static string GenerateHandle(string name, string prefix)
-    {
-        var normalized = string.IsNullOrWhiteSpace(name) ? prefix : name.ToLowerInvariant();
-        normalized = normalized.Replace(" ", "-").Replace("'", string.Empty).Replace("\"", string.Empty).Replace(".", string.Empty).Replace(",", string.Empty);
-        normalized = System.Text.RegularExpressions.Regex.Replace(normalized, "[^a-z0-9-]", string.Empty);
-
-        if (string.IsNullOrWhiteSpace(normalized)) normalized = prefix;
-        if (normalized.Length > 20) normalized = normalized[..20];
-
-        var suffix = Guid.CreateVersion7().ToString("N")[..6];
-        return $"{normalized}-{suffix}";
-    }
 }

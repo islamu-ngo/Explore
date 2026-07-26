@@ -47,8 +47,7 @@ public class NotificationFanoutRunConfiguration : IEntityTypeConfiguration<Notif
 
         builder.HasOne(e => e.SourceActor)
             .WithMany()
-            .HasForeignKey(e => new { e.TenantId, e.SourceActorId })
-            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .HasForeignKey(e => e.SourceActorId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.FanoutOccurrence)

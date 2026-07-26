@@ -166,19 +166,16 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
         await context.SaveChangesAsync();
 
         var subscriberActor = new ActorBuilder()
-            .WithTenantId(tenant.Id)
             .WithUserId(subscriber.Id)
             .WithDisplayName("Fanout Subscriber")
             .Build();
         var sourceActor = new ActorBuilder()
-            .WithTenantId(tenant.Id)
             .WithActorType(ActorTypeEnum.Organization)
             .WithDisplayName("Fanout Source Organization")
             .Build();
         Actor? fencedSubscriberActor = fencedSubscriber is null
             ? null
             : new ActorBuilder()
-                .WithTenantId(tenant.Id)
                 .WithUserId(fencedSubscriber.Id)
                 .WithDisplayName("Fenced Fanout Subscriber")
                 .Build();
@@ -189,8 +186,6 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
         }
         await context.SaveChangesAsync();
 
-        subscriber.ActorId = subscriberActor.Id;
-        subscriber.DefaultActorId = subscriberActor.Id;
         var tenantUser = new TenantUser
         {
             Id = Guid.NewGuid(),

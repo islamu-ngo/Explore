@@ -113,20 +113,20 @@ public static class DatabaseSeeder
         context.Set<Tenant>().Add(SeedData.DefaultTenant);
         await context.SaveChangesAsync(ct);
 
-        // Phase 2: Users without ActorId (circular dependency — Actor references User)
+        // Phase 2: Global users
         var adminUser = SeedData.AdminUser;
         var regularUser = SeedData.RegularUser;
         var moderatorUser = SeedData.ModeratorUser;
         context.Set<User>().AddRange(adminUser, regularUser, moderatorUser);
         await context.SaveChangesAsync(ct);
 
-        // Phase 3: Organizations without ActorId (circular dependency — Actor references Organization)
+        // Phase 3: Global organizations
         var islamuOrg = SeedData.IslamuOrg;
         var techOrg = SeedData.TechOrg;
         context.Set<Organization>().AddRange(islamuOrg, techOrg);
         await context.SaveChangesAsync(ct);
 
-        // Phase 4: Actors (now Users + Organizations exist for FK references)
+        // Phase 4: Global Actors and tenant organization participation
         context.Set<Actor>().AddRange(
             SeedData.AdminUserActor,
             SeedData.RegularUserActor,
@@ -135,15 +135,12 @@ public static class DatabaseSeeder
             SeedData.TechOrgActor);
         await context.SaveChangesAsync(ct);
 
-        // Phase 5: Resolve circular dependency — set ActorId on Users and Organizations
-        adminUser.ActorId = SeedIds.AdminUserActorId;
-        regularUser.ActorId = SeedIds.RegularUserActorId;
-        moderatorUser.ActorId = SeedIds.ModeratorUserActorId;
-        islamuOrg.ActorId = SeedIds.IslamuOrgActorId;
-        techOrg.ActorId = SeedIds.TechOrgActorId;
+        context.Set<OrganizationTenant>().AddRange(
+            SeedData.IslamuOrgTenant,
+            SeedData.TechOrgTenant);
         await context.SaveChangesAsync(ct);
 
-        // Phase 6: Tenant users, tenant role grants, organization members, storage objects
+        // Phase 5: Tenant users, tenant role grants, organization members, storage objects
         context.Set<TenantUser>().AddRange(
             SeedData.AdminTenantUser,
             SeedData.RegularTenantUser,
@@ -167,13 +164,13 @@ public static class DatabaseSeeder
             SeedData.DefaultOrganizationLogo);
         await context.SaveChangesAsync(ct);
 
-        // Phase 7: Tenant capabilities
+        // Phase 6: Tenant capabilities
         context.Set<TenantCapability>().AddRange(
             SeedData.DefaultTenantCoreCapability,
             SeedData.DefaultTenantIslamicCapability);
         await context.SaveChangesAsync(ct);
 
-        // Phase 8: Categories, tags, baseline location
+        // Phase 7: Categories, tags, baseline location
         context.Set<Location>().Add(SeedData.OnlineLocation);
 
         context.Set<Category>().AddRange(

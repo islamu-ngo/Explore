@@ -23,8 +23,11 @@ public class HierarchicalSettingsResolverTests : IDisposable
     private readonly ISystemSettingRepository _systemRepo;
     private readonly ITenantSettingRepository _tenantRepo;
     private readonly IOrganizationSettingRepository _orgRepo;
+    private readonly IOrganizationTenantRepository _organizationTenantRepo;
     private readonly IGroupSettingRepository _groupRepo;
+    private readonly IGroupTenantRepository _groupTenantRepo;
     private readonly IUserPreferenceRepository _userPrefRepo;
+    private readonly ITenantContext _tenantContext;
     private readonly MemoryCache _cache;
     private readonly ILogger<HierarchicalSettingsResolver> _logger;
     private readonly HierarchicalSettingsResolver _resolver;
@@ -34,16 +37,22 @@ public class HierarchicalSettingsResolverTests : IDisposable
         _systemRepo = Substitute.For<ISystemSettingRepository>();
         _tenantRepo = Substitute.For<ITenantSettingRepository>();
         _orgRepo = Substitute.For<IOrganizationSettingRepository>();
+        _organizationTenantRepo = Substitute.For<IOrganizationTenantRepository>();
         _groupRepo = Substitute.For<IGroupSettingRepository>();
+        _groupTenantRepo = Substitute.For<IGroupTenantRepository>();
         _userPrefRepo = Substitute.For<IUserPreferenceRepository>();
+        _tenantContext = Substitute.For<ITenantContext>();
         _cache = new MemoryCache(new MemoryCacheOptions());
         _logger = Substitute.For<ILogger<HierarchicalSettingsResolver>>();
         _resolver = new HierarchicalSettingsResolver(
             _systemRepo,
             _tenantRepo,
             _orgRepo,
+            _organizationTenantRepo,
             _groupRepo,
+            _groupTenantRepo,
             _userPrefRepo,
+            _tenantContext,
             ImmediateSettingMutationLock.Instance,
             _cache,
             _logger);
@@ -758,14 +767,11 @@ public class HierarchicalSettingsResolverTests : IDisposable
             Value = "\"Tenant Enforced\"",
             IsLocked = true
         });
-        SetupOrgSettings(orgId, new OrganizationSetting
-        {
-            OrganizationId = orgId,
-            Organization = null!,
-            Tenant = null!,
-            SettingKey = "branding.display_name",
-            Value = "\"Org Brand\""
-        });
+        SetupOrgSettings(orgId, CreateOrganizationSetting(
+            orgId,
+            tenantId,
+            "branding.display_name",
+            "\"Org Brand\""));
 
         var context = new SettingContext(TenantId: tenantId, OrganizationId: orgId);
         var result = await _resolver.ResolveWithMetadataAsync("branding.display_name", context);
@@ -889,14 +895,7 @@ public class HierarchicalSettingsResolverTests : IDisposable
             SettingKey = settingKey,
             Value = "\"Tenant Brand\""
         });
-        SetupOrgSettings(orgId, new OrganizationSetting
-        {
-            OrganizationId = orgId,
-            Organization = null!,
-            Tenant = null!,
-            SettingKey = settingKey,
-            Value = "\"Org Brand\""
-        });
+        SetupOrgSettings(orgId, CreateOrganizationSetting(orgId, tenantId, settingKey, "\"Org Brand\""));
 
         var context = new SettingContext(TenantId: tenantId, OrganizationId: orgId);
         var result = await _resolver.ResolveWithMetadataAsync(settingKey, context);
@@ -920,14 +919,7 @@ public class HierarchicalSettingsResolverTests : IDisposable
         });
         var tenantId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
         var groupId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
-        SetupGroupSettings(groupId, new GroupSetting
-        {
-            GroupId = groupId,
-            Group = null!,
-            Tenant = null!,
-            SettingKey = settingKey,
-            Value = "\"Group Brand\""
-        });
+        SetupGroupSettings(groupId, CreateGroupSetting(groupId, tenantId, settingKey, "\"Group Brand\""));
 
         var context = new SettingContext(TenantId: tenantId, GroupId: groupId);
         var result = await _resolver.ResolveWithMetadataAsync(settingKey, context);
@@ -941,6 +933,10 @@ public class HierarchicalSettingsResolverTests : IDisposable
     public async Task SetValueAsync_SucceedsAtOrganizationScope()
     {
         var orgId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+        _organizationTenantRepo.GetByOrganizationAndTenant(orgId, tenantId, Arg.Any<CancellationToken>())
+            .Returns(CreateOrganizationParticipation(orgId, tenantId));
         _orgRepo.GetByOrganizationAndKey(orgId, "custom.org_name").Returns((OrganizationSetting?)null);
 
         await _resolver.SetValueAsync(
@@ -948,13 +944,17 @@ public class HierarchicalSettingsResolverTests : IDisposable
             SettingScope.Organization, orgId, Guid.NewGuid());
 
         await _orgRepo.Received(1).Create(Arg.Is<OrganizationSetting>(s =>
-            s.SettingKey == "custom.org_name" && s.OrganizationId == orgId));
+            s.SettingKey == "custom.org_name" && s.OrganizationTenant.OrganizationId == orgId));
     }
 
     [Test]
     public async Task SetValueAsync_SucceedsAtGroupScope()
     {
         var groupId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+        _groupTenantRepo.GetByGroupAndTenant(groupId, tenantId, Arg.Any<CancellationToken>())
+            .Returns(CreateGroupParticipation(groupId, tenantId));
         _groupRepo.GetByGroupAndKey(groupId, "custom.group_name").Returns((GroupSetting?)null);
 
         await _resolver.SetValueAsync(
@@ -962,7 +962,7 @@ public class HierarchicalSettingsResolverTests : IDisposable
             SettingScope.Group, groupId, Guid.NewGuid());
 
         await _groupRepo.Received(1).Create(Arg.Is<GroupSetting>(s =>
-            s.SettingKey == "custom.group_name" && s.GroupId == groupId));
+            s.SettingKey == "custom.group_name" && s.GroupTenant.GroupId == groupId));
     }
 
     // --- Helpers ---
@@ -986,6 +986,62 @@ public class HierarchicalSettingsResolverTests : IDisposable
     {
         _groupRepo.GetAllForGroup(groupId).Returns(settings.ToList());
     }
+
+    private static OrganizationSetting CreateOrganizationSetting(
+        Guid organizationId,
+        Guid tenantId,
+        string key,
+        string value)
+    {
+        OrganizationTenant participation = CreateOrganizationParticipation(organizationId, tenantId);
+        return new OrganizationSetting
+        {
+            OrganizationTenantId = participation.Id,
+            OrganizationTenant = participation,
+            TenantId = tenantId,
+            Tenant = null!,
+            SettingKey = key,
+            Value = value
+        };
+    }
+
+    private static GroupSetting CreateGroupSetting(Guid groupId, Guid tenantId, string key, string value)
+    {
+        GroupTenant participation = CreateGroupParticipation(groupId, tenantId);
+        return new GroupSetting
+        {
+            GroupTenantId = participation.Id,
+            GroupTenant = participation,
+            TenantId = tenantId,
+            Tenant = null!,
+            SettingKey = key,
+            Value = value
+        };
+    }
+
+    private static OrganizationTenant CreateOrganizationParticipation(Guid organizationId, Guid tenantId) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        OrganizationId = organizationId,
+        Organization = new Organization
+        {
+            Id = organizationId,
+            Pii = new OrganizationPii { FullName = "Organization" }
+        },
+        TenantId = tenantId,
+        Tenant = null!,
+        ApprovalStatus = null!
+    };
+
+    private static GroupTenant CreateGroupParticipation(Guid groupId, Guid tenantId) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        GroupId = groupId,
+        Group = new Group { Id = groupId, FullName = "Group" },
+        TenantId = tenantId,
+        Tenant = null!,
+        ApprovalStatus = null!
+    };
 
     private void SetupUserPreferences(Guid tenantId, Guid userId, params UserPreference[] prefs)
     {

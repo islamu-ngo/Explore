@@ -64,6 +64,35 @@ public class SystemSettingRepository : ISystemSettingRepository
             cancellationToken);
     }
 
+    public Task<string?> UpsertLockAsync(
+        SystemSetting setting,
+        CancellationToken cancellationToken = default)
+    {
+        return _mutationLock.ExecuteAsync(
+            setting.SettingKey,
+            async token =>
+            {
+                SystemSetting? existing = await _dbContext.SystemSettings
+                    .FirstOrDefaultAsync(candidate => candidate.SettingKey == setting.SettingKey, token);
+                string? previousValue = existing?.Value;
+
+                if (existing is null)
+                {
+                    _dbContext.SystemSettings.Add(setting);
+                }
+                else
+                {
+                    existing.IsLocked = setting.IsLocked;
+                    existing.UpdatedAt = setting.UpdatedAt ?? DateTime.UtcNow;
+                    existing.UpdatedBy = setting.UpdatedBy;
+                }
+
+                await _dbContext.SaveChangesAsync(token);
+                return previousValue;
+            },
+            cancellationToken);
+    }
+
     public async Task<List<SystemSetting>> GetAllSettings(
         string? category = null,
         CancellationToken cancellationToken = default)

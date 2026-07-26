@@ -32,7 +32,7 @@ public class ResolverConfigService : IResolverConfigService
     {
         if (_cache.TryGetValue(CacheKey, out ResolverConfigurationDto? cached) && cached != null)
         {
-            return cached;
+            return Copy(cached);
         }
 
         var configuration = new ResolverConfigurationDto
@@ -48,7 +48,7 @@ public class ResolverConfigService : IResolverConfigService
 
         configuration.HeaderEnabled = true;
         _cache.Set(CacheKey, configuration, CacheDuration);
-        return configuration;
+        return Copy(configuration);
     }
 
     public async Task ApplyConfigurationAsync(
@@ -159,6 +159,20 @@ public class ResolverConfigService : IResolverConfigService
     public void InvalidateCache()
     {
         _cache.Remove(CacheKey);
+    }
+
+    private static ResolverConfigurationDto Copy(ResolverConfigurationDto source)
+    {
+        return new ResolverConfigurationDto
+        {
+            HeaderEnabled = source.HeaderEnabled,
+            SubdomainEnabled = source.SubdomainEnabled,
+            CustomDomainEnabled = source.CustomDomainEnabled,
+            PathEnabled = source.PathEnabled,
+            PathPrefix = source.PathPrefix,
+            InstanceBaseDomain = source.InstanceBaseDomain,
+            AllowTenantCustomDomains = source.AllowTenantCustomDomains
+        };
     }
 
     private async Task UpsertSystemSettingAsync(

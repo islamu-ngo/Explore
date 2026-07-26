@@ -24,19 +24,44 @@ public class ModuleCapabilityService : IModuleCapabilityService
         _moduleDefinitionRepository = moduleDefinitionRepository;
     }
 
-    public async Task SyncTenantModuleCapabilitiesAsync(Guid tenantId, bool enableIslamic, bool enableTech, Guid? actorUserId)
+    public async Task SyncTenantModuleCapabilitiesAsync(
+        Guid tenantId,
+        bool enableIslamic,
+        bool enableTech,
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
-        await UpsertCapabilityAsync(tenantId, CoreModuleKey, true, actorUserId);
-        await UpsertCapabilityAsync(tenantId, IslamicModuleKey, enableIslamic, actorUserId);
-        await UpsertCapabilityAsync(tenantId, TechModuleKey, enableTech, actorUserId);
+        await UpsertCapabilityAsync(tenantId, CoreModuleKey, true, actorUserId, cancellationToken);
+        await UpsertCapabilityAsync(tenantId, IslamicModuleKey, enableIslamic, actorUserId, cancellationToken);
+        await UpsertCapabilityAsync(tenantId, TechModuleKey, enableTech, actorUserId, cancellationToken);
     }
 
-    private async Task UpsertCapabilityAsync(Guid tenantId, string moduleKey, bool isEnabled, Guid? actorUserId)
+    public async Task SyncTenantModuleCapabilityPatchAsync(
+        Guid tenantId,
+        bool? enableIslamic,
+        bool? enableTech,
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
-        var module = await _moduleDefinitionRepository.GetByKey(moduleKey);
+        if (enableIslamic.HasValue)
+            await UpsertCapabilityAsync(tenantId, IslamicModuleKey, enableIslamic.Value, actorUserId, cancellationToken);
+
+        if (enableTech.HasValue)
+            await UpsertCapabilityAsync(tenantId, TechModuleKey, enableTech.Value, actorUserId, cancellationToken);
+    }
+
+    private async Task UpsertCapabilityAsync(
+        Guid tenantId,
+        string moduleKey,
+        bool isEnabled,
+        Guid? actorUserId,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var module = await _moduleDefinitionRepository.GetByKey(moduleKey, cancellationToken);
         if (module == null) return;
 
-        var existing = await _tenantCapabilityRepository.GetByTenantAndModuleKey(tenantId, moduleKey);
+        var existing = await _tenantCapabilityRepository.GetByTenantAndModuleKey(tenantId, moduleKey, cancellationToken);
         if (existing == null)
         {
             await _tenantCapabilityRepository.Create(new TenantCapability
@@ -48,7 +73,7 @@ public class ModuleCapabilityService : IModuleCapabilityService
                 IsEnabled = isEnabled,
                 EnabledAt = DateTime.UtcNow,
                 EnabledBy = actorUserId
-            });
+            }, cancellationToken);
             return;
         }
 
@@ -58,6 +83,6 @@ public class ModuleCapabilityService : IModuleCapabilityService
             existing.EnabledAt = DateTime.UtcNow;
             existing.EnabledBy = actorUserId;
         }
-        await _tenantCapabilityRepository.Update(existing);
+        await _tenantCapabilityRepository.Update(existing, cancellationToken);
     }
 }

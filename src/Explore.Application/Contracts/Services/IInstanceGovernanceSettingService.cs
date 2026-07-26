@@ -15,20 +15,27 @@ public interface IInstanceGovernanceSettingService
     Task<InstanceGovernanceSettingApplyResult> ApplySettingsAsync(
         Guid? defaultTenantId,
         InstanceGovernanceSettings settings,
-        Guid? actorUserId);
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default);
 
-    Task ApplyModuleSettingsAsync(Guid? defaultTenantId, ModuleSettingsDto modules, Guid? actorUserId);
+    Task ApplyModuleSettingsAsync(
+        Guid? defaultTenantId,
+        ModuleSettingsDto modules,
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default);
     Task ApplyModuleSettingsPatchAsync(
         Guid? defaultTenantId,
         PatchModuleSettingsDto patch,
         ModuleSettingsDto modules,
-        Guid? actorUserId);
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default);
 
     Task ApplyEventPolicyAsync(EventPolicyDto eventPolicy, Guid? actorUserId);
-    Task ApplyEventPolicyPatchAsync(
+    Task<IReadOnlyList<SettingChangedNotification>> ApplyEventPolicyPatchAsync(
         PatchEventPolicyDto patch,
         EventPolicyDto eventPolicy,
-        Guid? actorUserId);
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default);
 
     Task ApplyOrganizationPolicyAsync(OrganizationPolicyDto orgPolicy, Guid? actorUserId);
     Task ApplyOrganizationPolicyPatchAsync(
@@ -37,23 +44,26 @@ public interface IInstanceGovernanceSettingService
         Guid? actorUserId);
 
     Task ApplyBrandingSettingsAsync(BrandingSettingsDto branding, Guid? actorUserId);
-    Task ApplyBrandingSettingsPatchAsync(
+    Task<IReadOnlyList<SettingChangedNotification>> ApplyBrandingSettingsPatchAsync(
         PatchBrandingSettingsDto patch,
         BrandingSettingsDto branding,
-        Guid? actorUserId);
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default);
 
     Task ApplyDomainSettingsAsync(DomainSettingsDto domains, Guid? actorUserId);
-    Task ApplyDomainSettingsPatchAsync(
+    Task<IReadOnlyList<SettingChangedNotification>> ApplyDomainSettingsPatchAsync(
         PatchDomainSettingsDto patch,
         DomainSettingsDto domains,
-        Guid? actorUserId);
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default);
 
     Task ApplyTenantDelegationSettingsAsync(TenantDelegationSettingsDto delegation, Guid? actorUserId);
-    Task ApplyTenantDelegationSettingsPatchAsync(
+    Task<IReadOnlyList<SettingChangedNotification>> ApplyTenantDelegationSettingsPatchAsync(
         bool isMultiTenant,
         PatchTenantDelegationSettingsDto patch,
         TenantDelegationSettingsDto delegation,
-        Guid? actorUserId);
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default);
 
     Task ApplyAdminPortalSettingsAsync(AdminPortalSettingsDto adminPortal, Guid? actorUserId);
     Task ApplyAdminPortalSettingsPatchAsync(
@@ -62,16 +72,18 @@ public interface IInstanceGovernanceSettingService
         Guid? actorUserId);
 
     Task ApplyAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceSettingsDto aiAssistant, Guid? actorUserId);
-    Task ApplyAiAssistantGovernanceSettingsPatchAsync(
+    Task<IReadOnlyList<SettingChangedNotification>> ApplyAiAssistantGovernanceSettingsPatchAsync(
         PatchAiAssistantGovernanceSettingsDto patch,
         AiAssistantGovernanceSettingsDto aiAssistant,
-        Guid? actorUserId);
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default);
 
     Task ApplyMcpGovernanceSettingsAsync(McpGovernanceSettingsDto mcp, Guid? actorUserId);
-    Task ApplyMcpGovernanceSettingsPatchAsync(
+    Task<IReadOnlyList<SettingChangedNotification>> ApplyMcpGovernanceSettingsPatchAsync(
         PatchMcpGovernanceSettingsDto patch,
         McpGovernanceSettingsDto mcp,
-        Guid? actorUserId);
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default);
 
     Task ApplyRenderPolicySettingsAsync(RenderPolicySettingsDto renderPolicy, Guid? actorUserId);
     Task ApplyRenderPolicySettingsPatchAsync(

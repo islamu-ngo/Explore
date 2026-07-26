@@ -12,7 +12,8 @@ namespace Explore.Application.Features.Notifications.Handlers.Commands;
 
 public sealed class SetGroupNotificationPreferenceMuteCommandHandler(
     INotificationPreferenceProfileRepository profileRepository,
-    IGroupRepository groupRepository,
+    IGroupTenantRepository groupTenantRepository,
+    IOrganizationTenantRepository organizationTenantRepository,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
     ICurrentUserService currentUserService)
@@ -28,11 +29,17 @@ public sealed class SetGroupNotificationPreferenceMuteCommandHandler(
             return Failure("User not authenticated.");
         }
 
-        var group = await groupRepository.GetById(request.GroupId);
+        var group = await groupTenantRepository.GetByGroupAndTenant(
+            request.GroupId,
+            tenantContext.TenantId,
+            cancellationToken);
+        var parentOrganization = group?.ParentOrganizationTenantId is { } parentOrganizationTenantId
+            ? await organizationTenantRepository.GetById(parentOrganizationTenantId)
+            : null;
         var profiles = await profileRepository.ListForUserContextAsync(
             tenantContext.TenantId,
             userId.Value,
-            group?.ParentOrganizationId,
+            parentOrganization?.OrganizationId,
             request.GroupId,
             cancellationToken);
         var lockedProfile = profiles

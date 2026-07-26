@@ -91,15 +91,54 @@ public class SettingUpsertService
             invalidateAfterCommit: true,
             cancellationToken);
 
+    public async Task<SettingChangedNotification> UpsertLockAsync(
+        string settingKey,
+        string fallbackValue,
+        bool isLocked,
+        Guid? actorId,
+        CancellationToken cancellationToken = default)
+    {
+        var definition = Domain.Settings.SettingRegistry.Get(settingKey);
+        var changedAt = DateTime.UtcNow;
+        string? previousStoredValue = await _systemSettingRepository.UpsertLockAsync(new SystemSetting
+        {
+            SettingKey = settingKey,
+            Value = fallbackValue,
+            ValueType = definition?.ValueType ?? SettingValueType.String,
+            IsLocked = isLocked,
+            AllowedValues = definition?.AllowedValues is null
+                ? null
+                : SettingValueSerializer.Serialize(definition.AllowedValues),
+            Description = definition?.Description,
+            Category = definition?.Category ?? "Unknown",
+            DisplayOrder = 0,
+            CreatedAt = changedAt,
+            CreatedBy = actorId,
+            UpdatedAt = changedAt,
+            UpdatedBy = actorId
+        }, cancellationToken);
+
+        var persistedValue = previousStoredValue ?? fallbackValue;
+        return new SettingChangedNotification(
+            settingKey,
+            previousStoredValue,
+            persistedValue,
+            isLocked ? SettingSource.SystemLocked : SettingSource.SystemDefault,
+            null,
+            actorId,
+            changedAt);
+    }
+
     internal Task<DeferredSettingUpsertResult> UpsertValueWithDeferredInvalidationAsync(
         string settingKey,
         string value,
         Guid? actorId,
+        bool isLocked = false,
         CancellationToken cancellationToken = default) =>
         UpsertValueCoreAsync(
             settingKey,
             value,
-            isLocked: false,
+            isLocked,
             actorId,
             invalidateAfterCommit: false,
             cancellationToken);
@@ -132,7 +171,7 @@ public class SettingUpsertService
             settingKey,
             persistence.PreviousStoredValue,
             value,
-            SettingSource.SystemDefault,
+            isLocked ? SettingSource.SystemLocked : SettingSource.SystemDefault,
             null,
             actorId,
             DateTime.UtcNow);

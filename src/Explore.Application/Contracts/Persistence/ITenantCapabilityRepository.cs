@@ -28,5 +28,12 @@ public interface ITenantCapabilityRepository : IGenericRepository<TenantCapabili
     /// <summary>
     /// Gets a capability by tenant and module key.
     /// </summary>
-    Task<TenantCapability?> GetByTenantAndModuleKey(Guid tenantId, string moduleKey);
+    Task<TenantCapability?> GetByTenantAndModuleKey(
+        Guid tenantId,
+        string moduleKey,
+        CancellationToken cancellationToken = default);
+
+    Task<TenantCapability> Create(TenantCapability entity, CancellationToken cancellationToken = default);
+
+    Task Update(TenantCapability entity, CancellationToken cancellationToken = default);
 }

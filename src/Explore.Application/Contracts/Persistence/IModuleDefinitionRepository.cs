@@ -13,7 +13,7 @@ public interface IModuleDefinitionRepository : IGenericRepository<ModuleDefiniti
     /// <summary>
     /// Gets a module by its unique key (e.g., "Mod_Islamic").
     /// </summary>
-    Task<ModuleDefinition?> GetByKey(string key);
+    Task<ModuleDefinition?> GetByKey(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all active modules ordered by display order.

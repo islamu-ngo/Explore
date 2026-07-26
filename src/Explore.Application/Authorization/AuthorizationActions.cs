@@ -85,6 +85,13 @@ public static class AuthorizationActions
         public const string ManageOwner = "manage-owner";
         public const string TransferOwnership = "transfer-ownership";
         public const string ManageFinance = "manage-finance";
+        public const string ManagePublicActions = "manage-public-actions";
+        public const string ClaimOrganizer = "claim-organizer";
+        public const string ReviewOrganizerClaim = "review-organizer-claim";
+        public const string ViewOrganizerClaims = "view-organizer-claims";
+        public const string ManageRegistrations = "manage-registrations";
+        public const string ManageTickets = "manage-tickets";
+        public const string ManageAttendees = "manage-attendees";
     }
 
     /// <summary>Valid actions for the <c>islamuevent_event_session</c> resource kind.</summary>

@@ -23,8 +23,11 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ITenantSettingRepository _tenantSettingRepository;
     private readonly IOrganizationSettingRepository _organizationSettingRepository;
+    private readonly IOrganizationTenantRepository _organizationTenantRepository;
     private readonly IGroupSettingRepository _groupSettingRepository;
+    private readonly IGroupTenantRepository _groupTenantRepository;
     private readonly IUserPreferenceRepository _userPreferenceRepository;
+    private readonly ITenantContext _tenantContext;
     private readonly ISettingMutationLock _mutationLock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<HierarchicalSettingsResolver> _logger;
@@ -40,8 +43,11 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         ISystemSettingRepository systemSettingRepository,
         ITenantSettingRepository tenantSettingRepository,
         IOrganizationSettingRepository organizationSettingRepository,
+        IOrganizationTenantRepository organizationTenantRepository,
         IGroupSettingRepository groupSettingRepository,
+        IGroupTenantRepository groupTenantRepository,
         IUserPreferenceRepository userPreferenceRepository,
+        ITenantContext tenantContext,
         ISettingMutationLock mutationLock,
         IMemoryCache cache,
         ILogger<HierarchicalSettingsResolver> logger)
@@ -49,8 +55,11 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         _systemSettingRepository = systemSettingRepository;
         _tenantSettingRepository = tenantSettingRepository;
         _organizationSettingRepository = organizationSettingRepository;
+        _organizationTenantRepository = organizationTenantRepository;
         _groupSettingRepository = groupSettingRepository;
+        _groupTenantRepository = groupTenantRepository;
         _userPreferenceRepository = userPreferenceRepository;
+        _tenantContext = tenantContext;
         _mutationLock = mutationLock;
         _cache = cache;
         _logger = logger;
@@ -194,11 +203,11 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
                 break;
 
             case SettingScope.Organization:
-                await UpsertOrganizationSettingAsync(key, value, scopeId, actorId);
+                await UpsertOrganizationSettingAsync(key, value, scopeId, actorId, ct);
                 break;
 
             case SettingScope.Group:
-                await UpsertGroupSettingAsync(key, value, scopeId, actorId);
+                await UpsertGroupSettingAsync(key, value, scopeId, actorId, ct);
                 break;
 
             case SettingScope.User:
@@ -568,7 +577,12 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         }
     }
 
-    private async Task UpsertOrganizationSettingAsync(string key, string value, Guid organizationId, Guid actorId)
+    private async Task UpsertOrganizationSettingAsync(
+        string key,
+        string value,
+        Guid organizationId,
+        Guid actorId,
+        CancellationToken cancellationToken)
     {
         var existing = await _organizationSettingRepository.GetByOrganizationAndKey(organizationId, key);
         if (existing is not null)
@@ -580,10 +594,16 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         }
         else
         {
+            var participation = await _organizationTenantRepository.GetByOrganizationAndTenant(
+                organizationId,
+                _tenantContext.TenantId,
+                cancellationToken)
+                ?? throw new InvalidOperationException("Organization is not available in the current tenant.");
             await _organizationSettingRepository.Create(new OrganizationSetting
             {
-                OrganizationId = organizationId,
-                Organization = null!,
+                OrganizationTenantId = participation.Id,
+                OrganizationTenant = participation,
+                TenantId = participation.TenantId,
                 Tenant = null!,
                 SettingKey = key,
                 Value = value,
@@ -593,7 +613,12 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         }
     }
 
-    private async Task UpsertGroupSettingAsync(string key, string value, Guid groupId, Guid actorId)
+    private async Task UpsertGroupSettingAsync(
+        string key,
+        string value,
+        Guid groupId,
+        Guid actorId,
+        CancellationToken cancellationToken)
     {
         var existing = await _groupSettingRepository.GetByGroupAndKey(groupId, key);
         if (existing is not null)
@@ -605,10 +630,16 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         }
         else
         {
+            var participation = await _groupTenantRepository.GetByGroupAndTenant(
+                groupId,
+                _tenantContext.TenantId,
+                cancellationToken)
+                ?? throw new InvalidOperationException("Group is not available in the current tenant.");
             await _groupSettingRepository.Create(new GroupSetting
             {
-                GroupId = groupId,
-                Group = null!,
+                GroupTenantId = participation.Id,
+                GroupTenant = participation,
+                TenantId = participation.TenantId,
                 Tenant = null!,
                 SettingKey = key,
                 Value = value,

@@ -13,7 +13,8 @@ namespace Explore.Application.Features.Notifications.Handlers.Commands;
 public sealed class UpdateGroupNotificationPreferenceMatrixCommandHandler(
     INotificationChannelPreferenceRepository preferenceRepository,
     INotificationPreferenceResolver resolver,
-    IGroupRepository groupRepository,
+    IGroupTenantRepository groupTenantRepository,
+    IOrganizationTenantRepository organizationTenantRepository,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
     ICurrentUserService currentUserService)
@@ -29,8 +30,14 @@ public sealed class UpdateGroupNotificationPreferenceMatrixCommandHandler(
             return Failure("User not authenticated.");
         }
 
-        var group = await groupRepository.GetById(request.GroupId);
-        var organizationId = group?.ParentOrganizationId;
+        var group = await groupTenantRepository.GetByGroupAndTenant(
+            request.GroupId,
+            tenantContext.TenantId,
+            cancellationToken);
+        var parentOrganization = group?.ParentOrganizationTenantId is { } parentOrganizationTenantId
+            ? await organizationTenantRepository.GetById(parentOrganizationTenantId)
+            : null;
+        var organizationId = parentOrganization?.OrganizationId;
         var validation = await ValidateCellsAsync(
             request.Cells,
             userId.Value,

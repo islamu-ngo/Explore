@@ -16,11 +16,13 @@ public class ModuleDefinitionRepository : GenericRepository<ModuleDefinition, Gu
         _dbContext = dbContext;
     }
 
-    public async Task<ModuleDefinition?> GetByKey(string moduleKey)
+    public async Task<ModuleDefinition?> GetByKey(
+        string moduleKey,
+        CancellationToken cancellationToken = default)
     {
         return await _dbContext.ModuleDefinitions
             .AsNoTracking()
-            .FirstOrDefaultAsync(m => m.ModuleKey == moduleKey);
+            .FirstOrDefaultAsync(m => m.ModuleKey == moduleKey, cancellationToken);
     }
 
     public async Task<List<ModuleDefinition>> GetAllActive()

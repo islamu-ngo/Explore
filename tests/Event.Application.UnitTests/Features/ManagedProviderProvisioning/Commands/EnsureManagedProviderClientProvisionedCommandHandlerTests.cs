@@ -35,8 +35,10 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
     private readonly ITenantUserRoleGrantRepository _tenantUserRoleGrantRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly IOrganizationRepository _organizationRepository;
+    private readonly IOrganizationTenantRepository _organizationTenantRepository;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly IGroupRepository _groupRepository;
+    private readonly IGroupTenantRepository _groupTenantRepository;
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IExternalBindingRepository _externalBindingRepository;
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
@@ -55,8 +57,10 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
         _tenantUserRoleGrantRepository = Substitute.For<ITenantUserRoleGrantRepository>();
         _roleRepository = Substitute.For<IRoleRepository>();
         _organizationRepository = Substitute.For<IOrganizationRepository>();
+        _organizationTenantRepository = Substitute.For<IOrganizationTenantRepository>();
         _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
         _groupRepository = Substitute.For<IGroupRepository>();
+        _groupTenantRepository = Substitute.For<IGroupTenantRepository>();
         _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
         _externalBindingRepository = Substitute.For<IExternalBindingRepository>();
         _instanceBootstrapStateRepository = Substitute.For<IInstanceBootstrapStateRepository>();
@@ -76,9 +80,11 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
         _userExternalLoginRepository.Create(Arg.Any<UserExternalLogin>()).Returns(call => call.Arg<UserExternalLogin>());
         _tenantUserRoleGrantRepository.Create(Arg.Any<TenantUserRoleGrant>()).Returns(call => call.Arg<TenantUserRoleGrant>());
         _organizationRepository.Create(Arg.Any<Organization>()).Returns(call => call.Arg<Organization>());
+        _organizationTenantRepository.Create(Arg.Any<OrganizationTenant>()).Returns(call => call.Arg<OrganizationTenant>());
         _organizationRepository.Update(Arg.Any<Organization>()).Returns(Task.CompletedTask);
         _organizationMemberRepository.Create(Arg.Any<OrganizationMember>()).Returns(call => call.Arg<OrganizationMember>());
         _groupRepository.Create(Arg.Any<Group>()).Returns(call => call.Arg<Group>());
+        _groupTenantRepository.Create(Arg.Any<GroupTenant>()).Returns(call => call.Arg<GroupTenant>());
         _groupRepository.Update(Arg.Any<Group>()).Returns(Task.CompletedTask);
         _groupMemberRepository.Create(Arg.Any<GroupMember>()).Returns(call => call.Arg<GroupMember>());
         _externalBindingRepository.Create(Arg.Any<ExternalBinding>()).Returns(call => call.Arg<ExternalBinding>());
@@ -120,8 +126,10 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             _tenantUserRoleGrantRepository,
             _roleRepository,
             _organizationRepository,
+            _organizationTenantRepository,
             _organizationMemberRepository,
             _groupRepository,
+            _groupTenantRepository,
             _groupMemberRepository,
             _externalBindingRepository,
             Substitute.For<ITenantOnboardingStateRepository>(),
@@ -153,7 +161,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
         var request = new EnsureManagedProviderClientProvisionedCommand { ProvisioningDto = CreateValidDto() };
         _tenantRepository.GetTenantBySlug("erp-customer").Returns((Tenant?)null);
         _userExternalLoginRepository.GetByProviderAndKey("keycloak", "external-admin-1").Returns((UserExternalLogin?)null);
-        _actorRepository.GetActorByUserIdAndTenantId(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns((Actor?)null);
+        _actorRepository.GetActorByUserId(Arg.Any<Guid>()).Returns((Actor?)null);
         _tenantUserRepository.GetByTenantAndUserAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((TenantUser?)null);
         _tenantUserProfileRepository.GetByTenantUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((TenantUserProfile?)null);
         _tenantUserRoleGrantRepository.GetByTenantAndUser(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns((TenantUserRoleGrant?)null);
@@ -168,7 +176,6 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             tenant.TenantStatusId == (int)TenantStatusEnum.Active));
         await _actorRepository.Received(1).Create(Arg.Is<Actor>(actor =>
             actor.ActorTypeId == (int)ActorTypeEnum.User &&
-            actor.TenantId == result.Id!.TenantId &&
             actor.UserId == result.Id.UserId));
         await _userExternalLoginRepository.Received(1).Create(Arg.Is<UserExternalLogin>(login =>
             login.TenantId == result.Id!.TenantId &&
@@ -221,7 +228,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
         };
         _tenantRepository.GetTenantBySlug("erp-customer").Returns((Tenant?)null);
         _userExternalLoginRepository.GetByProviderAndKey("keycloak", "external-admin-1").Returns((UserExternalLogin?)null);
-        _actorRepository.GetActorByUserIdAndTenantId(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns((Actor?)null);
+        _actorRepository.GetActorByUserId(Arg.Any<Guid>()).Returns((Actor?)null);
         _tenantUserRoleGrantRepository.GetByTenantAndUser(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns((TenantUserRoleGrant?)null);
         _organizationMemberRepository.GetByOrganizationAndUser(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns((OrganizationMember?)null);
 
@@ -230,12 +237,12 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id!.OrganizerKind).IsEqualTo(ManagedProviderOrganizerKindDto.Organization);
         await _organizationRepository.Received(1).Create(Arg.Is<Organization>(organization =>
-            organization.TenantId == result.Id.TenantId &&
-            organization.FullName == "Customer Legal Entity" &&
-            organization.ApprovalStatusId == (int)ApprovalStatusEnum.Approved));
+            organization.FullName == "Customer Legal Entity"));
+        await _organizationTenantRepository.Received(1).Create(Arg.Is<OrganizationTenant>(participation =>
+            participation.TenantId == result.Id.TenantId &&
+            participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved));
         await _actorRepository.Received(1).Create(Arg.Is<Actor>(actor =>
             actor.ActorTypeId == (int)ActorTypeEnum.Organization &&
-            actor.TenantId == result.Id.TenantId &&
             actor.OrganizationId == result.Id.OrganizerId));
         await _organizationMemberRepository.Received(1).Create(Arg.Is<OrganizationMember>(member =>
             member.TenantId == result.Id.TenantId &&
@@ -257,7 +264,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
         };
         _tenantRepository.GetTenantBySlug("erp-customer").Returns((Tenant?)null);
         _userExternalLoginRepository.GetByProviderAndKey("keycloak", "external-admin-1").Returns((UserExternalLogin?)null);
-        _actorRepository.GetActorByUserIdAndTenantId(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns((Actor?)null);
+        _actorRepository.GetActorByUserId(Arg.Any<Guid>()).Returns((Actor?)null);
         _tenantUserRoleGrantRepository.GetByTenantAndUser(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns((TenantUserRoleGrant?)null);
         _groupMemberRepository.GetByGroupAndUser(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns((GroupMember?)null);
 
@@ -266,12 +273,12 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id!.OrganizerKind).IsEqualTo(ManagedProviderOrganizerKindDto.Group);
         await _groupRepository.Received(1).Create(Arg.Is<Group>(group =>
-            group.TenantId == result.Id.TenantId &&
-            group.FullName == "Customer Community Group" &&
-            group.ApprovalStatusId == (int)ApprovalStatusEnum.Approved));
+            group.FullName == "Customer Community Group"));
+        await _groupTenantRepository.Received(1).Create(Arg.Is<GroupTenant>(participation =>
+            participation.TenantId == result.Id.TenantId &&
+            participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved));
         await _actorRepository.Received(1).Create(Arg.Is<Actor>(actor =>
             actor.ActorTypeId == (int)ActorTypeEnum.Group &&
-            actor.TenantId == result.Id.TenantId &&
             actor.GroupId == result.Id.OrganizerId));
         await _groupMemberRepository.Received(1).Create(Arg.Is<GroupMember>(member =>
             member.TenantId == result.Id.TenantId &&
@@ -605,8 +612,10 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             _tenantUserRoleGrantRepository,
             _roleRepository,
             _organizationRepository,
+            _organizationTenantRepository,
             _organizationMemberRepository,
             _groupRepository,
+            _groupTenantRepository,
             _groupMemberRepository,
             _externalBindingRepository,
             onboardingRepository,

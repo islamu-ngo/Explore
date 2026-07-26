@@ -214,11 +214,9 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
                 FirstName = firstName,
                 LastName = lastName
             },
-            ActorId = null,
             AuthProvider = provider,
             AuthProviderId = providerUserId,
-            EmailVerified = request.EmailVerified ?? (provider is "keycloak" or "google"),
-            DefaultActorId = null
+            EmailVerified = request.EmailVerified ?? (provider is "keycloak" or "google")
         };
 
         user = await _userRepository.Create(user);
@@ -230,32 +228,19 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         }
 
         var displayName = $"{firstName} {lastName}".Trim();
-        var handle = GenerateHandle(request.Username, email, providerUserId);
-
         var actor = new Actor
         {
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
-            TenantId = actorTenantId,
-            Tenant = null!,
             Pii = new ActorPii
             {
-                DisplayName = displayName,
-                Handle = handle,
-                Did = provider == "atproto" ? providerUserId : null
+                DisplayName = displayName
             },
             Description = null,
-            UserId = user.Id,
-            OrganizationId = null,
-            DidCustodyTypeId = provider == "atproto"
-                ? (int)DidCustodyTypeEnum.SelfCustody
-                : (int)DidCustodyTypeEnum.Custodial
+            UserId = user.Id
         };
 
-        actor = await _actorRepository.Create(actor);
-        user.ActorId = actor.Id;
-        user.DefaultActorId = actor.Id;
-        await _userRepository.Update(user);
+        await _actorRepository.Create(actor);
 
         var externalLogin = new UserExternalLogin
         {
@@ -278,18 +263,6 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         await _userExternalLoginRepository.Create(externalLogin);
 
         return user;
-    }
-
-    private static string GenerateHandle(string? username, string email, string providerUserId)
-    {
-        if (!string.IsNullOrWhiteSpace(username))
-            return username.ToLowerInvariant().Replace(" ", "-");
-
-        if (string.IsNullOrWhiteSpace(email))
-            return providerUserId.Replace(":", "-").Replace(".", "-").ToLowerInvariant();
-
-        var emailPrefix = email.Split('@')[0];
-        return emailPrefix.ToLowerInvariant().Replace(".", "-").Replace(" ", "-");
     }
 
     private async Task<Tenant> EnsureDefaultTenantAsync()
@@ -629,14 +602,15 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         var tenantUser = await _tenantUserRepository.GetByTenantAndUserAsync(tenantId, user.Id);
         if (tenantUser == null)
         {
+            var actor = user.Actor ?? await _actorRepository.GetActorByUserId(user.Id);
             return await _tenantUserRepository.Create(new TenantUser
             {
                 TenantId = tenantId,
                 Tenant = null!,
                 UserId = user.Id,
                 User = null!,
-                ActorId = user.DefaultActorId ?? user.ActorId,
-                Actor = null,
+                ActorId = actor?.Id,
+                Actor = actor,
                 StatusId = (int)TenantUserStatusEnum.Active,
                 JoinedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,

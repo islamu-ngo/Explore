@@ -26,7 +26,8 @@ public sealed class NotificationPreferenceMatrixHandlerTests
     private readonly INotificationChannelPreferenceRepository _preferenceRepository = Substitute.For<INotificationChannelPreferenceRepository>();
     private readonly INotificationPreferenceProfileRepository _profileRepository = Substitute.For<INotificationPreferenceProfileRepository>();
     private readonly INotificationPreferenceResolver _resolver = Substitute.For<INotificationPreferenceResolver>();
-    private readonly IGroupRepository _groupRepository = Substitute.For<IGroupRepository>();
+    private readonly IGroupTenantRepository _groupTenantRepository = Substitute.For<IGroupTenantRepository>();
+    private readonly IOrganizationTenantRepository _organizationTenantRepository = Substitute.For<IOrganizationTenantRepository>();
     private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
@@ -339,15 +340,26 @@ public sealed class NotificationPreferenceMatrixHandlerTests
         var groupId = Guid.Parse("018f0000-0000-7000-8000-000000000010");
         var organizationId = Guid.Parse("018f0000-0000-7000-8000-000000000011");
         SetupMetadata();
-        _groupRepository.GetById(groupId).Returns(Task.FromResult<Group?>(new Group
+        Guid organizationTenantId = Guid.CreateVersion7();
+        _groupTenantRepository.GetByGroupAndTenant(groupId, TenantId, Arg.Any<CancellationToken>()).Returns(new GroupTenant
         {
-            Id = groupId,
-            FullName = "Community group",
+            Id = Guid.CreateVersion7(),
+            GroupId = groupId,
+            Group = new Group { Id = groupId, FullName = "Community group" },
             ApprovalStatus = null!,
             TenantId = TenantId,
             Tenant = null!,
-            ParentOrganizationId = organizationId
-        }));
+            ParentOrganizationTenantId = organizationTenantId
+        });
+        _organizationTenantRepository.GetById(organizationTenantId).Returns(new OrganizationTenant
+        {
+            Id = organizationTenantId,
+            OrganizationId = organizationId,
+            Organization = new Organization { Id = organizationId, Pii = new OrganizationPii { FullName = "Organization" } },
+            ApprovalStatus = null!,
+            TenantId = TenantId,
+            Tenant = null!
+        });
         _resolver.ResolveBatchAsync(Arg.Any<IReadOnlyCollection<NotificationPreferenceResolveRequest>>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult<IReadOnlyList<NotificationPreferenceDecision>>(
                 ((IReadOnlyCollection<NotificationPreferenceResolveRequest>)call[0]!)
@@ -364,7 +376,8 @@ public sealed class NotificationPreferenceMatrixHandlerTests
         var handler = new GetGroupNotificationPreferenceMatrixQueryHandler(
             _preferenceRepository,
             _resolver,
-            _groupRepository,
+            _groupTenantRepository,
+            _organizationTenantRepository,
             _tenantContext,
             _currentUserService);
 

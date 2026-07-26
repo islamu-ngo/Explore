@@ -8,6 +8,7 @@ using Explore.Application.Models.Common;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Infrastructure.Services;
+using Microsoft.Extensions.Caching.Memory;
 using NSubstitute;
 
 namespace Explore.Infrastructure.Tests.Infrastructure;
@@ -51,5 +52,25 @@ public sealed class ResolverConfigServiceTests
         await Assert.That(writes.Single().Value).IsEqualTo("\"/tenants\"");
         await Assert.That(calls).IsEquivalentTo(["write", "invalidate"]);
         cache.Received(1).Remove("ResolverConfigService.Configuration");
+    }
+
+    [Test]
+    public async Task GetConfigurationAsync_WhenCachedResultIsMutated_ReturnsAnIsolatedDto()
+    {
+        var repository = Substitute.For<ISystemSettingRepository>();
+        repository.GetByKey(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((SystemSetting?)null);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var service = new ResolverConfigService(repository, cache);
+
+        var first = await service.GetConfigurationAsync();
+        first.PathPrefix = "/mutated";
+        first.AllowTenantCustomDomains = false;
+
+        var second = await service.GetConfigurationAsync();
+
+        await Assert.That(ReferenceEquals(first, second)).IsFalse();
+        await Assert.That(second.PathPrefix).IsEqualTo("/t");
+        await Assert.That(second.AllowTenantCustomDomains).IsTrue();
     }
 }
