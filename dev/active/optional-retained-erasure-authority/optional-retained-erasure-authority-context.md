@@ -3,7 +3,7 @@
 
 # Platform Privacy Erasure Authority — Context
 
-Last Updated: 2026-07-24 Europe/Brussels
+Last Updated: 2026-07-26 Europe/Brussels
 
 ## Progress Snapshot
 
@@ -12,7 +12,7 @@ Last Updated: 2026-07-24 Europe/Brussels
 - Workstream: canonical owner of complete platform User erasure, authority topology, receipt/status, provider settlement, replay, retention, and restore behavior.
 - Supersedes: privacy-erasure implementation ownership in `.omo/plans/platform-wide-privacy-erasure-authority.md` and `dev/active/event-location-privacy/`.
 - Runtime changes: configuration exposes only `CoLocated` / `ExternalDatabase`, rejects the legacy mode key, isolates the external connection, and registers one authority-first workflow. `CoLocatedPrivacyErasureAuthorityRepository` now appends through a short-lived `ExploreDbContext` and independently committed transaction while the application ledger remains the replay mirror/checkpoint.
-- Verification: Phase 2 is independently confirmed. Current Phase 3 evidence includes provider-materialization characterization 8/8, capture-before-clear ordering and repository contracts 9/9, replay cache convergence 2/2, provider-work Domain lifecycle 10/10, locator protection 1/1, User-PII inventory/Clean Architecture 10/10, and no pending `ExploreDbContext` model changes. The OREA-420 review additionally passes durable outbox characterization 9/9, User read fence 2/2, dispatcher 18/18, readiness 4/4, UpdateUser producer fence 3/3, and Clean Architecture 15/15; five cache-convergence review lanes pass after repair. The canonical root Release build passes with 0 errors. The full Application suite passes 2,943/2,945; its two failures are the documented unrelated EventLocation policy-state and email-metric isolation baselines. The exact provider-metadata PostgreSQL selector and five broader Phase 3 canaries compile but fail during fixture construction because Docker is unavailable.
+- Verification: Phase 2 is independently confirmed. Current Phase 3 evidence includes provider-materialization characterization 8/8, capture-before-clear ordering and repository contracts 9/9, replay cache convergence 2/2, provider-work Domain lifecycle 10/10, locator protection 1/1, User-PII inventory/Clean Architecture 10/10, and no pending `ExploreDbContext` model changes. The OREA-420 review additionally passes durable outbox characterization 9/9, User read fence 2/2, dispatcher 18/18, readiness 4/4, UpdateUser producer fence 3/3, and Clean Architecture 15/15; five cache-convergence review lanes pass after repair. The canonical root Release build passes with 0 errors. The full Application suite passes 2,943/2,945; its two failures are the documented unrelated EventLocation policy-state and email-metric isolation baselines. The AI conversation exact-subject hard-delete slice is implemented and the inventory now classifies `AiConversation.UserId`, `AiMessage.Content`, `AiMessage.ImageAttachmentsJson`, `AiProposedAction.PayloadJson`, `AiProposedAction.FailureMessage`, `AiConversationReference.DisplayName`, `AiConversationReference.Summary`, `AiRun.FailureMessage`, and `AiToolExecution.FailureMessage` as HardDelete; the focused persistence canary is still host-blocked by Docker unavailable.
 
 ## Quick Resume
 

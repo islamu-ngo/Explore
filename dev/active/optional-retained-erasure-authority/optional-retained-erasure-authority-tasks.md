@@ -3,7 +3,7 @@
 
 # Platform Privacy Erasure Authority — Tasks
 
-Last Updated: 2026-07-24 Europe/Brussels
+Last Updated: 2026-07-26 Europe/Brussels
 
 ## Status
 
@@ -12,7 +12,7 @@ Last Updated: 2026-07-24 Europe/Brussels
 - Current phase: Phase 3 PostgreSQL acceptance and Phase 4 specialized provider settlement remain the critical path; provider-backed local clearing is implemented.
 - Current blocker: no Docker daemon is reachable and neither the active Docker Desktop socket nor `/var/run/docker.sock` exists, so the remaining PostgreSQL acceptance canaries cannot start. A bounded three-hypothesis runtime investigation confirmed this is a deterministic host-runtime blocker, not Testcontainers bootstrap timing or load flakiness.
 - Ownership blocker: resolved by `OREA-120`; the historical `.omo` plan is no longer active.
-- Runtime verification: the current root Release build passes with 0 errors; protected provider-work materialization, capture-before-clear ordering, provider-backed local clearing, and all fast Phase 3 focused selectors pass. PostgreSQL execution remains blocked by Docker.
+- Runtime verification: the current root Release build passes with 0 errors; protected provider-work materialization, capture-before-clear ordering, provider-backed local clearing, the AI conversation hard-delete slice, and all fast Phase 3 focused selectors pass. PostgreSQL execution remains blocked by Docker for the persistence canary.
 - Planning verification: governance, inventory, topology, scoped diff, and independent Phase 1 evidence passed.
 
 ## Maintenance Rules
@@ -232,6 +232,7 @@ OREA-310 partial evidence:
 - Full Application suite: 2,943/2,945 passed; only the same two unrelated EventLocation policy-state and email-metric isolation failures remain.
 - Phase 3 PostgreSQL selector attempted five rollback/replay/isolation/audit tests; all five were blocked during fixture construction by `DockerUnavailableException` before database access (`unix:///var/run/docker.sock`).
 - Provider-backed local clearing now flushes protected provider work before immediate local SQL mutations in the same serializable transaction. It hard-deletes exact-subject external-login, Web Push, notification-delivery, and email-dispatch rows; tombstones all actor-owned storage rows whether or not they have a remote key; archives and scrubs user-owned webhook targets/consumers without retaining the User ownership edge; and clears reporter-owned Osprey/Coop link metadata.
+- AI conversation hard delete now routes through `IAiConversationRepository.HardDeleteUserConversationGraphAsync` and `PrivacyErasureApplier.ApplyInCurrentTransactionAsync`, deleting the exact subject conversation graph in the existing serializable erasure transaction via the dedicated UserPrivacyErasure filter bypass; the focused integration canary is host-blocked by Docker availability, not by codepath failure.
 - Actor ownership/provider links are cleared even when an `ActorPii` row is absent. Local clearing is never conditional on a usable remote locator; only provider-work materialization is.
 - Final fast verification: root Release build 0 errors; Application ordering/contract selector 9/9; User-PII inventory and Clean Architecture selector 10/10. The exact two-test provider-metadata PostgreSQL selector compiled, then both tests failed during fixture construction with `DockerUnavailableException` before database access.
 - Five-lane review boundary: goal compliance passed. QA found and drove repair of the ordering characterization so the rebuilt selector is 9/9. Code/security findings about durable post-commit cache convergence remain assigned to `OREA-420`; ownership-aware Keycloak delete-versus-unlink and specialized provider execution remain assigned to `OREA-410`. The Docker-backed provider canary still needs explicit ATProto, Osprey/Coop, and `WebhookLocalTargetSnapshot` rows before `OREA-310` can close.
