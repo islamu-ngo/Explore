@@ -90,16 +90,6 @@
                     </MudText>
                 </MudItem>
 
-                @if (!string.IsNullOrEmpty(eventDetails.EventUrl))
-                {
-                    <MudItem xs="12" sm="6">
-                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">Event URL</MudText>
-                        <MudLink Href="@eventDetails.EventUrl" Target="_blank" Typo="Typo.body1">
-                            View Event Page
-                        </MudLink>
-                    </MudItem>
-                }
-
                 @if (eventDetails.FirstSessionDate.HasValue)
                 {
                     <MudItem xs="12" sm="6">

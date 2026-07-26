@@ -572,8 +572,6 @@ public class GetPublicExperienceShellQueryHandlerTests
         var actor = new Actor
         {
             Id = actorId,
-            TenantId = tenantId,
-            Tenant = tenant,
             ActorTypeId = 2,
             ActorType = new ActorType { Id = 2, MasterCode = "Organization", FullName = "Organization" },
             IsDeleted = actorDeleted,
@@ -581,26 +579,27 @@ public class GetPublicExperienceShellQueryHandlerTests
             {
                 ActorId = actorId,
                 DisplayName = displayName,
-                Handle = "primary.example",
                 ProfilePictureUri = "https://cdn.example/avatar.png"
             }
         };
+        actor.AtprotoIdentities.Add(new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            Did = "did:plc:primary",
+            ActorId = actorId,
+            Actor = actor,
+            Handle = "primary.example",
+            PdsHost = "https://pds.example.com",
+            IsActive = true,
+            LastResolvedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        });
 
         var organization = new Organization
         {
             Id = organizationId,
-            TenantId = tenantId,
-            Tenant = tenant,
-            ActorId = actorId,
             Actor = actor,
             WebsiteUrl = "https://primary.example",
-            ApprovalStatusId = approvalStatusId,
-            ApprovalStatus = new ApprovalStatus
-            {
-                Id = approvalStatusId,
-                MasterCode = ((ApprovalStatusEnum)approvalStatusId).ToString(),
-                FullName = ((ApprovalStatusEnum)approvalStatusId).ToString()
-            },
             IsDeleted = isDeleted,
             Pii = new OrganizationPii
             {
@@ -608,6 +607,22 @@ public class GetPublicExperienceShellQueryHandlerTests
                 FullName = displayName
             }
         };
+        organization.TenantParticipations.Add(new OrganizationTenant
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            Tenant = tenant,
+            OrganizationId = organizationId,
+            Organization = organization,
+            ApprovalStatusId = approvalStatusId,
+            ApprovalStatus = new ApprovalStatus
+            {
+                Id = approvalStatusId,
+                MasterCode = ((ApprovalStatusEnum)approvalStatusId).ToString(),
+                FullName = ((ApprovalStatusEnum)approvalStatusId).ToString()
+            },
+            IsVisible = true
+        });
 
         actor.OrganizationId = organizationId;
         actor.Organization = organization;

@@ -550,7 +550,6 @@ public partial class EventService : IEventService
         Madhab = new UpdateEventMadhabDto { Value = OptionalInt(request.MadhabId) },
         Timezone = new UpdateEventTimezoneDto { Value = OptionalString(request.Timezone) },
         EventTimeZone = new UpdateEventEventTimeZoneDto { Value = OptionalString(request.EventTimeZoneId) },
-        EventUrl = new UpdateEventUrlDto { Value = OptionalString(request.EventUrl) },
         BackgroundColor = new UpdateEventBackgroundColorDto { Value = OptionalString(request.BackgroundColor) },
         BackgroundEffect = new UpdateEventBackgroundEffectDto { Value = OptionalString(request.BackgroundEffect) },
         BackgroundImage = new UpdateEventBackgroundImageDto { Value = OptionalGuid(request.BackgroundImageId) },
@@ -1279,8 +1278,6 @@ public partial class EventService : IEventService
             LastSessionDate = lastSessionDate,
             Timezone = eventDetails?.Timezone,
             TotalViews = eventDetails?.TotalViews,
-            IsUserReported = eventDetails?.IsUserReported,
-            EventUrl = eventDetails?.EventUrl,
             TenantId = eventDetails?.TenantId,
             IsPast = IsPastRegistrationEvent(lastSessionDate ?? firstSessionDate),
             AdditionalProperties = eventDetails is null

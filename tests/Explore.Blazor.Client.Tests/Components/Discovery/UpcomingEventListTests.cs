@@ -87,10 +87,16 @@ public sealed class UpcomingEventListTests : IDisposable
     }
 
     [Test]
-    public async Task ExternalEventUrlRendersIndependentNewTabOpenAction()
+    public async Task FederatedSourceRendersNewTabOpenAction()
     {
         var eventItem = CreateEvents(1).Single();
-        eventItem.EventUrl = "https://events.example.test/upcoming-event";
+        const string sourceHref = "/api/event/source/upcoming-event";
+        eventItem.AdditionalProperties["eventDiscoverySource"] = "atproto";
+        eventItem.AdditionalProperties["_links"] = System.Text.Json.JsonSerializer.SerializeToElement(
+            new Dictionary<string, HalLink>
+            {
+                ["source"] = new() { Href = sourceHref, Method = "GET" }
+            });
 
         var cut = context.RenderMudComponent<UpcomingEventList>(parameters => parameters
             .Add(component => component.Events, new[] { eventItem }));
@@ -98,9 +104,9 @@ public sealed class UpcomingEventListTests : IDisposable
         var row = cut.Find("[data-testid='upcoming-event-row']");
         var externalLink = cut.Find("a.upcoming-event-list__external-link");
 
-        await Assert.That(row.GetAttribute("href")).IsEqualTo("/events/upcoming-event-1-UP001");
+        await Assert.That(row.GetAttribute("href")).IsEqualTo(sourceHref);
         await Assert.That(externalLink.TextContent).Contains("Open");
-        await Assert.That(externalLink.GetAttribute("href")).IsEqualTo(eventItem.EventUrl);
+        await Assert.That(externalLink.GetAttribute("href")).IsEqualTo(sourceHref);
         await Assert.That(externalLink.GetAttribute("target")).IsEqualTo("_blank");
         await Assert.That(externalLink.GetAttribute("rel")).IsEqualTo("noopener noreferrer");
         await Assert.That(externalLink.GetAttribute("aria-label"))

@@ -479,7 +479,6 @@ public partial class EventEdit : IDisposable
             VisibilityTypeId = currentEvent.VisibilityTypeId,
             MadhabId = currentEvent.MadhabId,
             Timezone = currentEvent.Timezone,
-            EventUrl = currentEvent.EventUrl,
             BackgroundColor = currentEvent.BackgroundColor,
             BackgroundImageId = currentEvent.BackgroundImageId,
             BackgroundEffect = currentEvent.BackgroundEffect

@@ -420,7 +420,9 @@ public class GetPublicExperienceShellQueryHandler(
             };
         }
 
-        if (organization.TenantId != tenantId)
+        OrganizationTenant? participation = organization.TenantParticipations
+            .SingleOrDefault(candidate => candidate.TenantId == tenantId);
+        if (participation is null)
         {
             return new PublicExperiencePrimaryOrganizationDto
             {
@@ -438,7 +440,8 @@ public class GetPublicExperienceShellQueryHandler(
             };
         }
 
-        if (organization.ApprovalStatusId != (int)ApprovalStatusEnum.Approved)
+        if (participation.ApprovalStatusId != (int)ApprovalStatusEnum.Approved
+            || !participation.IsVisible)
         {
             return new PublicExperiencePrimaryOrganizationDto
             {
@@ -460,9 +463,9 @@ public class GetPublicExperienceShellQueryHandler(
         {
             State = PublicExperiencePrimaryOrganizationState.Available,
             OrganizationId = organization.Id,
-            ActorId = organization.ActorId,
+            ActorId = organization.Actor.Id,
             DisplayName = organization.Actor.DisplayName,
-            Handle = organization.Actor.Handle ?? string.Empty,
+            Handle = organization.Actor.AtprotoIdentities.Select(identity => identity.Handle).FirstOrDefault() ?? string.Empty,
             WebsiteUrl = organization.WebsiteUrl ?? string.Empty,
             ProfilePictureUri = organization.Actor.ProfilePictureUri ?? string.Empty
         };

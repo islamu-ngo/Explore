@@ -252,10 +252,11 @@ public class EventCardTests : IDisposable
     [Arguments(LayoutMode.CompactGrid)]
     [Arguments(LayoutMode.DetailedList)]
     [Arguments(LayoutMode.SingleRow)]
-    public async Task EventCard_WithExternalEventUrl_RendersIsolatedNewTabLink(LayoutMode layout)
+    public async Task EventCard_WithFederatedSource_RendersIsolatedNewTabLink(LayoutMode layout)
     {
         var eventDto = CreateTestEvent();
-        eventDto.EventUrl = "https://events.example.test/conference";
+        const string sourceHref = "/api/event/source/conference";
+        SetFederatedSource(eventDto, sourceHref);
 
         var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
             .Add(x => x.Event, eventDto)
@@ -263,7 +264,7 @@ public class EventCardTests : IDisposable
 
         var link = cut.Find("a.event-card__external-link");
         await Assert.That(link.TextContent).Contains("Open");
-        await Assert.That(link.GetAttribute("href")).IsEqualTo(eventDto.EventUrl);
+        await Assert.That(link.GetAttribute("href")).IsEqualTo(sourceHref);
         await Assert.That(link.GetAttribute("target")).IsEqualTo("_blank");
         await Assert.That(link.GetAttribute("rel")).IsEqualTo("noopener noreferrer");
         await Assert.That(link.GetAttribute("aria-label"))
@@ -271,16 +272,26 @@ public class EventCardTests : IDisposable
     }
 
     [Test]
-    public async Task EventCard_WithoutSafeExternalEventUrl_HidesExternalLink()
+    public async Task EventCard_WithoutSafeFederatedSource_HidesExternalLink()
     {
         var eventDto = CreateTestEvent();
-        eventDto.EventUrl = "javascript:alert('unsafe')";
+        SetFederatedSource(eventDto, "javascript:alert('unsafe')");
 
         var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
             .Add(x => x.Event, eventDto)
             .Add(x => x.Layout, LayoutMode.DetailedList));
 
         await Assert.That(cut.FindAll("a.event-card__external-link")).IsEmpty();
+    }
+
+    private static void SetFederatedSource(EventListDto eventDto, string href)
+    {
+        eventDto.AdditionalProperties["eventDiscoverySource"] = "atproto";
+        eventDto.AdditionalProperties["_links"] = System.Text.Json.JsonSerializer.SerializeToElement(
+            new Dictionary<string, HalLink>
+            {
+                ["source"] = new() { Href = href, Method = "GET" }
+            });
     }
 
     [Test]

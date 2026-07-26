@@ -338,8 +338,7 @@
         : EventUrlHelper.BuildPublicPath(slide.Slug, slide.PublicCode) ?? "/events";
 
     private static string? GetExternalEventUrl(EventListDto slide) =>
-        EventUrlHelper.GetSafeExternalUrl(slide.EventUrl)
-        ?? (slide.IsFederatedDiscoveryEvent() ? slide.GetHalHref("source") : null);
+        slide.IsFederatedDiscoveryEvent() ? slide.GetHalHref("source") : null;
 
     private static string GetExternalEventLinkLabel(EventListDto slide) =>
         $"Open {slide.Title} on its external platform in a new tab";

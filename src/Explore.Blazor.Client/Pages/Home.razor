@@ -411,11 +411,6 @@ else
 
     private static string GetEventUrl(EventListDto evt)
     {
-        if (!string.IsNullOrWhiteSpace(evt.EventUrl))
-        {
-            return evt.EventUrl;
-        }
-
         return EventUrlHelper.BuildPublicPath(evt.Slug, evt.PublicCode)
             ?? (evt.Id.HasValue ? $"/events/{evt.Id}" : "/events");
     }

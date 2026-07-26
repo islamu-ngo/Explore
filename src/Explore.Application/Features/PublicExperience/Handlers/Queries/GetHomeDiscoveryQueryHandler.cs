@@ -407,7 +407,6 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
         FirstSessionDate = source.FirstSessionDate,
         FirstSessionStartUtc = source.FirstSessionStartUtc,
         IsPast = source.IsPast,
-        IsUserReported = source.IsUserReported,
         CreatedAtUtc = source.CreatedAtUtc,
         AtprotoRecordId = source.AtprotoRecordId,
         TenantId = source.TenantId

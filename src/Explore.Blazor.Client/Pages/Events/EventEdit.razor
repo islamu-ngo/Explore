@@ -148,19 +148,6 @@
                         <MudToggleItem T="int?" Value="@((int?)3)" Text="Hybrid" />
                     </MudToggleGroup>
 
-                    @if (updateDto.EventFormatId is 2 or 3)
-                    {
-                        <MudTextField T="string" @bind-Value="updateDto.EventUrl"
-                                      Label="Meeting link"
-                                      Placeholder="https://zoom.us/j/... or Google Meet link"
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Dense"
-                                      FullWidth="true"
-                                      Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.Link"
-                                      Class="mb-3" />
-                    }
-
                     <MudTextField T="string" @bind-Value="updateDto.Description"
                                   Label="Card description"
                                   Placeholder="Short summary for event cards"

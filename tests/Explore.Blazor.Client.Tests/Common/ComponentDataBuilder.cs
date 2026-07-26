@@ -87,9 +87,7 @@ public static class ComponentDataBuilder
         // Tenant
         .RuleFor(e => e.TenantId, f => Guid.Parse("018e4e5c-7f00-7000-8000-000000000001"))
         // Timezone
-        .RuleFor(e => e.Timezone, f => f.PickRandom("UTC", "Europe/London", "America/New_York", "Asia/Dubai"))
-        // Event URL
-        .RuleFor(e => e.EventUrl, f => f.Random.Bool() ? f.Internet.Url() : null);
+        .RuleFor(e => e.Timezone, f => f.PickRandom("UTC", "Europe/London", "America/New_York", "Asia/Dubai"));
 
     /// <summary>
     /// Generates fake EventDto for detail views.
@@ -103,7 +101,6 @@ public static class ComponentDataBuilder
         .RuleFor(e => e.Slug, f => f.Lorem.Slug(3))
         .RuleFor(e => e.TotalViews, f => f.Random.Int(0, 10000))
         .RuleFor(e => e.IsRegistrationRequired, f => f.Random.Bool())
-        .RuleFor(e => e.EventUrl, f => f.Internet.Url())
         .RuleFor(e => e.ExternalRegistrationUrl, f => f.Random.Bool() ? f.Internet.Url() : null)
         // Price is double? (verified from API line 24545)
         .RuleFor(e => e.Price, f => f.Random.Bool() ? (double?)f.Random.Double(0, 100) : null)

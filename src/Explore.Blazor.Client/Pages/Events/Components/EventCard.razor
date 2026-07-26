@@ -245,12 +245,6 @@
                                     <MudIcon Icon="@FormatIcon" Size="Size.Small" Color="Color.Default" />
                                 </MudTooltip>
                             </div>
-                            @if (Event.IsUserReported == true)
-                            {
-                                <MudTooltip Text="Community Reported">
-                                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
-                                </MudTooltip>
-                            }
                             @if (CanShare)
                             {
                                 <div @onclick:stopPropagation="true" @onkeydown:stopPropagation="true">
@@ -511,12 +505,6 @@
                                 </MudTooltip>
                             }
                         </div>
-                        @if (Event.IsUserReported == true)
-                        {
-                            <MudTooltip Text="Community Reported">
-                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
-                            </MudTooltip>
-                        }
                     </div>
 
                     @if (AtprotoDeliveryGuidance is { } rowDeliveryGuidance)

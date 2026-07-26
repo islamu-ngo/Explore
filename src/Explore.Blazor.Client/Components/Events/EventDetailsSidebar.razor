@@ -457,18 +457,6 @@
                                 </div>
                             </div>
                         }
-                        @if (!string.IsNullOrEmpty(EventDetail?.EventUrl))
-                        {
-                            <div class="d-flex gap-3 align-center">
-                                <MudIcon Icon="@Icons.Material.Outlined.Videocam" Color="Color.Primary" Size="Size.Small" />
-                                <div>
-                                    <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Online</MudText>
-                                    <MudLink Href="@EventDetail.EventUrl" Target="_blank" Typo="Typo.body2">
-                                        Join meeting
-                                    </MudLink>
-                                </div>
-                            </div>
-                        }
                         @if (session.MaxAudienceAttendees > 0)
                         {
                             <div class="d-flex gap-3 align-center">

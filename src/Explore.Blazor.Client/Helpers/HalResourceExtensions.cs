@@ -73,6 +73,36 @@ public static class HalResourceExtensions
         return JsonSerializer.Deserialize<EventDto>(json, JsonOptions) ?? new EventDto();
     }
 
+    public static ICollection<EventSeriesListDto> GetItems(this HalCollectionResourceOfEventSeriesListDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return [];
+
+        return DeserializeItems<EventSeriesListDto>(collection._embedded.Items);
+    }
+
+    public static EventSeriesDto ToDto(this HalResourceOfEventSeriesDto halResource)
+    {
+        var json = JsonSerializer.Serialize(halResource, JsonOptions);
+        return JsonSerializer.Deserialize<EventSeriesDto>(json, JsonOptions) ?? new EventSeriesDto();
+    }
+
+    public static PaginatedResult<EventSeriesListDto> ToPaginatedResult(
+        this HalCollectionResourceOfEventSeriesListDto? collection)
+    {
+        if (collection is null)
+            return PaginatedResult<EventSeriesListDto>.Empty();
+
+        return new PaginatedResult<EventSeriesListDto>
+        {
+            Items = collection.GetItems().ToList(),
+            PageNumber = collection.PageNumber ?? 1,
+            PageSize = collection.PageSize ?? 20,
+            TotalCount = collection.TotalCount ?? 0,
+            Links = ToClientLinks(collection._links)
+        };
+    }
+
     // ========== EventSession Extensions ==========
 
     /// <summary>
@@ -101,6 +131,21 @@ public static class HalResourceExtensions
     {
         var json = JsonSerializer.Serialize(halResource, JsonOptions);
         return JsonSerializer.Deserialize<EventSessionDto>(json, JsonOptions) ?? new EventSessionDto();
+    }
+
+    public static ICollection<EventSessionLanguageListDto> GetItems(
+        this HalCollectionResourceOfEventSessionLanguageListDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return [];
+
+        return DeserializeItems<EventSessionLanguageListDto>(collection._embedded.Items);
+    }
+
+    public static UserDto ToDto(this HalResourceOfUserDto halResource)
+    {
+        var json = JsonSerializer.Serialize(halResource, JsonOptions);
+        return JsonSerializer.Deserialize<UserDto>(json, JsonOptions) ?? new UserDto();
     }
 
     // ========== EventSessionGroup Extensions ==========

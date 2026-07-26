@@ -71,11 +71,17 @@ public sealed class EventDetailsSidebarTests : IDisposable
     }
 
     [Test]
-    public async Task Render_WhenExternalEventUrlExists_ShowsNewTabOpenActionAtEndOfHeaderActions()
+    public async Task Render_WhenFederatedSourceExists_ShowsNewTabOpenActionAtEndOfHeaderActions()
     {
         var eventId = Guid.NewGuid();
         var eventItem = CreateEventListItem(eventId);
-        eventItem.EventUrl = "https://events.example.test/registration-event";
+        const string sourceHref = "/api/event/source/registration-event";
+        eventItem.AdditionalProperties["eventDiscoverySource"] = "atproto";
+        eventItem.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(
+            new Dictionary<string, HalLink>
+            {
+                ["source"] = new() { Href = sourceHref, Method = "GET" }
+            });
 
         var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
             .Add(component => component.SelectedEvent, eventItem)
@@ -83,7 +89,7 @@ public sealed class EventDetailsSidebarTests : IDisposable
 
         var link = cut.Find("a.event-details-sidebar__external-link");
         await Assert.That(link.TextContent).Contains("Open");
-        await Assert.That(link.GetAttribute("href")).IsEqualTo(eventItem.EventUrl);
+        await Assert.That(link.GetAttribute("href")).IsEqualTo(sourceHref);
         await Assert.That(link.GetAttribute("target")).IsEqualTo("_blank");
         await Assert.That(link.GetAttribute("rel")).IsEqualTo("noopener noreferrer");
         await Assert.That(link.GetAttribute("aria-label"))

@@ -122,9 +122,7 @@ public partial class EventCard : ComponentBase
 
     private string TruncatedDescription => StringHelper.TruncateDescription(Event.Description);
     private string FormattedEventDate => FormatEventDate(Event.FirstSessionDate);
-    private string? ExternalEventUrl =>
-        EventUrlHelper.GetSafeExternalUrl(Event.EventUrl)
-        ?? (IsFederated ? FederatedSourceHref : null);
+    private string? ExternalEventUrl => IsFederated ? FederatedSourceHref : null;
     private string ExternalEventLinkLabel => $"Open {Event.Title} on its external platform in a new tab";
 
     private bool HasManagementMenu => CanEdit || CanDelete;

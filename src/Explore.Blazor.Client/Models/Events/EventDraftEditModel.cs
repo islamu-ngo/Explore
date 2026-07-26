@@ -26,7 +26,6 @@ public sealed class EventDraftEditModel
     public int? MadhabId { get; set; }
     public string? Timezone { get; set; }
     public string? EventTimeZoneId { get; set; }
-    public string? EventUrl { get; set; }
     public string? BackgroundColor { get; set; }
     public string? BackgroundEffect { get; set; }
     public Guid? BackgroundImageId { get; set; }

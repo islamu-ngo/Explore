@@ -140,14 +140,15 @@ public sealed class HeroCarouselTests : IDisposable
     public async Task HeroCarouselRendersOnlySafeExternalEventAction()
     {
         var events = CreateEvents(2);
-        events[0].EventUrl = "https://community.example/events/featured";
-        events[1].EventUrl = "javascript:alert('unsafe')";
+        const string sourceHref = "/api/event/source/featured";
+        SetFederatedSource(events[0], sourceHref);
+        SetFederatedSource(events[1], "javascript:alert('unsafe')");
 
         var cut = _ctx.RenderMudComponent<HeroCarousel>(parameters => parameters
             .Add(component => component.Events, events));
         var externalLink = cut.Find("a.hero-carousel__external-link");
 
-        await Assert.That(externalLink.GetAttribute("href")).IsEqualTo(events[0].EventUrl);
+        await Assert.That(externalLink.GetAttribute("href")).IsEqualTo(sourceHref);
         await Assert.That(externalLink.GetAttribute("target")).IsEqualTo("_blank");
         await Assert.That(externalLink.GetAttribute("rel")).IsEqualTo("noopener noreferrer");
         await Assert.That(externalLink.GetAttribute("aria-label"))
@@ -246,5 +247,15 @@ public sealed class HeroCarouselTests : IDisposable
                 FirstSessionDate = new DateTimeOffset(2026, 8, index, 18, 0, 0, TimeSpan.Zero)
             })
             .ToList();
+    }
+
+    private static void SetFederatedSource(EventListDto eventDto, string href)
+    {
+        eventDto.AdditionalProperties["eventDiscoverySource"] = "atproto";
+        eventDto.AdditionalProperties["_links"] = System.Text.Json.JsonSerializer.SerializeToElement(
+            new Dictionary<string, HalLink>
+            {
+                ["source"] = new() { Href = href, Method = "GET" }
+            });
     }
 }
