@@ -9,10 +9,12 @@ using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventAspects;
 using Explore.Application.DTOs.EventCategories;
 using Explore.Application.DTOs.EventDay;
+using Explore.Application.DTOs.EventOrganizerClaim;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventTags;
 using Explore.Application.DTOs.EventType;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using EventSeriesNS = Explore.Application.DTOs.EventSeries;
 
 namespace Explore.Application.Profiles;
@@ -27,8 +29,27 @@ public class EventMappingProfile : Profile
         CreateMap<AudienceGender, AudienceGenderDto>().ReverseMap();
         CreateMap<AudienceGender, AudienceGenderListDto>().ReverseMap();
 
+        CreateMap<EventPublicAction, EventPublicActionDto>()
+            .ForMember(dest => dest.KindId, opt => opt.MapFrom(src => src.EventPublicActionKindId))
+            .ForMember(dest => dest.KindCode, opt => opt.MapFrom(src => src.EventPublicActionKind != null ? src.EventPublicActionKind.MasterCode : null))
+            .ForMember(dest => dest.KindName, opt => opt.MapFrom(src => src.EventPublicActionKind != null ? src.EventPublicActionKind.FullName : null))
+            .ForMember(dest => dest.HealthStateCode, opt => opt.MapFrom(src => src.HealthState != null ? src.HealthState.MasterCode : null))
+            .ForMember(dest => dest.HealthStateName, opt => opt.MapFrom(src => src.HealthState != null ? src.HealthState.FullName : null));
+
+        CreateMap<EventOrganizerClaim, EventOrganizerClaimDto>()
+            .ForMember(dest => dest.ClaimantActorDisplayName, opt => opt.MapFrom(src => src.ClaimantActor != null ? src.ClaimantActor.DisplayName : null))
+            .ForMember(dest => dest.StatusCode, opt => opt.MapFrom(src => src.Status != null ? src.Status.MasterCode : null))
+            .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => src.Status != null ? src.Status.FullName : null));
+
         // Event → EventDto
         CreateMap<Event, EventDto>()
+            .ForMember(dest => dest.ProvenanceTypeId, opt => opt.MapFrom(src => src.EventProvenanceTypeId))
+            .ForMember(dest => dest.ProvenanceTypeCode, opt => opt.MapFrom(src => src.EventProvenanceType != null ? src.EventProvenanceType.MasterCode : null))
+            .ForMember(dest => dest.ProvenanceTypeName, opt => opt.MapFrom(src => src.EventProvenanceType != null ? src.EventProvenanceType.FullName : null))
+            .ForMember(dest => dest.PublicActions, opt => opt.MapFrom(src => src.PublicActions
+                .Where(action => action.HealthStateId == (int)EventPublicActionHealthStateEnum.Active)
+                .OrderBy(action => action.SortOrder)
+                .ThenBy(action => action.Id)))
             // Event Type
             .ForMember(dest => dest.EventTypeFullName, opt => opt.MapFrom(src => src.EventType != null ? src.EventType.FullName : null))
             .ForMember(dest => dest.EventTypeMasterCode, opt => opt.MapFrom(src => src.EventType != null ? src.EventType.MasterCode : null))
@@ -42,15 +63,15 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.AudienceAgeMaxAge, opt => opt.MapFrom(src => src.AudienceAge != null ? src.AudienceAge.MaxAge : (int?)null))
             // Actor
             .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null))
-            .ForMember(dest => dest.ActorHandle, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.Handle : null))
-            .ForMember(dest => dest.ActorDid, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.Did : null))
+            .ForMember(dest => dest.ActorHandle, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.AtprotoIdentities.Select(identity => identity.Handle).FirstOrDefault() : null))
+            .ForMember(dest => dest.ActorDid, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.AtprotoIdentities.Select(identity => identity.Did).FirstOrDefault() : null))
             .ForMember(dest => dest.ActorTypeId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ActorTypeId : 0))
             .ForMember(dest => dest.ActorTypeFullName, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ActorType != null ? src.Actor.ActorType.FullName : null))
             .ForMember(dest => dest.ActorUserId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.UserId : null))
             .ForMember(dest => dest.ActorOrganizationId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.OrganizationId : null))
             .ForMember(dest => dest.ActorGroupId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.GroupId : null))
-            .ForMember(dest => dest.ActorProfilePictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureId : null))
-            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null))
+            .ForMember(dest => dest.ActorProfilePictureId, opt => opt.Ignore())
+            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureUri : null))
             // Featured Image
             .ForMember(dest => dest.FeaturedImageUri, opt => opt.MapFrom(src => src.FeaturedImage != null ? src.FeaturedImage.Uri : null))
             // Background Image
@@ -91,8 +112,8 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.ActorUserId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.UserId : null))
             .ForMember(dest => dest.ActorOrganizationId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.OrganizationId : null))
             .ForMember(dest => dest.ActorGroupId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.GroupId : null))
-            .ForMember(dest => dest.ActorProfilePictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureId : (Guid?)null))
-            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null))
+            .ForMember(dest => dest.ActorProfilePictureId, opt => opt.Ignore())
+            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureUri : null))
             .ForMember(dest => dest.FeaturedImageUri, opt => opt.MapFrom(src => src.FeaturedImage != null ? src.FeaturedImage.Uri : null))
             .ForMember(dest => dest.EventStatusFullName, opt => opt.MapFrom(src => src.EventStatus != null ? src.EventStatus.FullName : null))
             .ForMember(dest => dest.VisibilityTypeFullName, opt => opt.MapFrom(src => src.VisibilityType != null ? src.VisibilityType.FullName : null))

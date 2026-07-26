@@ -26,7 +26,6 @@ public class UpdateEventDto
     public UpdateEventMadhabDto? Madhab { get; set; }
     public UpdateEventTimezoneDto? Timezone { get; set; }
     public UpdateEventEventTimeZoneDto? EventTimeZone { get; set; }
-    public UpdateEventUrlDto? EventUrl { get; set; }
     public UpdateEventBackgroundColorDto? BackgroundColor { get; set; }
     public UpdateEventBackgroundEffectDto? BackgroundEffect { get; set; }
     public UpdateEventBackgroundImageDto? BackgroundImage { get; set; }
@@ -122,11 +121,6 @@ public class UpdateEventTimezoneDto
 }
 
 public class UpdateEventEventTimeZoneDto
-{
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
-}
-
-public class UpdateEventUrlDto
 {
     public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
 }

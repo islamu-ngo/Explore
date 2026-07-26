@@ -55,7 +55,6 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
         RuleFor(p => p)
             .Must(HaveConsistentTimeZoneAliases)
             .WithMessage("EventTimeZoneId and Timezone must match when both are provided.");
-        RuleFor(p => p.EventUrl).MaximumLength(500).When(p => !string.IsNullOrWhiteSpace(p.EventUrl));
         RuleFor(p => p.BackgroundColor).MaximumLength(32).When(p => !string.IsNullOrWhiteSpace(p.BackgroundColor));
         RuleFor(p => p.BackgroundEffect).MaximumLength(64).When(p => !string.IsNullOrWhiteSpace(p.BackgroundEffect));
         RuleFor(p => p.Price).GreaterThanOrEqualTo(0).When(p => p.Price.HasValue);

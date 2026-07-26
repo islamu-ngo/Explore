@@ -41,7 +41,6 @@ public class EventTests
 
         await Assert.That(entity.TotalViews).IsEqualTo(0);
         await Assert.That(entity.IsRegistrationRequired).IsFalse();
-        await Assert.That(entity.IsUserReported).IsFalse();
         await Assert.That(entity.IsDeleted).IsFalse();
     }
 
@@ -55,7 +54,6 @@ public class EventTests
         await Assert.That(entity.Price).IsNull();
         await Assert.That(entity.CurrencyCode).IsNull();
         await Assert.That(entity.Slug).IsNull();
-        await Assert.That(entity.EventUrl).IsNull();
         await Assert.That(entity.ExternalRegistrationUrl).IsNull();
         await Assert.That(entity.Timezone).IsNull();
         await Assert.That(entity.BackgroundColor).IsNull();
@@ -181,8 +179,7 @@ public class EventTests
         return new Actor
         {
             Pii = new ActorPii { DisplayName = "Actor" },
-            ActorType = CreateActorType(),
-            Tenant = CreateTenant()
+            ActorType = CreateActorType()
         };
     }
 

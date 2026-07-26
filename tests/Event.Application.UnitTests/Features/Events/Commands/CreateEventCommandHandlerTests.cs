@@ -250,7 +250,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
         _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
-            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
 
         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
@@ -288,7 +288,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
         _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
-            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -314,7 +314,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
         _tenantContext.TenantId.Returns(Guid.NewGuid());
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
-            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -347,7 +347,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
         _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
-            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
 
         _eventRepository.Create(Arg.Any<Explore.Domain.Event>())
             .Returns(callInfo =>
@@ -404,7 +404,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
         _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
-            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
         _eventRepository.Create(Arg.Any<Explore.Domain.Event>())
             .Returns(callInfo =>
             {
@@ -516,7 +516,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
         _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
-            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
 
         _eventRepository.Create(Arg.Any<Explore.Domain.Event>())
             .Returns(callInfo =>
@@ -568,7 +568,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
         _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
-            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -649,7 +649,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
         _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
-            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
         _eventSessionKindRepository.Exists(2).Returns(true);
         _actorRepository.Exists(speakerActorId).Returns(true);
 
@@ -771,7 +771,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
         _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
-            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
 
         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
@@ -817,7 +817,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
         _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
-            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
 
         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
@@ -879,7 +879,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
         _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
-            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
 
         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);

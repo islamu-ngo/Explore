@@ -302,6 +302,21 @@ public static class LinkRelations
     /// </summary>
     public const string ReportEvent = "report-event";
 
+    public const string PublicActions = "public-actions";
+    public const string ManagePublicActions = "manage-public-actions";
+    public const string ViewOriginalSource = "view-original-source";
+    public const string ExternalEventPage = "external-event-page";
+    public const string ExternalRegistration = "external-registration";
+    public const string OptionalQuestionnaire = "optional-questionnaire";
+    public const string Livestream = "livestream";
+    public const string OrganizerContact = "organizer-contact";
+    public const string ClaimEvent = "claim-event";
+    public const string OrganizerClaims = "organizer-claims";
+    public const string WithdrawClaim = "withdraw-claim";
+    public const string ReviewClaim = "review-claim";
+    public const string SuggestCorrection = "suggest-correction";
+    public const string ReportExternalLink = "report-external-link";
+
     public const string UpdateCommunicationConsent = "update-communication-consent";
 
     public const string ModerationReports = "moderation-reports";

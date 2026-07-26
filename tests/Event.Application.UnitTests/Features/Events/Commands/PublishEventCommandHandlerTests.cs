@@ -350,7 +350,6 @@ public class PublishEventCommandHandlerTests
         Actor = new Actor
         {
             ActorType = new ActorType { Id = 1, FullName = "User", MasterCode = "user" },
-            Tenant = CreateTenant(),
             Pii = new ActorPii { DisplayName = "Publisher" }
         },
         TenantId = Guid.CreateVersion7(),

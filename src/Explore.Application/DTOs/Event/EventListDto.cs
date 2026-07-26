@@ -83,8 +83,6 @@ public class EventListDto
 
     // Metadata
     public int TotalViews { get; set; }
-    public bool IsUserReported { get; set; }
-    public string? EventUrl { get; set; }
 
     public DateTimeOffset CreatedAtUtc { get; set; }
     public Guid? AtprotoRecordId { get; set; }

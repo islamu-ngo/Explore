@@ -38,7 +38,6 @@ public class EventAgendaItemRepositoryTests
             StartTime = new DateTimeOffset(2026, 7, 1, 9, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 7, 1, 9, 30, 0, TimeSpan.Zero),
             SortOrder = 1,
-            TenantId = tenant.Id,
             Tenant = tenant
         };
         item.ReprojectLocalTimes("Europe/Paris", calculator);
@@ -74,7 +73,6 @@ public class EventAgendaItemRepositoryTests
             StartTime = new DateTimeOffset(2026, 7, 1, 11, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 7, 1, 11, 30, 0, TimeSpan.Zero),
             SortOrder = 3,
-            TenantId = tenant.Id,
             Tenant = tenant
         };
         item1.ReprojectLocalTimes("UTC", calculator);
@@ -226,8 +224,6 @@ public class EventAgendaItemRepositoryTests
             Pii = new ActorPii { DisplayName = "Test Actor" },
             ActorTypeId = 1,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);

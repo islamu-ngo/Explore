@@ -95,8 +95,7 @@ public class GetEventCreationContextRequestHandler : IRequestHandler<GetEventCre
         var allowedOrganizations = allowedOrganizationIds.ToHashSet();
 
         return memberships
-            .Where(membership => membership.Organization is not null)
-            .Select(membership => CreateOrganizationOption(membership, allowedOrganizations.Contains(membership.OrganizationId)))
+            .Select(membership => CreateOrganizationOption(membership, allowedOrganizations.Contains(membership.OrganizationTenant.OrganizationId)))
             .OrderByDescending(option => option.CanPublish)
             .ThenBy(option => option.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -114,8 +113,7 @@ public class GetEventCreationContextRequestHandler : IRequestHandler<GetEventCre
         var allowedGroups = allowedGroupIds.ToHashSet();
 
         return memberships
-            .Where(membership => membership.Group is not null)
-            .Select(membership => CreateGroupOption(membership, allowedGroups.Contains(membership.GroupId)))
+            .Select(membership => CreateGroupOption(membership, allowedGroups.Contains(membership.GroupTenant.GroupId)))
             .OrderByDescending(option => option.CanPublish)
             .ThenBy(option => option.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -128,8 +126,8 @@ public class GetEventCreationContextRequestHandler : IRequestHandler<GetEventCre
         return new EventCreationPublisherOptionDto
         {
             PublisherMode = OrganizationPublisherMode,
-            PublisherId = membership.OrganizationId,
-            DisplayName = membership.Organization.FullName,
+            PublisherId = membership.OrganizationTenant.OrganizationId,
+            DisplayName = membership.OrganizationTenant.Organization.FullName,
             RoleId = membership.RoleId,
             CanPublish = canPublish,
             Reason = canPublish ? null : "Your organization role cannot create events."
@@ -141,8 +139,8 @@ public class GetEventCreationContextRequestHandler : IRequestHandler<GetEventCre
         return new EventCreationPublisherOptionDto
         {
             PublisherMode = GroupPublisherMode,
-            PublisherId = membership.GroupId,
-            DisplayName = membership.Group.FullName,
+            PublisherId = membership.GroupTenant.GroupId,
+            DisplayName = membership.GroupTenant.Group.FullName,
             RoleId = membership.RoleId,
             CanPublish = canPublish,
             Reason = canPublish ? null : "Your group role cannot create events."

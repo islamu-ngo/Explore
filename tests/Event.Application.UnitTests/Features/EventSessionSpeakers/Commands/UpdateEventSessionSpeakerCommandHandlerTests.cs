@@ -205,8 +205,6 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
         new()
         {
             Id = id,
-            TenantId = tenantId,
-            Tenant = null!,
             ActorType = null!,
             Pii = null!
         };

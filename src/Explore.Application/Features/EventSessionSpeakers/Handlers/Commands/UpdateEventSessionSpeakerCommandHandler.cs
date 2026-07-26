@@ -89,11 +89,6 @@ public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEve
             return ValidationFailure("Actor not found.");
         }
 
-        if (targetActor.TenantId != speaker.TenantId)
-        {
-            return ValidationFailure("Actor must belong to the same tenant as the speaker assignment.");
-        }
-
         var duplicate = await _speakerRepository.GetBySessionAndActor(
             targetSessionId,
             targetActorId,

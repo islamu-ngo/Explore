@@ -96,24 +96,31 @@ public sealed class CreateEventSessionSpeakerCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WithCrossTenantActor_ReturnsFailureWithoutCreating()
+    public async Task Handle_WithGlobalActor_CreatesAssignmentInSessionTenant()
     {
         var tenantId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var command = CreateCommand(sessionId, actorId, tenantId, eventId);
+        var mapped = CreateSpeakerAssignment(tenantId: Guid.NewGuid(), eventSessionId: sessionId, actorId: actorId);
+        var created = CreateSpeakerAssignment(tenantId: tenantId, eventSessionId: sessionId, actorId: actorId);
 
         _tenantContext.TenantId.Returns(tenantId);
         _actorRepository.Exists(actorId).Returns(true);
         _eventSessionRepository.Exists(sessionId).Returns(true);
-        _eventSessionRepository.GetById(sessionId).Returns(CreateSession(sessionId, tenantId, Guid.NewGuid()));
+        _eventSessionRepository.GetById(sessionId).Returns(CreateSession(sessionId, tenantId, eventId));
         _actorRepository.GetById(actorId).Returns(CreateActor(actorId, Guid.NewGuid()));
+        _repository.GetBySessionAndActor(sessionId, actorId, cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((EventSessionSpeaker?)null);
+        _mapper.Map<EventSessionSpeaker>(command.SpeakerDto).Returns(mapped);
+        _repository.Create(mapped).Returns(created);
 
-        var result = await _handler.Handle(CreateCommand(sessionId, actorId, tenantId, Guid.NewGuid()), CancellationToken.None);
+        var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Errors).Contains("Actor must belong to the same tenant as the event session.");
-        await _repository.DidNotReceive().Create(Arg.Any<EventSessionSpeaker>());
-        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(mapped.TenantId).IsEqualTo(tenantId);
+        await _repository.Received(1).Create(mapped);
     }
 
     [Test]
@@ -182,8 +189,6 @@ public sealed class CreateEventSessionSpeakerCommandHandlerTests
         new()
         {
             Id = id,
-            TenantId = tenantId,
-            Tenant = null!,
             ActorType = null!,
             Pii = null!
         };

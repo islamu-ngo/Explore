@@ -16,6 +16,7 @@ using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using Explore.Persistence;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TUnit.Core;
 
@@ -452,22 +453,15 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         await context.SaveChangesAsync();
 
         var ownerActor = new ActorBuilder()
-            .WithTenantId(tenant.Id)
             .WithUserId(owner.Id)
             .WithDisplayName("MCP Authenticated Owner")
             .Build();
         var otherActor = new ActorBuilder()
-            .WithTenantId(tenant.Id)
             .WithUserId(otherUser.Id)
             .WithDisplayName("MCP Authenticated Other")
             .Build();
         context.Actors.AddRange(ownerActor, otherActor);
         await context.SaveChangesAsync();
-
-        owner.ActorId = ownerActor.Id;
-        owner.DefaultActorId = ownerActor.Id;
-        otherUser.ActorId = otherActor.Id;
-        otherUser.DefaultActorId = otherActor.Id;
 
         context.Events.AddRange(
             new EventBuilder()
@@ -520,16 +514,17 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         context.Users.Add(owner);
         await context.SaveChangesAsync();
 
-        var ownerActor = new ActorBuilder()
-            .WithTenantId(tenant.Id)
-            .WithUserId(owner.Id)
-            .WithDisplayName("MCP Management Owner")
-            .Build();
-        context.Actors.Add(ownerActor);
-        await context.SaveChangesAsync();
-
-        owner.ActorId = ownerActor.Id;
-        owner.DefaultActorId = ownerActor.Id;
+        var ownerActor = await context.Actors
+            .SingleOrDefaultAsync(actor => actor.UserId == owner.Id);
+        if (ownerActor is null)
+        {
+            ownerActor = new ActorBuilder()
+                .WithUserId(owner.Id)
+                .WithDisplayName("MCP Management Owner")
+                .Build();
+            context.Actors.Add(ownerActor);
+            await context.SaveChangesAsync();
+        }
 
         var @event = new EventBuilder()
             .WithTitle(title)

@@ -127,16 +127,16 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .Include(e => e.EventSeries)
                 .ThenInclude(series => series!.Actor)
                     .ThenInclude(actor => actor.Pii)
+            .Include(e => e.EventSeries)
+                .ThenInclude(series => series!.Actor)
+                    .ThenInclude(actor => actor.AtprotoIdentities)
             .Include(e => e.Actor)
                 .ThenInclude(actor => actor.Organization)
                     .ThenInclude(organization => organization!.Pii)
             .Include(e => e.Actor)
                 .ThenInclude(actor => actor.Group)
-                    .ThenInclude(group => group!.ProfilePicture)
             .Include(e => e.Actor)
-                .ThenInclude(actor => actor.BannerPicture)
-            .Include(e => e.Actor)
-                .ThenInclude(actor => actor.BackgroundImage)
+                .ThenInclude(actor => actor.AtprotoIdentities)
             .FirstOrDefaultAsync(e => e.Id == eventId, cancellationToken);
 
         if (eventEntity is null)
@@ -229,11 +229,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .Include(link => link.Actor)
                 .ThenInclude(actor => actor.Pii)
             .Include(link => link.Actor)
-                .ThenInclude(actor => actor.ProfilePicture)
-            .Include(link => link.Actor)
-                .ThenInclude(actor => actor.BannerPicture)
-            .Include(link => link.Actor)
-                .ThenInclude(actor => actor.BackgroundImage)
+                .ThenInclude(actor => actor.AtprotoIdentities)
             .Where(link => sessionIds.Contains(link.EventSessionId))
             .ToListAsync(cancellationToken);
 
@@ -318,17 +314,21 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 
         if (isGuid)
         {
-            var userActorIds = _dbContext.Users
-                .Where(u => u.Id == userGuid)
-                .Select(u => u.ActorId);
+            var userActorIds = _dbContext.Actors
+                .Where(actor => actor.UserId == userGuid)
+                .Select(actor => actor.Id);
 
             var orgActorIds = _dbContext.OrganizationMembers
-                .Where(om => om.UserId == userGuid)
-                .SelectMany(om => _dbContext.Organizations
-                    .Where(o => o.Id == om.OrganizationId)
-                    .Select(o => o.ActorId));
+                .Where(member => member.UserId == userGuid
+                    && member.OrganizationTenant.Organization.Actor != null)
+                .Select(member => member.OrganizationTenant.Organization.Actor!.Id);
 
-            var allActorIds = userActorIds.Union(orgActorIds);
+            var groupActorIds = _dbContext.GroupMembers
+                .Where(member => member.UserId == userGuid
+                    && member.GroupTenant.Group.Actor != null)
+                .Select(member => member.GroupTenant.Group.Actor!.Id);
+
+            var allActorIds = userActorIds.Union(orgActorIds).Union(groupActorIds);
 
             query = query.Where(e => allActorIds.Contains(e.ActorId));
         }
@@ -785,17 +785,21 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 
         if (isGuid)
         {
-            var userActorIds = _dbContext.Users
-                .Where(u => u.Id == userGuid)
-                .Select(u => u.ActorId);
+            var userActorIds = _dbContext.Actors
+                .Where(actor => actor.UserId == userGuid)
+                .Select(actor => actor.Id);
 
             var orgActorIds = _dbContext.OrganizationMembers
-                .Where(om => om.UserId == userGuid)
-                .SelectMany(om => _dbContext.Organizations
-                    .Where(o => o.Id == om.OrganizationId)
-                    .Select(o => o.ActorId));
+                .Where(member => member.UserId == userGuid
+                    && member.OrganizationTenant.Organization.Actor != null)
+                .Select(member => member.OrganizationTenant.Organization.Actor!.Id);
 
-            var allActorIds = userActorIds.Union(orgActorIds);
+            var groupActorIds = _dbContext.GroupMembers
+                .Where(member => member.UserId == userGuid
+                    && member.GroupTenant.Group.Actor != null)
+                .Select(member => member.GroupTenant.Group.Actor!.Id);
+
+            var allActorIds = userActorIds.Union(orgActorIds).Union(groupActorIds);
 
             query = query.Where(e => allActorIds.Contains(e.ActorId));
         }

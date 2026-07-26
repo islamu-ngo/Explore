@@ -106,8 +106,7 @@ public class EventDayTests
             Actor = new Actor
             {
                 Pii = new ActorPii { DisplayName = "Actor" },
-                ActorType = new ActorType { FullName = "User", MasterCode = "USER" },
-                Tenant = CreateTenant()
+                ActorType = new ActorType { FullName = "User", MasterCode = "USER" }
             },
             Tenant = CreateTenant(),
             VisibilityType = new VisibilityType { MasterCode = "PUBLIC", FullName = "Public" },

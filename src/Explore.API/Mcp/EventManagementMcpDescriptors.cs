@@ -499,8 +499,7 @@ public sealed record EventMcpSummaryDescriptor(
     string? Timezone,
     int? SessionCount,
     bool IsRegistrationRequired,
-    string? RegistrationPolicy,
-    string? EventUrl);
+    string? RegistrationPolicy);
 
 public sealed record EventMcpEventResultDescriptor(
     bool Found,
@@ -534,7 +533,6 @@ public sealed record EventMcpDetailDescriptor(
     int? SessionCount,
     bool IsRegistrationRequired,
     string? RegistrationPolicy,
-    string? EventUrl,
     IReadOnlyList<string> Categories,
     IReadOnlyList<string> Tags,
     IReadOnlyList<string> AvailableAspects,

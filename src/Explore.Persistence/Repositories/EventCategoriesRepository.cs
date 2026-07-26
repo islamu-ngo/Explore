@@ -37,8 +37,6 @@ public class EventCategoriesRepository : GenericRepository<EventCategories, Guid
                 .ThenInclude(a => a.ActorType)
             .Include(e => e.Actor)
                 .ThenInclude(a => a!.Pii)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
             .Include(e => e.FeaturedImage)
             .Include(e => e.EventStatus)
             .Include(e => e.VisibilityType)

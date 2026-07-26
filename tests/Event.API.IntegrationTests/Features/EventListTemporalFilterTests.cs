@@ -177,8 +177,6 @@ public class EventListTemporalFilterTests : IAsyncDisposable
             Pii = new ActorPii { DisplayName = "Spec Test Actor" },
             ActorTypeId = 1,
             ActorType = null!,
-            TenantId = _tenantId,
-            Tenant = null!,
             UserId = user.Id
         };
         dbContext.Actors.Add(actor);

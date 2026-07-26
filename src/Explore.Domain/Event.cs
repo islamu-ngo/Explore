@@ -35,6 +35,20 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public Guid ActorId { get; set; }
     public required Actor Actor { get; set; }
 
+    [ForeignKey("EventProvenanceType")]
+    public int EventProvenanceTypeId { get; set; }
+    public EventProvenanceType? EventProvenanceType { get; set; }
+
+    [ForeignKey("SubmittedByUser")]
+    public Guid? SubmittedByUserId { get; set; }
+    public User? SubmittedByUser { get; set; }
+
+    [ForeignKey("OrganizerActor")]
+    public Guid? OrganizerActorId { get; set; }
+    public Actor? OrganizerActor { get; set; }
+
+    public string? SourcePublisherName { get; set; }
+
     public decimal? Price { get; set; }
     public string? CurrencyCode { get; set; }
 
@@ -44,8 +58,6 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
 
     public int TotalViews { get; set; }
     public bool IsRegistrationRequired { get; set; }
-    public bool IsUserReported { get; set; }
-    public string? EventUrl { get; set; }
 
     [ForeignKey("Madhab")]
     public int? MadhabId { get; set; }
@@ -60,6 +72,8 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public ICollection<EventAgendaItem> AgendaItems { get; set; } = new List<EventAgendaItem>();
     public ICollection<EventDay> Days { get; set; } = new List<EventDay>();
     public ICollection<EventModerationRecord> ModerationRecords { get; set; } = new List<EventModerationRecord>();
+    public ICollection<EventPublicAction> PublicActions { get; set; } = new List<EventPublicAction>();
+    public ICollection<EventOrganizerClaim> OrganizerClaims { get; set; } = new List<EventOrganizerClaim>();
 
     public string? Slug { get; set; }
     public string PublicCode { get; set; } = string.Empty;

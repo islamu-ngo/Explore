@@ -7,6 +7,7 @@ using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.DTOs.Location;
+using Explore.Application.DTOs.EventOrganizerClaim;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
 using Explore.Application.DTOs.Settings;
 using Explore.Application.Features.EventReporting.Models;
@@ -39,6 +40,7 @@ internal static class OpenApiStringEnumSchemaCatalog
         typeof(EventReportProviderEvidenceMode),
         typeof(EventReportPriority),
         typeof(EventReportSeverityHint),
+        typeof(EventOrganizerClaimReviewDecision),
         typeof(EventLocationDisclosureField),
         typeof(EventLocationDisclosureFieldClass),
         typeof(EventLocationDisclosureFields),

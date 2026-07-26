@@ -362,7 +362,6 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             MadhabId = dto.MadhabId ?? dto.IslamicAspect?.MadhabId,
             Timezone = timezoneId,
             EventTimeZoneId = timezoneId,
-            EventUrl = dto.EventUrl,
             BackgroundColor = dto.BackgroundColor,
             BackgroundEffect = dto.BackgroundEffect,
             BackgroundImageId = dto.BackgroundImageId,
@@ -376,10 +375,14 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             SessionCount = publicSessionRequests.Count,
             ActorId = actorResult.ActorId,
             Actor = null!,
+            EventProvenanceTypeId = actorResult.IsCommunitySubmission
+                ? (int)EventProvenanceTypeEnum.CommunityReported
+                : (int)EventProvenanceTypeEnum.OrganizerCreated,
+            SubmittedByUserId = actorResult.IsCommunitySubmission ? currentUserId : null,
+            OrganizerActorId = actorResult.IsCommunitySubmission ? null : actorResult.ActorId,
             TenantId = _tenantContext.TenantId,
             Tenant = null!,
             TotalViews = 0,
-            IsUserReported = actorResult.IsUserReported,
             VisibilityType = null!,
             EventStatus = null!,
             EventFormat = null!,

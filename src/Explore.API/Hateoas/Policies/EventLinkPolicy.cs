@@ -162,6 +162,13 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
         if (dto.EventStatusId == (int)EventStatusEnum.Published)
         {
             yield return new LinkDefinition(
+                LinkRelations.PublicActions,
+                RouteNames.GetEventPublicActions,
+                new { eventId = dto.Id },
+                HttpMethods.Get,
+                "Public event actions");
+
+            yield return new LinkDefinition(
                 LinkRelations.EventReportOptions,
                 RouteNames.GetEventReportOptions,
                 new { eventId = dto.Id },
@@ -176,7 +183,55 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 "Report event",
                 RequiresAuth: true)
                 .AdvertisedWhenAnonymous();
+
+            yield return new LinkDefinition(
+                LinkRelations.SuggestCorrection,
+                RouteNames.SubmitEventReport,
+                null,
+                HttpMethods.Post,
+                "Suggest a correction",
+                RequiresAuth: true)
+                .AdvertisedWhenAnonymous();
+
+            yield return new LinkDefinition(
+                LinkRelations.ReportExternalLink,
+                RouteNames.SubmitEventReport,
+                null,
+                HttpMethods.Post,
+                "Report an unsafe external link",
+                RequiresAuth: true)
+                .AdvertisedWhenAnonymous();
+
+            if (!dto.OrganizerActorId.HasValue)
+            {
+                yield return new LinkDefinition(
+                    LinkRelations.ClaimEvent,
+                    RouteNames.SubmitEventOrganizerClaim,
+                    new { eventId = dto.Id },
+                    HttpMethods.Post,
+                    "Claim this event",
+                    RequiresAuth: true)
+                    .RequirePermission(AuthorizationActions.Events.ClaimOrganizer, ResourceDescriptors.Event, dto);
+            }
         }
+
+        yield return new LinkDefinition(
+            LinkRelations.ManagePublicActions,
+            RouteNames.CreateEventPublicAction,
+            new { eventId = dto.Id },
+            HttpMethods.Post,
+            "Add public action",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Events.ManagePublicActions, ResourceDescriptors.Event, dto);
+
+        yield return new LinkDefinition(
+            LinkRelations.OrganizerClaims,
+            RouteNames.GetEventOrganizerClaims,
+            new { eventId = dto.Id },
+            HttpMethods.Get,
+            "Organizer claims",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Events.ViewOrganizerClaims, ResourceDescriptors.Event, dto);
 
         // Aspect links - conditionally included based on available aspects
         if (dto.AvailableAspects?.Contains("Islamic") == true || dto.IslamicAspect != null)

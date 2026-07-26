@@ -86,9 +86,7 @@ public class GetEventListRequestHandlerTests
         _actorRepository.GetById(actorId).Returns(new Explore.Domain.Actor
         {
             Id = actorId,
-            TenantId = _tenantId,
             ActorType = null!,
-            Tenant = null!,
             Pii = null!
         });
         _eventRepository.GetEventsWithDetailsPaged(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<EventQuerySpecification>())
@@ -105,15 +103,14 @@ public class GetEventListRequestHandlerTests
     }
 
     [Test]
-    public async Task Handle_WithCrossTenantActorId_ReturnsEmptyPageWithoutQueryingEvents()
+    public async Task Handle_WithDeletedActorId_ReturnsEmptyPageWithoutQueryingEvents()
     {
         var actorId = Guid.NewGuid();
         _actorRepository.GetById(actorId).Returns(new Explore.Domain.Actor
         {
             Id = actorId,
-            TenantId = Guid.NewGuid(),
+            IsDeleted = true,
             ActorType = null!,
-            Tenant = null!,
             Pii = null!
         });
 
@@ -134,9 +131,7 @@ public class GetEventListRequestHandlerTests
         _actorRepository.GetActorByOrganizationId(organizationId).Returns(new Explore.Domain.Actor
         {
             Id = actorId,
-            TenantId = _tenantId,
             ActorType = null!,
-            Tenant = null!,
             Pii = null!
         });
         _eventRepository.GetEventsWithDetailsPaged(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<EventQuerySpecification>())

@@ -1023,7 +1023,6 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         context.TenantUsers.AddRange(users.Select(user => new TenantUser
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenant.Id,
             Tenant = tenant,
             UserId = user.Id,
             User = user,
@@ -1039,8 +1038,6 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
             Pii = new ActorPii { DisplayName = "Registration Intent Actor" },
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = users[0].Id
         };
         context.Actors.Add(actor);

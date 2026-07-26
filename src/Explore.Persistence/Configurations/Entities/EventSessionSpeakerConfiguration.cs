@@ -15,8 +15,7 @@ public class EventSessionSpeakerConfiguration : IEntityTypeConfiguration<EventSe
 
         builder.HasOne(e => e.Actor)
             .WithMany()
-            .HasForeignKey(e => new { e.TenantId, e.ActorId })
-            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .HasForeignKey(e => e.ActorId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.EventSession)

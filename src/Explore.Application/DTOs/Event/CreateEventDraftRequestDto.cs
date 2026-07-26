@@ -28,7 +28,6 @@ public sealed class CreateEventDraftRequestDto
     public int? MadhabId { get; set; }
     public string? Timezone { get; set; }
     public string? EventTimeZoneId { get; set; }
-    public string? EventUrl { get; set; }
     public string? BackgroundColor { get; set; }
     public string? BackgroundEffect { get; set; }
     public Guid? BackgroundImageId { get; set; }
@@ -68,7 +67,6 @@ public sealed class CreateEventDraftRequestDto
         MadhabId = MadhabId,
         Timezone = Timezone,
         EventTimeZoneId = EventTimeZoneId,
-        EventUrl = EventUrl,
         BackgroundColor = BackgroundColor,
         BackgroundEffect = BackgroundEffect,
         BackgroundImageId = BackgroundImageId,

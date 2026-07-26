@@ -96,10 +96,6 @@ public sealed class UpdateEventDraftRequestDtoValidator : AbstractValidator<Upda
             .Must(HaveConsistentTimeZoneAliases)
             .WithMessage("EventTimeZoneId and Timezone must match when both are provided.");
 
-        RuleFor(request => request.EventUrl)
-            .MaximumLength(500).When(request => !string.IsNullOrEmpty(request.EventUrl))
-            .WithMessage("{PropertyName} must not exceed 500 characters.");
-
         RuleFor(request => request.EventSeriesId)
             .MustAsync(async (id, _) => !id.HasValue || await eventSeriesRepository.Exists(id.Value))
             .WithMessage("Event series does not exist.");

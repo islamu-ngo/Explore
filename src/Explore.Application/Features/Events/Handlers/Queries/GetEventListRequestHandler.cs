@@ -307,19 +307,19 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         if (request.ActorId.HasValue)
         {
             var actor = await _actorRepository.GetById(request.ActorId.Value);
-            return actor?.TenantId == tenantId ? actor.Id : MissingOwnershipActorId;
+            return actor is not null && !actor.IsDeleted ? actor.Id : MissingOwnershipActorId;
         }
 
         if (request.OrganizationId.HasValue)
         {
             var actor = await _actorRepository.GetActorByOrganizationId(request.OrganizationId.Value);
-            return actor?.TenantId == tenantId ? actor.Id : MissingOwnershipActorId;
+            return actor is not null && !actor.IsDeleted ? actor.Id : MissingOwnershipActorId;
         }
 
         if (request.GroupId.HasValue)
         {
             var actor = await _actorRepository.GetActorByGroupId(request.GroupId.Value);
-            return actor?.TenantId == tenantId ? actor.Id : MissingOwnershipActorId;
+            return actor is not null && !actor.IsDeleted ? actor.Id : MissingOwnershipActorId;
         }
 
         return null;

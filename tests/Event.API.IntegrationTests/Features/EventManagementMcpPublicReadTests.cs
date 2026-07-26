@@ -346,7 +346,6 @@ public sealed class EventManagementMcpPublicReadTests
             await context.SaveChangesAsync();
 
             var actor = new ActorBuilder()
-                .WithTenantId(tenantId)
                 .WithUserId(user.Id)
                 .WithDisplayName("Default MCP Event Actor")
                 .Build();

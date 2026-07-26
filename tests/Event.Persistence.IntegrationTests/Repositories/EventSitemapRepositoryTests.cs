@@ -174,8 +174,6 @@ public sealed class EventSitemapRepositoryTests(PostgreSqlContainerFixture fixtu
             Pii = new ActorPii { DisplayName = $"Sitemap Actor {slugPrefix}" },
             ActorTypeId = 1,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id,
         };
         context.Actors.Add(actor);

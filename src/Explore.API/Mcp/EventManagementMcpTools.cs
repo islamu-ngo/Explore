@@ -1872,8 +1872,7 @@ public sealed class EventManagementMcpTools(
             dto.Timezone,
             dto.SessionCount,
             dto.IsRegistrationRequired,
-            dto.RegistrationPolicyFullName,
-            dto.EventUrl);
+            dto.RegistrationPolicyFullName);
 
     private static EventMcpDetailDescriptor MapDetail(EventDto dto)
     {
@@ -1897,7 +1896,6 @@ public sealed class EventManagementMcpTools(
             dto.SessionCount,
             dto.IsRegistrationRequired,
             dto.RegistrationPolicyFullName,
-            dto.EventUrl,
             dto.Categories.Select(category => category.FullName).WhereNotBlank().ToArray(),
             dto.Tags.Select(tag => tag.FullName).WhereNotBlank().ToArray(),
             dto.AvailableAspects.WhereNotBlank().ToArray(),

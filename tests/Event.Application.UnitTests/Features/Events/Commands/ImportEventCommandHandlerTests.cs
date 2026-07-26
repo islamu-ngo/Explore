@@ -49,6 +49,7 @@ public sealed class ImportEventCommandHandlerTests
             entity.EventStatusId == (int)EventStatusEnum.Draft
             && entity.VisibilityTypeId == (int)VisibilityTypeEnum.Private
             && entity.EventFormatId == (int)EventFormatEnum.Local
+            && entity.EventProvenanceTypeId == (int)EventProvenanceTypeEnum.Imported
             && entity.ProvenanceSource == request.ProvenanceSource
             && entity.ProvenanceExternalId == request.ProvenanceExternalId));
         await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(request.TenantId), Arg.Any<CancellationToken>());

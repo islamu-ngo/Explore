@@ -75,11 +75,6 @@ public class CreateEventSessionSpeakerCommandHandler : IRequestHandler<CreateEve
             return ValidationFailure("Actor not found.");
         }
 
-        if (actor.TenantId != eventSession.TenantId)
-        {
-            return ValidationFailure("Actor must belong to the same tenant as the event session.");
-        }
-
         var duplicate = await _speakerRepository.GetBySessionAndActor(
             eventSession.Id,
             actor.Id,

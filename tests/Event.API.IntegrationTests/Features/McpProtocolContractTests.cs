@@ -538,16 +538,17 @@ public sealed class McpProtocolContractTests
             owner = existingOwner;
         }
 
-        var ownerActor = new ActorBuilder()
-            .WithTenantId(tenant.Id)
-            .WithUserId(owner.Id)
-            .WithDisplayName("MCP Protocol Owner")
-            .Build();
-        context.Actors.Add(ownerActor);
-        await context.SaveChangesAsync();
-
-        owner.ActorId = ownerActor.Id;
-        owner.DefaultActorId = ownerActor.Id;
+        var ownerActor = await context.Actors
+            .SingleOrDefaultAsync(actor => actor.UserId == owner.Id);
+        if (ownerActor is null)
+        {
+            ownerActor = new ActorBuilder()
+                .WithUserId(owner.Id)
+                .WithDisplayName("MCP Protocol Owner")
+                .Build();
+            context.Actors.Add(ownerActor);
+            await context.SaveChangesAsync();
+        }
 
         var @event = new EventBuilder()
             .WithTitle(title)
@@ -859,6 +860,29 @@ public sealed class McpProtocolContractTests
             return Task.CompletedTask;
         }
 
+        public Task<int> HardDeleteUserConversationGraphAsync(Guid subjectId, CancellationToken cancellationToken)
+        {
+            var deletedConversations = TenantConversations
+                .Where(conversation => conversation.UserId == subjectId)
+                .ToArray();
+            var deletedActionIds = deletedConversations
+                .SelectMany(conversation => conversation.ProposedActions)
+                .Select(action => action.Id)
+                .ToHashSet();
+
+            foreach (AiConversation conversation in deletedConversations)
+            {
+                store.Conversations.Remove(conversation.Id);
+            }
+
+            if (deletedActionIds.Count > 0)
+            {
+                store.ToolExecutions.RemoveAll(execution => deletedActionIds.Contains(execution.ProposedActionId));
+            }
+
+            return Task.FromResult(deletedConversations.Length);
+        }
+
         public Task<AiConversation?> GetByIdWithDetailsAsync(Guid conversationId, CancellationToken cancellationToken)
             => GetById(conversationId);
 
@@ -941,6 +965,7 @@ public sealed class McpProtocolContractTests
 
             return Task.FromResult(count);
         }
+
 
         public Task<AiProposedAction?> GetProposedActionForUpdateAsync(Guid proposedActionId, CancellationToken cancellationToken)
         {

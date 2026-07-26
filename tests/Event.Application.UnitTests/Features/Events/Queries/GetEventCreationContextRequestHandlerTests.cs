@@ -151,40 +151,54 @@ public class GetEventCreationContextRequestHandlerTests
 
     private static OrganizationMember CreateOrganizationMembership(Guid organizationId, string organizationName, int roleId)
     {
+        Guid tenantId = Guid.NewGuid();
         return new OrganizationMember
         {
             Id = Guid.NewGuid(),
-            OrganizationId = organizationId,
-            Organization = new Organization
+            OrganizationTenantId = Guid.NewGuid(),
+            OrganizationTenant = new OrganizationTenant
             {
-                Id = organizationId,
-                Pii = new OrganizationPii { FullName = organizationName },
+                TenantId = tenantId,
+                Tenant = null!,
                 ApprovalStatus = null!,
-                Tenant = null!
+                OrganizationId = organizationId,
+                Organization = new Organization
+                {
+                    Id = organizationId,
+                    Pii = new OrganizationPii { FullName = organizationName }
+                }
             },
             User = null!,
             RoleId = roleId,
             Role = null!,
+            TenantId = tenantId,
             Tenant = null!
         };
     }
 
     private static GroupMember CreateGroupMembership(Guid groupId, string groupName, int roleId)
     {
+        Guid tenantId = Guid.NewGuid();
         return new GroupMember
         {
             Id = Guid.NewGuid(),
-            GroupId = groupId,
-            Group = new Group
+            GroupTenantId = Guid.NewGuid(),
+            GroupTenant = new GroupTenant
             {
-                Id = groupId,
-                FullName = groupName,
+                TenantId = tenantId,
+                Tenant = null!,
                 ApprovalStatus = null!,
-                Tenant = null!
+                GroupId = groupId,
+                Group = new Group
+                {
+                    Id = groupId,
+                    FullName = groupName
+                }
             },
             User = null!,
             RoleId = roleId,
             Role = null!,
+            TenantId = tenantId,
             Tenant = null!
         };
     }

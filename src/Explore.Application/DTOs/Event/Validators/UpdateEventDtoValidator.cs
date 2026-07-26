@@ -96,10 +96,6 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
             .Must(HaveConsistentTimeZoneAliases)
             .WithMessage("EventTimeZone and Timezone must match when both are provided.");
 
-        RuleFor(dto => dto.EventUrl!)
-            .SetValidator(new OptionalStringValueValidator<UpdateEventUrlDto>("EventUrl", 500, dto => dto.Value))
-            .When(dto => dto.EventUrl is not null);
-
         RuleFor(dto => dto.BackgroundColor!)
             .SetValidator(new OptionalStringValueValidator<UpdateEventBackgroundColorDto>("BackgroundColor", 500, dto => dto.Value))
             .When(dto => dto.BackgroundColor is not null);
@@ -148,7 +144,6 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
         dto.Madhab is not null ||
         dto.Timezone is not null ||
         dto.EventTimeZone is not null ||
-        dto.EventUrl is not null ||
         dto.BackgroundColor is not null ||
         dto.BackgroundEffect is not null ||
         dto.BackgroundImage is not null ||

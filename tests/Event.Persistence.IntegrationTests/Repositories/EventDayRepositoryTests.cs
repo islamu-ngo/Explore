@@ -36,7 +36,6 @@ public class EventDayRepositoryTests
             Label = "Opening Day",
             IsPublished = true,
             SortOrder = 1,
-            TenantId = tenant.Id,
             Tenant = tenant
         };
 
@@ -95,7 +94,6 @@ public class EventDayRepositoryTests
             Event = @event,
             LocalDate = targetDate,
             Label = "Target Day",
-            TenantId = tenant.Id,
             Tenant = tenant
         });
         await context.SaveChangesAsync();
@@ -196,8 +194,6 @@ public class EventDayRepositoryTests
             Pii = new ActorPii { DisplayName = "Test Actor" },
             ActorTypeId = 1,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);

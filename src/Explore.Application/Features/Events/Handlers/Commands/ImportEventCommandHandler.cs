@@ -45,6 +45,7 @@ public sealed class ImportEventCommandHandler(
                 Description = request.Description,
                 TenantId = request.TenantId,
                 ActorId = request.OwnerActorId,
+                EventProvenanceTypeId = (int)EventProvenanceTypeEnum.Imported,
                 ProvenanceSource = request.ProvenanceSource,
                 ProvenanceExternalId = request.ProvenanceExternalId,
                 EventTypeId = request.EventTypeId,

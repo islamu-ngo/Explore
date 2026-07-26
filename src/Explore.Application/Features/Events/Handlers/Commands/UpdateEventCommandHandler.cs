@@ -165,7 +165,6 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
             ApplyFormat(eventEntity, update.Format);
             ApplyMadhab(eventEntity, update.Madhab);
             ApplyTimezone(eventEntity, update.Timezone, update.EventTimeZone);
-            ApplyEventUrl(eventEntity, update.EventUrl);
             ApplyBackgroundColor(eventEntity, update.BackgroundColor);
             ApplyBackgroundEffect(eventEntity, update.BackgroundEffect);
             ApplyBackgroundImage(eventEntity, update.BackgroundImage);
@@ -469,14 +468,6 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         }
 
         eventEntity.ApplyScheduleTimeZone(timezoneId, _scheduleProjectionCalculator);
-    }
-
-    private static void ApplyEventUrl(Explore.Domain.Event eventEntity, UpdateEventUrlDto? update)
-    {
-        if (update?.Value.HasValue == true)
-        {
-            eventEntity.EventUrl = update.Value.Value;
-        }
     }
 
     private static void ApplyBackgroundColor(Explore.Domain.Event eventEntity, UpdateEventBackgroundColorDto? update)

@@ -166,8 +166,6 @@ public sealed class EventRegistrationCoverageReplacementTests(PostgreSqlContaine
         var actor = new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenant.Id,
-            Tenant = null!,
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
             UserId = user.Id,

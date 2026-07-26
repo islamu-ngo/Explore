@@ -37,7 +37,6 @@ public class SchedulingConstraintTests
             LocalDate = new DateOnly(2026, 7, 1),
             Label = "First Day",
             SortOrder = 1,
-            TenantId = tenant.Id,
             Tenant = tenant
         };
         context.EventDays.Add(day1);
@@ -74,7 +73,7 @@ public class SchedulingConstraintTests
             ActorId = @event.ActorId,
             Actor = null!,
             TenantId = tenant.Id,
-            Tenant = null!,
+            Tenant = tenant,
             VisibilityTypeId = 1,
             VisibilityType = null!,
             EventStatusId = 1,
@@ -476,8 +475,6 @@ public class SchedulingConstraintTests
             Pii = new ActorPii { DisplayName = "Constraint Actor" },
             ActorTypeId = 1,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);

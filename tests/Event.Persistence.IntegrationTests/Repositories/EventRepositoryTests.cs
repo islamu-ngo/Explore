@@ -1,3 +1,6 @@
+// ABOUTME: Persistence integration tests for EventRepository CRUD and aggregate loading.
+// ABOUTME: Seeds required tenant, actor, and lookup relationships against PostgreSQL.
+
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
 using Explore.Persistence;
@@ -45,8 +48,6 @@ public class EventRepositoryTests
             Pii = new ActorPii { DisplayName = "Test Actor" },
             ActorTypeId = 1,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);
@@ -68,7 +69,7 @@ public class EventRepositoryTests
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,
-            Tenant = null!,
+            Tenant = tenant,
             VisibilityTypeId = 1,
             VisibilityType = null!,
             EventStatusId = 1,
@@ -121,8 +122,6 @@ public class EventRepositoryTests
             Pii = new ActorPii { DisplayName = "Test Actor" },
             ActorTypeId = 1,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);

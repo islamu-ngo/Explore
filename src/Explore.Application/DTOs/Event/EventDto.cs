@@ -49,6 +49,14 @@ public class EventDto
     public Guid? ActorProfilePictureId { get; set; }
     public string? ActorProfilePictureUri { get; set; }
 
+    public int ProvenanceTypeId { get; set; }
+    public string? ProvenanceTypeCode { get; set; }
+    public string? ProvenanceTypeName { get; set; }
+    public Guid? SubmittedByUserId { get; set; }
+    public Guid? OrganizerActorId { get; set; }
+    public string? SourcePublisherName { get; set; }
+    public List<EventPublicActionDto> PublicActions { get; set; } = new();
+
     // Pricing
     public decimal? Price { get; set; }
     public string? CurrencyCode { get; set; }
@@ -91,8 +99,6 @@ public class EventDto
 
     // Metadata
     public int TotalViews { get; set; }
-    public bool IsUserReported { get; set; }
-    public string? EventUrl { get; set; }
 
     // ATProto Federation
     public Guid? AtprotoRecordId { get; set; }

@@ -118,7 +118,6 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
         var timezoneId = ScheduleTimeZoneResolver.NormalizeOrUtc(draft.EventTimeZoneId ?? draft.Timezone);
         eventEntity.Timezone = timezoneId;
         eventEntity.EventTimeZoneId = timezoneId;
-        eventEntity.EventUrl = draft.EventUrl;
         eventEntity.BackgroundColor = draft.BackgroundColor;
         eventEntity.BackgroundEffect = draft.BackgroundEffect;
         eventEntity.BackgroundImageId = draft.BackgroundImageId;

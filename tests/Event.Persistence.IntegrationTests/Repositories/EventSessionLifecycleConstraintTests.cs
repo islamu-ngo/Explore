@@ -154,7 +154,7 @@ public class EventSessionLifecycleConstraintTests
         var user = new User { Pii = new UserPii { Email = $"lifecycle-{Guid.NewGuid():N}@example.com", FirstName = "Test", LastName = "User" } };
         context.Users.Add(user);
         await context.SaveChangesAsync();
-        var actor = new Actor { Pii = new ActorPii { DisplayName = "Lifecycle Actor" }, ActorTypeId = 1, ActorType = null!, TenantId = tenant.Id, Tenant = null!, UserId = user.Id };
+        var actor = new Actor { Pii = new ActorPii { DisplayName = "Lifecycle Actor" }, ActorTypeId = 1, ActorType = null!, UserId = user.Id };
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
         var @event = new Explore.Domain.Event { Id = Guid.NewGuid(), Title = "Lifecycle Test Event", EventTypeId = 1, AudienceGenderId = 1, AudienceAgeId = 1, ActorId = actor.Id, Actor = null!, TenantId = tenant.Id, Tenant = null!, VisibilityTypeId = 1, VisibilityType = null!, EventStatusId = 1, EventStatus = null!, EventFormatId = 1, EventFormat = null!, TotalViews = 0, IsRegistrationRequired = false };

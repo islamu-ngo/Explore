@@ -111,7 +111,6 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
             await context.SaveChangesAsync();
 
             var actor = new ActorBuilder()
-                .WithTenantId(seed.TenantId)
                 .WithUserId(user.Id)
                 .WithDisplayName("Actor Filter Owner")
                 .Build();
@@ -129,7 +128,6 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
             await context.SaveChangesAsync();
 
             var crossTenantActor = new ActorBuilder()
-                .WithTenantId(crossTenant.Id)
                 .WithUserId(crossTenantUser.Id)
                 .WithDisplayName("Cross Tenant Actor Filter Owner")
                 .Build();
@@ -196,7 +194,6 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
             await context.SaveChangesAsync();
 
             var actor = new ActorBuilder()
-                .WithTenantId(seed.TenantId)
                 .WithUserId(owner.Id)
                 .WithDisplayName("Managed Profile Actor")
                 .Build();
@@ -451,8 +448,11 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
             await context.SaveChangesAsync();
         }
 
-        var actor = await context.Actors
-            .Where(candidate => candidate.TenantId == tenantId && !candidate.IsDeleted)
+        var actor = await (
+                from tenantUser in context.TenantUsers
+                join candidate in context.Actors on tenantUser.UserId equals candidate.UserId
+                where tenantUser.TenantId == tenantId && !tenantUser.IsDeleted && !candidate.IsDeleted
+                select candidate)
             .OrderBy(candidate => candidate.Id)
             .FirstOrDefaultAsync();
 
@@ -466,11 +466,23 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
         await context.SaveChangesAsync();
 
         actor = new ActorBuilder()
-            .WithTenantId(tenantId)
             .WithUserId(user.Id)
             .WithDisplayName("Default Visibility Actor")
             .Build();
         context.Actors.Add(actor);
+        context.TenantUsers.Add(new TenantUser
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            Tenant = tenant,
+            UserId = user.Id,
+            User = user,
+            ActorId = actor.Id,
+            Actor = actor,
+            StatusId = (int)TenantUserStatusEnum.Active,
+            JoinedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        });
         await context.SaveChangesAsync();
 
         return new DefaultTenantSeed(tenantId, actor.Id);

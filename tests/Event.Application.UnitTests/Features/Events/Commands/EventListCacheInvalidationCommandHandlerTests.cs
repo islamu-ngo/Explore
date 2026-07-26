@@ -235,8 +235,6 @@ public class EventListCacheInvalidationCommandHandlerTests
     private static Actor CreateActor(Guid actorId, Guid tenantId, Guid userId) => new()
     {
         Id = actorId,
-        TenantId = tenantId,
-        Tenant = CreateTenant(tenantId),
         UserId = userId,
         ActorType = new ActorType { Id = 1, FullName = "User", MasterCode = "user" },
         Pii = new ActorPii { DisplayName = "Event Owner" }

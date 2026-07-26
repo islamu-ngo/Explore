@@ -110,7 +110,6 @@ public static class EventHeavyRedactionApplicator
         @event.Description = EventRedactionSentinelPolicy.DisplayText;
         @event.Content = EventRedactionSentinelPolicy.DisplayText;
         @event.Slug = Slug(@event.Id, "event");
-        @event.EventUrl = null;
         @event.ExternalRegistrationUrl = null;
         @event.CurrencyCode = null;
         @event.Timezone = null;
