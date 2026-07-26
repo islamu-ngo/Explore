@@ -1,0 +1,83 @@
+# ABOUTME: Cerbos policy tests for organizer-claim evidence and review authority.
+# ABOUTME: Proves tenant-curator review and default denial for unrelated principals and actions.
+
+name: EventOrganizerClaimPolicyTests
+description: "Validates organizer-claim policy boundaries"
+
+principals:
+  tenant_admin:
+    id: "tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  regular_user:
+    id: "regular-user"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  instance_admin:
+    id: "instance-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+resources:
+  organizer_claim:
+    kind: "islamuevent_event_organizer_claim"
+    id: "claim-1"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      claimId: "claim-1"
+      claimantActorId: "actor-1"
+      status: "PENDING"
+
+tests:
+  - name: "Tenant curator can manage and review organizer claims"
+    input:
+      principals: ["tenant_admin"]
+      resources: ["organizer_claim"]
+      actions: ["manage-public-actions", "view-organizer-claims", "review-organizer-claim"]
+    expected:
+      - principal: "tenant_admin"
+        resource: "organizer_claim"
+        actions:
+          manage-public-actions: EFFECT_ALLOW
+          view-organizer-claims: EFFECT_ALLOW
+          review-organizer-claim: EFFECT_ALLOW
+
+  - name: "Regular user can submit but cannot review claims or invoke unknown actions"
+    input:
+      principals: ["regular_user"]
+      resources: ["organizer_claim"]
+      actions: ["claim-organizer", "view-organizer-claims", "review-organizer-claim", "unsupported-action"]
+    expected:
+      - principal: "regular_user"
+        resource: "organizer_claim"
+        actions:
+          claim-organizer: EFFECT_ALLOW
+          view-organizer-claims: EFFECT_DENY
+          review-organizer-claim: EFFECT_DENY
+          unsupported-action: EFFECT_DENY
+
+  - name: "Instance admin has no implicit tenant claim-evidence authority"
+    input:
+      principals: ["instance_admin"]
+      resources: ["organizer_claim"]
+      actions: ["claim-organizer", "view-organizer-claims", "review-organizer-claim"]
+    expected:
+      - principal: "instance_admin"
+        resource: "organizer_claim"
+        actions:
+          claim-organizer: EFFECT_DENY
+          view-organizer-claims: EFFECT_DENY
+          review-organizer-claim: EFFECT_DENY

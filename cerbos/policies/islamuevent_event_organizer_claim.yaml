@@ -1,0 +1,37 @@
+# ABOUTME: Cerbos resource policy for event organizer-claim evidence and review actions.
+# ABOUTME: Keeps claim submission human-scoped and claim review tenant-curator-only.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "islamuevent_event_organizer_claim"
+  version: "default"
+  importDerivedRoles:
+    - islamuevent_explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///islamuevent_principal.json
+    resourceSchema:
+      ref: cerbos:///islamuevent_event_organizer_claim.json
+  rules:
+    - actions: ["manage-public-actions", "view-organizer-claims", "review-organizer-claim"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_tenant_admin
+
+    - actions: ["manage-public-actions", "view-organizer-claims"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_org_admin
+        - islamuevent_event_owner
+        - islamuevent_event_manager
+
+    - actions: ["claim-organizer"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user
+      condition:
+        match:
+          expr: >
+            request.principal.attr.isInstanceAdmin != true &&
+            (!has(request.principal.attr.is_machine) ||
+            request.principal.attr.is_machine != true)

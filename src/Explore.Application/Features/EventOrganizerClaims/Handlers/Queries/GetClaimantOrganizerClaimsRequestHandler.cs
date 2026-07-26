@@ -1,0 +1,42 @@
+// ABOUTME: Returns organizer claims only when the authenticated user controls the claimant actor.
+// ABOUTME: Fails closed before repository disclosure for personal, organization, and group actors.
+
+using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.EventOrganizerClaim;
+using Explore.Application.Exceptions;
+using Explore.Application.Features.EventOrganizerClaims.Requests.Queries;
+using MediatR;
+
+namespace Explore.Application.Features.EventOrganizerClaims.Handlers.Queries;
+
+public sealed class GetClaimantOrganizerClaimsRequestHandler(
+    IEventOrganizerClaimRepository claimRepository,
+    IActorRepository actorRepository,
+    IOrganizationMemberRepository organizationMemberRepository,
+    IGroupMemberRepository groupMemberRepository,
+    ICurrentUserService currentUserService,
+    IMapper mapper)
+    : IRequestHandler<GetClaimantOrganizerClaimsRequest, IReadOnlyList<EventOrganizerClaimDto>>
+{
+    public async Task<IReadOnlyList<EventOrganizerClaimDto>> Handle(
+        GetClaimantOrganizerClaimsRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (currentUserService.UserId is not { } userId
+            || !await ClaimantActorAccessEvaluator.CanControlAsync(
+                request.ClaimantActorId,
+                userId,
+                actorRepository,
+                organizationMemberRepository,
+                groupMemberRepository,
+                cancellationToken))
+        {
+            throw new AuthorizationException("Organizer claims are available only to users controlling the claimant actor.");
+        }
+
+        var claims = await claimRepository.ListByClaimantAsync(request.ClaimantActorId, cancellationToken);
+        return mapper.Map<List<EventOrganizerClaimDto>>(claims);
+    }
+}

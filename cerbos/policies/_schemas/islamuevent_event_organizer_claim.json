@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for event organizer claims.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string"
+    },
+    "eventId": {
+      "type": "string"
+    },
+    "claimId": {
+      "type": "string"
+    },
+    "claimantActorId": {
+      "type": "string"
+    },
+    "organizationId": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    }
+  },
+  "required": ["tenantId", "eventId"]
+}
