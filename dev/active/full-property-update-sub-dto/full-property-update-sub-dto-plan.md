@@ -3,13 +3,13 @@
 
 # Full Property Update Sub-DTO Pattern - Implementation Plan
 
-Last Updated: 2026-07-23 Europe/Brussels
+Last Updated: 2026-07-26 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Request:** Standardize every update-eligible API entity on the existing Event/EventSession grouped partial-update convention and make settings, especially policy toggles, save at the point of change.
 - **Task directory:** `dev/active/full-property-update-sub-dto/`
-- **Planning status:** Approved and in implementation; Task 1.1 complete and Task 1.2 active.
+- **Planning status:** Approved and in implementation; Phase 1 implementation is complete and Task 2.1 is active.
 - **Compatibility:** Breaking changes are intentional. Do not retain old DTOs, routes, overloads, client methods, or tests.
 - **Matched intents:** `add-write-endpoint`, `add-cqrs-handler`, `openapi-contract-change`, `add-hal-link`, `blazor-component-affordance`; `add-ef-migration` only when an update-eligible aggregate lacks required concurrency state.
 - **Relevant skills:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `auth-patterns`, `blazor-ui-conventions`, `blazor-bff-patterns`, `dotnet-efcore-guidelines`.
@@ -199,6 +199,7 @@ Every task owns the exact D/H/A rows listed below. A task is incomplete if any o
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Migrate each sub-resource atomically with OpenAPI/client callers; never restore a broad duplicate route.
+- **Verification sequencing:** The canonical build and selected Blazor suite passed. On 2026-07-26 the user explicitly deferred the two unavailable Docker-backed Task 1.3 runtime lanes so implementation could continue; those tests remain required before final workstream completion.
 
 #### Task 1.1: Standardize hierarchical and tenant-policy settings writes
 - **Type:** modify
@@ -224,8 +225,8 @@ Every task owns the exact D/H/A rows listed below. A task is incomplete if any o
 - **Type:** modify / delete
 - **Layer:** Application / API / Blazor
 - **Files:** all instance settings DTOs, `UpdateInstanceSubResourceCommand.cs`, `UpdateInstanceSubResourceHandlers.cs`, provider/storage/SMTP/resolver handlers, `InstanceSettingsController`, onboarding controller, service/layout/tests.
-- **Description:** Migrate A-005/A-006 and all 17 A-026-A-042 instance settings endpoints to grouped PATCH; remove the legacy monolithic H-006 contract and duplicate onboarding write shapes.
-- **Acceptance Criteria:** Modules, event policy, organization policy, branding, domains, tenant delegation, admin portal, AI assistant, MCP, render policy, storage, SMTP, resolver, analytics, footer governance, auth provider, and authz provider each have a dedicated partial request contract; secret/coupled groups retain explicit UI submission.
+- **Description:** Migrate A-005/A-006 and all 17 A-026-A-042 instance settings endpoints to grouped PATCH; remove H-006 and duplicate onboarding writes. Grant dual active-setup-secret or instance-admin authority only to the exact canonical auth/authz GET and PATCH routes, leaving unrelated routes excluded. Route setup-secret traffic through one shared IP-keyed 5-per-60-second quota for exact provider GET/PATCH requests carrying `X-Setup-Secret`; bearer GETs remain outside that bucket and bearer PATCH writes use the per-user Write quota. Apply sparse module capability changes only to the default tenant in `SingleTenant`, preserve resolver cache isolation, and defer every notification produced by the six transaction-owned PATCH handlers until commit succeeds.
+- **Acceptance Criteria:** Every named instance sub-resource has a dedicated partial request contract and secret/coupled groups retain explicit UI submission. Only exact `GET`/`PATCH` auth-provider and authz-provider routes accept setup-secret or instance-admin authority; unrelated routes do not gain setup-secret access. Auth/authz GET/PATCH operations expose typed 429; PATCH operations retain `Write` metadata. Existing setup endpoints and exact provider GET/PATCH requests carrying `X-Setup-Secret` share one `setup:{ip}` 5-per-60-second window without duplicate limiter state, while bearer GETs remain outside that bucket. Module sync touches only supplied leaves, runs only for the SingleTenant default tenant, and propagates cancellation. Resolver reads return copies. The six transaction-owned handlers defer value, mixed value-lock, and lock-only notifications until successful commit, with lock transitions sourced as `SystemLocked` or `SystemDefault`.
 - **Dependencies:** 1.1.
 - **Effort:** XL
 - **Required Skills/Rules:** CQRS, auth, security, UoW, Blazor.

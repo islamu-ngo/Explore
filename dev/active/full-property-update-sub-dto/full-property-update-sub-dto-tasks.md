@@ -3,14 +3,14 @@
 
 # Full Property Update Sub-DTO Pattern - Task Checklist
 
-Last Updated: 2026-07-24 Europe/Brussels
+Last Updated: 2026-07-26 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Implementation in progress; Phase 1 active.
-- **Completed:** 3/20 implementation tasks; phase verification is tracked separately.
-- **Current priority:** Reconcile the five unrelated Blazor failures before closing Phase 1 verification.
-- **Next recommended slice:** Phase 1 Blazor verification, then Task 2.1.
+- **Overall status:** Implementation in progress; Phase 2 active.
+- **Completed:** 4/20 implementation tasks; phase verification is tracked separately.
+- **Current priority:** Task 2.2 Application-only relationship updates. Task 2.1 implementation has GPT Oracle PASS; execution tests remain deferred by user direction rather than reported as passed.
+- **Next recommended slice:** Verify EventCategories and EventTags relationship updates under Task 2.2 while preserving the recorded Docker and Task 2.1 execution-test debt.
 - **Coverage contract:** 59 DTO files, 71 update-handler files, and 104 public PUT/PATCH endpoints are individually registered.
 
 ## Implementation Maintenance Rules
@@ -25,7 +25,7 @@ Last Updated: 2026-07-24 Europe/Brussels
 - Run the phase build and selected test once after all phase tasks.
 - Never add compatibility DTOs, duplicate routes, overloads, or wildcard exception lists.
 
-## Phase 1: All Settings Contracts And Policy Autosave - IN PROGRESS
+## Phase 1: All Settings Contracts And Policy Autosave - IMPLEMENTATION COMPLETE; RUNTIME TESTS DEFERRED
 
 - [x] **1.1 Standardize hierarchical and tenant-policy settings writes**
   - **Rows:** D-038/D-039; H-007/H-008; A-093-A-097.
@@ -42,21 +42,26 @@ Last Updated: 2026-07-24 Europe/Brussels
   - **Dependencies:** 1.1.
 - [x] **1.3 Migrate all instance settings and onboarding duplicates**
   - **Rows:** H-006/H-016/H-017/H-045/H-055-H-057/H-064; A-005/A-006/A-026-A-042.
-  - **Acceptance:** All 17 instance sub-resources plus onboarding auth/authz duplicates use dedicated partial DTOs; legacy monolith/duplicate shapes are removed; secret/coupled UI groups remain explicit.
-  - **Verification:** Focused client service tests passed 38/38; focused instance UI tests passed 32/32; focused Application handler tests passed 22/22; instance OpenAPI architecture tests passed 4/4; canonical Release build passed with 0 errors. Full Blazor client suite passed 2,105/2,111 with one governed skip and the same five unrelated failures recorded in context. Post-review fixes cover redacted S3 credentials, failed-save authoritative reloads, H-006 removal, SMTP/AI read-secret redaction, and explicit grouped AI credential replacement with blank-key preservation. Final Task 1.3 review passed with no focused blockers.
+  - **429/quota parity:** The exact provider GET/PATCH operations declare typed 429. Existing setup endpoints and exact provider GET/PATCH requests carrying `X-Setup-Secret` share the `setup:{ip}` 5-per-60-second window; bearer GETs remain outside that bucket and bearer PATCH retains per-user `Write`.
+  - **Acceptance:** All 17 instance sub-resources plus onboarding auth/authz duplicates use dedicated partial DTOs; H-006 and duplicate shapes are removed; secret/coupled UI groups remain explicit. Only the exact canonical provider GET/PATCH routes accept active setup-secret or instance-admin authority; unrelated routes remain excluded. One global `setup:{ip}` window covers existing setup routes and canonical provider GET/PATCH attempts without duplicate limiter state, while bearer PATCH uses per-user `Write`. SingleTenant default-tenant capability sync touches only supplied leaves with cancellation. Resolver reads return copies. All value, mixed value-lock, and lock-only notifications from the six transaction-owned PATCH handlers publish only after successful commit; lock sources are `SystemLocked` or `SystemDefault`.
+  - **Oracle review:** PASS after GET 429 parity. No scoped remediation remains.
+  - **Verification:** Exact setup authority/limiter combined tests passed 13/13; focused metadata passed 16/16; API and generated-client builds passed; the Application source build passed; resolver tests passed 2/2; the inventory writer passed 1/1; scoped architecture passed 4/4; the Persistence integration test project builds; and the scoped diff is clean. Deferred-notification focused runs passed 33 service tests and 26 handler tests. The canonical Release build now passes with 0 errors, and the Phase 1 Blazor suite passes 2,115/2,116 with one governed skip. The full Architecture suite executes 304 tests but has two unrelated non-blocking concurrent failures in event-report consent source matching and the privacy inventory for newly added registration fields. The user explicitly deferred the unavailable Docker stress/race lanes on 2026-07-26 so Task 2.1 can start; they remain required before final workstream completion.
   - **Effort:** XL
   - **Dependencies:** 1.1.
 
 ### Phase 1 Verification - RUN ONCE AFTER ALL PHASE TASKS
 
-- [x] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` - passed with 0 errors and 82 dependency-advisory warnings.
+- [x] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` - passed 2,115/2,116 with one governed skip.
 
-## Phase 2: Verify Every Existing Canonical Or Focused Surface - NOT STARTED
+## Phase 2: Verify Every Existing Canonical Or Focused Surface - IN PROGRESS
 
-- [ ] **2.1 Verify all public canonical grouped entity PATCH endpoints**
+- [x] **2.1 Verify all public canonical grouped entity PATCH endpoints**
   - **Rows:** D-002/D-008/D-012-D-022/D-024; H-002-H-004/H-009/H-012/H-013/H-031/H-034-H-040; A-002/A-019/A-022/A-024/A-025/A-043/A-052/A-056/A-060/A-066/A-067/A-070/A-072/A-076.
   - **Acceptance:** User, Actor, Category, Location, LocationRoom, Organization, Group, Event, EventSession, EventAgendaItem, EventDay, EventSeries, EventRegistration, and EventSessionLanguage satisfy the full canonical checklist.
+  - **Implementation:** Actor profile-image authority and field ownership were corrected; EventSeries and EventSessionLanguage now authorize through persisted parent resources and expose authorization-filtered HAL; User now returns HAL with an edit affordance and 404 behavior; the remaining canonical controllers map not-found and permission failures to their declared HTTP contracts. OpenAPI and NSwag clients were regenerated, and Blazor adapters unwrap the HAL contracts.
+  - **Oracle review:** PASS after exact Actor 404 matching, handler-level Group/Organization authorization exceptions, and removal of EventSessionLanguage controller-side parent probing.
+  - **Verification:** Application, API, Blazor Client, Application unit-test, and Blazor Client test projects compile; `git diff --check` is clean. API integration-test compilation remains blocked by 29 unrelated concurrent Actor/User/Organization fixture errors, and the canonical solution build reaches 84 unrelated test-project errors. Per user direction, Task 2.1 tests were not executed and remain deferred.
   - **Effort:** L
   - **Dependencies:** Phase 1.
 - [ ] **2.2 Verify all Application-only canonical relationship updates**
