@@ -43,7 +43,7 @@ public class UpdateOrganizationMemberRoleCommandHandler : IRequestHandler<Update
             return response;
         }
 
-        var organization = await _organizationRepository.GetById(memberToUpdate.OrganizationId);
+        var organization = await _organizationRepository.GetById(memberToUpdate.OrganizationTenant.OrganizationId);
         if (organization == null)
         {
             response.Success = false;
@@ -52,7 +52,7 @@ public class UpdateOrganizationMemberRoleCommandHandler : IRequestHandler<Update
         }
 
         // Check permissions - requester must be an Admin
-        var members = await _organizationMemberRepository.GetMembersByOrganizationId(memberToUpdate.OrganizationId);
+        var members = await _organizationMemberRepository.GetMembersByOrganizationId(memberToUpdate.OrganizationTenant.OrganizationId);
         if (Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
         {
             var requesterMember = members.FirstOrDefault(m => m.UserId == requesterGuid);

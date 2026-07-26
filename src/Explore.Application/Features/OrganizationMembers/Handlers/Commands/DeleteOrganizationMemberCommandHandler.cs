@@ -38,7 +38,7 @@ public class DeleteOrganizationMemberCommandHandler : IRequestHandler<DeleteOrga
             return response;
         }
 
-        var organization = await _organizationRepository.GetById(memberToDelete.OrganizationId);
+        var organization = await _organizationRepository.GetById(memberToDelete.OrganizationTenant.OrganizationId);
         if (organization == null)
         {
             response.Success = false;
@@ -47,7 +47,7 @@ public class DeleteOrganizationMemberCommandHandler : IRequestHandler<DeleteOrga
         }
 
         // Check permissions - requester must be an Admin
-        var members = await _organizationMemberRepository.GetMembersByOrganizationId(memberToDelete.OrganizationId);
+        var members = await _organizationMemberRepository.GetMembersByOrganizationId(memberToDelete.OrganizationTenant.OrganizationId);
         if (Guid.TryParse(request.RequesterUserId, out Guid requesterGuid))
         {
             var requesterMember = members.FirstOrDefault(m => m.UserId == requesterGuid);

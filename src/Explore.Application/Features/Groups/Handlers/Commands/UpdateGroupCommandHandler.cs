@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.Group.Validators;
 using Explore.Application.Exceptions;
@@ -20,6 +21,8 @@ namespace Explore.Application.Features.Groups.Handlers.Commands;
 public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, BaseCommandResponse<Guid>>
 {
     private readonly IGroupRepository _groupRepository;
+    private readonly IGroupTenantRepository _groupTenantRepository;
+    private readonly IOrganizationTenantRepository _organizationTenantRepository;
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
@@ -27,12 +30,16 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
 
     public UpdateGroupCommandHandler(
         IGroupRepository groupRepository,
+        IGroupTenantRepository groupTenantRepository,
+        IOrganizationTenantRepository organizationTenantRepository,
         IGroupMemberRepository groupMemberRepository,
         IUserContext userContext,
         ITenantContext tenantContext,
         HybridCache cache)
     {
         _groupRepository = groupRepository;
+        _groupTenantRepository = groupTenantRepository;
+        _organizationTenantRepository = organizationTenantRepository;
         _groupMemberRepository = groupMemberRepository;
         _userContext = userContext;
         _tenantContext = tenantContext;
@@ -58,9 +65,7 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
             request.GroupId, currentUserId, PermissionCodes.GroupManage);
         if (!hasPermission)
         {
-            response.Success = false;
-            response.Message = "You do not have permission to manage this group.";
-            return response;
+            throw new AuthorizationException(ResourceKinds.Group, AuthorizationActions.Update);
         }
 
         var group = await _groupRepository.GetById(request.GroupId);
@@ -84,7 +89,18 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
             _tenantContext.TenantId,
             async lockedCancellationToken =>
             {
-                var targetParent = ResolveTargetParent(group, request.UpdateGroupDto);
+                var participation = await _groupTenantRepository.GetByGroupAndTenant(
+                    group.Id,
+                    _tenantContext.TenantId,
+                    lockedCancellationToken);
+                if (participation is null)
+                {
+                    response.Success = false;
+                    response.Message = "Group not found.";
+                    return response;
+                }
+
+                var targetParent = await ResolveTargetParent(participation, request.UpdateGroupDto);
                 if (targetParent.ParentOrganizationId.HasValue && targetParent.ParentGroupId.HasValue)
                 {
                     response.Success = false;
@@ -108,11 +124,14 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
 
                 ApplyFullName(group, request.UpdateGroupDto.FullName);
                 ApplyDescription(group, request.UpdateGroupDto.Description);
-                ApplyParent(group, targetParent);
+                await ApplyParent(participation, targetParent, lockedCancellationToken);
                 group.UpdatedAt = DateTime.UtcNow;
                 group.UpdatedBy = currentUserId;
+                participation.UpdatedAt = group.UpdatedAt;
+                participation.UpdatedBy = currentUserId;
 
                 await _groupRepository.Update(group);
+                await _groupTenantRepository.Update(participation);
 
                 await _cache.RemoveAsync($"group:detail:{group.Id}", lockedCancellationToken);
 
@@ -125,10 +144,14 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
             cancellationToken);
     }
 
-    private static GroupParentTarget ResolveTargetParent(Group group, UpdateGroupDto dto)
+    private async Task<GroupParentTarget> ResolveTargetParent(GroupTenant participation, UpdateGroupDto dto)
     {
-        var parentOrganizationId = group.ParentOrganizationId;
-        var parentGroupId = group.ParentGroupId;
+        var parentOrganizationId = participation.ParentOrganizationTenantId.HasValue
+            ? (await _organizationTenantRepository.GetById(participation.ParentOrganizationTenantId.Value))?.OrganizationId
+            : null;
+        var parentGroupId = participation.ParentGroupTenantId.HasValue
+            ? (await _groupTenantRepository.GetById(participation.ParentGroupTenantId.Value))?.GroupId
+            : null;
 
         if (dto.ParentOrganization?.Value.HasValue == true)
         {
@@ -167,10 +190,23 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
         }
     }
 
-    private static void ApplyParent(Group group, GroupParentTarget target)
+    private async Task ApplyParent(
+        GroupTenant participation,
+        GroupParentTarget target,
+        CancellationToken cancellationToken)
     {
-        group.ParentOrganizationId = target.ParentOrganizationId;
-        group.ParentGroupId = target.ParentGroupId;
+        participation.ParentOrganizationTenantId = target.ParentOrganizationId.HasValue
+            ? (await _organizationTenantRepository.GetByOrganizationAndTenant(
+                target.ParentOrganizationId.Value,
+                _tenantContext.TenantId,
+                cancellationToken))?.Id
+            : null;
+        participation.ParentGroupTenantId = target.ParentGroupId.HasValue
+            ? (await _groupTenantRepository.GetByGroupAndTenant(
+                target.ParentGroupId.Value,
+                _tenantContext.TenantId,
+                cancellationToken))?.Id
+            : null;
     }
 
     private async Task<List<string>> ValidateHierarchy(Guid groupId, Guid? parentOrganizationId, Guid? parentGroupId, CancellationToken cancellationToken)

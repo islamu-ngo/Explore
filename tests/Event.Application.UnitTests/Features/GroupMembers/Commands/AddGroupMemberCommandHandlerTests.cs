@@ -19,6 +19,7 @@ public sealed class AddGroupMemberCommandHandlerTests
     private const string TargetEmail = "new.member@example.test";
 
     private readonly IGroupRepository _groupRepository = Substitute.For<IGroupRepository>();
+    private readonly IGroupTenantRepository _groupTenantRepository = Substitute.For<IGroupTenantRepository>();
     private readonly IGroupMemberRepository _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
     private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
     private readonly IUserContext _userContext = Substitute.For<IUserContext>();
@@ -29,6 +30,7 @@ public sealed class AddGroupMemberCommandHandlerTests
     {
         _handler = new AddGroupMemberCommandHandler(
             _groupRepository,
+            _groupTenantRepository,
             _groupMemberRepository,
             _userRepository,
             _userContext,
@@ -65,7 +67,7 @@ public sealed class AddGroupMemberCommandHandlerTests
         await Assert.That(result.Id).IsEqualTo(createdMemberId);
         await Assert.That(result.Message).IsEqualTo("Member added successfully");
         await _groupMemberRepository.Received(1).Create(Arg.Is<GroupMember>(member =>
-            member.GroupId == dto.GroupId
+            member.GroupTenant.GroupId == dto.GroupId
             && member.UserId == targetUser.Id
             && member.RoleId == (int)dto.Role
             && member.GroupPositionId == dto.GroupPositionId
@@ -96,7 +98,7 @@ public sealed class AddGroupMemberCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Member added successfully");
         await _groupMemberRepository.Received(1).Create(Arg.Is<GroupMember>(member =>
-            member.GroupId == dto.GroupId
+            member.GroupTenant.GroupId == dto.GroupId
             && member.UserId == targetUser.Id));
     }
 
@@ -213,7 +215,7 @@ public sealed class AddGroupMemberCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await _groupMemberRepository.Received(1).Create(Arg.Is<GroupMember>(member =>
-            member.GroupId == dto.GroupId
+            member.GroupTenant.GroupId == dto.GroupId
             && member.UserId == targetUser.Id
             && member.RoleId == (int)RoleEnum.GroupModerator
             && member.GroupPositionId == 42
@@ -232,7 +234,10 @@ public sealed class AddGroupMemberCommandHandlerTests
 
     private void SetupGroupFound(Guid groupId)
     {
-        _groupRepository.GetById(groupId).Returns(CreateGroup(groupId));
+        Group group = CreateGroup(groupId);
+        _groupRepository.GetById(groupId).Returns(group);
+        _groupTenantRepository.GetByGroupAndTenant(groupId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => CreateGroupTenant(group, callInfo.ArgAt<Guid>(1)));
     }
 
     private static AddGroupMemberCommand CreateCommand(AddGroupMemberDto dto, Guid requesterUserId) => new()
@@ -254,20 +259,27 @@ public sealed class AddGroupMemberCommandHandlerTests
     private static Group CreateGroup(Guid groupId) => new()
     {
         Id = groupId,
-        FullName = "Community Group",
-        TenantId = Guid.NewGuid(),
-        ApprovalStatus = null!,
-        Tenant = null!
+        FullName = "Community Group"
+    };
+
+    private static GroupTenant CreateGroupTenant(Group group, Guid tenantId) => new()
+    {
+        Id = Guid.NewGuid(),
+        GroupId = group.Id,
+        Group = group,
+        TenantId = tenantId,
+        Tenant = null!,
+        ApprovalStatus = null!
     };
 
     private static GroupMember CreateGroupMember(Guid groupId, Guid userId, int roleId) => new()
     {
         Id = Guid.NewGuid(),
-        GroupId = groupId,
+        GroupTenantId = Guid.NewGuid(),
+        GroupTenant = CreateGroupTenant(CreateGroup(groupId), Guid.NewGuid()),
         UserId = userId,
         RoleId = roleId,
         TenantId = Guid.NewGuid(),
-        Group = null!,
         User = null!,
         Role = null!,
         Tenant = null!

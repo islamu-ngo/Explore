@@ -19,6 +19,7 @@ namespace Explore.Application.Features.GroupMembers.Handlers.Commands;
 public class AddGroupMemberCommandHandler : IRequestHandler<AddGroupMemberCommand, BaseCommandResponse<Guid>>
 {
     private readonly IGroupRepository _groupRepository;
+    private readonly IGroupTenantRepository _groupTenantRepository;
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IUserRepository _userRepository;
     private readonly IUserContext _userContext;
@@ -26,12 +27,14 @@ public class AddGroupMemberCommandHandler : IRequestHandler<AddGroupMemberComman
 
     public AddGroupMemberCommandHandler(
         IGroupRepository groupRepository,
+        IGroupTenantRepository groupTenantRepository,
         IGroupMemberRepository groupMemberRepository,
         IUserRepository userRepository,
         IUserContext userContext,
         ITenantContext tenantContext)
     {
         _groupRepository = groupRepository;
+        _groupTenantRepository = groupTenantRepository;
         _groupMemberRepository = groupMemberRepository;
         _userRepository = userRepository;
         _userContext = userContext;
@@ -48,6 +51,17 @@ public class AddGroupMemberCommandHandler : IRequestHandler<AddGroupMemberComman
         {
             response.Success = false;
             response.Message = "Group not found";
+            return response;
+        }
+
+        var participation = await _groupTenantRepository.GetByGroupAndTenant(
+            dto.GroupId,
+            _tenantContext.TenantId,
+            cancellationToken);
+        if (participation is null)
+        {
+            response.Success = false;
+            response.Message = "Group does not participate in the current tenant.";
             return response;
         }
 
@@ -92,8 +106,8 @@ public class AddGroupMemberCommandHandler : IRequestHandler<AddGroupMemberComman
 
         var groupMember = new GroupMember
         {
-            GroupId = dto.GroupId,
-            Group = null!,
+            GroupTenantId = participation.Id,
+            GroupTenant = participation,
             UserId = userToAdd.Id,
             User = null!,
             RoleId = (int)dto.Role,

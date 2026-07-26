@@ -52,12 +52,12 @@ public class UpdateGroupMemberRoleCommandHandler : IRequestHandler<UpdateGroupMe
         }
 
         var hasPermission = await _groupMemberRepository.HasPermissionInGroup(
-            memberToUpdate.GroupId, requesterGuid, PermissionCodes.GroupMemberUpdate);
+            memberToUpdate.GroupTenant.GroupId, requesterGuid, PermissionCodes.GroupMemberUpdate);
 
         if (!hasPermission)
         {
             // Transitional fallback: allow GroupAdmin role
-            var requesterMember = await _groupMemberRepository.GetByGroupAndUser(memberToUpdate.GroupId, requesterGuid);
+            var requesterMember = await _groupMemberRepository.GetByGroupAndUser(memberToUpdate.GroupTenant.GroupId, requesterGuid);
             if (requesterMember == null ||
                 requesterMember.RoleId != (int)RoleEnum.GroupAdmin)
             {
@@ -68,7 +68,7 @@ public class UpdateGroupMemberRoleCommandHandler : IRequestHandler<UpdateGroupMe
         }
 
         // Prevent demoting the last admin
-        var members = await _groupMemberRepository.GetMembersByGroupId(memberToUpdate.GroupId);
+        var members = await _groupMemberRepository.GetMembersByGroupId(memberToUpdate.GroupTenant.GroupId);
         var adminCount = members.Count(m =>
             m.RoleId == (int)RoleEnum.GroupAdmin);
 

@@ -47,7 +47,7 @@ public class GetMyOrganizationsRequestHandler : IRequestHandler<GetMyOrganizatio
 
         // Get memberships to add user role info
         var memberships = await _organizationMemberRepository.GetMembershipsByUser(userGuid, cancellationToken);
-        var membershipDict = memberships.ToDictionary(m => m.OrganizationId, m => m.RoleId);
+        var membershipDict = memberships.ToDictionary(m => m.OrganizationTenant.OrganizationId, m => m.RoleId);
 
         // Map OrganizationMember entities to OrganizationListDto
         var dtos = new List<OrganizationListDto>();

@@ -51,12 +51,12 @@ public class DeleteGroupMemberCommandHandler : IRequestHandler<DeleteGroupMember
         }
 
         var hasPermission = await _groupMemberRepository.HasPermissionInGroup(
-            memberToDelete.GroupId, requesterGuid, PermissionCodes.GroupMemberDelete);
+            memberToDelete.GroupTenant.GroupId, requesterGuid, PermissionCodes.GroupMemberDelete);
 
         if (!hasPermission)
         {
             // Transitional fallback: allow GroupAdmin role
-            var requesterMember = await _groupMemberRepository.GetByGroupAndUser(memberToDelete.GroupId, requesterGuid);
+            var requesterMember = await _groupMemberRepository.GetByGroupAndUser(memberToDelete.GroupTenant.GroupId, requesterGuid);
             if (requesterMember == null ||
                 requesterMember.RoleId != (int)RoleEnum.GroupAdmin)
             {
@@ -67,7 +67,7 @@ public class DeleteGroupMemberCommandHandler : IRequestHandler<DeleteGroupMember
         }
 
         // Prevent removing the last admin
-        var members = await _groupMemberRepository.GetMembersByGroupId(memberToDelete.GroupId);
+        var members = await _groupMemberRepository.GetMembersByGroupId(memberToDelete.GroupTenant.GroupId);
         var adminCount = members.Count(m =>
             m.RoleId == (int)RoleEnum.GroupAdmin);
 

@@ -104,22 +104,14 @@ public class GetOrganizationDetailsRequestHandlerTests
         return new Organization
         {
             Id = organizationId,
-            ActorId = actorId,
-            Pii = new OrganizationPii { FullName = "ISLAMU" },
-            ApprovalStatus = new ApprovalStatus { Id = 1, FullName = "Approved", MasterCode = "APPROVED" },
-            Tenant = new Tenant
+            Actor = new Actor
             {
-                Id = Guid.NewGuid(),
-                FullName = "Default Tenant",
-                Slug = "default",
-                TenantStatus = new TenantStatus
-                {
-                    Id = 1,
-                    FullName = "Active",
-                    MasterCode = "ACTIVE",
-                    IsActiveState = true
-                }
-            }
+                Id = actorId,
+                OrganizationId = organizationId,
+                ActorType = null!,
+                Pii = new ActorPii { DisplayName = "ISLAMU" }
+            },
+            Pii = new OrganizationPii { FullName = "ISLAMU" },
         };
     }
 

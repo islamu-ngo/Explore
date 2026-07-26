@@ -294,6 +294,7 @@ public class OrganizationController : ExploreControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
@@ -327,7 +328,9 @@ public class OrganizationController : ExploreControllerBase
 
         if (!result.Success)
         {
-            return this.ToCommandValidationProblem(result, UpdateValidationProblem);
+            return result.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+                ? this.ToNotFoundProblem(OrganizationNotFoundProblem)
+                : this.ToCommandValidationProblem(result, UpdateValidationProblem);
         }
 
         return Ok(result);

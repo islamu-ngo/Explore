@@ -14,9 +14,10 @@ using Microsoft.Extensions.Caching.Hybrid;
 namespace Explore.Application.Features.Groups.Handlers.Commands;
 
 public class UpdateGroupApprovalStatusCommandHandler(
-    IGroupRepository groupRepository,
+    IGroupTenantRepository groupTenantRepository,
     IApprovalStatusRepository approvalStatusRepository,
     ICurrentUserService currentUserService,
+    ITenantContext tenantContext,
     HybridCache cache)
     : IRequestHandler<UpdateGroupApprovalStatusCommand, BaseCommandResponse<Guid>>
 {
@@ -36,23 +37,26 @@ public class UpdateGroupApprovalStatusCommandHandler(
             return response;
         }
 
-        var group = await groupRepository.GetById(request.Id);
-        if (group == null)
+        var participation = await groupTenantRepository.GetByGroupAndTenant(
+            request.Id,
+            tenantContext.TenantId,
+            cancellationToken);
+        if (participation == null)
         {
             throw new NotFoundException(nameof(Group), request.Id);
         }
 
         var currentUserId = currentUserService.UserId;
-        group.ApprovalStatusId = request.GroupApprovalStatusDto.ApprovalStatusId;
-        group.UpdatedAt = DateTime.UtcNow;
-        group.UpdatedBy = currentUserId;
+        participation.ApprovalStatusId = request.GroupApprovalStatusDto.ApprovalStatusId;
+        participation.UpdatedAt = DateTime.UtcNow;
+        participation.UpdatedBy = currentUserId;
 
-        await groupRepository.Update(group);
-        await cache.RemoveAsync($"group:detail:{group.Id}", cancellationToken);
+        await groupTenantRepository.Update(participation);
+        await cache.RemoveAsync($"group:detail:{participation.GroupId}", cancellationToken);
 
         response.Success = true;
         response.Message = "Group approval status updated successfully.";
-        response.Id = group.Id;
+        response.Id = participation.GroupId;
 
         return response;
     }

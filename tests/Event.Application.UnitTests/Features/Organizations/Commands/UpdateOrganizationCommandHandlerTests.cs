@@ -187,26 +187,35 @@ public class UpdateOrganizationCommandHandlerTests
                 Postcode = "1000",
                 Address = "Existing Street 1"
             },
-            WebsiteUrl = "https://example.com",
-            ApprovalStatusId = (int)ApprovalStatusEnum.Pending,
-            ApprovalStatus = null!,
-            TenantId = Guid.CreateVersion7(),
-            Tenant = null!
+            WebsiteUrl = "https://example.com"
         };
     }
 
     private static OrganizationMember CreateMember(Organization organization, Guid userId, RoleEnum role)
     {
-        return new OrganizationMember
+        Guid tenantId = Guid.CreateVersion7();
+        var participation = new OrganizationTenant
         {
             Id = Guid.CreateVersion7(),
             OrganizationId = organization.Id,
             Organization = organization,
+            TenantId = tenantId,
+            Tenant = null!,
+            ApprovalStatusId = (int)ApprovalStatusEnum.Pending,
+            ApprovalStatus = null!
+        };
+        organization.TenantParticipations.Add(participation);
+
+        return new OrganizationMember
+        {
+            Id = Guid.CreateVersion7(),
+            OrganizationTenantId = participation.Id,
+            OrganizationTenant = participation,
             UserId = userId,
             User = null!,
             RoleId = (int)role,
             Role = null!,
-            TenantId = organization.TenantId,
+            TenantId = tenantId,
             Tenant = null!
         };
     }

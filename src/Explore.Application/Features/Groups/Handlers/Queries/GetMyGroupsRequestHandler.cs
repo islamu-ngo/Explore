@@ -46,7 +46,7 @@ public class GetMyGroupsRequestHandler : IRequestHandler<GetMyGroupsRequest, Pag
         var (groups, totalCount) = await _groupRepository.GetMyGroupsPaged(userGuid, request.PageNumber, request.PageSize);
 
         var memberships = await _groupMemberRepository.GetMembershipsByUser(userGuid, cancellationToken);
-        var membershipDict = memberships.ToDictionary(m => m.GroupId, m => m.RoleId);
+        var membershipDict = memberships.ToDictionary(m => m.GroupTenant.GroupId, m => m.RoleId);
 
         var dtos = new List<GroupListDto>();
         foreach (var group in groups)

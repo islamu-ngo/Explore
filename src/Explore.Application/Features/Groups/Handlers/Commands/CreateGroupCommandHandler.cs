@@ -19,9 +19,10 @@ namespace Explore.Application.Features.Groups.Handlers.Commands;
 public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, BaseCommandResponse<Guid>>
 {
     private readonly IGroupRepository _groupRepository;
+    private readonly IGroupTenantRepository _groupTenantRepository;
+    private readonly IOrganizationTenantRepository _organizationTenantRepository;
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IActorRepository _actorRepository;
-    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly IMapper _mapper;
     private readonly ITenantContext _tenantContext;
@@ -30,9 +31,10 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
 
     public CreateGroupCommandHandler(
         IGroupRepository groupRepository,
+        IGroupTenantRepository groupTenantRepository,
+        IOrganizationTenantRepository organizationTenantRepository,
         IGroupMemberRepository groupMemberRepository,
         IActorRepository actorRepository,
-        IStorageObjectRepository storageObjectRepository,
         IAdminCacheInvalidator adminCacheInvalidator,
         IMapper mapper,
         ITenantContext tenantContext,
@@ -40,9 +42,10 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
         BusinessMetrics metrics)
     {
         _groupRepository = groupRepository;
+        _groupTenantRepository = groupTenantRepository;
+        _organizationTenantRepository = organizationTenantRepository;
         _groupMemberRepository = groupMemberRepository;
         _actorRepository = actorRepository;
-        _storageObjectRepository = storageObjectRepository;
         _adminCacheInvalidator = adminCacheInvalidator;
         _mapper = mapper;
         _tenantContext = tenantContext;
@@ -81,8 +84,6 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
 
                 var group = _mapper.Map<Group>(request.GroupDto);
 
-                group.ApprovalStatusId = (int)ApprovalStatusEnum.Pending;
-                group.TenantId = _tenantContext.TenantId;
                 group.CreatedAt = DateTime.UtcNow;
 
                 group = await _groupRepository.Create(group);
@@ -91,39 +92,47 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
                 {
                     ActorTypeId = (int)ActorTypeEnum.Group,
                     ActorType = null!,
-                    TenantId = _tenantContext.TenantId,
-                    Tenant = null!,
-                    Pii = new ActorPii
-                    {
-                        DisplayName = group.FullName,
-                        Handle = GenerateHandle(group.FullName)
-                    },
+                    Pii = new ActorPii { DisplayName = group.FullName },
                     Description = null,
-                    UserId = null,
-                    OrganizationId = null,
                     GroupId = group.Id,
-                    ProfilePictureId = request.GroupDto.ProfilePictureId
+                    Group = group
                 };
 
-                groupActor = await _actorRepository.Create(groupActor);
+                await _actorRepository.Create(groupActor);
 
-                group.ActorId = groupActor.Id;
-                await _groupRepository.Update(group);
+                var parentOrganization = request.GroupDto.ParentOrganizationId.HasValue
+                    ? await _organizationTenantRepository.GetByOrganizationAndTenant(
+                        request.GroupDto.ParentOrganizationId.Value,
+                        _tenantContext.TenantId,
+                        lockedCancellationToken)
+                    : null;
+                var parentGroup = request.GroupDto.ParentGroupId.HasValue
+                    ? await _groupTenantRepository.GetByGroupAndTenant(
+                        request.GroupDto.ParentGroupId.Value,
+                        _tenantContext.TenantId,
+                        lockedCancellationToken)
+                    : null;
 
-                if (request.GroupDto.ProfilePictureId.HasValue)
+                var participation = new GroupTenant
                 {
-                    var storageObject = await _storageObjectRepository.GetById(request.GroupDto.ProfilePictureId.Value);
-                    if (storageObject != null)
-                    {
-                        storageObject.ActorId = groupActor.Id;
-                        await _storageObjectRepository.Update(storageObject);
-                    }
-                }
+                    TenantId = _tenantContext.TenantId,
+                    Tenant = null!,
+                    GroupId = group.Id,
+                    Group = group,
+                    ApprovalStatusId = (int)ApprovalStatusEnum.Pending,
+                    ApprovalStatus = null!,
+                    ProfilePictureId = request.GroupDto.ProfilePictureId,
+                    ParentOrganizationTenantId = parentOrganization?.Id,
+                    ParentGroupTenantId = parentGroup?.Id,
+                    CreatedAt = group.CreatedAt
+                };
+
+                participation = await _groupTenantRepository.Create(participation);
 
                 var groupMember = new GroupMember
                 {
-                    GroupId = group.Id,
-                    Group = null!,
+                    GroupTenantId = participation.Id,
+                    GroupTenant = participation,
                     UserId = currentUserId,
                     User = null!,
                     RoleId = (int)RoleEnum.GroupAdmin,
@@ -152,26 +161,6 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
         }
 
         return result;
-    }
-
-    private string GenerateHandle(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            return $"grp-{Guid.CreateVersion7().ToString("N").Substring(0, 8)}";
-
-        var handle = name.ToLowerInvariant()
-            .Replace(" ", "-")
-            .Replace("'", "")
-            .Replace("\"", "")
-            .Replace(".", "")
-            .Replace(",", "");
-
-        handle = System.Text.RegularExpressions.Regex.Replace(handle, @"[^a-z0-9\-]", "");
-
-        if (handle.Length > 20)
-            handle = handle.Substring(0, 20);
-
-        return $"{handle}-{Guid.CreateVersion7().ToString("N").Substring(0, 6)}";
     }
 
     private async Task<List<string>> ValidateHierarchy(Guid? parentOrganizationId, Guid? parentGroupId, CancellationToken cancellationToken)

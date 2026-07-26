@@ -36,15 +36,15 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
         var memberToUpdate = CreateGroupMember(roleId: (int)RoleEnum.GroupMember);
         SetupMemberFound(memberToUpdate);
         _groupMemberRepository.HasPermissionInGroup(
-                memberToUpdate.GroupId,
+                memberToUpdate.GroupTenant.GroupId,
                 requesterUserId,
                 PermissionCodes.GroupMemberUpdate)
             .Returns(true);
-        _groupMemberRepository.GetMembersByGroupId(memberToUpdate.GroupId)
+        _groupMemberRepository.GetMembersByGroupId(memberToUpdate.GroupTenant.GroupId)
             .Returns(new List<GroupMember>
             {
                 memberToUpdate,
-                CreateGroupMember(memberToUpdate.GroupId, roleId: (int)RoleEnum.GroupAdmin)
+                CreateGroupMember(memberToUpdate.GroupTenant.GroupId, roleId: (int)RoleEnum.GroupAdmin)
             });
 
         var result = await _handler.Handle(
@@ -64,16 +64,16 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
     {
         var requesterUserId = Guid.NewGuid();
         var memberToUpdate = CreateGroupMember(roleId: (int)RoleEnum.GroupMember);
-        var requesterMember = CreateGroupMember(memberToUpdate.GroupId, requesterUserId, (int)RoleEnum.GroupAdmin);
+        var requesterMember = CreateGroupMember(memberToUpdate.GroupTenant.GroupId, requesterUserId, (int)RoleEnum.GroupAdmin);
         SetupMemberFound(memberToUpdate);
         _groupMemberRepository.HasPermissionInGroup(
-                memberToUpdate.GroupId,
+                memberToUpdate.GroupTenant.GroupId,
                 requesterUserId,
                 PermissionCodes.GroupMemberUpdate)
             .Returns(false);
-        _groupMemberRepository.GetByGroupAndUser(memberToUpdate.GroupId, requesterUserId)
+        _groupMemberRepository.GetByGroupAndUser(memberToUpdate.GroupTenant.GroupId, requesterUserId)
             .Returns(requesterMember);
-        _groupMemberRepository.GetMembersByGroupId(memberToUpdate.GroupId)
+        _groupMemberRepository.GetMembersByGroupId(memberToUpdate.GroupTenant.GroupId)
             .Returns(new List<GroupMember> { requesterMember, memberToUpdate });
 
         var result = await _handler.Handle(
@@ -134,14 +134,14 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
     {
         var requesterUserId = Guid.NewGuid();
         var memberToUpdate = CreateGroupMember(roleId: (int)RoleEnum.GroupMember);
-        var requesterMember = CreateGroupMember(memberToUpdate.GroupId, requesterUserId, (int)RoleEnum.GroupMember);
+        var requesterMember = CreateGroupMember(memberToUpdate.GroupTenant.GroupId, requesterUserId, (int)RoleEnum.GroupMember);
         SetupMemberFound(memberToUpdate);
         _groupMemberRepository.HasPermissionInGroup(
-                memberToUpdate.GroupId,
+                memberToUpdate.GroupTenant.GroupId,
                 requesterUserId,
                 PermissionCodes.GroupMemberUpdate)
             .Returns(false);
-        _groupMemberRepository.GetByGroupAndUser(memberToUpdate.GroupId, requesterUserId)
+        _groupMemberRepository.GetByGroupAndUser(memberToUpdate.GroupTenant.GroupId, requesterUserId)
             .Returns(requesterMember);
 
         var result = await _handler.Handle(
@@ -162,15 +162,15 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
         var adminToDemote = CreateGroupMember(roleId: (int)RoleEnum.GroupAdmin);
         SetupMemberFound(adminToDemote);
         _groupMemberRepository.HasPermissionInGroup(
-                adminToDemote.GroupId,
+                adminToDemote.GroupTenant.GroupId,
                 requesterUserId,
                 PermissionCodes.GroupMemberUpdate)
             .Returns(true);
-        _groupMemberRepository.GetMembersByGroupId(adminToDemote.GroupId)
+        _groupMemberRepository.GetMembersByGroupId(adminToDemote.GroupTenant.GroupId)
             .Returns(new List<GroupMember>
             {
                 adminToDemote,
-                CreateGroupMember(adminToDemote.GroupId, roleId: (int)RoleEnum.GroupMember)
+                CreateGroupMember(adminToDemote.GroupTenant.GroupId, roleId: (int)RoleEnum.GroupMember)
             });
 
         var result = await _handler.Handle(
@@ -190,16 +190,16 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
         var adminToDemote = CreateGroupMember(roleId: (int)RoleEnum.GroupAdmin);
         SetupMemberFound(adminToDemote);
         _groupMemberRepository.HasPermissionInGroup(
-                adminToDemote.GroupId,
+                adminToDemote.GroupTenant.GroupId,
                 requesterUserId,
                 PermissionCodes.GroupMemberUpdate)
             .Returns(true);
-        _groupMemberRepository.GetMembersByGroupId(adminToDemote.GroupId)
+        _groupMemberRepository.GetMembersByGroupId(adminToDemote.GroupTenant.GroupId)
             .Returns(new List<GroupMember>
             {
                 adminToDemote,
-                CreateGroupMember(adminToDemote.GroupId, roleId: (int)RoleEnum.GroupAdmin),
-                CreateGroupMember(adminToDemote.GroupId, roleId: (int)RoleEnum.GroupMember)
+                CreateGroupMember(adminToDemote.GroupTenant.GroupId, roleId: (int)RoleEnum.GroupAdmin),
+                CreateGroupMember(adminToDemote.GroupTenant.GroupId, roleId: (int)RoleEnum.GroupMember)
             });
 
         var result = await _handler.Handle(
@@ -238,11 +238,19 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
     private static GroupMember CreateGroupMember(Guid groupId, Guid userId, int roleId) => new()
     {
         Id = Guid.NewGuid(),
-        GroupId = groupId,
+        GroupTenantId = Guid.NewGuid(),
+        GroupTenant = new GroupTenant
+        {
+            GroupId = groupId,
+            Group = new Group { Id = groupId, FullName = "Group" },
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            ApprovalStatusId = 1,
+            ApprovalStatus = null!
+        },
         UserId = userId,
         RoleId = roleId,
         TenantId = Guid.NewGuid(),
-        Group = null!,
         User = null!,
         Role = null!,
         Tenant = null!

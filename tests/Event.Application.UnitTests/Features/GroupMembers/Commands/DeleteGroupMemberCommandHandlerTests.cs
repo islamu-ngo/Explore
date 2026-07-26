@@ -35,15 +35,15 @@ public sealed class DeleteGroupMemberCommandHandlerTests
         var memberToDelete = CreateGroupMember(roleId: (int)RoleEnum.GroupMember);
         SetupMemberFound(memberToDelete);
         _groupMemberRepository.HasPermissionInGroup(
-                memberToDelete.GroupId,
+                memberToDelete.GroupTenant.GroupId,
                 requesterUserId,
                 PermissionCodes.GroupMemberDelete)
             .Returns(true);
-        _groupMemberRepository.GetMembersByGroupId(memberToDelete.GroupId)
+        _groupMemberRepository.GetMembersByGroupId(memberToDelete.GroupTenant.GroupId)
             .Returns(new List<GroupMember>
             {
                 memberToDelete,
-                CreateGroupMember(memberToDelete.GroupId, roleId: (int)RoleEnum.GroupAdmin)
+                CreateGroupMember(memberToDelete.GroupTenant.GroupId, roleId: (int)RoleEnum.GroupAdmin)
             });
 
         var result = await _handler.Handle(CreateCommand(memberToDelete.Id, requesterUserId), CancellationToken.None);
@@ -60,16 +60,16 @@ public sealed class DeleteGroupMemberCommandHandlerTests
     {
         var requesterUserId = Guid.NewGuid();
         var memberToDelete = CreateGroupMember(roleId: (int)RoleEnum.GroupMember);
-        var requesterMember = CreateGroupMember(memberToDelete.GroupId, requesterUserId, (int)RoleEnum.GroupAdmin);
+        var requesterMember = CreateGroupMember(memberToDelete.GroupTenant.GroupId, requesterUserId, (int)RoleEnum.GroupAdmin);
         SetupMemberFound(memberToDelete);
         _groupMemberRepository.HasPermissionInGroup(
-                memberToDelete.GroupId,
+                memberToDelete.GroupTenant.GroupId,
                 requesterUserId,
                 PermissionCodes.GroupMemberDelete)
             .Returns(false);
-        _groupMemberRepository.GetByGroupAndUser(memberToDelete.GroupId, requesterUserId)
+        _groupMemberRepository.GetByGroupAndUser(memberToDelete.GroupTenant.GroupId, requesterUserId)
             .Returns(requesterMember);
-        _groupMemberRepository.GetMembersByGroupId(memberToDelete.GroupId)
+        _groupMemberRepository.GetMembersByGroupId(memberToDelete.GroupTenant.GroupId)
             .Returns(new List<GroupMember> { requesterMember, memberToDelete });
 
         var result = await _handler.Handle(CreateCommand(memberToDelete.Id, requesterUserId), CancellationToken.None);
@@ -122,14 +122,14 @@ public sealed class DeleteGroupMemberCommandHandlerTests
     {
         var requesterUserId = Guid.NewGuid();
         var memberToDelete = CreateGroupMember(roleId: (int)RoleEnum.GroupMember);
-        var requesterMember = CreateGroupMember(memberToDelete.GroupId, requesterUserId, (int)RoleEnum.GroupMember);
+        var requesterMember = CreateGroupMember(memberToDelete.GroupTenant.GroupId, requesterUserId, (int)RoleEnum.GroupMember);
         SetupMemberFound(memberToDelete);
         _groupMemberRepository.HasPermissionInGroup(
-                memberToDelete.GroupId,
+                memberToDelete.GroupTenant.GroupId,
                 requesterUserId,
                 PermissionCodes.GroupMemberDelete)
             .Returns(false);
-        _groupMemberRepository.GetByGroupAndUser(memberToDelete.GroupId, requesterUserId)
+        _groupMemberRepository.GetByGroupAndUser(memberToDelete.GroupTenant.GroupId, requesterUserId)
             .Returns(requesterMember);
 
         var result = await _handler.Handle(CreateCommand(memberToDelete.Id, requesterUserId), CancellationToken.None);
@@ -147,15 +147,15 @@ public sealed class DeleteGroupMemberCommandHandlerTests
         var adminToDelete = CreateGroupMember(roleId: (int)RoleEnum.GroupAdmin);
         SetupMemberFound(adminToDelete);
         _groupMemberRepository.HasPermissionInGroup(
-                adminToDelete.GroupId,
+                adminToDelete.GroupTenant.GroupId,
                 requesterUserId,
                 PermissionCodes.GroupMemberDelete)
             .Returns(true);
-        _groupMemberRepository.GetMembersByGroupId(adminToDelete.GroupId)
+        _groupMemberRepository.GetMembersByGroupId(adminToDelete.GroupTenant.GroupId)
             .Returns(new List<GroupMember>
             {
                 adminToDelete,
-                CreateGroupMember(adminToDelete.GroupId, roleId: (int)RoleEnum.GroupMember)
+                CreateGroupMember(adminToDelete.GroupTenant.GroupId, roleId: (int)RoleEnum.GroupMember)
             });
 
         var result = await _handler.Handle(CreateCommand(adminToDelete.Id, requesterUserId), CancellationToken.None);
@@ -172,16 +172,16 @@ public sealed class DeleteGroupMemberCommandHandlerTests
         var adminToDelete = CreateGroupMember(roleId: (int)RoleEnum.GroupAdmin);
         SetupMemberFound(adminToDelete);
         _groupMemberRepository.HasPermissionInGroup(
-                adminToDelete.GroupId,
+                adminToDelete.GroupTenant.GroupId,
                 requesterUserId,
                 PermissionCodes.GroupMemberDelete)
             .Returns(true);
-        _groupMemberRepository.GetMembersByGroupId(adminToDelete.GroupId)
+        _groupMemberRepository.GetMembersByGroupId(adminToDelete.GroupTenant.GroupId)
             .Returns(new List<GroupMember>
             {
                 adminToDelete,
-                CreateGroupMember(adminToDelete.GroupId, roleId: (int)RoleEnum.GroupAdmin),
-                CreateGroupMember(adminToDelete.GroupId, roleId: (int)RoleEnum.GroupMember)
+                CreateGroupMember(adminToDelete.GroupTenant.GroupId, roleId: (int)RoleEnum.GroupAdmin),
+                CreateGroupMember(adminToDelete.GroupTenant.GroupId, roleId: (int)RoleEnum.GroupMember)
             });
 
         var result = await _handler.Handle(CreateCommand(adminToDelete.Id, requesterUserId), CancellationToken.None);
@@ -211,11 +211,19 @@ public sealed class DeleteGroupMemberCommandHandlerTests
     private static GroupMember CreateGroupMember(Guid groupId, Guid userId, int roleId) => new()
     {
         Id = Guid.NewGuid(),
-        GroupId = groupId,
+        GroupTenantId = Guid.NewGuid(),
+        GroupTenant = new GroupTenant
+        {
+            GroupId = groupId,
+            Group = new Group { Id = groupId, FullName = "Group" },
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            ApprovalStatusId = 1,
+            ApprovalStatus = null!
+        },
         UserId = userId,
         RoleId = roleId,
         TenantId = Guid.NewGuid(),
-        Group = null!,
         User = null!,
         Role = null!,
         Tenant = null!

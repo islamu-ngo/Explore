@@ -1,6 +1,7 @@
 // ABOUTME: Handler for grouped Organization PATCH profile updates with authorization and optimistic concurrency.
 // ABOUTME: Validates groups, loads once, applies present groups, saves once, and invalidates detail cache after save.
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.Organization.Validators;
 using Explore.Application.Exceptions;
@@ -55,9 +56,7 @@ public class UpdateOrganizationCommandHandler : IRequestHandler<UpdateOrganizati
         var authorizationFailure = await AuthorizeOrganizationAdminAsync(request, cancellationToken);
         if (authorizationFailure is not null)
         {
-            response.Success = false;
-            response.Message = authorizationFailure;
-            return response;
+            throw new AuthorizationException(ResourceKinds.Organization, AuthorizationActions.Update);
         }
 
         if (organization.ConcurrencyStamp != request.ExpectedConcurrencyStamp)

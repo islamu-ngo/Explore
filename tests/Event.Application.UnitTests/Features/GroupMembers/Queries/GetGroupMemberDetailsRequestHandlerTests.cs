@@ -30,8 +30,8 @@ public sealed class GetGroupMemberDetailsRequestHandlerTests
         var expectedDto = new GroupMemberDto
         {
             Id = member.Id,
-            GroupId = member.GroupId,
-            GroupFullName = member.Group.FullName,
+            GroupId = member.GroupTenant.GroupId,
+            GroupFullName = member.GroupTenant.Group.FullName,
             UserId = member.UserId,
             UserEmail = member.User.Email,
             UserFullName = "Amina Rahman",
@@ -47,7 +47,7 @@ public sealed class GetGroupMemberDetailsRequestHandlerTests
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Id).IsEqualTo(member.Id);
-        await Assert.That(result.GroupId).IsEqualTo(member.GroupId);
+        await Assert.That(result.GroupId).IsEqualTo(member.GroupTenant.GroupId);
         await Assert.That(result.UserEmail).IsEqualTo("amina.rahman@example.test");
         await Assert.That(result.RoleName).IsEqualTo("Group Moderator");
         await Assert.That(result.GroupPositionFullName).IsEqualTo("Community Lead");
@@ -77,14 +77,18 @@ public sealed class GetGroupMemberDetailsRequestHandlerTests
         return new GroupMember
         {
             Id = Guid.NewGuid(),
-            GroupId = groupId,
-            Group = new Group
+            GroupTenantId = Guid.NewGuid(),
+            GroupTenant = new GroupTenant
             {
-                Id = groupId,
-                FullName = "Community Volunteers",
                 TenantId = tenantId,
                 Tenant = null!,
-                ApprovalStatus = null!
+                ApprovalStatus = null!,
+                GroupId = groupId,
+                Group = new Group
+                {
+                    Id = groupId,
+                    FullName = "Community Volunteers"
+                }
             },
             UserId = userId,
             User = new User

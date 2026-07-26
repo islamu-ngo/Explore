@@ -20,17 +20,20 @@ public class AddOrganizationMemberCommandHandler : IRequestHandler<AddOrganizati
 {
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly IOrganizationRepository _organizationRepository;
+    private readonly IOrganizationTenantRepository _organizationTenantRepository;
     private readonly IUserRepository _userRepository;
     private readonly IMapper _mapper;
 
     public AddOrganizationMemberCommandHandler(
         IOrganizationMemberRepository organizationMemberRepository,
         IOrganizationRepository organizationRepository,
+        IOrganizationTenantRepository organizationTenantRepository,
         IUserRepository userRepository,
         IMapper mapper)
     {
         _organizationMemberRepository = organizationMemberRepository;
         _organizationRepository = organizationRepository;
+        _organizationTenantRepository = organizationTenantRepository;
         _userRepository = userRepository;
         _mapper = mapper;
     }
@@ -49,7 +52,13 @@ public class AddOrganizationMemberCommandHandler : IRequestHandler<AddOrganizati
             return response;
         }
 
-        if (request.TenantId != Guid.Empty && organization.TenantId != request.TenantId)
+        var participation = request.TenantId == Guid.Empty
+            ? null
+            : await _organizationTenantRepository.GetByOrganizationAndTenant(
+                dto.OrganizationId,
+                request.TenantId,
+                cancellationToken);
+        if (participation is null)
         {
             response.Success = false;
             response.Message = "Organization does not belong to the current tenant.";
@@ -97,13 +106,13 @@ public class AddOrganizationMemberCommandHandler : IRequestHandler<AddOrganizati
         // 5. Create Member
         var organizationMember = new OrganizationMember
         {
-            OrganizationId = dto.OrganizationId,
-            Organization = null!,
+            OrganizationTenantId = participation.Id,
+            OrganizationTenant = participation,
             UserId = userToAdd.Id,
             User = null!,
             RoleId = (int)dto.Role,
             Role = null!,
-            TenantId = organization.TenantId,
+            TenantId = participation.TenantId,
             Tenant = null!
         };
 

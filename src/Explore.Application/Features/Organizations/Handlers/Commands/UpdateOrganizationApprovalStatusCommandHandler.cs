@@ -1,6 +1,7 @@
 // ABOUTME: Handler for the admin-only organization approval status action.
 // ABOUTME: Validates lookup status, updates the organization lifecycle field, and invalidates organization detail cache.
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Organization.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Organizations.Requests.Commands;
@@ -12,24 +13,30 @@ namespace Explore.Application.Features.Organizations.Handlers.Commands;
 
 public class UpdateOrganizationApprovalStatusCommandHandler : IRequestHandler<UpdateOrganizationApprovalStatusCommand, Unit>
 {
-    private readonly IOrganizationRepository _organizationRepository;
+    private readonly IOrganizationTenantRepository _organizationTenantRepository;
     private readonly IApprovalStatusRepository _statusTypeRepository;
+    private readonly ITenantContext _tenantContext;
     private readonly HybridCache _cache;
 
     public UpdateOrganizationApprovalStatusCommandHandler(
-        IOrganizationRepository organizationRepository,
+        IOrganizationTenantRepository organizationTenantRepository,
         IApprovalStatusRepository statusTypeRepository,
+        ITenantContext tenantContext,
         HybridCache cache)
     {
-        _organizationRepository = organizationRepository;
+        _organizationTenantRepository = organizationTenantRepository;
         _statusTypeRepository = statusTypeRepository;
+        _tenantContext = tenantContext;
         _cache = cache;
     }
 
     public async Task<Unit> Handle(UpdateOrganizationApprovalStatusCommand request, CancellationToken cancellationToken)
     {
-        var organization = await _organizationRepository.GetById(request.OrganizationId);
-        if (organization == null)
+        var participation = await _organizationTenantRepository.GetByOrganizationAndTenant(
+            request.OrganizationId,
+            _tenantContext.TenantId,
+            cancellationToken);
+        if (participation == null)
         {
             throw new NotFoundException(nameof(Organization), request.OrganizationId);
         }
@@ -41,10 +48,10 @@ public class UpdateOrganizationApprovalStatusCommandHandler : IRequestHandler<Up
             throw new ValidationException(validationResult);
         }
 
-        organization.ApprovalStatusId = request.ApprovalStatusDto.ApprovalStatusId;
+        participation.ApprovalStatusId = request.ApprovalStatusDto.ApprovalStatusId;
 
-        await _organizationRepository.Update(organization);
-        await _cache.RemoveAsync($"organization:detail:{organization.Id}", cancellationToken);
+        await _organizationTenantRepository.Update(participation);
+        await _cache.RemoveAsync($"organization:detail:{participation.OrganizationId}", cancellationToken);
 
         return Unit.Value;
     }

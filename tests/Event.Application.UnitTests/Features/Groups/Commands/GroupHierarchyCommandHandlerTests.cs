@@ -24,9 +24,10 @@ namespace Event.Application.UnitTests.Features.Groups.Commands;
 public class GroupHierarchyCommandHandlerTests : IDisposable
 {
     private readonly IGroupRepository _groupRepository;
+    private readonly IGroupTenantRepository _groupTenantRepository;
+    private readonly IOrganizationTenantRepository _organizationTenantRepository;
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IActorRepository _actorRepository;
-    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly IUserContext _userContext;
     private readonly IMapper _mapper;
@@ -37,14 +38,30 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
     public GroupHierarchyCommandHandlerTests()
     {
         _groupRepository = Substitute.For<IGroupRepository>();
+        _groupTenantRepository = Substitute.For<IGroupTenantRepository>();
+        _organizationTenantRepository = Substitute.For<IOrganizationTenantRepository>();
         _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
         _actorRepository = Substitute.For<IActorRepository>();
-        _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
         _adminCacheInvalidator = Substitute.For<IAdminCacheInvalidator>();
         _userContext = Substitute.For<IUserContext>();
         _mapper = Substitute.For<IMapper>();
         _tenantContext = Substitute.For<ITenantContext>();
         _cache = Substitute.For<HybridCache>();
+        _groupTenantRepository.Create(Arg.Any<GroupTenant>()).Returns(call => call.Arg<GroupTenant>());
+        _groupTenantRepository.GetByGroupAndTenant(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => new GroupTenant
+            {
+                Id = Guid.NewGuid(),
+                GroupId = call.ArgAt<Guid>(0),
+                Group = new Group { Id = call.ArgAt<Guid>(0), FullName = "Managed Group" },
+                TenantId = call.ArgAt<Guid>(1),
+                Tenant = null!,
+                ApprovalStatusId = 1,
+                ApprovalStatus = null!
+            });
 
         var meterFactory = Substitute.For<IMeterFactory>();
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter("test"));
@@ -103,9 +120,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         var group = new Group
         {
             Id = groupId,
-            FullName = "Managed Group",
-            ApprovalStatus = null!,
-            Tenant = null!
+            FullName = "Managed Group"
         };
         var command = new CreateGroupCommand
         {
@@ -119,7 +134,6 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         {
             Id = Guid.NewGuid(),
             ActorType = null!,
-            Tenant = null!,
             Pii = new ActorPii { DisplayName = group.FullName }
         });
         _groupMemberRepository.Create(Arg.Any<GroupMember>()).Returns(call => call.Arg<GroupMember>());
@@ -182,10 +196,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         {
             Id = groupId,
             FullName = "Managed Group",
-            ConcurrencyStamp = command.ExpectedConcurrencyStamp,
-            ApprovalStatus = null!,
-            TenantId = tenantId,
-            Tenant = null!
+            ConcurrencyStamp = command.ExpectedConcurrencyStamp
         });
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -224,10 +235,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         {
             Id = groupId,
             FullName = "Managed Group",
-            ConcurrencyStamp = command.ExpectedConcurrencyStamp,
-            ApprovalStatus = null!,
-            TenantId = tenantId,
-            Tenant = null!
+            ConcurrencyStamp = command.ExpectedConcurrencyStamp
         });
         _groupRepository.GroupExistsInTenant(parentGroupId, tenantId, Arg.Any<CancellationToken>()).Returns(true);
         _groupRepository.WouldCreateHierarchyCycle(groupId, parentGroupId, tenantId, Arg.Any<CancellationToken>()).Returns(true);
@@ -268,10 +276,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         {
             Id = groupId,
             FullName = "Managed Group",
-            ConcurrencyStamp = command.ExpectedConcurrencyStamp,
-            ApprovalStatus = null!,
-            TenantId = tenantId,
-            Tenant = null!
+            ConcurrencyStamp = command.ExpectedConcurrencyStamp
         });
         _groupRepository.GroupExistsInTenant(parentGroupId, tenantId, Arg.Any<CancellationToken>()).Returns(true);
         _groupRepository.WouldExceedHierarchyDepthForMove(groupId, parentGroupId, tenantId, GroupHierarchyRules.MaxDepth, Arg.Any<CancellationToken>())
@@ -331,10 +336,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         {
             Id = groupId,
             FullName = "Managed Group",
-            ConcurrencyStamp = currentStamp,
-            ApprovalStatus = null!,
-            TenantId = tenantId,
-            Tenant = null!
+            ConcurrencyStamp = currentStamp
         });
 
         await Assert.That(async () => await handler.Handle(command, CancellationToken.None))
@@ -356,10 +358,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
             Id = groupId,
             FullName = "Managed Group",
             Description = "Existing description",
-            ConcurrencyStamp = concurrencyStamp,
-            ApprovalStatus = null!,
-            TenantId = tenantId,
-            Tenant = null!
+            ConcurrencyStamp = concurrencyStamp
         };
         var handler = CreateUpdateHandler();
 
@@ -398,10 +397,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
             Id = groupId,
             FullName = "Managed Group",
             Description = "Existing description",
-            ConcurrencyStamp = concurrencyStamp,
-            ApprovalStatus = null!,
-            TenantId = tenantId,
-            Tenant = null!
+            ConcurrencyStamp = concurrencyStamp
         };
         var handler = CreateUpdateHandler();
 
@@ -454,9 +450,10 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
     {
         return new CreateGroupCommandHandler(
             _groupRepository,
+            _groupTenantRepository,
+            _organizationTenantRepository,
             _groupMemberRepository,
             _actorRepository,
-            _storageObjectRepository,
             _adminCacheInvalidator,
             _mapper,
             _tenantContext,
@@ -468,6 +465,8 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
     {
         return new UpdateGroupCommandHandler(
             _groupRepository,
+            _groupTenantRepository,
+            _organizationTenantRepository,
             _groupMemberRepository,
             _userContext,
             _tenantContext,

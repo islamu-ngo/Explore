@@ -92,14 +92,18 @@ public sealed class GetGroupMembersRequestHandlerTests
         return new GroupMember
         {
             Id = Guid.NewGuid(),
-            GroupId = groupId,
-            Group = new Group
+            GroupTenantId = Guid.NewGuid(),
+            GroupTenant = new GroupTenant
             {
-                Id = groupId,
-                FullName = "Community Volunteers",
                 TenantId = tenantId,
                 Tenant = null!,
-                ApprovalStatus = null!
+                ApprovalStatus = null!,
+                GroupId = groupId,
+                Group = new Group
+                {
+                    Id = groupId,
+                    FullName = "Community Volunteers"
+                }
             },
             UserId = userId,
             User = new User
@@ -137,8 +141,8 @@ public sealed class GetGroupMembersRequestHandlerTests
         return new GroupMemberDto
         {
             Id = member.Id,
-            GroupId = member.GroupId,
-            GroupFullName = member.Group.FullName,
+            GroupId = member.GroupTenant.GroupId,
+            GroupFullName = member.GroupTenant.Group.FullName,
             UserId = member.UserId,
             UserEmail = member.User.Email,
             UserFullName = userFullName,
