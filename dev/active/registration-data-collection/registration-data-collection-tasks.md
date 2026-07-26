@@ -3,13 +3,13 @@
 
 # Registration Data Collection & Participation Platform — Task Checklist
 
-Last Updated: 2026-07-21 Europe/Brussels
+Last Updated: 2026-07-26 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Draft — re-baselined 2026-07-20 (Hi.Events research + D17 pricing modes + D18 instance monetization); licensing rule corrected 2026-07-21 (no Hi.Events code copy — CLA/dual-licensing); awaiting user review; no implementation started
-- **Completed:** 0/88 implementation tasks (phase verification tracked separately)
-- **Current priority:** User review of the plan (esp. D4, D8, D13, and the new D17/D18 pricing/monetization decisions)
-- **Next recommended slice:** Task 0.1 → 0.2 → 0.3 (ADRs + contract intent), with 0.4 in parallel
+- **Overall status:** Implementation in progress — Phase 0 implemented; Phase 1 Domain and Task 1.6 source/contracts implemented with shared verification blockers
+- **Completed:** 7/88 implementation tasks (phase verification tracked separately)
+- **Current priority:** Close Task 1.6 verification once shared API tests and the Cerbos CLI are available; do not scaffold the registration migration before actor-lifecycle Task 2.1
+- **Next recommended slice:** Resolve or wait for the actor-owned API test fixture compilation, run Task 1.6 contracts and Cerbos policy tests, regenerate the governed contract inventory, then proceed to Task 1.7
 
 ## Implementation Maintenance Rules
 - Read the full workstream once at initial implementation start; on resume, read context/tasks first and only relevant plan sections.
@@ -22,56 +22,60 @@ Last Updated: 2026-07-21 Europe/Brussels
 - Update the plan only when scope, architecture, sequencing, acceptance criteria, risk, or validation strategy changes.
 - Do not run build/tests after individual tasks; verify once at phase end.
 - Do not start the app, browser, Docker, Aspire, Playwright, Chrome DevTools MCP, or live services for verification.
-- ⚠️ **Standing gate:** no `dotnet ef migrations add` until Task 0.4 resolves ordering with the erasure workstream's init lanes.
+- ✅ **Migration ordering resolved:** the three privacy-erasure-owned generated init lanes exist. Registration may add only later generated additive migrations after each owning phase's model/configuration/seeder work; never regenerate or rewrite the baseline.
 - ⚠️ **Standing gate — NO Hi.Events code copy (plan §4.13, D19):** ISLAMU's CLA enables dual-licensing; copying any AGPLv3 code/snippet/SQL/asset from the Hi.Events repository is forbidden. Clean-room implementation from `hi-events-report.md` + this plan only; never open the Hi.Events repo while coding. The report's §10 code-reuse permission is overridden.
 
-## Phase 0: Governance, ADRs, And Contract Intent ⏳ NOT STARTED
-- [ ] **0.1 Author ADR-016 (bounded context & provider channels)**
+## Phase 0: Governance, ADRs, And Contract Intent ⚠️ IMPLEMENTATION COMPLETE / EXTERNAL TEST BLOCKER
+- [x] **0.1 Author ADR-016 (bounded context & provider channels)**
   - **Files:** `docs/adr/ADR-016-registration-data-collection-context.md` (new)
   - **Acceptance:** D1/D2/D3/D5/D6/D7/D14 recorded; §24 anti-patterns as rejected alternatives; ADR-015 format followed
   - **Effort:** M — **Dependencies:** none
-- [ ] **0.2 Author ADR-017 (participation authority) + ADR-018 (order/ticket aggregate)**
+- [x] **0.2 Author ADR-017 (participation authority) + ADR-018 (order/ticket aggregate)**
   - **Files:** `docs/adr/ADR-017-event-participation-authority-model.md` (new), `docs/adr/ADR-018-registration-order-ticketing-aggregate.md` (new)
   - **Acceptance:** D8/D9/D10/D12 and D4/D11/D16/D17/D18 recorded; §33 anti-patterns; payment boundary named; Hi.Events adopt/adapt/reject boundary + CLA/dual-licensing **no-code-copy** rule recorded (report §9–§10, D19; §10 override stated)
   - **Effort:** M — **Dependencies:** 0.1
-- [ ] **0.3 Add `registration-data-collection` intent to `.claude/contract/intents.yaml`**
+- [x] **0.3 Add `registration-data-collection` intent to `.claude/contract/intents.yaml`**
   - **Files:** `.claude/contract/intents.yaml` (existing)
   - **Acceptance:** YAML valid; full 8-question contract; cross-references the three dev docs; architecture tests green
   - **Effort:** M — **Dependencies:** 0.1, 0.2
-- [ ] **0.4 Resolve migration-baseline ordering (erasure workstream)**
+- [x] **0.4 Resolve migration-baseline ordering (erasure workstream)**
   - **Files:** context file (this dir); observe `src/Explore.Persistence/Migrations/`
   - **Acceptance:** Ordering decision + first-allowed-migration point recorded in context Key Decisions; blocker updated
   - **Effort:** S — **Dependencies:** none
 
 ### Phase 0 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` — 0 errors; pre-existing NuGet advisory warnings remain
+- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` — executed: 302 passed, 1 skipped, 1 unrelated pre-existing event-reporting failure; registration intent schema validated separately
 
-## Phase 1: Event Provenance, Organizer Authority, And Public Actions ⏳ NOT STARTED
-- [ ] **1.1 Provenance typed state on `Event` + `ActorId` semantics decision**
+## Phase 1: Event Provenance, Organizer Authority, And Public Actions 🟡 IN PROGRESS
+- [x] **1.1 Provenance typed state on `Event` + `ActorId` semantics decision**
   - **Files:** `src/Explore.Domain/Event.cs` (existing), `EventProvenanceType.cs` + enum (new), `Services/Registration/EventAuthorityRules.cs` (new)
   - **Acceptance:** `IsUserReported`/`EventUrl` gone from `src/`; fail-closed authority rules tested; provenance required (no implicit default); `ActorId` decision recorded
   - **Effort:** L — **Dependencies:** 0.4 (persistence gate only)
-- [ ] **1.2 `EventPublicAction` + kinds + health states + `ExternalActionUrl` value object**
+  - **Progress:** backend runtime `IsUserReported`/external `EventUrl` removed; all four creation lanes assign typed provenance explicitly (`CreateEvent`, generic import, ATProto import, development seed); generated API/client contracts now expose typed provenance and public actions. Global `Actor` identity is retained while tenant participation is checked separately.
+- [x] **1.2 `EventPublicAction` + kinds + health states + `ExternalActionUrl` value object**
   - **Files:** new domain files per plan; `ValueObjects/ExternalActionUrl.cs` (new)
   - **Acceptance:** dangerous schemes rejected; ≤1 primary action; zero actions valid
   - **Effort:** M — **Dependencies:** 1.1
-- [ ] **1.3 `EventOrganizerClaim` aggregate**
+- [x] **1.3 `EventOrganizerClaim` aggregate**
   - **Files:** `EventOrganizerClaim.cs`, `EventOrganizerClaimStatus.cs` + enum (new)
   - **Acceptance:** transition methods enforced; approval only sets organizer, never grants historical data
   - **Effort:** M — **Dependencies:** 1.1
-- [ ] **1.4 Persistence for Phase 1 entities**
+- [ ] **1.4 Persistence for Phase 1 entities — IN PROGRESS**
   - **Files:** 6 new configurations; DbSets/QueryFilters/LookupTableSeeder (existing); repositories (new)
-  - **Acceptance:** seeder parity; tenant-filter test; one-primary filtered unique index; migration only if 0.4 gate open
-  - **Effort:** L — **Dependencies:** 1.1–1.3
+  - **Acceptance:** seeder parity; tenant-filter test; one-primary filtered unique index; migration only after Task 0.4, Task 1.1 required provenance writers, and the actor-lifecycle Task 2.1 shared-model migration/snapshot
+  - **Effort:** L — **Dependencies:** 1.1–1.3; migration substep also depends on `atproto-federation-actor-lifecycle` Task 2.1
+  - **Progress:** model/configuration/seeder/tests/DBML implemented; scoped diagnostics and `git diff --check` are clean; dependency-inclusive Persistence Release build now passes. Migration remains ordered after actor-lifecycle Task 2.1, and executable tests remain blocked by actor-owned test-fixture compilation.
 - [ ] **1.5 Application features — actions, claims, provenance exposure**
   - **Files:** `Features/EventPublicActions/**`, `Features/EventOrganizerClaims/**` (new); `Features/Events/**` DTOs (existing)
   - **Acceptance:** contributor forbidden from registration/ticket/attendee ops; claim approval transactional + retry-idempotent; no capability booleans in DTOs
   - **Effort:** L — **Dependencies:** 1.4
+  - **Progress:** source implemented: normalized provenance/active-action Event DTO exposure; concrete action/claim repositories; action CRUD/query; claimant-authorized claim submit/withdraw/query; transactional retry-idempotent review; existing report intake reused for correction/unsafe-link submissions. Application `--no-dependencies` build is clean; focused tests are blocked from execution by actor-owned test compilation errors.
 - [ ] **1.6 API + Cerbos + HAL (claims/actions/provenance)**
   - **Files:** 2 new controllers, 2 new link policies, `RouteNames`/`LinkRelations` (existing), `islamuevent_event.yaml` (existing), `islamuevent_event_organizer_claim.yaml` (new); contract regeneration
   - **Acceptance:** classification/contract tests green; no open-redirect endpoint; Cerbos parity deny-by-default; changelog updated
   - **Effort:** L — **Dependencies:** 1.5
+  - **Progress:** two controllers, stored-ID redirect, independent HAL policies/assemblers, route/relation constants, fallback authorization, Cerbos event/claim policies and schemas, OpenAPI schemas, generated client methods, API/HAL contract tests, and API/AUTHORIZATION/changelog docs are implemented. API Release build is clean. Focused architecture run: 23/24 passed; the sole failure names five pre-existing policies outside this task. API contract execution/inventory regeneration is blocked by actor-owned test fixture compilation; Cerbos CLI execution is blocked because the binary is absent.
 - [ ] **1.7 Blazor — badge, provenance panel, claim/correction flows**
   - **Files:** event card/detail components (existing), `EventProvenancePanel.razor` + claim dialogs (new)
   - **Acceptance:** badge non-removable, provenance-derived; affordances `_links`-gated (bUnit); RTL/accessible
@@ -85,7 +89,7 @@ Last Updated: 2026-07-21 Europe/Brussels
 - [ ] **2.1 `EventParticipationConfiguration` + three mode lookups** — new domain files; delete `IsRegistrationRequired` — **Acceptance:** §5 scenario table constructible; illegal combos typed-rejected — **Effort:** M — **Dependencies:** Phase 1
 - [ ] **2.2 Persistence + seeding for participation lookups** — configurations/seeder; migration per gate — **Acceptance:** stable IDs documented; parity green — **Effort:** M — **Dependencies:** 2.1
 - [ ] **2.3 Application + API — configure-participation + action synthesis** — `Features/EventParticipation/**` (new); `EventLinkPolicy` (existing); contract regen — **Acceptance:** per-mode link emission matrix tested; accurate external labels — **Effort:** L — **Dependencies:** 2.2
-- [ ] **2.4 Blazor — configuration UI + CTA rendering** — `ParticipationConfigurationEditor.razor` (new); detail CTA refactor — **Acceptance:** no CTA without link; external CTA never claims ISLAMU registration — **Effort:** M — **Dependencies:** 2.3
+- [ ] **2.4 Blazor — Studio participation configuration + public CTA rendering** — `/studio/events/{eventId}/registration`, `StudioEventNavigation.razor`, Studio-owned `ParticipationConfigurationEditor.razor` (new); public detail CTA refactor — **Acceptance:** Studio route/link absent without `configure-participation`; attendee CTA relations never authorize Studio; no public CTA without its link; external CTA never claims ISLAMU registration — **Effort:** M — **Dependencies:** 2.3
 - [ ] **2.5 Aggregate outbound-engagement counter** — engagement command + bounded metrics in `BusinessMetrics.cs` — **Acceptance:** no identity captured; bounded labels; click never named registration — **Effort:** S — **Dependencies:** 2.3
 
 ### Phase 2 Verification — RUN ONCE AFTER ALL PHASE TASKS
@@ -104,8 +108,8 @@ Last Updated: 2026-07-21 Europe/Brussels
 ## Phase 4: Ticket Catalog, Capacity Pools, Entitlements, And Instance Monetization ⏳ NOT STARTED
 - [ ] **4.1 Catalog domain model with immutable publication + five pricing modes** — catalog/type/entitlement/pool entities + 6 lookups incl. `TicketPricingMode` (`FIXED/FREE/DONATION/PAY_WHAT_YOU_CAN/SLIDING_SCALE`) + `TicketCatalogRules.cs` + `TicketPricingRules.cs` (all new); `MinimumPriceAmount`/`SuggestedPriceAmount` fields — **Acceptance:** publish-freeze, clone-to-draft, one-currency, entitlement legality tests; pricing-mode validation matrix (5 modes × valid/invalid/boundary incl. 0-allowed); deterministic rounding — **Effort:** L — **Dependencies:** Phase 2
 - [ ] **4.2 Persistence + seeding** — configurations/repositories (new); filtered unique active-catalog index — **Acceptance:** immutability via concurrency; shared-pool resolution tests; hidden/cross-event ticket lookups → generic not-found — **Effort:** L — **Dependencies:** 4.1
-- [ ] **4.3 Authoring Application + API + Cerbos + HAL** — `Features/EventTicketing/**`, controllers, `manage-ticket-types`/`manage-capacity-pools` relations, `islamuevent_event_ticket_type.yaml` (new); contract regen — **Acceptance:** contributor denied; publish preflight (currency/entitlements/pricing-mode consistency) — **Effort:** L — **Dependencies:** 4.2
-- [ ] **4.4 Blazor ticket authoring + price display migration + field deletion** — `TicketCatalogEditor.razor` (new) incl. pricing-mode editor + shared-capacity used-vs-total visualization with pool-overrides warning; delete `Event.Price`/`CurrencyCode`/`EventSession.Price` last — **Acceptance:** `rg "\.Price" src/` only catalog members; editor HAL-gated; pool visualization renders — **Effort:** L — **Dependencies:** 4.3
+- [ ] **4.3 Authoring Application + API + Cerbos + HAL** — `Features/EventTicketing/**`, controllers, event `manage-ticket-types`/`manage-capacity-pools` relations, `islamuevent_event_ticket_type.yaml` (new); contract regen — **Acceptance:** contributor denied; external-managed/listing-only event omits both Studio relations; publish preflight (currency/entitlements/pricing-mode consistency) — **Effort:** L — **Dependencies:** 4.2
+- [ ] **4.4 Studio ticket authoring + price display migration + field deletion** — `/studio/events/{eventId}/tickets`, `StudioEventNavigation.razor`, Studio ticket editor (new) incl. pricing-mode editor + shared-capacity used-vs-total visualization with pool-overrides warning; delete `Event.Price`/`CurrencyCode`/`EventSession.Price` last — **Acceptance:** `rg "\.Price" src/` only catalog members; section absent without both management relations; ticket and pool controls independently HAL-gated; pool visualization renders — **Effort:** L — **Dependencies:** 4.3
 - [ ] **4.5 Instance monetization configuration (fee policy + platform contribution)** — `PlatformFeePolicy.cs`, `PlatformContributionSetting.cs`, `PlatformContributionOption.cs` (new, versioned, instance-scoped); `Features/PlatformMonetization/**`; Admin-class endpoints (instance-admin only); Blazor instance settings page; CONFIGURATION + ADMIN_GUIDE docs — **Acceptance:** tenant admin/organizer/curator fail closed on every monetization endpoint; defaults off/0; DB-stored heading/body + percentage options seeded `0 (default), 5, 10, 15, 20`; zero hardcoded monetization content in `src/` — **Effort:** L — **Dependencies:** 4.1
 
 ### Phase 4 Verification — RUN ONCE AFTER ALL PHASE TASKS
@@ -119,8 +123,8 @@ Last Updated: 2026-07-21 Europe/Brussels
 - [ ] **5.4 Guest order flow (PublicTransactional endpoints)** — guest actions on `RegistrationOrderController.cs` (new) — **Acceptance:** §31.3 matrix (anonymous rejection, token scope, generic 404, expiry, no silent account); display/public IDs never authorize (Hi.Events §7.8); rotation invalidates prior token; capability values never logged — **Effort:** L — **Dependencies:** 5.3, Phase 3
 - [ ] **5.5 Authenticated flow + finalization + outbox events** — finalize/cancel commands with **conditional state transition** (Hi.Events §7.2 counter-example), `RegistrationOrderLinkPolicy` (new); release effects derive from lines/holds never participants (§7.6) — **Acceptance:** duplicate finalize returns original result; concurrent second completion creates no extra registrations/answers/outbox rows; rollback clean; outbox in-tx, delivery post-commit; cancellation releases every line type — **Effort:** L — **Dependencies:** 5.3
 - [ ] **5.6 Rewire `EventRegistration` + delete `EventRegistrationIntent`** — delete intent + handlers/routes; consent FK → order; order-centric organizer queries — **Acceptance:** zero `EventRegistrationIntent` refs in src/tests — **Effort:** L — **Dependencies:** 5.5
-- [ ] **5.7 Cerbos + HAL surface for orders** — order policy evolution/new file; `start-registration`/`start-guest-registration`/`sign-in-to-register`/`view-registration-orders` — **Acceptance:** external-managed events expose no attendee links (FR-PRIV-05) — **Effort:** M — **Dependencies:** 5.5
-- [ ] **5.8 Blazor checkout + order management UX** — `Pages/Registration/**` (new) replacing `EventRegistration.razor` flow; state-machine-structured checkout with business-state recovery screens, countdown + navigation-away warning + explicit abandon (Hi.Events §6.2); pricing-mode widgets (donation/PWYC 0-default input; sliding-scale dual linked "You pay"/"Organizer earns" sliders); platform-contribution dropdown from DTO data; contract regen — **Acceptance:** `_links` gating; hold countdown; honest status states; guest recovery page; sliders linked + minimum honored; 0 accepted only when minimum 0; contribution options show "percentage — computed amount" with 0 preselected; recovery screens per status — **Effort:** XL — **Dependencies:** 5.4, 5.5, 5.7, 5.10
+- [ ] **5.7 Order Cerbos/HAL + actor-level Studio context** — order policy; attendee registration relations; event `view-registration-orders`; authenticated private/no-store `StudioContextDto` from `GET /api/studio/context?actorId={optionalActorHint}` — **Acceptance:** external-managed events expose no order/attendee links; unauthorized actor hints fail closed; context has no role booleans or tenant-wide event data — **Effort:** M — **Dependencies:** 5.5
+- [ ] **5.8 Blazor checkout + Studio order management UX** — attendee `Pages/Registration/**`; actor `/studio/orders`; event `/studio/events/{eventId}/orders`; scoped `IStudioContextService`; state-machine recovery screens, countdown/abandon, pricing widgets, contribution dropdown; contract regen — **Acceptance:** attendee and Studio affordances use `_links`; actor/event sidebar links disappear with their source relation; hold countdown; honest statuses; guest recovery; linked sliders/minimum; 0 only when allowed; DTO-driven contribution options; recovery screens per status — **Effort:** XL — **Dependencies:** 5.4, 5.5, 5.7, 5.10
 - [ ] **5.9 AT Proto + notification dependents sweep** — bounded rewire of all `EventRegistration` dependents; federation decision recorded — **Acceptance:** build green; zero deleted-member refs; decisions in context — **Effort:** M — **Dependencies:** 5.6
 - [ ] **5.10 Platform-contribution order component + organizer-earnings transparency** — `RegistrationOrderPlatformContribution.cs` + config (new); `IOrganizerEarningsCalculator` + pure decimal implementation (new); order-totals composition; checkout DTO additions — **Acceptance:** hidden when instance-disabled; 0 selection stores no row; amounts computed server-side only; organizer earnings = line totals − fee policy exactly (decimal/rounding tests); contribution never leaks into organizer earnings/totals/exports; positive total → `AwaitingPayment`, all-zero → free path — **Effort:** L — **Dependencies:** 4.5, 5.2
 
@@ -132,8 +136,8 @@ Last Updated: 2026-07-21 Europe/Brussels
 - [ ] **6.1 Participant + PII + assignment domain model** — 3 entities + 2 lookups (new); rules extension — **Acceptance:** all five `ParticipantDataCollectionMode` rules tested — **Effort:** L — **Dependencies:** Phase 5
 - [ ] **6.2 Persistence + `EventRegistration` participant linkage** — required `RegistrationParticipantId`; assignment-based uniqueness; assignments reference a concrete order line — **Acceptance:** no double admission; unnamed tickets allowed pre-assignment; DB constraint blocks assignments exceeding line quantity (per-line multiset, Hi.Events §7.7) — **Effort:** M — **Dependencies:** 6.1
 - [ ] **6.3 Group booking commands + limits** — participant/assignment commands; per-booking-party limits — **Acceptance:** family scenario end-to-end handler test; honest anonymous limits — **Effort:** L — **Dependencies:** 6.2
-- [ ] **6.4 API + HAL for participants/assignments** — order-surface actions (auth + capability token); `view-participants`; contract regen — **Acceptance:** guest scoped to own order; organizer link permission-gated — **Effort:** M — **Dependencies:** 6.3
-- [ ] **6.5 Blazor group-booking UX** — participant editors per mode; buyer-to-participant copy controls (copy to first/all, per-participant override — Hi.Events §9.1.9); deferred-assignment surfaces; §19.5 organizer hint — **Acceptance:** child-required/adult-optional bUnit; deferred deadline visible; copy control populates then stays editable — **Effort:** L — **Dependencies:** 6.4
+- [ ] **6.4 API + HAL for participants/assignments** — order-surface actions (auth + capability token); event and `StudioContextDto` `view-participants`; contract regen — **Acceptance:** guest scoped to own order; actor/event organizer links permission-gated — **Effort:** M — **Dependencies:** 6.3
+- [ ] **6.5 Blazor group-booking + Studio attendee UX** — participant editors/copy controls/deferred assignment; actor `/studio/attendees`; event `/studio/events/{eventId}/attendees`; §19.5 organizer hint — **Acceptance:** child-required/adult-optional bUnit; deferred deadline visible; copy stays editable; actor/event sections and row operations disappear without their HAL relations — **Effort:** L — **Dependencies:** 6.4
 
 ### Phase 6 Verification — RUN ONCE AFTER ALL PHASE TASKS
 - [ ] `dotnet build --configuration Release --verbosity quiet`
@@ -145,7 +149,7 @@ Last Updated: 2026-07-21 Europe/Brussels
 - [ ] **7.3 Bounded condition language** — `RegistrationFormRule.cs`, `FormConditionEvaluator.cs` (pure) — **Acceptance:** ten operators only; purity asserted — **Effort:** M — **Dependencies:** 7.2
 - [ ] **7.4 JSON Schema 2020-12 artifact generation** — generator service + `SchemaHash` — **Acceptance:** golden-hash determinism; hash sensitive to any mutation — **Effort:** M — **Dependencies:** 7.2, 7.3
 - [ ] **7.5 Authoring Application + API + Cerbos** — `Features/RegistrationForms/**`, controllers, `manage-registration-workflow`, `islamuevent_registration_form.yaml` (new); contract regen — **Acceptance:** publish preflight (conditions, consent purposes) — **Effort:** L — **Dependencies:** 7.4
-- [ ] **7.6 Blazor form builder** — `Pages/Events/Manage/FormBuilder/**` (new) — **Acceptance:** published read-only; new-version flow; keyboard ordering — **Effort:** XL — **Dependencies:** 7.5
+- [ ] **7.6 Studio form builder** — `/studio/events/{eventId}/forms`, `Pages/Studio/RegistrationForms/**`, `StudioEventNavigation.razor` — **Acceptance:** section absent without `manage-registration-workflow`; shared `StudioEventContextState`; published read-only; new-version flow; keyboard ordering; no second management shell — **Effort:** XL — **Dependencies:** 7.5
 - [ ] **7.7 Requirement attachment + walk-in standalone questionnaires** — attach/detach; participation-mode validation — **Acceptance:** walk-in `optional-questionnaire` without order creation — **Effort:** M — **Dependencies:** 7.5, Phase 2
 - [ ] **7.8 Form localization strategy** — investigate + minimal model; decision recorded — **Acceptance:** `MULTILINGUAL` honestly absent until built; RTL unaffected — **Effort:** M — **Dependencies:** 7.2
 
@@ -173,8 +177,8 @@ Last Updated: 2026-07-21 Europe/Brussels
 - [ ] **9.3 Mapping + schema revision + drift classifier** — mapping entities; `SchemaDriftClassifier` — **Acceptance:** eight drift classes; no silent mapping rewrites — **Effort:** L — **Dependencies:** 9.1
 - [ ] **9.4 Callback intake extension + registration effect worker** — `RegistrationProviderCallbackController` (new, intake-only) + fenced worker handler — **Acceptance:** controller never touches aggregates (arch test); dedup + ordering convergence — **Effort:** XL — **Dependencies:** 9.2, 9.3
 - [ ] **9.5 Sync-mode enforcement + trust-level policy** — NONE/COMPLETION_ONLY/SELECTED_FIELDS/FULL_CANONICAL/MIRROR_ONLY + minimum-trust gate — **Acceptance:** FR-SYNC-01…07; completion-only stores zero answers — **Effort:** L — **Dependencies:** 9.4
-- [ ] **9.6 Reconciliation + provider health** — reconciliation commands + queue; bounded health read models; organizer HAL — **Acceptance:** health exposes no attendee data — **Effort:** L — **Dependencies:** 9.4
-- [ ] **9.7 Channels + embed/CSP + Blazor provider UI** — channel CRUD; server-generated iframes; CSP allowlist; management pages; processing-status UX — **Acceptance:** no arbitrary iframe input path; completion never inferred from navigation — **Effort:** XL — **Dependencies:** 9.5, 9.6
+- [ ] **9.6 Reconciliation + provider health** — reconciliation commands + queue; bounded health read models; event `manage-registration-channels`/`view-registration-provider-health` relations — **Acceptance:** health exposes no attendee data — **Effort:** L — **Dependencies:** 9.4
+- [ ] **9.7 Channels + embed/CSP + Studio provider UI** — channel CRUD; server-generated iframes; CSP allowlist; `/studio/events/{eventId}/integrations`; processing-status UX — **Acceptance:** Integrations section absent without channel/health relation; no arbitrary iframe input path; completion never inferred from navigation — **Effort:** XL — **Dependencies:** 9.5, 9.6
 
 ### Phase 9 Verification — RUN ONCE AFTER ALL PHASE TASKS
 - [ ] `dotnet build --configuration Release --verbosity quiet`
@@ -216,7 +220,7 @@ Last Updated: 2026-07-21 Europe/Brussels
 - [ ] **13.1 Typed consent subjects on `EventContactShareConsent`** — subject type/ID refactor; verified-recipient rule; `docs/CONTACT_SHARING.md` — **Acceptance:** four subject kinds; no prompt on unclaimed reported events — **Effort:** L — **Dependencies:** Phases 6, 8
 - [ ] **13.2 Per-participant consent independence** — per-participant prompts; guardian policy; child marketing off by default — **Acceptance:** purchaser consent never copied; §22.4 list asserted — **Effort:** M — **Dependencies:** 13.1
 - [ ] **13.3 Audited exports + retention execution** — purpose/exportable/consent-filtered exports + audit rows + retention sweep — **Acceptance:** withdrawn consent excluded; every export audited — **Effort:** L — **Dependencies:** 13.1
-- [ ] **13.4 Attendee-management HAL + Cerbos completion** — `export-consented-contacts` etc.; §23 matrix parity tests — **Acceptance:** §31.6 rows covered — **Effort:** M — **Dependencies:** 13.3
+- [ ] **13.4 Attendee-management HAL/Cerbos completion + Studio export action** — `export-consented-contacts` etc.; Phase 6 Studio attendee pages; §23 matrix parity/bUnit tests — **Acceptance:** §31.6 rows covered; export appears only from its relation and remains inside Attendees, not a sidebar item — **Effort:** M — **Dependencies:** 13.3
 
 ### Phase 13 Verification — RUN ONCE AFTER ALL PHASE TASKS
 - [ ] `dotnet build --configuration Release --verbosity quiet`
@@ -229,7 +233,7 @@ Last Updated: 2026-07-21 Europe/Brussels
 - [ ] **14.4 Governed analytics projections over answers** — **Effort:** L
 - [ ] **14.5 Company CSV bulk assignment + `RegistrationAmendment` flows** — **Effort:** L
 - [ ] **14.6 Generalized submission sinks (Excel/Sheets/webhooks)** — **Effort:** M
-- [ ] **14.7 Blazor affordance-gating sweep + accessibility audit** — **Effort:** M
+- [ ] **14.7 Blazor affordance-gating + Studio route/sidebar + accessibility audit** — assert every mutation/section is link-gated, canonical `/studio/**` routes are registered, event navigation replaces actor navigation rather than stacking, and new surfaces pass keyboard/RTL/announcement checks — **Effort:** M
 - [ ] **14.8 Deferred commerce/admission design records (Hi.Events-informed)** — `deferred-design-records.md` (new): PaymentAttempt/provider reconciliation, AdmissionTicket + rotatable signed/hashed credential (never the display ID; transfer rotates), check-in lists with append-only admission events + unique-active constraint + scoped scanner capabilities + camera/HID UX, anti-enumeration ticket lookup/resend/self-service, promo codes counting live reservations, waitlist offers with expiry, add-ons/general products, taxes/fees/invoices — each citing `hi-events-report.md` sections — **Acceptance:** each record names trigger, extended aggregates, and report sections — **Effort:** M
 
 ### Phase 14 Verification — RUN ONCE AFTER ALL PHASE TASKS
