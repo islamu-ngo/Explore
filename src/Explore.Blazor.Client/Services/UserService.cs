@@ -3,6 +3,7 @@
 
 using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -111,7 +112,7 @@ public class UserService : IUserService
         try
         {
             _logger.LogInformation("Fetching current user");
-            var user = await _apiClient.GetCurrentUserAsync();
+            var user = (await _apiClient.GetCurrentUserAsync()).ToDto();
             _logger.LogInformation("User found: {Email}", user?.Email);
             return user;
         }
@@ -127,7 +128,7 @@ public class UserService : IUserService
                 {
                     _logger.LogInformation("Auto-sync successful, retrying GetCurrentUser");
                     await Task.Delay(100); // Wait for DB write to complete
-                    return await _apiClient.GetCurrentUserAsync();
+                    return (await _apiClient.GetCurrentUserAsync()).ToDto();
                 }
                 else
                 {

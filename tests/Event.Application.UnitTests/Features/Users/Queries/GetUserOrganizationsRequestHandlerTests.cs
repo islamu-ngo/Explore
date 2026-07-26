@@ -60,19 +60,27 @@ public sealed class GetUserOrganizationsRequestHandlerTests
         var organization = new Organization
         {
             Id = Guid.CreateVersion7(),
-            Pii = null!,
-            ApprovalStatus = null!,
-            Tenant = null!
+            Pii = null!
+        };
+        var participation = new OrganizationTenant
+        {
+            Id = Guid.CreateVersion7(),
+            OrganizationId = organization.Id,
+            Organization = organization,
+            TenantId = Guid.CreateVersion7(),
+            Tenant = null!,
+            ApprovalStatus = null!
         };
         var membership = new OrganizationMember
         {
             Id = Guid.CreateVersion7(),
             UserId = userId,
             User = null!,
-            OrganizationId = organization.Id,
-            Organization = organization,
+            OrganizationTenantId = participation.Id,
+            OrganizationTenant = participation,
             RoleId = (int)RoleEnum.OrgAdmin,
             Role = null!,
+            TenantId = participation.TenantId,
             Tenant = null!
         };
         var dto = new OrganizationListDto

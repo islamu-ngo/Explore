@@ -126,40 +126,26 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
                             FirstName = ResolveFirstName(userDto.FirstName),
                             LastName = ResolveLastName(userDto.LastName)
                         },
-                        ActorId = null,
                         AuthProvider = provider,
                         AuthProviderId = providerUserId,
-                        EmailVerified = userDto.EmailVerified ?? supportsEmailAutoMatch,
-                        DefaultActorId = null
+                        EmailVerified = userDto.EmailVerified ?? supportsEmailAutoMatch
                     };
 
                     var createdUser = await _userRepository.Create(newUser);
 
-                    var defaultTenantId = await GetDefaultTenantIdAsync();
                     var actor = new Actor
                     {
                         ActorTypeId = (int)ActorTypeEnum.User,
                         ActorType = null!,
-                        TenantId = defaultTenantId,
-                        Tenant = null!,
                         Pii = new ActorPii
                         {
-                            DisplayName = BuildDisplayName(userDto.FirstName, userDto.LastName),
-                            Handle = GenerateHandle(null, safeEmail!, providerUserId),
-                            Did = provider == AuthSchemeNames.Atproto.ToLowerInvariant() ? providerUserId : null
+                            DisplayName = BuildDisplayName(userDto.FirstName, userDto.LastName)
                         },
                         Description = null,
-                        UserId = createdUser.Id,
-                        OrganizationId = null,
-                        DidCustodyTypeId = provider == AuthSchemeNames.Atproto.ToLowerInvariant()
-                            ? (int)DidCustodyTypeEnum.SelfCustody
-                            : (int)DidCustodyTypeEnum.Custodial
+                        UserId = createdUser.Id
                     };
 
-                    actor = await _actorRepository.Create(actor);
-                    createdUser.ActorId = actor.Id;
-                    createdUser.DefaultActorId = actor.Id;
-                    await _userRepository.Update(createdUser);
+                    await _actorRepository.Create(actor);
 
                     await EnsureExternalLoginLinkInTransactionAsync(createdUser, provider, providerUserId, loginId, ct);
                     return createdUser;
@@ -180,20 +166,11 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
                         user.EmailVerified = userDto.EmailVerified;
                     }
 
-                    if (user.ActorId.HasValue)
+                    var actor = await _actorRepository.GetActorByUserId(user.Id);
+                    if (actor != null)
                     {
-                        var actor = await _actorRepository.GetById(user.ActorId.Value);
-                        if (actor != null)
-                        {
-                            actor.DisplayName = BuildDisplayName(userDto.FirstName, userDto.LastName);
-                            if (provider == AuthSchemeNames.Atproto.ToLowerInvariant() && string.IsNullOrWhiteSpace(actor.Did))
-                            {
-                                actor.Did = providerUserId;
-                                actor.DidCustodyTypeId = (int)DidCustodyTypeEnum.SelfCustody;
-                            }
-
-                            await _actorRepository.Update(actor);
-                        }
+                        actor.DisplayName = BuildDisplayName(userDto.FirstName, userDto.LastName);
+                        await _actorRepository.Update(actor);
                     }
 
                     await _userRepository.Update(user);
@@ -322,41 +299,4 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
         };
     }
 
-    private async Task<Guid> GetDefaultTenantIdAsync()
-    {
-        // Try to get from configuration first
-        var configuredTenantId = _configuration["DefaultTenantId"];
-        if (!string.IsNullOrEmpty(configuredTenantId) && Guid.TryParse(configuredTenantId, out var tenantId))
-        {
-            return tenantId;
-        }
-
-        // Fallback: get the first active tenant
-        var tenants = await _tenantRepository.GetAll();
-        var defaultTenant = tenants.FirstOrDefault(t => t.IsActive);
-
-        if (defaultTenant == null)
-        {
-            throw new InvalidOperationException("No active tenant found in the system.");
-        }
-
-        return defaultTenant.Id;
-    }
-
-    private static string GenerateHandle(string? username, string email, string providerUserId)
-    {
-        // Use username if available, otherwise use email prefix
-        if (!string.IsNullOrWhiteSpace(username))
-        {
-            return username.ToLowerInvariant().Replace(" ", "-");
-        }
-
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return providerUserId.Replace(":", "-").Replace(".", "-").ToLowerInvariant();
-        }
-
-        var emailPrefix = email.Split('@')[0];
-        return emailPrefix.ToLowerInvariant().Replace(".", "-").Replace(" ", "-");
-    }
 }

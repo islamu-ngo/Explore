@@ -19,6 +19,26 @@ public sealed class UserDetailLinkPolicy : ILinkPolicy<UserDto>
     /// <inheritdoc />
     public IEnumerable<LinkDefinition> GetLinks(UserDto dto, ClaimsPrincipal? user)
     {
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetCurrentUser,
+            null,
+            HttpMethods.Get,
+            "Current user",
+            RequiresAuth: true);
+
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
+            RouteNames.UpdateCurrentUser,
+            new { id = dto.Id },
+            HttpMethods.Patch,
+            "Update profile",
+            RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.Update,
+                ResourceKinds.User,
+                dto.Id.ToString());
+
         // Actor link (user's actor profile)
         if (dto.ActorId != Guid.Empty)
         {

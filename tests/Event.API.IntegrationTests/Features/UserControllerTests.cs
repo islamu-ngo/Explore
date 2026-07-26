@@ -8,6 +8,7 @@ using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
 using Explore.API.Controllers;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.PrivacyErasure;
 using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Commands;
@@ -248,12 +249,13 @@ public class UserControllerTests
             "once-revealed-receipt",
             DateTime.UtcNow.AddDays(7));
         IMediator mediator = Substitute.For<IMediator>();
+        var resourceAssembler = Substitute.For<IResourceAssembler<UserDto, UserDto>>();
         mediator.Send(
                 Arg.Is<DeleteUserCommand>(command =>
                     command.UserId == userId && command.IntentId == intentId),
                 Arg.Any<CancellationToken>())
             .Returns(expected);
-        var controller = new UserController(mediator)
+        var controller = new UserController(mediator, resourceAssembler)
         {
             ControllerContext = new ControllerContext
             {

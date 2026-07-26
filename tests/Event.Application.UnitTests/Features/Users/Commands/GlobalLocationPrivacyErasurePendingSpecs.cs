@@ -70,6 +70,36 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
     }
 
     [Test]
+    public async Task HardDeleteOfAiConversationGraphRunsInsideTheSerializableApplicationTransaction()
+    {
+        var userId = Guid.CreateVersion7();
+        bool insideSerializable = false;
+        await using DeletionHarness harness = CreateHarness(
+            userId,
+            unitOfWork: new TrackingUnitOfWork(
+                onEnter: () => insideSerializable = true,
+                onExit: () => insideSerializable = false));
+        harness.AiConversationRepository.HardDeleteUserConversationGraphAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                if (!insideSerializable)
+                {
+                    throw new InvalidOperationException("AI conversation hard delete ran outside the serializable erasure transaction.");
+                }
+
+                return 1;
+            });
+
+        await harness.Handler.Handle(
+            new DeleteUserCommand { UserId = userId, IntentId = Guid.CreateVersion7() },
+            CancellationToken.None);
+
+        await harness.AiConversationRepository.Received(1)
+            .HardDeleteUserConversationGraphAsync(userId, Arg.Any<CancellationToken>());
+        await Assert.That(insideSerializable).IsFalse();
+    }
+
+    [Test]
     public async Task AmbiguousAuthorityAcknowledgement_RetriesWithSameIntentId()
     {
         var userId = Guid.CreateVersion7();
@@ -144,7 +174,7 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
         await harness.UserRepository.DidNotReceive().Delete(Arg.Any<User>());
     }
 
-    private static DeletionHarness CreateHarness(Guid userId)
+    private static DeletionHarness CreateHarness(Guid userId, IUnitOfWork? unitOfWork = null)
     {
         IUserRepository userRepository = Substitute.For<IUserRepository>();
         IGenericRepository<UserPii, Guid> userPiiRepository =
@@ -156,10 +186,12 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
         IPrivacyErasureReplayCheckpointRepository checkpointRepository =
             Substitute.For<IPrivacyErasureReplayCheckpointRepository>();
         IOutboxRepository outboxRepository = Substitute.For<IOutboxRepository>();
+        IUserPrivacyErasureRepository privacyErasureRepository = Substitute.For<IUserPrivacyErasureRepository>();
+        IAiConversationRepository aiConversationRepository = Substitute.For<IAiConversationRepository>();
         IPrivacyErasureAuthority authority =
             Substitute.For<IPrivacyErasureAuthority>();
         HybridCache cache = Substitute.For<HybridCache>();
-        IUnitOfWork unitOfWork = new ImmediateUnitOfWork();
+        unitOfWork ??= new ImmediateUnitOfWork();
         User user = DataBuilder.User.Generate();
         user.Id = userId;
         PrivacyErasureIntent? retainedIntent = null;
@@ -240,7 +272,8 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
             userPiiRepository,
             tokenRepository,
             erasureRepository,
-            Substitute.For<IUserPrivacyErasureRepository>(),
+            privacyErasureRepository,
+            aiConversationRepository,
             Substitute.For<IPrivacyErasureProviderWorkRepository>(),
             Substitute.For<IPrivacyErasureProviderLocatorProtector>(),
             checkpointRepository,
@@ -263,7 +296,7 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
             TimeProvider.System);
         var handler = new DeleteUserCommandHandler(service);
 
-        return new DeletionHarness(handler, user, userRepository, erasureRepository, authority);
+        return new DeletionHarness(handler, user, userRepository, erasureRepository, authority, aiConversationRepository);
     }
 
     private static Location CreatePrivateHome(Guid tenantId, Guid ownerUserId, string name)
@@ -293,9 +326,36 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
         User User,
         IUserRepository UserRepository,
         IUserLocationPrivacyErasureRepository ErasureRepository,
-        IPrivacyErasureAuthority Authority) : IAsyncDisposable
+        IPrivacyErasureAuthority Authority,
+        IAiConversationRepository AiConversationRepository) : IAsyncDisposable
     {
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class TrackingUnitOfWork(Action onEnter, Action onExit) : IUnitOfWork
+    {
+        public Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public async Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default)
+        {
+            onEnter();
+            try
+            {
+                return await operation(ct);
+            }
+            finally
+            {
+                onExit();
+            }
+        }
     }
 
     private sealed class ImmediateUnitOfWork : IUnitOfWork

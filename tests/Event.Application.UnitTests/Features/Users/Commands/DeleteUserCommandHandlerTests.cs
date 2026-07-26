@@ -119,6 +119,7 @@ public class DeleteUserCommandHandlerTests
             _userAuthenticationTokenRepository,
             _erasureRepository,
             Substitute.For<IUserPrivacyErasureRepository>(),
+            Substitute.For<IAiConversationRepository>(),
             Substitute.For<IPrivacyErasureProviderWorkRepository>(),
             Substitute.For<IPrivacyErasureProviderLocatorProtector>(),
             checkpointRepository,
@@ -225,8 +226,6 @@ public class DeleteUserCommandHandlerTests
         {
             ActorId = actorId,
             DisplayName = "Real Name",
-            Did = "did:plc:abc123",
-            Handle = "user.bsky.social",
             ProfilePictureUri = "https://cdn.example.com/avatar.jpg"
         };
         var actor = new Actor
@@ -234,14 +233,20 @@ public class DeleteUserCommandHandlerTests
             Id = actorId,
             UserId = userId,
             ActorType = new ActorType { FullName = "User", MasterCode = "USER" },
-            Tenant = new Tenant
-            {
-                FullName = "Test",
-                Slug = "test",
-                TenantStatus = new TenantStatus { FullName = "Active", MasterCode = "ACTIVE", IsActiveState = true }
-            },
             Pii = actorPii
         };
+        actor.AtprotoIdentities.Add(new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            Did = "did:plc:abc123",
+            ActorId = actorId,
+            Actor = actor,
+            Handle = "user.bsky.social",
+            PdsHost = "https://pds.example.test",
+            IsActive = true,
+            LastResolvedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        });
 
         _userRepository.GetById(userId).Returns(user);
         _userRepository.Update(user).Returns(Task.CompletedTask);
@@ -259,8 +264,8 @@ public class DeleteUserCommandHandlerTests
         await Assert.That(actorPii.ActorId).IsEqualTo(actorId);
         await Assert.That(actor.UserId).IsNull();
         await Assert.That(actorPii.DisplayName).IsEqualTo("Deleted user");
-        await Assert.That(actorPii.Did).IsNull();
-        await Assert.That(actorPii.Handle).IsNull();
+        await Assert.That(actor.AtprotoIdentities.Single().IsDeleted).IsTrue();
+        await Assert.That(actor.AtprotoIdentities.Single().Handle).IsNull();
         await Assert.That(actorPii.ProfilePictureUri).IsNull();
         await _erasureRepository.Received(1).SaveChangesAsync(
             Arg.Any<IReadOnlyCollection<EventLocationDisclosureAudit>>(),

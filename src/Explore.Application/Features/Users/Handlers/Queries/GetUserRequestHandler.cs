@@ -61,12 +61,7 @@ public class GetUserRequestHandler : IRequestHandler<GetUserRequest, UserDto>
 
                 var dto = _mapper.Map<UserDto>(user);
 
-                if (user.Actor?.ProfilePicture != null)
-                {
-                    dto.ProfileImageKey = user.Actor.ProfilePicture.Uri;
-                    dto.ProfileImageUri = user.Actor.ProfilePicture.Uri;
-                }
-                else if (!string.IsNullOrEmpty(user.Actor?.ProfilePictureUri))
+                if (!string.IsNullOrEmpty(user.Actor?.ProfilePictureUri))
                 {
                     dto.ProfileImageUri = user.Actor.ProfilePictureUri;
                 }

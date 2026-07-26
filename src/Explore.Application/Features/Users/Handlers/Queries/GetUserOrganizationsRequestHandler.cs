@@ -48,9 +48,7 @@ public class GetUserOrganizationsRequestHandler : IRequestHandler<GetUserOrganiz
 
         foreach (var membership in memberships)
         {
-            if (membership.Organization == null) continue;
-
-            var dto = _mapper.Map<OrganizationListDto>(membership.Organization);
+            var dto = _mapper.Map<OrganizationListDto>(membership.OrganizationTenant.Organization);
             dto.CurrentUserRoleId = membership.RoleId;
             dtos.Add(dto);
         }

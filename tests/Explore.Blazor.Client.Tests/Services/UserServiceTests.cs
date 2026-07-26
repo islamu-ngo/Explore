@@ -90,7 +90,7 @@ public class UserServiceTests
         // Arrange
         var expectedUser = ComponentDataBuilder.UserDto.Generate();
         _apiClient.GetCurrentUserAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(expectedUser);
+            .Returns(Task.FromResult(ToHalResource(expectedUser)));
 
         // Act
         var result = await _service.GetCurrentUserAsync();
@@ -117,7 +117,7 @@ public class UserServiceTests
                     throw CreateApiException("Not Found", 404);
                 }
 
-                return expectedUser;
+                return Task.FromResult(ToHalResource(expectedUser));
             });
 
         _apiClient.SyncUserAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -130,6 +130,16 @@ public class UserServiceTests
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Id).IsEqualTo(expectedUser.Id);
     }
+
+    private static HalResourceOfUserDto ToHalResource(UserDto user) => new()
+    {
+        Id = user.Id,
+        Email = user.Email,
+        FirstName = user.FirstName,
+        LastName = user.LastName,
+        ActorId = user.ActorId,
+        ConcurrencyStamp = user.ConcurrencyStamp
+    };
 
     [Test]
     public async Task GetCurrentUserAsync_ReturnsNull_WhenInitialCallReturns404AndSyncFails()

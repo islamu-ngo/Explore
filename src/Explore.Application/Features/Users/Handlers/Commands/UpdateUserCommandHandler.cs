@@ -89,17 +89,16 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
             }
 
             // Update profile picture and link the storage object when provided.
-            if (request.UpdateUserDto.ProfileImage is not null && user.ActorId.HasValue)
+            if (request.UpdateUserDto.ProfileImage is not null)
             {
-                var actor = await _actorRepository.GetById(user.ActorId.Value);
+                var actor = await _actorRepository.GetActorByUserId(user.Id);
                 if (actor != null)
                 {
-                    actor.ProfilePictureId = request.UpdateUserDto.ProfileImage.ProfilePictureId;
-
                     var storageObject = await _storageObjectRepository.GetById(request.UpdateUserDto.ProfileImage.ProfilePictureId);
                     if (storageObject != null)
                     {
-                        storageObject.ActorId = user.ActorId.Value;
+                        storageObject.ActorId = actor.Id;
+                        actor.ProfilePictureUri = storageObject.Uri;
                     }
                 }
             }

@@ -96,7 +96,7 @@ public sealed class UpdateUserCommandHandlerTests
         await Assert.That(result.Message).IsEqualTo("User not found");
         await _userRepository.DidNotReceive().GetById(user.Id);
         await _userRepository.DidNotReceive().Update(Arg.Any<User>());
-        await _actorRepository.DidNotReceive().GetById(user.ActorId!.Value);
+        await _actorRepository.DidNotReceive().GetActorByUserId(user.Id);
         await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
         await _storageObjectRepository.DidNotReceive().GetById(profilePictureId);
         await _storageObjectRepository.DidNotReceive().Update(Arg.Any<StorageObject>());
@@ -133,19 +133,7 @@ public sealed class UpdateUserCommandHandlerTests
     public async Task Handle_WhenProfileImageGroupIsPresent_UpdatesTrackedActorAndStorageWithSingleUserSave()
     {
         var user = CreateUser(actorId: Guid.CreateVersion7());
-        var actor = new Actor
-        {
-            Id = user.ActorId!.Value,
-            ActorTypeId = 1,
-            ActorType = null!,
-            Tenant = null!,
-            Pii = new ActorPii
-            {
-                ActorId = user.ActorId.Value,
-                DisplayName = "User",
-                Handle = "user"
-            }
-        };
+        Actor actor = user.Actor!;
         var storageObject = new StorageObject
         {
             Id = Guid.CreateVersion7(),
@@ -163,7 +151,7 @@ public sealed class UpdateUserCommandHandlerTests
         };
 
         _userRepository.GetById(user.Id).Returns(user);
-        _actorRepository.GetById(actor.Id).Returns(actor);
+        _actorRepository.GetActorByUserId(user.Id).Returns(actor);
         _storageObjectRepository.GetById(storageObject.Id).Returns(storageObject);
 
         var result = await _handler.Handle(new UpdateUserCommand
@@ -180,7 +168,7 @@ public sealed class UpdateUserCommandHandlerTests
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await Assert.That(actor.ProfilePictureId).IsEqualTo(storageObject.Id);
+        await Assert.That(actor.ProfilePictureUri).IsEqualTo(storageObject.Uri);
         await Assert.That(storageObject.ActorId).IsEqualTo(actor.Id);
         await _userRepository.Received(1).Update(user);
         await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
@@ -191,10 +179,9 @@ public sealed class UpdateUserCommandHandlerTests
     private static User CreateUser(Guid? actorId = null)
     {
         var id = Guid.CreateVersion7();
-        return new User
+        var user = new User
         {
             Id = id,
-            ActorId = actorId,
             ConcurrencyStamp = Guid.CreateVersion7(),
             Pii = new UserPii
             {
@@ -204,5 +191,19 @@ public sealed class UpdateUserCommandHandlerTests
                 LastName = "User"
             }
         };
+        if (actorId is { } idValue)
+        {
+            user.Actor = new Actor
+            {
+                Id = idValue,
+                UserId = id,
+                User = user,
+                ActorTypeId = 1,
+                ActorType = null!,
+                Pii = new ActorPii { ActorId = idValue, DisplayName = "User" }
+            };
+        }
+
+        return user;
     }
 }

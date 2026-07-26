@@ -33,8 +33,8 @@ public sealed class DeleteUserCurrentBehaviorCharacterizationTests
         await Assert.That(user.IsDeleted).IsTrue();
         await Assert.That(actor.Pii).IsNotNull();
         await Assert.That(actor.Pii!.DisplayName).IsEqualTo("Deleted user");
-        await Assert.That(actor.Pii.Did).IsNull();
-        await Assert.That(actor.Pii.Handle).IsNull();
+        await Assert.That(actor.AtprotoIdentities.Single().IsDeleted).IsTrue();
+        await Assert.That(actor.AtprotoIdentities.Single().Handle).IsNull();
     }
 
     [Test]
@@ -46,7 +46,7 @@ public sealed class DeleteUserCurrentBehaviorCharacterizationTests
 
         await harness.Applier.ApplyInCurrentTransactionAsync(harness.Intent, harness.Prepared, CancellationToken.None);
 
-        await Assert.That(actor.Pii!.Did).IsNull();
+        await Assert.That(actor.AtprotoIdentities.Single().Did).StartsWith("did:deleted:");
         await harness.OutboxRepository.Received(1).CreateRange(
             Arg.Is<IReadOnlyCollection<OutboxMessage>>(messages => messages.Count == 1
                 && messages.Single().EventType == PrivacyErasureCacheInvalidationOutboxMessageFactory.EventType
@@ -60,10 +60,8 @@ public sealed class DeleteUserCurrentBehaviorCharacterizationTests
     {
         Guid userId = Guid.CreateVersion7();
         Actor actor = CreateActor(userId, "did:example:redacted");
-        actor.PdsHost = "https://pds.example.invalid";
         Actor actorWithoutPii = CreateActor(userId, "did:example:missing-pii");
         actorWithoutPii.Pii = null!;
-        actorWithoutPii.PdsHost = "https://pds.example.invalid";
         Harness harness = CreateHarness(CreateUser(userId), null, [], [actor, actorWithoutPii]);
 
         await harness.Applier.ApplyInCurrentTransactionAsync(
@@ -72,11 +70,11 @@ public sealed class DeleteUserCurrentBehaviorCharacterizationTests
             CancellationToken.None);
 
         await Assert.That(actor.UserId).IsNull();
-        await Assert.That(actor.PdsHost).IsNull();
+        await Assert.That(actor.AtprotoIdentities.Single().PdsHost).IsEqualTo(string.Empty);
         await Assert.That(actor.Pii!.DisplayName).IsEqualTo("Deleted user");
         await Assert.That(actor.Pii.DisplayName).DoesNotContain(harness.Intent.IntentId.ToString("N"));
         await Assert.That(actorWithoutPii.UserId).IsNull();
-        await Assert.That(actorWithoutPii.PdsHost).IsNull();
+        await Assert.That(actorWithoutPii.AtprotoIdentities.Single().PdsHost).IsEqualTo(string.Empty);
     }
 
     [Test]
@@ -123,6 +121,27 @@ public sealed class DeleteUserCurrentBehaviorCharacterizationTests
         await harness.PrivacyErasureRepository.Received(1)
             .AnonymizeRetainedAuditEvidenceAsync(userId, Arg.Any<CancellationToken>());
     }
+
+    [Test]
+    public async Task ApplierHardDeletesAiConversationGraphInsideTheApplicationTransaction()
+    {
+        Guid userId = Guid.CreateVersion7();
+        Harness harness = CreateHarness(CreateUser(userId), null, [], []);
+
+        await harness.Applier.ApplyInCurrentTransactionAsync(
+            harness.Intent,
+            harness.Prepared,
+            CancellationToken.None);
+
+        await harness.AiConversationRepository.Received(1)
+            .HardDeleteUserConversationGraphAsync(userId, Arg.Any<CancellationToken>());
+        harness.ProviderWorkRepository.Received(1).AddMissingAsync(
+            Arg.Is<IReadOnlyCollection<PrivacyErasureProviderWork>>(work => work.Count == 0),
+            Arg.Any<CancellationToken>());
+        harness.ProviderLocatorProtector.DidNotReceive()
+            .Protect(Arg.Any<string>(), Arg.Any<TimeSpan>());
+    }
+
 
     [Test]
     public async Task ApplierProtectsAndPersistsTypedProviderWorkBeforeLocalSettlement()
@@ -229,6 +248,7 @@ public sealed class DeleteUserCurrentBehaviorCharacterizationTests
         IUserAuthenticationTokenRepository tokenRepository = Substitute.For<IUserAuthenticationTokenRepository>();
         IUserLocationPrivacyErasureRepository erasureRepository = Substitute.For<IUserLocationPrivacyErasureRepository>();
         IUserPrivacyErasureRepository privacyErasureRepository = Substitute.For<IUserPrivacyErasureRepository>();
+        IAiConversationRepository aiConversationRepository = Substitute.For<IAiConversationRepository>();
         IPrivacyErasureReplayCheckpointRepository checkpointRepository =
             Substitute.For<IPrivacyErasureReplayCheckpointRepository>();
         IPrivacyErasureLedgerRepository ledgerRepository =
@@ -287,7 +307,7 @@ public sealed class DeleteUserCurrentBehaviorCharacterizationTests
 
         var applier = new PrivacyErasureApplier(
             userRepository, userPiiRepository, tokenRepository, erasureRepository, privacyErasureRepository,
-            providerWorkRepository, providerLocatorProtector, checkpointRepository, ledgerRepository, stateRepository,
+            aiConversationRepository, providerWorkRepository, providerLocatorProtector, checkpointRepository, ledgerRepository, stateRepository,
             outboxRepository, cache, TimeProvider.System,
             Substitute.For<ILogger<PrivacyErasureApplier>>(), Options.Create(new PrivacyErasureOptions()));
         var prepared = new PrivacyErasureApplier.PreparedErasure(
@@ -306,7 +326,9 @@ public sealed class DeleteUserCurrentBehaviorCharacterizationTests
             checkpointRepository,
             stateRepository,
             privacyErasureRepository,
+            aiConversationRepository,
             providerWorkRepository,
+            providerLocatorProtector,
             saga);
     }
 
@@ -350,29 +372,32 @@ public sealed class DeleteUserCurrentBehaviorCharacterizationTests
     private static Actor CreateActor(Guid userId, string did)
     {
         Guid actorId = Guid.CreateVersion7();
-        var tenant = new Tenant
-        {
-            Id = Guid.CreateVersion7(),
-            FullName = "Redacted tenant",
-            Slug = $"redacted-{actorId:N}",
-            TenantStatus = new TenantStatus { FullName = "Active", MasterCode = "ACTIVE", IsActiveState = true }
-        };
-        return new Actor
+        var actor = new Actor
         {
             Id = actorId,
             UserId = userId,
-            TenantId = tenant.Id,
-            Tenant = tenant,
             ActorType = new ActorType { FullName = "User", MasterCode = "USER" },
             Pii = new ActorPii
             {
                 ActorId = actorId,
-                DisplayName = "redacted",
-                Did = did,
-                Handle = "redacted.invalid"
+                DisplayName = "redacted"
             }
         };
+        actor.AtprotoIdentities.Add(new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            Did = did,
+            ActorId = actorId,
+            Actor = actor,
+            Handle = "redacted.invalid",
+            PdsHost = "https://pds.example.invalid",
+            IsActive = true,
+            LastResolvedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        });
+        return actor;
     }
+
 
     private sealed record Harness(
         PrivacyErasureApplier Applier,
@@ -384,6 +409,8 @@ public sealed class DeleteUserCurrentBehaviorCharacterizationTests
         IPrivacyErasureReplayCheckpointRepository CheckpointRepository,
         IPrivacyErasureStateRepository StateRepository,
         IUserPrivacyErasureRepository PrivacyErasureRepository,
+        IAiConversationRepository AiConversationRepository,
         IPrivacyErasureProviderWorkRepository ProviderWorkRepository,
+        IPrivacyErasureProviderLocatorProtector ProviderLocatorProtector,
         PrivacyErasureSaga Saga);
 }

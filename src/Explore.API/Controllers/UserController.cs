@@ -6,12 +6,14 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.PrivacyErasure;
 using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Features.Users.Requests.Queries;
 using Explore.Application.Responses;
+using Explore.Application.Hateoas;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,6 +27,7 @@ namespace Explore.API.Controllers;
 public class UserController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IResourceAssembler<UserDto, UserDto> _resourceAssembler;
 
     private static readonly ApiValidationProblemDescriptor SyncValidationProblem = new(
         "user",
@@ -36,9 +39,14 @@ public class UserController : ExploreControllerBase
         "User validation failed",
         "User update failed.");
 
-    public UserController(IMediator mediator)
+    private static readonly ApiNotFoundProblemDescriptor UserNotFoundProblem = new(
+        "User not found",
+        "The requested user could not be found.");
+
+    public UserController(IMediator mediator, IResourceAssembler<UserDto, UserDto> resourceAssembler)
     {
         _mediator = mediator;
+        _resourceAssembler = resourceAssembler;
     }
 
     /// <summary>
@@ -106,7 +114,9 @@ public class UserController : ExploreControllerBase
 
     [HttpGet(Name = RouteNames.GetCurrentUser)]
     [Authorize]
-    public async Task<ActionResult<UserDto>> GetCurrentUser(CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(HalResource<UserDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<UserDto>>> GetCurrentUser(CancellationToken cancellationToken = default)
     {
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
         if (!currentUserId.HasValue)
@@ -116,8 +126,12 @@ public class UserController : ExploreControllerBase
 
         var query = new GetUserRequest { UserId = currentUserId.Value };
         var user = await _mediator.Send(query, cancellationToken);
+        if (user is null)
+        {
+            return this.ToNotFoundProblem(UserNotFoundProblem);
+        }
 
-        return Ok(user);
+        return Ok(await _resourceAssembler.ToResource(user, HttpContext));
     }
 
     /// <summary>
@@ -219,9 +233,10 @@ public class UserController : ExploreControllerBase
     [HttpPatch("{id:guid}", Name = RouteNames.UpdateCurrentUser)]
     [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateUser(
         Guid id,
@@ -254,6 +269,14 @@ public class UserController : ExploreControllerBase
             UpdateUserDto = userDto
         };
         var response = await _mediator.Send(command, cancellationToken);
+
+        if (!response.Success)
+        {
+            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+                ? this.ToNotFoundProblem(UserNotFoundProblem)
+                : this.ToCommandValidationProblem(response, UpdateValidationProblem);
+        }
+
         return Ok(response);
     }
 
