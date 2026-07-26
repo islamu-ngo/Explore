@@ -221,8 +221,6 @@ public class AiContextGatewayE2ETests
             new Dictionary<string, object?>
             {
                 ["DisplayName"] = "Public Name",
-                ["Did"] = "did:plc:abc123",
-                ["Handle"] = "@test",
                 ["ProfilePictureUri"] = "https://cdn.example.com/pic.jpg",
                 ["ActorId"] = Guid.NewGuid()
             },
@@ -230,8 +228,8 @@ public class AiContextGatewayE2ETests
 
         var envelope = gateway.Sanitize(input);
 
-        await Assert.That(envelope.DisclosedFields.Count).IsEqualTo(5)
-            .Because("All 5 ActorPii non-navigation props are Public or Internal");
+        await Assert.That(envelope.DisclosedFields.Count).IsEqualTo(3)
+            .Because("All 3 ActorPii non-navigation props are Public or Internal");
         await Assert.That(envelope.DeniedFieldNames).IsEmpty();
     }
 }

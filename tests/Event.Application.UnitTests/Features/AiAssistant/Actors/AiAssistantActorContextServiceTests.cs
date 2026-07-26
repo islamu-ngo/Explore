@@ -153,8 +153,6 @@ public sealed class AiAssistantActorContextServiceTests
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
             UserId = userId,
-            TenantId = tenantId,
-            Tenant = null!,
             Pii = new ActorPii { ActorId = actorId, DisplayName = "Amina Yusuf" }
         };
 
@@ -168,14 +166,27 @@ public sealed class AiAssistantActorContextServiceTests
             Id = Guid.NewGuid(),
             TenantId = tenantId,
             Tenant = null!,
-            OrganizationId = organizationId,
-            Organization = new Organization
+            OrganizationTenantId = Guid.NewGuid(),
+            OrganizationTenant = new OrganizationTenant
             {
-                Id = organizationId,
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
                 Tenant = null!,
-                ActorId = actorId,
+                OrganizationId = organizationId,
                 ApprovalStatus = null!,
-                Pii = new OrganizationPii { FullName = name }
+                Organization = new Organization
+                {
+                    Id = organizationId,
+                    Pii = new OrganizationPii { FullName = name },
+                    Actor = new Actor
+                    {
+                        Id = actorId,
+                        ActorTypeId = (int)ActorTypeEnum.Organization,
+                        ActorType = null!,
+                        OrganizationId = organizationId,
+                        Pii = new ActorPii { ActorId = actorId, DisplayName = name }
+                    }
+                }
             },
             UserId = Guid.NewGuid(),
             User = null!,
@@ -188,14 +199,27 @@ public sealed class AiAssistantActorContextServiceTests
             Id = Guid.NewGuid(),
             TenantId = tenantId,
             Tenant = null!,
-            GroupId = groupId,
-            Group = new Group
+            GroupTenantId = Guid.NewGuid(),
+            GroupTenant = new GroupTenant
             {
-                Id = groupId,
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
                 Tenant = null!,
-                ActorId = actorId,
+                GroupId = groupId,
                 ApprovalStatus = null!,
-                FullName = name
+                Group = new Group
+                {
+                    Id = groupId,
+                    FullName = name,
+                    Actor = new Actor
+                    {
+                        Id = actorId,
+                        ActorTypeId = (int)ActorTypeEnum.Group,
+                        ActorType = null!,
+                        GroupId = groupId,
+                        Pii = new ActorPii { ActorId = actorId, DisplayName = name }
+                    }
+                }
             },
             UserId = Guid.NewGuid(),
             User = null!,

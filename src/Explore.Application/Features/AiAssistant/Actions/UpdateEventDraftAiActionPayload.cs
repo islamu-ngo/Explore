@@ -45,7 +45,6 @@ public sealed class UpdateEventDraftAiActionPayload
 
     public string? EventTimeZoneId { get; init; }
 
-    public string? EventUrl { get; init; }
 
     public string? BackgroundColor { get; init; }
 

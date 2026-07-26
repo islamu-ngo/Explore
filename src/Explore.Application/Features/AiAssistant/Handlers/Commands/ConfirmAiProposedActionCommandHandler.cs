@@ -336,7 +336,7 @@ public sealed class ConfirmAiProposedActionCommandHandler(
         }
 
         Actor? actor = await actorRepository.GetActorWithDetails(actorId, cancellationToken);
-        if (actor is null || actor.TenantId != tenantContext.TenantId)
+        if (actor is null)
         {
             return ActorMappingContextResult.Failure(
                 "invalid_actor_context",

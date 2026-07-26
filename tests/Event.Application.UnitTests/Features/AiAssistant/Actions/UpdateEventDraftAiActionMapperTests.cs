@@ -23,8 +23,7 @@ public sealed class UpdateEventDraftAiActionMapperTests
                 "title": "  Community Iftar Updated  ",
                 "description": "Evening meal update",
                 "visibilityTypeId": 2,
-                "eventFormatId": 1,
-                "eventUrl": " https://example.test/event "
+                "eventFormatId": 1
               }
               """);
 
@@ -36,7 +35,6 @@ public sealed class UpdateEventDraftAiActionMapperTests
         await Assert.That(result.Draft.Description).IsEqualTo("Evening meal update");
         await Assert.That(result.Draft.VisibilityTypeId).IsEqualTo(2);
         await Assert.That(result.Draft.EventFormatId).IsEqualTo(1);
-        await Assert.That(result.Draft.EventUrl).IsEqualTo("https://example.test/event");
     }
 
     [Test]

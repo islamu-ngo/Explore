@@ -424,6 +424,29 @@ public sealed class AiAssistantApiFlowTests
             return Task.CompletedTask;
         }
 
+        public Task<int> HardDeleteUserConversationGraphAsync(Guid subjectId, CancellationToken cancellationToken)
+        {
+            var deletedConversations = TenantConversations
+                .Where(conversation => conversation.UserId == subjectId)
+                .ToArray();
+            var deletedActionIds = deletedConversations
+                .SelectMany(conversation => conversation.ProposedActions)
+                .Select(action => action.Id)
+                .ToHashSet();
+
+            foreach (AiConversation conversation in deletedConversations)
+            {
+                store.Conversations.Remove(conversation.Id);
+            }
+
+            if (deletedActionIds.Count > 0)
+            {
+                store.ToolExecutions.RemoveAll(execution => deletedActionIds.Contains(execution.ProposedActionId));
+            }
+
+            return Task.FromResult(deletedConversations.Length);
+        }
+
         public Task<AiConversation?> GetByIdWithDetailsAsync(Guid conversationId, CancellationToken cancellationToken)
             => GetById(conversationId);
 
@@ -506,6 +529,7 @@ public sealed class AiAssistantApiFlowTests
 
             return Task.FromResult(count);
         }
+
 
         public Task<AiProposedAction?> GetProposedActionForUpdateAsync(Guid proposedActionId, CancellationToken cancellationToken)
         {

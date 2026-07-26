@@ -106,7 +106,8 @@ public sealed class SearchAiReferencesQueryHandler(IEventRepository eventReposit
 
     private static string? BuildActorSummary(Actor actor)
     {
-        string? summary = FirstNonBlank(actor.Description, actor.Handle is null ? null : $"@{actor.Handle}");
+        string? handle = actor.AtprotoIdentities.Select(identity => identity.Handle).FirstOrDefault();
+        string? summary = FirstNonBlank(actor.Description, handle is null ? null : $"@{handle}");
         return summary is null ? null : Truncate(summary, MaxSummaryLength);
     }
 

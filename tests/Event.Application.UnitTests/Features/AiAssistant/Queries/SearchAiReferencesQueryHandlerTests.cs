@@ -90,30 +90,35 @@ public sealed class SearchAiReferencesQueryHandlerTests
         var actorId = Guid.NewGuid();
         var organizationActorId = Guid.NewGuid();
         var organizationId = Guid.NewGuid();
-        var actors = new List<Actor>
+        var organizationActor = new Actor
         {
-            new()
-            {
-                Id = organizationActorId,
-                ActorTypeId = (int)ActorTypeEnum.Organization,
-                ActorType = new ActorType { Id = (int)ActorTypeEnum.Organization, MasterCode = "ORGANIZATION", FullName = "Organization" },
-                TenantId = Guid.NewGuid(),
-                Tenant = null!,
-                OrganizationId = organizationId,
-                Pii = new ActorPii { DisplayName = "Community Center" },
-                Description = "A short organization summary."
-            },
-            new()
-            {
-                Id = actorId,
-                ActorTypeId = (int)ActorTypeEnum.User,
-                ActorType = new ActorType { Id = (int)ActorTypeEnum.User, MasterCode = "USER", FullName = "User" },
-                TenantId = Guid.NewGuid(),
-                Tenant = null!,
-                UserId = Guid.NewGuid(),
-                Pii = new ActorPii { DisplayName = "Amina Speaker", Handle = "amina.example" },
-            }
+            Id = organizationActorId,
+            ActorTypeId = (int)ActorTypeEnum.Organization,
+            ActorType = new ActorType { Id = (int)ActorTypeEnum.Organization, MasterCode = "ORGANIZATION", FullName = "Organization" },
+            OrganizationId = organizationId,
+            Pii = new ActorPii { DisplayName = "Community Center" },
+            Description = "A short organization summary."
         };
+        var userActor = new Actor
+        {
+            Id = actorId,
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = new ActorType { Id = (int)ActorTypeEnum.User, MasterCode = "USER", FullName = "User" },
+            UserId = Guid.NewGuid(),
+            Pii = new ActorPii { DisplayName = "Amina Speaker" }
+        };
+        userActor.AtprotoIdentities.Add(new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            Did = "did:plc:amina",
+            ActorId = actorId,
+            Actor = userActor,
+            Handle = "amina.example",
+            PdsHost = "https://pds.example.test",
+            IsActive = true,
+            LastResolvedAt = DateTime.UtcNow
+        });
+        var actors = new List<Actor> { organizationActor, userActor };
         _eventRepository.SearchAiReferenceEventsAsync("amina", 10, Arg.Any<CancellationToken>())
             .Returns([]);
         _actorRepository.SearchAiReferenceActorsAsync("amina", 10, Arg.Any<CancellationToken>())

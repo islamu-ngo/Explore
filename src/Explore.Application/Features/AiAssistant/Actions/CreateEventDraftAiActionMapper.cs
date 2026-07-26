@@ -94,8 +94,7 @@ public sealed class CreateEventDraftAiActionMapper
             || !ValidateLength(payload.CurrencyCode, 3, "currencyCode", out lengthFailure)
             || !ValidateLength(payload.ExternalRegistrationUrl, 500, "externalRegistrationUrl", out lengthFailure)
             || !ValidateLength(payload.Timezone, 100, "timezone", out lengthFailure)
-            || !ValidateLength(payload.EventTimeZoneId, 100, "eventTimeZoneId", out lengthFailure)
-            || !ValidateLength(payload.EventUrl, 500, "eventUrl", out lengthFailure))
+            || !ValidateLength(payload.EventTimeZoneId, 100, "eventTimeZoneId", out lengthFailure))
         {
             return lengthFailure!;
         }
@@ -160,7 +159,6 @@ public sealed class CreateEventDraftAiActionMapper
             MadhabId = payload.MadhabId,
             Timezone = Normalize(payload.Timezone),
             EventTimeZoneId = Normalize(payload.EventTimeZoneId),
-            EventUrl = Normalize(payload.EventUrl),
             IslamicAspect = NormalizeIslamicAspect(payload.IslamicAspect),
             CategoryIds = payload.CategoryIds.Distinct().ToList(),
             TagIds = payload.TagIds.Distinct().ToList(),

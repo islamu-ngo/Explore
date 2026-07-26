@@ -48,7 +48,6 @@ public sealed class CreateEventDraftAiActionPayload
 
     public string? EventTimeZoneId { get; init; }
 
-    public string? EventUrl { get; init; }
 
     public List<Guid> CategoryIds { get; init; } = [];
 

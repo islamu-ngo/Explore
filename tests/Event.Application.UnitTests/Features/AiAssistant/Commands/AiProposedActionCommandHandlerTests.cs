@@ -533,19 +533,11 @@ public sealed class AiProposedActionCommandHandlerTests
         => new()
         {
             Id = actorId,
-            TenantId = _tenantId,
             ActorTypeId = (int)actorType,
             ActorType = new ActorType { Id = (int)actorType, FullName = actorType.ToString(), MasterCode = actorType.ToString() },
             UserId = userId,
             OrganizationId = organizationId,
             GroupId = groupId,
-            Tenant = new Tenant
-            {
-                Id = _tenantId,
-                FullName = "Test Tenant",
-                Slug = "test-tenant",
-                TenantStatus = new TenantStatus { Id = 1, FullName = "Active", MasterCode = "Active", IsActiveState = true }
-            },
             Pii = new ActorPii { ActorId = actorId, DisplayName = actorType.ToString() }
         };
 

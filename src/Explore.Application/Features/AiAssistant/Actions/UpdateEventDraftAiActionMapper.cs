@@ -98,7 +98,6 @@ public sealed class UpdateEventDraftAiActionMapper
             || !ValidateLength(payload.ExternalRegistrationUrl, 500, "externalRegistrationUrl", out lengthFailure)
             || !ValidateLength(payload.Timezone, 500, "timezone", out lengthFailure)
             || !ValidateLength(payload.EventTimeZoneId, 500, "eventTimeZoneId", out lengthFailure)
-            || !ValidateLength(payload.EventUrl, 500, "eventUrl", out lengthFailure)
             || !ValidateLength(payload.BackgroundColor, 100, "backgroundColor", out lengthFailure)
             || !ValidateLength(payload.BackgroundEffect, 100, "backgroundEffect", out lengthFailure))
         {
@@ -140,7 +139,6 @@ public sealed class UpdateEventDraftAiActionMapper
             MadhabId = payload.MadhabId,
             Timezone = Normalize(payload.Timezone),
             EventTimeZoneId = Normalize(payload.EventTimeZoneId),
-            EventUrl = Normalize(payload.EventUrl),
             BackgroundColor = Normalize(payload.BackgroundColor),
             BackgroundEffect = Normalize(payload.BackgroundEffect),
             BackgroundImageId = payload.BackgroundImageId,

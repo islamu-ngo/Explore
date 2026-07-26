@@ -43,17 +43,17 @@ public sealed class AiAssistantActorContextService(
         var organizationMemberships = await organizationMemberRepository.GetMembershipsByUser(userId, cancellationToken);
         foreach (var membership in organizationMemberships
                      .Where(membership => membership.TenantId == tenantId
-                         && membership.Organization.ActorId is Guid
-                         && allowedOrganizationIds.Contains(membership.OrganizationId))
-                     .OrderBy(membership => membership.Organization.FullName, StringComparer.OrdinalIgnoreCase))
+                         && membership.OrganizationTenant.Organization.Actor is not null
+                         && allowedOrganizationIds.Contains(membership.OrganizationTenant.OrganizationId))
+                     .OrderBy(membership => membership.OrganizationTenant.Organization.FullName, StringComparer.OrdinalIgnoreCase))
         {
             AddActorContext(
                 contexts,
                 seenActorIds,
-                membership.Organization.ActorId!.Value,
+                membership.OrganizationTenant.Organization.Actor!.Id,
                 nameof(ActorTypeEnum.Organization),
-                membership.Organization.FullName,
-                membership.OrganizationId);
+                membership.OrganizationTenant.Organization.FullName,
+                membership.OrganizationTenant.OrganizationId);
         }
 
         var allowedGroupIds = (await groupMemberRepository.GetGroupIdsWhereUserHasPermission(
@@ -63,17 +63,17 @@ public sealed class AiAssistantActorContextService(
         var groupMemberships = await groupMemberRepository.GetMembershipsByUser(userId, cancellationToken);
         foreach (var membership in groupMemberships
                      .Where(membership => membership.TenantId == tenantId
-                         && membership.Group.ActorId is Guid
-                         && allowedGroupIds.Contains(membership.GroupId))
-                     .OrderBy(membership => membership.Group.FullName, StringComparer.OrdinalIgnoreCase))
+                         && membership.GroupTenant.Group.Actor is not null
+                         && allowedGroupIds.Contains(membership.GroupTenant.GroupId))
+                     .OrderBy(membership => membership.GroupTenant.Group.FullName, StringComparer.OrdinalIgnoreCase))
         {
             AddActorContext(
                 contexts,
                 seenActorIds,
-                membership.Group.ActorId!.Value,
+                membership.GroupTenant.Group.Actor!.Id,
                 nameof(ActorTypeEnum.Group),
-                membership.Group.FullName,
-                membership.GroupId);
+                membership.GroupTenant.Group.FullName,
+                membership.GroupTenant.GroupId);
         }
 
         return contexts;
