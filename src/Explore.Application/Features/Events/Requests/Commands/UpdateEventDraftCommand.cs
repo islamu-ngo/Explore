@@ -1,5 +1,5 @@
-// ABOUTME: Updates draft-editable event shell fields through a narrow public contract.
-// ABOUTME: Keeps lifecycle status and session-derived program projections server-owned.
+// ABOUTME: Updates draft-editable event shell fields through a local workflow contract.
+// ABOUTME: Keeps lifecycle status, session projections, and public API updates separate.
 
 using System;
 using Explore.Application.Authorization;

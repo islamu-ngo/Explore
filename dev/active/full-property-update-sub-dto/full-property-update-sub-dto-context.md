@@ -54,15 +54,18 @@ Last Updated: 2026-07-26 Europe/Brussels
 - Canonical update controllers now declare and return consistent 403/404 responses. Group and Organization permission denials throw `AuthorizationException` before mutation; not-found command responses map to ProblemDetails rather than validation HTTP 400 or success HTTP 200.
 - Final GPT Oracle review returned PASS after three corrections: exact Actor-not-found matching, Group/Organization authorization exceptions, and stale EventSessionLanguage controller-test expectations.
 - Task 2.1 compile evidence: Application, API, Blazor Client, Application unit-test, and Blazor Client test projects build; `git diff --check` and conflict checks are clean. API integration-test compilation is externally blocked by 29 concurrent Actor/User/Organization fixture errors; the canonical solution build reports 84 errors across affected test projects. No Task 2.1 execution test is claimed because the user deferred tests.
+- Completed Task 2.2 for the Application-only EventCategories and EventTags relationship updates. Both flows already had grouped intent validation, concurrency, same-tenant target checks, duplicate checks, repository-mediated one-save mutation, cache invalidation, and tenant-scoped composite FK/unique-index protection.
+- Corrected the shared authorization gap: `AuthorizationBehavior` now loads each persisted link by route/link ID, binds its authoritative parent Event/Tenant into the command, and authorizes that parent event. Both handlers recheck the bound context before mutation, preventing caller-selected authorization context from targeting another assignment.
+- Added focused behavior and handler coverage for persisted-parent binding and fail-closed context mismatch. `Explore.Application` and `Event.Application.UnitTests` compile with zero errors; indexed diagnostics and `git diff --check` are clean. GPT Oracle returned PASS. Tests were compiled but not executed per user direction.
 
 ### IN PROGRESS
 
-- Task 2.2 is next: verify the Application-only EventCategories and EventTags canonical relationship updates without inventing public controllers.
+- Task 2.3 is next: verify that the local Event draft update remains a bounded internal workflow and does not hide a missing public entity migration.
 
 ### NEXT
 
-1. Verify Task 2.2 EventCategories and EventTags relationship updates.
-2. Continue through the approved implementation tasks without treating deferred Task 2.1 or Docker test execution as a pass.
+1. Verify the Task 2.3 local Event draft update contract.
+2. Continue through the approved implementation tasks without treating deferred Phase 2 or Docker test execution as a pass.
 3. Run the Docker-backed stress/race verification and deferred phase tests before final workstream completion.
 4. Keep H-019/A-003 until Task 5.3, then remove them after their remaining callers have explicit save boundaries.
 5. Keep unrelated dirty worktree changes untouched.
@@ -155,11 +158,11 @@ Latest Task 1.3 evidence: exact setup authority/limiter combined tests passed 13
 
 ### Handoff - 2026-07-26 Europe/Brussels
 
-- **Current state:** Tasks 1.1-2.1 implementation is complete. Task 2.1 has final GPT Oracle PASS: all 14 canonical grouped entity PATCH surfaces were verified, confirmed drift was corrected, HAL/OpenAPI/NSwag contracts agree, and execution tests remain explicitly deferred rather than reported as passed. H-019/A-003 deletion remains assigned to Task 5.3 after remaining broad callers migrate.
-- **Next action:** Start Task 2.2 by verifying the Application-only EventCategories and EventTags relationship updates, then continue the approved sequence while retaining deferred verification debt.
+- **Current state:** Tasks 1.1-2.2 implementation is complete. Task 2.2 has final GPT Oracle PASS: EventCategories/EventTags authorize through persisted parent events, handlers recheck authority before mutation, and the existing tenancy/duplicate/concurrency/cache boundaries remain intact. Execution tests remain explicitly deferred rather than reported as passed. H-019/A-003 deletion remains assigned to Task 5.3.
+- **Next action:** Start Task 2.3 by verifying the local Event draft update contract, then continue the approved sequence while retaining deferred verification debt.
 - **Blockers:** No Task 2.1 implementation blocker. Docker runtime tests and Task 2.1 test execution are deferred, not passed. API integration-test compilation currently has 29 unrelated concurrent Actor/User/Organization fixture errors; the canonical solution build reports 84 errors across affected test projects. Runtime visual QA remains explicitly waived.
 - **Modified files:** Task 2.1 touched the scoped Actor, EventSeries, EventSessionLanguage, User, controller response-mapping, HAL registration/policy/assembler, OpenAPI/generated-client, Blazor adapter, compile-fixture, and active workstream files. Do not alter or revert unrelated worktree changes.
-- **Validation:** Application, API, Blazor Client, Application unit-test, and Blazor Client test projects compile; `git diff --check` and conflict checks are clean. Final GPT Oracle review passed with no scoped remediation. No Task 2.1 execution test or canonical solution-build pass is claimed.
-- **Documentation impact:** Tasks and context now record Task 2.1 implementation completion, Oracle PASS, exact compile evidence, deferred execution tests, and Task 2.2 as the next slice.
+- **Validation:** Task 2.2 `Explore.Application` and `Event.Application.UnitTests` Release builds pass with zero errors; indexed diagnostics and `git diff --check` are clean. Final GPT Oracle review passed with no scoped remediation. No Phase 2 execution test or canonical solution-build pass is claimed.
+- **Documentation impact:** Tasks and context now record Task 2.2 implementation completion, Oracle PASS, compile evidence, deferred execution tests, and Task 2.3 as the next slice.
 - **Risks:** Concurrent domain-model work has left test fixtures stale and prevents a clean canonical build; distinguish those external errors from Task 2.1 while keeping the full build gate open.
 - **Notes for next contributor/agent:** Never revert unrelated changes. Re-read a file immediately before editing if it is already dirty.

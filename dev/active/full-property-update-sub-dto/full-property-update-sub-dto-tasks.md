@@ -8,9 +8,9 @@ Last Updated: 2026-07-26 Europe/Brussels
 ## Status Summary
 
 - **Overall status:** Implementation in progress; Phase 2 active.
-- **Completed:** 4/20 implementation tasks; phase verification is tracked separately.
-- **Current priority:** Task 2.2 Application-only relationship updates. Task 2.1 implementation has GPT Oracle PASS; execution tests remain deferred by user direction rather than reported as passed.
-- **Next recommended slice:** Verify EventCategories and EventTags relationship updates under Task 2.2 while preserving the recorded Docker and Task 2.1 execution-test debt.
+- **Completed:** 5/20 implementation tasks; phase verification is tracked separately.
+- **Current priority:** Task 2.3 local Event draft update contract. Tasks 2.1 and 2.2 have GPT Oracle PASS; execution tests remain deferred by user direction rather than reported as passed.
+- **Next recommended slice:** Verify the local Event draft workflow under Task 2.3 while preserving the recorded Docker and Phase 2 execution-test debt.
 - **Coverage contract:** 59 DTO files, 71 update-handler files, and 104 public PUT/PATCH endpoints are individually registered.
 
 ## Implementation Maintenance Rules
@@ -64,9 +64,12 @@ Last Updated: 2026-07-26 Europe/Brussels
   - **Verification:** Application, API, Blazor Client, Application unit-test, and Blazor Client test projects compile; `git diff --check` is clean. API integration-test compilation remains blocked by 29 unrelated concurrent Actor/User/Organization fixture errors, and the canonical solution build reaches 84 unrelated test-project errors. Per user direction, Task 2.1 tests were not executed and remain deferred.
   - **Effort:** L
   - **Dependencies:** Phase 1.
-- [ ] **2.2 Verify all Application-only canonical relationship updates**
+- [x] **2.2 Verify all Application-only canonical relationship updates**
   - **Rows:** D-010/D-011; H-032/H-033.
   - **Acceptance:** EventCategories and EventTags remain grouped, concurrent, tenant-safe, duplicate-safe, repository-mediated, and correctly cache-invalidating without invented public controllers.
+  - **Implementation:** `AuthorizationBehavior` now resolves each persisted link's parent Event/Tenant before authorization and overwrites caller-provided command context. Both handlers fail closed if that persisted context changes, validate target Event/Category/Tag tenancy, retain optimistic concurrency and duplicate checks, update through repositories once, and invalidate current plus previous event caches when a link moves. Composite tenant foreign keys and unique indexes remain the database race-safety boundary; no public controller was added.
+  - **Oracle review:** PASS with no scoped remediation.
+  - **Verification:** `Explore.Application` and `Event.Application.UnitTests` Release builds pass with zero errors; indexed diagnostics and `git diff --check` are clean. Focused tests compile but were not executed per user direction and remain deferred.
   - **Effort:** M
   - **Dependencies:** 2.1.
 - [ ] **2.3 Verify the local Event draft update contract**

@@ -1,5 +1,5 @@
-// ABOUTME: Public draft-event update contract for scalar event-shell fields only.
-// ABOUTME: Excludes lifecycle status and session-derived program projection fields.
+// ABOUTME: Local draft-event workflow contract for scalar event-shell fields only.
+// ABOUTME: Excludes lifecycle status, session projections, and public API exposure.
 
 using System;
 
