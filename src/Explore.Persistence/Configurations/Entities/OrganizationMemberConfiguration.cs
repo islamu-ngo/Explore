@@ -15,9 +15,10 @@ public class OrganizationMemberConfiguration : IEntityTypeConfiguration<Organiza
     {
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
 
-        builder.HasOne(m => m.Organization)
+        builder.HasOne(m => m.OrganizationTenant)
             .WithMany(o => o.Members)
-            .HasForeignKey(m => m.OrganizationId)
+            .HasForeignKey(m => new { m.TenantId, m.OrganizationTenantId })
+            .HasPrincipalKey(o => new { o.TenantId, o.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(m => m.User)
@@ -38,7 +39,7 @@ public class OrganizationMemberConfiguration : IEntityTypeConfiguration<Organiza
         // ===== Performance Indexes =====
 
         // Unique constraint: one membership per user per org
-        builder.HasIndex(m => new { m.OrganizationId, m.UserId })
+        builder.HasIndex(m => new { m.OrganizationTenantId, m.UserId })
             .IsUnique()
             .HasDatabaseName("ix_orgmembers_org_user");
 

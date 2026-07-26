@@ -17,13 +17,13 @@ public class OrganizationSettingConfiguration : IEntityTypeConfiguration<Organiz
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
-        builder.HasIndex(e => new { e.OrganizationId, e.SettingKey })
+        builder.HasIndex(e => new { e.OrganizationTenantId, e.SettingKey })
             .IsUnique();
 
         builder.Property(e => e.TenantId)
             .IsRequired();
 
-        builder.Property(e => e.OrganizationId)
+        builder.Property(e => e.OrganizationTenantId)
             .IsRequired();
 
         builder.Property(e => e.SettingKey)
@@ -42,9 +42,10 @@ public class OrganizationSettingConfiguration : IEntityTypeConfiguration<Organiz
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(e => e.Organization)
-            .WithMany()
-            .HasForeignKey(e => e.OrganizationId)
+        builder.HasOne(e => e.OrganizationTenant)
+            .WithMany(e => e.Settings)
+            .HasForeignKey(e => new { e.TenantId, e.OrganizationTenantId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

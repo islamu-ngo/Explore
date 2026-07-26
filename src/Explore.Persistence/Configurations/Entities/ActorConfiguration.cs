@@ -15,47 +15,18 @@ public class ActorConfiguration : IEntityTypeConfiguration<Actor>
     public void Configure(EntityTypeBuilder<Actor> builder)
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
-        builder.Property(e => e.PdsHost).HasMaxLength(500);
         builder.Property(e => e.Description).HasMaxLength(500);
         builder.Property(e => e.ProfilePictureCid).HasMaxLength(500);
+        builder.Property(e => e.BackgroundColor).HasMaxLength(50);
+        builder.Property(e => e.BackgroundEffect).HasMaxLength(50);
+        builder.Property(e => e.BannerColor).HasMaxLength(50);
         builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
 
         builder.HasOne(e => e.ActorType)
             .WithMany()
             .HasForeignKey(e => e.ActorTypeId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(e => e.Tenant)
-            .WithMany()
-            .HasForeignKey(e => e.TenantId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(e => e.DidCustodyType)
-            .WithMany()
-            .HasForeignKey(e => e.DidCustodyTypeId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(e => e.ProfilePicture)
-            .WithMany()
-            .HasForeignKey(e => e.ProfilePictureId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        builder.HasOne(e => e.BannerPicture)
-            .WithMany()
-            .HasForeignKey(e => e.BannerPictureId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        builder.HasOne(e => e.BackgroundImage)
-            .WithMany()
-            .HasForeignKey(e => e.BackgroundImageId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        // Appearance settings
-        builder.Property(e => e.BackgroundColor).HasMaxLength(50);
-        builder.Property(e => e.BackgroundEffect).HasMaxLength(50);
-        builder.Property(e => e.BannerColor).HasMaxLength(50);
 
         builder.HasOne(e => e.Pii)
             .WithOne(e => e.Actor)
@@ -66,27 +37,35 @@ public class ActorConfiguration : IEntityTypeConfiguration<Actor>
 
         // User relationship - An Actor can be owned by a User (personal actor)
         builder.HasOne(e => e.User)
-            .WithMany()
-            .HasForeignKey(e => e.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .WithOne(e => e.Actor)
+            .HasForeignKey<Actor>(e => e.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Organization relationship - An Actor can be owned by an Organization
         builder.HasOne(e => e.Organization)
-            .WithMany()
-            .HasForeignKey(e => e.OrganizationId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .WithOne(e => e.Actor)
+            .HasForeignKey<Actor>(e => e.OrganizationId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Group relationship - An Actor can be owned by a Group
         builder.HasOne(e => e.Group)
-            .WithMany()
-            .HasForeignKey(e => e.GroupId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .WithOne(e => e.Actor)
+            .HasForeignKey<Actor>(e => e.GroupId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-        // Unique indexes to ensure one User Actor per tenant and one Actor per Organization/Group.
-        builder.HasIndex(e => new { e.UserId, e.TenantId })
+        builder.HasOne(e => e.ExternalActorSubject)
+            .WithOne(e => e.Actor)
+            .HasForeignKey<Actor>(e => e.ExternalActorSubjectId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.ServicePrincipal)
+            .WithOne(e => e.Actor)
+            .HasForeignKey<Actor>(e => e.ServicePrincipalId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(e => e.UserId)
             .IsUnique()
-            .HasFilter("user_id IS NOT NULL")
-            .HasDatabaseName("ix_actors_user_id_tenant_id");
+            .HasFilter("user_id IS NOT NULL");
 
         builder.HasIndex(e => e.OrganizationId)
             .IsUnique()
@@ -96,19 +75,17 @@ public class ActorConfiguration : IEntityTypeConfiguration<Actor>
             .IsUnique()
             .HasFilter("group_id IS NOT NULL");
 
-        // Check constraint: Actor must be either User OR Organization (XOR),
-        // OR Group, OR it can be a Bot (all ownership FKs null).
-        // For User type: UserId must be set, OrganizationId/GroupId must be null.
-        // For Organization type: OrganizationId must be set, UserId/GroupId must be null.
-        // For Group type: GroupId must be set, UserId/OrganizationId must be null.
-        // For Bot type: all ownership FKs can be null.
+        builder.HasIndex(e => e.ExternalActorSubjectId)
+            .IsUnique()
+            .HasFilter("external_actor_subject_id IS NOT NULL");
+
+        builder.HasIndex(e => e.ServicePrincipalId)
+            .IsUnique()
+            .HasFilter("service_principal_id IS NOT NULL");
+
         builder.ToTable(t => t.HasCheckConstraint(
-            "CK_Actor_UserOrOrganization",
-            @"(user_id IS NOT NULL AND organization_id IS NULL AND group_id IS NULL) OR " + // User actor
-            @"(user_id IS NULL AND organization_id IS NOT NULL AND group_id IS NULL) OR " + // Organization actor
-            @"(user_id IS NULL AND organization_id IS NULL AND group_id IS NOT NULL) OR " + // Group actor
-            @"(user_id IS NULL AND organization_id IS NULL AND group_id IS NULL)" // Bot actor
-        ));
+            "ck_actors_exactly_one_owner",
+            "num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 1"));
 
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs

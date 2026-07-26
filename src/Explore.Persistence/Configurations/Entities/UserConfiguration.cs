@@ -18,12 +18,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(e => e.AuthProvider).HasMaxLength(500);
         builder.Property(e => e.AuthProviderId).HasMaxLength(500);
 
-        // Make Actor relationship optional at EF level to avoid circular insert issues.
-        builder.HasOne(e => e.Actor)
-            .WithMany()
-            .HasForeignKey(e => e.ActorId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         builder.HasOne(e => e.Pii)
             .WithOne(e => e.User)
             .HasForeignKey<UserPii>(e => e.UserId)

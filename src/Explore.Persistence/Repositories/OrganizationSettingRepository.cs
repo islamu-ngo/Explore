@@ -20,21 +20,21 @@ public class OrganizationSettingRepository : GenericRepository<OrganizationSetti
     {
         return await _dbContext.OrganizationSettingOverrides
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.OrganizationId == organizationId && s.SettingKey == key);
+            .FirstOrDefaultAsync(s => s.OrganizationTenant.OrganizationId == organizationId && s.SettingKey == key);
     }
 
     public async Task<List<OrganizationSetting>> GetAllForOrganization(Guid organizationId)
     {
         return await _dbContext.OrganizationSettingOverrides
             .AsNoTracking()
-            .Where(s => s.OrganizationId == organizationId)
+            .Where(s => s.OrganizationTenant.OrganizationId == organizationId)
             .ToListAsync();
     }
 
     public async Task<bool> RemoveOverride(Guid organizationId, string key)
     {
         var setting = await _dbContext.OrganizationSettingOverrides
-            .FirstOrDefaultAsync(s => s.OrganizationId == organizationId && s.SettingKey == key);
+            .FirstOrDefaultAsync(s => s.OrganizationTenant.OrganizationId == organizationId && s.SettingKey == key);
 
         if (setting == null)
             return false;

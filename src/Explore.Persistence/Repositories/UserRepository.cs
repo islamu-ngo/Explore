@@ -33,8 +33,6 @@ public class UserRepository : GenericRepository<User, Guid>, IUserRepository
             .Include(u => u.Pii)
             .Include(u => u.Actor)
                 .ThenInclude(a => a!.Pii)
-            .Include(u => u.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
     }
 

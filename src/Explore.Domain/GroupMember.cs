@@ -11,9 +11,9 @@ public class GroupMember : ITenantEntity, IAuditableEntity, ISoftDeletable
 {
     public Guid Id { get; set; }
 
-    [ForeignKey("Group")]
-    public Guid GroupId { get; set; }
-    public required Group Group { get; set; }
+    [ForeignKey(nameof(GroupTenant))]
+    public Guid GroupTenantId { get; set; }
+    public required GroupTenant GroupTenant { get; set; }
 
     [ForeignKey("User")]
     public Guid UserId { get; set; }

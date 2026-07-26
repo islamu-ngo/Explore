@@ -53,8 +53,7 @@ public class ActorSubscriptionConfiguration : IEntityTypeConfiguration<ActorSubs
 
         builder.HasOne(e => e.TargetActor)
             .WithMany()
-            .HasForeignKey(e => new { e.TenantId, e.TargetActorId })
-            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .HasForeignKey(e => e.TargetActorId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.TargetActorType)

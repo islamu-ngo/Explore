@@ -16,9 +16,10 @@ public class GroupMemberConfiguration : IEntityTypeConfiguration<GroupMember>
             .HasDefaultValueSql("NOW()")
             .IsRequired();
 
-        builder.HasOne(e => e.Group)
+        builder.HasOne(e => e.GroupTenant)
             .WithMany(g => g.Members)
-            .HasForeignKey(e => e.GroupId)
+            .HasForeignKey(e => new { e.TenantId, e.GroupTenantId })
+            .HasPrincipalKey(g => new { g.TenantId, g.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.User)
@@ -41,7 +42,7 @@ public class GroupMemberConfiguration : IEntityTypeConfiguration<GroupMember>
             .HasForeignKey(e => e.GroupPositionId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(e => new { e.GroupId, e.UserId })
+        builder.HasIndex(e => new { e.GroupTenantId, e.UserId })
             .IsUnique()
             .HasDatabaseName("ix_group_members_group_user");
 

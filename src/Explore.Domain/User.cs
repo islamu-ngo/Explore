@@ -37,18 +37,10 @@ public class User : IAuditableEntity, ISoftDeletable, IConcurrencyAware
         set => Pii.LastName = value;
     }
 
-    /// <summary>
-    /// Every User SHOULD have an associated Actor for identity in the system.
-    /// To avoid circular creation issues the ActorId is nullable during creation and
-    /// is set immediately after the Actor is created.
-    /// </summary>
-    [ForeignKey("Actor")]
-    public Guid? ActorId { get; set; }
     public Actor? Actor { get; set; }
 
     public string? AuthProvider { get; set; }
     public string? AuthProviderId { get; set; }
-    public Guid? DefaultActorId { get; set; }
     public bool? EmailVerified { get; set; }
     public Guid ConcurrencyStamp { get; set; }
     public Guid? LastActiveTenantId { get; set; }

@@ -71,6 +71,12 @@ public partial class ExploreDbContext
     // ===== Actors (Federation/ATProto) =====
     public DbSet<Actor> Actors { get; set; }
     public DbSet<ActorPii> ActorPii { get; set; }
+    public DbSet<AtprotoIdentity> AtprotoIdentities { get; set; }
+    public DbSet<ExternalActorSubject> ExternalActorSubjects { get; set; }
+    public DbSet<ServicePrincipal> ServicePrincipals { get; set; }
+    public DbSet<ActorMerge> ActorMerges { get; set; }
+    public DbSet<ActorModerationRecord> ActorModerationRecords { get; set; }
+    public DbSet<AtprotoIdentityModerationRecord> AtprotoIdentityModerationRecords { get; set; }
     public DbSet<ActorType> ActorTypes { get; set; }
     public DbSet<DidCustodyType> DidCustodyTypes { get; set; }
     public DbSet<ActorKeyStore> ActorKeyStores { get; set; }
@@ -80,6 +86,7 @@ public partial class ExploreDbContext
 
     // ===== Organizations =====
     public DbSet<Organization> Organizations { get; set; }
+    public DbSet<OrganizationTenant> OrganizationTenants { get; set; }
     public DbSet<OrganizationPii> OrganizationPii { get; set; }
     public DbSet<OrganizationMember> OrganizationMembers { get; set; }
     public DbSet<OrganizationPosition> OrganizationPositions { get; set; }
@@ -87,6 +94,7 @@ public partial class ExploreDbContext
 
     // ===== Group Entities =====
     public DbSet<Group> Groups { get; set; }
+    public DbSet<GroupTenant> GroupTenants { get; set; }
     public DbSet<GroupMember> GroupMembers { get; set; }
     public DbSet<GroupPosition> GroupPositions { get; set; }
 
@@ -107,6 +115,8 @@ public partial class ExploreDbContext
 
     // ===== Events =====
     public DbSet<Event> Events { get; set; }
+    public DbSet<EventPublicAction> EventPublicActions { get; set; }
+    public DbSet<EventOrganizerClaim> EventOrganizerClaims { get; set; }
     public DbSet<EventSession> EventSessions { get; set; }
     public DbSet<EventSessionGroup> EventSessionGroups { get; set; }
     public DbSet<EventSessionGroupSession> EventSessionGroupSessions { get; set; }
@@ -144,6 +154,10 @@ public partial class ExploreDbContext
 
     // ===== Event Lookup Tables =====
     public DbSet<EventType> EventTypes { get; set; }
+    public DbSet<EventProvenanceType> EventProvenanceTypes { get; set; }
+    public DbSet<EventPublicActionKind> EventPublicActionKinds { get; set; }
+    public DbSet<EventPublicActionHealthState> EventPublicActionHealthStates { get; set; }
+    public DbSet<EventOrganizerClaimStatus> EventOrganizerClaimStatuses { get; set; }
     public DbSet<EventStatus> EventStatuses { get; set; }
     public DbSet<EventSessionStatus> EventSessionStatuses { get; set; }
     public DbSet<EventFormat> EventFormats { get; set; }

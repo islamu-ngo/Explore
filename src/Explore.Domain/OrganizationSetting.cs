@@ -23,15 +23,9 @@ public class OrganizationSetting : ITenantEntity, IAuditableEntity
     /// </summary>
     public required Tenant Tenant { get; set; }
 
-    /// <summary>
-    /// The organization this setting belongs to.
-    /// </summary>
-    public Guid OrganizationId { get; set; }
+    public Guid OrganizationTenantId { get; set; }
 
-    /// <summary>
-    /// Navigation property to the organization.
-    /// </summary>
-    public required Organization Organization { get; set; }
+    public required OrganizationTenant OrganizationTenant { get; set; }
 
     /// <summary>
     /// The setting key being overridden.

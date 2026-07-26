@@ -21,7 +21,8 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
             .AsSplitQuery()
             .Include(m => m.User)
                 .ThenInclude(u => u!.Pii)
-            .Include(m => m.Group)
+            .Include(m => m.GroupTenant)
+                .ThenInclude(p => p.Group)
             .Include(m => m.Role)
             .Include(m => m.GroupPosition)
             .ToListAsync();
@@ -34,7 +35,8 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
             .AsSplitQuery()
             .Include(m => m.User)
                 .ThenInclude(u => u!.Pii)
-            .Include(m => m.Group)
+            .Include(m => m.GroupTenant)
+                .ThenInclude(p => p.Group)
             .Include(m => m.Role)
             .Include(m => m.GroupPosition)
             .FirstOrDefaultAsync(m => m.Id == id);
@@ -49,7 +51,9 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
                 .ThenInclude(u => u!.Pii)
             .Include(m => m.Role)
             .Include(m => m.GroupPosition)
-            .Where(m => m.GroupId == groupId)
+            .Include(m => m.GroupTenant)
+                .ThenInclude(p => p.Group)
+            .Where(m => m.GroupTenant.GroupId == groupId)
             .ToListAsync();
     }
 
@@ -59,22 +63,23 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
             .AsNoTracking()
             .Include(m => m.Role)
             .Include(m => m.GroupPosition)
-            .Include(m => m.Group)
-            .FirstOrDefaultAsync(m => m.GroupId == groupId && m.UserId == userId);
+            .Include(m => m.GroupTenant)
+                .ThenInclude(p => p.Group)
+            .FirstOrDefaultAsync(m => m.GroupTenant.GroupId == groupId && m.UserId == userId);
     }
 
     public async Task<bool> Exists(Guid groupId, Guid userId)
     {
         return await _dbContext.GroupMembers
             .AsNoTracking()
-            .AnyAsync(m => m.GroupId == groupId && m.UserId == userId);
+            .AnyAsync(m => m.GroupTenant.GroupId == groupId && m.UserId == userId);
     }
 
     public async Task<bool> HasPermissionInGroup(Guid groupId, Guid userId, string permissionMasterCode)
     {
         var roleId = await _dbContext.GroupMembers
             .AsNoTracking()
-            .Where(m => m.GroupId == groupId && m.UserId == userId)
+            .Where(m => m.GroupTenant.GroupId == groupId && m.UserId == userId)
             .Select(m => (int?)m.RoleId)
             .FirstOrDefaultAsync();
 
@@ -116,7 +121,7 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
                 .Any(rp => rp.RoleId == m.RoleId
                     && rp.Permission.MasterCode == permissionMasterCode
                     && rp.Permission.IsActive))
-            .Select(m => m.GroupId)
+            .Select(m => m.GroupTenant.GroupId)
             .ToListAsync(cancellationToken);
 
         if (groupIds.Count > 0)
@@ -133,7 +138,7 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
             return await _dbContext.GroupMembers
                 .AsNoTracking()
                 .Where(m => m.UserId == userId && adminRoles.Contains(m.RoleId))
-                .Select(m => m.GroupId)
+                .Select(m => m.GroupTenant.GroupId)
                 .ToListAsync(cancellationToken);
         }
 
@@ -146,8 +151,10 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
     {
         return await _dbContext.GroupMembers
             .AsNoTracking()
-            .Include(m => m.Group)
-                .ThenInclude(g => g.ApprovalStatus)
+            .Include(m => m.GroupTenant)
+                .ThenInclude(p => p.ApprovalStatus)
+            .Include(m => m.GroupTenant)
+                .ThenInclude(p => p.Group)
             .Include(m => m.Role)
             .Where(m => m.UserId == userId)
             .ToListAsync(cancellationToken);

@@ -19,19 +19,7 @@ public class ActorPiiConfiguration : IEntityTypeConfiguration<ActorPii>
             .HasMaxLength(500)
             .IsRequired();
 
-        builder.Property(e => e.Did)
-            .HasMaxLength(500);
-
-        builder.Property(e => e.Handle)
-            .HasMaxLength(500);
-
         builder.Property(e => e.ProfilePictureUri)
             .HasMaxLength(500);
-
-        builder.HasIndex(e => e.Did)
-            .HasDatabaseName("ix_actor_pii_did");
-
-        builder.HasIndex(e => e.Handle)
-            .HasDatabaseName("ix_actor_pii_handle");
     }
 }

@@ -6,9 +6,9 @@ using Explore.Domain.Interfaces;
 public class ActorTests
 {
     [Test]
-    public async Task Actor_ImplementsTenantEntityInterface_ExpectedBehavior()
+    public async Task Actor_DoesNotImplementTenantEntityInterface_ExpectedBehavior()
     {
-        await Assert.That(typeof(Actor).GetInterfaces().Contains(typeof(ITenantEntity))).IsTrue();
+        await Assert.That(typeof(Actor).GetInterfaces().Contains(typeof(ITenantEntity))).IsFalse();
     }
 
     [Test]
@@ -27,7 +27,6 @@ public class ActorTests
     public async Task RequiredProperties_AreMarkedAsRequired_ExpectedBehavior()
     {
         await Assert.That(IsRequiredProperty<Actor>(nameof(Actor.ActorType))).IsTrue();
-        await Assert.That(IsRequiredProperty<Actor>(nameof(Actor.Tenant))).IsTrue();
         await Assert.That(IsRequiredProperty<ActorPii>(nameof(ActorPii.DisplayName))).IsTrue();
     }
 
@@ -58,16 +57,12 @@ public class ActorTests
     }
 
     [Test]
-    public async Task FederationProperties_DefaultValue_IsExpected()
+    public async Task FederationIdentities_DefaultValue_IsExpected()
     {
         var actor = CreateActor();
 
-        await Assert.That(actor.Did).IsNull();
-        await Assert.That(actor.Handle).IsNull();
-        await Assert.That(actor.PdsHost).IsNull();
-        await Assert.That(actor.DidCustodyTypeId).IsNull();
-        await Assert.That(actor.DidCustodyType).IsNull();
-        await Assert.That(actor.IndexedAt).IsNull();
+        await Assert.That(actor.AtprotoIdentities).IsNotNull();
+        await Assert.That(actor.AtprotoIdentities).IsEmpty();
     }
 
     [Test]
@@ -83,8 +78,6 @@ public class ActorTests
     {
         var actor = CreateActor();
 
-        await Assert.That(actor.ProfilePictureId).IsNull();
-        await Assert.That(actor.ProfilePicture).IsNull();
         await Assert.That(actor.Description).IsNull();
         await Assert.That(actor.ProfilePictureCid).IsNull();
         await Assert.That(actor.ProfilePictureUri).IsNull();
@@ -101,14 +94,7 @@ public class ActorTests
         return new Actor
         {
             Pii = new ActorPii { DisplayName = "Actor" },
-            ActorType = new ActorType { FullName = "User", MasterCode = "USER" },
-            Tenant = new Tenant
-            {
-                FullName = "Tenant",
-                Slug = "tenant",
-                TenantStatusId = 2,
-                TenantStatus = new TenantStatus { Id = 2, MasterCode = "ACTIVE", FullName = "Active", IsActiveState = true }
-            }
+            ActorType = new ActorType { FullName = "User", MasterCode = "USER" }
         };
     }
 }

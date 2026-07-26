@@ -55,13 +55,13 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         await fixture.ResetAsync();
         using var context = fixture.CreateDbContext();
         var tenant = await SeedTenantAsync(context, "dual-parent");
-        var organization = await SeedOrganizationAsync(context, tenant.Id, "Dual Parent Org");
-        var parentGroup = await SeedGroupAsync(context, tenant.Id, "Dual Parent Group");
+        var organization = await SeedOrganizationAsync(context, tenant, "Dual Parent Org");
+        var parentGroup = await SeedGroupAsync(context, tenant, "Dual Parent Group");
 
-        var group = NewGroup(tenant.Id, "Invalid Dual Parent");
-        group.ParentOrganizationId = organization.Id;
-        group.ParentGroupId = parentGroup.Id;
-        context.Groups.Add(group);
+        var group = NewGroup(tenant, "Invalid Dual Parent");
+        group.ParentOrganizationTenantId = organization.Id;
+        group.ParentGroupTenantId = parentGroup.Id;
+        context.GroupTenants.Add(group);
 
         await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
     }
@@ -72,10 +72,10 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         await fixture.ResetAsync();
         using var context = fixture.CreateDbContext();
         var tenant = await SeedTenantAsync(context, "self-parent");
-        var group = NewGroup(tenant.Id, "Self Parent Group");
+        var group = NewGroup(tenant, "Self Parent Group");
         group.Id = Guid.NewGuid();
-        group.ParentGroupId = group.Id;
-        context.Groups.Add(group);
+        group.ParentGroupTenantId = group.Id;
+        context.GroupTenants.Add(group);
 
         await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
     }
@@ -87,11 +87,11 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         using var context = fixture.CreateDbContext();
         var tenantA = await SeedTenantAsync(context, "tenant-a");
         var tenantB = await SeedTenantAsync(context, "tenant-b");
-        var foreignOrganization = await SeedOrganizationAsync(context, tenantB.Id, "Foreign Org");
+        var foreignOrganization = await SeedOrganizationAsync(context, tenantB, "Foreign Org");
 
-        var group = NewGroup(tenantA.Id, "Cross Tenant Org Parent");
-        group.ParentOrganizationId = foreignOrganization.Id;
-        context.Groups.Add(group);
+        var group = NewGroup(tenantA, "Cross Tenant Org Parent");
+        group.ParentOrganizationTenantId = foreignOrganization.Id;
+        context.GroupTenants.Add(group);
 
         await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
     }
@@ -103,10 +103,10 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         using var context = fixture.CreateDbContext();
         var tenant = await SeedTenantAsync(context, "root");
 
-        var group = await SeedGroupAsync(context, tenant.Id, "Root Group");
+        var group = await SeedGroupAsync(context, tenant, "Root Group");
 
-        await Assert.That(group.ParentOrganizationId).IsNull();
-        await Assert.That(group.ParentGroupId).IsNull();
+        await Assert.That(group.ParentOrganizationTenantId).IsNull();
+        await Assert.That(group.ParentGroupTenantId).IsNull();
     }
 
     [Test]
@@ -115,14 +115,14 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         await fixture.ResetAsync();
         using var context = fixture.CreateDbContext();
         var tenant = await SeedTenantAsync(context, "same-org");
-        var organization = await SeedOrganizationAsync(context, tenant.Id, "Same Tenant Org");
+        var organization = await SeedOrganizationAsync(context, tenant, "Same Tenant Org");
 
-        var group = NewGroup(tenant.Id, "Org Child Group");
-        group.ParentOrganizationId = organization.Id;
-        context.Groups.Add(group);
+        var group = NewGroup(tenant, "Org Child Group");
+        group.ParentOrganizationTenantId = organization.Id;
+        context.GroupTenants.Add(group);
         await context.SaveChangesAsync();
 
-        await Assert.That(group.ParentOrganizationId).IsEqualTo(organization.Id);
+        await Assert.That(group.ParentOrganizationTenantId).IsEqualTo(organization.Id);
     }
 
     [Test]
@@ -131,11 +131,11 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         await fixture.ResetAsync();
         using var context = fixture.CreateDbContext();
         var tenant = await SeedTenantAsync(context, "same-group");
-        var parentGroup = await SeedGroupAsync(context, tenant.Id, "Same Tenant Parent");
+        var parentGroup = await SeedGroupAsync(context, tenant, "Same Tenant Parent");
 
-        var child = await SeedGroupAsync(context, tenant.Id, "Same Tenant Child", parentGroup.Id);
+        var child = await SeedGroupAsync(context, tenant, "Same Tenant Child", parentGroup.Id);
 
-        await Assert.That(child.ParentGroupId).IsEqualTo(parentGroup.Id);
+        await Assert.That(child.ParentGroupTenantId).IsEqualTo(parentGroup.Id);
     }
 
     [Test]
@@ -145,11 +145,11 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         using var context = fixture.CreateDbContext();
         var tenantA = await SeedTenantAsync(context, "tenant-group-a");
         var tenantB = await SeedTenantAsync(context, "tenant-group-b");
-        var foreignGroup = await SeedGroupAsync(context, tenantB.Id, "Foreign Group");
+        var foreignGroup = await SeedGroupAsync(context, tenantB, "Foreign Group");
 
-        var group = NewGroup(tenantA.Id, "Cross Tenant Group Parent");
-        group.ParentGroupId = foreignGroup.Id;
-        context.Groups.Add(group);
+        var group = NewGroup(tenantA, "Cross Tenant Group Parent");
+        group.ParentGroupTenantId = foreignGroup.Id;
+        context.GroupTenants.Add(group);
 
         await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
     }
@@ -160,8 +160,8 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         await fixture.ResetAsync();
         using var context = fixture.CreateDbContext();
         var tenant = await SeedTenantAsync(context, "cycle");
-        var root = await SeedGroupAsync(context, tenant.Id, "Root");
-        var child = await SeedGroupAsync(context, tenant.Id, "Child", root.Id);
+        var root = await SeedGroupAsync(context, tenant, "Root");
+        var child = await SeedGroupAsync(context, tenant, "Child", root.Id);
         var repository = new GroupRepository(context);
 
         var wouldCreateCycle = await repository.WouldCreateHierarchyCycle(
@@ -183,7 +183,7 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
 
         for (var depth = 1; depth <= GroupHierarchyRules.MaxDepth; depth++)
         {
-            var group = await SeedGroupAsync(context, tenant.Id, $"Depth {depth}", parentGroupId);
+            var group = await SeedGroupAsync(context, tenant, $"Depth {depth}", parentGroupId);
             parentGroupId = group.Id;
         }
 
@@ -208,7 +208,7 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
 
         for (var depth = 1; depth < GroupHierarchyRules.MaxDepth; depth++)
         {
-            var group = await SeedGroupAsync(context, tenant.Id, $"Allowed Depth {depth}", parentGroupId);
+            var group = await SeedGroupAsync(context, tenant, $"Allowed Depth {depth}", parentGroupId);
             parentGroupId = group.Id;
         }
 
@@ -233,12 +233,12 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
 
         for (var depth = 1; depth < GroupHierarchyRules.MaxDepth; depth++)
         {
-            var group = await SeedGroupAsync(context, tenant.Id, $"Deep Parent {depth}", deepParentGroupId);
+            var group = await SeedGroupAsync(context, tenant, $"Deep Parent {depth}", deepParentGroupId);
             deepParentGroupId = group.Id;
         }
 
-        var movingRoot = await SeedGroupAsync(context, tenant.Id, "Moving Root");
-        await SeedGroupAsync(context, tenant.Id, "Moving Child", movingRoot.Id);
+        var movingRoot = await SeedGroupAsync(context, tenant, "Moving Root");
+        await SeedGroupAsync(context, tenant, "Moving Child", movingRoot.Id);
         var repository = new GroupRepository(context);
 
         var wouldExceedDepth = await repository.WouldExceedHierarchyDepthForMove(
@@ -268,14 +268,15 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
             tenantId,
             async token =>
             {
-                var group = NewGroup(tenantId, "Locked Mutation");
-                context.Groups.Add(group);
+                Tenant tenant = await context.Tenants.SingleAsync(value => value.Id == tenantId, token);
+                var group = NewGroup(tenant, "Locked Mutation");
+                context.GroupTenants.Add(group);
                 await context.SaveChangesAsync(token);
                 return group.Id;
             },
             CancellationToken.None);
 
-        var exists = await context.Groups.AnyAsync(group => group.Id == createdId);
+        var exists = await context.GroupTenants.AnyAsync(group => group.Id == createdId);
         await Assert.That(exists).IsTrue();
     }
 
@@ -306,48 +307,64 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         return tenant;
     }
 
-    private static async Task<Organization> SeedOrganizationAsync(
+    private static async Task<OrganizationTenant> SeedOrganizationAsync(
         ExploreDbContext context,
-        Guid tenantId,
+        Tenant tenant,
         string fullName)
     {
         var organization = new Organization
         {
+            Id = Guid.CreateVersion7(),
             Pii = new OrganizationPii { FullName = fullName },
+            ConcurrencyStamp = Guid.NewGuid(),
+        };
+        var participation = new OrganizationTenant
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            OrganizationId = organization.Id,
+            Organization = organization,
             ApprovalStatusId = 1,
             ApprovalStatus = null!,
-            TenantId = tenantId,
-            Tenant = null!,
             ConcurrencyStamp = Guid.NewGuid(),
         };
 
-        context.Organizations.Add(organization);
+        context.OrganizationTenants.Add(participation);
         await context.SaveChangesAsync();
-        return organization;
+        return participation;
     }
 
-    private static async Task<Group> SeedGroupAsync(
+    private static async Task<GroupTenant> SeedGroupAsync(
         ExploreDbContext context,
-        Guid tenantId,
+        Tenant tenant,
         string fullName,
         Guid? parentGroupId = null)
     {
-        var group = NewGroup(tenantId, fullName);
-        group.ParentGroupId = parentGroupId;
-        context.Groups.Add(group);
+        var group = NewGroup(tenant, fullName);
+        group.ParentGroupTenantId = parentGroupId;
+        context.GroupTenants.Add(group);
         await context.SaveChangesAsync();
         return group;
     }
 
-    private static Group NewGroup(Guid tenantId, string fullName)
+    private static GroupTenant NewGroup(Tenant tenant, string fullName)
     {
-        return new Group
+        var group = new Group
         {
+            Id = Guid.CreateVersion7(),
             FullName = fullName,
+            ConcurrencyStamp = Guid.NewGuid(),
+        };
+        return new GroupTenant
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            GroupId = group.Id,
+            Group = group,
             ApprovalStatusId = 1,
             ApprovalStatus = null!,
-            TenantId = tenantId,
-            Tenant = null!,
             ConcurrencyStamp = Guid.NewGuid(),
         };
     }

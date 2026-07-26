@@ -22,7 +22,6 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
         builder.HasAlternateKey(e => new { e.TenantId, e.Id });
         builder.Property(e => e.TotalViews).HasDefaultValue(0);
-        builder.Property(e => e.IsUserReported).HasDefaultValue(false);
 
         builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
         builder.Property(e => e.Subtitle).HasMaxLength(200);
@@ -31,12 +30,12 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Slug).HasMaxLength(200);
         builder.Property(e => e.PublicCode).HasMaxLength(12).IsRequired();
         builder.Property(e => e.CurrencyCode).HasMaxLength(3);
-        builder.Property(e => e.EventUrl).HasMaxLength(2048);
         builder.Property(e => e.ExternalRegistrationUrl).HasMaxLength(2048);
         builder.Property(e => e.Timezone).HasMaxLength(100);
         builder.Property(e => e.EventTimeZoneId).HasMaxLength(100);
         builder.Property(e => e.ProvenanceSource).HasMaxLength(100);
         builder.Property(e => e.ProvenanceExternalId).HasMaxLength(200);
+        builder.Property(e => e.SourcePublisherName).HasMaxLength(200);
         builder.Property(e => e.Price).HasPrecision(19, 4);
 
         builder.HasOne(e => e.EventType)
@@ -56,8 +55,22 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 
         builder.HasOne(e => e.Actor)
             .WithMany()
-            .HasForeignKey(e => new { e.TenantId, e.ActorId })
-            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .HasForeignKey(e => e.ActorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.EventProvenanceType)
+            .WithMany()
+            .HasForeignKey(e => e.EventProvenanceTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.SubmittedByUser)
+            .WithMany()
+            .HasForeignKey(e => e.SubmittedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.OrganizerActor)
+            .WithMany()
+            .HasForeignKey(e => e.OrganizerActorId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.FeaturedImage)

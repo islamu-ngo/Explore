@@ -8,35 +8,15 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class Group : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
+public class Group : IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     public Guid Id { get; set; }
     public required string FullName { get; set; }
     public string? Description { get; set; }
 
-    [ForeignKey("ProfilePicture")]
-    public Guid? ProfilePictureId { get; set; }
-    public StorageObject? ProfilePicture { get; set; }
-
-    [ForeignKey("ApprovalStatus")]
-    public int ApprovalStatusId { get; set; }
-    public required ApprovalStatus ApprovalStatus { get; set; }
-
-    [ForeignKey("Tenant")]
-    public Guid TenantId { get; set; }
-    public required Tenant Tenant { get; set; }
-
-    [ForeignKey("Actor")]
-    public Guid? ActorId { get; set; }
     public Actor? Actor { get; set; }
 
-    [ForeignKey("ParentOrganization")]
-    public Guid? ParentOrganizationId { get; set; }
-    public Organization? ParentOrganization { get; set; }
-
-    [ForeignKey("ParentGroup")]
-    public Guid? ParentGroupId { get; set; }
-    public Group? ParentGroup { get; set; }
+    public ICollection<GroupTenant> TenantParticipations { get; set; } = [];
 
     // Audit fields
     public DateTime CreatedAt { get; set; }
@@ -52,6 +32,4 @@ public class Group : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     // Concurrency control
     public Guid ConcurrencyStamp { get; set; }
 
-    private readonly List<GroupMember> _members = [];
-    public IReadOnlyList<GroupMember> Members => _members.AsReadOnly();
 }

@@ -24,8 +24,9 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .AsSplitQuery()
             .Include(m => m.User)
                 .ThenInclude(u => u!.Pii)
-            .Include(m => m.Organization)
-                .ThenInclude(o => o!.Pii)
+            .Include(m => m.OrganizationTenant)
+                .ThenInclude(p => p.Organization)
+                    .ThenInclude(o => o.Pii)
             .Include(m => m.Role)
             .Include(m => m.OrganizationPosition)
             .ToListAsync();
@@ -38,8 +39,9 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .AsSplitQuery()
             .Include(m => m.User)
                 .ThenInclude(u => u!.Pii)
-            .Include(m => m.Organization)
-                .ThenInclude(o => o!.Pii)
+            .Include(m => m.OrganizationTenant)
+                .ThenInclude(p => p.Organization)
+                    .ThenInclude(o => o.Pii)
             .Include(m => m.Role)
             .Include(m => m.OrganizationPosition)
             .FirstOrDefaultAsync(m => m.Id == id);
@@ -54,7 +56,10 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
                 .ThenInclude(u => u!.Pii)
             .Include(m => m.Role)
             .Include(m => m.OrganizationPosition)
-            .Where(m => m.OrganizationId == organizationId)
+            .Include(m => m.OrganizationTenant)
+                .ThenInclude(p => p.Organization)
+                    .ThenInclude(o => o.Pii)
+            .Where(m => m.OrganizationTenant.OrganizationId == organizationId)
             .ToListAsync();
     }
 
@@ -64,7 +69,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .AsNoTracking()
             .Include(m => m.User)
                 .ThenInclude(u => u!.Pii)
-            .Where(m => m.OrganizationId == organizationId)
+            .Where(m => m.OrganizationTenant.OrganizationId == organizationId)
             .Select(m => m.User)
             .ToListAsync();
     }
@@ -73,10 +78,11 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
     {
         return await _dbContext.OrganizationMembers
             .AsNoTracking()
-            .Include(m => m.Organization)
-                .ThenInclude(o => o!.Pii)
+            .Include(m => m.OrganizationTenant)
+                .ThenInclude(p => p.Organization)
+                    .ThenInclude(o => o.Pii)
             .Where(m => m.UserId == userId)
-            .Select(m => m.Organization)
+            .Select(m => m.OrganizationTenant.Organization)
             .ToListAsync();
     }
 
@@ -86,10 +92,11 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
     {
         return await _dbContext.OrganizationMembers
             .AsNoTracking()
-            .Include(m => m.Organization)
-                .ThenInclude(o => o.ApprovalStatus)
-            .Include(m => m.Organization)
-                .ThenInclude(o => o.Pii)
+            .Include(m => m.OrganizationTenant)
+                .ThenInclude(p => p.ApprovalStatus)
+            .Include(m => m.OrganizationTenant)
+                .ThenInclude(p => p.Organization)
+                    .ThenInclude(o => o.Pii)
             .Include(m => m.Role)
             .Where(m => m.UserId == userId)
             .ToListAsync(cancellationToken);
@@ -99,15 +106,16 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
     {
         return await _dbContext.OrganizationMembers
             .AsNoTracking()
-            .AnyAsync(m => m.OrganizationId == organizationId && m.UserId == userId);
+            .AnyAsync(m => m.OrganizationTenant.OrganizationId == organizationId && m.UserId == userId);
     }
 
     public async Task<List<OrganizationMember>> GetInvitesByEmail(string email)
     {
         return await _dbContext.OrganizationMembers
             .AsNoTracking()
-            .Include(m => m.Organization)
-                .ThenInclude(o => o!.Pii)
+            .Include(m => m.OrganizationTenant)
+                .ThenInclude(p => p.Organization)
+                    .ThenInclude(o => o.Pii)
             .Include(m => m.User)
                 .ThenInclude(u => u!.Pii)
             .Where(m => m.User.Pii != null && m.User.Pii.Email == email)
@@ -119,9 +127,10 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
         return await _dbContext.OrganizationMembers
             .AsNoTracking()
             .Include(m => m.Role)
-            .Include(m => m.Organization)
-                .ThenInclude(o => o!.Pii)
-            .FirstOrDefaultAsync(m => m.OrganizationId == organizationId && m.UserId == userId);
+            .Include(m => m.OrganizationTenant)
+                .ThenInclude(p => p.Organization)
+                    .ThenInclude(o => o.Pii)
+            .FirstOrDefaultAsync(m => m.OrganizationTenant.OrganizationId == organizationId && m.UserId == userId);
     }
 
     public async Task<bool> HasPermissionInOrganization(Guid organizationId, Guid userId, string permissionMasterCode)
@@ -129,7 +138,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
         // Get the user's membership in this organization
         var roleId = await _dbContext.OrganizationMembers
             .AsNoTracking()
-            .Where(m => m.OrganizationId == organizationId && m.UserId == userId)
+            .Where(m => m.OrganizationTenant.OrganizationId == organizationId && m.UserId == userId)
             .Select(m => (int?)m.RoleId)
             .FirstOrDefaultAsync();
 
@@ -174,7 +183,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
                 .Any(rp => rp.RoleId == m.RoleId
                     && rp.Permission.MasterCode == permissionMasterCode
                     && rp.Permission.IsActive))
-            .Select(m => m.OrganizationId)
+            .Select(m => m.OrganizationTenant.OrganizationId)
             .ToListAsync(cancellationToken);
 
         if (orgIds.Count > 0)
@@ -192,7 +201,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             return await _dbContext.OrganizationMembers
                 .AsNoTracking()
                 .Where(m => m.UserId == userId && adminRoles.Contains(m.RoleId))
-                .Select(m => m.OrganizationId)
+                .Select(m => m.OrganizationTenant.OrganizationId)
                 .ToListAsync(cancellationToken);
         }
 

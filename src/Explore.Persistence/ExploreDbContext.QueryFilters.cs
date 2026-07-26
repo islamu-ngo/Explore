@@ -23,6 +23,14 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
+        modelBuilder.Entity<EventPublicAction>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventOrganizerClaim>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
         modelBuilder.Entity<EventSession>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
@@ -217,6 +225,9 @@ public partial class ExploreDbContext
         // ===== Organization Entities =====
         // Entities with both Tenant and Soft Delete filters
         modelBuilder.Entity<Organization>()
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<OrganizationTenant>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
@@ -234,6 +245,9 @@ public partial class ExploreDbContext
 
         // ===== Group Entities =====
         modelBuilder.Entity<Group>()
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<GroupTenant>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
@@ -335,13 +349,19 @@ public partial class ExploreDbContext
         // ===== Actor Entities =====
         // Entities with both Tenant and Soft Delete filters
         modelBuilder.Entity<Actor>()
-            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
         modelBuilder.Entity<ActorPii>()
-            .HasQueryFilter(QueryFilterNames.Tenant,
-                e => IsTenantFilterBypassed
-                    || (e.Actor != null && e.Actor.TenantId == TenantFilterTenantId));
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => e.Actor != null && !e.Actor.IsDeleted);
+
+        modelBuilder.Entity<AtprotoIdentity>()
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<ExternalActorSubject>()
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<ServicePrincipal>()
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
         // Actor-related (tenant only - no soft delete)
         modelBuilder.Entity<ActorKeyStore>()
@@ -388,11 +408,6 @@ public partial class ExploreDbContext
 
         modelBuilder.Entity<StorageUsageCounter>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
-
-        modelBuilder.Entity<OrganizationPii>()
-            .HasQueryFilter(QueryFilterNames.Tenant,
-                e => IsTenantFilterBypassed
-                    || (e.Organization != null && e.Organization.TenantId == TenantFilterTenantId));
 
         // ===== Category and Tag Entities =====
         modelBuilder.Entity<Category>()

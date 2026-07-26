@@ -7,7 +7,7 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
+public class Actor : IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     public Guid Id { get; set; }
 
@@ -29,10 +29,23 @@ public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public Guid? GroupId { get; set; }
     public Group? Group { get; set; }
 
-    [ForeignKey("Tenant")]
-    public Guid TenantId { get; set; }
+    [ForeignKey(nameof(ExternalActorSubjectId))]
+    public Guid? ExternalActorSubjectId { get; set; }
+    public ExternalActorSubject? ExternalActorSubject { get; set; }
 
-    public required Tenant Tenant { get; set; }
+    [ForeignKey(nameof(ServicePrincipalId))]
+    public Guid? ServicePrincipalId { get; set; }
+    public ServicePrincipal? ServicePrincipal { get; set; }
+
+    public ICollection<AtprotoIdentity> AtprotoIdentities { get; set; } = [];
+    public ICollection<ActorModerationRecord> ModerationRecords { get; set; } = [];
+    public ICollection<ActorMerge> MergesFrom { get; set; } = [];
+    public ICollection<ActorMerge> MergesInto { get; set; } = [];
+
+    public bool IsSuspended { get; set; }
+    public DateTime? SuspendedAt { get; set; }
+    public Guid? SuspendedBy { get; set; }
+    public string? ModerationReasonCode { get; set; }
 
     /// <summary>
     /// 1:1 extension table containing actor-identifying fields.
@@ -46,44 +59,11 @@ public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
         set => Pii.DisplayName = value;
     }
 
-    [ForeignKey("ProfilePictureStorage")]
-    public Guid? ProfilePictureId { get; set; }
-    public StorageObject? ProfilePicture { get; set; }
-
-    [ForeignKey("BannerPictureStorage")]
-    public Guid? BannerPictureId { get; set; }
-    public StorageObject? BannerPicture { get; set; }
-    // Appearance settings
+    public string? Description { get; set; }
+    public string? ProfilePictureCid { get; set; }
     public string? BackgroundColor { get; set; }
     public string? BackgroundEffect { get; set; }
     public string? BannerColor { get; set; }
-
-    [ForeignKey("BackgroundImage")]
-    public Guid? BackgroundImageId { get; set; }
-    public StorageObject? BackgroundImage { get; set; }
-
-    [NotMapped]
-    public string? Did
-    {
-        get => Pii.Did;
-        set => Pii.Did = value;
-    }
-
-    [NotMapped]
-    public string? Handle
-    {
-        get => Pii.Handle;
-        set => Pii.Handle = value;
-    }
-
-    [ForeignKey("DidCustodyType")]
-    public int? DidCustodyTypeId { get; set; }
-    public DidCustodyType? DidCustodyType { get; set; }
-
-    public string? PdsHost { get; set; }
-    public string? Description { get; set; }
-    public DateTime? IndexedAt { get; set; }
-    public string? ProfilePictureCid { get; set; }
 
     [NotMapped]
     public string? ProfilePictureUri

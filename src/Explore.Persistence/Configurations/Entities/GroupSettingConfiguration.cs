@@ -17,13 +17,13 @@ public class GroupSettingConfiguration : IEntityTypeConfiguration<GroupSetting>
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
-        builder.HasIndex(e => new { e.GroupId, e.SettingKey })
+        builder.HasIndex(e => new { e.GroupTenantId, e.SettingKey })
             .IsUnique();
 
         builder.Property(e => e.TenantId)
             .IsRequired();
 
-        builder.Property(e => e.GroupId)
+        builder.Property(e => e.GroupTenantId)
             .IsRequired();
 
         builder.Property(e => e.SettingKey)
@@ -42,9 +42,10 @@ public class GroupSettingConfiguration : IEntityTypeConfiguration<GroupSetting>
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(e => e.Group)
-            .WithMany()
-            .HasForeignKey(e => e.GroupId)
+        builder.HasOne(e => e.GroupTenant)
+            .WithMany(e => e.Settings)
+            .HasForeignKey(e => new { e.TenantId, e.GroupTenantId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

@@ -17,9 +17,6 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
-        builder.Property(e => e.ApprovalStatusId)
-            .HasDefaultValue((int)ApprovalStatusEnum.Pending);
-
         // Set default value for CreatedAt
         builder.Property(e => e.CreatedAt)
             .HasDefaultValueSql("NOW()")
@@ -28,37 +25,12 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
         builder.Property(e => e.WebsiteUrl)
             .HasMaxLength(2048);
 
-        builder.HasOne(e => e.ApprovalStatus)
-            .WithMany()
-            .HasForeignKey(e => e.ApprovalStatusId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(e => e.Tenant)
-            .WithMany()
-            .HasForeignKey(e => e.TenantId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(e => e.Actor)
-            .WithMany()
-            .HasForeignKey(e => e.ActorId)
-            .OnDelete(DeleteBehavior.SetNull);
-
         builder.HasOne(e => e.Pii)
             .WithOne(e => e.Organization)
             .HasForeignKey<OrganizationPii>(e => e.OrganizationId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(e => e.Pii).AutoInclude();
-
-        // ===== Performance Indexes =====
-
-        // Primary listing query: active organizations per tenant with approval status
-        builder.HasIndex(e => new { e.TenantId, e.IsDeleted, e.ApprovalStatusId })
-            .HasDatabaseName("ix_organizations_tenant_active_status");
-
-        // Organization search by tenant.
-        builder.HasIndex(e => e.TenantId)
-            .HasDatabaseName("ix_organizations_tenant");
 
         // Optimistic concurrency control (database-agnostic)
         builder.Property(e => e.ConcurrencyStamp)

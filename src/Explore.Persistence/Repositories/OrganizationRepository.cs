@@ -20,6 +20,8 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
     {
         return await _dbContext.Organizations
             .Include(o => o.Pii)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.ApprovalStatus)
             .FirstOrDefaultAsync(o => o.Id == id);
     }
 
@@ -29,12 +31,14 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .AsNoTracking()
             .AsSplitQuery()
             .Include(o => o.Pii)
-            .Include(o => o.ApprovalStatus)
             .Include(o => o.Actor)
                 .ThenInclude(a => a!.Pii)
             .Include(o => o.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(o => o.Tenant)
+                .ThenInclude(a => a!.AtprotoIdentities)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.ApprovalStatus)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.Tenant)
             .ToListAsync(cancellationToken);
     }
 
@@ -49,7 +53,7 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
         CancellationToken cancellationToken = default)
     {
         return await OrganizationDetailsQuery()
-            .FirstOrDefaultAsync(o => o.ActorId == actorId, cancellationToken);
+            .FirstOrDefaultAsync(o => o.Actor != null && o.Actor.Id == actorId, cancellationToken);
     }
 
     private IQueryable<Organization> OrganizationDetailsQuery()
@@ -58,20 +62,26 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
             .Include(o => o.Pii)
-            .Include(o => o.ApprovalStatus)
             .Include(o => o.Actor)
                 .ThenInclude(a => a!.Pii)
             .Include(o => o.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(o => o.Tenant)
-            .Include(o => o.Members)
+                .ThenInclude(a => a!.AtprotoIdentities)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.ApprovalStatus)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.Tenant)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.Members)
                 .ThenInclude(m => m.User)
-            .Include(o => o.Members)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.Members)
                 .ThenInclude(m => m.User)
                 .ThenInclude(u => u!.Pii)
-            .Include(o => o.Members)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.Members)
                 .ThenInclude(m => m.Role)
-            .Include(o => o.Members)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.Members)
                 .ThenInclude(m => m.OrganizationPosition);
     }
 
@@ -81,14 +91,16 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .AsNoTracking()
             .AsSplitQuery()
             .Include(o => o.Pii)
-            .Include(o => o.ApprovalStatus)
             .Include(o => o.Actor)
                 .ThenInclude(a => a!.Pii)
             .Include(o => o.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(o => o.Members)
-                .ThenInclude(m => m.Role)
-            .Where(o => o.Members.Any(m => m.UserId == userId))
+                .ThenInclude(a => a!.AtprotoIdentities)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.ApprovalStatus)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.Members)
+                    .ThenInclude(m => m.Role)
+            .Where(o => o.TenantParticipations.Any(p => p.Members.Any(m => m.UserId == userId)))
             .ToListAsync(cancellationToken);
     }
 
@@ -101,12 +113,14 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .AsNoTracking()
             .AsSplitQuery()
             .Include(o => o.Pii)
-            .Include(o => o.ApprovalStatus)
             .Include(o => o.Actor)
                 .ThenInclude(a => a!.Pii)
             .Include(o => o.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(o => o.Tenant)
+                .ThenInclude(a => a!.AtprotoIdentities)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.ApprovalStatus)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.Tenant)
             .OrderBy(o => o.Pii != null ? o.Pii.FullName : string.Empty);
 
         var totalCount = await query.CountAsync(cancellationToken);
@@ -128,14 +142,16 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .AsNoTracking()
             .AsSplitQuery()
             .Include(o => o.Pii)
-            .Include(o => o.ApprovalStatus)
             .Include(o => o.Actor)
                 .ThenInclude(a => a!.Pii)
             .Include(o => o.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(o => o.Members)
-                .ThenInclude(m => m.Role)
-            .Where(o => o.Members.Any(m => m.UserId == userId))
+                .ThenInclude(a => a!.AtprotoIdentities)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.ApprovalStatus)
+            .Include(o => o.TenantParticipations)
+                .ThenInclude(p => p.Members)
+                    .ThenInclude(m => m.Role)
+            .Where(o => o.TenantParticipations.Any(p => p.Members.Any(m => m.UserId == userId)))
             .OrderBy(o => o.Pii != null ? o.Pii.FullName : string.Empty);
 
         var totalCount = await query.CountAsync(cancellationToken);

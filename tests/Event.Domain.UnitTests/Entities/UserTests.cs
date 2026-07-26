@@ -25,7 +25,6 @@ public class UserTests
 
         await Assert.That(user.EmailVerified).IsNull();
         await Assert.That(user.IsDeleted).IsFalse();
-        await Assert.That(user.ActorId).IsNull();
         await Assert.That(user.Actor).IsNull();
     }
 

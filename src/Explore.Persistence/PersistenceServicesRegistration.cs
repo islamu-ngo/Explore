@@ -196,6 +196,7 @@ public static class PersistenceServicesRegistration
 
         // Actor Repositories
         services.AddScoped<IActorRepository, ActorRepository>();
+        services.AddScoped<IAtprotoIdentityRepository, AtprotoIdentityRepository>();
         services.AddScoped<IActorKeyStoreRepository, ActorKeyStoreRepository>();
         services.AddScoped<IActorSubscriptionRepository, ActorSubscriptionRepository>();
         services.AddScoped<INotificationFanoutRunRepository, NotificationFanoutRunRepository>();
@@ -204,16 +205,20 @@ public static class PersistenceServicesRegistration
 
         // Organization Repositories
         services.AddScoped<IOrganizationRepository, OrganizationRepository>();
+        services.AddScoped<IOrganizationTenantRepository, OrganizationTenantRepository>();
         services.AddScoped<IOrganizationMemberRepository, OrganizationMemberRepository>();
         services.AddScoped<IOrganizationReviewRepository, OrganizationReviewRepository>();
 
         // Group Repositories
         services.AddScoped<IGroupRepository, GroupRepository>();
+        services.AddScoped<IGroupTenantRepository, GroupTenantRepository>();
         services.AddScoped<IGroupMemberRepository, GroupMemberRepository>();
         services.AddScoped<ICustomPropertyDefinitionRepository, CustomPropertyDefinitionRepository>();
 
         // Event Repositories
         services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<IEventPublicActionRepository, EventPublicActionRepository>();
+        services.AddScoped<IEventOrganizerClaimRepository, EventOrganizerClaimRepository>();
         services.AddScoped<IEventHeavyRedactionRepository, EventHeavyRedactionRepository>();
         services.AddScoped<IEventModerationRecordRepository, EventModerationRecordRepository>();
         services.AddScoped<IEventReportRepository, EventReportRepository>();

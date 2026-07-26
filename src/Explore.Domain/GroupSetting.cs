@@ -23,15 +23,9 @@ public class GroupSetting : ITenantEntity, IAuditableEntity
     /// </summary>
     public required Tenant Tenant { get; set; }
 
-    /// <summary>
-    /// The group this setting belongs to.
-    /// </summary>
-    public Guid GroupId { get; set; }
+    public Guid GroupTenantId { get; set; }
 
-    /// <summary>
-    /// Navigation property to the group.
-    /// </summary>
-    public required Group Group { get; set; }
+    public required GroupTenant GroupTenant { get; set; }
 
     /// <summary>
     /// The setting key being overridden.

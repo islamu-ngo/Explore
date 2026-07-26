@@ -28,13 +28,12 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .AsSplitQuery()
             .Include(a => a.Pii)
             .Include(a => a.ActorType)
-            .Include(a => a.DidCustodyType)
-            .Include(a => a.ProfilePicture)
-            .Include(a => a.Tenant)
+            .Include(a => a.AtprotoIdentities)
             .Include(a => a.User)
                 .ThenInclude(u => u!.Pii)
             .Include(a => a.Organization)
                 .ThenInclude(o => o!.Pii)
+            .Include(a => a.Group)
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
     }
 
@@ -44,7 +43,8 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .AsNoTracking()
             .Include(a => a.Pii)
             .Include(a => a.ActorType)
-            .FirstOrDefaultAsync(a => a.Pii != null && a.Pii.Did == did);
+            .Include(a => a.AtprotoIdentities)
+            .FirstOrDefaultAsync(a => a.AtprotoIdentities.Any(identity => identity.Did == did));
     }
 
     public async Task<Actor?> GetActorByHandle(string handle)
@@ -53,7 +53,8 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .AsNoTracking()
             .Include(a => a.Pii)
             .Include(a => a.ActorType)
-            .FirstOrDefaultAsync(a => a.Pii != null && a.Pii.Handle == handle);
+            .Include(a => a.AtprotoIdentities)
+            .FirstOrDefaultAsync(a => a.AtprotoIdentities.Any(identity => identity.Handle == handle));
     }
 
     public async Task<List<Actor>> GetActorsByTenant(Guid tenantId)
@@ -62,15 +63,24 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .AsNoTracking()
             .Include(a => a.Pii)
             .Include(a => a.ActorType)
-            .Where(a => a.TenantId == tenantId)
+            .Where(actor => _dbContext.TenantUsers.Any(participation =>
+                    participation.TenantId == tenantId && participation.ActorId == actor.Id)
+                || _dbContext.OrganizationTenants.Any(participation =>
+                    participation.TenantId == tenantId
+                    && participation.Organization.Actor != null
+                    && participation.Organization.Actor.Id == actor.Id)
+                || _dbContext.GroupTenants.Any(participation =>
+                    participation.TenantId == tenantId
+                    && participation.Group.Actor != null
+                    && participation.Group.Actor.Id == actor.Id))
             .ToListAsync();
     }
 
     public async Task<bool> DidExists(string did)
     {
-        return await _dbContext.Actors
+        return await _dbContext.AtprotoIdentities
             .AsNoTracking()
-            .AnyAsync(a => a.Pii != null && a.Pii.Did == did);
+            .AnyAsync(identity => identity.Did == did);
     }
 
     public async Task<Actor?> GetActorByUserId(Guid userId)
@@ -91,7 +101,9 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .AsNoTracking()
             .Include(a => a.Pii)
             .Include(a => a.ActorType)
-            .FirstOrDefaultAsync(a => a.UserId == userId && a.TenantId == tenantId, cancellationToken);
+            .FirstOrDefaultAsync(a => a.UserId == userId
+                && _dbContext.TenantUsers.Any(participation =>
+                    participation.TenantId == tenantId && participation.ActorId == a.Id), cancellationToken);
     }
 
     public async Task<Actor?> GetActorByOrganizationId(Guid organizationId)
@@ -118,9 +130,8 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .AsSplitQuery()
             .Include(a => a.Pii)
             .Include(a => a.ActorType)
-            .Include(a => a.DidCustodyType)
-            .Include(a => a.ProfilePicture)
-            .OrderByDescending(a => a.IndexedAt ?? DateTime.MinValue);
+            .Include(a => a.AtprotoIdentities)
+            .OrderByDescending(a => a.UpdatedAt ?? a.CreatedAt);
 
         var totalCount = await query.CountAsync();
         var items = await query
@@ -149,11 +160,13 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .AsNoTracking()
             .Include(a => a.Pii)
             .Include(a => a.ActorType)
+            .Include(a => a.AtprotoIdentities)
             .Where(actor => actor.ActorTypeId == (int)ActorTypeEnum.User
                 || actor.ActorTypeId == (int)ActorTypeEnum.Organization)
             .Where(actor => actor.Pii != null
                 && (EF.Functions.ILike(actor.Pii.DisplayName, pattern)
-                    || (actor.Pii.Handle != null && EF.Functions.ILike(actor.Pii.Handle, pattern))
+                    || actor.AtprotoIdentities.Any(identity =>
+                        identity.Handle != null && EF.Functions.ILike(identity.Handle, pattern))
                     || (actor.Description != null && EF.Functions.ILike(actor.Description, pattern))))
             .OrderBy(actor => actor.Pii.DisplayName)
             .ThenBy(actor => actor.Id)

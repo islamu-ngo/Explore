@@ -8,9 +8,9 @@ public class OrganizationMember : ITenantEntity, IAuditableEntity, ISoftDeletabl
 {
     public Guid Id { get; set; }
 
-    [ForeignKey("Organization")]
-    public Guid OrganizationId { get; set; }
-    public required Organization Organization { get; set; }
+    [ForeignKey(nameof(OrganizationTenant))]
+    public Guid OrganizationTenantId { get; set; }
+    public required OrganizationTenant OrganizationTenant { get; set; }
 
     [ForeignKey("User")]
     public Guid UserId { get; set; }

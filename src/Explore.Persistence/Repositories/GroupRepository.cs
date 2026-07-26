@@ -9,12 +9,6 @@ namespace Explore.Persistence.Repositories;
 
 public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
 {
-    private static readonly Func<ExploreDbContext, Guid, Task<Group?>> GetByIdCompiled =
-        EF.CompileAsyncQuery((ExploreDbContext ctx, Guid id) =>
-            ctx.Groups
-                .AsNoTracking()
-                .FirstOrDefault(g => g.Id == id));
-
     private readonly ExploreDbContext _dbContext;
 
     public GroupRepository(ExploreDbContext dbContext) : base(dbContext)
@@ -24,7 +18,10 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
 
     public new async Task<Group?> GetById(Guid id)
     {
-        return await GetByIdCompiled(_dbContext, id);
+        return await _dbContext.Groups
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.ApprovalStatus)
+            .FirstOrDefaultAsync(g => g.Id == id);
     }
 
     public async Task<List<Group>> GetGroupsWithDetails()
@@ -32,12 +29,14 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
         return await _dbContext.Groups
             .AsNoTracking()
             .AsSplitQuery()
-            .Include(g => g.ApprovalStatus)
             .Include(g => g.Actor)
                 .ThenInclude(a => a!.Pii)
             .Include(g => g.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(g => g.Tenant)
+                .ThenInclude(a => a!.AtprotoIdentities)
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.ApprovalStatus)
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.Tenant)
             .ToListAsync();
     }
 
@@ -46,18 +45,23 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
         return await _dbContext.Groups
             .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
-            .Include(g => g.ApprovalStatus)
             .Include(g => g.Actor)
                 .ThenInclude(a => a!.Pii)
             .Include(g => g.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(g => g.Tenant)
-            .Include(g => g.Members)
+                .ThenInclude(a => a!.AtprotoIdentities)
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.ApprovalStatus)
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.Tenant)
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.Members)
                 .ThenInclude(m => m.User)
-            .Include(g => g.Members)
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.Members)
                 .ThenInclude(m => m.User)
                 .ThenInclude(u => u!.Pii)
-            .Include(g => g.Members)
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.Members)
                 .ThenInclude(m => m.Role)
             .FirstOrDefaultAsync(g => g.Id == id);
     }
@@ -67,14 +71,16 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
         return await _dbContext.Groups
             .AsNoTracking()
             .AsSplitQuery()
-            .Include(g => g.ApprovalStatus)
             .Include(g => g.Actor)
                 .ThenInclude(a => a!.Pii)
             .Include(g => g.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(g => g.Members)
-                .ThenInclude(m => m.Role)
-            .Where(g => g.Members.Any(m => m.UserId == userId))
+                .ThenInclude(a => a!.AtprotoIdentities)
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.ApprovalStatus)
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.Members)
+                    .ThenInclude(m => m.Role)
+            .Where(g => g.TenantParticipations.Any(p => p.Members.Any(m => m.UserId == userId)))
             .ToListAsync();
     }
 
@@ -83,12 +89,14 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
         var query = _dbContext.Groups
             .AsNoTracking()
             .AsSplitQuery()
-            .Include(g => g.ApprovalStatus)
             .Include(g => g.Actor)
                 .ThenInclude(a => a!.Pii)
             .Include(g => g.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(g => g.Tenant)
+                .ThenInclude(a => a!.AtprotoIdentities)
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.ApprovalStatus)
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.Tenant)
             .OrderBy(g => g.FullName);
 
         var totalCount = await query.CountAsync();
@@ -105,14 +113,16 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
         var query = _dbContext.Groups
             .AsNoTracking()
             .AsSplitQuery()
-            .Include(g => g.ApprovalStatus)
             .Include(g => g.Actor)
                 .ThenInclude(a => a!.Pii)
             .Include(g => g.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(g => g.Members)
-                .ThenInclude(m => m.Role)
-            .Where(g => g.Members.Any(m => m.UserId == userId))
+                .ThenInclude(a => a!.AtprotoIdentities)
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.ApprovalStatus)
+            .Include(g => g.TenantParticipations)
+                .ThenInclude(p => p.Members)
+                    .ThenInclude(m => m.Role)
+            .Where(g => g.TenantParticipations.Any(p => p.Members.Any(m => m.UserId == userId)))
             .OrderBy(g => g.FullName);
 
         var totalCount = await query.CountAsync();
@@ -126,16 +136,16 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
 
     public async Task<bool> OrganizationExistsInTenant(Guid organizationId, Guid tenantId, CancellationToken cancellationToken)
     {
-        return await _dbContext.Organizations
+        return await _dbContext.OrganizationTenants
             .AsNoTracking()
-            .AnyAsync(o => o.Id == organizationId && o.TenantId == tenantId, cancellationToken);
+            .AnyAsync(p => p.OrganizationId == organizationId && p.TenantId == tenantId, cancellationToken);
     }
 
     public async Task<bool> GroupExistsInTenant(Guid groupId, Guid tenantId, CancellationToken cancellationToken)
     {
-        return await _dbContext.Groups
+        return await _dbContext.GroupTenants
             .AsNoTracking()
-            .AnyAsync(g => g.Id == groupId && g.TenantId == tenantId, cancellationToken);
+            .AnyAsync(p => p.GroupId == groupId && p.TenantId == tenantId, cancellationToken);
     }
 
     public async Task<bool> WouldCreateHierarchyCycle(Guid groupId, Guid parentGroupId, Guid tenantId, CancellationToken cancellationToken)

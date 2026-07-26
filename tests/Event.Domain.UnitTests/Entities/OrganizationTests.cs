@@ -6,9 +6,9 @@ using Explore.Domain.Interfaces;
 public class OrganizationTests
 {
     [Test]
-    public async Task Organization_ImplementsTenantEntityInterface_ExpectedBehavior()
+    public async Task Organization_DoesNotImplementTenantEntityInterface_ExpectedBehavior()
     {
-        await Assert.That(typeof(Organization).GetInterfaces().Contains(typeof(ITenantEntity))).IsTrue();
+        await Assert.That(typeof(Organization).GetInterfaces().Contains(typeof(ITenantEntity))).IsFalse();
     }
 
     [Test]
@@ -27,17 +27,15 @@ public class OrganizationTests
     public async Task RequiredProperties_AreMarkedAsRequired_ExpectedBehavior()
     {
         await Assert.That(IsRequiredProperty<OrganizationPii>(nameof(OrganizationPii.FullName))).IsTrue();
-        await Assert.That(IsRequiredProperty<Organization>(nameof(Organization.ApprovalStatus))).IsTrue();
-        await Assert.That(IsRequiredProperty<Organization>(nameof(Organization.Tenant))).IsTrue();
     }
 
     [Test]
-    public async Task Members_DefaultValue_IsExpected()
+    public async Task TenantParticipations_DefaultValue_IsExpected()
     {
         var entity = CreateOrganization();
 
-        await Assert.That(entity.Members).IsNotNull();
-        await Assert.That(entity.Members).IsEmpty();
+        await Assert.That(entity.TenantParticipations).IsNotNull();
+        await Assert.That(entity.TenantParticipations).IsEmpty();
     }
 
     [Test]
@@ -45,7 +43,6 @@ public class OrganizationTests
     {
         var entity = CreateOrganization();
 
-        await Assert.That(entity.ActorId).IsNull();
         await Assert.That(entity.Actor).IsNull();
     }
 
@@ -71,12 +68,11 @@ public class OrganizationTests
     }
 
     [Test]
-    public async Task ForeignKeyIds_WhenCreated_AreDefaultValue()
+    public async Task Identity_WhenCreated_IsDefaultValue()
     {
         var entity = CreateOrganization();
 
-        await Assert.That(entity.ApprovalStatusId).IsEqualTo(0);
-        await Assert.That(entity.TenantId).IsEqualTo(Guid.Empty);
+        await Assert.That(entity.Id).IsEqualTo(Guid.Empty);
     }
 
     private static bool IsRequiredProperty<T>(string propertyName)
@@ -89,15 +85,7 @@ public class OrganizationTests
     {
         return new Organization
         {
-            Pii = new OrganizationPii { FullName = "Org" },
-            ApprovalStatus = new ApprovalStatus { MasterCode = "PENDING", FullName = "Pending" },
-            Tenant = new Tenant
-            {
-                FullName = "Tenant",
-                Slug = "tenant",
-                TenantStatusId = 2,
-                TenantStatus = new TenantStatus { Id = 2, MasterCode = "ACTIVE", FullName = "Active", IsActiveState = true }
-            }
+            Pii = new OrganizationPii { FullName = "Org" }
         };
     }
 }
