@@ -14,13 +14,14 @@ namespace Event.Application.UnitTests.Features.EventSessionLanguages.Queries;
 public sealed class EventSessionLanguageQueryHandlerCancellationTests
 {
     private readonly IEventSessionLanguageRepository _repository = Substitute.For<IEventSessionLanguageRepository>();
+    private readonly IEventSessionRepository _eventSessionRepository = Substitute.For<IEventSessionRepository>();
     private readonly IMapper _mapper = Substitute.For<IMapper>();
 
     [Test]
     public async Task GetLanguagesBySession_ForwardsCancellationToken()
     {
         var languages = new List<EventSessionLanguage>();
-        var handler = new GetLanguagesBySessionRequestHandler(_repository, _mapper);
+        var handler = new GetLanguagesBySessionRequestHandler(_repository, _eventSessionRepository, _mapper);
         var request = new GetLanguagesBySessionRequest { EventSessionId = Guid.NewGuid() };
         using var cancellation = new CancellationTokenSource();
 

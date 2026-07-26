@@ -5,10 +5,12 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.Features.EventSessionLanguages.Requests.Commands;
 using Explore.Application.Features.EventSessionLanguages.Requests.Queries;
 using Explore.Application.Responses;
+using Explore.Application.Hateoas;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +20,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class EventSessionLanguageController : ControllerBase
 {
     private static readonly ApiNotFoundProblemDescriptor EventSessionNotFoundProblem = new(
@@ -44,10 +47,14 @@ public class EventSessionLanguageController : ControllerBase
         "If-Match header is required and must contain the current event session language concurrency stamp.");
 
     private readonly IMediator _mediator;
+    private readonly IResourceAssembler<EventSessionLanguageDto, EventSessionLanguageListDto> _resourceAssembler;
 
-    public EventSessionLanguageController(IMediator mediator)
+    public EventSessionLanguageController(
+        IMediator mediator,
+        IResourceAssembler<EventSessionLanguageDto, EventSessionLanguageListDto> resourceAssembler)
     {
         _mediator = mediator;
+        _resourceAssembler = resourceAssembler;
     }
 
     [AllowAnonymous]
@@ -55,8 +62,8 @@ public class EventSessionLanguageController : ControllerBase
     [HttpGet("by-session/{eventSessionId:guid}", Name = RouteNames.GetEventSessionLanguages)]
     [EndpointSummary("Get languages by event session")]
     [EndpointDescription("Get all language assignments for a specific event session.")]
-    [ProducesResponseType(typeof(List<EventSessionLanguageListDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<EventSessionLanguageListDto>>> GetBySession(
+    [ProducesResponseType(typeof(HalCollectionResource<EventSessionLanguageListDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HalCollectionResource<EventSessionLanguageListDto>>> GetBySession(
         Guid eventSessionId,
         CancellationToken cancellationToken = default)
     {
@@ -65,7 +72,12 @@ public class EventSessionLanguageController : ControllerBase
             EventSessionId = eventSessionId
         }, cancellationToken);
 
-        return Ok(languages);
+        var resource = await _resourceAssembler.ToCollectionResource(
+            new PaginatedResult<EventSessionLanguageListDto>(languages, languages.Count, 1, Math.Max(languages.Count, 1)),
+            RouteNames.GetEventSessionLanguages,
+            new { eventSessionId },
+            HttpContext);
+        return Ok(resource);
     }
 
     [Authorize]
@@ -122,23 +134,18 @@ public class EventSessionLanguageController : ControllerBase
                 IfMatchValidationProblem.FallbackDetail);
         }
 
-        var existing = await _mediator.Send(new GetEventSessionLanguageDetailsRequest { Id = id }, cancellationToken);
-        if (existing is null || existing.Id == 0)
-        {
-            return this.ToNotFoundProblem(EventSessionLanguageNotFoundProblem);
-        }
-
         var response = await _mediator.Send(new UpdateEventSessionLanguageCommand
         {
             EventSessionLanguageId = id,
             EventSessionLanguageDto = language,
-            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
-            EventSessionId = existing.EventSessionId
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp
         }, cancellationToken);
 
         if (!response.Success)
         {
-            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
+            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+                ? this.ToNotFoundProblem(EventSessionLanguageNotFoundProblem)
+                : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);

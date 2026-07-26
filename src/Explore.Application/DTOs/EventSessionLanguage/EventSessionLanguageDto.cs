@@ -10,6 +10,7 @@ public class EventSessionLanguageDto
     public int Id { get; set; }
     public Guid ConcurrencyStamp { get; set; }
     public Guid EventSessionId { get; set; }
+    public Guid EventId { get; set; }
     public string? EventSessionTitle { get; set; }
     public int LanguageId { get; set; }
     public string? LanguageMasterCode { get; set; } // For i18n with Tolgee

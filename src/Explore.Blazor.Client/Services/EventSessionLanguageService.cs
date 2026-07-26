@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Helpers;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -19,7 +20,8 @@ public sealed class EventSessionLanguageService : IEventSessionLanguageService
         Guid sessionId,
         CancellationToken cancellationToken = default)
     {
-        return await _client.GetEventSessionLanguagesAsync(sessionId, cancellationToken: cancellationToken);
+        var response = await _client.GetEventSessionLanguagesAsync(sessionId, cancellationToken: cancellationToken);
+        return response.GetItems();
     }
 
     public async Task<bool> SyncLanguagesForSessionAsync(

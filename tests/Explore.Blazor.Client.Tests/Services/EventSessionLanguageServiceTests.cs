@@ -23,7 +23,7 @@ public class EventSessionLanguageServiceTests
             new() { Id = 7, EventSessionId = sessionId, LanguageId = 1, LanguageFullName = "English" }
         };
         _apiClient.GetEventSessionLanguagesAsync(sessionId, cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(languages);
+            .Returns(Task.FromResult(ToHalCollection(languages)));
 
         var result = await _service.GetLanguagesBySessionAsync(sessionId);
 
@@ -36,11 +36,11 @@ public class EventSessionLanguageServiceTests
     {
         var sessionId = Guid.NewGuid();
         _apiClient.GetEventSessionLanguagesAsync(sessionId, cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(new List<EventSessionLanguageListDto>
+            .Returns(Task.FromResult(ToHalCollection(new List<EventSessionLanguageListDto>
             {
                 new() { Id = 10, EventSessionId = sessionId, LanguageId = 1 },
                 new() { Id = 11, EventSessionId = sessionId, LanguageId = 3 }
-            });
+            })));
         _apiClient.CreateEventSessionLanguageAsync(
                 Arg.Any<CreateEventSessionLanguageDto>(),
                 cancellationToken: Arg.Any<CancellationToken>())
@@ -61,7 +61,7 @@ public class EventSessionLanguageServiceTests
     {
         var sessionId = Guid.NewGuid();
         _apiClient.GetEventSessionLanguagesAsync(sessionId, cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(new List<EventSessionLanguageListDto>());
+            .Returns(Task.FromResult(ToHalCollection([])));
         _apiClient.CreateEventSessionLanguageAsync(
                 Arg.Any<CreateEventSessionLanguageDto>(),
                 cancellationToken: Arg.Any<CancellationToken>())
@@ -77,10 +77,10 @@ public class EventSessionLanguageServiceTests
     {
         var sessionId = Guid.NewGuid();
         _apiClient.GetEventSessionLanguagesAsync(sessionId, cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(new List<EventSessionLanguageListDto>
+            .Returns(Task.FromResult(ToHalCollection(new List<EventSessionLanguageListDto>
             {
                 new() { Id = 11, EventSessionId = sessionId, LanguageId = 3 }
-            });
+            })));
         _apiClient.DeleteEventSessionLanguageAsync(11, cancellationToken: Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException(
                 "Not found",
@@ -93,4 +93,21 @@ public class EventSessionLanguageServiceTests
 
         await Assert.That(result).IsFalse();
     }
+
+    private static HalCollectionResourceOfEventSessionLanguageListDto ToHalCollection(
+        IEnumerable<EventSessionLanguageListDto> languages) => new()
+    {
+        _embedded = new HalCollectionEmbeddedOfEventSessionLanguageListDto
+        {
+            Items = languages.Select(language => new HalResourceOfEventSessionLanguageListDto
+            {
+                Id = language.Id,
+                EventSessionId = language.EventSessionId,
+                EventId = language.EventId,
+                TenantId = language.TenantId,
+                LanguageId = language.LanguageId,
+                LanguageFullName = language.LanguageFullName
+            }).ToList()
+        }
+    };
 }

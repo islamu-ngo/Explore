@@ -45,18 +45,10 @@ public sealed class EventSessionLanguageControllerTests
     }
 
     [Test]
-    public async Task Update_WhenCommandValidationFails_ReturnsValidationProblemDetails()
+    public async Task Update_WhenCommandValidationFails_DoesNotProbeBeforeSecuredCommand()
     {
-        var eventSessionId = Guid.NewGuid();
         using var mediator = new EventSessionLanguageMediatorStub(request => request switch
         {
-            GetEventSessionLanguageDetailsRequest => new EventSessionLanguageDto
-            {
-                Id = 7,
-                EventSessionId = eventSessionId,
-                LanguageId = 1,
-                ConcurrencyStamp = Guid.NewGuid()
-            },
             UpdateEventSessionLanguageCommand => new BaseCommandResponse<int>
             {
                 Success = false,
@@ -84,7 +76,7 @@ public sealed class EventSessionLanguageControllerTests
         var command = mediator.LastRequest as UpdateEventSessionLanguageCommand;
         await Assert.That(command).IsNotNull();
         await Assert.That(command!.EventSessionLanguageId).IsEqualTo(7);
-        await Assert.That(command.EventSessionId).IsEqualTo(eventSessionId);
+        await Assert.That(command.EventSessionId).IsEqualTo(Guid.Empty);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(concurrencyStamp);
     }
 
