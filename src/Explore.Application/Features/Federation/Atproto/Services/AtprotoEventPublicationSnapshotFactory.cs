@@ -202,8 +202,7 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
         Guid tenantId = graph.Event.TenantId;
         Guid eventId = graph.Event.Id;
         HashSet<Guid> sessionIds = graph.Sessions.Select(session => session.Id).ToHashSet();
-        return graph.Event.Actor.TenantId != tenantId
-            || graph.Event.EventSeries is { } series && series.TenantId != tenantId
+        return graph.Event.EventSeries is { } series && series.TenantId != tenantId
             || graph.EventLocations.Any(row => row.TenantId != tenantId || row.EventId != eventId)
             || graph.Sessions.Any(row => row.TenantId != tenantId || row.EventId != eventId)
             || graph.Days.Any(row => row.TenantId != tenantId || row.EventId != eventId)
@@ -217,8 +216,7 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
             || graph.SessionTags.Any(row => row.TenantId != tenantId || !sessionIds.Contains(row.EventSessionId))
             || graph.SessionLanguages.Any(row => row.TenantId != tenantId || !sessionIds.Contains(row.EventSessionId))
             || graph.SessionSpeakers.Any(row => row.TenantId != tenantId
-                || !sessionIds.Contains(row.EventSessionId)
-                || row.Actor.TenantId != tenantId)
+                || !sessionIds.Contains(row.EventSessionId))
             || graph.CustomPropertyDefinitions.Any(row => row.TenantId != tenantId || row.EventId != eventId)
             || graph.SessionCustomPropertyDefinitions.Any(row => row.TenantId != tenantId
                 || !sessionIds.Contains(row.EventSessionId));
@@ -356,18 +354,18 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
             graph.SessionSpeakers
                 .Where(link => link.EventSessionId == session.Id)
                 .OrderBy(link => link.Actor.Pii.DisplayName, StringComparer.Ordinal)
-                .ThenBy(link => link.Actor.Pii.Handle, StringComparer.Ordinal)
-                .ThenBy(link => link.Actor.ProfilePicture == null ? null : link.Actor.ProfilePicture.Uri, StringComparer.Ordinal)
+                .ThenBy(link => PrimaryAtprotoHandle(link.Actor), StringComparer.Ordinal)
+                .ThenBy(link => link.Actor.Pii.ProfilePictureUri, StringComparer.Ordinal)
                 .ThenBy(link => link.Actor.Description, StringComparer.Ordinal)
                 .ThenBy(link => link.ActorId)
                 .ThenBy(link => link.Id)
                 .Select(link => new AtprotoSpeakerSnapshot(
                     Normalize(link.Actor.Pii.DisplayName)!,
-                    Normalize(link.Actor.Pii.Handle),
+                    Normalize(PrimaryAtprotoHandle(link.Actor)),
                     Normalize(link.Actor.Description),
-                    PublicStorageDescription(link.Actor.ProfilePicture),
-                    PublicStorageDescription(link.Actor.BannerPicture),
-                    PublicStorageDescription(link.Actor.BackgroundImage),
+                    Normalize(link.Actor.Pii.ProfilePictureUri),
+                    null,
+                    null,
                     Normalize(link.Actor.BackgroundColor),
                     Normalize(link.Actor.BackgroundEffect),
                     Normalize(link.Actor.BannerColor)))
@@ -456,7 +454,7 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
         return new(
             Normalize(actor.Pii.DisplayName)!,
             LookupLabel(actor.ActorType.MasterCode, actor.ActorType.FullName, actor.ActorType.Description),
-            Normalize(actor.Pii.Handle),
+            Normalize(PrimaryAtprotoHandle(actor)),
             Normalize(actor.Description),
             Normalize(organization?.Pii.FullName),
             Normalize(organization?.WebsiteUrl),
@@ -464,13 +462,13 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
             Normalize(organization?.Pii.City),
             Normalize(actor.Group?.FullName),
             Normalize(actor.Group?.Description),
-            PublicStorageDescription(actor.ProfilePicture),
-            PublicStorageDescription(actor.BannerPicture),
-            PublicStorageDescription(actor.BackgroundImage),
+            Normalize(actor.Pii.ProfilePictureUri),
+            null,
+            null,
             Normalize(actor.BackgroundColor),
             Normalize(actor.BackgroundEffect),
             Normalize(actor.BannerColor),
-            PublicStorageDescription(actor.Group?.ProfilePicture));
+            null);
     }
 
     private static AtprotoEventSeriesSnapshot? MapSeries(Explore.Domain.EventSeries? series, int? eventOrder)
@@ -490,8 +488,16 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
                 series.EndDateUtc?.ToUniversalTime(),
                 eventOrder,
                 Normalize(series.Actor?.Pii.DisplayName) ?? string.Empty,
-                Normalize(series.Actor?.Pii.Handle),
+                Normalize(series.Actor is null ? null : PrimaryAtprotoHandle(series.Actor)),
                 PublicStorageDescription(series.FeaturedImage));
+
+    private static string? PrimaryAtprotoHandle(Actor actor)
+        => actor.AtprotoIdentities
+            .Where(identity => identity.IsActive && !identity.IsDeleted && !identity.IsSuspended)
+            .OrderByDescending(identity => identity.LastResolvedAt)
+            .ThenBy(identity => identity.Did, StringComparer.Ordinal)
+            .Select(identity => identity.Handle)
+            .FirstOrDefault(handle => !string.IsNullOrWhiteSpace(handle));
 
     private static AtprotoEventDaySnapshot MapDay(EventDay day)
         => new(
@@ -736,7 +742,6 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
     private static ImmutableArray<AtprotoEventUriSnapshot> BuildUris(Event eventEntity)
     {
         var values = new List<AtprotoEventUriSnapshot>();
-        AddUri(values, eventEntity.EventUrl, "Event website");
         AddUri(values, eventEntity.ExternalRegistrationUrl, "Registration");
         AddUri(values, PublicStorageUri(eventEntity.FeaturedImage), "Featured image");
         AddUri(values, PublicStorageUri(eventEntity.BackgroundImage), "Background image");

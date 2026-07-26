@@ -90,8 +90,6 @@ public sealed class AtprotoEventProjectionDiscoveryDeduplicationTests(PostgreSql
             Id = actorId,
             ActorTypeId = (int)ActorTypeEnum.Bot,
             ActorType = null!,
-            TenantId = tenantId,
-            Tenant = tenant,
             Pii = new ActorPii { DisplayName = "Federated event importer" },
             CreatedAt = now,
             ConcurrencyStamp = Guid.CreateVersion7()

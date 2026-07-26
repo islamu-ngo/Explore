@@ -134,15 +134,50 @@ public class SubscribeToActorCommandHandlerTests
 
     private static Actor CreateActor(Guid tenantId, ActorTypeEnum actorType)
     {
-        return new Actor
+        var actor = new Actor
         {
             Id = Guid.NewGuid(),
-            TenantId = tenantId,
-            Tenant = null!,
             ActorTypeId = (int)actorType,
             ActorType = null!,
             Pii = new ActorPii { ActorId = Guid.NewGuid(), DisplayName = "Target actor" }
         };
+        if (actorType == ActorTypeEnum.Organization)
+        {
+            var organization = new Organization
+            {
+                Id = Guid.NewGuid(),
+                Pii = new OrganizationPii { FullName = "Target organization" },
+                Actor = actor
+            };
+            organization.TenantParticipations.Add(new OrganizationTenant
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                Tenant = null!,
+                OrganizationId = organization.Id,
+                Organization = organization,
+                ApprovalStatus = null!
+            });
+            actor.OrganizationId = organization.Id;
+            actor.Organization = organization;
+        }
+        else
+        {
+            var group = new Group { Id = Guid.NewGuid(), FullName = "Target group", Actor = actor };
+            group.TenantParticipations.Add(new GroupTenant
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                Tenant = null!,
+                GroupId = group.Id,
+                Group = group,
+                ApprovalStatus = null!
+            });
+            actor.GroupId = group.Id;
+            actor.Group = group;
+        }
+
+        return actor;
     }
 
     private static ActorSubscription CreateSubscription(Guid tenantId, TenantUser tenantUser, Actor targetActor, ActorSubscriptionStatusEnum status)

@@ -70,9 +70,6 @@ public class CreateActorCommandHandler : IRequestHandler<CreateActorCommand, Bas
 
         var actor = _mapper.Map<Actor>(request.ActorDto);
 
-        // Override TenantId with the value from the request context
-        actor.TenantId = _tenantContext.TenantId;
-
         actor = await _actorRepository.Create(actor);
 
         response.Success = true;

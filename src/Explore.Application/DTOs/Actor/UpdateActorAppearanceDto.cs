@@ -10,6 +10,4 @@ public class UpdateActorAppearanceDto
     public OptionalUpdate<string?> BackgroundColor { get; set; } = OptionalUpdate<string?>.Unspecified();
     public OptionalUpdate<string?> BackgroundEffect { get; set; } = OptionalUpdate<string?>.Unspecified();
     public OptionalUpdate<string?> BannerColor { get; set; } = OptionalUpdate<string?>.Unspecified();
-    public OptionalUpdate<Guid?> BannerPictureId { get; set; } = OptionalUpdate<Guid?>.Unspecified();
-    public OptionalUpdate<Guid?> BackgroundImageId { get; set; } = OptionalUpdate<Guid?>.Unspecified();
 }

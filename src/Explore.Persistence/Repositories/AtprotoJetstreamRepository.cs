@@ -11,6 +11,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Federation;
 using Explore.Domain.Services.Scheduling;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -845,36 +846,57 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
 
         foreach (AtprotoFederatedEventImportPlan import in imports)
         {
-            Actor? actor = _dbContext.ChangeTracker.Entries<Actor>()
+            AtprotoIdentity? identity = _dbContext.ChangeTracker.Entries<AtprotoIdentity>()
                 .Where(entry => entry.State != EntityState.Deleted)
                 .Select(entry => entry.Entity)
-                .SingleOrDefault(value =>
-                    value.TenantId == import.TenantId
-                    && !value.IsDeleted
-                    && string.Equals(value.Pii.Did, import.Did, StringComparison.Ordinal));
-            actor ??= await _dbContext.Actors
-                .IgnoreTenantFilter(filterBypassReason)
-                .SingleOrDefaultAsync(value =>
-                    value.TenantId == import.TenantId
-                    && value.Pii.Did == import.Did,
-                    cancellationToken);
-            if (actor is null)
+                .SingleOrDefault(value => string.Equals(value.Did, import.Did, StringComparison.Ordinal));
+            identity ??= await _dbContext.AtprotoIdentities
+                .IgnoreAllFilters(filterBypassReason)
+                .Include(value => value.Actor)
+                    .ThenInclude(actor => actor.Pii)
+                .SingleOrDefaultAsync(value => value.Did == import.Did, cancellationToken);
+            if (identity is null)
             {
-                actor = new Actor
+                var externalSubject = new ExternalActorSubject
                 {
                     Id = Guid.CreateVersion7(),
-                    TenantId = import.TenantId,
-                    Tenant = null!,
+                    FirstObservedAt = observedAt,
+                    LastObservedAt = observedAt,
+                    CreatedAt = observedAt
+                };
+                var newActor = new Actor
+                {
+                    Id = Guid.CreateVersion7(),
                     ActorTypeId = (int)ActorTypeEnum.Bot,
                     ActorType = null!,
+                    ExternalActorSubjectId = externalSubject.Id,
+                    ExternalActorSubject = externalSubject,
                     Pii = new ActorPii
                     {
-                        DisplayName = import.Did,
-                        Did = import.Did
-                    }
+                        DisplayName = import.Did
+                    },
+                    CreatedAt = observedAt
                 };
-                await _dbContext.Actors.AddAsync(actor, cancellationToken);
+                identity = new AtprotoIdentity
+                {
+                    Id = Guid.CreateVersion7(),
+                    Did = import.Did,
+                    ActorId = newActor.Id,
+                    Actor = newActor,
+                    PdsHost = string.Empty,
+                    IsActive = false,
+                    LastResolvedAt = observedAt,
+                    LastSeenAt = observedAt,
+                    CreatedAt = observedAt
+                };
+                await _dbContext.AtprotoIdentities.AddAsync(identity, cancellationToken);
             }
+            else
+            {
+                identity.LastSeenAt = observedAt;
+            }
+
+            Actor actor = identity.Actor;
 
             Explore.Domain.Event? importedEvent = _dbContext.ChangeTracker.Entries<Explore.Domain.Event>()
                 .Where(entry => entry.State != EntityState.Deleted)
@@ -898,6 +920,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                     Tenant = null!,
                     ActorId = actor.Id,
                     Actor = actor,
+                    EventProvenanceTypeId = (int)EventProvenanceTypeEnum.Federated,
                     Title = import.Name,
                     Slug = SlugGenerator.FromTitle(import.Name, "event"),
                     VisibilityTypeId = (int)VisibilityTypeEnum.Public,
@@ -919,10 +942,10 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             {
                 importedEvent.ActorId = actor.Id;
                 importedEvent.Actor = actor;
+                importedEvent.EventProvenanceTypeId = (int)EventProvenanceTypeEnum.Federated;
                 importedEvent.Title = import.Name;
                 importedEvent.Content = import.Description;
                 importedEvent.Description = SummarizeDescription(import.Description);
-                importedEvent.EventUrl = import.SourceUrl;
                 importedEvent.EventFormatId = MapEventFormat(import.Mode);
                 importedEvent.EventStatusId = MapEventStatus(import.Status);
                 importedEvent.EventTimeZoneId = import.TimeZoneId;
@@ -939,6 +962,13 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 importedEvent.IsDeleted = false;
                 importedEvent.DeletedAt = null;
                 importedEvent.DeletedBy = null;
+
+                await ReconcileOriginalSourceActionAsync(
+                    importedEvent,
+                    import.SourceUrl,
+                    observedAt,
+                    filterBypassReason,
+                    cancellationToken);
             }
 
             await ApplyThumbnailAsync(
@@ -1015,6 +1045,73 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             }
             importedEvent.RecalculateScheduleSummaryFromSessions();
         }
+    }
+
+    private async Task ReconcileOriginalSourceActionAsync(
+        Explore.Domain.Event importedEvent,
+        string? sourceUrl,
+        DateTime observedAt,
+        string filterBypassReason,
+        CancellationToken cancellationToken)
+    {
+        EventPublicAction? action = _dbContext.ChangeTracker.Entries<EventPublicAction>()
+            .Where(entry => entry.State != EntityState.Deleted)
+            .Select(entry => entry.Entity)
+            .SingleOrDefault(value =>
+                value.TenantId == importedEvent.TenantId
+                && value.EventId == importedEvent.Id
+                && value.EventPublicActionKindId == (int)EventPublicActionKindEnum.OriginalSource);
+        action ??= await _dbContext.EventPublicActions
+            .IgnoreAllFilters(filterBypassReason)
+            .SingleOrDefaultAsync(value =>
+                value.TenantId == importedEvent.TenantId
+                && value.EventId == importedEvent.Id
+                && value.EventPublicActionKindId == (int)EventPublicActionKindEnum.OriginalSource,
+                cancellationToken);
+
+        if (sourceUrl is null)
+        {
+            if (action is not null)
+            {
+                action.IsDeleted = true;
+                action.DeletedAt = observedAt;
+                action.UpdatedAt = observedAt;
+            }
+
+            return;
+        }
+
+        ExternalActionUrl destination = ExternalActionUrl.Create(sourceUrl);
+        if (action is null)
+        {
+            action = new EventPublicAction
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = importedEvent.TenantId,
+                EventId = importedEvent.Id,
+                Event = importedEvent,
+                EventPublicActionKindId = (int)EventPublicActionKindEnum.OriginalSource,
+                HealthStateId = (int)EventPublicActionHealthStateEnum.PendingReview,
+                SortOrder = 0,
+                IsPrimary = false,
+                CreatedAt = observedAt,
+                ConcurrencyStamp = Guid.CreateVersion7()
+            };
+            action.SetDestination(destination);
+            await _dbContext.EventPublicActions.AddAsync(action, cancellationToken);
+            return;
+        }
+
+        if (!string.Equals(action.Url, destination.Value, StringComparison.Ordinal))
+        {
+            action.SetDestination(destination);
+            action.HealthStateId = (int)EventPublicActionHealthStateEnum.PendingReview;
+        }
+
+        action.IsDeleted = false;
+        action.DeletedAt = null;
+        action.DeletedBy = null;
+        action.UpdatedAt = observedAt;
     }
 
     private async Task ApplyThumbnailAsync(

@@ -29,7 +29,6 @@ public static class AtprotoEventSourceFieldManifest
         Excluded("Event.LastSessionEndUtc", "cached schedule rollup; native time derives from eligible sessions"),
         Native("Event.EventFormat.MasterCode", "community event mode"),
         Native("Event.EventStatus.MasterCode", "community event status"),
-        Native("Event.EventUrl", "community event URI"),
         Native("Event.ExternalRegistrationUrl", "community event URI"),
         Native("Event.IsRegistrationRequired", "community event rsvpExpected"),
 
@@ -72,16 +71,26 @@ public static class AtprotoEventSourceFieldManifest
         Description("Event.SeriesOrder"),
         Description("Event.BackgroundColor"),
         Description("Event.BackgroundEffect"),
+        Excluded("Event.EventProvenanceTypeId", "internal ingestion provenance discriminator, never public payload"),
+        Excluded("Event.OrganizerActorId", "internal organizer attribution foreign key; public organizer data comes from Event.Actor"),
+        Excluded("Event.SourcePublisherName", "unverified source attribution metadata, never public payload"),
+        Excluded("Event.SubmittedByUserId", "private submitting-user identifier, never public payload"),
 
         Description("Event.Actor.ActorType.MasterCode"),
         Description("Event.Actor.ActorType.FullName"),
         Description("Event.Actor.ActorType.Description"),
         Description("Event.Actor.Pii.DisplayName"),
-        Description("Event.Actor.Pii.Handle"),
+        Description("Event.Actor.AtprotoIdentity.Handle"),
         Description("Event.Actor.Description"),
         Description("Event.Actor.BackgroundColor"),
         Description("Event.Actor.BackgroundEffect"),
         Description("Event.Actor.BannerColor"),
+        Excluded("Event.Actor.ExternalActorSubjectId", "internal external-subject linkage, never public payload"),
+        Excluded("Event.Actor.ServicePrincipalId", "internal service-principal linkage, never public payload"),
+        Excluded("Event.Actor.IsSuspended", "moderation state is an eligibility gate, never public payload"),
+        Excluded("Event.Actor.SuspendedAt", "private moderation timestamp, never public payload"),
+        Excluded("Event.Actor.SuspendedBy", "private moderator identifier, never public payload"),
+        Excluded("Event.Actor.ModerationReasonCode", "private moderation evidence, never public payload"),
         Description("Event.Actor.Organization.Pii.FullName"),
         Description("Event.Actor.Organization.WebsiteUrl"),
         Description("Event.Actor.Organization.Pii.Country"),
@@ -101,7 +110,7 @@ public static class AtprotoEventSourceFieldManifest
         Description("Event.EventSeries.StartDateUtc"),
         Description("Event.EventSeries.EndDateUtc"),
         Description("Event.EventSeries.Actor.Pii.DisplayName"),
-        Description("Event.EventSeries.Actor.Pii.Handle"),
+        Description("Event.EventSeries.Actor.AtprotoIdentity.Handle"),
 
         Description("Event.IslamicAspect.Madhab.MasterCode"),
         Description("Event.IslamicAspect.Madhab.FullName"),
@@ -172,11 +181,17 @@ public static class AtprotoEventSourceFieldManifest
         Description("EventSession.Price"),
         Description("EventSession.CurrencyCode"),
         Description("EventSession.Speaker.Actor.Pii.DisplayName"),
-        Description("EventSession.Speaker.Actor.Pii.Handle"),
+        Description("EventSession.Speaker.Actor.AtprotoIdentity.Handle"),
         Description("EventSession.Speaker.Actor.Description"),
         Description("EventSession.Speaker.Actor.BackgroundColor"),
         Description("EventSession.Speaker.Actor.BackgroundEffect"),
         Description("EventSession.Speaker.Actor.BannerColor"),
+        Excluded("EventSession.Speaker.Actor.ExternalActorSubjectId", "internal external-subject linkage, never public payload"),
+        Excluded("EventSession.Speaker.Actor.ServicePrincipalId", "internal service-principal linkage, never public payload"),
+        Excluded("EventSession.Speaker.Actor.IsSuspended", "moderation state is an eligibility gate, never public payload"),
+        Excluded("EventSession.Speaker.Actor.SuspendedAt", "private moderation timestamp, never public payload"),
+        Excluded("EventSession.Speaker.Actor.SuspendedBy", "private moderator identifier, never public payload"),
+        Excluded("EventSession.Speaker.Actor.ModerationReasonCode", "private moderation evidence, never public payload"),
         Description("EventSession.IslamicAspect.StartTimeType"),
         Description("EventSession.IslamicAspect.ReferencePrayer"),
         Description("EventSession.IslamicAspect.OffsetMinutes"),
@@ -318,12 +333,9 @@ public static class AtprotoEventSourceFieldManifest
 
         .. ExcludedMany(
             [
-                "Event.Actor.ActorTypeId", "Event.Actor.BackgroundImageId", "Event.Actor.BannerPictureId",
-                "Event.Actor.DidCustodyTypeId", "Event.Actor.Group.ActorId", "Event.Actor.Group.ApprovalStatusId",
-                "Event.Actor.Group.ParentGroupId", "Event.Actor.Group.ParentOrganizationId",
-                "Event.Actor.Group.ProfilePictureId", "Event.Actor.GroupId", "Event.Actor.Organization.ActorId",
-                "Event.Actor.Organization.ApprovalStatusId", "Event.Actor.Organization.Pii.OrganizationId",
-                "Event.Actor.OrganizationId", "Event.Actor.Pii.ActorId", "Event.Actor.ProfilePictureId",
+                "Event.Actor.ActorTypeId", "Event.Actor.GroupId",
+                "Event.Actor.Organization.Pii.OrganizationId",
+                "Event.Actor.OrganizationId", "Event.Actor.Pii.ActorId",
                 "Event.Actor.UserId", "Event.ActorId", "Event.AtprotoRecordId", "Event.AudienceAgeId",
                 "Event.AudienceGenderId", "Event.BackgroundImageId", "Event.Category.ParentId",
                 "Event.EventFormatId", "Event.EventSeries.ActorId", "Event.EventSeries.FeaturedImageId",
@@ -344,10 +356,9 @@ public static class AtprotoEventSourceFieldManifest
                 "EventSession.FeaturedImageId", "EventSession.IslamicAspect.EventSessionId",
                 "EventSession.LocationId", "EventSession.RegistrationModeId", "EventSession.RoomId",
                 "EventSession.SourceTemplateId", "EventSession.Speaker.Actor.ActorTypeId",
-                "EventSession.Speaker.Actor.BackgroundImageId", "EventSession.Speaker.Actor.BannerPictureId",
-                "EventSession.Speaker.Actor.DidCustodyTypeId", "EventSession.Speaker.Actor.GroupId",
+                "EventSession.Speaker.Actor.GroupId",
                 "EventSession.Speaker.Actor.OrganizationId", "EventSession.Speaker.Actor.Pii.ActorId",
-                "EventSession.Speaker.Actor.ProfilePictureId", "EventSession.Speaker.Actor.UserId",
+                "EventSession.Speaker.Actor.UserId",
                 "EventSession.Speaker.ActorId", "EventSession.Speaker.EventSessionId",
                 "EventSessionAgendaItem.EventLocationId", "EventSessionAgendaItem.EventSessionId",
                 "EventSessionAgendaItem.LocationId", "EventSessionCategoryLink.CategoryId",
@@ -384,17 +395,8 @@ public static class AtprotoEventSourceFieldManifest
 
         .. ExcludedMany(
             [
-                "Event.Actor.Organization.ApprovedAt", "Event.Actor.Organization.ApprovedBy",
-                "Event.Actor.Organization.ApprovalNotes", "Event.Actor.IndexedAt",
-                "EventSession.Speaker.Actor.IndexedAt"
-            ],
-            "administrative approval or indexing audit metadata"),
-
-        .. ExcludedMany(
-            [
-                "Event.Actor.Did", "Event.Actor.ProfilePictureCid", "Event.Actor.Pii.ProfilePictureUri",
-                "Event.Actor.ProfilePictureUri", "EventSession.Speaker.Actor.Did",
-                "EventSession.Speaker.Actor.PdsHost", "EventSession.Speaker.Actor.Pii.Did",
+                "Event.Actor.ProfilePictureCid", "Event.Actor.Pii.ProfilePictureUri",
+                "Event.Actor.ProfilePictureUri",
                 "EventSession.Speaker.Actor.Pii.ProfilePictureUri",
                 "EventSession.Speaker.Actor.ProfilePictureCid", "EventSession.Speaker.Actor.ProfilePictureUri"
             ],
@@ -402,9 +404,9 @@ public static class AtprotoEventSourceFieldManifest
 
         .. ExcludedMany(
             [
-                "Event.Actor.DisplayName", "Event.Actor.Handle", "Event.Actor.Organization.City",
+                "Event.Actor.DisplayName", "Event.Actor.Organization.City",
                 "Event.Actor.Organization.Country", "Event.Actor.Organization.FullName",
-                "EventSession.Speaker.Actor.DisplayName", "EventSession.Speaker.Actor.Handle"
+                "EventSession.Speaker.Actor.DisplayName"
             ],
             "not-mapped alias; the canonical PII extension value is classified separately"),
 
@@ -462,8 +464,10 @@ public static class AtprotoEventSourceFieldManifest
         Description("Event.Category.Parent.MasterCode"),
         Excluded("Event.Category.Parent.ParentId", "internal parent-category relationship identifier"),
         Excluded("Event.EventSeries.Actor.Pii.ActorId", "internal actor relationship identifier"),
-        Excluded("Event.EventSeries.Actor.Pii.Did", "provider identity bookkeeping"),
         Excluded("Event.EventSeries.Actor.Pii.ProfilePictureUri", "legacy remote-media bookkeeping"),
+        Excluded("Event.Actor.AtprotoIdentity.*", "identity authority metadata; only the verified handle is rendered"),
+        Excluded("Event.EventSeries.Actor.AtprotoIdentity.*", "identity authority metadata; only the verified handle is rendered"),
+        Excluded("EventSession.Speaker.Actor.AtprotoIdentity.*", "identity authority metadata; only the verified handle is rendered"),
 
         .. ExcludedNestedOptionFields("EventCustomPropertyDefinition.DefaultOption"),
         .. ExcludedNestedOptionFields("EventCustomPropertyOption.ParentOption"),
@@ -484,11 +488,8 @@ public static class AtprotoEventSourceFieldManifest
         Excluded("EventDay.IsPublished", "publication eligibility gate, never payload"),
         Excluded("EventSessionGroup.IsPublished", "publication eligibility gate, never payload"),
         Excluded("*.IsDeleted", "soft-delete eligibility gate, never payload"),
-        Excluded("Event.IsUserReported", "moderation signal"),
         Excluded("Event.SourceTemplate*", "template provenance"),
         Excluded("Event.Provenance*", "import provenance"),
-        Excluded("Event.Actor.Pii.Did", "provider identity bookkeeping"),
-        Excluded("Event.Actor.PdsHost", "provider infrastructure"),
         Excluded("Event.Actor.Organization.Pii.Email", "organizer PII"),
         Excluded("Event.Actor.Organization.Pii.Address", "organizer PII"),
         Excluded("Event.Actor.Organization.Pii.Postcode", "organizer PII"),

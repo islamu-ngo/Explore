@@ -45,7 +45,14 @@ public class GetActorDetailsRequestHandlerTests
         var actor = DataBuilder.Actor.Generate();
         actor.Id = actorId;
         actor.DisplayName = "Test Actor";
-        actor.Did = "did:plc:test123";
+        actor.AtprotoIdentities.Add(new AtprotoIdentity
+        {
+            Did = "did:plc:test123",
+            ActorId = actorId,
+            Actor = actor,
+            PdsHost = "https://pds.example.com",
+            LastResolvedAt = DateTime.UtcNow
+        });
 
         var expectedDto = new ActorDto
         {
@@ -89,20 +96,15 @@ public class GetActorDetailsRequestHandlerTests
     {
         // Arrange
         var actorId = Guid.NewGuid();
-        var profilePictureId = Guid.NewGuid();
         var request = new GetActorDetailsRequest { Id = actorId };
 
         var actor = DataBuilder.Actor.Generate();
         actor.Id = actorId;
-        actor.ProfilePictureId = profilePictureId;
-        actor.ProfilePicture = DataBuilder.StorageObject.Generate();
-        actor.ProfilePicture.Id = profilePictureId;
-        actor.ProfilePicture.Uri = "https://storage.example.com/image.jpg";
+        actor.ProfilePictureUri = "https://storage.example.com/image.jpg";
 
         var expectedDto = new ActorDto
         {
             Id = actorId,
-            ProfilePictureId = profilePictureId,
             ProfilePictureUri = "https://storage.example.com/image.jpg"
         };
 
@@ -117,7 +119,6 @@ public class GetActorDetailsRequestHandlerTests
 
         // Assert
         await Assert.That(result).IsNotNull();
-        await Assert.That(result.ProfilePictureId).IsEqualTo(profilePictureId);
         await Assert.That(result.ProfilePictureUri).IsNotNull();
     }
 

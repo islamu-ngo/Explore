@@ -224,6 +224,7 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
 
         context.ChangeTracker.Clear();
         Explore.Domain.Event imported = await context.Events.AsNoTracking().SingleAsync();
+        EventPublicAction sourceAction = await context.EventPublicActions.AsNoTracking().SingleAsync();
         EventSession session = await context.EventSessions.AsNoTracking().SingleAsync();
         string persistedJson = await context.AtprotoRecords.Select(value => value.RecordJson!).SingleAsync();
         await Assert.That(applied).IsTrue();
@@ -474,6 +475,7 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
         await Assert.That(eventCount).IsEqualTo(1);
 
         Explore.Domain.Event imported = await context.Events.AsNoTracking().SingleAsync();
+        EventPublicAction sourceAction = await context.EventPublicActions.AsNoTracking().SingleAsync();
         EventSession session = await context.EventSessions.AsNoTracking().SingleAsync();
         await Assert.That(applied).IsTrue();
         await Assert.That(imported.AtprotoRecordId).IsEqualTo(record.Id);
@@ -482,7 +484,11 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
         await Assert.That(imported.Title).IsEqualTo("Imported event");
         await Assert.That(imported.Content).IsEqualTo("Imported event description");
         await Assert.That(imported.Description).IsEqualTo("Imported event description");
-        await Assert.That(imported.EventUrl).IsEqualTo(source);
+        await Assert.That(sourceAction.Url).IsEqualTo(source);
+        await Assert.That(sourceAction.EventPublicActionKindId)
+            .IsEqualTo((int)EventPublicActionKindEnum.OriginalSource);
+        await Assert.That(sourceAction.HealthStateId)
+            .IsEqualTo((int)EventPublicActionHealthStateEnum.PendingReview);
         await Assert.That(imported.CreatedAt).IsEqualTo(sourceCreatedAt.UtcDateTime);
         await Assert.That(imported.EventFormatId).IsEqualTo((int)EventFormatEnum.Digital);
         await Assert.That(imported.EventStatusId).IsEqualTo((int)EventStatusEnum.Published);
@@ -542,6 +548,7 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
 
         context.ChangeTracker.Clear();
         Explore.Domain.Event imported = await context.Events.AsNoTracking().SingleAsync();
+        EventPublicAction sourceAction = await context.EventPublicActions.AsNoTracking().SingleAsync();
         EventSession session = await context.EventSessions.AsNoTracking().SingleAsync();
         await Assert.That(applied).IsTrue();
         await Assert.That(imported.EventStatusId).IsEqualTo((int)expectedEventStatus);
@@ -588,6 +595,7 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
 
         context.ChangeTracker.Clear();
         Explore.Domain.Event imported = await context.Events.AsNoTracking().SingleAsync();
+        EventPublicAction sourceAction = await context.EventPublicActions.AsNoTracking().SingleAsync();
         EventSession session = await context.EventSessions.AsNoTracking().SingleAsync();
         await Assert.That(applied).IsTrue();
         await Assert.That(imported.Content).IsEqualTo(description);
@@ -788,12 +796,13 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
 
         context.ChangeTracker.Clear();
         Explore.Domain.Event imported = await context.Events.AsNoTracking().SingleAsync();
+        EventPublicAction sourceAction = await context.EventPublicActions.AsNoTracking().SingleAsync();
         EventSession session = await context.EventSessions.AsNoTracking().SingleAsync();
         await Assert.That(updated).IsTrue();
         await Assert.That(imported.Id).IsEqualTo(eventId);
         await Assert.That(session.Id).IsEqualTo(sessionId);
         await Assert.That(imported.Title).IsEqualTo("Updated title");
-        await Assert.That(imported.EventUrl).IsEqualTo("https://events.example/updated");
+        await Assert.That(sourceAction.Url).IsEqualTo("https://events.example/updated");
         await Assert.That(session.Title).IsEqualTo("Updated title");
         await Assert.That(session.StartTime).IsEqualTo(updatedStart);
         await Assert.That(session.EndTime).IsEqualTo(updatedEnd);
@@ -837,12 +846,13 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
         context.ChangeTracker.Clear();
         AtprotoRecord canonical = await context.AtprotoRecords.AsNoTracking().SingleAsync();
         Explore.Domain.Event after = await context.Events.AsNoTracking().SingleAsync();
+        EventPublicAction sourceAction = await context.EventPublicActions.AsNoTracking().SingleAsync();
         EventSession sessionAfter = await context.EventSessions.AsNoTracking().SingleAsync();
         await Assert.That(applied).IsTrue();
         await Assert.That(canonical.SourceVersion).IsEqualTo(2);
         await Assert.That(after.Id).IsEqualTo(before.Id);
         await Assert.That(after.Title).IsEqualTo("Current title");
-        await Assert.That(after.EventUrl).IsEqualTo("https://events.example/current");
+        await Assert.That(sourceAction.Url).IsEqualTo("https://events.example/current");
         await Assert.That(sessionAfter.Id).IsEqualTo(sessionBefore.Id);
         await Assert.That(sessionAfter.Title).IsEqualTo("Current title");
         await Assert.That(await context.Events.CountAsync()).IsEqualTo(1);
@@ -1705,18 +1715,25 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
         var actor = new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = scope.TenantId,
-            Tenant = null!,
             ActorTypeId = (int)ActorTypeEnum.Bot,
             ActorType = null!,
             Pii = new ActorPii
             {
-                DisplayName = "Default stamp actor",
-                Did = "did:plc:default-stamp"
-            }
+                DisplayName = "Default stamp actor"
+            },
+        };
+        var identity = new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            ActorId = actor.Id,
+            Actor = actor,
+            Did = "did:plc:default-stamp",
+            PdsHost = "https://pds.example.invalid",
+            IsActive = true,
+            LastResolvedAt = DateTime.UtcNow,
         };
         DateTime beforeSave = DateTime.UtcNow;
-        context.Actors.Add(actor);
+        context.AddRange(actor, identity);
         await context.SaveChangesAsync();
         DateTime afterSave = DateTime.UtcNow;
 
@@ -1761,15 +1778,24 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
             ActorType = null!,
             UserId = user.Id,
             User = user,
-            TenantId = tenant.Id,
-            Tenant = tenant,
             Pii = new ActorPii
             {
-                DisplayName = "Remote organizer",
-                Did = Did
+                DisplayName = "Remote organizer"
             },
             CreatedAt = now,
             ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        var identity = new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            ActorId = actor.Id,
+            Actor = actor,
+            Did = Did,
+            PdsHost = "https://pds.example.invalid",
+            IsActive = true,
+            LastResolvedAt = now,
+            LastSeenAt = now,
+            CreatedAt = now
         };
         var tenantUser = new TenantUser
         {
@@ -1782,7 +1808,7 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
             JoinedAt = now,
             CreatedAt = now
         };
-        context.AddRange(actor, tenantUser);
+        context.AddRange(actor, identity, tenantUser);
         await context.SaveChangesAsync();
         return new(tenant.Id, actor.Id);
     }

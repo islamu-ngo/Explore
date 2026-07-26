@@ -75,7 +75,7 @@ public class EventActorResolver : IEventActorResolver
                 "Organization does not have an associated actor.",
                 "The organization is not properly configured. Please contact support.");
 
-        return EventActorResult.Success(actor.Id, isUserReported: false);
+        return EventActorResult.Success(actor.Id, isCommunitySubmission: false);
     }
 
     private async Task<EventActorResult> ResolveGroupActorAsync(
@@ -95,7 +95,7 @@ public class EventActorResolver : IEventActorResolver
                 "Group does not have an associated actor.",
                 "The group is not properly configured. Please contact support.");
 
-        return EventActorResult.Success(actor.Id, isUserReported: false);
+        return EventActorResult.Success(actor.Id, isCommunitySubmission: false);
     }
 
     private async Task<EventActorResult> ResolvePersonalActorAsync(
@@ -112,6 +112,6 @@ public class EventActorResolver : IEventActorResolver
                 "Your personal actor was not found.",
                 "Your account is not properly set up. Please sync your profile first.");
 
-        return EventActorResult.Success(actor.Id, isUserReported: true);
+        return EventActorResult.Success(actor.Id, isCommunitySubmission: true);
     }
 }

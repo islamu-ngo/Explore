@@ -21,26 +21,26 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
 {
     private readonly IActorRepository _actorRepository;
     private readonly IActorTypeRepository _actorTypeRepository;
-    private readonly IDidCustodyTypeRepository _didCustodyTypeRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IAuthorizationProvider _authorizationProvider;
+    private readonly ITenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly HybridCache _cache;
 
     public UpdateActorCommandHandler(
         IActorRepository actorRepository,
         IActorTypeRepository actorTypeRepository,
-        IDidCustodyTypeRepository didCustodyTypeRepository,
         IStorageObjectRepository storageObjectRepository,
         IAuthorizationProvider authorizationProvider,
+        ITenantContext tenantContext,
         IUnitOfWork unitOfWork,
         HybridCache cache)
     {
         _actorRepository = actorRepository;
         _actorTypeRepository = actorTypeRepository;
-        _didCustodyTypeRepository = didCustodyTypeRepository;
         _storageObjectRepository = storageObjectRepository;
         _authorizationProvider = authorizationProvider;
+        _tenantContext = tenantContext;
         _unitOfWork = unitOfWork;
         _cache = cache;
     }
@@ -50,11 +50,8 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
         var response = new BaseCommandResponse<Guid>();
 
         var validator = new UpdateActorDtoValidator(
-            request.ActorId,
             _actorTypeRepository,
-            _didCustodyTypeRepository,
-            _storageObjectRepository,
-            _actorRepository);
+            _storageObjectRepository);
         var validationResult = await validator.ValidateAsync(request.UpdateActorDto, cancellationToken);
         if (!validationResult.IsValid)
         {
@@ -85,11 +82,15 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
                     actor.Id.ToString());
             }
 
-            await ApplyProfileImageAsync(actor, request.UpdateActorDto.ProfileImage);
-            await ApplyAppearanceAsync(actor, request.UpdateActorDto.Appearance);
+            if (!await ApplyProfileImageAsync(actor, request.UpdateActorDto.ProfileImage))
+            {
+                response.Success = false;
+                response.Message = "Profile image was not found in the current tenant.";
+                return response;
+            }
+
+            ApplyAppearance(actor, request.UpdateActorDto.Appearance);
             ApplyProfile(actor, request.UpdateActorDto.Profile);
-            ApplyFederationIdentifiers(actor, request.UpdateActorDto.FederationIdentifiers);
-            ApplyFederationMetadata(actor, request.UpdateActorDto.FederationMetadata);
 
             await _actorRepository.Update(actor);
 
@@ -122,18 +123,16 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
         }
     }
 
-    private static IReadOnlyList<AuthorizationCheck> BuildPresentGroupAuthorizationChecks(Actor actor, UpdateActorDto dto)
+    private IReadOnlyList<AuthorizationCheck> BuildPresentGroupAuthorizationChecks(Actor actor, UpdateActorDto dto)
     {
         var checks = new List<AuthorizationCheck>();
         AddGroupCheck(checks, actor, dto.Profile, "profile");
         AddGroupCheck(checks, actor, dto.ProfileImage, "profileImage");
         AddGroupCheck(checks, actor, dto.Appearance, "appearance");
-        AddGroupCheck(checks, actor, dto.FederationIdentifiers, "federationIdentifiers");
-        AddGroupCheck(checks, actor, dto.FederationMetadata, "federationMetadata");
         return checks;
     }
 
-    private static void AddGroupCheck<TGroup>(List<AuthorizationCheck> checks, Actor actor, TGroup? group, string groupName)
+    private void AddGroupCheck<TGroup>(List<AuthorizationCheck> checks, Actor actor, TGroup? group, string groupName)
         where TGroup : class
     {
         if (group is null)
@@ -146,14 +145,14 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
             actor.Id.ToString(),
             AuthorizationActions.Update,
             ActorGroupAuthorizationAttributes(actor, groupName),
-            new AuthorizationScope(actor.TenantId.ToString())));
+            new AuthorizationScope(_tenantContext.TenantId.ToString())));
     }
 
-    private static IReadOnlyDictionary<string, object> ActorGroupAuthorizationAttributes(Actor actor, string groupName) =>
+    private IReadOnlyDictionary<string, object> ActorGroupAuthorizationAttributes(Actor actor, string groupName) =>
         new Dictionary<string, object>
         {
             ["actorId"] = actor.Id.ToString(),
-            ["tenantId"] = actor.TenantId.ToString(),
+            ["tenantId"] = _tenantContext.TenantId.ToString(),
             ["userId"] = actor.UserId?.ToString() ?? string.Empty,
             ["organizationId"] = actor.OrganizationId?.ToString() ?? string.Empty,
             ["groupId"] = actor.GroupId?.ToString() ?? string.Empty,
@@ -176,20 +175,35 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
         {
             actor.DisplayName = dto.DisplayName;
         }
+
+        ApplyOptional(dto.Description, value => actor.Description = value);
     }
 
-    private async Task ApplyProfileImageAsync(Actor actor, UpdateActorProfileImageDto? dto)
+    private async Task<bool> ApplyProfileImageAsync(Actor actor, UpdateActorProfileImageDto? dto)
     {
-        if (dto is null || !dto.ProfilePictureId.HasValue)
+        if (dto?.ProfilePictureId.HasValue != true)
         {
-            return;
+            return true;
         }
 
-        actor.ProfilePictureId = dto.ProfilePictureId.Value;
-        await LinkStorageObjectToActorAsync(actor.Id, dto.ProfilePictureId);
+        if (dto.ProfilePictureId.Value is not { } profilePictureId)
+        {
+            actor.ProfilePictureUri = null;
+            return true;
+        }
+
+        var storageObject = await _storageObjectRepository.GetById(profilePictureId);
+        if (storageObject is null || storageObject.TenantId != _tenantContext.TenantId)
+        {
+            return false;
+        }
+
+        storageObject.ActorId = actor.Id;
+        actor.ProfilePictureUri = storageObject.Uri;
+        return true;
     }
 
-    private async Task ApplyAppearanceAsync(Actor actor, UpdateActorAppearanceDto? dto)
+    private static void ApplyAppearance(Actor actor, UpdateActorAppearanceDto? dto)
     {
         if (dto is null)
         {
@@ -199,58 +213,6 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
         ApplyOptional(dto.BackgroundColor, value => actor.BackgroundColor = value);
         ApplyOptional(dto.BackgroundEffect, value => actor.BackgroundEffect = value);
         ApplyOptional(dto.BannerColor, value => actor.BannerColor = value);
-
-        if (dto.BannerPictureId.HasValue)
-        {
-            actor.BannerPictureId = dto.BannerPictureId.Value;
-            await LinkStorageObjectToActorAsync(actor.Id, dto.BannerPictureId);
-        }
-
-        if (dto.BackgroundImageId.HasValue)
-        {
-            actor.BackgroundImageId = dto.BackgroundImageId.Value;
-            await LinkStorageObjectToActorAsync(actor.Id, dto.BackgroundImageId);
-        }
-    }
-
-    private static void ApplyFederationIdentifiers(Actor actor, UpdateActorFederationIdentifiersDto? dto)
-    {
-        if (dto is null)
-        {
-            return;
-        }
-
-        ApplyOptional(dto.Did, value => actor.Did = value);
-        ApplyOptional(dto.Handle, value => actor.Handle = value);
-        ApplyOptional(dto.DidCustodyTypeId, value => actor.DidCustodyTypeId = value);
-    }
-
-    private static void ApplyFederationMetadata(Actor actor, UpdateActorFederationMetadataDto? dto)
-    {
-        if (dto is null)
-        {
-            return;
-        }
-
-        ApplyOptional(dto.PdsHost, value => actor.PdsHost = value);
-        ApplyOptional(dto.Description, value => actor.Description = value);
-        ApplyOptional(dto.IndexedAt, value => actor.IndexedAt = value);
-        ApplyOptional(dto.ProfilePictureCid, value => actor.ProfilePictureCid = value);
-        ApplyOptional(dto.ProfilePictureUri, value => actor.ProfilePictureUri = value);
-    }
-
-    private async Task LinkStorageObjectToActorAsync(Guid actorId, OptionalUpdate<Guid?> update)
-    {
-        if (!update.HasValue || update.Value is not { } storageObjectId)
-        {
-            return;
-        }
-
-        var storageObject = await _storageObjectRepository.GetById(storageObjectId);
-        if (storageObject != null)
-        {
-            storageObject.ActorId = actorId;
-        }
     }
 
     private static void ApplyOptional<T>(OptionalUpdate<T> update, Action<T?> apply)

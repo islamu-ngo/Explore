@@ -131,9 +131,12 @@ public class SubscribeToActorCommandHandler : IRequestHandler<SubscribeToActorCo
     {
         var actor = await _actorRepository.GetActorWithDetails(targetActorId);
         return actor is not null
-            && actor.TenantId == _tenantContext.TenantId
             && !actor.IsDeleted
             && (actor.ActorTypeId == (int)ActorTypeEnum.Organization || actor.ActorTypeId == (int)ActorTypeEnum.Group)
+            && (actor.Organization?.TenantParticipations.Any(
+                    participation => participation.TenantId == _tenantContext.TenantId && !participation.IsDeleted) == true
+                || actor.Group?.TenantParticipations.Any(
+                    participation => participation.TenantId == _tenantContext.TenantId && !participation.IsDeleted) == true)
                 ? actor
                 : null;
     }

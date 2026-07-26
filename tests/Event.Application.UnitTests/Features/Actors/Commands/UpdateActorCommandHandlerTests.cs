@@ -21,9 +21,9 @@ public class UpdateActorCommandHandlerTests
 {
     private readonly IActorRepository _actorRepository = Substitute.For<IActorRepository>();
     private readonly IActorTypeRepository _actorTypeRepository = Substitute.For<IActorTypeRepository>();
-    private readonly IDidCustodyTypeRepository _didCustodyTypeRepository = Substitute.For<IDidCustodyTypeRepository>();
     private readonly IStorageObjectRepository _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
     private readonly IAuthorizationProvider _authorizationProvider = Substitute.For<IAuthorizationProvider>();
+    private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
     private readonly UpdateActorCommandHandler _handler;
@@ -48,9 +48,9 @@ public class UpdateActorCommandHandlerTests
         _handler = new UpdateActorCommandHandler(
             _actorRepository,
             _actorTypeRepository,
-            _didCustodyTypeRepository,
             _storageObjectRepository,
             _authorizationProvider,
+            _tenantContext,
             _unitOfWork,
             _cache);
     }
@@ -90,15 +90,15 @@ public class UpdateActorCommandHandlerTests
                 {
                     DisplayName = "Updated Actor"
                 },
-                FederationMetadata = new UpdateActorFederationMetadataDto
+                Appearance = new UpdateActorAppearanceDto
                 {
-                    Description = OptionalUpdate<string?>.Set("Sensitive update")
+                    BackgroundColor = OptionalUpdate<string?>.Set("#123456")
                 }
             }
         }, CancellationToken.None)).Throws<AuthorizationException>();
 
         await Assert.That(actor.DisplayName).IsEqualTo("Test Actor");
-        await Assert.That(actor.Description).IsNull();
+        await Assert.That(actor.BackgroundColor).IsNull();
         await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -205,7 +205,7 @@ public class UpdateActorCommandHandlerTests
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await Assert.That(actor.ProfilePictureId).IsEqualTo(storageObject.Id);
+        await Assert.That(actor.ProfilePictureUri).IsEqualTo(storageObject.Uri);
         await Assert.That(storageObject.ActorId).IsEqualTo(actor.Id);
         await _actorRepository.Received(1).Update(actor);
         await _storageObjectRepository.DidNotReceive().Update(Arg.Any<StorageObject>());
@@ -242,8 +242,7 @@ public class UpdateActorCommandHandlerTests
                 ActorId = actorId,
                 DisplayName = "Test Actor"
             },
-            ActorType = null!,
-            Tenant = null!
+            ActorType = null!
         };
     }
 

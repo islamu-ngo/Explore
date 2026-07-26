@@ -241,12 +241,21 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
             Id = Guid.CreateVersion7(),
             ActorTypeId = 1,
             ActorType = new ActorType { Id = 1, MasterCode = "ORG", FullName = "Organization" },
-            TenantId = tenantId,
-            Tenant = null!,
-            Pii = new ActorPii { DisplayName = "Organizer", Did = "private-provider-canary" },
+            Pii = new ActorPii { DisplayName = "Organizer" },
             CreatedAt = DateTime.UtcNow,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+        actor.AtprotoIdentities.Add(new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            Did = "private-provider-canary",
+            ActorId = actor.Id,
+            Actor = actor,
+            PdsHost = "https://pds.example.test",
+            IsActive = true,
+            LastResolvedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        });
         var eventEntity = new Explore.Domain.Event
         {
             Id = Guid.CreateVersion7(),
@@ -280,7 +289,6 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
         eventEntity.Content = "<p>event-content-canary</p>";
         eventEntity.Slug = "event-slug-canary";
         eventEntity.PublicCode = "EVENT-CODE-CANARY";
-        eventEntity.EventUrl = "https://example.test/events/maximal";
         eventEntity.ExternalRegistrationUrl = "https://example.test/register/maximal";
         eventEntity.IsRegistrationRequired = true;
         eventEntity.Price = 12.50m;
@@ -320,10 +328,6 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
                 City = "Brussels"
             },
             WebsiteUrl = "https://organization.example.test",
-            ApprovalStatusId = 1,
-            ApprovalStatus = new ApprovalStatus { Id = 1, MasterCode = "APPROVED", FullName = "Approved" },
-            TenantId = tenantId,
-            Tenant = null!,
             CreatedAt = now,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
@@ -332,11 +336,6 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
             Id = Guid.CreateVersion7(),
             FullName = "organizer-group-canary",
             Description = "organizer-group-description-canary",
-            ProfilePicture = CreatePublicImage(tenantId, "group-image-canary"),
-            ApprovalStatusId = 1,
-            ApprovalStatus = new ApprovalStatus { Id = 1, MasterCode = "APPROVED", FullName = "Approved" },
-            TenantId = tenantId,
-            Tenant = null!,
             CreatedAt = now,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
@@ -345,10 +344,19 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
         eventEntity.Actor.GroupId = organizerGroup.Id;
         eventEntity.Actor.Group = organizerGroup;
         eventEntity.Actor.Description = "organizer-description-canary";
-        eventEntity.Actor.Pii.Handle = "organizer.handle.canary";
-        eventEntity.Actor.ProfilePicture = CreatePublicImage(tenantId, "organizer-profile-canary");
-        eventEntity.Actor.BannerPicture = CreatePublicImage(tenantId, "organizer-banner-canary");
-        eventEntity.Actor.BackgroundImage = CreatePublicImage(tenantId, "organizer-background-canary");
+        eventEntity.Actor.AtprotoIdentities.Add(new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            Did = "did:plc:organizer-canary",
+            ActorId = eventEntity.Actor.Id,
+            Actor = eventEntity.Actor,
+            Handle = "organizer.handle.canary",
+            PdsHost = "https://pds.example.test",
+            IsActive = true,
+            LastResolvedAt = now,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        });
+        eventEntity.Actor.ProfilePictureUri = "organizer-profile-canary";
         eventEntity.Actor.BackgroundColor = "#445566";
         eventEntity.Actor.BackgroundEffect = "organizer-effect-canary";
         eventEntity.Actor.BannerColor = "#778899";
@@ -545,18 +553,13 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
         var speaker = new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            Tenant = null!,
             ActorTypeId = 1,
             ActorType = eventEntity.Actor.ActorType,
-            Pii = new ActorPii { DisplayName = "speaker-canary" },
+            Pii = new ActorPii { DisplayName = "speaker-canary", ProfilePictureUri = "speaker-profile-canary" },
             Description = "speaker-description-canary",
             BackgroundColor = "speaker-color-canary",
             BackgroundEffect = "speaker-effect-canary",
             BannerColor = "speaker-banner-color-canary",
-            ProfilePicture = CreatePublicImage(tenantId, "speaker-profile-canary"),
-            BannerPicture = CreatePublicImage(tenantId, "speaker-banner-canary"),
-            BackgroundImage = CreatePublicImage(tenantId, "speaker-background-canary"),
             CreatedAt = now,
             ConcurrencyStamp = Guid.CreateVersion7()
         };

@@ -860,8 +860,6 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
             UserId = scope.UserId,
-            TenantId = scope.TenantId,
-            Tenant = null!,
             Pii = new ActorPii { DisplayName = "PDS event owner" },
             CreatedAt = now,
             ConcurrencyStamp = Guid.CreateVersion7()

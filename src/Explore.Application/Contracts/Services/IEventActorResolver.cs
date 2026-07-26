@@ -21,10 +21,10 @@ public sealed class EventActorResult
     public Guid ActorId { get; private init; }
     public string? ErrorMessage { get; private init; }
     public string? ErrorDetail { get; private init; }
-    public bool IsUserReported { get; private init; }
+    public bool IsCommunitySubmission { get; private init; }
 
-    public static EventActorResult Success(Guid actorId, bool isUserReported) =>
-        new() { Succeeded = true, ActorId = actorId, IsUserReported = isUserReported };
+    public static EventActorResult Success(Guid actorId, bool isCommunitySubmission) =>
+        new() { Succeeded = true, ActorId = actorId, IsCommunitySubmission = isCommunitySubmission };
 
     public static EventActorResult Failure(string message, string detail) =>
         new() { Succeeded = false, ErrorMessage = message, ErrorDetail = detail };

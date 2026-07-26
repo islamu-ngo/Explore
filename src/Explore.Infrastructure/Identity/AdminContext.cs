@@ -278,7 +278,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             var memberships = await _orgMemberRepo.GetMembershipsByUser(userId, cancellationToken);
             var adminOrgIds = memberships
                 .Where(m => IsOrganizationAdminRole(m.RoleId))
-                .Select(m => m.OrganizationId)
+                .Select(m => m.OrganizationTenant.OrganizationId)
                 .Distinct()
                 .ToList()
                 .AsReadOnly();
@@ -296,7 +296,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         var memberships = await _orgMemberRepo.GetMembershipsByUser(userId, cancellationToken);
         HashSet<Guid> tenantIds = memberships
             .Where(membership => membership.TenantId == tenantId)
-            .Select(membership => membership.OrganizationId)
+            .Select(membership => membership.OrganizationTenant.OrganizationId)
             .ToHashSet();
         return allIds.Where(tenantIds.Contains).ToList();
     }
@@ -333,7 +333,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             var memberships = await _groupMemberRepo.GetMembershipsByUser(userId, cancellationToken);
             var adminGroupIds = memberships
                 .Where(m => IsGroupAdminRole(m.RoleId))
-                .Select(m => m.GroupId)
+                .Select(m => m.GroupTenant.GroupId)
                 .Distinct()
                 .ToList()
                 .AsReadOnly();
@@ -351,7 +351,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         var memberships = await _groupMemberRepo.GetMembershipsByUser(userId, cancellationToken);
         HashSet<Guid> tenantIds = memberships
             .Where(membership => membership.TenantId == tenantId)
-            .Select(membership => membership.GroupId)
+            .Select(membership => membership.GroupTenant.GroupId)
             .ToHashSet();
         return allIds.Where(tenantIds.Contains).ToList();
     }

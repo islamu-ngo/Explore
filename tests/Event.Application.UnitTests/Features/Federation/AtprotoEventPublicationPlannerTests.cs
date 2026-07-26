@@ -597,8 +597,6 @@ public sealed class AtprotoEventPublicationPlannerTests
         var actor = new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = TenantId,
-            Tenant = tenant,
             ActorType = new ActorType { Id = 1, MasterCode = "USER", FullName = "User" },
             Pii = new ActorPii { DisplayName = "Publisher" }
         };

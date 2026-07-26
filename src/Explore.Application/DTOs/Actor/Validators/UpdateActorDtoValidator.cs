@@ -10,11 +10,8 @@ namespace Explore.Application.DTOs.Actor.Validators;
 public class UpdateActorDtoValidator : AbstractValidator<UpdateActorDto>
 {
     public UpdateActorDtoValidator(
-        Guid actorId,
         IActorTypeRepository actorTypeRepository,
-        IDidCustodyTypeRepository didCustodyTypeRepository,
-        IStorageObjectRepository storageObjectRepository,
-        IActorRepository actorRepository)
+        IStorageObjectRepository storageObjectRepository)
     {
         RuleFor(dto => dto.Profile!)
             .SetValidator(new UpdateActorProfileDtoValidator(actorTypeRepository))
@@ -25,16 +22,8 @@ public class UpdateActorDtoValidator : AbstractValidator<UpdateActorDto>
             .When(dto => dto.ProfileImage is not null);
 
         RuleFor(dto => dto.Appearance!)
-            .SetValidator(new UpdateActorAppearanceDtoValidator(storageObjectRepository))
+            .SetValidator(new UpdateActorAppearanceDtoValidator())
             .When(dto => dto.Appearance is not null);
-
-        RuleFor(dto => dto.FederationIdentifiers!)
-            .SetValidator(new UpdateActorFederationIdentifiersDtoValidator(actorId, didCustodyTypeRepository, actorRepository))
-            .When(dto => dto.FederationIdentifiers is not null);
-
-        RuleFor(dto => dto.FederationMetadata!)
-            .SetValidator(new UpdateActorFederationMetadataDtoValidator())
-            .When(dto => dto.FederationMetadata is not null);
 
         RuleFor(dto => dto)
             .Must(HasAnyGroup)
@@ -44,9 +33,7 @@ public class UpdateActorDtoValidator : AbstractValidator<UpdateActorDto>
     private static bool HasAnyGroup(UpdateActorDto dto) =>
         dto.Profile is not null ||
         dto.ProfileImage is not null ||
-        dto.Appearance is not null ||
-        dto.FederationIdentifiers is not null ||
-        dto.FederationMetadata is not null;
+        dto.Appearance is not null;
 }
 
 public class UpdateActorProfileDtoValidator : AbstractValidator<UpdateActorProfileDto>
@@ -54,7 +41,7 @@ public class UpdateActorProfileDtoValidator : AbstractValidator<UpdateActorProfi
     public UpdateActorProfileDtoValidator(IActorTypeRepository actorTypeRepository)
     {
         RuleFor(dto => dto)
-            .Must(dto => dto.ActorTypeId.HasValue || dto.DisplayName is not null)
+            .Must(dto => dto.ActorTypeId.HasValue || dto.DisplayName is not null || dto.Description.HasValue)
             .WithMessage("Profile group must include at least one field.");
 
         RuleFor(dto => dto.ActorTypeId!.Value)
@@ -66,6 +53,10 @@ public class UpdateActorProfileDtoValidator : AbstractValidator<UpdateActorProfi
             .NotEmpty().WithMessage("Display name is required when provided.")
             .MaximumLength(500).WithMessage("Display name cannot exceed 500 characters.")
             .When(dto => dto.DisplayName is not null);
+
+        RuleFor(dto => dto.Description.Value)
+            .MaximumLength(500).WithMessage("Description cannot exceed 500 characters.")
+            .When(dto => dto.Description.HasValue);
     }
 }
 
@@ -88,7 +79,7 @@ public class UpdateActorAppearanceDtoValidator : AbstractValidator<UpdateActorAp
 {
     private static readonly string[] ValidEffects = ["SoftOverlay", "StrongOverlay", "Blur", "None"];
 
-    public UpdateActorAppearanceDtoValidator(IStorageObjectRepository storageObjectRepository)
+    public UpdateActorAppearanceDtoValidator()
     {
         RuleFor(dto => dto)
             .Must(HasAnyOperation)
@@ -112,91 +103,10 @@ public class UpdateActorAppearanceDtoValidator : AbstractValidator<UpdateActorAp
             .When(dto => dto.BannerColor.HasValue && !string.IsNullOrEmpty(dto.BannerColor.Value))
             .WithMessage("Banner color must be a valid hex color (e.g., #1a2b3c).");
 
-        RuleFor(dto => dto.BannerPictureId.Value!.Value)
-            .MustAsync(async (bannerPictureId, cancellation) => await storageObjectRepository.Exists(bannerPictureId))
-            .When(dto => dto.BannerPictureId.HasValue && dto.BannerPictureId.Value.HasValue)
-            .WithMessage("Invalid banner picture.");
-
-        RuleFor(dto => dto.BackgroundImageId.Value!.Value)
-            .MustAsync(async (backgroundImageId, cancellation) => await storageObjectRepository.Exists(backgroundImageId))
-            .When(dto => dto.BackgroundImageId.HasValue && dto.BackgroundImageId.Value.HasValue)
-            .WithMessage("Invalid background image.");
     }
 
     private static bool HasAnyOperation(UpdateActorAppearanceDto dto) =>
         dto.BackgroundColor.HasValue ||
         dto.BackgroundEffect.HasValue ||
-        dto.BannerColor.HasValue ||
-        dto.BannerPictureId.HasValue ||
-        dto.BackgroundImageId.HasValue;
-}
-
-public class UpdateActorFederationIdentifiersDtoValidator : AbstractValidator<UpdateActorFederationIdentifiersDto>
-{
-    public UpdateActorFederationIdentifiersDtoValidator(
-        Guid actorId,
-        IDidCustodyTypeRepository didCustodyTypeRepository,
-        IActorRepository actorRepository)
-    {
-        RuleFor(dto => dto)
-            .Must(dto => dto.Did.HasValue || dto.Handle.HasValue || dto.DidCustodyTypeId.HasValue)
-            .WithMessage("FederationIdentifiers group must include at least one field operation.");
-
-        RuleFor(dto => dto.Did.Value)
-            .MaximumLength(500).WithMessage("DID cannot exceed 500 characters.")
-            .MustAsync(async (did, cancellation) =>
-            {
-                if (string.IsNullOrWhiteSpace(did))
-                {
-                    return true;
-                }
-
-                var existingActor = await actorRepository.GetActorByDid(did);
-                return existingActor == null || existingActor.Id == actorId;
-            })
-            .When(dto => dto.Did.HasValue)
-            .WithMessage("DID already exists for another actor.");
-
-        RuleFor(dto => dto.Handle.Value)
-            .MaximumLength(500).WithMessage("Handle cannot exceed 500 characters.")
-            .When(dto => dto.Handle.HasValue);
-
-        RuleFor(dto => dto.DidCustodyTypeId.Value!.Value)
-            .MustAsync(async (didCustodyTypeId, cancellation) => await didCustodyTypeRepository.Exists(didCustodyTypeId))
-            .When(dto => dto.DidCustodyTypeId.HasValue && dto.DidCustodyTypeId.Value.HasValue)
-            .WithMessage("Invalid DID custody type.");
-    }
-}
-
-public class UpdateActorFederationMetadataDtoValidator : AbstractValidator<UpdateActorFederationMetadataDto>
-{
-    public UpdateActorFederationMetadataDtoValidator()
-    {
-        RuleFor(dto => dto)
-            .Must(HasAnyOperation)
-            .WithMessage("FederationMetadata group must include at least one field operation.");
-
-        RuleFor(dto => dto.PdsHost.Value)
-            .MaximumLength(500).WithMessage("PDS host cannot exceed 500 characters.")
-            .When(dto => dto.PdsHost.HasValue);
-
-        RuleFor(dto => dto.Description.Value)
-            .MaximumLength(500).WithMessage("Description cannot exceed 500 characters.")
-            .When(dto => dto.Description.HasValue);
-
-        RuleFor(dto => dto.ProfilePictureCid.Value)
-            .MaximumLength(500).WithMessage("Profile picture CID cannot exceed 500 characters.")
-            .When(dto => dto.ProfilePictureCid.HasValue);
-
-        RuleFor(dto => dto.ProfilePictureUri.Value)
-            .MaximumLength(500).WithMessage("Profile picture URI cannot exceed 500 characters.")
-            .When(dto => dto.ProfilePictureUri.HasValue);
-    }
-
-    private static bool HasAnyOperation(UpdateActorFederationMetadataDto dto) =>
-        dto.PdsHost.HasValue ||
-        dto.Description.HasValue ||
-        dto.IndexedAt.HasValue ||
-        dto.ProfilePictureCid.HasValue ||
-        dto.ProfilePictureUri.HasValue;
+        dto.BannerColor.HasValue;
 }
