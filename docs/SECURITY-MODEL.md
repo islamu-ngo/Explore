@@ -471,9 +471,10 @@ These admin and internal-user claims are intentionally not serialized as browser
 
 Post-onboarding provider management safety:
 
-- `GET/PUT /api/instance/settings/auth-provider` requires authenticated instance admin context.
+- `GET /api/instance/settings/auth-provider` and canonical `PATCH /api/instance/settings/auth-provider` accept either active setup-secret authority or authenticated instance-admin authority.
 - Authentication update flow denies requests that would disable all providers linked to the current admin account (self-lockout prevention).
-- `GET/PUT /api/instance/settings/authz-provider` requires authenticated instance admin context and stores the selected runtime authorization provider.
+- `GET /api/instance/settings/authz-provider` and canonical `PATCH /api/instance/settings/authz-provider` accept either active setup-secret authority or authenticated instance-admin authority. The PATCH route stores the selected runtime authorization provider.
+- All existing setup endpoints and exact canonical auth/authz GET/PATCH requests carrying `X-Setup-Secret` share one global IP-keyed `setup:{ip}` fixed window, which defaults to 5 requests per 60 seconds. All four provider operations declare typed `429 ProblemDetails`. The named `SetupSecret` policy and the setup-secret branch of `Write` use `NoLimiter`, so they don't create duplicate quota state. Bearer-authenticated GET requests do not enter the setup bucket, while bearer PATCH requests remain separate under the per-user `Write` policy. Setup-secret authority fails closed when setup mode is inactive.
 - Authorization update flow permits exactly one active provider: local RBAC or Cerbos. Cerbos endpoint changes are verified before the setting is applied.
 - If Cerbos is selected and unavailable, authorized requests fail closed. Recovery is an explicit operator action: switch the authorization provider setting back to local RBAC; the runtime does not silently fail over.
 

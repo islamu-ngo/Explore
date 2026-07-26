@@ -234,25 +234,66 @@ public class StressRateLimitingTests(StressApiFixture fixture)
     }
 
     [Test]
-    [Skip("Category: Stress. Removal: enable when the Stress host enforces the setup-secret endpoint limiter; metadata coverage guards policy wiring until runtime limiter setup is corrected.")]
-    public async Task SetupSecretValidationRepeatedAttemptsShouldEventuallyReturnTooManyRequests()
+    public async Task SetupSecretBudget_IsSharedAcrossSetupEndpointAndCanonicalProviderPatches_WhileBearerWritesRemainIndependent()
     {
-        HttpResponseMessage? rateLimitedResponse = null;
+        await _fixture.ResetDatabaseAsync();
 
-        for (var i = 0; i < 5; i++)
+        using (var request = new HttpRequestMessage(HttpMethod.Post, "/api/instanceonboarding/validate-secret")
         {
-            var response = await _fixture.Client.PostAsync(
-                "/api/InstanceOnboarding/validate-secret",
-                new StringContent("{\"secret\":\"wrong-secret\"}", Encoding.UTF8, "application/json"));
+            Content = new StringContent("{\"secret\":\"invalid-setup-secret\"}", Encoding.UTF8, "application/json")
+        })
+        {
+            using var response = await _fixture.Client.SendAsync(request);
 
-            if (response.StatusCode == HttpStatusCode.TooManyRequests)
-            {
-                rateLimitedResponse = response;
-                break;
-            }
+            await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.TooManyRequests);
         }
 
-        await Assert.That(rateLimitedResponse).IsNotNull();
-        await Assert.That(rateLimitedResponse!.Headers.Contains("Retry-After")).IsTrue();
+        using (var request = new HttpRequestMessage(HttpMethod.Patch, "/api/instance/settings/auth-provider")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        })
+        {
+            request.Headers.Add("X-Setup-Secret", "invalid-setup-secret");
+            using var response = await _fixture.Client.SendAsync(request);
+
+            await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.TooManyRequests);
+        }
+
+        using (var request = new HttpRequestMessage(HttpMethod.Patch, "/api/instance/settings/auth-provider")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        })
+        {
+            request.Headers.Add("X-Setup-Secret", "invalid-setup-secret");
+            using var response = await _fixture.Client.SendAsync(request);
+
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+            await Assert.That(response.Headers.GetValues("X-RateLimit-Limit").Single()).IsEqualTo("2");
+        }
+
+        var actorId = Guid.NewGuid();
+        for (var i = 0; i < 3; i++)
+        {
+            using var request = _fixture.CreateInstanceAdminRequest(
+                HttpMethod.Patch,
+                "/api/instance/settings/auth-provider",
+                actorId);
+            request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+            using var response = await _fixture.Client.SendAsync(request);
+
+            await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.TooManyRequests);
+        }
+
+        using (var request = _fixture.CreateInstanceAdminRequest(
+                   HttpMethod.Patch,
+                   "/api/instance/settings/auth-provider",
+                   actorId))
+        {
+            request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+            using var response = await _fixture.Client.SendAsync(request);
+
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+            await Assert.That(response.Headers.GetValues("X-RateLimit-Limit").Single()).IsEqualTo("3");
+        }
     }
 }

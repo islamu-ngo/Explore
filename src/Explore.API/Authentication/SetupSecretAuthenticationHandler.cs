@@ -1,4 +1,4 @@
-// ABOUTME: Authenticates setup-secret authority only for the two canonical instance provider PATCH routes.
+// ABOUTME: Authenticates setup-secret authority only for the two canonical instance provider GET and PATCH routes.
 // ABOUTME: Fails closed without placing setup secret material in principals, logs, responses, or exceptions.
 
 using System.Security.Claims;
@@ -25,7 +25,7 @@ public sealed class SetupSecretAuthenticationHandler(
     private bool _setupModeInactive;
 
     internal static bool SupportsRequest(HttpRequest request)
-        => HttpMethods.IsPatch(request.Method)
+        => (HttpMethods.IsGet(request.Method) || HttpMethods.IsPatch(request.Method))
            && (string.Equals(request.Path.Value, AuthProviderPath, StringComparison.OrdinalIgnoreCase)
                || string.Equals(request.Path.Value, AuthorizationProviderPath, StringComparison.OrdinalIgnoreCase));
 

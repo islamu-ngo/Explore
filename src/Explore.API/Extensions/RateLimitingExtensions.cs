@@ -20,7 +20,7 @@ namespace Explore.API.Extensions;
 /// - Global: IP-based token bucket for all requests
 /// - Authenticated: Per-user sliding window for authenticated endpoints
 /// - Write: Stricter per-user limit for POST/PUT/DELETE operations
-/// - SetupSecret: Existing fixed window for instance bootstrap
+/// - SetupSecret: Shared fixed window for instance bootstrap
 /// - EventOpenGraphImage: Process-wide concurrency limit for public OG renders
 ///
 /// All limits are configurable via appsettings.json under "RateLimiting".
@@ -183,6 +183,7 @@ public static class RateLimitingExtensions
             // RemoteIpAddress is already proxy-aware when UseForwardedHeaders is configured.
             options.GlobalLimiter = PartitionedRateLimiter.CreateChained(
                 PartitionedRateLimiter.Create<HttpContext, string>(CreateControlPlaneConcurrencyPartition),
+                PartitionedRateLimiter.Create<HttpContext, string>(CreateSetupSecretGlobalPartition),
                 PartitionedRateLimiter.Create<HttpContext, string>(CreateGlobalPartition));
             options.AddPolicy(GlobalPolicy, CreateGlobalPartition);
 
@@ -205,6 +206,11 @@ public static class RateLimitingExtensions
             // Write operations: stricter fixed window per user
             options.AddPolicy(WritePolicy, httpContext =>
             {
+                if (UsesSetupSecretPartition(httpContext.Request))
+                {
+                    return RateLimitPartition.GetNoLimiter(SetupSecretPolicy);
+                }
+
                 var userId = GetAuthenticatedPartitionKey(httpContext);
 
                 return RateLimitPartition.GetFixedWindowLimiter($"write:{userId}", _ =>
@@ -232,8 +238,9 @@ public static class RateLimitingExtensions
                     });
             });
 
-            // Setup secret: preserve existing policy (fixed window per IP)
-            options.AddPolicy(SetupSecretPolicy, httpContext =>
+            options.AddPolicy(SetupSecretPolicy, _ => RateLimitPartition.GetNoLimiter(SetupSecretPolicy));
+
+            RateLimitPartition<string> CreateSetupSecretPartition(HttpContext httpContext)
             {
                 var ip = ResolveClientIp(httpContext)?.ToString() ?? "unknown";
                 return RateLimitPartition.GetFixedWindowLimiter($"setup:{ip}", _ =>
@@ -245,7 +252,12 @@ public static class RateLimitingExtensions
                         QueueLimit = 0,
                         AutoReplenishment = true
                     });
-            });
+            }
+
+            RateLimitPartition<string> CreateSetupSecretGlobalPartition(HttpContext httpContext) =>
+                UsesSetupSecretGlobalPartition(httpContext)
+                    ? CreateSetupSecretPartition(httpContext)
+                    : RateLimitPartition.GetNoLimiter(SetupSecretPolicy);
 
             options.AddPolicy(AnalyticsRelayPolicy, httpContext =>
             {
@@ -402,6 +414,18 @@ public static class RateLimitingExtensions
         return context.Connection.RemoteIpAddress;
     }
 
+    private static bool UsesSetupSecretPartition(HttpRequest request)
+    {
+        return SetupSecretAuthenticationHandler.SupportsRequest(request)
+               && request.Headers.ContainsKey(SetupSecretAuthenticationHandler.HeaderName);
+    }
+
+    private static bool UsesSetupSecretGlobalPartition(HttpContext context)
+    {
+        return context.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName == SetupSecretPolicy
+               || UsesSetupSecretPartition(context.Request);
+    }
+
     internal static string InferPolicyName(HttpContext context, bool hasRetryAfter)
     {
         if (IsControlPlaneRequest(context))
@@ -414,13 +438,15 @@ public static class RateLimitingExtensions
             return hasRetryAfter ? GlobalPolicy : EventOpenGraphImagePolicy;
         }
 
-        if (context.Request.Path.StartsWithSegments("/api/setup", StringComparison.OrdinalIgnoreCase)
+        if (UsesSetupSecretGlobalPartition(context)
+            || context.Request.Path.StartsWithSegments("/api/setup", StringComparison.OrdinalIgnoreCase)
             || context.Request.Path.StartsWithSegments("/setup", StringComparison.OrdinalIgnoreCase))
         {
             return SetupSecretPolicy;
         }
 
-        if (SetupSecretAuthenticationHandler.SupportsRequest(context.Request)
+        if (UsesSetupSecretPartition(context.Request)
+            || SetupSecretAuthenticationHandler.SupportsRequest(context.Request)
             && context.User.Identities.Any(identity =>
                 identity.IsAuthenticated
                 && string.Equals(

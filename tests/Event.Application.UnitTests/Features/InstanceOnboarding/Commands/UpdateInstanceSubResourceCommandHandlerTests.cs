@@ -10,7 +10,10 @@ using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Models.Common;
+using Explore.Application.Notifications;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using MediatR;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.InstanceOnboarding.Commands;
@@ -20,7 +23,9 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
     private static readonly Guid UserId = Guid.CreateVersion7();
     private readonly IAdminContext _adminContext = Substitute.For<IAdminContext>();
     private readonly IInstanceGovernanceSettingService _service = Substitute.For<IInstanceGovernanceSettingService>();
+    private readonly IDeploymentModeProvider _deploymentModeProvider = Substitute.For<IDeploymentModeProvider>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly IMediator _mediator = Substitute.For<IMediator>();
 
     public UpdateInstanceSubResourceCommandHandlerTests()
     {
@@ -29,13 +34,19 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
                 Arg.Any<Func<CancellationToken, Task>>(),
                 Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<Func<CancellationToken, Task>>()(CancellationToken.None));
+        _deploymentModeProvider.IsSingleTenantAsync(Arg.Any<CancellationToken>()).Returns(true);
         _service.ReadSettingsAsync().Returns(CreateSettings());
+        _mediator.Publish(Arg.Any<SettingChangedNotification>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
     }
 
     [Test]
-    public async Task ModulePatch_WhenOneLeafProvided_PreservesSibling()
+    public async Task ModulePatch_WhenSingleTenant_UsesDefaultTenantForCapabilitySync()
     {
-        var handler = new UpdateModuleSettingsCommandHandler(_adminContext, _service, _unitOfWork);
+        var handler = new UpdateModuleSettingsCommandHandler(
+            _adminContext,
+            _service,
+            _deploymentModeProvider,
+            _unitOfWork);
 
         var result = await handler.Handle(new UpdateModuleSettingsCommand
         {
@@ -45,16 +56,70 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await _service.Received(1).ApplyModuleSettingsPatchAsync(
-            null,
+            PlatformDefaults.DefaultTenantId,
             Arg.Is<PatchModuleSettingsDto>(patch => patch.EnableIslamicModule.HasValue),
             Arg.Is<ModuleSettingsDto>(settings => !settings.EnableIslamicModule && settings.EnableTechModule),
-            UserId);
+            UserId,
+            CancellationToken.None);
+    }
+
+    [Test]
+    public async Task ModulePatch_WhenMultiTenant_DoesNotPassDefaultTenantForCapabilitySync()
+    {
+        var deploymentModeProvider = Substitute.For<IDeploymentModeProvider>();
+        deploymentModeProvider.IsSingleTenantAsync(Arg.Any<CancellationToken>()).Returns(false);
+        var handler = new UpdateModuleSettingsCommandHandler(
+            _adminContext,
+            _service,
+            deploymentModeProvider,
+            _unitOfWork);
+
+        await handler.Handle(new UpdateModuleSettingsCommand
+        {
+            UserId = UserId,
+            Patch = new PatchModuleSettingsDto { EnableTechModule = OptionalUpdate<bool>.Set(false) }
+        }, CancellationToken.None);
+
+        await _service.Received(1).ApplyModuleSettingsPatchAsync(
+            null,
+            Arg.Is<PatchModuleSettingsDto>(patch => patch.EnableTechModule.HasValue),
+            Arg.Is<ModuleSettingsDto>(settings => settings.EnableIslamicModule && !settings.EnableTechModule),
+            UserId,
+            CancellationToken.None);
+    }
+
+    [Test]
+    public async Task ModulePatch_PassesTransactionCancellationTokenToService()
+    {
+        using var transactionCancellation = new CancellationTokenSource();
+        _unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task>>()(transactionCancellation.Token));
+        var handler = new UpdateModuleSettingsCommandHandler(
+            _adminContext,
+            _service,
+            _deploymentModeProvider,
+            _unitOfWork);
+
+        await handler.Handle(new UpdateModuleSettingsCommand
+        {
+            UserId = UserId,
+            Patch = new PatchModuleSettingsDto { EnableIslamicModule = OptionalUpdate<bool>.Set(false) }
+        }, CancellationToken.None);
+
+        await _service.Received(1).ApplyModuleSettingsPatchAsync(
+            PlatformDefaults.DefaultTenantId,
+            Arg.Any<PatchModuleSettingsDto>(),
+            Arg.Any<ModuleSettingsDto>(),
+            UserId,
+            transactionCancellation.Token);
     }
 
     [Test]
     public async Task EventPolicyPatch_WhenOneLeafProvided_PreservesSibling()
     {
-        var handler = new UpdateEventPolicyCommandHandler(_adminContext, _service, _unitOfWork);
+        var handler = new UpdateEventPolicyCommandHandler(_adminContext, _service, _unitOfWork, _mediator);
 
         await handler.Handle(new UpdateEventPolicyCommand
         {
@@ -65,7 +130,134 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
         await _service.Received(1).ApplyEventPolicyPatchAsync(
             Arg.Is<PatchEventPolicyDto>(patch => patch.AllowUserSubmittedEvents.HasValue),
             Arg.Is<EventPolicyDto>(settings => !settings.AllowUserSubmittedEvents && settings.AllowOrganizationSubmittedEvents),
-            UserId);
+            UserId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task EventPolicyLockPatch_PublishesOnlyAfterTransactionCommits()
+    {
+        var events = new List<string>();
+        var notification = new SettingChangedNotification(
+            GovernanceSettingKeys.Events.CardClickOpensDetailPage,
+            "false",
+            "false",
+            SettingSource.SystemLocked,
+            null,
+            UserId,
+            DateTime.UtcNow);
+        _service.ApplyEventPolicyPatchAsync(
+                Arg.Any<PatchEventPolicyDto>(),
+                Arg.Any<EventPolicyDto>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                events.Add("service");
+                return Task.FromResult<IReadOnlyList<SettingChangedNotification>>([notification]);
+            });
+        _unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await call.Arg<Func<CancellationToken, Task>>()(CancellationToken.None);
+                events.Add("commit");
+            });
+        _mediator.Publish(Arg.Any<SettingChangedNotification>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                events.Add("publish");
+                return Task.CompletedTask;
+            });
+        var handler = new UpdateEventPolicyCommandHandler(_adminContext, _service, _unitOfWork, _mediator);
+
+        await handler.Handle(new UpdateEventPolicyCommand
+        {
+            UserId = UserId,
+            Patch = new PatchEventPolicyDto
+            {
+                LockTenantEventCardClickBehavior = OptionalUpdate<bool>.Set(true)
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(events.Count).IsEqualTo(3);
+        await Assert.That(events[0]).IsEqualTo("service");
+        await Assert.That(events[1]).IsEqualTo("commit");
+        await Assert.That(events[2]).IsEqualTo("publish");
+    }
+
+    [Test]
+    public async Task EventPolicyLockPatch_WhenTransactionRollsBack_PublishesNothing()
+    {
+        _unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException(new InvalidOperationException("rollback")));
+        var handler = new UpdateEventPolicyCommandHandler(_adminContext, _service, _unitOfWork, _mediator);
+        Exception? exception = null;
+
+        try
+        {
+            await handler.Handle(new UpdateEventPolicyCommand
+            {
+                UserId = UserId,
+                Patch = new PatchEventPolicyDto
+                {
+                    LockTenantEventCardClickBehavior = OptionalUpdate<bool>.Set(true)
+                }
+            }, CancellationToken.None);
+        }
+        catch (Exception caught)
+        {
+            exception = caught;
+        }
+
+        await Assert.That(exception).IsNotNull();
+        await _mediator.DidNotReceive().Publish(
+            Arg.Any<SettingChangedNotification>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task EventPolicyLockPatch_WhenTransactionRetries_PublishesOnlyFinalCommittedNotifications()
+    {
+        var first = new SettingChangedNotification("first", null, "first", SettingSource.SystemLocked, null, UserId, DateTime.UtcNow);
+        var final = new SettingChangedNotification("final", null, "final", SettingSource.SystemLocked, null, UserId, DateTime.UtcNow);
+        var attempt = 0;
+        _service.ApplyEventPolicyPatchAsync(
+                Arg.Any<PatchEventPolicyDto>(),
+                Arg.Any<EventPolicyDto>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyList<SettingChangedNotification>>(
+                [++attempt == 1 ? first : final]));
+        _unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                Func<CancellationToken, Task> transaction = call.Arg<Func<CancellationToken, Task>>();
+                await transaction(CancellationToken.None);
+                await transaction(CancellationToken.None);
+            });
+        var handler = new UpdateEventPolicyCommandHandler(_adminContext, _service, _unitOfWork, _mediator);
+
+        await handler.Handle(new UpdateEventPolicyCommand
+        {
+            UserId = UserId,
+            Patch = new PatchEventPolicyDto
+            {
+                LockTenantEventCardClickBehavior = OptionalUpdate<bool>.Set(true)
+            }
+        }, CancellationToken.None);
+
+        SettingChangedNotification[] published = _mediator.ReceivedCalls()
+            .Select(call => call.GetArguments().FirstOrDefault())
+            .OfType<SettingChangedNotification>()
+            .ToArray();
+        await Assert.That(published.Length).IsEqualTo(1);
+        await Assert.That(published[0].Key).IsEqualTo(final.Key);
     }
 
     [Test]
@@ -91,7 +283,7 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
         var deploymentMode = Substitute.For<IDeploymentModeProvider>();
         deploymentMode.IsSingleTenantAsync(Arg.Any<CancellationToken>()).Returns(false);
         var provisioning = Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>();
-        var handler = new UpdateBrandingSettingsCommandHandler(_adminContext, _service, deploymentMode, provisioning, _unitOfWork);
+        var handler = new UpdateBrandingSettingsCommandHandler(_adminContext, _service, deploymentMode, provisioning, _unitOfWork, _mediator);
 
         await handler.Handle(new UpdateBrandingSettingsCommand
         {
@@ -102,7 +294,8 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
         await _service.Received(1).ApplyBrandingSettingsPatchAsync(
             Arg.Is<PatchBrandingSettingsDto>(patch => patch.DefaultBrandLogoUrl.HasValue),
             Arg.Is<BrandingSettingsDto>(settings => settings.DefaultBrandLogoUrl == "https://new.example/logo.svg" && settings.DefaultBrandDisplayName == "Current brand"),
-            UserId);
+            UserId,
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -111,7 +304,7 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
         var deploymentMode = Substitute.For<IDeploymentModeProvider>();
         deploymentMode.IsSingleTenantAsync(Arg.Any<CancellationToken>()).Returns(true);
         var provisioning = Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>();
-        var handler = new UpdateBrandingSettingsCommandHandler(_adminContext, _service, deploymentMode, provisioning, _unitOfWork);
+        var handler = new UpdateBrandingSettingsCommandHandler(_adminContext, _service, deploymentMode, provisioning, _unitOfWork, _mediator);
 
         await handler.Handle(new UpdateBrandingSettingsCommand
         {
@@ -129,7 +322,7 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
     [Test]
     public async Task DomainPatch_WhenOneLeafProvided_PreservesSibling()
     {
-        var handler = new UpdateDomainSettingsCommandHandler(_adminContext, _service, _unitOfWork);
+        var handler = new UpdateDomainSettingsCommandHandler(_adminContext, _service, _unitOfWork, _mediator);
 
         await handler.Handle(new UpdateDomainSettingsCommand
         {
@@ -140,7 +333,8 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
         await _service.Received(1).ApplyDomainSettingsPatchAsync(
             Arg.Is<PatchDomainSettingsDto>(patch => patch.AdminHost.HasValue),
             Arg.Is<DomainSettingsDto>(settings => settings.AdminHost == "admin.new.example" && settings.InstanceBaseDomain == "current.example"),
-            UserId);
+            UserId,
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -290,7 +484,7 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
     [Test]
     public async Task TenantDelegationPatch_WhenOneLeafProvided_PreservesSibling()
     {
-        var handler = new UpdateTenantDelegationSettingsCommandHandler(_adminContext, _service, _unitOfWork);
+        var handler = new UpdateTenantDelegationSettingsCommandHandler(_adminContext, _service, _unitOfWork, _mediator);
 
         await handler.Handle(new UpdateTenantDelegationSettingsCommand
         {
@@ -302,7 +496,41 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
             false,
             Arg.Is<PatchTenantDelegationSettingsDto>(patch => patch.LockTenantStorage.HasValue),
             Arg.Is<TenantDelegationSettingsDto>(settings => !settings.LockTenantStorage && settings.LockTenantSmtp),
-            UserId);
+            UserId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task TenantDelegationHomepageLockPatch_PublishesCommittedNotificationWithRequestToken()
+    {
+        var notification = new SettingChangedNotification(
+            GovernanceSettingKeys.Routing.DefaultPublicHomePage,
+            "\"EventList\"",
+            "\"EventList\"",
+            SettingSource.SystemLocked,
+            null,
+            UserId,
+            DateTime.UtcNow);
+        _service.ApplyTenantDelegationSettingsPatchAsync(
+                Arg.Any<bool>(),
+                Arg.Any<PatchTenantDelegationSettingsDto>(),
+                Arg.Any<TenantDelegationSettingsDto>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<SettingChangedNotification>>([notification]));
+        var handler = new UpdateTenantDelegationSettingsCommandHandler(_adminContext, _service, _unitOfWork, _mediator);
+        using var requestCancellation = new CancellationTokenSource();
+
+        await handler.Handle(new UpdateTenantDelegationSettingsCommand
+        {
+            UserId = UserId,
+            Patch = new PatchTenantDelegationSettingsDto
+            {
+                LockTenantHomePagePreference = OptionalUpdate<bool>.Set(true)
+            }
+        }, requestCancellation.Token);
+
+        await _mediator.Received(1).Publish(notification, requestCancellation.Token);
     }
 
     [Test]
@@ -325,7 +553,7 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
     [Test]
     public async Task AiAssistantPatch_WhenOneLeafProvided_PreservesSibling()
     {
-        var handler = new UpdateAiAssistantGovernanceSettingsCommandHandler(_adminContext, _service, _unitOfWork);
+        var handler = new UpdateAiAssistantGovernanceSettingsCommandHandler(_adminContext, _service, _unitOfWork, _mediator);
 
         await handler.Handle(new UpdateAiAssistantGovernanceSettingsCommand
         {
@@ -336,13 +564,14 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
         await _service.Received(1).ApplyAiAssistantGovernanceSettingsPatchAsync(
             Arg.Is<PatchAiAssistantGovernanceSettingsDto>(patch => patch.ToolProposalsEnabled.HasValue),
             Arg.Is<AiAssistantGovernanceSettingsDto>(settings => !settings.ToolProposalsEnabled && settings.ModelId == "current-model"),
-            UserId);
+            UserId,
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task AiAssistantProviderPatch_ReplacesNonBlankApiKeyAsOneCoupledGroup()
     {
-        var handler = new UpdateAiAssistantGovernanceSettingsCommandHandler(_adminContext, _service, _unitOfWork);
+        var handler = new UpdateAiAssistantGovernanceSettingsCommandHandler(_adminContext, _service, _unitOfWork, _mediator);
 
         await handler.Handle(new UpdateAiAssistantGovernanceSettingsCommand
         {
@@ -365,13 +594,14 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
             Arg.Is<AiAssistantGovernanceSettingsDto>(settings => settings.ApiKey == "replacement-key"
                 && settings.Provider == "openai-compatible"
                 && settings.ModelId == "model-a"),
-            UserId);
+            UserId,
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task AiAssistantProviderPatch_WhenApiKeyIsBlank_PreservesConfiguredKey()
     {
-        var handler = new UpdateAiAssistantGovernanceSettingsCommandHandler(_adminContext, _service, _unitOfWork);
+        var handler = new UpdateAiAssistantGovernanceSettingsCommandHandler(_adminContext, _service, _unitOfWork, _mediator);
 
         await handler.Handle(new UpdateAiAssistantGovernanceSettingsCommand
         {
@@ -392,13 +622,14 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
         await _service.Received(1).ApplyAiAssistantGovernanceSettingsPatchAsync(
             Arg.Is<PatchAiAssistantGovernanceSettingsDto>(patch => patch.ProviderConfiguration.HasValue),
             Arg.Is<AiAssistantGovernanceSettingsDto>(settings => settings.ApiKey == "current-key"),
-            UserId);
+            UserId,
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task McpPatch_WhenOneLeafProvided_PreservesSibling()
     {
-        var handler = new UpdateMcpGovernanceSettingsCommandHandler(_adminContext, _service, _unitOfWork);
+        var handler = new UpdateMcpGovernanceSettingsCommandHandler(_adminContext, _service, _unitOfWork, _mediator);
 
         await handler.Handle(new UpdateMcpGovernanceSettingsCommand
         {
@@ -409,7 +640,57 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
         await _service.Received(1).ApplyMcpGovernanceSettingsPatchAsync(
             Arg.Is<PatchMcpGovernanceSettingsDto>(patch => patch.Enabled.HasValue),
             Arg.Is<McpGovernanceSettingsDto>(settings => !settings.Enabled && settings.EnableLegacySse),
-            UserId);
+            UserId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task BrandingLockPatch_WhenProvisioningFails_PublishesNothing()
+    {
+        var deploymentMode = Substitute.For<IDeploymentModeProvider>();
+        deploymentMode.IsSingleTenantAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var provisioning = Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>();
+        provisioning.EnsureTenantBrandingDocumentAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<Explore.Domain.Settings.Documents.TenantSettingsDocument>(
+                new InvalidOperationException("provisioning failed")));
+        _service.ApplyBrandingSettingsPatchAsync(
+                Arg.Any<PatchBrandingSettingsDto>(),
+                Arg.Any<BrandingSettingsDto>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<SettingChangedNotification>>([
+                new(GovernanceSettingKeys.Branding.DisplayName, "\"Current brand\"", "\"Current brand\"", SettingSource.SystemLocked, null, UserId, DateTime.UtcNow)
+            ]));
+        var handler = new UpdateBrandingSettingsCommandHandler(
+            _adminContext,
+            _service,
+            deploymentMode,
+            provisioning,
+            _unitOfWork,
+            _mediator);
+        Exception? exception = null;
+
+        try
+        {
+            await handler.Handle(new UpdateBrandingSettingsCommand
+            {
+                UserId = UserId,
+                Patch = new PatchBrandingSettingsDto
+                {
+                    DefaultBrandDisplayName = OptionalUpdate<string?>.Set("Replacement"),
+                    LockTenantBrandDisplayName = OptionalUpdate<bool>.Set(true)
+                }
+            }, CancellationToken.None);
+        }
+        catch (InvalidOperationException caught)
+        {
+            exception = caught;
+        }
+
+        await Assert.That(exception).IsNotNull();
+        await _mediator.DidNotReceive().Publish(
+            Arg.Any<SettingChangedNotification>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -450,7 +731,11 @@ public sealed class UpdateInstanceSubResourceCommandHandlerTests
     [Test]
     public async Task ModulePatch_WhenEmpty_DoesNotReadOrWrite()
     {
-        var handler = new UpdateModuleSettingsCommandHandler(_adminContext, _service, _unitOfWork);
+        var handler = new UpdateModuleSettingsCommandHandler(
+            _adminContext,
+            _service,
+            _deploymentModeProvider,
+            _unitOfWork);
 
         var result = await handler.Handle(new UpdateModuleSettingsCommand
         {

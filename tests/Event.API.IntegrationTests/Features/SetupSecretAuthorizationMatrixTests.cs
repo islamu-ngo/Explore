@@ -1,4 +1,4 @@
-// ABOUTME: Authorization matrix for setup-secret authentication on canonical instance provider PATCH routes.
+// ABOUTME: Authorization matrix for setup-secret authentication on canonical instance provider GET and PATCH routes.
 // ABOUTME: Proves exact-route selection, fail-closed credentials, and unchanged bearer-admin authentication.
 
 using System.Net;
@@ -35,6 +35,22 @@ public class SetupSecretAuthorizationMatrixTests
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest,
             "a valid setup secret on an exact canonical PATCH route should reach command validation");
+    }
+
+    [Test]
+    [Arguments("/api/instance/settings/auth-provider")]
+    [Arguments("/api/instance/settings/authz-provider")]
+    public async Task ExactProviderGet_ValidSetupCredential_Authenticates(string path)
+    {
+        await using var factory = CreateFactory(new MatrixSetupSecretProvider());
+        using var client = factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add(SetupSecretHeaderName, ValidSetupSecret);
+
+        var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            "a valid setup secret on an exact canonical GET route should reach the provider configuration response");
     }
 
     [Test]
@@ -98,13 +114,13 @@ public class SetupSecretAuthorizationMatrixTests
         using var client = factory.CreateClient();
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
-            "/api/instance/settings/auth-provider");
+            "/api/instance/settings/modules");
         request.Headers.Add(SetupSecretHeaderName, ValidSetupSecret);
 
         var response = await client.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "setup-secret authentication must not apply outside the exact canonical PATCH routes");
+            "setup-secret authentication must not apply outside the four canonical provider GET and PATCH routes");
     }
 
     [Test]

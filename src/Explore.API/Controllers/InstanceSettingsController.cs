@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.Authorization;
@@ -25,6 +26,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Explore.API.Controllers;
 
@@ -585,6 +587,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [EndpointDescription("Returns current auth provider configuration. Secrets are redacted.")]
     [ProducesResponseType(typeof(AuthProviderConfigurationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<AuthProviderConfigurationDto>> GetAuthProviderConfiguration(CancellationToken cancellationToken = default)
     {
         if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return this.ToForbiddenProblem(detail: "Instance administrator or active setup secret authority is required for this operation.");
@@ -593,12 +596,14 @@ public class InstanceSettingsController : ExploreControllerBase
     }
 
     [HttpPatch("auth-provider", Name = RouteNames.UpdateInstanceAuthProviderConfiguration)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [EndpointSummary("Update Auth Provider Configuration")]
     [EndpointDescription("Updates auth provider configuration during active setup-secret bootstrap or by an instance administrator. Instance-admin updates block self-lockout.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAuthProviderConfiguration(
         [FromBody] PatchAuthProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
     {
@@ -708,6 +713,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [EndpointDescription("Returns current authorization provider configuration for instance administration.")]
     [ProducesResponseType(typeof(AuthorizationProviderConfigurationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<AuthorizationProviderConfigurationDto>> GetAuthorizationProviderConfiguration(CancellationToken cancellationToken = default)
     {
         if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return this.ToForbiddenProblem(detail: "Instance administrator or active setup secret authority is required for this operation.");
@@ -716,12 +722,14 @@ public class InstanceSettingsController : ExploreControllerBase
     }
 
     [HttpPatch("authz-provider", Name = RouteNames.UpdateInstanceAuthorizationProviderConfiguration)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [EndpointSummary("Update Authorization Provider Configuration")]
     [EndpointDescription("Updates authorization provider configuration during active setup-secret bootstrap or by an instance administrator.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAuthorizationProviderConfiguration(
         [FromBody] PatchAuthorizationProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
     {

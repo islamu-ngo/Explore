@@ -1,5 +1,5 @@
-// ABOUTME: Contract tests for setup-secret rate-limit endpoint metadata.
-// ABOUTME: Guards the bootstrap validation endpoint's anonymous access and fixed setup-secret policy.
+// ABOUTME: Contract tests for setup-secret rate-limit endpoint metadata and provider-route classification.
+// ABOUTME: Guards bootstrap validation plus the shared setup-secret quota for canonical provider GET and PATCH requests.
 
 using System.Reflection;
 using System.Security.Claims;
@@ -75,11 +75,57 @@ public sealed class SetupSecretRateLimitMetadataTests
     }
 
     [Test]
+    public async Task CanonicalProviderPatchActionsUseWritePolicyAndAdvertiseRateLimitProblemDetails()
+    {
+        foreach (var method in CanonicalProviderPatchActions())
+        {
+            var rateLimit = method.GetCustomAttribute<EnableRateLimitingAttribute>();
+
+            await Assert.That(rateLimit)
+                .IsNotNull()
+                .Because($"{method.Name} must retain its write limiter metadata for bearer-admin requests.");
+            await Assert.That(rateLimit!.PolicyName).IsEqualTo(RateLimitingExtensions.WritePolicy);
+            AssertProducesProblem(method, StatusCodes.Status429TooManyRequests);
+        }
+    }
+
+    [Test]
+    public async Task CanonicalProviderGetActionsAdvertiseRateLimitProblemDetailsWithoutNamedRateLimitMetadata()
+    {
+        foreach (var method in CanonicalProviderGetActions())
+        {
+            var rateLimit = method.GetCustomAttribute<EnableRateLimitingAttribute>();
+
+            await Assert.That(rateLimit)
+                .IsNull()
+                .Because($"{method.Name} must rely on the global setup-secret predicate so bearer reads stay outside the setup-secret bucket.");
+            AssertProducesProblem(method, StatusCodes.Status429TooManyRequests);
+        }
+    }
+
+    [Test]
     [Arguments("/api/instance/settings/auth-provider")]
     [Arguments("/api/instance/settings/authz-provider")]
     public async Task CanonicalProviderPatch_WithAuthenticatedSetupIdentity_UsesSetupSecretPolicy(string path)
     {
         var context = CreateContext(HttpMethods.Patch, path, ApiAuthenticationSchemeNames.SetupSecret);
+
+        var policyName = RateLimitingExtensions.InferPolicyName(context, hasRetryAfter: false);
+
+        await Assert.That(policyName).IsEqualTo(RateLimitingExtensions.SetupSecretPolicy);
+    }
+
+    [Test]
+    [Arguments("GET", "/api/instance/settings/auth-provider")]
+    [Arguments("GET", "/api/instance/settings/authz-provider")]
+    [Arguments("PATCH", "/api/instance/settings/auth-provider")]
+    [Arguments("PATCH", "/api/instance/settings/authz-provider")]
+    public async Task CanonicalProviderRoute_WithSetupSecretHeaderAndFailedAuthentication_UsesSetupSecretPolicy(
+        string method,
+        string path)
+    {
+        var context = CreateContext(method, path, string.Empty);
+        context.Request.Headers["X-Setup-Secret"] = "invalid-setup-secret";
 
         var policyName = RateLimitingExtensions.InferPolicyName(context, hasRetryAfter: false);
 
@@ -103,7 +149,7 @@ public sealed class SetupSecretRateLimitMetadataTests
 
     [Test]
     [Arguments("PATCH", "/api/instance/settings/domains", RateLimitingExtensions.WritePolicy)]
-    [Arguments("GET", "/api/instance/settings/auth-provider", RateLimitingExtensions.AuthenticatedPolicy)]
+    [Arguments("GET", "/api/instance/settings/modules", RateLimitingExtensions.AuthenticatedPolicy)]
     [Arguments("POST", "/api/setup/complete", RateLimitingExtensions.SetupSecretPolicy)]
     public async Task SetupIdentity_OnUnrelatedRequest_PreservesExistingPolicy(
         string method,
@@ -125,6 +171,22 @@ public sealed class SetupSecretRateLimitMetadataTests
             .OrderBy(method => method.Name, StringComparer.Ordinal)
             .ToArray();
     }
+
+    private static IReadOnlyList<MethodInfo> CanonicalProviderPatchActions() =>
+    [
+        typeof(InstanceSettingsController).GetMethod(nameof(InstanceSettingsController.UpdateAuthProviderConfiguration))
+            ?? throw new InvalidOperationException("The auth-provider PATCH action is missing."),
+        typeof(InstanceSettingsController).GetMethod(nameof(InstanceSettingsController.UpdateAuthorizationProviderConfiguration))
+            ?? throw new InvalidOperationException("The authz-provider PATCH action is missing.")
+    ];
+
+    private static IReadOnlyList<MethodInfo> CanonicalProviderGetActions() =>
+    [
+        typeof(InstanceSettingsController).GetMethod(nameof(InstanceSettingsController.GetAuthProviderConfiguration))
+            ?? throw new InvalidOperationException("The auth-provider GET action is missing."),
+        typeof(InstanceSettingsController).GetMethod(nameof(InstanceSettingsController.GetAuthorizationProviderConfiguration))
+            ?? throw new InvalidOperationException("The authz-provider GET action is missing.")
+    ];
 
     private static DefaultHttpContext CreateContext(
         string method,
