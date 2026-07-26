@@ -2,12 +2,13 @@
 // ABOUTME: Used by EventSeriesSection component for series selection on Create/Edit Event pages.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Models;
 
 namespace Explore.Blazor.Client.Contracts.Services.Events;
 
 public interface IEventSeriesService
 {
-    Task<PaginatedResultOfEventSeriesListDto?> GetSeriesListAsync(
+    Task<PaginatedResult<EventSeriesListDto>> GetSeriesListAsync(
         int pageNumber = 1, int pageSize = 10, Guid? actorId = null, CancellationToken ct = default);
 
     Task<EventSeriesDto?> GetSeriesDetailAsync(Guid id, CancellationToken ct = default);

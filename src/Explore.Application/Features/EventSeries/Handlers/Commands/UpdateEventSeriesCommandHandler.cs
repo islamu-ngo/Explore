@@ -1,6 +1,7 @@
 // ABOUTME: Handler for grouped EventSeries PATCH updates with validation and concurrency.
 // ABOUTME: Applies explicit groups, saves once, and invalidates affected event caches.
 
+using Explore.Application.Authorization;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSeries;
@@ -50,6 +51,11 @@ public class UpdateEventSeriesCommandHandler : IRequestHandler<UpdateEventSeries
                 Success = false,
                 Message = "Event series not found."
             };
+        }
+
+        if (series.ActorId != request.ActorId || series.TenantId != request.TenantId)
+        {
+            throw new AuthorizationException(ResourceKinds.Actor, AuthorizationActions.Update);
         }
 
         if (series.ConcurrencyStamp != request.ExpectedConcurrencyStamp)

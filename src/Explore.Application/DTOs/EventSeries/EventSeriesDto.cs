@@ -10,6 +10,7 @@ namespace Explore.Application.DTOs.EventSeries;
 public class EventSeriesDto
 {
     public Guid Id { get; set; }
+    public Guid TenantId { get; set; }
     public Guid ConcurrencyStamp { get; set; }
     public required string Title { get; set; }
     public string? Slug { get; set; }

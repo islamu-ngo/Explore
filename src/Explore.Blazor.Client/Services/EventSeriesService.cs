@@ -3,6 +3,8 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -20,22 +22,23 @@ public class EventSeriesService : IEventSeriesService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<PaginatedResultOfEventSeriesListDto?> GetSeriesListAsync(
+    public async Task<PaginatedResult<EventSeriesListDto>> GetSeriesListAsync(
         int pageNumber = 1, int pageSize = 10, Guid? actorId = null, CancellationToken ct = default)
     {
         try
         {
-            return await _apiClient.GetEventSeriesAsync(
+            var response = await _apiClient.GetEventSeriesAsync(
                 actorId: actorId,
                 pageNumber: pageNumber,
                 pageSize: pageSize,
                 cancellationToken: ct);
+            return response.ToPaginatedResult();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching event series list (page {PageNumber}, size {PageSize})",
                 pageNumber, pageSize);
-            return null;
+            return PaginatedResult<EventSeriesListDto>.Empty();
         }
     }
 
@@ -43,7 +46,7 @@ public class EventSeriesService : IEventSeriesService
     {
         try
         {
-            return await _apiClient.GetEventSeriesByIdAsync(id, cancellationToken: ct);
+            return (await _apiClient.GetEventSeriesByIdAsync(id, cancellationToken: ct)).ToDto();
         }
         catch (Exception ex)
         {
@@ -94,17 +97,16 @@ public class EventSeriesService : IEventSeriesService
     {
         try
         {
-            var result = await _apiClient.GetEventSeriesAsync(
-                pageNumber: 1,
-                pageSize: maxResults,
-                cancellationToken: ct);
-            if (result?.Items is null)
-                return [];
+            var result = (await _apiClient.GetEventSeriesAsync(
+                    pageNumber: 1,
+                    pageSize: maxResults,
+                    cancellationToken: ct))
+                .GetItems();
 
             if (string.IsNullOrWhiteSpace(query))
-                return result.Items;
+                return result;
 
-            return result.Items
+            return result
                 .Where(s => s.Title.Contains(query, StringComparison.OrdinalIgnoreCase))
                 .Take(maxResults);
         }

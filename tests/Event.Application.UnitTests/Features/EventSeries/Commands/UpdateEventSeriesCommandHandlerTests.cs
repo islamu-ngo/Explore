@@ -55,6 +55,8 @@ public class UpdateEventSeriesCommandHandlerTests
         var command = new UpdateEventSeriesCommand
         {
             EventSeriesId = seriesId,
+            ActorId = Guid.NewGuid(),
+            TenantId = Guid.NewGuid(),
             ExpectedConcurrencyStamp = Guid.NewGuid(),
             EventSeriesDto = new UpdateEventSeriesDto
             {
@@ -81,6 +83,8 @@ public class UpdateEventSeriesCommandHandlerTests
         var command = new UpdateEventSeriesCommand
         {
             EventSeriesId = seriesId,
+            ActorId = series.ActorId,
+            TenantId = series.TenantId,
             ExpectedConcurrencyStamp = Guid.NewGuid(),
             EventSeriesDto = new UpdateEventSeriesDto
             {
@@ -108,6 +112,8 @@ public class UpdateEventSeriesCommandHandlerTests
         var command = new UpdateEventSeriesCommand
         {
             EventSeriesId = seriesId,
+            ActorId = series.ActorId,
+            TenantId = series.TenantId,
             ExpectedConcurrencyStamp = stamp,
             EventSeriesDto = new UpdateEventSeriesDto
             {
@@ -137,6 +143,8 @@ public class UpdateEventSeriesCommandHandlerTests
         var command = new UpdateEventSeriesCommand
         {
             EventSeriesId = seriesId,
+            ActorId = series.ActorId,
+            TenantId = series.TenantId,
             ExpectedConcurrencyStamp = stamp,
             EventSeriesDto = new UpdateEventSeriesDto
             {
@@ -193,8 +201,6 @@ public class UpdateEventSeriesCommandHandlerTests
             Actor = new Actor
             {
                 Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                Tenant = tenant,
                 Pii = new ActorPii { DisplayName = "Organizer" },
                 ActorTypeId = 1,
                 ActorType = new ActorType

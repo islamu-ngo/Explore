@@ -6,10 +6,12 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.EventSeries;
 using Explore.Application.Features.EventSeries.Requests.Commands;
 using Explore.Application.Features.EventSeries.Requests.Queries;
 using Explore.Application.Responses;
+using Explore.Application.Hateoas;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -37,18 +39,22 @@ public class EventSeriesController : ControllerBase
         "The requested event series could not be found.");
 
     private readonly IMediator _mediator;
+    private readonly IResourceAssembler<EventSeriesDto, EventSeriesListDto> _resourceAssembler;
 
-    public EventSeriesController(IMediator mediator)
+    public EventSeriesController(
+        IMediator mediator,
+        IResourceAssembler<EventSeriesDto, EventSeriesListDto> resourceAssembler)
     {
         _mediator = mediator;
+        _resourceAssembler = resourceAssembler;
     }
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetEventSeries)]
-    [ProducesResponseType(typeof(PaginatedResult<EventSeriesListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HalCollectionResource<EventSeriesListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<PaginatedResult<EventSeriesListDto>>> GetAll(
+    public async Task<ActionResult<HalCollectionResource<EventSeriesListDto>>> GetAll(
         [FromQuery] EventSeriesListQueryRequest query,
         CancellationToken cancellationToken = default)
     {
@@ -58,34 +64,46 @@ public class EventSeriesController : ControllerBase
             PageSize = query.PageSize,
             ActorId = query.ActorId
         }, cancellationToken);
-        return Ok(response);
+        var resource = await _resourceAssembler.ToCollectionResource(
+            response,
+            RouteNames.GetEventSeries,
+            new { actorId = query.ActorId },
+            HttpContext);
+        return Ok(resource);
     }
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetEventSeriesById)]
-    [ProducesResponseType(typeof(EventSeriesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HalResource<EventSeriesDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<EventSeriesDto>> GetById(Guid id)
+    public async Task<ActionResult<HalResource<EventSeriesDto>>> GetById(
+        Guid id,
+        CancellationToken cancellationToken = default)
     {
-        var response = await _mediator.Send(new GetEventSeriesDetailRequest { Id = id });
+        var response = await _mediator.Send(new GetEventSeriesDetailRequest { Id = id }, cancellationToken);
+        if (response is null)
+        {
+            return this.ToNotFoundProblem(NotFoundProblem);
+        }
 
-        return Ok(response);
+        return Ok(await _resourceAssembler.ToResource(response, HttpContext));
     }
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
     [HttpGet("top", Name = RouteNames.GetTopEventSeries)]
-    [ProducesResponseType(typeof(EventSeriesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HalResource<EventSeriesDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<ActionResult<EventSeriesDto>> GetTop()
+    public async Task<ActionResult<HalResource<EventSeriesDto>>> GetTop(
+        CancellationToken cancellationToken = default)
     {
-        var response = await _mediator.Send(new GetTopEventSeriesRequest());
+        var response = await _mediator.Send(new GetTopEventSeriesRequest(), cancellationToken);
         if (response == null)
         {
             return NoContent();
         }
-        return Ok(response);
+        return Ok(await _resourceAssembler.ToResource(response, HttpContext));
     }
 
     [Authorize]
@@ -125,9 +143,17 @@ public class EventSeriesController : ControllerBase
                 "If-Match header is required and must contain the current event series concurrency stamp.");
         }
 
+        var existing = await _mediator.Send(new GetEventSeriesDetailRequest { Id = id }, cancellationToken);
+        if (existing is null)
+        {
+            return this.ToNotFoundProblem(NotFoundProblem);
+        }
+
         var response = await _mediator.Send(new UpdateEventSeriesCommand
         {
             EventSeriesId = id,
+            ActorId = existing.ActorId,
+            TenantId = existing.TenantId,
             ExpectedConcurrencyStamp = expectedConcurrencyStamp,
             EventSeriesDto = dto
         }, cancellationToken);
