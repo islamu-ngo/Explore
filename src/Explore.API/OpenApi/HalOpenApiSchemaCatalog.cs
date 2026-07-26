@@ -10,6 +10,10 @@ internal static class HalOpenApiSchemaCatalog
         // Event DTOs
         typeof(Explore.Application.DTOs.Event.EventDto),
         typeof(Explore.Application.DTOs.Event.EventListDto),
+        typeof(Explore.Application.DTOs.EventSeries.EventSeriesDto),
+        typeof(Explore.Application.DTOs.EventSeries.EventSeriesListDto),
+        typeof(Explore.Application.DTOs.Event.EventPublicActionDto),
+        typeof(Explore.Application.DTOs.EventOrganizerClaim.EventOrganizerClaimDto),
         typeof(Explore.Application.DTOs.PublicExperience.EventDiscoveryItemDto),
         typeof(Explore.Application.DTOs.PublicExperience.FederatedEventDto),
         typeof(Explore.Application.DTOs.PublicExperience.EventFederationMetadataDto),
@@ -55,6 +59,8 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.ActorSubscription.ActorSubscriptionDto),
         typeof(Explore.Application.DTOs.ActorSubscription.ActorSubscriptionListDto),
 
+        typeof(Explore.Application.DTOs.User.UserDto),
+
         // Public metadata DTOs
         typeof(Explore.Application.DTOs.CustomPropertyDefinition.CustomPropertyDefinitionDto),
         typeof(Explore.Application.DTOs.CustomPropertyDefinition.CustomPropertyDefinitionListDto),
@@ -70,8 +76,6 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.Group.GroupListDto),
         typeof(Explore.Application.DTOs.GroupMember.GroupMemberDto),
         typeof(Explore.Application.DTOs.OrganizationMember.OrganizationMemberDto),
-        typeof(Explore.Application.DTOs.IndexedDid.IndexedDidDto),
-        typeof(Explore.Application.DTOs.IndexedDid.IndexedDidListDto),
         typeof(Explore.Application.DTOs.LocationRoom.LocationRoomDto),
         typeof(Explore.Application.DTOs.LocationRoom.LocationRoomListDto),
         typeof(Explore.Application.DTOs.EventDay.EventDayDto),
@@ -173,6 +177,10 @@ internal static class HalOpenApiSchemaCatalog
     {
         ["HalResourceOfEventDto"] = typeof(Explore.Application.DTOs.Event.EventDto),
         ["HalResourceOfEventListDto"] = typeof(Explore.Application.DTOs.Event.EventListDto),
+        ["HalResourceOfEventSeriesDto"] = typeof(Explore.Application.DTOs.EventSeries.EventSeriesDto),
+        ["HalResourceOfEventSeriesListDto"] = typeof(Explore.Application.DTOs.EventSeries.EventSeriesListDto),
+        ["HalResourceOfEventPublicActionDto"] = typeof(Explore.Application.DTOs.Event.EventPublicActionDto),
+        ["HalResourceOfEventOrganizerClaimDto"] = typeof(Explore.Application.DTOs.EventOrganizerClaim.EventOrganizerClaimDto),
         ["HalResourceOfEventReportOptionsDto"] = typeof(Explore.Application.DTOs.EventReporting.EventReportOptionsDto),
         ["HalResourceOfMyEventReportDto"] = typeof(Explore.Application.DTOs.EventReporting.MyEventReportDto),
         ["HalResourceOfModerationReportDetailDto"] = typeof(Explore.Application.DTOs.EventReporting.ModerationReportDetailDto),
@@ -194,6 +202,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfActorListDto"] = typeof(Explore.Application.DTOs.Actor.ActorListDto),
         ["HalResourceOfActorSubscriptionDto"] = typeof(Explore.Application.DTOs.ActorSubscription.ActorSubscriptionDto),
         ["HalResourceOfActorSubscriptionListDto"] = typeof(Explore.Application.DTOs.ActorSubscription.ActorSubscriptionListDto),
+        ["HalResourceOfUserDto"] = typeof(Explore.Application.DTOs.User.UserDto),
         ["HalResourceOfEventSessionGroupDto"] = typeof(Explore.Application.DTOs.EventSessionGroup.EventSessionGroupDto),
         ["HalResourceOfEventSessionGroupListDto"] = typeof(Explore.Application.DTOs.EventSessionGroup.EventSessionGroupListDto),
         ["HalResourceOfCustomPropertyDefinitionDto"] = typeof(Explore.Application.DTOs.CustomPropertyDefinition.CustomPropertyDefinitionDto),
@@ -210,8 +219,6 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfGroupListDto"] = typeof(Explore.Application.DTOs.Group.GroupListDto),
         ["HalResourceOfGroupMemberDto"] = typeof(Explore.Application.DTOs.GroupMember.GroupMemberDto),
         ["HalResourceOfOrganizationMemberDto"] = typeof(Explore.Application.DTOs.OrganizationMember.OrganizationMemberDto),
-        ["HalResourceOfIndexedDidDto"] = typeof(Explore.Application.DTOs.IndexedDid.IndexedDidDto),
-        ["HalResourceOfIndexedDidListDto"] = typeof(Explore.Application.DTOs.IndexedDid.IndexedDidListDto),
         ["HalResourceOfEventDiscoveryItemDto"] = typeof(Explore.Application.DTOs.PublicExperience.EventDiscoveryItemDto),
         ["HalResourceOfLocationRoomDto"] = typeof(Explore.Application.DTOs.LocationRoom.LocationRoomDto),
         ["HalResourceOfLocationRoomListDto"] = typeof(Explore.Application.DTOs.LocationRoom.LocationRoomListDto),
@@ -263,6 +270,8 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfSettingGroupResponseDto"] = typeof(Explore.Application.DTOs.Settings.SettingGroupResponseDto),
         ["HalResourceOfEventSessionSpeakerDto"] = typeof(Explore.Application.DTOs.EventSessionSpeaker.EventSessionSpeakerDto),
         ["HalResourceOfEventSessionSpeakerListDto"] = typeof(Explore.Application.DTOs.EventSessionSpeaker.EventSessionSpeakerListDto),
+        ["HalResourceOfEventSessionLanguageDto"] = typeof(Explore.Application.DTOs.EventSessionLanguage.EventSessionLanguageDto),
+        ["HalResourceOfEventSessionLanguageListDto"] = typeof(Explore.Application.DTOs.EventSessionLanguage.EventSessionLanguageListDto),
     };
 
     public static IReadOnlyDictionary<string, string> CollectionEmbeddedItemResourceMappings { get; } = new Dictionary<string, string>
@@ -275,6 +284,9 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfEventCustomPropertyDefinitionListDto"] = "HalResourceOfEventCustomPropertyDefinitionListDto",
         ["HalCollectionEmbeddedOfEventDayListDto"] = "HalResourceOfEventDayListDto",
         ["HalCollectionEmbeddedOfEventListDto"] = "HalResourceOfEventListDto",
+        ["HalCollectionEmbeddedOfEventSeriesListDto"] = "HalResourceOfEventSeriesListDto",
+        ["HalCollectionEmbeddedOfEventPublicActionDto"] = "HalResourceOfEventPublicActionDto",
+        ["HalCollectionEmbeddedOfEventOrganizerClaimDto"] = "HalResourceOfEventOrganizerClaimDto",
         ["HalCollectionEmbeddedOfEventLocationManagementDto"] = "HalResourceOfEventLocationManagementDto",
         ["HalCollectionEmbeddedOfEventReportOptionsDto"] = "HalResourceOfEventReportOptionsDto",
         ["HalCollectionEmbeddedOfMyEventReportDto"] = "HalResourceOfMyEventReportDto",
@@ -287,7 +299,6 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfGroupListDto"] = "HalResourceOfGroupListDto",
         ["HalCollectionEmbeddedOfGroupMemberDto"] = "HalResourceOfGroupMemberDto",
         ["HalCollectionEmbeddedOfOrganizationMemberDto"] = "HalResourceOfOrganizationMemberDto",
-        ["HalCollectionEmbeddedOfIndexedDidListDto"] = "HalResourceOfIndexedDidListDto",
         ["HalCollectionEmbeddedOfEventDiscoveryItemDto"] = "HalResourceOfEventDiscoveryItemDto",
         ["HalCollectionEmbeddedOfLocationListDto"] = "HalResourceOfLocationListDto",
         ["HalCollectionEmbeddedOfLocationRoomListDto"] = "HalResourceOfLocationRoomListDto",
@@ -313,6 +324,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfControlPlaneTenantListItemDto"] = "HalResourceOfControlPlaneTenantListItemDto",
         ["HalCollectionEmbeddedOfControlPlaneTenantPlanListItemDto"] = "HalResourceOfControlPlaneTenantPlanListItemDto",
         ["HalCollectionEmbeddedOfEventSessionSpeakerListDto"] = "HalResourceOfEventSessionSpeakerListDto",
+        ["HalCollectionEmbeddedOfEventSessionLanguageListDto"] = "HalResourceOfEventSessionLanguageListDto",
     };
 
     public static bool IsCatalogedDetailResourceSchema(string schemaName)

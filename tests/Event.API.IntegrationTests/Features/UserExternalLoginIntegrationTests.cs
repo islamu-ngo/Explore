@@ -1,13 +1,11 @@
-// ABOUTME: Authenticated integration tests for user external login linking and unlinking behavior.
-// ABOUTME: Verifies account-linking lifecycle and last-provider unlink safety at API level.
+// ABOUTME: Integration tests for verified authentication flows that resolve internal external-login links.
+// ABOUTME: Proves provider identity resolution remains intact after public external-login CRUD removal.
 
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
-using Event.Api.IntegrationTests.Helpers;
-using Explore.Application.DTOs.UserExternalLogin;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -27,151 +25,6 @@ public class UserExternalLoginIntegrationTests
     public UserExternalLoginIntegrationTests(AuthenticatedApiTestFixture fixture)
     {
         _fixture = fixture;
-    }
-
-    [Test]
-    public async Task CreateUserExternalLogin_WithAuthenticatedRequest_ShouldCreateAndReturnSuccess()
-    {
-        var userId = Guid.NewGuid();
-        await EnsureUserExistsAsync(userId);
-
-        var payload = new CreateUserExternalLoginDto
-        {
-            UserId = userId,
-            TenantId = PlatformDefaults.DefaultTenantId,
-            Provider = "atproto",
-            ProviderKey = $"did:plc:{Guid.NewGuid():N}",
-            ProviderDisplayName = "AT Protocol"
-        };
-
-        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, "/api/userexternallogin", userId);
-        request.Content = JsonContent.Create(payload);
-
-        var response = await _fixture.Client.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
-        await Assert.That(body).IsNotNull();
-        await Assert.That(body!.Success).IsTrue();
-
-        using var scope = _fixture.Factory.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        var exists = await dbContext.UserExternalLogins.AnyAsync(x => x.Id == body.Id);
-        await Assert.That(exists).IsTrue();
-    }
-
-    [Test]
-    public async Task DeleteUserExternalLogin_WhenLastProvider_ShouldReturnBadRequest()
-    {
-        var userId = Guid.NewGuid();
-        await EnsureUserExistsAsync(userId);
-        var loginId = await SeedExternalLoginAsync(userId, "google", $"google-{userId:N}");
-
-        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Delete, $"/api/userexternallogin/{loginId}", userId);
-        var response = await _fixture.Client.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-    }
-
-    [Test]
-    public async Task DeleteUserExternalLogin_WhenMultipleProviders_ShouldReturnNoContent()
-    {
-        var userId = Guid.NewGuid();
-        await EnsureUserExistsAsync(userId);
-        var firstLoginId = await SeedExternalLoginAsync(userId, "google", $"google-{userId:N}");
-        _ = await SeedExternalLoginAsync(userId, "atproto", $"did:plc:{Guid.NewGuid():N}");
-
-        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Delete, $"/api/userexternallogin/{firstLoginId}", userId);
-        var response = await _fixture.Client.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-
-        using var scope = _fixture.Factory.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        var deleted = await dbContext.UserExternalLogins.AnyAsync(x => x.Id == firstLoginId);
-        await Assert.That(deleted).IsFalse();
-    }
-
-    [Test]
-    public async Task UpdateUserExternalLogin_WithMismatchedRouteId_ShouldReturnValidationProblemDetails()
-    {
-        var userId = Guid.NewGuid();
-        await EnsureUserExistsAsync(userId);
-        var loginId = await SeedExternalLoginAsync(userId, "google", $"google-{userId:N}");
-
-        var payload = new UpdateUserExternalLoginDto
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            TenantId = PlatformDefaults.DefaultTenantId,
-            Provider = "google",
-            ProviderKey = $"google-{userId:N}",
-            ProviderDisplayName = "Google"
-        };
-
-        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"/api/userexternallogin/{loginId}", userId);
-        request.Content = JsonContent.Create(payload);
-
-        var response = await _fixture.Client.SendAsync(request);
-
-        await AssertUserExternalLoginValidationProblemAsync(
-            response,
-            "User external login ID mismatch.",
-            "User external login ID mismatch.");
-    }
-
-    [Test]
-    public async Task UpdateUserExternalLogin_WithValidationFailure_ShouldReturnValidationProblemDetails()
-    {
-        var userId = Guid.NewGuid();
-        await EnsureUserExistsAsync(userId);
-        var loginId = await SeedExternalLoginAsync(userId, "google", $"google-{userId:N}");
-
-        var payload = new UpdateUserExternalLoginDto
-        {
-            Id = loginId,
-            UserId = Guid.NewGuid(),
-            TenantId = PlatformDefaults.DefaultTenantId,
-            Provider = "google",
-            ProviderKey = $"google-{userId:N}",
-            ProviderDisplayName = "Google"
-        };
-
-        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"/api/userexternallogin/{loginId}", userId);
-        request.Content = JsonContent.Create(payload);
-
-        var response = await _fixture.Client.SendAsync(request);
-
-        await AssertUserExternalLoginValidationProblemAsync(
-            response,
-            "User External Login update failed.",
-            "User does not exist");
-    }
-
-    [Test]
-    public async Task UpdateUserExternalLogin_WhenLoginIsMissing_ShouldReturnNotFoundProblemDetails()
-    {
-        var userId = Guid.NewGuid();
-        await EnsureUserExistsAsync(userId);
-        var missingLoginId = Guid.NewGuid();
-
-        var payload = new UpdateUserExternalLoginDto
-        {
-            Id = missingLoginId,
-            UserId = userId,
-            TenantId = PlatformDefaults.DefaultTenantId,
-            Provider = "google",
-            ProviderKey = $"google-{userId:N}",
-            ProviderDisplayName = "Google"
-        };
-
-        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"/api/userexternallogin/{missingLoginId}", userId);
-        request.Content = JsonContent.Create(payload);
-
-        var response = await _fixture.Client.SendAsync(request);
-
-        await AssertUserExternalLoginNotFoundProblemAsync(response);
     }
 
     [Test]
@@ -232,7 +85,7 @@ public class UserExternalLoginIntegrationTests
     {
         var existingUserId = Guid.NewGuid();
         await EnsureUserExistsAsync(existingUserId, "linked@example.com");
-        _ = await SeedExternalLoginAsync(existingUserId, "atproto", "did:plc:linked123");
+        await SeedExternalLoginAsync(existingUserId, "atproto", "did:plc:linked123");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/user/sync");
         request.Headers.Add(TestAuthHandler.AuthHeaderName,
@@ -256,8 +109,7 @@ public class UserExternalLoginIntegrationTests
         using var scope = _fixture.Factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
 
-        var exists = await dbContext.Users.AnyAsync(x => x.Id == userId);
-        if (exists)
+        if (await dbContext.Users.AnyAsync(x => x.Id == userId))
         {
             return;
         }
@@ -281,12 +133,12 @@ public class UserExternalLoginIntegrationTests
         await dbContext.SaveChangesAsync();
     }
 
-    private async Task<Guid> SeedExternalLoginAsync(Guid userId, string provider, string providerKey)
+    private async Task SeedExternalLoginAsync(Guid userId, string provider, string providerKey)
     {
         using var scope = _fixture.Factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
 
-        var login = new UserExternalLogin
+        dbContext.UserExternalLogins.Add(new UserExternalLogin
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -298,67 +150,19 @@ public class UserExternalLoginIntegrationTests
             ProviderDisplayName = provider,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = userId
-        };
-
-        dbContext.UserExternalLogins.Add(login);
+        });
         await dbContext.SaveChangesAsync();
-        return login.Id;
-    }
-
-    private static async Task AssertUserExternalLoginValidationProblemAsync(
-        HttpResponseMessage response,
-        string expectedDetail,
-        string expectedError)
-    {
-        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
-            response,
-            HttpStatusCode.BadRequest,
-            "User external login validation failed");
-        await AssertProblemJsonContentTypeAsync(response);
-
-        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
-        var root = document.RootElement;
-
-        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo(expectedDetail);
-        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("validation_failed");
-
-        var errors = root.GetProperty("errors").GetProperty("userExternalLogin");
-        await Assert.That(errors.GetArrayLength()).IsGreaterThanOrEqualTo(1);
-        await Assert.That(errors[0].GetString()).IsEqualTo(expectedError);
-    }
-
-    private static async Task AssertUserExternalLoginNotFoundProblemAsync(HttpResponseMessage response)
-    {
-        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
-            response,
-            HttpStatusCode.NotFound,
-            "User external login not found");
-        await AssertProblemJsonContentTypeAsync(response);
-
-        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
-        var root = document.RootElement;
-
-        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo("User external login not found.");
-        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("resource_not_found");
-    }
-
-    private static async Task AssertProblemJsonContentTypeAsync(HttpResponseMessage response)
-    {
-        var contentType = response.Content.Headers.ContentType?.MediaType;
-        await Assert.That(contentType).IsEqualTo("application/problem+json");
     }
 
     private static string CreateCustomAuthHeader(params (string Type, string Value)[] claims)
     {
         var payload = claims.Select(claim => new TestClaimPayload { Type = claim.Type, Value = claim.Value }).ToList();
-        var json = JsonSerializer.Serialize(payload);
-        return Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+        return Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload)));
     }
 
     private sealed class TestClaimPayload
     {
         public string Type { get; set; } = string.Empty;
-
         public string Value { get; set; } = string.Empty;
     }
 }

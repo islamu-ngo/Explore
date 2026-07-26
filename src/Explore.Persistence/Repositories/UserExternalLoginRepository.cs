@@ -33,21 +33,4 @@ public class UserExternalLoginRepository : GenericRepository<UserExternalLogin, 
             .ToListAsync();
     }
 
-    public async Task<UserExternalLogin?> GetUserExternalLoginWithDetails(Guid id)
-    {
-        return await _dbContext.UserExternalLogins
-            .AsNoTracking()
-            .Include(l => l.User)
-                .ThenInclude(u => u!.Pii)
-            .FirstOrDefaultAsync(l => l.Id == id);
-    }
-
-    public async Task<List<UserExternalLogin>> GetUserExternalLoginsWithDetails()
-    {
-        return await _dbContext.UserExternalLogins
-            .AsNoTracking()
-            .Include(l => l.User)
-                .ThenInclude(u => u!.Pii)
-            .ToListAsync();
-    }
 }

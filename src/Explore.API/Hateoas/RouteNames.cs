@@ -64,6 +64,18 @@ public static class RouteNames
     public const string GetEventProgramSummary = "GetEventProgramSummary";
     public const string GetManagedEventProgramSummary = "GetManagedEventProgramSummary";
     public const string GetEventPublishReadiness = "GetEventPublishReadiness";
+    public const string GetEventPublicActions = "GetEventPublicActions";
+    public const string GetEventPublicAction = "GetEventPublicAction";
+    public const string RedirectEventPublicAction = "RedirectEventPublicAction";
+    public const string CreateEventPublicAction = "CreateEventPublicAction";
+    public const string UpdateEventPublicAction = "UpdateEventPublicAction";
+    public const string DeleteEventPublicAction = "DeleteEventPublicAction";
+    public const string GetEventOrganizerClaims = "GetEventOrganizerClaims";
+    public const string GetEventOrganizerClaim = "GetEventOrganizerClaim";
+    public const string GetClaimantOrganizerClaims = "GetClaimantOrganizerClaims";
+    public const string SubmitEventOrganizerClaim = "SubmitEventOrganizerClaim";
+    public const string WithdrawEventOrganizerClaim = "WithdrawEventOrganizerClaim";
+    public const string ReviewEventOrganizerClaim = "ReviewEventOrganizerClaim";
     public const string CreateEvent = "CreateEvent";
     public const string ImportEvent = "ImportEvent";
     public const string PublishEvent = "PublishEvent";
@@ -561,12 +573,6 @@ public static class RouteNames
     public const string DeleteCurrentAtprotoSession = "DeleteCurrentAtprotoSession";
     public const string GetAtprotoEventSource = "GetAtprotoEventSource";
 
-    public const string GetIndexedDids = "GetIndexedDids";
-    public const string GetIndexedDidByDid = "GetIndexedDidByDid";
-    public const string CreateIndexedDid = "CreateIndexedDid";
-    public const string UpdateIndexedDid = "UpdateIndexedDid";
-    public const string DeleteIndexedDid = "DeleteIndexedDid";
-
     #endregion
 
     #region Contact Share Consent Routes
@@ -770,16 +776,6 @@ public static class RouteNames
     public const string GetUserAuthenticationTokens = "GetUserAuthenticationTokens";
     public const string GetUserAuthenticationTokenById = "GetUserAuthenticationTokenById";
     public const string DeleteUserAuthenticationToken = "DeleteUserAuthenticationToken";
-
-    #endregion
-
-    #region User External Login Routes
-
-    public const string GetUserExternalLogins = "GetUserExternalLogins";
-    public const string GetUserExternalLoginById = "GetUserExternalLoginById";
-    public const string CreateUserExternalLogin = "CreateUserExternalLogin";
-    public const string UpdateUserExternalLogin = "UpdateUserExternalLogin";
-    public const string DeleteUserExternalLogin = "DeleteUserExternalLogin";
 
     #endregion
 

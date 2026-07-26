@@ -20,7 +20,6 @@ using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.GroupMember;
-using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.DTOs.Notification;
@@ -107,10 +106,6 @@ public static class ResourceDescriptorRegistry
         [typeof(LocationListDto)] = global::Explore.Application.Authorization.ResourceKinds.Location,
         [typeof(LocationRoomDto)] = global::Explore.Application.Authorization.ResourceKinds.LocationRoom,
         [typeof(LocationRoomListDto)] = global::Explore.Application.Authorization.ResourceKinds.LocationRoom,
-
-        // Indexed DID
-        [typeof(IndexedDidDto)] = global::Explore.Application.Authorization.ResourceKinds.IndexedDid,
-        [typeof(IndexedDidListDto)] = global::Explore.Application.Authorization.ResourceKinds.IndexedDid,
 
         // Event Session
         [typeof(EventSessionDto)] = global::Explore.Application.Authorization.ResourceKinds.EventSession,

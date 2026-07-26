@@ -97,7 +97,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         var externalLogins = Substitute.For<IUserExternalLoginRepository>();
         var users = Substitute.For<IUserRepository>();
         var actors = Substitute.For<IActorRepository>();
-        var indexedDids = Substitute.For<IIndexedDidRepository>();
+        var atprotoIdentities = Substitute.For<IAtprotoIdentityRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var tokenIssuer = Substitute.For<IAtprotoSessionTokenIssuer>();
         var tenantContext = Substitute.For<ITenantContext>();
@@ -108,7 +108,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
             externalLogins,
             users,
             actors,
-            indexedDids,
+            atprotoIdentities,
             unitOfWork,
             tenantContext,
             TimeProvider.System);
@@ -125,7 +125,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(1);
         await externalLogins.DidNotReceiveWithAnyArgs().GetByProviderAndKey(default!, default!);
         await actors.DidNotReceiveWithAnyArgs().Update(default!);
-        await indexedDids.DidNotReceiveWithAnyArgs().Create(default!);
+        await atprotoIdentities.DidNotReceiveWithAnyArgs().Create(default!);
         await fixture.TokenRepository.DidNotReceiveWithAnyArgs()
             .CreateAtprotoSessionAsync(default!, default);
         await tokenIssuer.DidNotReceiveWithAnyArgs().IssueAsync(default, default, default!, default);

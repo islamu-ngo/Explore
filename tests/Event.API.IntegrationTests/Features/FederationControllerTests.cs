@@ -60,20 +60,20 @@ public class FederationControllerTests
 
     #endregion
 
-    #region IndexedDid Controller
+    #region Removed IndexedDid Surface
 
     [Test]
-    public async Task IndexedDid_GetAll_ShouldReturnOk()
+    public async Task IndexedDid_GetAll_WhenPublicSurfaceIsAbsent_ShouldReturnNotFound()
     {
         var response = await _fixture.Client.GetAsync("/api/indexeddid");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
-    public async Task IndexedDid_GetById_WithValidDid_ShouldNotReturnServerError()
+    public async Task IndexedDid_GetById_WhenPublicSurfaceIsAbsent_ShouldReturnNotFound()
     {
         var response = await _fixture.Client.GetAsync("/api/indexeddid/did:plc:test");
-        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     #endregion
@@ -151,20 +151,20 @@ public class FederationControllerTests
 
     #endregion
 
-    #region UserExternalLogin Controller
+    #region Removed UserExternalLogin Surface
 
     [Test]
-    public async Task UserExternalLogin_GetAll_ShouldReturnUnauthorized()
+    public async Task UserExternalLogin_GetAll_WhenPublicSurfaceIsAbsent_ShouldReturnNotFound()
     {
         var response = await _fixture.Client.GetAsync("/api/userexternallogin");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
-    public async Task UserExternalLogin_GetById_WithRandomId_ShouldNotReturnServerError()
+    public async Task UserExternalLogin_GetById_WhenPublicSurfaceIsAbsent_ShouldReturnNotFound()
     {
         var response = await _fixture.Client.GetAsync($"/api/userexternallogin/{Guid.NewGuid()}");
-        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     #endregion

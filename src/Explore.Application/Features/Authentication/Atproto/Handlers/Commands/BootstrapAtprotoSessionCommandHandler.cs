@@ -18,7 +18,7 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
     IUserExternalLoginRepository externalLoginRepository,
     IUserRepository userRepository,
     IActorRepository actorRepository,
-    IIndexedDidRepository indexedDidRepository,
+    IAtprotoIdentityRepository atprotoIdentityRepository,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
     TimeProvider timeProvider)
@@ -57,14 +57,15 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
 
         var user = await userRepository.GetById(login.UserId).ConfigureAwait(false);
         var actor = await actorRepository
-            .GetActorByUserIdAndTenantId(login.UserId, tenantId, cancellationToken).ConfigureAwait(false);
+            .GetActorByUserId(login.UserId).ConfigureAwait(false);
         if (user is null || actor is null || actor.UserId != user.Id)
         {
             return AtprotoSessionBootstrapResult.Failed("linked_identity_incomplete");
         }
 
-        if (!string.IsNullOrWhiteSpace(actor.Did)
-            && !string.Equals(actor.Did, verified.Did, StringComparison.Ordinal))
+        var linkedIdentity = await atprotoIdentityRepository
+            .GetByDid(verified.Did, cancellationToken).ConfigureAwait(false);
+        if (linkedIdentity is not null && linkedIdentity.ActorId != actor.Id)
         {
             return AtprotoSessionBootstrapResult.Failed("identity_conflict");
         }
@@ -80,34 +81,37 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
                 return AtprotoSessionBootstrapResult.Failed("account_not_linked");
             }
 
-            actor.Did = verified.Did;
-            actor.Handle = verified.Handle;
-            actor.PdsHost = verified.PdsUri.AbsoluteUri;
-            actor.DidCustodyTypeId = (int)DidCustodyTypeEnum.SelfCustody;
-            actor.IndexedAt = indexedAt;
-            await actorRepository.Update(actor).ConfigureAwait(false);
-
-            var indexedDid = await indexedDidRepository.GetById(verified.Did).ConfigureAwait(false);
-            if (indexedDid is null)
+            var identity = await atprotoIdentityRepository
+                .GetByDid(verified.Did, transactionToken).ConfigureAwait(false);
+            if (identity is null)
             {
-                await indexedDidRepository.Create(new IndexedDid
+                identity = new AtprotoIdentity
                 {
                     Did = verified.Did,
+                    ActorId = actor.Id,
+                    Actor = actor,
                     Handle = verified.Handle,
                     PdsHost = verified.PdsUri.AbsoluteUri,
                     IsActive = true,
-                    LastIndexedAt = indexedAt,
+                    LastResolvedAt = indexedAt,
                     LastSeenAt = indexedAt
-                }).ConfigureAwait(false);
+                };
+                await atprotoIdentityRepository.Create(identity).ConfigureAwait(false);
             }
             else
             {
-                indexedDid.Handle = verified.Handle;
-                indexedDid.PdsHost = verified.PdsUri.AbsoluteUri;
-                indexedDid.IsActive = true;
-                indexedDid.LastIndexedAt = indexedAt;
-                indexedDid.LastSeenAt = indexedAt;
-                await indexedDidRepository.Update(indexedDid).ConfigureAwait(false);
+                if (identity.ActorId != actor.Id)
+                {
+                    return AtprotoSessionBootstrapResult.Failed("identity_conflict");
+                }
+
+                identity.RefreshVerifiedMetadata(
+                    verified.Did,
+                    verified.Handle,
+                    verified.PdsUri.AbsoluteUri,
+                    signingKey: null,
+                    indexedAt);
+                await atprotoIdentityRepository.Update(identity).ConfigureAwait(false);
             }
 
             await securityGateway.PersistAsync(

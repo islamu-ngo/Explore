@@ -4,7 +4,6 @@
 using AutoMapper;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.ActorKeyStore;
-using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.SyncState;
 using Explore.Domain;
@@ -18,20 +17,36 @@ public class ActorFederationMappingProfile : Profile
         CreateMap<Domain.Actor, ActorDto>()
             .ForMember(dest => dest.ActorTypeMasterCode, opt => opt.MapFrom(src => src.ActorType != null ? src.ActorType.MasterCode : null))
             .ForMember(dest => dest.ActorTypeFullName, opt => opt.MapFrom(src => src.ActorType != null ? src.ActorType.FullName : null))
-            .ForMember(dest => dest.DidCustodyTypeMasterCode, opt => opt.MapFrom(src => src.DidCustodyType != null ? src.DidCustodyType.MasterCode : null))
-            .ForMember(dest => dest.DidCustodyTypeFullName, opt => opt.MapFrom(src => src.DidCustodyType != null ? src.DidCustodyType.FullName : null))
-            .ForMember(dest => dest.BackgroundImageUri, opt => opt.MapFrom(src => src.BackgroundImage != null ? src.BackgroundImage.Uri : null));
+            .ForMember(dest => dest.Did, opt => opt.MapFrom(src => src.AtprotoIdentities.Select(identity => identity.Did).FirstOrDefault()))
+            .ForMember(dest => dest.Handle, opt => opt.MapFrom(src => src.AtprotoIdentities.Select(identity => identity.Handle).FirstOrDefault()))
+            .ForMember(dest => dest.PdsHost, opt => opt.MapFrom(src => src.AtprotoIdentities.Select(identity => identity.PdsHost).FirstOrDefault()))
+            .ForMember(dest => dest.IndexedAt, opt => opt.MapFrom(src => src.AtprotoIdentities.Select(identity => (DateTime?)identity.LastResolvedAt).FirstOrDefault()))
+            .ForMember(dest => dest.DidCustodyTypeId, opt => opt.Ignore())
+            .ForMember(dest => dest.DidCustodyTypeMasterCode, opt => opt.Ignore())
+            .ForMember(dest => dest.DidCustodyTypeFullName, opt => opt.Ignore())
+            .ForMember(dest => dest.ProfilePictureId, opt => opt.Ignore())
+            .ForMember(dest => dest.BannerPictureId, opt => opt.Ignore())
+            .ForMember(dest => dest.BackgroundImageId, opt => opt.Ignore())
+            .ForMember(dest => dest.BackgroundImageUri, opt => opt.Ignore());
         CreateMap<Domain.Actor, ActorListDto>()
             .ForMember(dest => dest.ActorTypeMasterCode, opt => opt.MapFrom(src => src.ActorType != null ? src.ActorType.MasterCode : null))
             .ForMember(dest => dest.ActorTypeFullName, opt => opt.MapFrom(src => src.ActorType != null ? src.ActorType.FullName : null))
-            .ForMember(dest => dest.DidCustodyTypeMasterCode, opt => opt.MapFrom(src => src.DidCustodyType != null ? src.DidCustodyType.MasterCode : null))
-            .ForMember(dest => dest.DidCustodyTypeFullName, opt => opt.MapFrom(src => src.DidCustodyType != null ? src.DidCustodyType.FullName : null))
-            .ForMember(dest => dest.BackgroundImageUri, opt => opt.MapFrom(src => src.BackgroundImage != null ? src.BackgroundImage.Uri : null));
+            .ForMember(dest => dest.Did, opt => opt.MapFrom(src => src.AtprotoIdentities.Select(identity => identity.Did).FirstOrDefault()))
+            .ForMember(dest => dest.Handle, opt => opt.MapFrom(src => src.AtprotoIdentities.Select(identity => identity.Handle).FirstOrDefault()))
+            .ForMember(dest => dest.PdsHost, opt => opt.MapFrom(src => src.AtprotoIdentities.Select(identity => identity.PdsHost).FirstOrDefault()))
+            .ForMember(dest => dest.IndexedAt, opt => opt.MapFrom(src => src.AtprotoIdentities.Select(identity => (DateTime?)identity.LastResolvedAt).FirstOrDefault()))
+            .ForMember(dest => dest.DidCustodyTypeId, opt => opt.Ignore())
+            .ForMember(dest => dest.DidCustodyTypeMasterCode, opt => opt.Ignore())
+            .ForMember(dest => dest.DidCustodyTypeFullName, opt => opt.Ignore())
+            .ForMember(dest => dest.ProfilePictureId, opt => opt.Ignore())
+            .ForMember(dest => dest.BannerPictureId, opt => opt.Ignore())
+            .ForMember(dest => dest.BackgroundImageId, opt => opt.Ignore())
+            .ForMember(dest => dest.BackgroundImageUri, opt => opt.Ignore());
         CreateMap<CreateActorDto, Domain.Actor>();
 
         CreateMap<Domain.ActorKeyStore, ActorKeyStoreDto>()
             .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null))
-            .ForMember(dest => dest.ActorDid, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.Did : null))
+            .ForMember(dest => dest.ActorDid, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.AtprotoIdentities.Select(identity => identity.Did).FirstOrDefault() : null))
             .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null));
         CreateMap<Domain.ActorKeyStore, ActorKeyStoreListDto>();
         CreateMap<CreateActorKeyStoreDto, Domain.ActorKeyStore>();
@@ -47,11 +62,6 @@ public class ActorFederationMappingProfile : Profile
             .ForMember(dest => dest.SafeDisplayName, opt => opt.MapFrom(src => string.IsNullOrWhiteSpace(src.SafeDisplayName) ? src.FullName : src.SafeDisplayName));
         CreateMap<UpdateStorageObjectDto, Domain.StorageObject>()
             .ForMember(dest => dest.SafeDisplayName, opt => opt.MapFrom(src => string.IsNullOrWhiteSpace(src.SafeDisplayName) ? src.FullName : src.SafeDisplayName));
-
-        CreateMap<Domain.IndexedDid, IndexedDidDto>().ReverseMap();
-        CreateMap<Domain.IndexedDid, IndexedDidListDto>().ReverseMap();
-        CreateMap<CreateIndexedDidDto, Domain.IndexedDid>();
-        CreateMap<UpdateIndexedDidDto, Domain.IndexedDid>();
 
         CreateMap<Domain.SyncState, SyncStateDto>().ReverseMap();
         CreateMap<Domain.SyncState, SyncStateListDto>().ReverseMap();

@@ -18,22 +18,24 @@ using Explore.Application.DTOs.CustomPropertyGovernance;
 using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.DTOs.EmailDispatch;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.EventOrganizerClaim;
 using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventCustomProperty;
 using Explore.Application.DTOs.EventDay;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventReporting;
+using Explore.Application.DTOs.EventSeries;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.EventSessionCustomProperty;
 using Explore.Application.DTOs.EventSessionGroup;
+using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.DTOs.Footer;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.GroupMember;
-using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.DTOs.Notification;
@@ -72,12 +74,22 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<EventDto>, EventDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EventListDto>, EventCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<EventDto, EventListDto>, EventResourceAssembler>();
+        services.AddScoped<ILinkPolicy<EventPublicActionDto>, EventPublicActionDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventPublicActionDto>, EventPublicActionCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventPublicActionDto, EventPublicActionDto>, EventPublicActionResourceAssembler>();
+        services.AddScoped<ILinkPolicy<EventOrganizerClaimDto>, EventOrganizerClaimDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventOrganizerClaimDto>, EventOrganizerClaimCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventOrganizerClaimDto, EventOrganizerClaimDto>, EventOrganizerClaimResourceAssembler>();
         services.AddScoped<EventDiscoveryLinkPolicy>();
         services.AddScoped<ILinkPolicy<EventDiscoveryItemDto>>(provider =>
             provider.GetRequiredService<EventDiscoveryLinkPolicy>());
         services.AddScoped<ICollectionLinkPolicy<EventDiscoveryItemDto>>(provider =>
             provider.GetRequiredService<EventDiscoveryLinkPolicy>());
         services.AddScoped<IResourceAssembler<EventDiscoveryItemDto>, EventDiscoveryResourceAssembler>();
+
+        services.AddScoped<ILinkPolicy<EventSeriesDto>, EventSeriesDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventSeriesListDto>, EventSeriesCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventSeriesDto, EventSeriesListDto>, EventSeriesResourceAssembler>();
 
         services.AddScoped<ILinkPolicy<EventReportOptionsDto>, EventReportOptionsDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EventReportOptionsDto>, EventReportOptionsCollectionLinkPolicy>();
@@ -99,6 +111,10 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<EventSessionDto>, EventSessionDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EventSessionListDto>, EventSessionCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<EventSessionDto, EventSessionListDto>, EventSessionResourceAssembler>();
+
+        services.AddScoped<ILinkPolicy<EventSessionLanguageDto>, EventSessionLanguageDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventSessionLanguageListDto>, EventSessionLanguageCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventSessionLanguageDto, EventSessionLanguageListDto>, EventSessionLanguageResourceAssembler>();
 
         // EventSessionGroup (program sections/tracks/devrooms)
         services.AddScoped<ILinkPolicy<EventSessionGroupDto>, EventSessionGroupDetailLinkPolicy>();
@@ -277,11 +293,6 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<OrganizationReviewDto>, OrganizationReviewDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<OrganizationReviewDto>, OrganizationReviewCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<OrganizationReviewDto, OrganizationReviewDto>, OrganizationReviewResourceAssembler>();
-
-        // IndexedDid (ATProto federation identity)
-        services.AddScoped<ILinkPolicy<IndexedDidDto>, IndexedDidDetailLinkPolicy>();
-        services.AddScoped<ICollectionLinkPolicy<IndexedDidListDto>, IndexedDidCollectionLinkPolicy>();
-        services.AddScoped<IResourceAssembler<IndexedDidDto, IndexedDidListDto>, IndexedDidResourceAssembler>();
 
         // Notification (personal user notifications)
         services.AddScoped<ILinkPolicy<NotificationDto>, NotificationDetailLinkPolicy>();

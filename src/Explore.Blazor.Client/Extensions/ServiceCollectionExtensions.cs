@@ -150,7 +150,6 @@ public static class ServiceCollectionExtensions
 
         // Auth state
         services.AddScoped<IAuthStateService, AuthStateService>();
-        services.AddScoped<IUserExternalLoginService, UserExternalLoginService>();
 
         // Localization
         services.AddScoped<ITranslationService, TranslationService>();

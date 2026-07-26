@@ -20,7 +20,6 @@ using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.GroupMember;
-using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.DTOs.Organization;
@@ -514,10 +513,6 @@ public static class ResourceDescriptors
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
-    public static readonly ResourceDescriptor<IndexedDidDto> IndexedDid = new(
-        ResourceKinds.IndexedDid,
-        dto => dto.Did);
-
     #endregion
 
     #region Sub-resources piggybacking on parent tenant authorization
@@ -585,6 +580,9 @@ public static class ResourceDescriptors
         AddIfPresent(attributes, "userId", dto.ActorUserId);
         AddIfPresent(attributes, "organizationId", dto.ActorOrganizationId);
         AddIfPresent(attributes, "groupId", dto.ActorGroupId);
+        attributes["provenanceType"] = dto.ProvenanceTypeCode ?? dto.ProvenanceTypeId.ToString();
+        AddIfPresent(attributes, "organizerActorId", dto.OrganizerActorId);
+        AddIfPresent(attributes, "submittedByUserId", dto.SubmittedByUserId);
         return attributes;
     }
 
@@ -706,6 +704,10 @@ public static class ResourceDescriptors
         AddIfPresent(attributes, "userId", eventEntity.Actor?.UserId);
         AddIfPresent(attributes, "organizationId", eventEntity.Actor?.OrganizationId);
         AddIfPresent(attributes, "groupId", eventEntity.Actor?.GroupId);
+        attributes["provenanceType"] = eventEntity.EventProvenanceType?.MasterCode
+            ?? eventEntity.EventProvenanceTypeId.ToString();
+        AddIfPresent(attributes, "organizerActorId", eventEntity.OrganizerActorId);
+        AddIfPresent(attributes, "submittedByUserId", eventEntity.SubmittedByUserId);
         return attributes;
     }
 

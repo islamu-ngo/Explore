@@ -22,7 +22,7 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
     private readonly IUserExternalLoginRepository _externalLogins = Substitute.For<IUserExternalLoginRepository>();
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
     private readonly IActorRepository _actors = Substitute.For<IActorRepository>();
-    private readonly IIndexedDidRepository _indexedDids = Substitute.For<IIndexedDidRepository>();
+    private readonly IAtprotoIdentityRepository _atprotoIdentities = Substitute.For<IAtprotoIdentityRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
 
@@ -49,7 +49,7 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         await Assert.That(result.FailureCode).IsEqualTo("session_binding_mismatch");
         await _externalLogins.DidNotReceiveWithAnyArgs().GetByProviderAndKey(default!, default!);
         await _actors.DidNotReceiveWithAnyArgs().Update(default!);
-        await _indexedDids.DidNotReceiveWithAnyArgs().Create(default!);
+        await _atprotoIdentities.DidNotReceiveWithAnyArgs().Create(default!);
         await _securityGateway.DidNotReceiveWithAnyArgs().PersistAsync(default!, default, default, default);
         await _tokenIssuer.DidNotReceiveWithAnyArgs().IssueAsync(default, default, default!, default);
     }
@@ -66,7 +66,7 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         await Assert.That(result.FailureCode).IsEqualTo("account_not_linked");
         await _users.DidNotReceiveWithAnyArgs().GetById(default);
         await _actors.DidNotReceiveWithAnyArgs().Update(default!);
-        await _indexedDids.DidNotReceiveWithAnyArgs().Create(default!);
+        await _atprotoIdentities.DidNotReceiveWithAnyArgs().Create(default!);
         await _securityGateway.DidNotReceiveWithAnyArgs().PersistAsync(default!, default, default, default);
         await _tokenIssuer.DidNotReceiveWithAnyArgs().IssueAsync(default, default, default!, default);
     }
@@ -84,7 +84,7 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("account_not_linked");
         await _actors.DidNotReceiveWithAnyArgs().Update(default!);
-        await _indexedDids.DidNotReceiveWithAnyArgs().Create(default!);
+        await _atprotoIdentities.DidNotReceiveWithAnyArgs().Create(default!);
         await _securityGateway.DidNotReceiveWithAnyArgs().PersistAsync(default!, default, default, default);
         await _tokenIssuer.DidNotReceiveWithAnyArgs().IssueAsync(default, default, default!, default);
     }
@@ -93,13 +93,13 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
     public async Task SuccessfulBootstrapCommitsIdentityIndexAndSessionBeforeIssuingPlatformToken()
     {
         ConfigureVerifiedSession();
-        var identity = ConfigureLinkedIdentity();
-        IndexedDid? createdDid = null;
-        _indexedDids.GetById(Did).Returns(_ => createdDid);
-        _indexedDids.Create(Arg.Any<IndexedDid>()).Returns(call =>
+        var linked = ConfigureLinkedIdentity();
+        AtprotoIdentity? createdIdentity = null;
+        _atprotoIdentities.GetByDid(Did, Arg.Any<CancellationToken>()).Returns(_ => createdIdentity);
+        _atprotoIdentities.Create(Arg.Any<AtprotoIdentity>()).Returns(call =>
         {
-            createdDid = call.Arg<IndexedDid>();
-            return createdDid;
+            createdIdentity = call.Arg<AtprotoIdentity>();
+            return createdIdentity;
         });
         var issued = new AtprotoIssuedSessionToken("platform-jwt", DateTimeOffset.UtcNow.AddMinutes(15));
         _tokenIssuer.IssueAsync(_userId, _tenantId, Did, Arg.Any<CancellationToken>()).Returns(issued);
@@ -109,10 +109,10 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.UserId).IsEqualTo(_userId);
         await Assert.That(result.Token).IsEqualTo("platform-jwt");
-        await Assert.That(identity.Actor.Did).IsEqualTo(Did);
-        await Assert.That(identity.Actor.Handle).IsEqualTo("linked.example");
-        await Assert.That(createdDid).IsNotNull();
-        await _actors.Received(1).Update(identity.Actor);
+        await Assert.That(createdIdentity).IsNotNull();
+        await Assert.That(createdIdentity!.Did).IsEqualTo(Did);
+        await Assert.That(createdIdentity.Handle).IsEqualTo("linked.example");
+        await Assert.That(createdIdentity.ActorId).IsEqualTo(linked.Actor.Id);
         await _securityGateway.Received(1).PersistAsync(
             Arg.Is<AtprotoVerifiedOAuthSession>(session => session.Did == Did),
             _tenantId,
@@ -130,12 +130,12 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
     {
         ConfigureVerifiedSession();
         ConfigureLinkedIdentity();
-        IndexedDid? storedDid = null;
-        _indexedDids.GetById(Did).Returns(_ => storedDid);
-        _indexedDids.Create(Arg.Any<IndexedDid>()).Returns(call =>
+        AtprotoIdentity? storedIdentity = null;
+        _atprotoIdentities.GetByDid(Did, Arg.Any<CancellationToken>()).Returns(_ => storedIdentity);
+        _atprotoIdentities.Create(Arg.Any<AtprotoIdentity>()).Returns(call =>
         {
-            storedDid = call.Arg<IndexedDid>();
-            return storedDid;
+            storedIdentity = call.Arg<AtprotoIdentity>();
+            return storedIdentity;
         });
         var issuerAttempts = 0;
         _tokenIssuer.IssueAsync(_userId, _tenantId, Did, Arg.Any<CancellationToken>()).Returns(_ =>
@@ -152,8 +152,8 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
 
         await Assert.That(retry.Success).IsTrue();
         await Assert.That(retry.Token).IsEqualTo("retry-jwt");
-        await _indexedDids.Received(1).Create(Arg.Any<IndexedDid>());
-        await _indexedDids.Received(1).Update(Arg.Any<IndexedDid>());
+        await _atprotoIdentities.Received(1).Create(Arg.Any<AtprotoIdentity>());
+        await _atprotoIdentities.Received(1).Update(Arg.Any<AtprotoIdentity>());
         await _securityGateway.Received(2).PersistAsync(
             Arg.Any<AtprotoVerifiedOAuthSession>(),
             _tenantId,
@@ -181,10 +181,8 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         {
             Id = Guid.NewGuid(),
             UserId = _userId,
-            TenantId = _tenantId,
             Pii = new ActorPii { DisplayName = "Linked User" },
-            ActorType = null!,
-            Tenant = null!
+            ActorType = null!
         };
         var login = new UserExternalLogin
         {
@@ -198,7 +196,7 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         };
         _externalLogins.GetByProviderAndKey("atproto", Did).Returns(login);
         _users.GetById(_userId).Returns(user);
-        _actors.GetActorByUserIdAndTenantId(_userId, _tenantId).Returns(actor);
+        _actors.GetActorByUserId(_userId).Returns(actor);
         return (login, user, actor);
     }
 
@@ -208,7 +206,7 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         _externalLogins,
         _users,
         _actors,
-        _indexedDids,
+        _atprotoIdentities,
         _unitOfWork,
         _tenantContext,
         TimeProvider.System);
