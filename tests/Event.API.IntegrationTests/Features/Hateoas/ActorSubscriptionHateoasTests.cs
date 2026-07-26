@@ -262,20 +262,16 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
         await context.SaveChangesAsync();
 
         var userActor = new ActorBuilder()
-            .WithTenantId(tenant.Id)
             .WithUserId(user.Id)
             .WithDisplayName("Subscription Test User")
             .Build();
         var organizationActor = new ActorBuilder()
-            .WithTenantId(tenant.Id)
             .WithActorType(targetActorType)
             .WithDisplayName($"Subscription Target {Guid.NewGuid():N}")
             .Build();
         context.Actors.AddRange(userActor, organizationActor);
         await context.SaveChangesAsync();
 
-        user.ActorId = userActor.Id;
-        user.DefaultActorId = userActor.Id;
         var tenantUser = new TenantUser
         {
             Id = Guid.NewGuid(),

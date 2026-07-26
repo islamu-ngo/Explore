@@ -236,6 +236,58 @@ Table "event_formats" {
   Note: 'Lookup: event delivery mode. Values: InPerson(1), Virtual(2), Hybrid(3). Seeded.'
 }
 
+Table "event_provenance_types" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_event_provenance_types_master_code']
+  }
+
+  Note: 'Lookup: event listing provenance. Values: OrganizerCreated(1), CommunityReported(2), TenantCurated(3), Imported(4), Federated(5). Runtime-seeded.'
+}
+
+Table "event_public_action_kinds" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_event_public_action_kinds_master_code']
+  }
+
+  Note: 'Lookup: moderated external action purpose. Values: OriginalSource(1), ExternalEventPage(2), ExternalRegistration(3), OptionalQuestionnaire(4), Livestream(5), OrganizerContact(6). Runtime-seeded.'
+}
+
+Table "event_public_action_health_states" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_event_public_action_health_states_master_code']
+  }
+
+  Note: 'Lookup: moderated action health state. Values: PendingReview(1), Active(2), Broken(3), Unsafe(4), Disabled(5), Expired(6). Runtime-seeded.'
+}
+
+Table "event_organizer_claim_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_event_organizer_claim_statuses_master_code']
+  }
+
+  Note: 'Lookup: organizer claim lifecycle. Values: Pending(1), EvidenceRequired(2), Approved(3), Rejected(4), Withdrawn(5), Expired(6). Runtime-seeded.'
+}
+
 Table "event_statuses" {
   "id" int [pk, not null]
   "master_code" varchar(100) [not null]
@@ -2949,6 +3001,10 @@ Table "actor_pii" {
 Table "actor_key_stores" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "actor_id" uuid [not null]
+  "event_provenance_type_id" int [not null]
+  "submitted_by_user_id" uuid
+  "organizer_actor_id" uuid
+  "source_publisher_name" varchar(200)
   "tenant_id" uuid [not null]
   "key_purpose" varchar(50) [not null]
   "private_key_encrypted" text [not null]
@@ -3644,8 +3700,6 @@ Table "events" {
   "featured_image_id" uuid
   "total_views" int [not null]
   "is_registration_required" boolean [not null]
-  "is_user_reported" boolean [not null]
-  "event_url" varchar(2048)
   "madhab_id" int
   "tenant_id" uuid [not null]
   "slug" varchar(200)
@@ -4007,6 +4061,61 @@ Table "event_tags" {
     (tenant_id, event_id, tag_id) [unique, name: 'ix_event_tags_tenant_event_tag']
     (tenant_id, tag_id) [name: 'ix_event_tags_tenant_id_tag_id']
   }
+}
+
+Table "event_public_actions" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "event_public_action_kind_id" int [not null]
+  "health_state_id" int [not null]
+  "url" varchar(2048) [not null]
+  "destination_domain" varchar(253) [not null]
+  "label" varchar(200)
+  "sort_order" int [not null]
+  "is_primary" boolean [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_event_public_actions_tenant_id_id']
+    (tenant_id, event_id) [unique, name: 'ux_event_public_actions_tenant_event_primary', note: 'filter: is_primary = true AND is_deleted = false']
+  }
+
+  Note: 'Tenant-scoped moderated external actions. At most one active primary action may exist per event.'
+}
+
+Table "event_organizer_claims" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "claimant_actor_id" uuid [not null]
+  "status_id" int [not null]
+  "evidence_type" varchar(100) [not null]
+  "evidence_reference" varchar(2048) [not null]
+  "reviewer_user_id" uuid
+  "decision_reason_code" varchar(100)
+  "decided_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_event_organizer_claims_tenant_id_id']
+  }
+
+  Note: 'Tenant-scoped organizer authority claims. Approval grants future organizer authority only and does not grant historical attendee data.'
 }
 
 Table "event_registrations" {
@@ -4864,6 +4973,9 @@ Ref: "pds_sync_outbox"."superseded_by_id" > "pds_sync_outbox"."id" [delete: rest
 // Events Core
 Ref: "events"."event_type_id" > "event_types"."id" [delete: restrict]
 Ref: "events".("tenant_id", "actor_id") > "actors".("tenant_id", "id") [delete: restrict]
+Ref: "events"."event_provenance_type_id" > "event_provenance_types"."id" [delete: restrict]
+Ref: "events"."submitted_by_user_id" > "users"."id" [delete: restrict]
+Ref: "events"."organizer_actor_id" > "actors"."id" [delete: restrict]
 Ref: "events"."event_status_id" > "event_statuses"."id" [delete: restrict]
 Ref: "events"."event_format_id" > "event_formats"."id" [delete: restrict]
 Ref: "events"."visibility_type_id" > "visibility_types"."id" [delete: restrict]
@@ -4873,6 +4985,15 @@ Ref: "events"."audience_age_id" > "audience_ages"."id" [delete: restrict]
 Ref: "events"."madhab_id" > "madhabs"."id" [delete: restrict]
 Ref: "events"."atproto_record_id" > "atproto_records"."id" [delete: set null]
 Ref: "events"."event_series_id" > "event_series"."id" [delete: restrict]
+Ref: "event_public_actions"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_public_actions".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "event_public_actions"."event_public_action_kind_id" > "event_public_action_kinds"."id" [delete: restrict]
+Ref: "event_public_actions"."health_state_id" > "event_public_action_health_states"."id" [delete: restrict]
+Ref: "event_organizer_claims"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_organizer_claims".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "event_organizer_claims"."claimant_actor_id" > "actors"."id" [delete: restrict]
+Ref: "event_organizer_claims"."status_id" > "event_organizer_claim_statuses"."id" [delete: restrict]
+Ref: "event_organizer_claims"."reviewer_user_id" > "users"."id" [delete: restrict]
 
 // Event Extensions (1:1)
 Ref: "event_islamic_aspects"."id" - "events"."id" [delete: cascade]

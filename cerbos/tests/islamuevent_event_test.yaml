@@ -158,7 +158,7 @@ tests:
     input:
       principals: ["regular_user"]
       resources: ["event_in_tenant1_org1"]
-      actions: ["view", "view-management", "create", "update", "delete"]
+      actions: ["view", "view-management", "create", "update", "delete", "claim-organizer", "manage-public-actions", "view-organizer-claims", "review-organizer-claim"]
     expected:
       - principal: "regular_user"
         resource: "event_in_tenant1_org1"
@@ -168,6 +168,42 @@ tests:
           create: EFFECT_DENY
           update: EFFECT_DENY
           delete: EFFECT_DENY
+          claim-organizer: EFFECT_ALLOW
+          manage-public-actions: EFFECT_DENY
+          view-organizer-claims: EFFECT_DENY
+          review-organizer-claim: EFFECT_DENY
+
+  - name: "Tenant curator can review claims while instance admin cannot access tenant claim evidence"
+    input:
+      principals: ["islamuevent_tenant_admin", "islamuevent_instance_admin"]
+      resources: ["event_in_tenant1_org1"]
+      actions: ["manage-public-actions", "view-organizer-claims", "review-organizer-claim", "claim-organizer"]
+    expected:
+      - principal: "islamuevent_tenant_admin"
+        resource: "event_in_tenant1_org1"
+        actions:
+          manage-public-actions: EFFECT_ALLOW
+          view-organizer-claims: EFFECT_ALLOW
+          review-organizer-claim: EFFECT_ALLOW
+          claim-organizer: EFFECT_ALLOW
+      - principal: "islamuevent_instance_admin"
+        resource: "event_in_tenant1_org1"
+        actions:
+          manage-public-actions: EFFECT_DENY
+          view-organizer-claims: EFFECT_DENY
+          review-organizer-claim: EFFECT_DENY
+          claim-organizer: EFFECT_DENY
+
+  - name: "Machine caller cannot submit organizer claims"
+    input:
+      principals: ["machine_user"]
+      resources: ["event_in_tenant1_org1"]
+      actions: ["claim-organizer"]
+    expected:
+      - principal: "machine_user"
+        resource: "event_in_tenant1_org1"
+        actions:
+          claim-organizer: EFFECT_DENY
 
   - name: "Owning user can manage user-owned events"
     input:

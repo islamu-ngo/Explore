@@ -172,14 +172,16 @@ public sealed class WebhookOwnershipScopeResolver(
         var organization = await organizationRepository.GetOrganizationWithDetails(
             requestedOwnerId.Value,
             cancellationToken);
-        if (organization is null || organization.TenantId != tenantContext.TenantId)
+        var participation = organization?.TenantParticipations
+            .SingleOrDefault(candidate => candidate.TenantId == tenantContext.TenantId);
+        if (participation is null)
         {
             return Failed("webhook_owner_not_found", "Organization webhook owner was not found in the current tenant.");
         }
 
         return Resolved(WebhookOwnershipScope.Create(
             WebhookConsumerKind.Organization,
-            organization.TenantId,
+            participation.TenantId,
             null,
             organization.Id,
             null,
@@ -194,14 +196,16 @@ public sealed class WebhookOwnershipScopeResolver(
         }
 
         var group = await groupRepository.GetGroupWithDetails(requestedOwnerId.Value);
-        if (group is null || group.TenantId != tenantContext.TenantId)
+        var participation = group?.TenantParticipations
+            .SingleOrDefault(candidate => candidate.TenantId == tenantContext.TenantId);
+        if (participation is null)
         {
             return Failed("webhook_owner_not_found", "Group webhook owner was not found in the current tenant.");
         }
 
         return Resolved(WebhookOwnershipScope.Create(
             WebhookConsumerKind.Group,
-            group.TenantId,
+            participation.TenantId,
             null,
             null,
             group.Id,

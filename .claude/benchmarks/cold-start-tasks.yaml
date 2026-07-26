@@ -1,9 +1,9 @@
-# ABOUTME: Ten cold-start benchmark scenarios validating the ISLAMU Event AI-native contribution system.
+# ABOUTME: Eleven cold-start benchmark scenarios validating the ISLAMU Event AI-native contribution system.
 # ABOUTME: Each scenario is a self-contained task a fresh AI agent should be able to complete using only AGENTS.md + the context system.
 # Version: 1 (synthetic). Target: replace each with real issue-based scenario within 4–6 weeks.
 
 version: 1
-last_updated: "2026-07-13"
+last_updated: "2026-07-26"
 owner: "context-system-maintainers"
 
 scenarios:
@@ -395,3 +395,80 @@ scenarios:
       - "Repositories return entities, handlers map DTOs, validators are manually instantiated, and tenant filters stay active."
       - "API authorization emits HAL affordances and Blazor renders operational actions only when those links are present."
       - "Cross-layer verification executes nonzero tests without adding new webhook messaging infrastructure."
+
+  - id: registration-data-collection
+    intent_id: registration-data-collection
+    summary: |
+      Implement the approved registration participation, ticketing, and form-provider workstream across all layers.
+    prompt: |
+      Implement the approved plan in `dev/active/registration-data-collection/`. Replace the user-centric
+      registration intent with an order/participant/ticket model, add typed participation and provenance,
+      protect guest writes with PublicTransactional controls, keep answers typed and version-pinned, and
+      integrate organizer operations into the existing Studio workspace. External provider completion is
+      evidence only. Do not copy Hi.Events code or introduce backward-compatibility shims.
+    expected_must_reads:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/GOVERNANCE.md"
+      - "docs/ARCHITECTURE.md"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/AUTHORIZATION.md"
+      - "docs/adr/ADR-016-registration-data-collection-context.md"
+      - "docs/adr/ADR-017-event-participation-authority-model.md"
+      - "docs/adr/ADR-018-registration-order-ticketing-aggregate.md"
+      - "dev/active/registration-data-collection/registration-data-collection-plan.md"
+      - "dev/active/registration-data-collection/registration-data-collection-context.md"
+      - "dev/active/registration-data-collection/registration-data-collection-tasks.md"
+      - ".claude/rules/domain.md"
+      - ".claude/rules/application-layer.md"
+      - ".claude/rules/efcore-persistence.md"
+      - ".claude/rules/api-controllers.md"
+      - ".claude/rules/api-hateoas.md"
+      - ".claude/rules/blazor-client.md"
+      - ".agents/skills/clean-architecture-rules/SKILL.md"
+      - ".agents/skills/cqrs-mediatr-guidelines/SKILL.md"
+      - ".agents/skills/dotnet-efcore-guidelines/SKILL.md"
+      - ".agents/skills/outbox-pattern/SKILL.md"
+      - ".agents/skills/auth-patterns/SKILL.md"
+      - ".agents/skills/blazor-ui-conventions/SKILL.md"
+    expected_paths_in_scope:
+      - "src/Explore.Domain/**/*Registration*.cs"
+      - "src/Explore.Domain/**/*Participation*.cs"
+      - "src/Explore.Domain/**/*Ticket*.cs"
+      - "src/Explore.Application/**/*Registration*.cs"
+      - "src/Explore.Persistence/**/*Registration*.cs"
+      - "src/Explore.Infrastructure/**/*Registration*.cs"
+      - "src/Explore.API/**/*Registration*.cs"
+      - "src/Explore.Blazor.Client/**/*Registration*"
+      - "cerbos/policies/**/*registration*.yaml"
+      - "tests/**/*Registration*.cs"
+      - "schemas/openapi_islamu-event.json"
+      - "schemas/islamu-event.md"
+      - "docs/adr/ADR-016-registration-data-collection-context.md"
+      - "docs/adr/ADR-017-event-participation-authority-model.md"
+      - "docs/adr/ADR-018-registration-order-ticketing-aggregate.md"
+      - "dev/active/registration-data-collection/**"
+    expected_paths_forbidden:
+      - "dev/next/**"
+      - "dev/report/**"
+      - ".design-sync/**"
+    expected_verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet"
+    acceptance_criteria:
+      - "The request classifies as `registration-data-collection`, not a collection of unrelated endpoint or migration intents."
+      - "External completion remains evidence; ISLAMU alone confirms after pinned-version validation, capacity, approval, and deduplication."
+      - "Canonical answers are typed atomic rows; published form and ticket catalog versions are immutable."
+      - "Guest mutations use dedicated rate limiting, antiforgery treatment, idempotency, and hashed scoped capabilities."
+      - "Repositories return entities, handlers map DTOs, validators are manually instantiated, and tenant filters remain active."
+      - "Provider calls happen outside database transactions and are coordinated through the existing durable inbox/outbox pattern."
+      - "Organizer and participant actions render only from HAL links, including Studio sidebar sections."
+      - "No Hi.Events code, compatibility shim, floating-point money, public-ID authorization, or tenant-level platform monetization is introduced."

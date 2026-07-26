@@ -66,6 +66,18 @@ public class ContractInvariantsTests
     }
 
     [Test]
+    public async Task OpenApiDocument_DoesNotExposeClientAssertedIdentityCrud()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var paths = EnumeratePaths(document).ToList();
+
+        await Assert.That(paths)
+            .DoesNotContain(path => path.StartsWith("/api/userexternallogin", System.StringComparison.OrdinalIgnoreCase));
+        await Assert.That(paths)
+            .DoesNotContain(path => path.StartsWith("/api/indexeddid", System.StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Test]
     public async Task OpenApiDocument_ContainsNoUrlSegmentVersionedPaths()
     {
         using var document = await GetOpenApiDocumentAsync();

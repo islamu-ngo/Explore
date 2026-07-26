@@ -6,7 +6,7 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 > **Audience:** Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** API
-> **Last Verified:** 2026-06-07
+> **Last Verified:** 2026-07-26
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`, `Explore.API/Authentication/`, `Explore.API/Extensions/`, `Explore.API/OpenApi/`, `Explore.API/Explore.API.csproj`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs`, `Event.API.IntegrationTests/Features/OpenApiParityTests.cs`
 
 ## Scope
@@ -100,6 +100,16 @@ Three-reader non-URL versioning — clients may use any of the following; all th
 2. Business logic belongs in handlers/services, never controllers.
 3. Every endpoint has named routes (via `RouteNames` constants) for HATEOAS link generation.
 4. Endpoints include `[ProducesResponseType]` and XML doc summaries for OpenAPI quality.
+
+### Event Provenance, Public Actions, And Organizer Claims
+
+Event reads expose typed provenance plus reviewed `Active` public actions. External destinations are stored as `EventPublicAction` records rather than caller-supplied redirect URLs.
+
+- Anonymous `GET /api/events/{eventId}/public-actions` and `GET /api/events/{eventId}/public-actions/{actionId}` return only active reviewed actions for a published public event.
+- Anonymous `GET /api/events/{eventId}/public-actions/{actionId}/redirect` resolves the stored action by `eventId` and `actionId`, returns `302`, and is `no-store`. It never accepts a destination or return URL from the request.
+- Authenticated `POST /api/events/{eventId}/public-actions`, `PUT /api/events/{eventId}/public-actions/{actionId}`, and `DELETE /api/events/{eventId}/public-actions/{actionId}` manage actions through event authorization. Updating a destination returns it to pending review; deletion requires the current concurrency stamp in `If-Match`.
+- Organizer-claim list/detail, submit, withdraw, and review operations live under `/api/events/{eventId}/organizer-claims`; claimant-scoped reads use `GET /api/actors/{claimantActorId}/organizer-claims`. All claim reads are authenticated and `no-store`; withdraw requires `If-Match`.
+- Event and child-resource HAL policies independently emit source/action, claim, correction, unsafe-link reporting, withdrawal, and review affordances. Clients must use `_links`, not provenance, actor ids, or role claims, to decide which controls to render.
 
 ### Template Sync Endpoints
 
@@ -815,7 +825,7 @@ Event publication is database-first: the committed local lifecycle mutation and 
 
 Ingress uses one globally leased Jetstream consumer for exactly `community.lexicon.calendar.event` and `community.lexicon.calendar.rsvp`. Canonical DID/collection/record-key state, current source version, typed event projection, tenant presentation, quarantine/tombstone effects, and cursor advancement are persisted atomically. Public clients must treat HAL links as action authority: federated items have no write affordances, and `source` exists only when the server can safely resolve the internal redirect route.
 
-The removed raw `/api/atprotorecord` and generic raw-credential create/update routes have no compatibility aliases. Authenticated session-metadata reads and idempotent local session deletion remain credential-free. The checked-in OpenAPI contract and [API Contract Inventory](API_CONTRACT_INVENTORY.md) are the route/schema authority.
+The removed raw `/api/atprotorecord`, `/api/indexeddid`, and `/api/userexternallogin` surfaces have no compatibility aliases. Clients cannot assert provider, DID, PDS, key, tenant, or user ownership through generic CRUD. Authenticated session-metadata reads and idempotent local session deletion remain credential-free; verified authentication and federation internals are the only identity-link authorities. The checked-in OpenAPI contract and [API Contract Inventory](API_CONTRACT_INVENTORY.md) are the route/schema authority.
 
 ---
 

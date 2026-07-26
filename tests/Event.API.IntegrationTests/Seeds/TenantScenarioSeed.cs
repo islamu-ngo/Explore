@@ -12,7 +12,6 @@ namespace Event.Api.IntegrationTests.Seeds;
 
 /// <summary>
 /// Seeds complete tenant contexts (tenant + user + actor) for integration test scenarios.
-/// Uses the two-phase save pattern required by the User → Actor circular dependency.
 /// </summary>
 public static class TenantScenarioSeed
 {
@@ -49,7 +48,6 @@ public static class TenantScenarioSeed
         await context.SaveChangesAsync();
 
         var actor = new ActorBuilder()
-            .WithTenantId(tenant.Id)
             .WithUserId(user.Id)
             .Build();
         context.Actors.Add(actor);
@@ -80,15 +78,13 @@ public static class TenantScenarioSeed
     {
         TenantScenarioResult seeded = await SeedActiveTenantWithUserAsync(context);
         await EnsureOrgAdminCanCreateEventsAsync(context);
+        Tenant tenant = await context.Tenants.SingleAsync(value => value.Id == seeded.TenantId);
+        User user = await context.Users.SingleAsync(value => value.Id == seeded.UserId);
 
         var organizationId = Guid.CreateVersion7();
         var organization = new Organization
         {
             Id = organizationId,
-            TenantId = seeded.TenantId,
-            Tenant = null!,
-            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
-            ApprovalStatus = null!,
             Pii = new OrganizationPii
             {
                 OrganizationId = organizationId,
@@ -99,9 +95,22 @@ public static class TenantScenarioSeed
         };
         context.Organizations.Add(organization);
         await context.SaveChangesAsync();
+        var organizationTenant = new OrganizationTenant
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = seeded.TenantId,
+            Tenant = tenant,
+            OrganizationId = organization.Id,
+            Organization = organization,
+            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+            ApprovalStatus = null!,
+            ApprovedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        context.OrganizationTenants.Add(organizationTenant);
+        await context.SaveChangesAsync();
 
         var organizationActor = new ActorBuilder()
-            .WithTenantId(seeded.TenantId)
             .WithActorType(ActorTypeEnum.Organization)
             .WithDisplayName("AI Test Publisher Organization")
             .Build();
@@ -109,16 +118,15 @@ public static class TenantScenarioSeed
         context.Actors.Add(organizationActor);
         await context.SaveChangesAsync();
 
-        organization.ActorId = organizationActor.Id;
         context.OrganizationMembers.Add(new OrganizationMember
         {
             Id = Guid.CreateVersion7(),
             TenantId = seeded.TenantId,
-            Tenant = null!,
-            OrganizationId = organizationId,
-            Organization = null!,
+            Tenant = tenant,
+            OrganizationTenantId = organizationTenant.Id,
+            OrganizationTenant = organizationTenant,
             UserId = seeded.UserId,
-            User = null!,
+            User = user,
             RoleId = (int)RoleEnum.OrgAdmin,
             Role = null!,
             CreatedAt = DateTime.UtcNow
@@ -179,7 +187,6 @@ public static class TenantScenarioSeed
         await context.SaveChangesAsync();
 
         var actor = new ActorBuilder()
-            .WithTenantId(tenant.Id)
             .WithUserId(user.Id)
             .WithDisplayName($"{name} User")
             .Build();

@@ -531,6 +531,246 @@ intents:
       - backend-engineer-agent
       - quality-verifier-agent
 
+  - id: registration-data-collection
+    title: "Implement registration data collection, participation, ticketing, and provider channels"
+    category: cross-cutting
+    triggers:
+      - "registration data collection"
+      - "implement the registration data collection plan"
+      - "registration provider architecture"
+      - "guest registration and ticketing"
+      - "registration forms provider"
+      - "event participation platform"
+    must_read_docs:
+      - AGENTS.md
+      - docs/QUICK_REFERENCE.md
+      - docs/GOVERNANCE.md
+      - docs/ARCHITECTURE.md
+      - docs/DOMAIN.md
+      - docs/API.md
+      - docs/AUTHORIZATION.md
+      - docs/SECURITY-MODEL.md
+      - docs/WEBHOOKS.md
+      - docs/CONTACT_SHARING.md
+      - docs/MULTI_TENANCY.md
+      - docs/OUTBOX_PATTERN.md
+      - docs/BLAZOR.md
+      - docs/TESTING.md
+      - docs/adr/ADR-016-registration-data-collection-context.md
+      - docs/adr/ADR-017-event-participation-authority-model.md
+      - docs/adr/ADR-018-registration-order-ticketing-aggregate.md
+      - dev/active/registration-data-collection/registration-data-collection-plan.md
+      - dev/active/registration-data-collection/registration-data-collection-context.md
+      - dev/active/registration-data-collection/registration-data-collection-tasks.md
+    load_skills:
+      - clean-architecture-rules
+      - cqrs-mediatr-guidelines
+      - dotnet-efcore-guidelines
+      - outbox-pattern
+      - auth-patterns
+      - blazor-bff-patterns
+      - blazor-ui-conventions
+      - error-tracking
+    load_rules:
+      - .claude/rules/domain.md
+      - .claude/rules/application-layer.md
+      - .claude/rules/efcore-persistence.md
+      - .claude/rules/efcore-migrations.md
+      - .claude/rules/api-controllers.md
+      - .claude/rules/api-hateoas.md
+      - .claude/rules/blazor-server.md
+      - .claude/rules/blazor-client.md
+      - .claude/rules/tests.md
+    paths_in_scope:
+      - ".claude/contract/intents.yaml"
+      - "src/Explore.Domain/**/*Registration*.cs"
+      - "src/Explore.Domain/**/*Participation*.cs"
+      - "src/Explore.Domain/**/*Ticket*.cs"
+      - "src/Explore.Domain/**/*Capacity*.cs"
+      - "src/Explore.Domain/**/*OrganizerClaim*.cs"
+      - "src/Explore.Domain/**/*PublicAction*.cs"
+      - "src/Explore.Domain/**/*Provenance*.cs"
+      - "src/Explore.Domain/PlatformFeePolicy.cs"
+      - "src/Explore.Domain/PlatformContribution*.cs"
+      - "src/Explore.Domain/Event.cs"
+      - "src/Explore.Domain/EventSession.cs"
+      - "src/Explore.Domain/EventContactShareConsent.cs"
+      - "src/Explore.Domain/Enums/**/*Registration*.cs"
+      - "src/Explore.Domain/Enums/**/*Participation*.cs"
+      - "src/Explore.Domain/Enums/**/*Ticket*.cs"
+      - "src/Explore.Domain/ValueObjects/**/*.cs"
+      - "src/Explore.Domain/Services/Registration/**/*.cs"
+      - "src/Explore.Domain/Secrets/SecretDefinitionRegistry.cs"
+      - "src/Explore.Application/**/*Registration*.cs"
+      - "src/Explore.Application/**/*Participation*.cs"
+      - "src/Explore.Application/**/*Ticket*.cs"
+      - "src/Explore.Application/**/*Capacity*.cs"
+      - "src/Explore.Application/**/*OrganizerClaim*.cs"
+      - "src/Explore.Application/**/*PublicAction*.cs"
+      - "src/Explore.Application/**/PlatformMonetization/**/*.cs"
+      - "src/Explore.Application/Authorization/*.cs"
+      - "src/Explore.Application/Hateoas/LinkRelations.cs"
+      - "src/Explore.Application/Telemetry/BusinessMetrics.cs"
+      - "src/Explore.Application/ApplicationServicesRegistration.cs"
+      - "src/Explore.Persistence/**/*Registration*.cs"
+      - "src/Explore.Persistence/**/*Participation*.cs"
+      - "src/Explore.Persistence/**/*Ticket*.cs"
+      - "src/Explore.Persistence/**/*Capacity*.cs"
+      - "src/Explore.Persistence/**/*OrganizerClaim*.cs"
+      - "src/Explore.Persistence/**/*PublicAction*.cs"
+      - "src/Explore.Persistence/**/*PlatformMonetization*.cs"
+      - "src/Explore.Persistence/ExploreDbContext*.cs"
+      - "src/Explore.Persistence/Seed/LookupTableSeeder.cs"
+      - "src/Explore.Persistence/Migrations/**/*.cs"
+      - "src/Explore.Infrastructure/**/*Registration*.cs"
+      - "src/Explore.Infrastructure/**/*Formbricks*.cs"
+      - "src/Explore.Infrastructure/**/*GoogleForms*.cs"
+      - "src/Explore.Infrastructure/**/*MicrosoftForms*.cs"
+      - "src/Explore.Infrastructure/InfrastructureServicesRegistration.cs"
+      - "src/Explore.API/Attributes/EndpointClass.cs"
+      - "src/Explore.API/Controllers/**/*Registration*.cs"
+      - "src/Explore.API/Controllers/**/*Participation*.cs"
+      - "src/Explore.API/Controllers/**/*Ticket*.cs"
+      - "src/Explore.API/Controllers/**/*OrganizerClaim*.cs"
+      - "src/Explore.API/Controllers/**/*PublicAction*.cs"
+      - "src/Explore.API/Controllers/**/*Studio*.cs"
+      - "src/Explore.API/Controllers/**/*Monetization*.cs"
+      - "src/Explore.API/Hateoas/**/*Registration*.cs"
+      - "src/Explore.API/Hateoas/**/*Participation*.cs"
+      - "src/Explore.API/Hateoas/**/*Ticket*.cs"
+      - "src/Explore.API/Hateoas/**/*OrganizerClaim*.cs"
+      - "src/Explore.API/Hateoas/**/*PublicAction*.cs"
+      - "src/Explore.API/Hateoas/RouteNames.cs"
+      - "src/Explore.API/Program.cs"
+      - "src/Explore.Blazor/**/*Registration*.cs"
+      - "src/Explore.Blazor/Program.cs"
+      - "src/Explore.Blazor.Client/**/*Registration*"
+      - "src/Explore.Blazor.Client/**/*Participation*"
+      - "src/Explore.Blazor.Client/**/*Ticket*"
+      - "src/Explore.Blazor.Client/Pages/Studio/**"
+      - "src/Explore.Blazor.Client/Components/Shell/Workspaces/Studio*.razor"
+      - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
+      - "cerbos/policies/**/*registration*.yaml"
+      - "cerbos/policies/**/*ticket*.yaml"
+      - "cerbos/policies/**/*organizer_claim*.yaml"
+      - "cerbos/policies/islamuevent_event.yaml"
+      - "tests/**/*Registration*.cs"
+      - "tests/**/*Participation*.cs"
+      - "tests/**/*Ticket*.cs"
+      - "tests/**/*OrganizerClaim*.cs"
+      - "tests/**/*PublicTransactional*.cs"
+      - "tests/**/*Studio*.cs"
+      - "schemas/openapi_islamu-event.json"
+      - "schemas/islamu-event.md"
+      - "docs/adr/ADR-016-registration-data-collection-context.md"
+      - "docs/adr/ADR-017-event-participation-authority-model.md"
+      - "docs/adr/ADR-018-registration-order-ticketing-aggregate.md"
+      - "docs/API.md"
+      - "docs/API_CHANGELOG.md"
+      - "docs/AUTHORIZATION.md"
+      - "docs/BLAZOR.md"
+      - "docs/CONFIGURATION.md"
+      - "docs/CONTACT_SHARING.md"
+      - "docs/CUSTOM_PROPERTIES.md"
+      - "docs/DOMAIN.md"
+      - "docs/INTEGRATIONS.md"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/SECRETS.md"
+      - "docs/SELF_HOSTING.md"
+      - "docs/WEBHOOKS.md"
+      - "dev/active/registration-data-collection/**"
+    paths_forbidden:
+      - ".claude/settings*.json"
+      - ".design-sync/**"
+      - "dev/next/**"
+      - "dev/report/**"
+    minimum_tests:
+      - Event.Domain.UnitTests
+      - Event.Application.UnitTests
+      - Event.Architecture.Tests
+      - Event.Persistence.IntegrationTests
+      - Explore.Infrastructure.Tests
+      - Event.API.IntegrationTests
+      - Explore.Blazor.IntegrationTests
+      - Explore.Blazor.Client.Tests
+      - Explore.Secrets.UnitTests
+    docs_to_update:
+      - docs/DOMAIN.md
+      - docs/API.md
+      - docs/API_CHANGELOG.md
+      - docs/AUTHORIZATION.md
+      - docs/SECURITY-MODEL.md
+      - docs/CONTACT_SHARING.md
+      - docs/WEBHOOKS.md
+      - docs/CUSTOM_PROPERTIES.md
+      - docs/CONFIGURATION.md
+      - docs/SECRETS.md
+      - docs/SELF_HOSTING.md
+      - docs/INTEGRATIONS.md
+      - docs/BLAZOR.md
+      - schemas/islamu-event.md
+      - dev/active/registration-data-collection/registration-data-collection-plan.md
+      - dev/active/registration-data-collection/registration-data-collection-context.md
+      - dev/active/registration-data-collection/registration-data-collection-tasks.md
+    unique_acceptance:
+      - "ISLAMU remains authoritative for workflow, normalized answers, capacity, approval, and confirmation; external completion is evidence only"
+      - "Every attempt pins the exact form, provider binding, mapping, participation, workflow, and ticket catalog versions it uses"
+      - "Canonical answers are typed atomic rows with database-enforced value and subject shape; JSON and provider payloads are not answer truth"
+      - "Guest writes use PublicTransactional controls: dedicated rate limit, antiforgery decision, idempotency, hashed scoped capability, and PII-free telemetry"
+      - "All participant and organizer UI affordances and Studio sections are authorized by server-authored HAL links, never local roles or capability booleans"
+      - "Provider calls execute outside business transactions; durable inbox, outbox, fencing, retry, and reconciliation coordinate every external effect"
+      - "Published forms and ticket catalogs are immutable; future edits create versions while active attempts and orders remain pinned"
+      - "Money uses decimal and explicit currency rounding; platform monetization is instance-admin-only and defaults off or zero"
+    pr_checklist:
+      - "Failing-first tests cover state transitions, malformed inputs, tenant isolation, guest capabilities, duplicate callbacks, duplicate finalization, and shared-capacity races"
+      - "Repositories return entities, handlers map DTOs, validators are manually instantiated, and all new lookups have enum, seeder, migration, and API metadata parity"
+      - "Every new tenant entity has central tenant and named soft-delete filters, auditing, concurrency, and cross-tenant negative tests"
+      - "No provider HTTP, email, webhook, broker, or storage call occurs inside a business transaction; required effects are durable and post-commit"
+      - "Cerbos policies, HAL policies, endpoint classifications, OpenAPI, and the generated client converge without client-side authorization inference"
+      - "Logs, metrics, traces, ProblemDetails, health, support artifacts, and ordinary webhooks contain no answers, PII, guest tokens, secrets, or raw provider payloads"
+      - "All minimum test projects execute nonzero tests and phase-specific real PostgreSQL concurrency tests prove hold/finalization correctness"
+      - "Product, security, authorization, provider, self-hosting, schema, and active development docs match the shipped behavior"
+    forbidden_without_approval:
+      - "Adding backward-compatibility aliases, dual writes, deprecated registration contracts, or data-migration shims"
+      - "Reusing Event custom-property rows for registration answers or storing canonical answers only as JSON"
+      - "Treating provider completion, redirect return, iframe navigation, or an external click as registration confirmation"
+      - "Using provider names as capability authority, silently switching active attempts, or silently accepting external schema drift"
+      - "Performing provider I/O inside a database transaction or letting callback controllers mutate registration aggregates"
+      - "Using public/display identifiers as guest authorization, storing plaintext capabilities, or logging tokens, PII, answers, or provider payloads"
+      - "Granting reported-listing contributors organizer, provider, commercial, or attendee-data authority"
+      - "Gating Blazor actions or Studio navigation with local role, claim, status, provenance, or capability-boolean checks"
+      - "Enabling platform fees or contributions at tenant scope, defaulting monetization on, using floating-point money, or mixing contributions with organizer earnings"
+      - "Building payment-provider, refund, tax, payout, or admission-credential integrations before their future ADRs are approved"
+      - "Copying code, SQL, migrations, snippets, or assets from Hi.Events; only the approved clean-room behavior report may be used"
+      - "Deleting or rewriting migration history, hand-editing generated EF designer/snapshot files, or bypassing the migration-baseline ordering decision"
+    related_agents:
+      - architect-agent
+      - backend-engineer-agent
+      - presentation-engineer-agent
+      - quality-verifier-agent
+    related_intents:
+      - add-get-endpoint
+      - add-write-endpoint
+      - add-hal-link
+      - add-cqrs-handler
+      - add-ef-migration
+      - update-repository-query
+      - blazor-component-affordance
+      - cerbos-policy-change
+      - openapi-contract-change
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet ef migrations has-pending-model-changes --context ExploreDbContext --project src/Explore.Persistence --startup-project src/Explore.API --configuration Release"
+
   - id: webhook-delivery-redesign
     title: "Redesign durable inbound and outbound webhook delivery across the platform"
     category: cross-cutting

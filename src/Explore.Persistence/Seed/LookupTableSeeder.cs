@@ -68,6 +68,7 @@ public static class LookupTableSeeder
         await SeedAudienceGendersAsync(context, cancellationToken);
         await SeedDidCustodyTypesAsync(context, cancellationToken);
         await SeedEventFormatsAsync(context, cancellationToken);
+        await SeedEventAuthorityLookupsAsync(context, cancellationToken);
         await SeedEventStatusesAsync(context, cancellationToken);
         await SeedEventSessionStatusesAsync(context, cancellationToken);
         await SeedEventTypesAsync(context, cancellationToken);
@@ -1414,6 +1415,64 @@ public static class LookupTableSeeder
                 new() { Id = (int)LocationDisclosureAudienceEnum.Never, MasterCode = "NEVER", FullName = "Never", Description = "Physical location details are never disclosed" },
                 new() { Id = (int)LocationDisclosureAudienceEnum.AnyCurrentRegistrant, MasterCode = "ANY_CURRENT_REGISTRANT", FullName = "Any current registrant", Description = "Eligible current registrations may receive disclosed details" },
                 new() { Id = (int)LocationDisclosureAudienceEnum.ConfirmedParticipant, MasterCode = "CONFIRMED_PARTICIPANT", FullName = "Confirmed participant", Description = "Only confirmed eligible participants may receive disclosed details" }
+            },
+            row => row.Id,
+            ct);
+    }
+
+    internal static async Task SeedEventAuthorityLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new EventProvenanceType[]
+            {
+                new() { Id = (int)EventProvenanceTypeEnum.OrganizerCreated, MasterCode = "ORGANIZER_CREATED", FullName = "Organizer created", Description = "Created by an actor with organizer authority" },
+                new() { Id = (int)EventProvenanceTypeEnum.CommunityReported, MasterCode = "COMMUNITY_REPORTED", FullName = "Community reported", Description = "Submitted by a community member for listing review" },
+                new() { Id = (int)EventProvenanceTypeEnum.TenantCurated, MasterCode = "TENANT_CURATED", FullName = "Tenant curated", Description = "Curated by the tenant without organizer authority" },
+                new() { Id = (int)EventProvenanceTypeEnum.Imported, MasterCode = "IMPORTED", FullName = "Imported", Description = "Imported from an external source" },
+                new() { Id = (int)EventProvenanceTypeEnum.Federated, MasterCode = "FEDERATED", FullName = "Federated", Description = "Materialized from a federated source" }
+            },
+            row => row.Id,
+            ct);
+
+        await SeedMissingLookupRowsAsync(
+            context,
+            new EventPublicActionKind[]
+            {
+                new() { Id = (int)EventPublicActionKindEnum.OriginalSource, MasterCode = "ORIGINAL_SOURCE", FullName = "Original source", Description = "Canonical source for the event listing" },
+                new() { Id = (int)EventPublicActionKindEnum.ExternalEventPage, MasterCode = "EXTERNAL_EVENT_PAGE", FullName = "External event page", Description = "External page containing event information" },
+                new() { Id = (int)EventPublicActionKindEnum.ExternalRegistration, MasterCode = "EXTERNAL_REGISTRATION", FullName = "External registration", Description = "External registration destination" },
+                new() { Id = (int)EventPublicActionKindEnum.OptionalQuestionnaire, MasterCode = "OPTIONAL_QUESTIONNAIRE", FullName = "Optional questionnaire", Description = "Optional external questionnaire" },
+                new() { Id = (int)EventPublicActionKindEnum.Livestream, MasterCode = "LIVESTREAM", FullName = "Livestream", Description = "External livestream destination" },
+                new() { Id = (int)EventPublicActionKindEnum.OrganizerContact, MasterCode = "ORGANIZER_CONTACT", FullName = "Organizer contact", Description = "Organizer-controlled contact destination" }
+            },
+            row => row.Id,
+            ct);
+
+        await SeedMissingLookupRowsAsync(
+            context,
+            new EventPublicActionHealthState[]
+            {
+                new() { Id = (int)EventPublicActionHealthStateEnum.PendingReview, MasterCode = "PENDING_REVIEW", FullName = "Pending review", Description = "Action is awaiting moderation review" },
+                new() { Id = (int)EventPublicActionHealthStateEnum.Active, MasterCode = "ACTIVE", FullName = "Active", Description = "Action is approved and available" },
+                new() { Id = (int)EventPublicActionHealthStateEnum.Broken, MasterCode = "BROKEN", FullName = "Broken", Description = "Action destination is unavailable" },
+                new() { Id = (int)EventPublicActionHealthStateEnum.Unsafe, MasterCode = "UNSAFE", FullName = "Unsafe", Description = "Action destination failed safety review" },
+                new() { Id = (int)EventPublicActionHealthStateEnum.Disabled, MasterCode = "DISABLED", FullName = "Disabled", Description = "Action is intentionally disabled" },
+                new() { Id = (int)EventPublicActionHealthStateEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired", Description = "Action destination is no longer current" }
+            },
+            row => row.Id,
+            ct);
+
+        await SeedMissingLookupRowsAsync(
+            context,
+            new EventOrganizerClaimStatus[]
+            {
+                new() { Id = (int)EventOrganizerClaimStatusEnum.Pending, MasterCode = "PENDING", FullName = "Pending", Description = "Claim is awaiting review" },
+                new() { Id = (int)EventOrganizerClaimStatusEnum.EvidenceRequired, MasterCode = "EVIDENCE_REQUIRED", FullName = "Evidence required", Description = "Reviewer requested additional evidence" },
+                new() { Id = (int)EventOrganizerClaimStatusEnum.Approved, MasterCode = "APPROVED", FullName = "Approved", Description = "Claim grants future organizer authority" },
+                new() { Id = (int)EventOrganizerClaimStatusEnum.Rejected, MasterCode = "REJECTED", FullName = "Rejected", Description = "Claim was rejected" },
+                new() { Id = (int)EventOrganizerClaimStatusEnum.Withdrawn, MasterCode = "WITHDRAWN", FullName = "Withdrawn", Description = "Claimant withdrew the claim" },
+                new() { Id = (int)EventOrganizerClaimStatusEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired", Description = "Claim expired before approval" }
             },
             row => row.Id,
             ct);

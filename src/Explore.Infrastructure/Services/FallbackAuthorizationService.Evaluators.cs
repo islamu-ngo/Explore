@@ -418,8 +418,21 @@ public partial class FallbackAuthorizationService
             return false;
         }
 
+        if (resourceKind == ResourceKinds.EventOrganizerClaim && !IsOrganizerClaimAction(action))
+        {
+            LogDecision("deny", "unknown_organizer_claim_action", resourceKind, resourceId, action);
+            return false;
+        }
+
+        if (action == AuthorizationActions.Events.ClaimOrganizer)
+        {
+            return !await _adminContext.IsInstanceAdminAsync(cancellationToken)
+                && (_adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken)).HasValue;
+        }
+
         if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken)
-            && (resourceKind != ResourceKinds.Event || IsTenantAdminEventAction(action)))
+            && (resourceKind is not (ResourceKinds.Event or ResourceKinds.EventOrganizerClaim)
+                || IsTenantAdminEventAction(action)))
         {
             LogDecision("allow", "is_tenant_admin=true", resourceKind, resourceId, action);
             return true;
@@ -428,6 +441,12 @@ public partial class FallbackAuthorizationService
         if (resourceKind == ResourceKinds.Event && IsEventModerationAction(action))
         {
             LogDecision("deny", "moderation_requires_platform_or_tenant_admin", resourceKind, resourceId, action);
+            return false;
+        }
+
+        if (action == AuthorizationActions.Events.ReviewOrganizerClaim)
+        {
+            LogDecision("deny", "claim_review_requires_tenant_curator", resourceKind, resourceId, action);
             return false;
         }
 

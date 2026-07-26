@@ -30,6 +30,22 @@
     "groupId": {
       "type": "string",
       "description": "Owning group identifier for pre-create event requests. Publisher permissions are enforced by the handler."
+    },
+    "provenanceType": {
+      "type": "string",
+      "description": "Normalized event provenance code or stable lookup identifier."
+    },
+    "organizerActorId": {
+      "type": "string",
+      "description": "Verified organizer authority actor when one has been established."
+    },
+    "submittedByUserId": {
+      "type": "string",
+      "description": "User that originally submitted a community-reported event when retained."
+    },
+    "organizerVerificationStatus": {
+      "type": "string",
+      "description": "Optional normalized organizer verification state when an authoritative source exists."
     }
   },
   "required": ["tenantId"]

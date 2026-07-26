@@ -140,6 +140,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             "islamuevent_event_session_agenda_item" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_event_day" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_event_agenda_item" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_event_organizer_claim" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
 
             // Event registration: all authenticated can create/view only when the parent event context is present.
             "islamuevent_event_registration" => await EvaluateEventRegistrationAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
@@ -286,23 +287,37 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or "islamuevent_event_session_agenda_item"
             or "islamuevent_event_day"
             or "islamuevent_event_agenda_item"
+            or "islamuevent_event_organizer_claim"
             or "islamuevent_event_registration";
 
     private static bool RequiresDirectEventAuthority(string resourceKind, string action) =>
-        resourceKind == ResourceKinds.Event &&
+        resourceKind is ResourceKinds.Event or ResourceKinds.EventOrganizerClaim &&
         action is AuthorizationActions.Update
             or AuthorizationActions.Delete
             or AuthorizationActions.Events.ManageTeam
             or AuthorizationActions.Events.ManageOwner
             or AuthorizationActions.Events.TransferOwnership
-            or AuthorizationActions.Events.ManageFinance;
+            or AuthorizationActions.Events.ManageFinance
+            or AuthorizationActions.Events.ManagePublicActions
+            or AuthorizationActions.Events.ClaimOrganizer
+            or AuthorizationActions.Events.ViewOrganizerClaims
+            or AuthorizationActions.Events.ReviewOrganizerClaim;
+
+    private static bool IsOrganizerClaimAction(string action) =>
+        action is AuthorizationActions.Events.ManagePublicActions
+            or AuthorizationActions.Events.ClaimOrganizer
+            or AuthorizationActions.Events.ViewOrganizerClaims
+            or AuthorizationActions.Events.ReviewOrganizerClaim;
 
     private static bool IsTenantAdminEventAction(string action) =>
         action is AuthorizationActions.View
             or AuthorizationActions.Events.ViewManagement
             or AuthorizationActions.Events.ModerateLight
             or AuthorizationActions.Events.ModerateHeavy
-            or AuthorizationActions.Events.Unmoderate;
+            or AuthorizationActions.Events.Unmoderate
+            or AuthorizationActions.Events.ManagePublicActions
+            or AuthorizationActions.Events.ViewOrganizerClaims
+            or AuthorizationActions.Events.ReviewOrganizerClaim;
 
     private static bool IsEventModerationAction(string action) =>
         action is AuthorizationActions.Events.ModerateLight
