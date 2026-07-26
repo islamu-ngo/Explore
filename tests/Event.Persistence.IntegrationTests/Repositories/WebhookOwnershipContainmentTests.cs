@@ -124,6 +124,7 @@ public sealed class WebhookOwnershipContainmentTests(PostgreSqlContainerFixture 
         Guid tenantId,
         WebhookConsumerKind ownerKind)
     {
+        Tenant tenant = await context.Tenants.SingleAsync(value => value.Id == tenantId);
         switch (ownerKind)
         {
             case WebhookConsumerKind.Organization:
@@ -132,13 +133,19 @@ public sealed class WebhookOwnershipContainmentTests(PostgreSqlContainerFixture 
                     {
                         Id = Guid.CreateVersion7(),
                         Pii = new OrganizationPii { FullName = "Foreign webhook owner" },
-                        ApprovalStatusId = 1,
-                        ApprovalStatus = null!,
-                        TenantId = tenantId,
-                        Tenant = null!,
                         ConcurrencyStamp = Guid.CreateVersion7()
                     };
-                    context.Organizations.Add(organization);
+                    context.OrganizationTenants.Add(new OrganizationTenant
+                    {
+                        Id = Guid.CreateVersion7(),
+                        TenantId = tenantId,
+                        Tenant = tenant,
+                        OrganizationId = organization.Id,
+                        Organization = organization,
+                        ApprovalStatusId = 1,
+                        ApprovalStatus = null!,
+                        ConcurrencyStamp = Guid.CreateVersion7()
+                    });
                     await context.SaveChangesAsync();
                     return organization.Id;
                 }
@@ -148,13 +155,19 @@ public sealed class WebhookOwnershipContainmentTests(PostgreSqlContainerFixture 
                     {
                         Id = Guid.CreateVersion7(),
                         FullName = "Foreign webhook owner",
-                        ApprovalStatusId = 1,
-                        ApprovalStatus = null!,
-                        TenantId = tenantId,
-                        Tenant = null!,
                         ConcurrencyStamp = Guid.CreateVersion7()
                     };
-                    context.Groups.Add(group);
+                    context.GroupTenants.Add(new GroupTenant
+                    {
+                        Id = Guid.CreateVersion7(),
+                        TenantId = tenantId,
+                        Tenant = tenant,
+                        GroupId = group.Id,
+                        Group = group,
+                        ApprovalStatusId = 1,
+                        ApprovalStatus = null!,
+                        ConcurrencyStamp = Guid.CreateVersion7()
+                    });
                     await context.SaveChangesAsync();
                     return group.Id;
                 }
@@ -178,9 +191,9 @@ public sealed class WebhookOwnershipContainmentTests(PostgreSqlContainerFixture 
                     {
                         Id = Guid.CreateVersion7(),
                         TenantId = tenantId,
-                        Tenant = null!,
+                        Tenant = tenant,
                         UserId = user.Id,
-                        User = null!,
+                        User = user,
                         StatusId = (int)TenantUserStatusEnum.Active,
                         JoinedAt = DateTime.UtcNow,
                         CreatedAt = DateTime.UtcNow

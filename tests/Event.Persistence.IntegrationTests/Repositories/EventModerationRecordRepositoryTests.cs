@@ -186,7 +186,7 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
         Guid userId)
     {
         var actorId = await context.Actors
-            .Where(a => a.TenantId == tenantId && a.UserId == userId)
+            .Where(a => a.UserId == userId)
             .Select(a => a.Id)
             .SingleAsync();
         var report = EventReport.Create(
@@ -258,8 +258,6 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
             Pii = new ActorPii { DisplayName = "Moderation Actor" },
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);

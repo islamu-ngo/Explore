@@ -2003,8 +2003,6 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
             UserId = dispatch.RecipientUserId,
-            TenantId = tenant.Id,
-            Tenant = tenant,
             Pii = new ActorPii { DisplayName = "Report receipt recipient" },
             CreatedAt = DateTime.UtcNow
         };

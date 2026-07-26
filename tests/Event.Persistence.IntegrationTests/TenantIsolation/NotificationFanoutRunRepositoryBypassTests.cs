@@ -99,8 +99,6 @@ public class NotificationFanoutRunRepositoryBypassTests(PostgreSqlContainerFixtu
         return new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            Tenant = null!,
             ActorTypeId = (int)ActorTypeEnum.Bot,
             ActorType = null!,
             Pii = new ActorPii { DisplayName = displayName },

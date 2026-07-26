@@ -341,8 +341,6 @@ public sealed class EventModerationConcurrencyTests(PostgreSqlContainerFixture f
             Pii = new ActorPii { DisplayName = "Moderation Concurrency Actor" },
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);

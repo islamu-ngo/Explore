@@ -89,8 +89,6 @@ public sealed class EventHeavyRedactionRepositoryTests(PostgreSqlContainerFixtur
             Pii = new ActorPii { DisplayName = "Heavy Redaction Actor" },
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);
@@ -140,7 +138,6 @@ public sealed class EventHeavyRedactionRepositoryTests(PostgreSqlContainerFixtur
             Slug = "illegal-event",
             FeaturedImageId = image.Id,
             BackgroundImageId = image.Id,
-            EventUrl = "https://example.com/illegal",
             ExternalRegistrationUrl = "https://register.example.com/illegal",
             AtprotoRecordId = atprotoRecord.Id,
             ActorId = actor.Id,

@@ -58,8 +58,6 @@ public class SerializationBenchmarks
             LastSessionDate = new DateOnly(2026, 10, 12),
             Timezone = "Europe/Paris",
             TotalViews = 34891,
-            IsUserReported = false,
-            EventUrl = "https://event.openislamu.org/events/enterprise-architecture-summit-2026",
             TenantId = Guid.NewGuid()
         };
 

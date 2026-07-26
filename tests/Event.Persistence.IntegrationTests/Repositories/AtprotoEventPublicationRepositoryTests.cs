@@ -89,8 +89,6 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
             Pii = new ActorPii { DisplayName = "Projection owner" },
             ActorTypeId = 1,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);

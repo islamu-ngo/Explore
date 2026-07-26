@@ -141,8 +141,6 @@ public sealed class EventAiReferenceRepositoryTests(PostgreSqlContainerFixture f
             Pii = new ActorPii { DisplayName = $"AI Reference Actor {slugPrefix}" },
             ActorTypeId = 1,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id,
         };
         context.Actors.Add(actor);

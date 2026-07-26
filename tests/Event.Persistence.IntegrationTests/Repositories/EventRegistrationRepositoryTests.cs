@@ -869,8 +869,6 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
             Pii = new ActorPii { DisplayName = "Registration Cancellation Actor" },
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);

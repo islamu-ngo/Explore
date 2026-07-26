@@ -1061,7 +1061,6 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         string title)
     {
         Guid actorId = await context.Actors
-            .Where(value => value.TenantId == tenantId)
             .Select(value => value.Id)
             .SingleAsync();
         var @event = new Explore.Domain.Event
@@ -1391,8 +1390,6 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         var actor = new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenant.Id,
-            Tenant = null!,
             ActorTypeId = (int)ActorTypeEnum.Bot,
             ActorType = null!,
             Pii = new ActorPii { DisplayName = "Fanout source" },

@@ -898,8 +898,6 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
         var actor = new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenant.Id,
-            Tenant = null!,
             ActorTypeId = (int)ActorTypeEnum.Bot,
             ActorType = null!,
             Pii = new ActorPii { DisplayName = "Fanout source" },

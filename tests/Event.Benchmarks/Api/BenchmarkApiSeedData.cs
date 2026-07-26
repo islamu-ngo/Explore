@@ -57,23 +57,30 @@ internal static class BenchmarkApiSeedData
 
     private static async Task EnsureBenchmarkUserAndActorAsync(ExploreDbContext context, CancellationToken cancellationToken)
     {
-        if (await context.Users.AnyAsync(user => user.Id == BenchmarkUserId, cancellationToken))
+        var user = await context.Users
+            .SingleOrDefaultAsync(candidate => candidate.Id == BenchmarkUserId, cancellationToken);
+        if (user is null)
+        {
+            user = new User
+            {
+                Id = BenchmarkUserId,
+                EmailVerified = true,
+                CreatedAt = SeedTimestamp,
+                Pii = new UserPii
+                {
+                    Email = "benchmark-api-user@example.test",
+                    FirstName = "Benchmark",
+                    LastName = "User"
+                }
+            };
+            context.Users.Add(user);
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+        if (await context.Actors.AnyAsync(actor => actor.UserId == user.Id, cancellationToken))
         {
             return;
         }
-
-        var user = new User
-        {
-            Id = BenchmarkUserId,
-            EmailVerified = true,
-            CreatedAt = SeedTimestamp,
-            Pii = new UserPii
-            {
-                Email = "benchmark-api-user@example.test",
-                FirstName = "Benchmark",
-                LastName = "User"
-            }
-        };
 
         var actor = new Actor
         {
@@ -81,24 +88,23 @@ internal static class BenchmarkApiSeedData
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
             UserId = BenchmarkUserId,
-            TenantId = SeedIds.DefaultTenantId,
-            Tenant = null!,
             CreatedAt = SeedTimestamp,
-            Pii = new ActorPii
-            {
-                DisplayName = "Benchmark API Organizer",
-                Handle = "benchmark-api-organizer"
-            }
+            Pii = new ActorPii { DisplayName = "Benchmark API Organizer" }
+        };
+        var identity = new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            ActorId = actor.Id,
+            Actor = actor,
+            Did = "did:plc:benchmark-api-organizer",
+            Handle = "benchmark-api-organizer",
+            PdsHost = "https://pds.benchmark.example.test",
+            IsActive = true,
+            LastResolvedAt = SeedTimestamp,
+            CreatedAt = SeedTimestamp
         };
 
-        context.Users.Add(user);
-        await context.SaveChangesAsync(cancellationToken);
-
-        context.Actors.Add(actor);
-        await context.SaveChangesAsync(cancellationToken);
-
-        user.ActorId = BenchmarkActorId;
-        user.DefaultActorId = BenchmarkActorId;
+        context.AddRange(actor, identity);
         await context.SaveChangesAsync(cancellationToken);
     }
 

@@ -33,9 +33,9 @@ public sealed class EventRedactionConstraintTests(PostgreSqlContainerFixture fix
             CurrencyCode = null,
             SourceTemplateKey = null,
             FeaturedImageId = null,
+            EventSessionStatusId = (int)EventSessionStatusEnum.Draft,
             TenantId = tenant.Id,
-            Tenant = null!,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Draft
+            Tenant = tenant
         };
         var day = new EventDay
         {
@@ -178,8 +178,6 @@ public sealed class EventRedactionConstraintTests(PostgreSqlContainerFixture fix
             Pii = new ActorPii { DisplayName = "Redaction Constraint Actor" },
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);
@@ -194,7 +192,6 @@ public sealed class EventRedactionConstraintTests(PostgreSqlContainerFixture fix
             Description = EventRedactionSentinelPolicy.DisplayText,
             Content = EventRedactionSentinelPolicy.DisplayText,
             Slug = Slug("event", eventId),
-            EventUrl = null,
             ExternalRegistrationUrl = null,
             CurrencyCode = null,
             Timezone = null,

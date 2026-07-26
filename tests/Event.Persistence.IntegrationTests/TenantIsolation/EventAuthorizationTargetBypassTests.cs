@@ -95,8 +95,6 @@ public class EventAuthorizationTargetBypassTests(PostgreSqlContainerFixture fixt
             Pii = new ActorPii { DisplayName = $"Event Authorization Actor {slugPrefix}" },
             ActorTypeId = 1,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id,
         };
         context.Actors.Add(actor);

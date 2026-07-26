@@ -426,8 +426,6 @@ public sealed class EventReportRepositoryTests(PostgreSqlContainerFixture fixtur
             Pii = new ActorPii { DisplayName = "Report Repository Actor " + slugPrefix },
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
-            TenantId = tenantId,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);

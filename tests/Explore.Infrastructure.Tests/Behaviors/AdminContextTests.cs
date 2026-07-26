@@ -335,18 +335,8 @@ public class AdminContextTests
         var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
         var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
 
-        groupMemberRepository.GetByGroupAndUser(groupId, userId).Returns(new GroupMember
-        {
-            Id = Guid.NewGuid(),
-            GroupId = groupId,
-            Group = null!,
-            UserId = userId,
-            User = null!,
-            RoleId = (int)RoleEnum.GroupAdmin,
-            Role = null!,
-            TenantId = Guid.NewGuid(),
-            Tenant = null!
-        });
+        groupMemberRepository.GetByGroupAndUser(groupId, userId)
+            .Returns(NewGroupMember(groupId, userId, RoleEnum.GroupAdmin, Guid.NewGuid()));
 
         var sut = CreateSutWithGroupMembers(
             CreateHttpContextAccessor(userId),
@@ -376,18 +366,8 @@ public class AdminContextTests
         var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
         var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
 
-        groupMemberRepository.GetByGroupAndUser(groupId, userId).Returns(new GroupMember
-        {
-            Id = Guid.NewGuid(),
-            GroupId = groupId,
-            Group = null!,
-            UserId = userId,
-            User = null!,
-            RoleId = (int)RoleEnum.GroupMember,
-            Role = null!,
-            TenantId = Guid.NewGuid(),
-            Tenant = null!
-        });
+        groupMemberRepository.GetByGroupAndUser(groupId, userId)
+            .Returns(NewGroupMember(groupId, userId, RoleEnum.GroupMember, Guid.NewGuid()));
 
         var sut = CreateSutWithGroupMembers(
             CreateHttpContextAccessor(userId),
@@ -476,30 +456,8 @@ public class AdminContextTests
         var tenantId = Guid.NewGuid();
         var memberships = new List<GroupMember>
         {
-            new()
-            {
-                Id = Guid.NewGuid(),
-                GroupId = adminGroupId,
-                Group = null!,
-                UserId = userId,
-                User = null!,
-                RoleId = (int)RoleEnum.GroupAdmin,
-                Role = null!,
-                TenantId = tenantId,
-                Tenant = null!
-            },
-            new()
-            {
-                Id = Guid.NewGuid(),
-                GroupId = memberGroupId,
-                Group = null!,
-                UserId = userId,
-                User = null!,
-                RoleId = (int)RoleEnum.GroupMember,
-                Role = null!,
-                TenantId = tenantId,
-                Tenant = null!
-            }
+            NewGroupMember(adminGroupId, userId, RoleEnum.GroupAdmin, tenantId),
+            NewGroupMember(memberGroupId, userId, RoleEnum.GroupMember, tenantId)
         };
 
         var platformUserRoleRepository = Substitute.For<IPlatformUserRoleRepository>();
@@ -540,33 +498,13 @@ public class AdminContextTests
         var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
         organizationMemberRepository.GetMembershipsByUser(userId, Arg.Any<CancellationToken>()).Returns(
         [
-            new OrganizationMember
-            {
-                Id = Guid.CreateVersion7(), OrganizationId = organizationId, Organization = null!,
-                UserId = userId, User = null!, RoleId = (int)RoleEnum.OrgAdmin, Role = null!,
-                TenantId = tenantId, Tenant = null!
-            },
-            new OrganizationMember
-            {
-                Id = Guid.CreateVersion7(), OrganizationId = otherOrganizationId, Organization = null!,
-                UserId = userId, User = null!, RoleId = (int)RoleEnum.OrgAdmin, Role = null!,
-                TenantId = otherTenantId, Tenant = null!
-            }
+            NewOrganizationMember(organizationId, userId, RoleEnum.OrgAdmin, tenantId),
+            NewOrganizationMember(otherOrganizationId, userId, RoleEnum.OrgAdmin, otherTenantId)
         ]);
         groupMemberRepository.GetMembershipsByUser(userId, Arg.Any<CancellationToken>()).Returns(
         [
-            new GroupMember
-            {
-                Id = Guid.CreateVersion7(), GroupId = groupId, Group = null!,
-                UserId = userId, User = null!, RoleId = (int)RoleEnum.GroupAdmin, Role = null!,
-                TenantId = tenantId, Tenant = null!
-            },
-            new GroupMember
-            {
-                Id = Guid.CreateVersion7(), GroupId = otherGroupId, Group = null!,
-                UserId = userId, User = null!, RoleId = (int)RoleEnum.GroupAdmin, Role = null!,
-                TenantId = otherTenantId, Tenant = null!
-            }
+            NewGroupMember(groupId, userId, RoleEnum.GroupAdmin, tenantId),
+            NewGroupMember(otherGroupId, userId, RoleEnum.GroupAdmin, otherTenantId)
         ]);
         var sut = CreateSutWithGroupMembers(
             CreateHttpContextAccessor(userId),
@@ -664,6 +602,66 @@ public class AdminContextTests
         RoleScopeId = (int)RoleScopeEnum.Tenant,
         Role = null!
     };
+
+    private static OrganizationMember NewOrganizationMember(
+        Guid organizationId,
+        Guid userId,
+        RoleEnum role,
+        Guid tenantId)
+    {
+        var organization = new Organization
+        {
+            Id = organizationId,
+            Pii = new OrganizationPii { FullName = "Organization" }
+        };
+        var participation = new OrganizationTenant
+        {
+            Id = Guid.CreateVersion7(),
+            OrganizationId = organizationId,
+            Organization = organization,
+            TenantId = tenantId,
+            Tenant = null!,
+            ApprovalStatus = null!
+        };
+        return new OrganizationMember
+        {
+            Id = Guid.CreateVersion7(),
+            OrganizationTenantId = participation.Id,
+            OrganizationTenant = participation,
+            UserId = userId,
+            User = null!,
+            RoleId = (int)role,
+            Role = null!,
+            TenantId = tenantId,
+            Tenant = null!
+        };
+    }
+
+    private static GroupMember NewGroupMember(Guid groupId, Guid userId, RoleEnum role, Guid tenantId)
+    {
+        var group = new Group { Id = groupId, FullName = "Group" };
+        var participation = new GroupTenant
+        {
+            Id = Guid.CreateVersion7(),
+            GroupId = groupId,
+            Group = group,
+            TenantId = tenantId,
+            Tenant = null!,
+            ApprovalStatus = null!
+        };
+        return new GroupMember
+        {
+            Id = Guid.CreateVersion7(),
+            GroupTenantId = participation.Id,
+            GroupTenant = participation,
+            UserId = userId,
+            User = null!,
+            RoleId = (int)role,
+            Role = null!,
+            TenantId = tenantId,
+            Tenant = null!
+        };
+    }
 
     private static AdminContext CreateSut(
         IHttpContextAccessor httpContextAccessor,

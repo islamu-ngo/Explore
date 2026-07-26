@@ -324,8 +324,6 @@ public class CustomPropertyProjectionCoordinationTests
             Pii = new ActorPii { DisplayName = "Drain Actor" },
             ActorTypeId = 1,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id,
         };
         context.Actors.Add(actor);

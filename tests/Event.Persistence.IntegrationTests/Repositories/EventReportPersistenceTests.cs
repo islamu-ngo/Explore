@@ -350,8 +350,6 @@ public sealed class EventReportPersistenceTests(PostgreSqlContainerFixture fixtu
             Pii = new ActorPii { DisplayName = "Reporting Actor " + slugPrefix },
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);

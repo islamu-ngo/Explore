@@ -70,9 +70,6 @@ public static class DataBuilder
         .RuleFor(a => a.Pii, f => new ActorPii { DisplayName = "" })
         .RuleFor(a => a.Id, f => Guid.NewGuid())
         .RuleFor(a => a.DisplayName, f => f.Name.FullName())
-        .RuleFor(a => a.Handle, f => f.Internet.UserName())
-        .RuleFor(a => a.Did, f => $"did:plc:{f.Random.AlphaNumeric(24)}")
-        .RuleFor(a => a.PdsHost, f => "bsky.social")
         .RuleFor(a => a.ActorTypeId, f => f.Random.Int(1, 4))
         .RuleFor(a => a.Description, f => f.Lorem.Sentence());
 
@@ -96,8 +93,7 @@ public static class DataBuilder
         .RuleFor(o => o.City, f => f.Address.City())
         .RuleFor(o => o.Address, f => f.Address.StreetAddress())
         .RuleFor(o => o.Postcode, f => f.Address.ZipCode())
-        .RuleFor(o => o.WebsiteUrl, f => f.Internet.Url())
-        .RuleFor(o => o.ApprovalStatusId, f => f.Random.Int(1, 4));
+        .RuleFor(o => o.WebsiteUrl, f => f.Internet.Url());
 
     public static Faker<OrganizationMember> OrganizationMember => new Faker<OrganizationMember>()
         .RuleFor(o => o.Id, f => Guid.NewGuid())

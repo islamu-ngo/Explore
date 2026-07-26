@@ -520,8 +520,6 @@ public sealed class EventLocationPrivacyRepositoryTests(ProjectionTestContainerF
             Pii = new ActorPii { DisplayName = $"ELP {suffix}" },
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);

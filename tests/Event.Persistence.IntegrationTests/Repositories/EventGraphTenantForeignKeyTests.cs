@@ -214,8 +214,6 @@ public sealed class EventGraphTenantForeignKeyTests(PostgreSqlContainerFixture f
             Pii = new ActorPii { DisplayName = $"Event Graph Actor {slugPrefix}" },
             ActorTypeId = 1,
             ActorType = null!,
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id
         };
 

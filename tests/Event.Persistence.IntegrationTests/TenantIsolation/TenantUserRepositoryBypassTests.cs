@@ -127,8 +127,6 @@ public class TenantUserRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             Pii = new ActorPii { DisplayName = displayName },
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
-            TenantId = tenantId,
-            Tenant = null!,
             UserId = userId,
         };
     }

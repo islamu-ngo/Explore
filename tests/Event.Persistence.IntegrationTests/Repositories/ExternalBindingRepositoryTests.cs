@@ -141,21 +141,18 @@ public sealed class ExternalBindingRepositoryTests(PostgreSqlContainerFixture fi
     }
 
     [Test]
-    public async Task ActorIndexes_ShouldAllowOneUserActorPerTenant()
+    public async Task ActorIndexes_ShouldRejectMultipleGlobalActorsForSameUser()
     {
         await fixture.ResetAsync();
         await using var context = fixture.CreateDbContext();
-        var tenantA = await SeedTenantAsync(context, "actor-a");
-        var tenantB = await SeedTenantAsync(context, "actor-b");
         var user = NewUser();
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
-        context.Actors.Add(NewUserActor(user.Id, tenantA.Id, "tenant-a-admin"));
-        context.Actors.Add(NewUserActor(user.Id, tenantB.Id, "tenant-b-admin"));
+        context.Actors.Add(NewUserActor(user.Id, "global-admin"));
         await context.SaveChangesAsync();
 
-        context.Actors.Add(NewUserActor(user.Id, tenantA.Id, "tenant-a-duplicate"));
+        context.Actors.Add(NewUserActor(user.Id, "duplicate-admin"));
 
         await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
     }
@@ -210,20 +207,28 @@ public sealed class ExternalBindingRepositoryTests(PostgreSqlContainerFixture fi
             CreatedAt = DateTime.UtcNow,
         };
 
-    private static Actor NewUserActor(Guid userId, Guid tenantId, string handle) =>
-        new()
+    private static Actor NewUserActor(Guid userId, string handle)
+    {
+        var actor = new Actor
         {
             Id = Guid.NewGuid(),
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
             UserId = userId,
-            TenantId = tenantId,
-            Tenant = null!,
-            Pii = new ActorPii
-            {
-                DisplayName = handle,
-                Handle = handle,
-            },
+            Pii = new ActorPii { DisplayName = handle },
             CreatedAt = DateTime.UtcNow,
         };
+        actor.AtprotoIdentities.Add(new AtprotoIdentity
+        {
+            Id = Guid.NewGuid(),
+            ActorId = actor.Id,
+            Actor = actor,
+            Did = $"did:plc:{Guid.NewGuid():N}",
+            Handle = handle,
+            PdsHost = "https://pds.example.invalid",
+            IsActive = true,
+            LastResolvedAt = DateTime.UtcNow,
+        });
+        return actor;
+    }
 }

@@ -40,6 +40,124 @@ public sealed class TenantSettingMutationConcurrencyTests(PostgreSqlContainerFix
     }
 
     [Test]
+    public async Task UpsertLockAsync_WhenSystemSettingExists_PreservesValueAndNonLockMetadata()
+    {
+        await fixture.ResetAsync();
+        var actorId = Guid.NewGuid();
+        var originalCreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var originalUpdatedAt = new DateTime(2024, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+        Guid originalId;
+        Guid originalCreatorId = Guid.NewGuid();
+
+        await using (ExploreDbContext setupContext = fixture.CreateDbContext())
+        {
+            SystemSetting existing = await setupContext.SystemSettings.SingleAsync(setting => setting.SettingKey == SettingKey);
+            existing.Value = "\"persisted\"";
+            existing.ValueType = SettingValueType.String;
+            existing.IsLocked = false;
+            existing.AllowedValues = "[\"persisted\"]";
+            existing.Description = "Persisted description";
+            existing.Category = "Persisted category";
+            existing.DisplayOrder = 99;
+            existing.CreatedAt = originalCreatedAt;
+            existing.CreatedBy = originalCreatorId;
+            existing.UpdatedAt = originalUpdatedAt;
+            existing.UpdatedBy = Guid.NewGuid();
+            await setupContext.SaveChangesAsync();
+            originalId = existing.Id;
+        }
+
+        await using (ExploreDbContext mutationContext = fixture.CreateDbContext())
+        {
+            var repository = new SystemSettingRepository(mutationContext, CreateMutationLock(mutationContext));
+
+            await repository.UpsertLockAsync(new SystemSetting
+            {
+                SettingKey = SettingKey,
+                Value = "\"must-not-replace-persisted-value\"",
+                ValueType = SettingValueType.Boolean,
+                IsLocked = true,
+                AllowedValues = "[true,false]",
+                Description = "Replacement description",
+                Category = "Replacement category",
+                DisplayOrder = 1,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = Guid.NewGuid(),
+                UpdatedAt = DateTime.UtcNow,
+                UpdatedBy = actorId
+            }, CancellationToken.None);
+        }
+
+        await using ExploreDbContext readContext = fixture.CreateDbContext();
+        SystemSetting saved = await readContext.SystemSettings
+            .AsNoTracking()
+            .SingleAsync(setting => setting.SettingKey == SettingKey);
+
+        await Assert.That(saved.Id).IsEqualTo(originalId);
+        await Assert.That(saved.Value).IsEqualTo("\"persisted\"");
+        await Assert.That(saved.ValueType).IsEqualTo(SettingValueType.String);
+        await Assert.That(saved.AllowedValues).IsEqualTo("[\"persisted\"]");
+        await Assert.That(saved.Description).IsEqualTo("Persisted description");
+        await Assert.That(saved.Category).IsEqualTo("Persisted category");
+        await Assert.That(saved.DisplayOrder).IsEqualTo(99);
+        await Assert.That(saved.CreatedAt).IsEqualTo(originalCreatedAt);
+        await Assert.That(saved.CreatedBy).IsEqualTo(originalCreatorId);
+        await Assert.That(saved.IsLocked).IsTrue();
+        await Assert.That(saved.UpdatedBy).IsEqualTo(actorId);
+        await Assert.That(saved.UpdatedAt.HasValue).IsTrue();
+        await Assert.That(saved.UpdatedAt!.Value).IsGreaterThan(originalUpdatedAt);
+    }
+
+    [Test]
+    public async Task UpsertLockAsync_WhenSystemSettingIsMissing_InsertsFallbackValueAndMetadata()
+    {
+        await fixture.ResetAsync();
+        const string key = "test.system-setting-lock-fallback";
+        const string fallbackValue = "\"fallback\"";
+        var actorId = Guid.NewGuid();
+        var createdAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var updatedAt = new DateTime(2024, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        await using (ExploreDbContext mutationContext = fixture.CreateDbContext())
+        {
+            var repository = new SystemSettingRepository(mutationContext, CreateMutationLock(mutationContext));
+
+            await repository.UpsertLockAsync(new SystemSetting
+            {
+                SettingKey = key,
+                Value = fallbackValue,
+                ValueType = SettingValueType.String,
+                IsLocked = true,
+                AllowedValues = "[\"fallback\"]",
+                Description = "Fallback description",
+                Category = "Fallback category",
+                DisplayOrder = 7,
+                CreatedAt = createdAt,
+                CreatedBy = actorId,
+                UpdatedAt = updatedAt,
+                UpdatedBy = actorId
+            }, CancellationToken.None);
+        }
+
+        await using ExploreDbContext readContext = fixture.CreateDbContext();
+        SystemSetting saved = await readContext.SystemSettings
+            .AsNoTracking()
+            .SingleAsync(setting => setting.SettingKey == key);
+
+        await Assert.That(saved.Value).IsEqualTo(fallbackValue);
+        await Assert.That(saved.ValueType).IsEqualTo(SettingValueType.String);
+        await Assert.That(saved.IsLocked).IsTrue();
+        await Assert.That(saved.AllowedValues).IsEqualTo("[\"fallback\"]");
+        await Assert.That(saved.Description).IsEqualTo("Fallback description");
+        await Assert.That(saved.Category).IsEqualTo("Fallback category");
+        await Assert.That(saved.DisplayOrder).IsEqualTo(7);
+        await Assert.That(saved.CreatedAt).IsEqualTo(createdAt);
+        await Assert.That(saved.CreatedBy).IsEqualTo(actorId);
+        await Assert.That(saved.UpdatedAt).IsEqualTo(updatedAt);
+        await Assert.That(saved.UpdatedBy).IsEqualTo(actorId);
+    }
+
+    [Test]
     public async Task LockAndUnlockAsync_WhenExpectedStateDoesNotMatch_ReturnFalseWithoutMutation()
     {
         Guid tenantId = await SeedAsync(tenantLocked: true);
@@ -111,6 +229,53 @@ public sealed class TenantSettingMutationConcurrencyTests(PostgreSqlContainerFix
 
         TenantSetting saved = await ReadTenantSettingAsync(tenantId);
         await Assert.That(lockApplied).IsTrue();
+        await Assert.That(saved.Value).IsEqualTo("\"raced\"");
+        await Assert.That(saved.IsLocked).IsTrue();
+    }
+
+    [Test]
+    public async Task SystemValueThenLock_AreSerializedWithoutLosingTheCommittedValue()
+    {
+        await fixture.ResetAsync();
+        await using ExploreDbContext firstContext = fixture.CreateDbContext();
+        await using ExploreDbContext secondContext = fixture.CreateDbContext();
+        PostgresSettingMutationLock firstLock = CreateMutationLock(firstContext);
+        PostgresSettingMutationLock secondLock = CreateMutationLock(secondContext);
+        var firstRepository = new SystemSettingRepository(firstContext, firstLock);
+        var secondRepository = new SystemSettingRepository(secondContext, secondLock);
+
+        string? previousValue = await RunFirstThenSecondAsync(
+            firstLock,
+            secondContext,
+            async token =>
+            {
+                await firstRepository.UpsertAsync(new SystemSetting
+                {
+                    SettingKey = SettingKey,
+                    Value = "\"raced\"",
+                    ValueType = SettingValueType.String,
+                    IsLocked = false,
+                    Description = "SMTP host",
+                    Category = "Email",
+                    DisplayOrder = 1,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                }, token);
+            },
+            () => secondRepository.UpsertLockAsync(new SystemSetting
+            {
+                SettingKey = SettingKey,
+                Value = "\"fallback\"",
+                ValueType = SettingValueType.String,
+                IsLocked = true,
+                UpdatedAt = DateTime.UtcNow
+            }));
+
+        await using ExploreDbContext readContext = fixture.CreateDbContext();
+        SystemSetting saved = await readContext.SystemSettings
+            .AsNoTracking()
+            .SingleAsync(setting => setting.SettingKey == SettingKey);
+        await Assert.That(previousValue).IsEqualTo("\"raced\"");
         await Assert.That(saved.Value).IsEqualTo("\"raced\"");
         await Assert.That(saved.IsLocked).IsTrue();
     }
