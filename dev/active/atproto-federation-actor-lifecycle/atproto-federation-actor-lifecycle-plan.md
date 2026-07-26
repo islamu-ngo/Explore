@@ -1,634 +1,462 @@
-<!-- ABOUTME: Repository-grounded implementation plan for Actor-first ATProto federation identity and lifecycle. -->
-<!-- ABOUTME: Defines global Actor identity, verified claiming, tenant presence, moderation, and materialized discovery. -->
+<!-- ABOUTME: Repository-grounded implementation plan for global Actor identity and global concrete subjects. -->
+<!-- ABOUTME: Defines tenant participation, ATProto classification, federation promotion, moderation, and migration. -->
 
 # ATProto Federation Actor Lifecycle - Implementation Plan
 
-Last Updated: 2026-07-25 Europe/Brussels
+Last Updated: 2026-07-26 Europe/Brussels
 
 ## 0. Planning Metadata
 
-- **Original request:** Correct the ATProto federation architecture so Actor is the durable identity/profile and ownership subject, User is optional, imported identities can later be claimed by verified login, no email matching occurs, and an existing federated Actor wins any identity merge without rewriting imported Events.
-- **Task directory:** `dev/active/atproto-federation-actor-lifecycle/`
-- **Planning status:** Draft, awaiting user review.
-- **Related completed workstream:** `dev/active/atproto-auth/`. Its OAuth, canonical-record, Jetstream, outbox, projection, and tenant-local Event materialization implementation is reused rather than rebuilt. Its linked-account-only product constraint is superseded only by this workstream after approval.
-- **Matched intents:** `add-ef-migration`, `update-repository-query`, `add-cqrs-handler`, `add-get-endpoint`, `add-write-endpoint`, `openapi-contract-change`, `add-hal-link`, `blazor-component-affordance`, `bff-auth-bug`, and `external-infrastructure-bootstrap` where self-hosting/configuration documentation changes.
-- **Relevant skills:** `implementation-plan`, `clean-architecture-rules`, `auth-patterns`, `blazor-bff-patterns`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, `blazor-ui-conventions`, and `outbox-pattern` for any durable profile-refresh work discovered during implementation.
-- **Relevant rules:** `AGENTS.md`, `docs/QUICK_REFERENCE.md`, `docs/GOVERNANCE.md`, `.claude/rules/domain.md`, `.claude/rules/application-layer.md`, `.claude/rules/efcore-persistence.md`, `.claude/rules/efcore-migrations.md`, `.claude/rules/api-controllers.md`, `.claude/rules/api-hateoas.md`, `.claude/rules/blazor-server.md`, `.claude/rules/blazor-client.md`, and `.claude/rules/tests.md`.
-- **Primary layers:** Domain, Application, Persistence, Infrastructure, API/HAL/OpenAPI, Blazor client, migrations, and product/operator documentation.
-- **Complexity:** XL. `Actor` is currently tenant-scoped and participates in at least 21 persistence configurations, imported publishers are duplicated per tenant, User and Actor contain competing ownership links, and the corrected claim/merge flow crosses verified OAuth, tenant membership, global identity, moderation, public discovery, and destructive-schema migration boundaries.
-- **Compatibility posture:** The product is pre-1.0, so no compatibility DTOs, dual reads/writes, aliases, or deprecated routes are added merely to preserve the current incorrect model. Data migration must still preserve durable identities, imported Event ownership, audit evidence, and externally meaningful DIDs.
+- **Original request:** Complete the global-subject architecture consistently. `Actor`, `User`, `Organization`, `Group`, and unclassified external subjects are global. `TenantUser`, `OrganizationTenant`, and `GroupTenant` own tenant-specific participation, policy, moderation, hierarchy, settings, and profile overrides. ATProto registration classifies a verified global identity without duplicating subjects per tenant.
+- **Task directory:** `dev/active/atproto-federation-actor-lifecycle/`.
+- **Planning status:** Re-baselined after user/CTO correction; awaiting review. Runtime implementation has not started.
+- **Superseded decisions:** Both `ActorTenantPresence` and the temporary return to tenant-scoped Actor are rejected. A generic presence row would duplicate concrete participation lifecycles.
+- **Predecessor:** `dev/active/atproto-auth/` remains authoritative for implemented OAuth/DPoP verification, canonical `AtprotoRecord`, Jetstream, outbox, recovery, Event/EventSession materialization, source metadata, and zero echo.
+- **Matched intents:** `add-ef-migration`, `update-repository-query`, `add-cqrs-handler`, `add-get-endpoint`, `add-write-endpoint`, `openapi-contract-change`, `add-hal-link`, `blazor-component-affordance`, and `bff-auth-bug`.
+- **Skills/rules:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, `auth-patterns`, `blazor-bff-patterns`, `blazor-ui-conventions`, and all matching Domain/Application/Persistence/Migration/API/HAL/Blazor/Test rules.
+- **Primary layers:** Domain, Application, Persistence, Infrastructure, API/HAL/OpenAPI, Blazor BFF/client, schema migration, tests, and canonical docs.
+- **Complexity:** XL. Current Actor, Organization, Group, Event, subscriptions, settings, memberships, hierarchy, storage, filters, and authorization encode tenant ownership in different ways.
+- **Compatibility:** One reviewed maintenance-window cutover. No dual reads/writes, aliases, compatibility DTOs, or mixed-version support.
 
 ## 1. Executive Summary
 
-ATProto federation already imports canonical records and materializes a tenant-local `Event` and `EventSession`, but it creates a separate tenant-scoped `Actor` for the same DID in every tenant. Authentication separately requires an existing `UserExternalLogin`, which prevents a verified ATProto identity from claiming the Actor that federation already created. `Actor.UserId`, `User.ActorId`, and `User.DefaultActorId` also leave ownership ambiguous.
+The same real-world person, organization, or group must have one platform-global identity regardless of tenant participation. `Actor` is that global identity/subject abstraction. Its concrete owner is also global: User, Organization, Group, ExternalActorSubject, or ServicePrincipal. Tenant policy belongs to the concrete subject's tenant participation, not Actor.
 
-This workstream makes `Actor` global and durable. A DID identifies at most one Actor across the installation. Tenant visibility and participation move to a separate `ActorTenantPresence`; account membership remains in `TenantUser`. `User.ActorId` becomes the only personal-Actor ownership link and remains nullable because Actors may be unclaimed. `DefaultActorId` remains a UI/workspace preference, not ownership. Public Actor profile fields remain on the Actor/ActorPii aggregate, while User-only identity data stays private and email becomes optional.
+The current repository does not implement that model consistently. Actor, Organization, and Group carry `TenantId`; Event and ActorSubscription use composite `(TenantId, ActorId)` foreign keys; Organization/Group approval and hierarchy live on the concrete entity; and inbound federation creates one Bot Actor per tenant for the same DID.
 
-Inbound federation first resolves or creates the global Actor by DID, records tenant presence, and materializes Events directly against that Actor. A later cryptographically verified ATProto login atomically creates or links a User to the existing Actor. If an explicitly linked Keycloak account already has a local personal Actor, the DID-bearing federated Actor is canonical; mutable ownership references are moved to it, immutable evidence remains historically attributable through a merge record, and already-imported Events need no rewrite.
+The corrected model removes tenant scope from Actor and concrete subjects, introduces `OrganizationTenant` and `GroupTenant`, retains `TenantUser`, and makes Event reference global Actor by `ActorId`. `AtprotoIdentity` is global, exact-DID authoritative, and points to its global Actor. An Actor may have several identities; one identity belongs to at most one Actor. Authentication links a verified identity to User, while representation may be a Person, Organization, or Group Actor.
 
-Public discovery becomes materialized-only: `AtprotoEventProjection` remains canonical ingestion state, source metadata, and recovery evidence, but no projection-only item is returned as a public Event. Actor profile, tenant visibility, global moderation, and public counts therefore use the same materialized Event path.
+Unknown imported DIDs create one global Actor plus `ExternalActorSubject`. Events materialized in any tenant reference that Actor directly; observation is derived from Event and `AtprotoRecordTenantPresentation`, not a presence row. Verified classification promotes the external subject in place, preserving Actor/Event IDs. Existing same-kind global subjects normally remain canonical during explicit consolidation. Different semantic kinds never auto-merge.
 
 ### Intended outcomes
 
-- One global Actor exists per exact verified DID, regardless of how many tenants present that Actor's records.
-- Federation can create an unclaimed Actor without creating a User.
-- Verified ATProto login can create an email-less User and claim the existing Actor idempotently.
-- Explicit provider linking never auto-matches by email and never transfers an Actor already owned by another User.
-- A federated DID Actor is canonical when an authenticated User explicitly links ATProto after receiving a local Keycloak Actor.
-- Tenant admins may hide an Actor only in their tenant; only instance admins may impose Actor-wide suspension.
-- Public profile statistics count current-tenant, public, materialized Events only.
-- Existing canonical record, outbox, Jetstream, recovery, consent, and zero-echo behavior remains intact.
+- One Actor and one concrete global subject represent one real platform subject.
+- One exact DID maps to one global `AtprotoIdentity`; identities can be moderated independently from Actor.
+- Organizations and Groups participate in many tenants through explicit concrete associations.
+- Tenant approval, local moderation, organizer eligibility, settings, hierarchy, profile overrides, and memberships never leak into global subjects.
+- Actor moderation is platform-wide; identity moderation is credential-wide; participation/federation moderation is tenant-local; Event moderation is content-local.
+- Imported events from one DID use the same Actor in every tenant.
+- Every successful ATProto registration resolves a User login, then classifies or associates the global represented subject.
+- Public Actor URLs are global; tenant-context views compose participation and tenant-local content.
 
-### Explicit non-goals
+### Non-goals
 
-- No ActivityPub bridge, first-party PDS, AppView, relay, or general ATProto server implementation.
-- No email auto-match, synthetic email, provider-key inference, or unauthenticated account merge.
-- No generic identity-resolution framework or provider-agnostic merge engine.
-- No second federation capability switch; the existing governed ATProto Events capability remains authoritative.
-- No direct public CRUD for `AtprotoRecord`, `ActorTenantPresence`, or merge records.
-- No projection-only Event card or public profile count.
-- No cross-tenant private analytics in anonymous Actor profile responses.
-- No network call inside an EF Core transaction.
+- No `ActorTenantPresence`, tenant-scoped Actor, name/email/handle auto-merge, generic identity framework, ActivityPub bridge, PDS/AppView/relay implementation, or compatibility layer.
+- No automatic tenant participation merely because federated content was observed.
+- No global-follow subscription product in this slice; current subscriptions remain explicitly tenant-contextual.
+- No network/provider call inside a business transaction.
+- No general document-management subsystem.
 
-## 2. Source-Grounded Current State Report
+## 2. Source-Grounded Current State
 
 ### 2.1 Evidence Log
 
-| Claim | Evidence | Confidence | Notes |
+| Claim | Evidence | Confidence | Consequence |
 |---|---|---:|---|
-| Actor is tenant-scoped today. | `src/Explore.Domain/Actor.cs` implements `ITenantEntity` and requires `TenantId`; `ActorConfiguration` defines alternate key `(TenantId, Id)`. | High | This is the root cause of one DID becoming several Actors. |
-| Event enforces tenant-coupled Actor ownership. | `EventConfiguration.Configure` maps `(Event.TenantId, Event.ActorId)` to `(Actor.TenantId, Actor.Id)`. | High | Global Actor requires a simple ActorId FK while Event remains tenant-scoped. |
-| DID is indexed but not unique. | `ActorPiiConfiguration` creates non-unique `ix_actor_pii_did`. | High | Concurrent imports or auth can duplicate identity. |
-| User/Actor ownership is duplicated. | `Actor.UserId`, `User.ActorId`, `User.DefaultActorId`, `ActorConfiguration`, and `UserConfiguration`. | High | `User.ActorId` will be authoritative; `DefaultActorId` remains preference only. |
-| Imported publishers are duplicated per tenant. | `AtprotoJetstreamRepository.ApplyEventImportsAsync` searches by `(TenantId, Did)` and creates a tenant-local Bot Actor for a miss. | High | Replace with one global DID lookup plus tenant presence upsert. |
-| Canonical ingestion and tenant presentation already exist. | `AtprotoRecord`, `AtprotoEventProjection`, `AtprotoRecordTenantPresentation`, `AtprotoJetstreamSubscriber`, and `AtprotoJetstreamRepository`. | High | Reuse these components; do not rebuild federation. |
-| Imported Events are already materialized. | `ApplyEventImportsAsync` creates/updates tenant-local `Event` and one `EventSession` tied to `AtprotoRecordId`. | High | The Event can point directly to the global Actor. |
-| Public discovery still merges projection-only results. | `GetPublicEventDiscoveryRequestHandler.Handle` concatenates local Event results with `AtprotoEventProjection` results. | High | Corrected discovery removes the projection branch, not canonical storage. |
-| ATProto login is linked-account-only. | `BootstrapAtprotoSessionCommandHandler.Handle` returns `account_not_linked`; `SyncUserCommandHandler.Handle` rejects an unlinked email-less ATProto identity. | High | This is the behavior this approved workstream changes. |
-| User email cannot currently be absent. | `UserPii.Email` is `required string`; `SyncUserCommandHandler` requires email for User creation. | High | Nullable email changes must stay behind provider-specific validation. |
-| Tenant account moderation already exists. | `TenantUser` stores status, suspension/ban/removal fields, notes, profile, and ActorId. | High | Keep it for User membership; do not overload it for unclaimed Actors. |
-| Actor has no global moderation state. | `Actor` has soft-delete/audit fields only; current moderation entities target Events or TenantUsers. | High | Add explicit global Actor state and tenant-local presence hiding. |
-| Actor references are broad. | `ActorId` appears in 21 persistence configuration files and 20 Domain files. | High | Migration must classify mutable ownership versus immutable evidence before rewriting. |
-| Baseline build is green. | `dotnet build --configuration Release --verbosity quiet` completed successfully during planning with existing package vulnerability warnings. | High | Planning changed no runtime files. |
+| Actor is tenant-scoped and owns User/Organization/Group FKs today. | `Actor.cs`; `ActorConfiguration.cs`; Actor query filters | High | Remove tenant key/filter; retain one authoritative subject-owner direction and extend it for external subjects. |
+| User is global, but Actor ownership/preference is duplicated. | `User.cs`; `TenantUser.cs`; configurations | High | Global personal Actor belongs to User; tenant membership/moderation remains TenantUser; preferred workspace Actor is tenant-scoped. |
+| Organization is tenant-scoped and carries global plus local fields together. | `Organization.cs`; `OrganizationConfiguration.cs`; `OrganizationPii.cs` | High | Canonical identity/contact fields stay global; approval/local status/profile overrides move to OrganizationTenant. |
+| Group is tenant-scoped and carries approval plus tenant hierarchy. | `Group.cs`; `GroupConfiguration.cs` | High | Canonical group fields stay global; approval, local profile, parent Organization/Group participation, and status move to GroupTenant. |
+| Organization/Group members are tenant-scoped but reference concrete subjects directly. | member entities/configurations | High | Memberships must target OrganizationTenant/GroupTenant; uniqueness becomes participation plus User. |
+| Organization/Group settings already carry TenantId. | `OrganizationSetting.cs`; `GroupSetting.cs`; query filters | High | Repoint them to concrete tenant participation rather than global subject alone. |
+| Event and tenant ActorSubscription use composite Actor FKs. | `EventConfiguration.cs`; `ActorSubscriptionConfiguration.cs` | High | Replace with simple global Actor FK; handlers enforce tenant-context validity through participation or federated presentation. |
+| ActorSubscription is explicitly tenant-local. | `ActorSubscription.cs` and configuration | High | Preserve local-follow semantics; do not silently convert it into a global follow. |
+| DID truth is split across IndexedDid, ActorPii, and AtprotoRecord. | corresponding entities/configurations | High | Migrate the exact-DID union into global AtprotoIdentity and remove ActorPii DID authority. |
+| Provider login lookup bypasses tenant filter without uniqueness. | `UserExternalLoginRepository.cs`; configuration | High | Make provider identity global/unique before onboarding. |
+| Unknown inbound DID creates a tenant Bot Actor. | `AtprotoJetstreamRepository.ApplyEventImportsAsync` | High | Replace with one global ExternalUnclassified Actor/subject shared by all tenant Events. |
+| Record, Actor/Event/session materialization, cursor, and fence already commit together. | `TryApplyAndAdvanceWithResultAsync`; `ApplyEventImportsAsync` | High | Global identity/Actor/external-subject creation joins the same transaction. |
+| Organization governance settings exist but create handler does not consume them. | `OrganizationSettingDefinitions`; `OrganizationSettingGroup`; create handler | High | Normal and ATProto creation share one policy-aware operation. |
+| Private storage/evidence patterns exist. | upload-session handlers; `StorageObject`; `EventReportEvidence` | High | OrganizationTenant evidence reuses private Document ownership and composite tenant FKs. |
+| ATProto OAuth authenticates DID, not subject kind. | official OAuth/DID/profile specifications | High | Classification is explicit local business intent after verification, never profile inference. |
 
-### 2.2 Existing Implementation
+### 2.2 Current Ownership And Policy Coupling
 
-#### Domain and persistence
+- `Actor`, `Organization`, and `Group` all receive named tenant filters and soft-delete filters.
+- `Organization.ApprovalStatusId`, approval audit, TenantId, and ActorId mix global identity with local onboarding.
+- `Group.ApprovalStatusId`, TenantId, parent Organization/Group, profile picture, and ActorId mix canonical identity with tenant hierarchy and local assets.
+- Current Organization/Group creation performs several writes without one explicit `IUnitOfWork` boundary.
+- `OrganizationMember` uniqueness is `(OrganizationId, UserId)` and `GroupMember` uniqueness is `(GroupId, UserId)`, which cannot represent the same User holding separate tenant-local memberships in one global subject.
+- Actor profile media points to tenant-scoped `StorageObject`; those FKs cannot remain on a global Actor without widening storage scope unsafely.
+- Current ActorSubscription targets Organization/Group Actor in one tenant; the composite FK currently relies on Actor tenancy rather than an explicit eligibility rule.
 
-- `Actor` currently combines public profile data with tenant ownership and reverse ownership FKs to User, Organization, and Group.
-- `ActorPii` is a required one-to-one extension containing display name, DID, handle, and profile URI.
-- `User` owns `ActorId`, `DefaultActorId`, provider metadata, and required `UserPii`; `TenantUser` owns tenant membership and tenant moderation.
-- `Organization` and `Group` already point to Actor, so the reverse `Actor.OrganizationId` and `Actor.GroupId` links are unnecessary for ownership.
-- `ActorRepository` exposes tenant-oriented and DID-oriented reads, but tenant query filters currently shape all Actor access.
-- `AtprotoRecordTenantPresentation` already separates canonical record identity from tenant visibility at the record level.
+### 2.3 Existing Tests And Gaps
 
-#### Federation and authentication
+- Existing Organization tests protect tenant-admin Approved versus ordinary Pending behavior, membership, Actor creation, update authorization, and concurrency.
+- Existing Group tests protect Pending creation, hierarchy, membership, approval updates, APIs, HAL, and services.
+- Existing federation tests protect canonical records, tenant materialization, replay, tombstone, recovery, source links, and zero echo.
+- Missing: global subject uniqueness, participation isolation, User Actor deduplication, DID Actor deduplication, hierarchy migration, tenant-local subscription eligibility, global/identity/local moderation separation, external classification, and cross-tenant Actor reuse.
 
-- One global Jetstream consumer parses exact event/RSVP collections, stores canonical records, projects discovery fields, and materializes enabled tenant Event aggregates.
-- `AtprotoSessionController` and `BootstrapAtprotoSessionCommandHandler` independently verify the DPoP-bound PDS session before issuing the first-party JWT.
-- Verified sessions currently require a tenant-specific `UserExternalLogin` and a tenant-specific personal Actor.
-- `SyncUserCommandHandler` permits email matching for supported providers but intentionally denies it for ATProto.
+### 2.4 Documentation And Official Constraints
 
-#### API, HAL, and Blazor
+- Canonical owners: `docs/DOMAIN.md`, `MULTI_TENANCY.md`, `AUTHORIZATION.md`, `SECURITY-MODEL.md`, `FEDERATION.md`, `API.md`, `API_CHANGELOG.md`, `BLAZOR.md`, `BACKUP_RESTORE_UPGRADE.md`, `schemas/islamu-event.md`, and a new ADR.
+- Preserve ADR-015 canonical record/materialization rules.
+- Official ATProto constraints: DID is permanent/global/case-sensitive with a 2048 maximum; handle/PDS/signing key are mutable; OAuth requires unique state, PKCE, PAR, DPoP, expected-DID/token-subject, and authoritative issuer/PDS verification; profile Lexicon has no subject-kind field.
+- EF Core constraints: named tenant filters belong on tenant rows; unique/partial indexes enforce races; required-navigation filters can hide parents unexpectedly; data-moving migrations require reviewed SQL.
 
-- `ActorController` has anonymous GET by id, DID, and tenant plus authorized create/update/delete routes.
-- `EventController` exposes public discovery and the governed ATProto source route.
-- Blazor has `ActorService`, actor subscription UI, and workspace Actor switching, but no coherent global federated Actor profile flow.
+### 2.5 Unknowns Assigned To Implementation
 
-### 2.3 Existing Tests And Verification Coverage
-
-- `tests/Event.Persistence.IntegrationTests/Federation/AtprotoInboundEventImportPersistenceTests.cs` protects tenant-local materialization, replay, tombstone, and zero-echo behavior.
-- `tests/Event.Persistence.IntegrationTests/Federation/AtprotoFederationPersistenceTests.cs` protects canonical record/presentation persistence.
-- `tests/Event.Application.UnitTests/Features/Users/Commands/SyncUserCommandHandlerTests.cs` protects the current linked-only and email rules.
-- ATProto bootstrap, encrypted session, discovery, source, and architecture tests exist across `Event.Application.UnitTests`, `Event.API.IntegrationTests`, `Explore.Infrastructure.Tests`, `Event.Persistence.IntegrationTests`, and `Event.Architecture.Tests`.
-- Gaps: global DID uniqueness, cross-tenant Actor reuse, unclaimed Actor claim, email-less User persistence, merge concurrency, tenant-local Actor hiding, Actor-wide moderation, and materialized-only discovery are not covered.
-
-### 2.4 Existing Documentation And Contracts
-
-- `dev/active/atproto-auth/*` is the implemented predecessor and must remain the source for OAuth, outbox, lexicon, Jetstream, and recovery details.
-- `docs/adr/ADR-015-atproto-event-federation-ownership.md` owns current DB-first federation record ownership.
-- `docs/FEDERATION.md`, `docs/DOMAIN.md`, `docs/SECURITY-MODEL.md`, `docs/MULTI_TENANCY.md`, and `docs/OUTBOX_PATTERN.md` document the relevant boundaries.
-- `docs/API.md`, `docs/API_CHANGELOG.md`, generated OpenAPI/client artifacts, and `docs/API_CONTRACT_INVENTORY.md` own public contract changes.
-- `schemas/islamu-event.md` owns the database narrative.
-- `.claude/contract/intents.yaml` has no dedicated federation-identity intent; this workstream carries the combined contracts listed in planning metadata.
-
-### 2.5 Current Pain Points / Improvement Areas
-
-- The same DID has different Actor IDs across tenants, so ownership, profile, moderation, subscriptions, and analytics cannot converge on one identity.
-- A federated Actor cannot be claimed through the already-verified auth bridge unless a User and login link pre-exist.
-- Actor type `Bot` is used for an external person only because the current Actor ownership check treats an Actor without User/Organization/Group as a bot.
-- User/Actor ownership is circular and represented twice.
-- Projection-only discovery bypasses materialized Event policy, Actor moderation, and a single profile/statistics model.
-- A global Actor migration can accidentally collapse historical audit evidence or cross tenant boundaries unless every Actor FK is classified.
-
-### 2.6 Unknowns After Investigation
-
-| Unknown | Search performed | Owning task / resolution |
-|---|---|---|
-| Which Actor FKs are mutable current ownership versus immutable historical evidence? | Counted Domain and EF configuration references; inspected Event, User, Organization, Group, TenantUser, subscriptions, reports, notifications, audit, storage, and AI reference paths. | Task 1.1 records a complete FK disposition manifest before Task 1.2 migration SQL is written. |
-| Which current call sites assume `User.Email` is non-null? | Verified Domain and sync handler requirements; broad DTO/client impact remains distributed. | Task 5.1 uses compiler diagnostics and bounded search to update only account identity/display paths that require nullable handling. |
-| Whether a public Actor profile page already exists under another route? | Actor components/services and generated client were searched; only workspace switcher and subscription surfaces were found. | Task 7.1 adds the smallest route/component only if no equivalent appears before implementation. |
-| Whether profile refresh needs a durable queue? | Current import fetches optional thumbnails outside the EF transaction; no Actor profile refresh owner exists. | Task 4.1 starts with bounded cached fetch in the existing inbound prefetch boundary and adds no outbox unless measured failure recovery cannot be achieved on later observations. |
+| Unknown | Resolution |
+|---|---|
+| Complete disposition of every Actor/Organization/Group FK | Task 1.1 produces a manifest classifying global identity, tenant participation, current mutable ownership, immutable evidence, and tenant-observation references. |
+| Global Actor uploaded media without a global storage scope | Initial cutover moves tenant StorageObject FKs to participation profile overrides; canonical global profile uses safe identity URI/CID metadata. A global uploaded-asset model requires separate approval. |
+| Existing same-name Organizations across tenants | Never merge by name. Each becomes a separate global subject unless User ownership or exact verified DID proves identity. |
+| Existing conflicting profiles while deduplicating User/DID Actors | Migration uses explicit precedence and preserves losing tenant-safe values as participation overrides where possible; otherwise aborts for reviewed mapping. |
 
 ## 3. Proposed Future State
 
-### 3.1 Identity and tenancy model
+### 3.1 Global identity graph
 
-1. `Actor` no longer implements `ITenantEntity` and has no `TenantId`, `UserId`, `OrganizationId`, or `GroupId`.
-2. Actor type value 1 is renamed from User to Person. A Person Actor may be unclaimed or linked to one User.
-3. `User.ActorId` is the nullable, unique ownership link for a personal Actor. `Organization.ActorId` and `Group.ActorId` remain their respective ownership links. `User.DefaultActorId` is explicitly a workspace preference and may reference an Actor the User is authorized to operate.
-4. `ActorPii.Did` has a filtered global unique index. DID comparisons remain exact ordinal. Handle is mutable profile metadata and never an identity/merge key.
-5. New `ActorTenantPresence` records `(TenantId, ActorId)`, first/last seen timestamps, source, and tenant visibility state. It permits an unclaimed Actor to be presented or hidden without a User.
-6. `TenantUser` remains the account membership, role, and account-moderation record. When a User claims an Actor in a tenant, `TenantUser.ActorId` points to the same global Actor.
-7. Actor global status is Active or Suspended. Only instance-admin policy may change it. Tenant admins may hide `ActorTenantPresence` locally without changing global identity.
+```text
+AtprotoIdentity --many-to-one--> Actor --exactly-one--> User
+                                      |-------------> Organization
+                                      |-------------> Group
+                                      |-------------> ExternalActorSubject
+                                      |-------------> ServicePrincipal
+```
 
-### 3.2 Inbound federation flow
+- `Actor`: global ID, kind, canonical public profile, global status, aliases/merge evidence, audit/soft delete.
+- `AtprotoIdentity`: global exact DID, mutable verified handle/PDS/key/cache state, `ActorId`, identity moderation state. Many identities may reference one Actor; one identity references at most one Actor.
+- Ownership direction is single-source: Actor keeps the subject discriminator FKs and database XOR constraint; concrete entities expose inverse navigation but no duplicate stored ActorId.
+- `User`, `Organization`, and `Group` have no TenantId or tenant filter.
+- `ExternalActorSubject` is global and owns the temporary unclassified Actor state until promotion.
 
-1. Jetstream/PDS recovery continues to establish canonical `AtprotoRecord` and tenant record presentations.
-2. Before the EF transaction, the existing constrained PDS boundary may fetch a bounded public Actor profile for a new or stale DID; failure does not reject the event.
-3. The transaction resolves the one global Actor by DID under a unique constraint, creates a Person Actor when absent, and updates safe public profile fields when verified data is available.
-4. The transaction upserts `ActorTenantPresence` for every enabled tenant presentation.
-5. Tenant-local Event/EventSession materialization points to the same global Actor ID. Replay, update, tombstone, thumbnail, cursor, and zero-echo behavior remains unchanged.
+### 3.2 Concrete tenant participation
 
-### 3.3 Verified claim and merge flow
+```text
+User         -> TenantUser
+Organization -> OrganizationTenant
+Group        -> GroupTenant
+```
 
-1. The BFF/API security bridge verifies expected DID, token subject, PDS session DID, PDS origin, and session binding exactly as today.
-2. The Application handler loads the global Actor by verified DID.
-3. If the Actor is unclaimed and no provider login exists, it creates an email-less User/UserPii, creates the tenant `UserExternalLogin` and `TenantUser`, and sets `User.ActorId` to that Actor in one transaction.
-4. If the login already maps to that User/Actor, the operation is idempotent and refreshes profile/session metadata.
-5. If an authenticated User explicitly links ATProto and has a different local Person Actor, the DID Actor is canonical. Mutable ownership references move to it, the source Actor is soft-deleted, and an `ActorMerge` record preserves source/canonical identity and reason.
-6. Imported Events already owned by the DID Actor are untouched. Local mutable ownership records attached to the source Actor are reassigned with collision-specific handling.
-7. If the DID Actor is owned by another User, the operation fails with `identity_conflict`; no email or handle fallback is attempted.
+- `OrganizationTenant`: Id, OrganizationId, TenantId, approval/status, local visibility/moderation, organizer eligibility, local profile/contact/media overrides, approval audit, concurrency, audit, soft delete; unique `(TenantId, OrganizationId)`.
+- `GroupTenant`: Id, GroupId, TenantId, approval/status, local visibility/moderation, local profile/media overrides, tenant hierarchy, concurrency, audit, soft delete; unique `(TenantId, GroupId)`.
+- Group parent relationships target `OrganizationTenant` or `GroupTenant`, because hierarchy is tenant context.
+- OrganizationMember/GroupMember and OrganizationSetting/GroupSetting target their participation aggregate.
+- Observation alone does not create participation. Imported Event plus record presentation proves tenant observation.
 
-### 3.4 Public profile and discovery flow
+### 3.3 Event, authorization, and subscriptions
 
-1. Actor GET by id/DID resolves the global Actor, exposes public profile fields only, and reports current-tenant presence.
-2. Actor-by-tenant reads join `ActorTenantPresence`; they no longer rely on an Actor tenant filter.
-3. Public Actor statistics count only non-deleted, public, materialized Events in the current tenant. Instance-wide operational counts remain admin-only.
-4. Public discovery queries materialized Events only. `AtprotoEventProjection` remains ingestion/recovery/source metadata and is never mapped directly to a public Event card.
-5. A globally suspended Actor or tenant-hidden presence removes its Events/profile from public tenant reads without deleting canonical records.
+- Event remains tenant-scoped and references global Actor with a simple FK.
+- Local Event creation resolves Actor kind to global subject, then requires active matching TenantUser/OrganizationTenant/GroupTenant plus current User authority.
+- Imported events may reference ExternalUnclassified Actor without participation; federation capability/presentation policy governs them.
+- Current ActorSubscription remains tenant-local. It keeps TenantId, subscriber TenantUser, and global TargetActorId; creation/read/fanout require that the Actor is discoverable in that tenant through active participation or public federated materialization.
+- A future global follow is a separate product contract and table, not an implicit semantic change.
+
+### 3.4 Registration and classification
+
+1. BFF completes the existing verified OAuth flow and binds classification intent to authenticated session, tenant, expected DID, issuer/PDS, nonce, expiry, and antiforgery state.
+2. Server resolves/creates global AtprotoIdentity, global User login, and current TenantUser idempotently.
+3. Classification is explicit Person, Organization, or Group local business intent; it is not inferred from ATProto metadata.
+4. Person links/promotes Actor to User and ensures current TenantUser.
+5. Organization links/promotes Actor to one global Organization and creates/resolves current OrganizationTenant under existing self-registration/verification policy; registrant becomes tenant OrgAdmin.
+6. Group links/promotes Actor to one global Group and creates/resolves current GroupTenant under existing self-registration/hierarchy policy; registrant becomes tenant GroupAdmin.
+7. The same DID can authenticate User while representing Organization/Group because UserExternalLogin targets identity and identity targets represented Actor; audit remains User.
+
+### 3.5 Federation before and after classification
+
+- First observation of unknown DID creates one global AtprotoIdentity, Actor(kind ExternalUnclassified), and ExternalActorSubject in the existing fenced record/materialization transaction.
+- Tenant A and Tenant B Events reference the same Actor; no participation row is created by observation.
+- Direct classification replaces external ownership in place and preserves Actor/identity/Event IDs.
+- Only the onboarding tenant receives new TenantUser/OrganizationTenant/GroupTenant. Other tenants keep federated Events without local management participation until their own authorized association flow.
+- When a same-kind existing global subject is explicitly proven, that existing Actor normally remains canonical; mutable references move, identity points to canonical Actor, and ActorMerge preserves source/canonical evidence.
+- Different kinds or conflicting User owners fail closed for explicit review.
+
+### 3.6 Four-level moderation
+
+| Level | Target | Scope | Example |
+|---|---|---|---|
+| Subject | Actor | Platform-wide | fraud, impersonation, legal prohibition, severe cross-tenant abuse |
+| Credential | AtprotoIdentity | Global external identity | compromised DID/key/PDS while other Actor identities remain valid |
+| Participation/federation | TenantUser, OrganizationTenant, GroupTenant, or tenant identity policy | One tenant | local ban, pending verification, local import block |
+| Content | Event/report decision | One tenant content item | event takedown or redaction |
+
+Actor-wide action requires instance authority. Tenant admins mutate concrete participation only. Before classification, tenant-local federation policy may target AtprotoIdentity; it is not Actor presence.
+
+### 3.7 Profiles, URLs, and evidence
+
+- `/actors/{actorId}` serves canonical public identity.
+- `/t/{tenantSlug}/actors/{actorId}` composes canonical identity with participation, local visibility/profile overrides, and tenant-local Event counts.
+- Tenant-owned StorageObject profile media moves to TenantUser/OrganizationTenant/GroupTenant overrides. Global Actor retains safe canonical URI/CID metadata until a dedicated global storage scope is approved.
+- Organization legitimacy evidence targets OrganizationTenant and private tenant StorageObject, because approval is tenant-local.
 
 ## 4. Non-Negotiable Constraints
 
-- Repositories return entities, never DTOs; handlers own mapping.
-- Validators are manually instantiated.
-- Aggregates use UUIDv7 `Guid`; lookups use `int`; cursors use `long`.
-- GET endpoints remain anonymous; all moderation, merge, and write endpoints require authorization.
-- UI action visibility is controlled by HAL links, never local role/claim checks.
-- Every new source file starts with two `ABOUTME:` lines.
-- Domain remains independent of Application, Persistence, Infrastructure, API, and Blazor.
-- Tenant-scoped dependents remain fail-closed under tenant query filters even though Actor is global.
-- A global Actor lookup must never grant tenant participation, authorization, or profile-edit authority.
-- ATProto identity is established only from the existing verified session boundary; DID, handle, email, headers, or client DTOs alone are not trusted.
-- No PDS network call occurs inside an EF transaction.
-- No destructive migration silently drops Actor references or User identity data.
-- Existing outbox, canonical record, cursor fencing, recovery, and zero-echo invariants remain unchanged.
-- No backward-compatibility shim is added without a concrete persisted/external consumer need.
+- Repositories return entities; handlers map DTOs; validators are manually instantiated.
+- Actor and every concrete owner are global. No tenant filter or TenantId is allowed on Actor, User, Organization, Group, ExternalActorSubject, or AtprotoIdentity.
+- Every Actor has exactly one concrete global owner; every concrete owner has exactly one Actor. One authoritative FK direction only.
+- Tenant authority comes only from TenantUser, OrganizationTenant, GroupTenant, tenant federation policy, or tenant-owned content, never global Actor existence.
+- No ActorTenantPresence or generic polymorphic participation row.
+- No auto-merge by name, email, handle, URL, address, or profile similarity.
+- Only verified OAuth/session flows create identity/login/claim links; classification is local intent, not protocol truth.
+- Multi-write creation, promotion, consolidation, and evidence attachment use `IUnitOfWork`; provider/storage I/O remains outside transactions.
+- HAL links are the sole UI affordance authority.
+- Preserve canonical records, outbox, recovery, cursor fencing, materialization, source metadata, and zero echo.
 
-## 5. Architecture And Design Decisions
+## 5. Architecture Decisions
 
-### A1. Actor is global; tenant participation is separate
+### A1. Global Actor and global concrete subjects
+- **Decision:** Remove TenantId from Actor, Organization, and Group; add global ExternalActorSubject.
+- **Why:** One real subject must retain one identity across tenants.
+- **Rejected:** One Actor per tenant; global Actor with tenant-local duplicate Organizations/Groups.
+- **Consequence:** Tenant policy moves to concrete participation aggregates.
 
-- **Decision:** Remove Actor tenancy and add `ActorTenantPresence` keyed by `(TenantId, ActorId)`.
-- **Why:** DID identity is global, while visibility and participation are tenant policy.
-- **Alternatives considered:** Keep one Actor per tenant; make `TenantUser` represent every Actor. The first preserves the bug, and the second cannot represent unclaimed Actors.
-- **Consequences:** Actor repositories become explicit global reads; every tenant-facing query must join a tenant-scoped dependent or presence row.
-- **Files/layers affected:** Domain Actor/presence, DbContext/configurations/migration, repositories, API queries, federation import, and tests.
+### A2. No ActorTenantPresence
+- **Decision:** Use TenantUser, OrganizationTenant, GroupTenant, Event, record presentation, and tenant identity policy.
+- **Why:** Their lifecycles differ and a generic row creates conflicting status truth.
+- **Consequence:** Observation can exist without membership or managed participation.
 
-### A2. Ownership points toward Actor from the owner
+### A3. AtprotoIdentity points to global Actor
+- **Decision:** Promote IndexedDid into AtprotoIdentity with nullable-during-migration then required ActorId; no separate tenant binding table.
+- **Why:** One DID represents one global subject, while an Actor may have several identities.
+- **Consequence:** UserExternalLogin authenticates User through identity; identity independently identifies represented Actor.
 
-- **Decision:** `User.ActorId`, `Organization.ActorId`, and `Group.ActorId` own their Actor relationships; remove reverse owner FKs from Actor. Keep `User.DefaultActorId` only as preference.
-- **Why:** One FK per ownership relationship removes circular creation and conflicting truth.
-- **Alternatives considered:** Keep both directions and synchronize them. Rejected because every write would need dual-write repair logic.
-- **Consequences:** Creation handlers create Actor first or in the same transaction, then set the owning entity FK.
-- **Files/layers affected:** Domain entities, EF configurations, sync/onboarding/organization/group handlers, fixtures, and schema docs.
+### A4. Actor owns the concrete-subject discriminator
+- **Decision:** Retain Actor-side unique User/Organization/Group owner FKs, add ExternalActorSubject/ServicePrincipal owner, remove duplicate owner-side ActorId columns.
+- **Why:** The existing PostgreSQL XOR check can enforce exactly one subject without dual writes or polymorphic FKs.
+- **Consequence:** Concrete subjects expose inverse one-to-one navigation only.
 
-### A3. DID is the only federated Actor identity key
+### A5. OrganizationTenant and GroupTenant own local policy
+- **Decision:** Move approval, status, local moderation/visibility, settings, media overrides, organizer eligibility, and Group hierarchy to participation.
+- **Why:** Those values can differ across tenants while canonical identity remains shared.
+- **Consequence:** Memberships/settings/hierarchy authorize through participation IDs.
 
-- **Decision:** Enforce one non-null DID globally with a filtered unique database index; do not merge by handle or email.
-- **Why:** Handles change and email is neither guaranteed nor an ATProto identity proof.
-- **Alternatives considered:** Application-only uniqueness or normalized-handle fallback. Both race and can misidentify users.
-- **Consequences:** Concurrent import/auth converges by database uniqueness and deterministic retry.
-- **Files/layers affected:** ActorPii configuration/migration, ActorRepository, import, auth, and persistence tests.
+### A6. Event references global Actor directly
+- **Decision:** Replace composite `(TenantId, ActorId)` FK with simple ActorId FK.
+- **Why:** Actor is global; tenant authorization is a business rule over concrete participation, not identity storage.
+- **Consequence:** Local writes prove participation; imports prove tenant presentation/materialization policy.
 
-### A4. User is optional and email may be absent
+### A7. Imported external subject is global and unclassified
+- **Decision:** One DID creates one global ExternalUnclassified Actor/subject; no tenant row is created merely for observation.
+- **Why:** The same remote publisher can appear in many tenants before local classification.
+- **Consequence:** Direct promotion preserves Actor/Event IDs.
 
-- **Decision:** Permit nullable `UserPii.Email`; verified ATProto first login may create User without email. Keycloak/OIDC creation retains its provider-specific email requirements.
-- **Why:** ATProto verification proves control of a DID, not ownership of an email address.
-- **Alternatives considered:** Synthetic email or no User creation. Synthetic data is unsafe; linked-only login prevents claiming imported identity.
-- **Consequences:** Display, DTO, validation, and privacy-erasure paths must handle null explicitly.
-- **Files/layers affected:** Domain/UserPii, sync/bootstrap handlers, mappings/contracts, persistence, and tests.
+### A8. Merge only with proof
+- **Decision:** Existing global User ownership or exact verified DID may establish identity; same name/profile never does.
+- **Why:** Global deduplication is an account-takeover boundary.
+- **Consequence:** Unproven current tenant Organizations/Groups migrate as distinct global subjects.
 
-### A5. Claim is link-only; merge is explicit and DID Actor wins
+### A9. Subscription semantics stay tenant-local
+- **Decision:** Preserve current ActorSubscription product meaning and replace only its composite Actor FK.
+- **Why:** Converting to global follow would be an unrequested behavior change.
+- **Consequence:** Handler requires local discoverability/participation; global follow is deferred.
 
-- **Decision:** A verified login claims an unowned Actor. An authenticated explicit provider-link operation may merge its existing local Actor into the DID Actor. No passive sign-in or email match triggers merge.
-- **Why:** This preserves imported ownership and prevents account takeover.
-- **Alternatives considered:** Keep local Actor canonical or rewrite imported Events. Both split the DID identity or destroy stable imported ownership.
-- **Consequences:** Merge needs transaction fencing, collision rules, audit evidence, and conflict failure when another User owns the DID Actor.
-- **Files/layers affected:** Application auth/link handlers, Actor repository, migration model, authorization, and tests.
-
-### A6. Mutable references move; immutable evidence remains attributable
-
-- **Decision:** Reassign current ownership/participation references during merge, preserve immutable historical evidence, and record `ActorMerge(SourceActorId, CanonicalActorId, reason, actor, timestamp)`.
-- **Why:** Current behavior must converge without falsifying audit history.
-- **Alternatives considered:** Rewrite every Actor FK or resolve every read through aliases. Both are broader and more error-prone.
-- **Consequences:** Task 1.1 must maintain an explicit FK disposition manifest and Task 5.2 must implement collision handling per mutable relation.
-- **Files/layers affected:** Domain merge record, EF migration, merge repository/service, audit/report readers, and tests.
-
-### A7. Moderation has global and tenant scopes
-
-- **Decision:** Instance admins may suspend Actor globally; tenant admins may hide ActorTenantPresence locally. `TenantUser` moderation continues to govern account membership.
-- **Why:** A tenant must not globally censor an identity, while the instance needs abuse control that also covers unclaimed actors.
-- **Alternatives considered:** Tenant-only or global-only moderation. Each leaves an abuse or governance gap.
-- **Consequences:** Public queries apply both global and current-tenant state; authorization and HAL distinguish the two actions.
-- **Files/layers affected:** Domain, CQRS, policy/HAL, API, discovery/profile queries, and tests.
-
-### A8. Public discovery is materialized-only
-
-- **Decision:** Remove projection-only result mapping from `GetPublicEventDiscoveryRequestHandler`; retain projection persistence for ingestion, source, and recovery.
-- **Why:** One public Event model ensures Actor, moderation, tenant, lifecycle, and analytics consistency.
-- **Alternatives considered:** Continue merging projection DTOs or duplicate all policy on projections. Both preserve two public truth models.
-- **Consequences:** A record is not publicly discoverable until tenant Event materialization commits successfully.
-- **Files/layers affected:** Application discovery handler, projection repository usage, API/HAL tests, docs, and client contracts.
-
-### A9. Profile hydration is opportunistic and bounded
-
-- **Decision:** Fetch verified public profile data outside the transaction through the existing constrained ATProto transport, cache it, and let later observations retry failures.
-- **Why:** Event ingestion must not fail or hold database locks because a profile endpoint is unavailable.
-- **Alternatives considered:** Fetch inside transaction or add a new durable outbox immediately. The first is unsafe; the second is unproven complexity.
-- **Consequences:** DID-only fallback profiles are valid, and no profile value can override DID identity.
-- **Files/layers affected:** Infrastructure ATProto gateway/options, import plan, Actor updates, lexicon closure if required, and tests.
+### A10. Storage remains tenant-scoped
+- **Decision:** Move uploaded Actor/Organization/Group media to participation overrides; keep canonical URI/CID fields global.
+- **Why:** Reusing tenant StorageObject globally would leak tenant ownership and authorization.
+- **Consequence:** Global uploaded assets require a separate reviewed storage-scope design.
 
 ## 6. Implementation Phases
 
-### Phase 1: Global Actor Schema And Safe Data Migration
+### Phase 0: Close Public Identity CRUD
+- **Goal:** Remove client-asserted identity ownership before changing claim semantics.
+- **Depends on:** None.
+- **Verification:** `dotnet build --configuration Release --verbosity quiet`; `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`.
+- **Rollback:** Do not restore generic CRUD; add only purpose-built verified/self-scoped contracts.
 
-- **Goal:** Establish the global identity model and migrate current data without losing references or collapsing unrelated identities.
-- **Depends on:** User approval of this plan.
-- **Relevant files:** `Actor.cs`, `ActorPii.cs`, `User.cs`, `UserPii.cs`, `Organization.cs`, `Group.cs` (existing); `ActorTenantPresence.cs`, `ActorMerge.cs` (new); configurations, DbContext, migration, model snapshot, ADR/schema/docs/tests (existing/new).
-- **Related skills/rules:** `clean-architecture-rules`, `dotnet-efcore-guidelines`, `.claude/rules/domain.md`, `.claude/rules/efcore-migrations.md`, `.claude/rules/tests.md`.
-- **Acceptance criteria:** Global Actor constraints compile; all current Actor FKs have an explicit disposition; duplicate DIDs migrate deterministically; tenant presence and merge audit are preserved; nullable email does not weaken non-ATProto validation.
-- **Phase-end verification (run once after all tasks):**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
-- **Rollback / failure handling:** Migration `Down()` may restore schema only where data-preserving; any duplicate-DID ambiguity or FK collision aborts migration with a diagnostic instead of guessing.
+#### Task 0.1: Remove public UserExternalLogin and IndexedDid CRUD
+- **Type/Layer:** delete/modify; Application/API/Blazor/Docs.
+- **Files:** existing controllers, DTO/CQRS/HAL/routes/OpenAPI/generated client/tests/docs; internal persistence retained until migration.
+- **Acceptance:** No public request can assert UserId/DID/provider/PDS/key ownership; verified auth/import internals compile; breaking deletion is documented.
+- **Dependencies/Effort:** None; M.
 
-#### Task 1.1: Define global Actor, presence, merge, and ownership contracts
+### Phase 1: Define Global Subjects And Concrete Participation
+- **Goal:** Establish exact domain ownership and field/FK disposition before schema work.
+- **Depends on:** Phase 0.
+- **Verification:** `dotnet build --configuration Release --verbosity quiet`; `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`.
+- **Rollback:** Any unclassified FK or dual source of truth blocks migration scaffolding.
 
-- **Type:** modify/create
-- **Layer:** Domain/Persistence/Docs
-- **Files:** `src/Explore.Domain/Actor.cs`, `ActorPii.cs`, `User.cs`, `Organization.cs`, `Group.cs`, `Enums/ActorTypeEnum.cs` (existing); `ActorTenantPresence.cs`, `ActorMerge.cs`, status/source enums (new); relevant configurations and `docs/adr/ADR-016-atproto-actor-identity-lifecycle.md` (new).
-- **Description:** Remove tenant and reverse-owner state from Actor, rename personal Actor type semantics to Person, make owner-side links authoritative, define tenant presence and scoped moderation fields, define merge evidence, and record every Actor FK as mutable ownership, current participation, or immutable evidence.
-- **Acceptance Criteria:**
-  - [ ] Domain model permits Person Actor without User and has no dependency on a tenant.
-  - [ ] `User.ActorId` is unique when non-null; `DefaultActorId` is documented as preference only.
-  - [ ] Tenant presence supports unclaimed Actor visibility and tenant-local hiding.
-  - [ ] Global Actor status transitions are explicit domain methods, not free-form controller mutation.
-  - [ ] ADR contains the complete Actor FK disposition manifest and merge collision policy.
-- **Dependencies:** None.
-- **Effort:** XL.
-- **Required Skills/Rules:** `clean-architecture-rules`, `dotnet-efcore-guidelines`, domain and migration rules.
+#### Task 1.1: Define global Actor/identity/concrete-subject contracts and ADR
+- **Type/Layer:** modify/create; Domain/Docs/Tests.
+- **Files:** Actor/User/Organization/Group/ActorPii/IndexedDid; new AtprotoIdentity, ExternalActorSubject, ActorMerge, Actor/identity moderation records; ADR and architecture tests.
+- **Acceptance:** Global entities have no TenantId/filter; Actor owner XOR is exact and single-direction; identity-to-Actor cardinality supports many credentials; DID/handle/PDS semantics match protocol; complete Actor FK disposition manifest exists.
+- **Dependencies/Effort:** 0.1; XL.
 
-#### Task 1.2: Implement deterministic Actor/email migration and constraints
+#### Task 1.2: Define OrganizationTenant/GroupTenant and local field ownership
+- **Type/Layer:** create/modify; Domain/Docs/Tests.
+- **Files:** new participation entities/status/profile overrides; Organization/Group/member/settings/hierarchy/subscription/storage models; ADR manifest.
+- **Acceptance:** Approval/moderation/visibility/settings/hierarchy/local media belong to participation; memberships target participation; observation requires no participation; no generic presence model appears.
+- **Dependencies/Effort:** 1.1; XL.
 
-- **Type:** create/modify
-- **Layer:** Persistence/Domain/Docs
-- **Files:** new EF migration and designer; `ExploreDbContextModelSnapshot.cs`, `ActorConfiguration.cs`, `ActorPiiConfiguration.cs`, `UserConfiguration.cs`, `UserPiiConfiguration.cs`, all Actor-FK configurations, `schemas/islamu-event.md`, and focused migration/persistence tests.
-- **Description:** Backfill one canonical Actor per DID, create presence rows from existing Actor tenants and record presentations, redirect only mutable/current references, preserve immutable evidence, make email nullable, replace composite tenant Actor FKs, and add filtered DID/User ownership uniqueness.
-- **Acceptance Criteria:**
-  - [ ] Same-DID tenant duplicates choose one deterministic canonical Actor and retain all tenant presences.
-  - [ ] Imported Events already on the canonical DID Actor remain unchanged; duplicate-owned imported Events are redirected only as required by deduplication.
-  - [ ] Conflicting non-DID Actors are never merged automatically.
-  - [ ] Migration aborts on ambiguous ownership instead of silently discarding data.
-  - [ ] PostgreSQL tests prove uniqueness, FK integrity, tenant presence, nullable email, and migration idempotence from the current schema.
-- **Dependencies:** 1.1.
-- **Effort:** XL.
-- **Required Skills/Rules:** `dotnet-efcore-guidelines`, EF migration/persistence/test rules.
-
-### Phase 2: Global Actor Repositories And Tenant-Safe Consumers
-
-- **Goal:** Make all Actor access explicit about global identity versus tenant participation and remove assumptions that Actor query filters provide authorization.
+### Phase 2: Deterministic Globalization Migration
+- **Goal:** Move current tenant rows into global subject plus participation shape without guessed identity merges.
 - **Depends on:** Phase 1.
-- **Relevant files:** `ActorRepository.cs`, repository interfaces, Actor specifications, organization/group/user creation handlers, tenant/user/AI/shell/event consumers, and architecture/persistence tests (existing).
-- **Related skills/rules:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, application/persistence/test rules.
-- **Acceptance criteria:** Global DID/id reads are deterministic; tenant listings require presence or tenant-owned dependent rows; no authorization path treats global Actor existence as tenant access.
-- **Phase-end verification (run once after all tasks):**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
-- **Rollback / failure handling:** Keep repository changes in one slice; a tenant-boundary failure blocks the phase and is fixed at the repository/query owner rather than patched in each controller.
+- **Verification:** `dotnet build --configuration Release --verbosity quiet`; `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`.
+- **Rollback:** Mandatory backup/restore; Down refuses lossy de-globalization.
 
-#### Task 2.1: Replace tenant-filtered Actor repository contracts
+#### Task 2.1: Implement reviewed migration, preflight, filters, and FK conversion
+- **Type/Layer:** create/modify; Persistence/Docs.
+- **Files:** configurations, DbContext sets/filters, all Actor/Organization/Group FKs, EF migration/snapshot, schema/upgrade docs, PostgreSQL tests.
+- **Acceptance:** User actors deduplicate by global User proof; exact-DID actors deduplicate only under compatible owner-kind rules; unproven Organizations/Groups remain distinct; current org/group rows create participation; hierarchy/members/settings/media move correctly; Event/subscription Actor FKs become simple; identity union migrates; row counts/FKs/audit preserved or migration aborts.
+- **Dependencies/Effort:** 1.1, 1.2; XL.
 
-- **Type:** modify
-- **Layer:** Application/Persistence
-- **Files:** `IActorRepository.cs`, `ActorRepository.cs`, Actor specifications/query handlers, query-filter configuration, and repository tests (existing).
-- **Description:** Add explicit global id/DID reads, tenant-presence reads, unclaimed/owned state checks, and merge-safe lookup methods. Remove misleading `GetActorByUserIdAndTenantId` ownership semantics.
-- **Acceptance Criteria:**
-  - [ ] Global DID lookup returns at most one Actor and handles uniqueness races.
-  - [ ] Tenant Actor lists require active visible `ActorTenantPresence` or another explicitly authorized tenant relation.
-  - [ ] Repository methods return entities and do not bypass filters without a documented reason and safety test.
-  - [ ] Merge lookup can distinguish unclaimed, owned-by-current-user, and owned-by-other-user states.
-- **Dependencies:** 1.2.
-- **Effort:** L.
-- **Required Skills/Rules:** `dotnet-efcore-guidelines`, repository and application rules.
-
-#### Task 2.2: Update Actor creators and cross-layer consumers
-
-- **Type:** modify
-- **Layer:** Application/Persistence
-- **Files:** `SyncUserCommandHandler.cs`, `CreateOrganizationCommandHandler.cs`, `CreateGroupCommandHandler.cs`, onboarding, UI shell, AI Actor context, events, subscriptions, notifications, and affected tests/fixtures (existing).
-- **Description:** Replace Actor tenant/reverse-owner initialization, set owner-side links, require tenant authorization independently, and preserve workspace selection through `DefaultActorId` without treating it as ownership.
-- **Acceptance Criteria:**
-  - [ ] Person, Organization, and Group Actor creation uses the new one-direction ownership model.
-  - [ ] Tenant authorization still comes from TenantUser/organization/group policy, not Actor lookup.
-  - [ ] Actor subscriptions and notification fanout resolve canonical Actor identity without cross-tenant data leakage.
-  - [ ] Architecture tests prevent reintroduction of `Actor.TenantId` and reverse owner FKs.
-- **Dependencies:** 2.1.
-- **Effort:** XL.
-- **Required Skills/Rules:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, application/test rules.
-
-### Phase 3: Canonical Inbound Actor Materialization
-
-- **Goal:** Make Jetstream and snapshot recovery reuse one Actor per DID while preserving tenant-local materialization.
+### Phase 3: Participation-Aware Repositories And Creation
+- **Goal:** Make normal product flows obey global subject plus local participation semantics.
 - **Depends on:** Phase 2.
-- **Relevant files:** `AtprotoJetstreamRepository.cs`, import plan/factory, federation docs, and focused persistence tests (existing/new).
-- **Related skills/rules:** `clean-architecture-rules`, `dotnet-efcore-guidelines`, application/persistence/test rules.
-- **Acceptance criteria:** Concurrent tenants and replay converge on one Actor; tenant presence is idempotent; existing materialization, tombstone, recovery, and zero-echo behavior remains intact.
-- **Phase-end verification (run once after all tasks):**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
-- **Rollback / failure handling:** Keep the prior canonical record/presentation transaction intact until global Actor persistence passes real PostgreSQL replay, recovery, concurrency, and tombstone tests.
+- **Verification:** `dotnet build --configuration Release --verbosity quiet`; `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`.
+- **Rollback:** Tenant-boundary failures are fixed in shared repositories/policy operations, not patched in controllers.
 
-#### Task 3.1: Rework inbound materialization around global Actor identity
+#### Task 3.1: Replace global-subject and participation repository/query contracts
+- **Type/Layer:** modify; Application/Persistence.
+- **Files:** Actor/User/Organization/Group repositories, new participation repositories, specifications, membership/settings/hierarchy/subscription queries, filters/tests.
+- **Acceptance:** Global reads are explicit; tenant listings start from participation or tenant content; membership uniqueness includes participation; no tenant filter bypass substitutes for authorization.
+- **Dependencies/Effort:** 2.1; XL.
 
-- **Type:** modify
-- **Layer:** Application/Persistence
-- **Files:** `AtprotoJetstreamRepository.ApplyEventImportsAsync`, `AtprotoFederatedEventImportPlan`, factory/handlers, DbContext, `AtprotoInboundEventImportPersistenceTests.cs`, `AtprotoFederationPersistenceTests.cs`, and `docs/FEDERATION.md` (existing).
-- **Description:** Resolve/create Actor globally by DID, set Person type, upsert each tenant presence, and attach tenant Event/EventSession aggregates to the shared Actor while retaining record/presentation fences, thumbnails, tombstones, and zero echo.
-- **Acceptance Criteria:**
-  - [ ] Two enabled tenants importing the same DID create one Actor and two presence rows.
-  - [ ] Replay, update, recovery, and concurrent import are idempotent.
-  - [ ] Existing tenant Event IDs and canonical `AtprotoRecordId` links remain stable.
-  - [ ] Tombstone removes materialized Events as today but does not delete the global Actor while other presence/history remains.
-- **Dependencies:** 2.1, 2.2.
-- **Effort:** L.
-- **Required Skills/Rules:** `dotnet-efcore-guidelines`, application/persistence/test rules.
+#### Task 3.2: Refactor normal Organization/Group creation and updates
+- **Type/Layer:** modify; Application/API/Docs.
+- **Files:** create/update/approval handlers, shared policy-aware operations, memberships, storage ownership, tests/docs.
+- **Acceptance:** Creation makes one global subject/Actor plus current participation transactionally; existing self-registration/verification policy is authoritative; founder admin is tenant-local; updates distinguish canonical versus tenant override fields; no name auto-merge.
+- **Dependencies/Effort:** 3.1; XL.
 
-### Phase 4: Bounded Public Actor Profile Hydration
-
-- **Goal:** Safely enrich global Actors with public ATProto profile data without making Event import depend on remote profile availability.
+### Phase 4: Global Federated Identity And External Materialization
+- **Goal:** Reuse one global Actor for a DID across all tenant Event materializations.
 - **Depends on:** Phase 3.
-- **Relevant files:** constrained PDS gateway/transport, import prefetch boundary, local profile lexicons if needed, cache/options, Actor mapping, operator docs, and focused Infrastructure tests (existing/new).
-- **Related skills/rules:** `auth-patterns`, `clean-architecture-rules`, `agentic-research` only if current CarpaNet APIs need verification, infrastructure/test rules.
-- **Acceptance criteria:** Profile retrieval is constrained, cached, optional, and outside transactions; failure retains a DID-only Actor and later observations can retry.
-- **Phase-end verification (run once after all tasks):**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet`
-- **Rollback / failure handling:** Disable only profile hydration on transport failures; never disable canonical Event import or delete canonical records.
+- **Verification:** `dotnet build --configuration Release --verbosity quiet`; `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`.
+- **Rollback:** Fence loss or uniqueness conflict rolls back identity, Actor, external subject, Event/session, and cursor together.
 
-#### Task 4.1: Hydrate bounded public Actor profile data
+#### Task 4.1: Materialize unknown DID as one global external subject
+- **Type/Layer:** modify; Persistence/Application/Docs.
+- **Files:** Jetstream repository/import plans, AtprotoIdentity repository, Actor/external creation, Event FK, federation tests/docs.
+- **Acceptance:** Same DID in multiple tenants creates one identity/Actor/external subject; tenant Events remain distinct and stable; no participation or Bot fallback; replay/recovery/tombstone/zero-echo remain idempotent.
+- **Dependencies/Effort:** 3.1; XL.
 
-- **Type:** modify/create
-- **Layer:** Infrastructure/Application/Persistence/Docs
-- **Files:** existing constrained ATProto PDS gateway and import prefetch boundary; profile lexicon files/generated bindings if required; options/cache registration; Actor profile mapping; `docs/FEDERATION.md`, `docs/LEXICONS.md`, `docs/CONFIGURATION.md`, `docs/SELF_HOSTING.md`, `docs/TROUBLESHOOTING.md`; focused gateway/import tests.
-- **Description:** Fetch public handle/display name/description/avatar/PDS metadata for new or stale DIDs outside the transaction, enforce response/redirect/content bounds, cache results, and pass an optional verified snapshot into import. Reuse later observations as retry; add no durable queue unless evidence proves it necessary.
-- **Acceptance Criteria:**
-  - [ ] DID remains the immutable key; profile fields cannot replace or merge identity.
-  - [ ] SSRF, redirect, payload-size, media-type, and timeout policy matches the existing constrained transport.
-  - [ ] Profile failure produces a DID-only Actor and does not fail Event import.
-  - [ ] Single-tenant and multi-tenant self-hosting behavior is documented without adding a second federation mode.
-- **Dependencies:** 3.1.
-- **Effort:** L.
-- **Required Skills/Rules:** `auth-patterns`, `clean-architecture-rules`, infrastructure/test rules.
+#### Task 4.2: Refresh mutable identity/profile metadata safely
+- **Type/Layer:** modify; Infrastructure/Application/Persistence.
+- **Files:** constrained identity/PDS gateway, cache/options, AtprotoIdentity/Actor profile mapping, tests/config/docs.
+- **Acceptance:** Auth resolution cache is under ten minutes; non-auth refresh is bounded; handle is bidirectionally verified/lowercase; PDS/key migration does not change Actor; optional profile failure never rejects Event; SSRF/size/time limits remain.
+- **Dependencies/Effort:** 4.1; L.
 
-### Phase 5: Verified Actor Claim And Explicit Account Merge
+### Phase 5: Verified Registration, Promotion, And Consolidation
+- **Goal:** Authenticate User and classify/associate the global represented subject without tenant duplication.
+- **Depends on:** Phase 4.
+- **Verification:** `dotnet build --configuration Release --verbosity quiet`; `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet`.
+- **Rollback:** Verification/classification conflict creates no partial account, subject, participation, or membership.
 
-- **Goal:** Allow a verified ATProto identity to create/claim its User safely and merge only an explicitly linked local Actor into the DID Actor.
-- **Depends on:** Phase 3.
-- **Relevant files:** bootstrap/session commands, sync/link handlers, User/UserPii DTOs and mappings, repositories, token/session persistence, API/BFF contracts, security docs, and tests (existing/new).
-- **Related skills/rules:** `auth-patterns`, `blazor-bff-patterns`, `cqrs-mediatr-guidelines`, application/API/test rules.
-- **Acceptance criteria:** First verified ATProto login can claim; repeat login is idempotent; no email matching occurs; owned-DID conflict fails closed; merge prefers federated Actor and preserves imported Events.
-- **Phase-end verification (run once after all tasks):**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
-- **Rollback / failure handling:** Any failure rolls back User/login/membership/Actor linkage together; security gateway persistence and token issuance occur only for the committed identity result.
+#### Task 5.1: Add protected classification onboarding
+- **Type/Layer:** create/modify; BFF/Application/API.
+- **Files:** auth state/assertion, bootstrap command/result, classification contracts, User/login/TenantUser/global subject/participation operations, tests/security docs.
+- **Acceptance:** OAuth controls remain; every success resolves User/login/TenantUser; Person/Organization/Group is explicit intent; managed subject creates/resolves current participation under policy; same DID may authenticate User and represent managed Actor; audit remains User; replay is safe.
+- **Dependencies/Effort:** 3.2, 4.2; XL.
 
-#### Task 5.1: Claim or create User from verified ATProto session
+#### Task 5.2: Promote external subject or consolidate proven same-kind subject
+- **Type/Layer:** create/modify; Domain/Application/Persistence.
+- **Files:** internal promotion/consolidation command, owner/FK operations, ActorMerge, memberships/participation, tests/docs.
+- **Acceptance:** Direct promotion preserves Actor/identity/Event IDs; only onboarding tenant gains participation; existing proven same-kind Actor normally remains canonical; mutable references move; immutable evidence remains; different-kind/User conflict fails closed.
+- **Dependencies/Effort:** 5.1; XL.
 
-- **Type:** modify
-- **Layer:** Application/Persistence/API
-- **Files:** `BootstrapAtprotoSessionCommandHandler.cs`, `SyncUserCommandHandler.cs` or a narrower ATProto claim command, User/UserPii mappings/DTOs, external-login and TenantUser repositories, focused unit/persistence/API tests, `docs/SECURITY-MODEL.md`, and `docs/AUTHORIZATION.md`.
-- **Description:** After existing cryptographic verification, atomically resolve the global DID Actor, create an email-less User when unclaimed, create tenant login/membership, link `User.ActorId`, and preserve session/token persistence. Keep non-ATProto provider creation validation unchanged.
-- **Acceptance Criteria:**
-  - [ ] No User is created before full PDS/session verification succeeds.
-  - [ ] Unclaimed Actor claim preserves Actor ID and all imported Event.ActorId values.
-  - [ ] Repeat login repairs missing tenant membership/link metadata idempotently without duplicating User or Actor.
-  - [ ] Email and handle are never used to locate an existing User.
-  - [ ] Actor owned by another User returns stable `identity_conflict` without session issuance.
-- **Dependencies:** 3.1, 1.2.
-- **Effort:** L.
-- **Required Skills/Rules:** `auth-patterns`, `cqrs-mediatr-guidelines`, application/API/test rules.
-
-#### Task 5.2: Merge explicit local personal Actor into federated Actor
-
-- **Type:** create/modify
-- **Layer:** Domain/Application/Persistence/API
-- **Files:** new Actor merge command/handler/validator and repository operation; explicit provider-link owner; `ActorMerge` configuration; mutable dependent repositories; API ProblemDetails/HAL contract if an endpoint changes; focused concurrency/conflict tests; `docs/API_CHANGELOG.md`.
-- **Description:** Under explicit authenticated provider linking, lock source and canonical Actors deterministically, verify current User ownership and DID control, move only the Task 1.1 mutable-reference manifest with collision handling, set User.ActorId to canonical, preserve imported Event references already on canonical, record merge, and soft-delete source.
-- **Acceptance Criteria:**
-  - [ ] Canonical Actor is always the verified DID Actor.
-  - [ ] Imported Events already on canonical Actor are not updated.
-  - [ ] Mutable source-owned records converge without duplicate subscription/membership uniqueness violations.
-  - [ ] Immutable audit/evidence rows remain unchanged and can identify the merge record.
-  - [ ] Concurrent claim/link attempts produce one committed result or a deterministic conflict.
-- **Dependencies:** 5.1, 2.1, 1.1.
-- **Effort:** XL.
-- **Required Skills/Rules:** `auth-patterns`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, application/persistence/API/test rules.
-
-### Phase 6: Actor Profile, Scoped Moderation, Analytics, And Materialized Discovery
-
-- **Goal:** Expose one safe Actor profile/read model and enforce global/local moderation through materialized public Event queries only.
+### Phase 6: Moderation, Authorization, Profiles, And Subscriptions
+- **Goal:** Enforce global versus tenant-local effects and expose coherent identity views.
 - **Depends on:** Phase 5.
-- **Relevant files:** Actor queries/controller/HAL/policies, Event discovery handler/repositories, moderation commands, DTOs/OpenAPI/generated contracts, API/federation docs, and integration tests (existing/new).
-- **Related skills/rules:** `cqrs-mediatr-guidelines`, `auth-patterns`, API/HAL/application/test rules.
-- **Acceptance criteria:** Public reads expose no User PII; tenant presence and global moderation are enforced server-side; discovery no longer maps projections directly; HAL is the action authority.
-- **Phase-end verification (run once after all tasks):**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
-- **Rollback / failure handling:** If a materialized Event or Actor policy cannot be evaluated, fail closed from public discovery; canonical records/projections remain for recovery and retry.
+- **Verification:** `dotnet build --configuration Release --verbosity quiet`; `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`.
+- **Rollback:** Any widening of tenant authority over global Actor/identity blocks the phase.
 
-#### Task 6.1: Replace Actor API reads with global profile plus tenant presence
+#### Task 6.1: Implement four-level moderation and participation-aware Event authorization
+- **Type/Layer:** create/modify; Domain/Application/Persistence/API/HAL.
+- **Files:** moderation entities/commands/policies, Event actor resolver, federation policy, public specifications, audit/tests/docs.
+- **Acceptance:** Actor decision is platform-wide/instance-only; identity decision blocks that credential; tenant admins affect only participation or tenant identity import policy; Event decisions remain content-local; public reads apply all relevant levels.
+- **Dependencies/Effort:** 5.2; XL.
 
-- **Type:** modify
-- **Layer:** Application/API/Docs
-- **Files:** Actor query requests/handlers/DTOs/mappings, `ActorController.cs`, `ActorLinkPolicy.cs`, RouteNames/OpenAPI/generated contracts, API integration tests, `docs/API.md`, and `docs/API_CHANGELOG.md`.
-- **Description:** Return global public profile by id/DID, resolve tenant listings through presence, include current-tenant public materialized Event counts, and expose write/moderation links only when server policy authorizes them.
-- **Acceptance Criteria:**
-  - [ ] Anonymous GET exposes public Actor fields and no User email/provider/session/merge internals.
-  - [ ] Actor-by-tenant returns only visible active presence rows.
-  - [ ] Public counts are current-tenant, public, non-deleted, materialized Events only.
-  - [ ] Authorized HAL links distinguish profile edit, tenant hide/unhide, and instance suspend/restore.
-- **Dependencies:** 2.1, 5.2.
-- **Effort:** L.
-- **Required Skills/Rules:** `cqrs-mediatr-guidelines`, `auth-patterns`, API/HAL rules.
+#### Task 6.2: Add global/contextual Actor reads and preserve local subscription semantics
+- **Type/Layer:** modify; Application/API/HAL.
+- **Files:** Actor/profile DTOs/queries/controller/HAL, organization/group tenant views, ActorSubscription handlers/config, tests/docs.
+- **Acceptance:** Global URL exposes canonical safe data; tenant view composes local participation/content; private cross-tenant data never leaks; subscription remains tenant-contextual and requires local discoverability; no Actor presence row.
+- **Dependencies/Effort:** 6.1; L.
 
-#### Task 6.2: Add Actor-wide suspension and tenant-local presence hiding
-
-- **Type:** create/modify
-- **Layer:** Domain/Application/API/Persistence
-- **Files:** Actor/presence state methods, commands/validators/handlers, authorization descriptors/policies, ActorController/HAL, repositories, audit logs, tests, `docs/SECURITY-MODEL.md`, and `docs/API_CHANGELOG.md`.
-- **Description:** Implement separate instance-admin global status and tenant-admin local presence visibility transitions with concurrency, reason bounds, audit attribution, idempotency, and safe ProblemDetails.
-- **Acceptance Criteria:**
-  - [ ] Tenant admin cannot change global Actor status or another tenant's presence.
-  - [ ] Instance suspension hides Actor and owned Events across public tenants without deleting canonical data.
-  - [ ] Tenant hide affects only that tenant and also works for unclaimed Actors.
-  - [ ] Repeat transitions are idempotent and concurrent conflicting transitions use `ConcurrencyStamp`.
-- **Dependencies:** 6.1, 1.1.
-- **Effort:** L.
-- **Required Skills/Rules:** `auth-patterns`, `cqrs-mediatr-guidelines`, domain/application/API/test rules.
-
-#### Task 6.3: Make public discovery materialized-only
-
-- **Type:** modify
-- **Layer:** Application/Persistence/API/Docs
-- **Files:** `GetPublicEventDiscoveryRequestHandler.cs`, Event list specification/repository, projection repository consumers, source-link policy, API integration tests, `docs/FEDERATION.md`, `docs/API.md`, and contract inventory.
-- **Description:** Remove projection-only item mapping/counting, query the materialized Event path with Actor global/local moderation predicates, and retain projection lookups only for governed source metadata where required.
-- **Acceptance Criteria:**
-  - [ ] No `AtprotoEventProjection` is returned directly as an Event discovery item.
-  - [ ] Imported materialized Events remain discoverable with stable pagination and source links.
-  - [ ] Suspended or tenant-hidden Actor Events are absent.
-  - [ ] Materialization failure leaves canonical/projection evidence but no public Event card.
-- **Dependencies:** 6.2, 3.1.
-- **Effort:** L.
-- **Required Skills/Rules:** `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, application/persistence/API/test rules.
-
-### Phase 7: Blazor Actor Experience And Contract Reconciliation
-
-- **Goal:** Consume the corrected global Actor contract without client-side identity or authorization inference.
+### Phase 7: Evidence, Blazor, Contracts, And Canonical Docs
+- **Goal:** Finish pending Organization proof and converge every consumer/guardrail.
 - **Depends on:** Phase 6.
-- **Relevant files:** `IActorService`, `ActorService`, generated API client/serializer roots, Event organizer/profile links, actor subscription UI, optional Actor profile page, Blazor docs, and bUnit/service tests (existing/new).
-- **Related skills/rules:** `blazor-ui-conventions`, `blazor-css-isolation` if a new component is needed, Blazor client/API HAL/test rules.
-- **Acceptance criteria:** Users can navigate from materialized Event ownership to one Actor profile; all actions are HAL-gated; nullable User email never leaks into Actor display fallback.
-- **Phase-end verification (run once after all tasks):**
-  - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
-- **Rollback / failure handling:** Keep Actor profile rendering read-only when links are absent; do not add client role checks or hide API errors behind fabricated local state.
+- **Verification:** `dotnet build --configuration Release --verbosity quiet`; `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`.
+- **Rollback:** Generated artifacts are regenerated, never hand-edited; evidence does not auto-approve.
 
-#### Task 7.1: Consume global Actor profiles and HAL actions in Blazor
+#### Task 7.1: Add OrganizationTenant legitimacy evidence
+- **Type/Layer:** create/modify; Domain/Application/Persistence/API/HAL/Blazor.
+- **Files:** evidence entity/config/repository/contracts/commands, existing upload sessions/storage checks, participation HAL/UI/tests/schema/docs.
+- **Acceptance:** Pending OrganizationTenant admins can update local/canonical fields according to authority and attach active private Document storage owned by that participation; tenant admin reviews separately; composite tenant FKs, retention, audit, and no content/key leakage are enforced.
+- **Dependencies/Effort:** 6.1; L.
 
-- **Type:** modify/create
-- **Layer:** Blazor/Docs
-- **Files:** `IActorService.cs`, `ActorService.cs`, generated client and `AppJsonSerializerContext.cs`, Event/profile/subscription components, optional minimal Actor profile route/component, isolated CSS if created, bUnit/service tests, `docs/BLAZOR.md`, and `docs/API_CONTRACT_INVENTORY.md`.
-- **Description:** Regenerate contracts, route Actor links to the global profile, render current-tenant public materialized counts, and show subscribe/edit/hide/suspend actions only from HAL relations.
-- **Acceptance Criteria:**
-  - [ ] One Actor URL represents the same DID across tenant Event pages.
-  - [ ] Profile renders DID-only fallback safely when remote profile hydration failed.
-  - [ ] No action checks local claims/roles; missing HAL links remove the affordance.
-  - [ ] Mobile/desktop component tests cover loading, not found/hidden, suspended, and normal profile states without browser automation.
-- **Dependencies:** 6.1, 6.2, 6.3.
-- **Effort:** L.
-- **Required Skills/Rules:** `blazor-ui-conventions`, Blazor client/HAL/test rules.
+#### Task 7.2: Reconcile OpenAPI/client/UI/docs and architecture guardrails
+- **Type/Layer:** modify; API/Blazor/Docs/Tests.
+- **Files:** routes/HAL/OpenAPI/generated client/serializers/onboarding/profile components/localization, canonical docs/ADR/schema/contract inventory/architecture tests.
+- **Acceptance:** UI is HAL-driven; global and tenant URLs/states render; removed CRUD is absent; generated client converges; docs distinguish global subject from participation; tests forbid tenant Actor, tenant Organization/Group, ActorTenantPresence, composite Event-Actor FK, ActorPii DID authority, and client-side authorization inference.
+- **Dependencies/Effort:** 6.2, 7.1; XL.
 
 ## 7. Testing Strategy
 
-- Phase 1 uses PostgreSQL persistence integration tests because schema, data migration, filtered uniqueness, and FK integrity are the highest-risk behavior.
-- Phase 2 uses architecture tests to enforce the new global/tenant boundary and prevent `Actor.TenantId` or reverse owner FKs from returning.
-- Phase 3 uses PostgreSQL persistence integration tests for canonical Actor reuse, tenant presence, replay, recovery, tombstone, and zero echo.
-- Phase 4 uses Infrastructure tests for constrained public profile retrieval, caching, and failure fallback.
-- Phase 5 uses Application unit tests for verified claim, no-email/no-auto-match, conflict, idempotency, and merge orchestration.
-- Phase 6 uses API integration tests for public profile, HAL authorization, moderation, and the distinct materialized-only discovery contract.
-- Phase 7 uses Blazor client tests for HAL-gated rendering and global profile navigation.
-- Intent-mandated projects not selected as a phase gate are still updated by their owning task; no extra command is run inside that phase. The canonical full project matrix remains the predecessor workstream's Todo 23 responsibility until that workstream closes.
+Each phase runs exactly one Release build plus its selected fastest relevant non-browser test project after all phase tasks. Persistence tests prove PostgreSQL migration, global identity races, tenant isolation, FK conversion, and federation replay. Application tests prove policy, authorization, and creation/promotion decisions. BFF tests prove OAuth/classification state binding. API/client tests prove moderation, HAL, contracts, and rendering. Existing unrelated architecture baseline failures must be resolved by their owning workstream, not bypassed here.
 
-## 8. Documentation, Configuration, And Operations Impact
+## 8. Documentation, Configuration, And Operations
 
-- Add `docs/adr/ADR-016-atproto-actor-identity-lifecycle.md` for global identity, tenancy, claiming, merge, moderation, and materialized discovery decisions.
-- Update `docs/DOMAIN.md`, `docs/MULTI_TENANCY.md`, and `schemas/islamu-event.md` with global Actor, optional User, ActorTenantPresence, ActorMerge, and nullable email.
-- Update `docs/FEDERATION.md` and `docs/LEXICONS.md` with one-Actor-per-DID import and bounded profile hydration.
-- Update `docs/SECURITY-MODEL.md` and `docs/AUTHORIZATION.md` with claim/merge trust and global-versus-tenant moderation authority.
-- Update `docs/API.md`, `docs/API_CHANGELOG.md`, generated OpenAPI/client artifacts, and `docs/API_CONTRACT_INVENTORY.md` for Actor contracts and materialized-only discovery.
-- Update `docs/CONFIGURATION.md`, `docs/SELF_HOSTING.md`, and `docs/TROUBLESHOOTING.md` only to clarify single-/multi-tenant behavior and profile refresh failure; add no new capability switch unless implementation evidence requires a bounded cache/timeout option.
-- No Compose, Aspire, secret, or deployment topology change is expected.
+- Update all canonical docs listed in current state, new ADR, schema, OpenAPI/client artifacts, and API changelog in owning tasks.
+- No new broker, cache provider, service, environment variable, or deployment resource is required.
+- Cutover requires database backup, reviewed preflight report and SQL, maintenance window, forward-only startup, and restore rollback.
 
-## 9. Security, Authorization, Privacy, And Abuse Considerations
+## 9. Security, Authorization, Privacy, And Abuse
 
-- Only the existing verified ATProto security gateway may establish DID control.
-- Claim/merge endpoints require authenticated, single-use, tenant-bound flow state and server-side ownership checks.
-- No email matching or handle matching occurs, even when values coincide.
-- User email is private and nullable; Actor public DTOs never include User, login, token, session, or merge reason data.
-- Global Actor moderation is instance-admin only. Tenant admins operate only current-tenant presence.
-- Public queries fail closed on global suspension, local hide, missing presence, tenant mismatch, or unresolved authorization.
-- Merge uses deterministic locking and optimistic concurrency to prevent double claims and cross-account takeover.
-- Audit records contain bounded reason codes/text and IDs, not OAuth tokens, DPoP material, private profile payloads, or raw provider errors.
-- Profile hydration reuses SSRF-safe transport and bounded response handling.
+- Global subject discovery grants no tenant authority.
+- OAuth retains unique state, PKCE, PAR, DPoP, expected DID/token subject, authoritative issuer/PDS checks, antiforgery, nonce/expiry/single use, and SSRF hardening.
+- No name/email/handle/profile matching may merge global subjects.
+- Tenant admins cannot globally suspend Actor or identity.
+- Global canonical PII and tenant overrides follow separate access, erasure, and disclosure policies.
+- Evidence uses private storage and emits no content/provider keys in logs, metrics, ProblemDetails, or support artifacts.
 
-## 10. Multi-Tenancy, Federation, Localization, Accessibility, And Product Considerations
+## 10. Cross-Cutting Classification
 
-- **Multi-tenancy - Applicable:** Actor is global, but Event, TenantUser, ActorTenantPresence, authorization, public statistics, and visibility remain tenant-scoped.
-- **Federation - Applicable:** DID uniqueness, record provenance, replay, recovery, source links, and zero echo are preserved; public projection-only results are removed.
-- **Localization - Applicable:** Profile display name/description are remote Unicode content and must render safely; no translation layer is introduced.
-- **Accessibility - Applicable:** Any new Blazor profile route uses semantic headings, labeled actions, keyboard access, loading/error status, and existing design-system components.
-- **Product - Applicable:** ATProto-first users can sign in without email; explicit linking is required to combine providers; federated identity remains useful before account claim.
+| Concern | Status | Reason |
+|---|---|---|
+| Multi-tenancy | Applicable | Concrete participation, content, storage, settings, and authorization remain tenant-scoped. |
+| Federation | Applicable | DID-to-global-Actor identity and materialization are central. |
+| Security/privacy | Applicable | Global merge and OAuth are takeover boundaries; canonical/local PII split changes erasure. |
+| Authorization/HAL | Applicable | Global versus tenant authority must be server-authored and HAL-driven. |
+| Localization/accessibility | Applicable | Classification, profile context, moderation, evidence, and conflicts add UI states. |
+| Observability | Applicable | Bounded identity/merge/moderation/migration outcomes need diagnostics. |
+| New infrastructure | Not applicable | PostgreSQL, current storage, BFF, and ATProto gateways suffice. |
 
-## 11. Observability And Operations
+## 11. Observability And Recovery
 
-- Add bounded counters for global Actor created/reused, tenant presence created/reactivated/hidden, claim succeeded/conflicted, merge succeeded/conflicted, and profile hydration succeeded/failed.
-- Log ActorId, tenant ID, bounded reason code, and hashed/partially redacted DID where existing logging policy requires; never log User email, OAuth payload, or profile JSON.
-- Preserve Jetstream readiness. Profile hydration failure is degraded enrichment, not ingestion unready.
-- Migration emits deterministic counts for tenant Actor rows, canonical Actors, duplicate DID groups, presence rows, reassigned mutable references, and aborted ambiguity.
-- Troubleshooting identifies duplicate-DID constraint failures, owned-DID conflicts, stale profile fallback, and hidden/suspended public results.
+- Emit bounded outcomes for identity resolution, deduplication, participation creation, external promotion, merge conflict, moderation level, and evidence attachment.
+- Never emit DID documents, handles, subject IDs, tenant IDs, provider bodies, evidence names/content, or storage keys unless an existing bounded policy explicitly permits the field.
+- Preflight outputs counts and conflict categories only; sensitive row-level mapping remains protected operator evidence.
+- Existing ATProto readiness remains. No worker or new health check is introduced.
 
-## 12. Migration And Compatibility Plan
+## 12. Migration And Compatibility
 
-1. Add new presence/merge/global-status schema while current Actor tenancy still exists.
-2. Build the FK disposition manifest and abort if any Actor FK is unclassified.
-3. Group non-null exact DIDs, select canonical Actor deterministically, backfill presence from Actor tenants and record presentations, and reassign mutable/current references according to manifest.
-4. Preserve immutable evidence and record deduplication merges.
-5. Backfill owner-side links and validate one personal owner per Actor before removing reverse-owner FKs.
-6. Replace composite tenant Actor FKs with simple ActorId FKs while retaining tenant checks on dependents and presence/authorization queries.
-7. Make User email nullable, rename personal Actor type semantics, add unique filtered DID/User ownership indexes, then remove Actor.TenantId and obsolete columns.
-8. Deploy code and schema as one pre-1.0 coordinated release; do not support mixed old/new application versions.
-9. `Down()` must not claim to reconstruct duplicate tenant Actors after consolidation. If reversal cannot preserve data, fail explicitly and document restore-from-backup as rollback.
+- Build identity groups from global UserId and exact DID only. Names and profiles are not identity evidence.
+- Each current Organization/Group row becomes a global subject plus one tenant participation unless a compatible exact DID proves consolidation.
+- Deduplicate User Actors across tenants by UserId; prefer valid current User ownership, then deterministic oldest ID, preserving tenant overrides.
+- Convert Event and ActorSubscription Actor FKs from composite to simple; retain tenant indexes for queries.
+- Move approval/hierarchy/settings/membership/local media state to participation before removing TenantId.
+- Down cannot reconstruct duplicated tenant subjects after consolidation; restore backup is the rollback.
 
 ## 13. Risk Register
 
-| Risk | Likelihood | Impact | Mitigation | Detection Signal | Owner/Task |
+| Risk | Likelihood | Impact | Mitigation | Signal | Owner |
 |---|---:|---:|---|---|---|
-| Actor FK migration rewrites audit evidence or misses mutable ownership. | High | Critical | Mandatory complete disposition manifest; abort unclassified FKs; PostgreSQL migration tests. | Count mismatch, FK violation, audit identity drift. | 1.1, 1.2 |
-| Duplicate DID rows have conflicting User owners. | Medium | Critical | Abort migration; require explicit operator resolution rather than guessing. | More than one non-null owner in DID group. | 1.2 |
-| Global Actor lookup leaks cross-tenant access. | Medium | Critical | Separate global identity repository methods from presence/authorization queries; architecture and API tests. | Actor appears without current tenant presence/policy. | 2.1, 5.1 |
-| Nullable email breaks display or provider validation. | High | High | Provider-specific creation rules; compiler-guided updates; no empty-string substitution. | Nullability diagnostics or Keycloak regression test. | 1.2, 4.1 |
-| Concurrent import and login create duplicate Actor/User. | Medium | Critical | Database DID/User uniqueness, deterministic locks, retry/idempotency tests. | Unique constraint conflict not converging on reread. | 3.1, 5.1 |
-| Merge collides on subscriptions/memberships. | High | High | Per-relation collision policy in ADR; transactional deduplication. | Unique violation during merge. | 1.1, 5.2 |
-| Global moderation is accidentally delegated to tenant admins. | Low | Critical | Separate commands/policies/HAL links; instance-admin-only integration tests. | Tenant admin receives global action link or 2xx. | 6.2 |
-| Materialized-only discovery lowers visible count after failed imports. | Medium | Medium | Treat as truthful degraded state; preserve projection evidence and retry import; observe gap metric. | Projection count exceeds materialized visible count. | 6.3 |
-| Profile endpoint causes ingestion latency/SSRF. | Medium | High | Fetch outside transaction, bounded constrained transport, cache, optional fallback. | Import latency/profile-failure counters. | 4.1 |
+| False global Organization/Group merge | Medium | Critical | Exact DID/User proof only; no name match | Preflight conflict | 2.1 |
+| Tenant policy remains on global entity | Medium | High | Field/FK manifest plus guardrails | Architecture/persistence tests | 1.2, 2.1 |
+| Event write bypasses participation | Medium | Critical | Shared EventActorResolver policy | Negative Application/API tests | 6.1 |
+| Global profile media leaks tenant storage | Medium | High | Move local FKs to participation; URI/CID global only | FK/storage tests | 1.2, 2.1 |
+| External observation grants membership | Medium | High | No participation on import | Federation persistence tests | 4.1 |
+| Actor suspension available to tenant admin | Low | Critical | Instance-only policy and HAL | Authorization tests | 6.1 |
+| Subscription semantics silently become global | Medium | Medium | Preserve tenant contract explicitly | API tests | 6.2 |
 
-## 14. Success Metrics And Definition Of Done
+## 14. Definition Of Done
 
-- Database contains at most one active Actor per non-null DID and one optional User owner per personal Actor.
-- Importing the same DID into multiple tenants creates one Actor and one presence per tenant.
-- Verified ATProto first login claims the preexisting Actor with no email and no imported Event rewrite.
-- Explicitly linking an existing Keycloak User selects the DID Actor as canonical and records one audited merge.
-- Cross-account DID conflict, email coincidence, and handle coincidence never merge identities.
-- Public Actor/profile/discovery endpoints respect global suspension and current-tenant visibility.
-- Public discovery contains only materialized Events and retains governed source links.
-- Every phase has one green Release build and its one selected project test before the phase is marked complete.
-- Plan, context, and task ledger remain synchronized; implementation tasks and phase verification are tracked separately.
+- Actor and every concrete subject are global; tenant participation is explicit and type-specific.
+- Exact-one Actor ownership and exact DID identity are database-enforced.
+- Organization/Group policy, hierarchy, membership, settings, local profile/media, and moderation live on participation.
+- Events across tenants from one DID reuse one Actor without creating membership.
+- Registration, promotion, same-kind consolidation, conflict, four-level moderation, evidence, global/contextual profiles, and local subscription semantics have automated coverage.
+- No ActorTenantPresence, tenant Actor, tenant Organization/Group, public identity CRUD, or compatibility semantics remain.
 
-## 15. Implementation Agent Contract - KEEP DEV DOCS CURRENT
+## 15. Implementation Agent Contract
 
-1. At initial implementation start, read all three files once. On resume, read context/tasks first and only the current plan phase plus referenced decisions.
+1. Read all three files once initially; on resume read context/tasks then only the current plan section.
 2. Start from the highest-priority unchecked task unless the user overrides it.
-3. Use `tasks.md` as the hot ledger. Check a substantial task immediately after its acceptance criteria pass; reconcile small tasks no later than phase end.
-4. Keep task and phase-verification checkboxes separate. A phase is complete only after all tasks and both phase gates pass.
-5. Update status summary, completed count, current priority, next slice, discovered work, deferred work, and date whenever task state changes.
-6. Update context after a phase, decision, blocker, validation failure, material discovery, or handoff. Update this plan only for strategy/scope/sequence/risk/acceptance changes.
-7. Record failed validation and the next recovery action without marking the phase complete.
-8. Preserve unrelated dirty worktree changes and identify them in handoff notes.
-9. Run phase verification once after all phase tasks: one Release build and at most one selected non-browser project test. Do not start the application, browser, Docker, Aspire, or live services for routine phase verification.
-10. Never report implementation complete when repository reality and `tasks.md` disagree.
-11. Every implementation summary must teach what changed, the architecture and trust boundaries used, important files/classes, data/control flow, security/reliability practices, verification, remaining work, and dev-doc status.
+3. Treat tasks as the hot ledger; check substantial work immediately and small work by phase end.
+4. Keep implementation and verification checkboxes separate.
+5. Update context for decisions, blockers, failures, completed phases, discoveries, or handoff; update plan only for strategy changes.
+6. Run only one Release build and the listed test project once after each phase; do not start app/browser/live services.
+7. Preserve unrelated changes and never claim completion when repository state and ledger differ.
+8. Final summaries teach architecture, files, data flow, security/reliability, verification, and remaining work.
 
 ## 16. Progress Reporting Contract
 
@@ -637,9 +465,9 @@ Implemented: developer teaching summary
 Verified: exact evidence
 Remaining: incomplete or deferred work
 Next: recommended next slice
-Docs updated: tasks reconciled yes/no; context and plan updated or unchanged with reason
+Docs updated: tasks/context/plan status
 ```
 
 ## 17. Potential Risks & Unknowns
 
-The highest-risk work is not ATProto protocol handling; it is consolidating a tenant-scoped Actor referenced across at least 21 EF configurations without weakening tenant authorization or rewriting immutable evidence. Task 1.1's FK disposition manifest and Task 1.2's real PostgreSQL migration tests are hard gates. The second risk is nullable User email: it must be an ATProto-specific account capability, not an accidental relaxation of Keycloak/OIDC identity requirements.
+The highest-risk work is the one-time globalization migration. It must distinguish proven identity from coincidental similarity, split mixed global/local fields before dropping tenant columns, and preserve every Event/audit reference. The implementation must not proceed from Task 1.2 to migration until the FK/field disposition manifest is exhaustive and reviewed.
