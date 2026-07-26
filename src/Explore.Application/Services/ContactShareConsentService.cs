@@ -68,7 +68,8 @@ public class ContactShareConsentService : IContactShareConsentService
         }
 
         var organization = await _organizationRepository.GetById(actor.OrganizationId.Value);
-        if (organization == null || organization.ApprovalStatusId != (int)ApprovalStatusEnum.Approved)
+        if (organization is null || !organization.TenantParticipations.Any(
+                participation => participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved))
         {
             _logger.LogWarning("Cannot process consent: organisation {OrgId} is not approved", actor.OrganizationId);
             return null;

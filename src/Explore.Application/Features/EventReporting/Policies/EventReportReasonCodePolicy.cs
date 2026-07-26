@@ -11,6 +11,8 @@ public static class EventReportReasonCodePolicy
     public const int MaxSubcategoryCodeLength = 100;
     public const int MaxCorrelationIdLength = 100;
     public const string InvalidReasonCodeFailureCode = "event_report_reason_code_invalid";
+    public const string EventCorrectionSuggestionSubcategory = "event_correction_suggestion";
+    public const string UnsafeExternalLinkSubcategory = "unsafe_external_link";
 
     private static readonly ReasonCodeMetadata[] ReasonCodes =
     [

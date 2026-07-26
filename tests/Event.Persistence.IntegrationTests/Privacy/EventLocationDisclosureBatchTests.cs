@@ -330,8 +330,6 @@ public sealed class EventLocationDisclosureBatchTests(RegistrationCoveragePostgr
         var actor = new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id,
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,

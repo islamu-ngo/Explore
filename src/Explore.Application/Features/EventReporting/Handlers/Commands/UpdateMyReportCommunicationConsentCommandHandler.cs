@@ -15,6 +15,7 @@ namespace Explore.Application.Features.EventReporting.Handlers.Commands;
 
 public sealed class UpdateMyReportCommunicationConsentCommandHandler(
     IEventReportRepository eventReportRepository,
+    IPrivacyErasureStateRepository privacyErasureStateRepository,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
     ICurrentUserService currentUserService,
@@ -23,32 +24,46 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandler(
     TimeProvider timeProvider)
     : IRequestHandler<UpdateMyReportCommunicationConsentCommand, BaseCommandResponse<Guid>>
 {
+    private const string PrivacyErasureFencedFailureCode = "privacy_erasure_fenced";
+
     public async Task<BaseCommandResponse<Guid>> Handle(
         UpdateMyReportCommunicationConsentCommand request,
         CancellationToken cancellationToken)
     {
+        var reporterUserId = currentUserService.UserId;
+        if (await IsFencedAsync(reporterUserId, cancellationToken))
+        {
+            return FencedFailure();
+        }
+
         var validationResult = await new UpdateMyReportCommunicationConsentCommandValidator()
             .ValidateAsync(request, cancellationToken);
         if (!validationResult.IsValid)
         {
-            return Failure(
-                request.ReportId,
-                "Event report communication consent request is invalid.",
-                validationResult.Errors.Select(error => error.ErrorMessage),
-                EventReportFailureCodes.ValidationFailed);
+            return await MaskIfFencedAsync(
+                reporterUserId,
+                Failure(
+                    request.ReportId,
+                    "Event report communication consent request is invalid.",
+                    validationResult.Errors.Select(error => error.ErrorMessage),
+                    EventReportFailureCodes.ValidationFailed),
+                cancellationToken);
         }
 
         var tenantId = tenantContext.TenantId;
         if (tenantId == Guid.Empty)
         {
-            return Failure(
-                request.ReportId,
-                "Tenant context could not be resolved.",
-                ["Tenant context is required."],
-                EventReportFailureCodes.TenantUnresolved);
+            return await MaskIfFencedAsync(
+                reporterUserId,
+                Failure(
+                    request.ReportId,
+                    "Tenant context could not be resolved.",
+                    ["Tenant context is required."],
+                    EventReportFailureCodes.TenantUnresolved),
+                cancellationToken);
         }
 
-        if (currentUserService.UserId is not { } reporterUserId)
+        if (reporterUserId is not { } resolvedReporterUserId)
         {
             return Failure(
                 request.ReportId,
@@ -59,7 +74,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandler(
 
         var isAllowed = await authorizationProvider.IsAllowedAsync(
             ResourceKinds.User,
-            reporterUserId.ToString(),
+            resolvedReporterUserId.ToString(),
             AuthorizationActions.Users.Update,
             cancellationToken: cancellationToken);
         if (!isAllowed)
@@ -73,6 +88,11 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandler(
         var changed = false;
         var response = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
+            if (await IsFencedAsync(reporterUserId, token))
+            {
+                return FencedFailure();
+            }
+
             var report = await eventReportRepository.GetByIdForUpdateAsync(
                 tenantId,
                 request.ReportId,
@@ -80,20 +100,31 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandler(
 
             if (report is null
                 || report.TenantId != tenantId
-                || report.ReporterUserId != reporterUserId)
+                || report.ReporterUserId != resolvedReporterUserId)
             {
-                return Failure(
-                    request.ReportId,
-                    "Event report was not found.",
-                    ["Event report was not found."],
-                    EventReportFailureCodes.ReportNotFound);
+                return await MaskIfFencedAsync(
+                    reporterUserId,
+                    Failure(
+                        request.ReportId,
+                        "Event report was not found.",
+                        ["Event report was not found."],
+                        EventReportFailureCodes.ReportNotFound),
+                    token);
             }
 
             var attemptChanged = report.ReportCaseUpdatesConsent != request.Request.ReportCaseUpdatesConsent
                 || report.ReportFollowUpContactConsent != request.Request.ReportFollowUpContactConsent;
             if (!attemptChanged)
             {
-                return Success(report.Id, "Event report communication consent is unchanged.");
+                return await MaskIfFencedAsync(
+                    reporterUserId,
+                    Success(report.Id, "Event report communication consent is unchanged."),
+                    token);
+            }
+
+            if (await IsFencedAsync(reporterUserId, token))
+            {
+                return FencedFailure();
             }
 
             changed = true;
@@ -109,7 +140,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandler(
         if (changed)
         {
             await cache.RemoveAsync(
-                $"event-reporting:my-report:{tenantId:N}:{reporterUserId:N}:{request.ReportId:N}",
+                $"event-reporting:my-report:{tenantId:N}:{resolvedReporterUserId:N}:{request.ReportId:N}",
                 cancellationToken);
         }
 
@@ -121,6 +152,23 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandler(
         Success = true,
         Id = id,
         Message = message
+    };
+
+    private async Task<bool> IsFencedAsync(Guid? userId, CancellationToken cancellationToken) =>
+        userId is Guid subjectId &&
+        await privacyErasureStateRepository.GetBySubjectAsync(subjectId, cancellationToken) is not null;
+
+    private async Task<BaseCommandResponse<Guid>> MaskIfFencedAsync(
+        Guid? userId,
+        BaseCommandResponse<Guid> response,
+        CancellationToken cancellationToken) =>
+        await IsFencedAsync(userId, cancellationToken) ? FencedFailure() : response;
+
+    private static BaseCommandResponse<Guid> FencedFailure() => new()
+    {
+        Success = false,
+        Message = "Event report communication consent update failed.",
+        FailureCode = PrivacyErasureFencedFailureCode
     };
 
     private static BaseCommandResponse<Guid> Failure(

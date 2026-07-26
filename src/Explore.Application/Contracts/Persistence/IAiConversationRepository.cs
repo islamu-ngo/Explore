@@ -11,6 +11,8 @@ public interface IAiConversationRepository : IGenericRepository<AiConversation, 
     Task<AiConversation?> GetByIdWithDetailsAsync(Guid conversationId, CancellationToken cancellationToken);
     Task<AiConversation?> GetByIdForUpdateAsync(Guid conversationId, CancellationToken cancellationToken);
     Task<IReadOnlyList<AiConversation>> ListRecentForUserAsync(Guid userId, int limit, CancellationToken cancellationToken);
+    /// <summary>Hard-deletes every conversation row and dependent graph row owned by the exact subject across tenants and soft-delete scopes.</summary>
+    Task<int> HardDeleteUserConversationGraphAsync(Guid subjectId, CancellationToken cancellationToken);
     Task<int> CountUserMessagesSinceAsync(Guid userId, DateTime sinceUtc, CancellationToken cancellationToken);
     Task<int> CountTenantMessagesSinceAsync(DateTime sinceUtc, CancellationToken cancellationToken);
     Task<int> ReleaseStaleRunningConversationsForUserAsync(

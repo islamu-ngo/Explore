@@ -132,6 +132,7 @@ public sealed class GlobalLocationPrivacyReplayCacheGateTests
             tokenRepository,
             erasureRepository,
             Substitute.For<IUserPrivacyErasureRepository>(),
+            Substitute.For<IAiConversationRepository>(),
             Substitute.For<IPrivacyErasureProviderWorkRepository>(),
             Substitute.For<IPrivacyErasureProviderLocatorProtector>(),
             checkpointRepository,

@@ -37,10 +37,9 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         var unrelatedTenantUser = CreateTenantUser(tenantA, unrelated);
         seedContext.TenantUsers.AddRange(ownerTenantUserA, ownerTenantUserB, unrelatedTenantUser);
 
-        var userActorA = CreateUserActor(tenantA, owner);
-        var userActorB = CreateUserActor(tenantB, owner);
-        var unrelatedActor = CreateUserActor(tenantA, unrelated);
-        seedContext.Actors.AddRange(userActorA, userActorB, unrelatedActor);
+        var ownerActor = CreateUserActor(owner);
+        var unrelatedActor = CreateUserActor(unrelated);
+        seedContext.Actors.AddRange(ownerActor, unrelatedActor);
 
         var ownerExternalLoginA = CreateExternalLogin(tenantA, owner, "keycloak", "kc-owner-a");
         var ownerExternalLoginB = CreateExternalLogin(tenantB, owner, "keycloak", "kc-owner-b");
@@ -144,8 +143,8 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
             unrelatedIntegrationSyncSeed);
 
         var fileType = await seedContext.FileTypes.FirstAsync();
-        var ownerStorageA = CreateStorageObject(tenantA, userActorA, fileType, null, "Owner A", "Owner A");
-        var ownerStorageB = CreateStorageObject(tenantB, userActorB, fileType, "tenants/b/owner.png", "Owner B", "Owner B");
+        var ownerStorageA = CreateStorageObject(tenantA, ownerActor, fileType, null, "Owner A", "Owner A");
+        var ownerStorageB = CreateStorageObject(tenantB, ownerActor, fileType, "tenants/b/owner.png", "Owner B", "Owner B");
         var unrelatedStorage = CreateStorageObject(tenantA, unrelatedActor, fileType, "tenants/a/unrelated.png", "Unrelated", "Unrelated");
         seedContext.StorageObjects.AddRange(ownerStorageA, ownerStorageB, unrelatedStorage);
         var ownerUpload = CreateStorageUploadSession(tenantA, owner, "tenants/a/uploads/owner.txt");
@@ -487,22 +486,30 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         CreatedAt = DateTime.UtcNow
     };
 
-    private static Actor CreateUserActor(Tenant tenant, User user) => new()
+    private static Actor CreateUserActor(User user)
     {
-        Id = Guid.CreateVersion7(),
-        TenantId = tenant.Id,
-        Tenant = tenant,
-        UserId = user.Id,
-        ActorTypeId = (int)ActorTypeEnum.User,
-        ActorType = null!,
-        Pii = new ActorPii
+        var actor = new Actor
         {
-            DisplayName = "Owner",
+            Id = Guid.CreateVersion7(),
+            UserId = user.Id,
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = null!,
+            Pii = new ActorPii { DisplayName = "Owner" },
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        actor.AtprotoIdentities.Add(new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            ActorId = actor.Id,
+            Actor = actor,
             Did = $"did:plc:{Guid.NewGuid():N}",
-            Handle = $"owner-{Guid.NewGuid():N}.example.invalid"
-        },
-        ConcurrencyStamp = Guid.CreateVersion7()
-    };
+            Handle = $"owner-{Guid.NewGuid():N}.example.invalid",
+            PdsHost = "https://pds.example.invalid",
+            IsActive = true,
+            LastResolvedAt = DateTime.UtcNow
+        });
+        return actor;
+    }
 
     private static UserExternalLogin CreateExternalLogin(Tenant tenant, User user, string provider, string? providerKey) => new()
     {

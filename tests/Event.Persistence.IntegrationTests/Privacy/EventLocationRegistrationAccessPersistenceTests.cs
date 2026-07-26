@@ -154,8 +154,6 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
         var actor = new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = eventUser.Id,
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,

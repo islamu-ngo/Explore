@@ -22,6 +22,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
     private static readonly DateTime ChangedAt = new(2026, 7, 19, 20, 0, 0, DateTimeKind.Utc);
 
     private readonly IEventReportRepository _eventReportRepository = Substitute.For<IEventReportRepository>();
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
@@ -39,6 +40,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
                 .Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>()
                 .Invoke(CancellationToken.None));
         _eventReportRepository.Update(Arg.Any<EventReport>()).Returns(Task.CompletedTask);
+        _privacyErasureStateRepository.GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((PrivacyErasureSaga?)null);
         _authorizationProvider.IsAllowedAsync(
                 ResourceKinds.User,
                 Arg.Any<string>(),
@@ -209,6 +211,54 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
         await Assert.That(_cache.RemovedKeys).IsEmpty();
     }
 
+
+    [Test]
+    public async Task Handle_WhenFenceAlreadyExists_ReturnsMaskedFailureWithoutTransactionOrCacheRemoval()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var reporterUserId = Guid.CreateVersion7();
+        var report = CreateReport(tenantId, reporterUserId, caseUpdates: false, followUp: true);
+        ConfigureIdentity(tenantId, reporterUserId);
+        _privacyErasureStateRepository.GetBySubjectAsync(reporterUserId, Arg.Any<CancellationToken>())
+            .Returns(CreateFencedSaga(reporterUserId));
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(report.Id, caseUpdates: true, followUp: false),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("privacy_erasure_fenced");
+        await Assert.That(result.Errors).IsNull();
+        await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
+            Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
+            Arg.Any<CancellationToken>());
+        await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());
+        await Assert.That(_cache.RemovedKeys).IsEmpty();
+    }
+
+    [Test]
+    public async Task Handle_WhenFenceAppearsDuringTransactionMasksDetailedErrorsAndSkipsMutation()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var reporterUserId = Guid.CreateVersion7();
+        var report = CreateReport(tenantId, reporterUserId, caseUpdates: false, followUp: true);
+        ConfigureIdentity(tenantId, reporterUserId);
+        _privacyErasureStateRepository.GetBySubjectAsync(reporterUserId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null, CreateFencedSaga(reporterUserId));
+        _eventReportRepository.GetByIdForUpdateAsync(tenantId, report.Id, Arg.Any<CancellationToken>())
+            .Returns(report);
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(report.Id, caseUpdates: true, followUp: false),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("privacy_erasure_fenced");
+        await Assert.That(result.Errors).IsNull();
+        await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());
+        await Assert.That(_cache.RemovedKeys).IsEmpty();
+    }
+
     private void ConfigureIdentity(Guid tenantId, Guid reporterUserId)
     {
         _tenantContext.TenantId.Returns(tenantId);
@@ -217,12 +267,28 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
 
     private UpdateMyReportCommunicationConsentCommandHandler CreateHandler() => new(
         _eventReportRepository,
+        _privacyErasureStateRepository,
         _unitOfWork,
         _tenantContext,
         _currentUserService,
         _authorizationProvider,
         _cache,
         _timeProvider);
+
+    private static PrivacyErasureSaga CreateFencedSaga(Guid userId)
+    {
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        return PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc);
+    }
 
     private static UpdateMyReportCommunicationConsentCommand CreateCommand(
         Guid reportId,

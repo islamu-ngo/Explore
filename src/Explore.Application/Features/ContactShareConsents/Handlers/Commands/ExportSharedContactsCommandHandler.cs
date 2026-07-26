@@ -61,7 +61,8 @@ public class ExportSharedContactsCommandHandler : IRequestHandler<ExportSharedCo
         }
 
         var org = await _organizationRepository.GetById(actor.OrganizationId.Value);
-        if (org == null || org.ApprovalStatusId != (int)ApprovalStatusEnum.Approved)
+        if (org is null || !org.TenantParticipations.Any(
+                participation => participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved))
         {
             response.Success = false;
             response.Message = "Organisation is not approved.";

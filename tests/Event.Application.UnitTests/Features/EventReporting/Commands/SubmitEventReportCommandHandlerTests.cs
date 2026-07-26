@@ -39,6 +39,7 @@ public sealed class SubmitEventReportCommandHandlerTests
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository = Substitute.For<IPrivacyErasureStateRepository>();
     private readonly IEventReportEvidenceProtector _evidenceProtector = Substitute.For<IEventReportEvidenceProtector>();
     private readonly BusinessMetrics _metrics = CreateMetrics();
     private readonly EventReportSubmissionOptions _options = new();
@@ -49,14 +50,14 @@ public sealed class SubmitEventReportCommandHandlerTests
     public SubmitEventReportCommandHandlerTests()
     {
         _unitOfWork
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
-                var operation = call.Arg<Func<CancellationToken, Task>>();
+                var operation = call.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
                 _transactionActive = true;
                 try
                 {
-                    await operation(CancellationToken.None);
+                    return await operation(CancellationToken.None);
                 }
                 finally
                 {
@@ -74,6 +75,8 @@ public sealed class SubmitEventReportCommandHandlerTests
             .Returns(call => call.Arg<EventReportCase>());
         _outboxRepository.Create(Arg.Any<OutboxMessage>())
             .Returns(call => call.Arg<OutboxMessage>());
+        _privacyErasureStateRepository.GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null);
 
         _eventReportRepository.ExistsByReporterAndEventAsync(
                 Arg.Any<Guid>(),
@@ -295,7 +298,7 @@ public sealed class SubmitEventReportCommandHandlerTests
         await Assert.That(replay.Intent.DeduplicationKey).IsEqualTo(receipt.Intent.DeduplicationKey);
 
         await _unitOfWork.Received(1)
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>());
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -307,7 +310,54 @@ public sealed class SubmitEventReportCommandHandlerTests
         await Assert.That(result.FailureCode).IsEqualTo(EventReportReasonCodePolicy.InvalidReasonCodeFailureCode);
         await _eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await _unitOfWork.DidNotReceive()
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>());
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
+    }
+
+
+    [Test]
+    public async Task Handle_WhenFenceAlreadyExists_ReturnsMaskedFailureWithoutReadsOrWrites()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var actor = CreateActor(tenantId, userId);
+        var @event = CreateEvent(tenantId, actor.Id, EventStatusEnum.Published);
+        _tenantContext.TenantId.Returns(tenantId);
+        _currentUserService.UserId.Returns(userId);
+        _privacyErasureStateRepository.GetBySubjectAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(CreateFencedSaga(userId));
+
+        var result = await CreateHandler().Handle(CreateCommand(@event.Id), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("privacy_erasure_fenced");
+        await Assert.That(result.Errors).IsNull();
+        await _eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
+        await _unitOfWork.DidNotReceive()
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
+        await _eventReportRepository.DidNotReceive().Create(Arg.Any<EventReport>());
+        await _evidenceRepository.DidNotReceive().Create(Arg.Any<EventReportEvidence>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+        await _recipientNotificationMaterializer.DidNotReceive()
+            .MaterializeInCurrentTransactionAsync(Arg.Any<RecipientNotificationMaterialization>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenFenceAppearsDuringValidationMasksDetailedErrorsAndSkipsEventLookup()
+    {
+        var userId = Guid.NewGuid();
+        _currentUserService.UserId.Returns(userId);
+        _tenantContext.TenantId.Returns(Guid.NewGuid());
+        _privacyErasureStateRepository.GetBySubjectAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null, CreateFencedSaga(userId));
+
+        var result = await CreateHandler().Handle(CreateCommand(Guid.NewGuid(), reasonCode: "unsupported"), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("privacy_erasure_fenced");
+        await Assert.That(result.Errors).IsNull();
+        await _eventRepository.DidNotReceive().GetById(Arg.Any<Guid>());
+        await _unitOfWork.DidNotReceive()
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -347,7 +397,7 @@ public sealed class SubmitEventReportCommandHandlerTests
             Arg.Any<DateTime>(),
             Arg.Any<CancellationToken>());
         await _unitOfWork.DidNotReceive()
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>());
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -390,7 +440,7 @@ public sealed class SubmitEventReportCommandHandlerTests
             Arg.Any<DateTime>(),
             Arg.Any<CancellationToken>());
         await _unitOfWork.DidNotReceive()
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>());
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -425,7 +475,7 @@ public sealed class SubmitEventReportCommandHandlerTests
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo("reporting.max_reports_per_event_per_user_per_day");
         await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_report_reporter_event");
         await _unitOfWork.DidNotReceive()
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>());
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -447,7 +497,7 @@ public sealed class SubmitEventReportCommandHandlerTests
         await _eventReportRepository.DidNotReceive().Create(Arg.Any<EventReport>());
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
         await _unitOfWork.DidNotReceive()
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>());
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -573,7 +623,7 @@ public sealed class SubmitEventReportCommandHandlerTests
 
         await Assert.That(exception.Message).IsEqualTo("receipt graph failure");
         await _unitOfWork.Received(1)
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>());
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -623,6 +673,7 @@ public sealed class SubmitEventReportCommandHandlerTests
             _unitOfWork,
             _tenantContext,
             _currentUserService,
+            _privacyErasureStateRepository,
             _evidenceProtector,
             _metrics,
             Options.Create(_options));
@@ -638,6 +689,21 @@ public sealed class SubmitEventReportCommandHandlerTests
         _actorRepository.GetActorByUserIdAndTenantId(userId, tenantId).Returns(actor);
         _userRepository.GetUserWithDetails(userId, Arg.Any<CancellationToken>()).Returns(user);
         return @event;
+    }
+
+    private static PrivacyErasureSaga CreateFencedSaga(Guid userId)
+    {
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        return PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc);
     }
 
     private static SubmitEventReportCommand CreateCommand(Guid eventId, string reasonCode = "spam")
@@ -688,8 +754,6 @@ public sealed class SubmitEventReportCommandHandlerTests
         return new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            Tenant = null!,
             UserId = userId,
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,

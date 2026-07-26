@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Models;
 using Explore.Domain.Ai;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -27,6 +28,19 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
     {
         return await IncludeConversationDetails(_dbContext.AiConversations)
             .FirstOrDefaultAsync(conversation => conversation.Id == conversationId, cancellationToken);
+    }
+
+    public async Task<int> HardDeleteUserConversationGraphAsync(Guid subjectId, CancellationToken cancellationToken)
+    {
+        RequireId(subjectId, nameof(subjectId));
+
+        string reason = TenantFilterBypassReasons.UserPrivacyErasure;
+
+        // ponytail: root delete relies on verified FK cascade shape for the entire AI graph.
+        return await _dbContext.AiConversations
+            .IgnoreAllFilters(reason)
+            .Where(conversation => conversation.UserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<AiConversation>> ListRecentForUserAsync(
@@ -466,6 +480,14 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
             .Include(conversation => conversation.Runs.OrderBy(run => run.QueuedAt))
             .Include(conversation => conversation.References.OrderBy(reference => reference.CreatedAt))
             .Include(conversation => conversation.ProposedActions.OrderBy(action => action.CreatedAt));
+    }
+
+    private static void RequireId(Guid id, string parameterName)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new ArgumentException("A non-empty id is required.", parameterName);
+        }
     }
 
     private const string RetentionRedactedMessage = "[redacted by AI retention policy]";

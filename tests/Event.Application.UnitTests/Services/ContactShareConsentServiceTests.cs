@@ -181,8 +181,7 @@ public class ContactShareConsentServiceTests
             Id = _actorId,
             OrganizationId = null, // Not an org actor
             Pii = new ActorPii { DisplayName = "Test" },
-            ActorType = CreateActorType(),
-            Tenant = CreateTenant()
+            ActorType = CreateActorType()
         });
 
         // Act
@@ -387,22 +386,33 @@ public class ContactShareConsentServiceTests
         Id = id,
         OrganizationId = orgId,
         Pii = new ActorPii { DisplayName = "Test Org Actor" },
-        ActorType = CreateActorType(),
-        Tenant = CreateTenant()
+        ActorType = CreateActorType()
     };
 
-    private static Organization CreateOrganizationEntity(Guid id, bool approved = true) => new()
+    private static Organization CreateOrganizationEntity(Guid id, bool approved = true)
     {
-        Id = id,
-        ApprovalStatusId = approved ? (int)ApprovalStatusEnum.Approved : 1,
-        Pii = new OrganizationPii { FullName = approved ? "Approved Org" : "Unapproved Org" },
-        ApprovalStatus = new ApprovalStatus
+        var organization = new Organization
         {
-            MasterCode = approved ? "APPROVED" : "PENDING",
-            FullName = approved ? "Approved" : "Pending"
-        },
-        Tenant = CreateTenant()
-    };
+            Id = id,
+            Pii = new OrganizationPii { FullName = approved ? "Approved Org" : "Unapproved Org" }
+        };
+        Tenant tenant = CreateTenant();
+        organization.TenantParticipations.Add(new OrganizationTenant
+        {
+            Id = Guid.CreateVersion7(),
+            OrganizationId = id,
+            Organization = organization,
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            ApprovalStatusId = approved ? (int)ApprovalStatusEnum.Approved : 1,
+            ApprovalStatus = new ApprovalStatus
+            {
+                MasterCode = approved ? "APPROVED" : "PENDING",
+                FullName = approved ? "Approved" : "Pending"
+            }
+        });
+        return organization;
+    }
 
     private Explore.Domain.Event CreateEvent()
     {

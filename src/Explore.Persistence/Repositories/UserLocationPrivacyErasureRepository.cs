@@ -35,17 +35,17 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
                 PrivacyErasureProviderLocatorKind.AccountIdentifier,
                 value.ProviderKey!))
             .ToArrayAsync(cancellationToken));
-        candidates.AddRange(await dbContext.Actors
+        candidates.AddRange(await dbContext.AtprotoIdentities
             .IgnoreAllFilters(reason)
             .AsNoTracking()
-            .Where(value => value.UserId == subjectId && value.Pii.Did != null)
+            .Where(value => value.Actor.UserId == subjectId)
             .Select(value => new PrivacyErasureProviderCandidate(
                 PrivacyErasureProviderKind.Atproto,
                 PrivacyErasureProviderAction.RevokeOrUnlinkExternalIdentity,
-                value.TenantId,
+                null,
                 value.Id,
                 PrivacyErasureProviderLocatorKind.Did,
-                value.Pii.Did!))
+                value.Did))
             .ToArrayAsync(cancellationToken));
         candidates.AddRange(await dbContext.WebPushSubscriptions
             .IgnoreAllFilters(reason)
@@ -627,12 +627,11 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
     {
         RequireId(ownerUserId, nameof(ownerUserId));
         return await dbContext.Actors
-            .IgnoreTenantFilter(TenantFilterBypassReasons.UserPrivacyErasure)
             .IncludeDeleted()
             .Include(actor => actor.Pii)
+            .Include(actor => actor.AtprotoIdentities)
             .Where(actor => actor.UserId == ownerUserId)
-            .OrderBy(actor => actor.TenantId)
-            .ThenBy(actor => actor.Id)
+            .OrderBy(actor => actor.Id)
             .ToListAsync(cancellationToken);
     }
 

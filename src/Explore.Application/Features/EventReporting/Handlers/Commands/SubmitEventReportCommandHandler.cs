@@ -34,39 +34,52 @@ public sealed class SubmitEventReportCommandHandler(
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
     ICurrentUserService currentUserService,
+    IPrivacyErasureStateRepository privacyErasureStateRepository,
     IEventReportEvidenceProtector evidenceProtector,
     BusinessMetrics metrics,
     IOptions<EventReportSubmissionOptions> optionsAccessor) : IRequestHandler<SubmitEventReportCommand, BaseCommandResponse<Guid>>
 {
+    private const string PrivacyErasureFencedFailureCode = "privacy_erasure_fenced";
+
     public async Task<BaseCommandResponse<Guid>> Handle(SubmitEventReportCommand request, CancellationToken cancellationToken)
     {
         var options = NormalizeOptions(optionsAccessor.Value);
-        var validationResult = await new SubmitEventReportCommandValidator(options).ValidateAsync(request, cancellationToken);
+        var reporterUserId = currentUserService.UserId;
+        if (await IsFencedAsync(reporterUserId, cancellationToken))
+        {
+            return FencedFailure();
+        }
 
+        var validationResult = await new SubmitEventReportCommandValidator(options).ValidateAsync(request, cancellationToken);
         if (!validationResult.IsValid)
         {
-            return Failure(
-                tenantId: null,
-                Guid.Empty,
-                "Event report submission failed due to validation errors.",
-                validationResult.Errors.Select(error => error.ErrorMessage),
-                EventReportReasonCodePolicy.InvalidReasonCodeFailureCode,
-                "validation_failed");
+            return await MaskIfFencedAsync(
+                reporterUserId,
+                Failure(
+                    null,
+                    Guid.Empty,
+                    "Event report submission failed due to validation errors.",
+                    validationResult.Errors.Select(error => error.ErrorMessage),
+                    EventReportReasonCodePolicy.InvalidReasonCodeFailureCode,
+                    "validation_failed"),
+                cancellationToken);
         }
 
         if (tenantContext.TenantId == Guid.Empty)
         {
-            return Failure(
-                tenantId: null,
-                Guid.Empty,
-                "Tenant context could not be resolved.",
-                ["Tenant context is required."],
-                EventReportFailureCodes.TenantUnresolved,
-                "tenant_unresolved");
+            return await MaskIfFencedAsync(
+                reporterUserId,
+                Failure(
+                    null,
+                    Guid.Empty,
+                    "Tenant context could not be resolved.",
+                    ["Tenant context is required."],
+                    EventReportFailureCodes.TenantUnresolved,
+                    "tenant_unresolved"),
+                cancellationToken);
         }
 
         var tenantId = tenantContext.TenantId;
-        var reporterUserId = currentUserService.UserId;
         if (options.RequireAuthenticatedReporter && reporterUserId is null)
         {
             return Failure(
@@ -81,24 +94,30 @@ public sealed class SubmitEventReportCommandHandler(
         var @event = await eventRepository.GetById(request.Request.EventId);
         if (@event is null || @event.TenantId != tenantId)
         {
-            return Failure(
-                tenantId,
-                Guid.Empty,
-                "Event was not found.",
-                ["Event was not found."],
-                EventReportFailureCodes.EventNotFound,
-                "event_not_found");
+            return await MaskIfFencedAsync(
+                reporterUserId,
+                Failure(
+                    tenantId,
+                    Guid.Empty,
+                    "Event was not found.",
+                    ["Event was not found."],
+                    EventReportFailureCodes.EventNotFound,
+                    "event_not_found"),
+                cancellationToken);
         }
 
         if (@event.EventStatusId != (int)EventStatusEnum.Published)
         {
-            return Failure(
-                tenantId,
-                Guid.Empty,
-                "Only published events can be reported.",
-                ["Only published events can be reported."],
-                EventReportFailureCodes.EventInvalidStatus,
-                "invalid_status");
+            return await MaskIfFencedAsync(
+                reporterUserId,
+                Failure(
+                    tenantId,
+                    Guid.Empty,
+                    "Only published events can be reported.",
+                    ["Only published events can be reported."],
+                    EventReportFailureCodes.EventInvalidStatus,
+                    "invalid_status"),
+                cancellationToken);
         }
 
         var reporterActor = reporterUserId.HasValue
@@ -107,51 +126,30 @@ public sealed class SubmitEventReportCommandHandler(
 
         if (reporterUserId.HasValue && reporterActor is null)
         {
-            return Failure(
-                tenantId,
-                Guid.Empty,
-                "Reporter actor could not be resolved.",
-                ["Reporter actor is required."],
-                EventReportFailureCodes.ReporterActorUnresolved,
-                "actor_unresolved");
-        }
-
-        User? reporterUser = null;
-        NotificationPreferenceDecision? receiptEmailPreference = null;
-        if (reporterUserId.HasValue)
-        {
-            reporterUser = await userRepository.GetUserWithDetails(reporterUserId.Value, cancellationToken);
-            if (reporterUser is null || reporterUser.Id != reporterUserId.Value || reporterUser.IsDeleted)
-            {
-                return Failure(
+            return await MaskIfFencedAsync(
+                reporterUserId,
+                Failure(
                     tenantId,
                     Guid.Empty,
-                    "Reporter user could not be resolved.",
-                    ["Persisted reporter user is required."],
-                    EventReportFailureCodes.UserUnresolved,
-                    "user_unresolved");
-            }
-
-            receiptEmailPreference = await notificationPreferenceResolver.ResolveAsync(
-                new NotificationPreferenceResolveRequest(
-                    tenantId,
-                    reporterUserId.Value,
-                    OrganizationId: null,
-                    GroupId: null,
-                    NotificationPreferenceCategoryCodes.TrustSafety,
-                    NotificationPreferenceChannelCodes.Email),
+                    "Reporter actor could not be resolved.",
+                    ["Reporter actor is required."],
+                    EventReportFailureCodes.ReporterActorUnresolved,
+                    "actor_unresolved"),
                 cancellationToken);
         }
 
         if (!EventReportReasonCodePolicy.TryNormalize(request.Request.ReasonCode, out var reasonCode, out var reasonError))
         {
-            return Failure(
-                tenantId,
-                Guid.Empty,
-                "Reason code is invalid.",
-                [reasonError ?? "ReasonCode is invalid."],
-                EventReportReasonCodePolicy.InvalidReasonCodeFailureCode,
-                "validation_failed");
+            return await MaskIfFencedAsync(
+                reporterUserId,
+                Failure(
+                    tenantId,
+                    Guid.Empty,
+                    "Reason code is invalid.",
+                    [reasonError ?? "ReasonCode is invalid."],
+                    EventReportReasonCodePolicy.InvalidReasonCodeFailureCode,
+                    "validation_failed"),
+                cancellationToken);
         }
 
         var now = DateTime.UtcNow;
@@ -169,13 +167,16 @@ public sealed class SubmitEventReportCommandHandler(
 
         if (duplicateExists)
         {
-            return Failure(
-                tenantId,
-                Guid.Empty,
-                "A matching event report was already submitted recently.",
-                ["A matching report already exists in the duplicate prevention window."],
-                EventReportFailureCodes.Duplicate,
-                "duplicate");
+            return await MaskIfFencedAsync(
+                reporterUserId,
+                Failure(
+                    tenantId,
+                    Guid.Empty,
+                    "A matching event report was already submitted recently.",
+                    ["A matching report already exists in the duplicate prevention window."],
+                    EventReportFailureCodes.Duplicate,
+                    "duplicate"),
+                cancellationToken);
         }
 
         var reporterWindowStart = now.AddHours(-1);
@@ -201,7 +202,7 @@ public sealed class SubmitEventReportCommandHandler(
                     reporterCount + 1,
                     "event_report_reporter",
                     tenantId));
-            return response;
+            return await MaskIfFencedAsync(reporterUserId, response, cancellationToken);
         }
 
         var reporterEventWindowStart = now.AddDays(-1);
@@ -224,64 +225,101 @@ public sealed class SubmitEventReportCommandHandler(
                     "reporting.max_reports_per_event_per_user_per_day",
                     options.MaxReportsPerEventPerUserPerDay,
                     reporterEventCount,
-                    reporterEventCount + 1,
+                    reporterCount + 1,
                     "event_report_reporter_event",
                     tenantId));
-            return response;
+            return await MaskIfFencedAsync(reporterUserId, response, cancellationToken);
         }
 
-        var priority = ResolvePriority(request.Request.SeverityHint);
-        var encryptedReporterText = evidenceProtector.Protect(request.Request.ReporterText);
-        var report = EventReport.Create(
-            tenantId,
-            @event.Id,
-            reporterUserId,
-            reporterActor?.Id,
-            reporterUserId.HasValue ? EventReporterKind.AuthenticatedUser : EventReporterKind.Anonymous,
-            EventReportSourceKind.UserReport,
-            reasonCode,
-            request.Request.SubcategoryCode,
-            priority,
-            request.Request.SeverityHint,
-            reportCaseUpdatesConsent: request.Request.ReportCaseUpdatesConsent && reporterUserId.HasValue,
-            reportFollowUpContactConsent: request.Request.ReportFollowUpContactConsent && reporterUserId.HasValue,
-            request.Request.ReporterLocale,
-            request.ReporterIpHash,
-            request.ReporterUserAgentHash,
-            now);
-        var target = EventReportTarget.CreateEventTarget(tenantId, report.Id, @event.Id);
-        var evidence = EventReportEvidence.CreateReporterText(
-            tenantId,
-            report.Id,
-            encryptedReporterText,
-            EventReportEvidenceClassification.Sensitive,
-            now.AddDays(options.ReporterTextRetentionDays),
-            reporterUserId,
-            now);
-        var reportCase = EventReportCase.Create(
-            tenantId,
-            report.Id,
-            options.DefaultQueueCode,
-            priority,
-            now.AddHours(options.CaseSlaHours),
-            now);
-        var outboxMessage = EventReportOutboxMessageFactory.CreateProviderSyncRequestedMessage(report, reportCase, request.CorrelationId);
-        RecipientNotificationMaterialization? receiptMaterialization = reporterUser is null
-            ? null
-            : reportReceiptNotificationFactory.Create(
-                report,
-                options.CaseSlaHours,
-                RecipientEmailAddressResolver.Resolve(reporterUser, reporterUser.Id),
-                receiptEmailPreference!.IsEnabled,
-                Guid.CreateVersion7(),
-                Guid.CreateVersion7(),
-                Guid.CreateVersion7(),
-                Guid.CreateVersion7(),
-                Guid.CreateVersion7(),
-                now);
-
-        await unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        return await unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
+            if (await IsFencedAsync(reporterUserId, transactionCancellationToken))
+            {
+                return FencedFailure();
+            }
+
+            var reporterUser = reporterUserId.HasValue
+                ? await userRepository.GetUserWithDetails(reporterUserId.Value, transactionCancellationToken)
+                : null;
+            if (reporterUserId.HasValue)
+            {
+                if (reporterUser is null || reporterUser.Id != reporterUserId.Value || reporterUser.IsDeleted)
+                {
+                    return await MaskIfFencedAsync(
+                        reporterUserId,
+                        Failure(
+                            tenantId,
+                            Guid.Empty,
+                            "Reporter user could not be resolved.",
+                            ["Persisted reporter user is required."],
+                            EventReportFailureCodes.UserUnresolved,
+                            "user_unresolved"),
+                        transactionCancellationToken);
+                }
+            }
+
+            var receiptEmailPreference = reporterUserId.HasValue
+                ? await notificationPreferenceResolver.ResolveAsync(
+                    new NotificationPreferenceResolveRequest(
+                        tenantId,
+                        reporterUserId.Value,
+                        OrganizationId: null,
+                        GroupId: null,
+                        NotificationPreferenceCategoryCodes.TrustSafety,
+                        NotificationPreferenceChannelCodes.Email),
+                    transactionCancellationToken)
+                : null;
+
+            var priority = ResolvePriority(request.Request.SeverityHint);
+            var encryptedReporterText = evidenceProtector.Protect(request.Request.ReporterText);
+            var report = EventReport.Create(
+                tenantId,
+                @event.Id,
+                reporterUserId,
+                reporterActor?.Id,
+                reporterUserId.HasValue ? EventReporterKind.AuthenticatedUser : EventReporterKind.Anonymous,
+                EventReportSourceKind.UserReport,
+                reasonCode,
+                request.Request.SubcategoryCode,
+                priority,
+                request.Request.SeverityHint,
+                reportCaseUpdatesConsent: request.Request.ReportCaseUpdatesConsent && reporterUserId.HasValue,
+                reportFollowUpContactConsent: request.Request.ReportFollowUpContactConsent && reporterUserId.HasValue,
+                request.Request.ReporterLocale,
+                request.ReporterIpHash,
+                request.ReporterUserAgentHash,
+                now);
+            var target = EventReportTarget.CreateEventTarget(tenantId, report.Id, @event.Id);
+            var evidence = EventReportEvidence.CreateReporterText(
+                tenantId,
+                report.Id,
+                encryptedReporterText,
+                EventReportEvidenceClassification.Sensitive,
+                now.AddDays(options.ReporterTextRetentionDays),
+                reporterUserId,
+                now);
+            var reportCase = EventReportCase.Create(
+                tenantId,
+                report.Id,
+                options.DefaultQueueCode,
+                priority,
+                now.AddHours(options.CaseSlaHours),
+                now);
+            var outboxMessage = EventReportOutboxMessageFactory.CreateProviderSyncRequestedMessage(report, reportCase, request.CorrelationId);
+            RecipientNotificationMaterialization? receiptMaterialization = reporterUser is null
+                ? null
+                : reportReceiptNotificationFactory.Create(
+                    report,
+                    options.CaseSlaHours,
+                    RecipientEmailAddressResolver.Resolve(reporterUser, reporterUser.Id),
+                    receiptEmailPreference!.IsEnabled,
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    now);
+
             await eventReportRepository.Create(report);
             await targetRepository.Create(target);
             await evidenceRepository.Create(evidence);
@@ -293,11 +331,28 @@ public sealed class SubmitEventReportCommandHandler(
                     receiptMaterialization,
                     transactionCancellationToken);
             }
-        }, cancellationToken);
 
-        metrics.RecordEventReportSubmission(tenantId.ToString(), "succeeded");
-        return Success(report.Id, "Event report submitted successfully.");
+            metrics.RecordEventReportSubmission(tenantId.ToString(), "succeeded");
+            return Success(report.Id, "Event report submitted successfully.");
+        }, cancellationToken);
     }
+
+    private async Task<bool> IsFencedAsync(Guid? userId, CancellationToken cancellationToken) =>
+        userId is Guid subjectId &&
+        await privacyErasureStateRepository.GetBySubjectAsync(subjectId, cancellationToken) is not null;
+
+    private async Task<BaseCommandResponse<Guid>> MaskIfFencedAsync(
+        Guid? userId,
+        BaseCommandResponse<Guid> response,
+        CancellationToken cancellationToken) =>
+        await IsFencedAsync(userId, cancellationToken) ? FencedFailure() : response;
+
+    private static BaseCommandResponse<Guid> FencedFailure() => new()
+    {
+        Success = false,
+        Message = "Event report submission failed.",
+        FailureCode = PrivacyErasureFencedFailureCode
+    };
 
     private static EventReportSubmissionOptions NormalizeOptions(EventReportSubmissionOptions options)
     {

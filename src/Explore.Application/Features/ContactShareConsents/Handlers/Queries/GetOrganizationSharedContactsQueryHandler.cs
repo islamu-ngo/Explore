@@ -41,7 +41,8 @@ public class GetOrganizationSharedContactsQueryHandler : IRequestHandler<GetOrga
         }
 
         var org = await _organizationRepository.GetById(actor.OrganizationId.Value);
-        if (org == null || org.ApprovalStatusId != (int)ApprovalStatusEnum.Approved)
+        if (org is null || !org.TenantParticipations.Any(
+                participation => participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved))
         {
             _logger.LogWarning("Shared contacts query rejected: organisation {OrgId} is not approved", actor.OrganizationId);
             return PaginatedResult<SharedContactDto>.Create([], 0, request.PageNumber, request.PageSize);

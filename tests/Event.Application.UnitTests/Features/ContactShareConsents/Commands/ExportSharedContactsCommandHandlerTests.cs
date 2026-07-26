@@ -72,8 +72,7 @@ public class ExportSharedContactsCommandHandlerTests
             Id = _actorId,
             OrganizationId = null,
             Pii = new ActorPii { DisplayName = "User Actor" },
-            ActorType = CreateActorType(),
-            Tenant = CreateTenant()
+            ActorType = CreateActorType()
         });
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -254,22 +253,33 @@ public class ExportSharedContactsCommandHandlerTests
         Id = id,
         OrganizationId = orgId,
         Pii = new ActorPii { DisplayName = "Org Actor" },
-        ActorType = CreateActorType(),
-        Tenant = CreateTenant()
+        ActorType = CreateActorType()
     };
 
-    private static Organization CreateOrganizationEntity(Guid id, bool approved = true, string? fullName = null) => new()
+    private static Organization CreateOrganizationEntity(Guid id, bool approved = true, string? fullName = null)
     {
-        Id = id,
-        ApprovalStatusId = approved ? (int)ApprovalStatusEnum.Approved : 1,
-        Pii = new OrganizationPii { FullName = fullName ?? (approved ? "Approved Org" : "Unapproved Org") },
-        ApprovalStatus = new ApprovalStatus
+        var organization = new Organization
         {
-            MasterCode = approved ? "APPROVED" : "PENDING",
-            FullName = approved ? "Approved" : "Pending"
-        },
-        Tenant = CreateTenant()
-    };
+            Id = id,
+            Pii = new OrganizationPii { FullName = fullName ?? (approved ? "Approved Org" : "Unapproved Org") }
+        };
+        Tenant tenant = CreateTenant();
+        organization.TenantParticipations.Add(new OrganizationTenant
+        {
+            Id = Guid.CreateVersion7(),
+            OrganizationId = id,
+            Organization = organization,
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            ApprovalStatusId = approved ? (int)ApprovalStatusEnum.Approved : 1,
+            ApprovalStatus = new ApprovalStatus
+            {
+                MasterCode = approved ? "APPROVED" : "PENDING",
+                FullName = approved ? "Approved" : "Pending"
+            }
+        });
+        return organization;
+    }
 
     private ExportSharedContactsCommand CreateCommand(string format = "csv")
     {

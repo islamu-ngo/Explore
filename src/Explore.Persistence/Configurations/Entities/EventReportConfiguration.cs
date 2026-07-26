@@ -50,8 +50,7 @@ public sealed class EventReportConfiguration : IEntityTypeConfiguration<EventRep
 
         builder.HasOne(e => e.ReporterActor)
             .WithMany()
-            .HasForeignKey(e => new { e.TenantId, e.ReporterActorId })
-            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .HasForeignKey(e => e.ReporterActorId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.Status, e.CreatedAt })

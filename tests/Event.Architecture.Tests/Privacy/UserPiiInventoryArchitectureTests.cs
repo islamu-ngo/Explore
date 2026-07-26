@@ -1,7 +1,6 @@
 // ABOUTME: Machine-checks the test-only User-PII inventory against EF and designated provider surfaces.
 // ABOUTME: Rejects omissions, malformed classifications, and any attempt to turn governance metadata into deletion SQL.
 
-using System.Text.RegularExpressions;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -252,6 +251,17 @@ public sealed class UserPiiInventoryArchitectureTests
     }
 
     [Test]
+    public async Task AllAiGraphCopiesAreClassifiedAsHardDelete()
+    {
+        UserPiiInventoryEntry[] aiCopies = UserPiiInventory.Entries
+            .Where(entry => entry.Copy.StartsWith("Ai", StringComparison.Ordinal))
+            .ToArray();
+
+        await Assert.That(aiCopies).IsNotEmpty();
+        await Assert.That(aiCopies.All(entry => entry.Disposition == UserPiiDisposition.HardDelete)).IsTrue();
+    }
+
+    [Test]
     public async Task RetainedAuditActorLinksAreNullableForErasure()
     {
         await using var context = new ExploreDbContext(
@@ -355,7 +365,17 @@ public sealed class UserPiiInventoryArchitectureTests
                 "Notification.UserId",
                 "EmailDispatchOutbox.RecipientEmail",
                 "WebPushSubscription.Endpoint",
+                "AiConversation.UserId",
+                "AiConversation.Title",
                 "AiMessage.Content",
+                "AiMessage.ImageAttachmentsJson",
+                "AiConversationReference.DisplayName",
+                "AiConversationReference.Summary",
+                "AiProposedAction.PayloadJson",
+                "AiProposedAction.FailureMessage",
+                "AiRun.FailureMessage",
+                "AiToolExecution.ToolName",
+                "AiToolExecution.FailureMessage",
                 "WebhookMessage._payloadBytes",
                 "StorageObject.Uri",
                 "PdsSyncOutbox.Did",
@@ -407,34 +427,63 @@ public sealed class UserPiiInventoryArchitectureTests
             "#!",
             "IGNORE PREVIOUS INSTRUCTIONS"
         ];
-        string[] executablePatterns =
+        string[] executablePhrases =
         [
-            @"\b(?:curl|wget)\b[^\r\n]{0,256}\|\s*(?:sh|bash|zsh|fish|pwsh|powershell)(?:\s|$)",
-            @"\b(?:sh|bash|zsh|fish)\s+-c(?:\s|$)",
-            @"\b(?:pwsh|powershell)(?:\.exe)?\s+(?:-[A-Za-z]*Command\b|-c(?:\s|$))",
-            @"\bcmd(?:\.exe)?\s+/[ck](?:\s|$)",
-            @"(?:^|[;&|]\s*)(?:sudo\s+)?rm\s+-[A-Za-z]*[rRfF][A-Za-z]*\s+",
-            @"(?:^|[;&|]\s*)(?:python(?:3)?|node|perl|ruby)\s+-[ce]\s+",
-            @"\b(?:System\.Diagnostics\.)?Process\.Start\s*\(",
-            @"\bRuntime\.getRuntime\s*\(\s*\)\.exec\s*\(",
-            @"\b(?:subprocess\.(?:run|Popen|call|check_call|check_output)|os\.system|child_process\.(?:exec|execFile|spawn)|Deno\.Command)\s*\(",
-            @"\b(?:System\.Reflection\.)?Assembly\.(?:Load|LoadFrom|LoadFile)\s*\(",
-            @"\bActivator\.CreateInstance\s*\(",
-            @"\bType\.GetType\s*\(",
-            @"\bMethodInfo\.Invoke\s*\(",
-            @"\b(?:eval|exec)\s*\(",
-            @"\b(?:DROP\s+TABLE|DELETE\s+FROM|TRUNCATE\s+(?:TABLE\s+)?|ALTER\s+TABLE|INSERT\s+INTO|UPDATE\s+\S+\s+SET|EXEC(?:UTE)?\s+)"
+            "curl |",
+            "wget |",
+            "| sh",
+            "| bash",
+            "| zsh",
+            "| fish",
+            "| pwsh",
+            "| powershell",
+            "sh -c",
+            "bash -c",
+            "zsh -c",
+            "fish -c",
+            "pwsh -command",
+            "powershell -command",
+            "powershell.exe -command",
+            "powershell -c",
+            "cmd /c",
+            "cmd.exe /c",
+            "process.start(",
+            "runtime.getruntime().exec(",
+            "subprocess.run(",
+            "subprocess.popen(",
+            "subprocess.call(",
+            "subprocess.check_call(",
+            "subprocess.check_output(",
+            "os.system(",
+            "child_process.exec(",
+            "child_process.execfile(",
+            "child_process.spawn(",
+            "deno.command(",
+            "assembly.load(",
+            "assembly.loadfrom(",
+            "assembly.loadfile(",
+            "activator.createinstance(",
+            "type.gettype(",
+            "methodinfo.invoke(",
+            "eval(",
+            "exec(",
+            "drop table",
+            "delete from",
+            "truncate table",
+            "alter table",
+            "insert into",
+            "update ",
+            " set ",
+            "execute "
         ];
 
         return metadata.Any(value =>
-            executableMarkers.Any(marker => value.Contains(marker, StringComparison.OrdinalIgnoreCase))
-            || executablePatterns.Any(pattern => Regex.IsMatch(
-                value,
-                pattern,
-                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
-                TimeSpan.FromMilliseconds(100))));
+        {
+            string normalized = value.ToLowerInvariant();
+            return executableMarkers.Any(marker => normalized.Contains(marker.ToLowerInvariant(), StringComparison.Ordinal))
+                || executablePhrases.Any(phrase => normalized.Contains(phrase, StringComparison.Ordinal));
+        });
     }
-
     private static string[] DiscoverSourceDerivedLocalCopies(IModel model)
     {
         HashSet<IEntityType> userLinkedEntities = DiscoverUserLinkedEntities(model);

@@ -18,8 +18,7 @@ public class EventContactShareExportConfiguration : IEntityTypeConfiguration<Eve
         builder.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.RecipientActor)
             .WithMany()
-            .HasForeignKey(e => new { e.TenantId, e.RecipientActorId })
-            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .HasForeignKey(e => e.RecipientActorId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.Event)
             .WithMany()

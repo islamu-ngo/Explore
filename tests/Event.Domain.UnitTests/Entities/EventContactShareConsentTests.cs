@@ -140,19 +140,7 @@ public class EventContactShareConsentTests
         return new Actor
         {
             Pii = new ActorPii { DisplayName = "Test Actor" },
-            ActorType = new ActorType { FullName = "Organization", MasterCode = "ORGANIZATION" },
-            Tenant = new Tenant
-            {
-                FullName = "Test Tenant",
-                Slug = "test-tenant",
-                TenantStatus = new TenantStatus
-                {
-                    Id = 2,
-                    MasterCode = "ACTIVE",
-                    FullName = "Active",
-                    IsActiveState = true
-                }
-            }
+            ActorType = new ActorType { FullName = "Organization", MasterCode = "ORGANIZATION" }
         };
     }
 }

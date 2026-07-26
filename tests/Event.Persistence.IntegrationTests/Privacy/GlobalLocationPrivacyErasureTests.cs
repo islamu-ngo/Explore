@@ -321,6 +321,9 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             ActorPii ownerActorPii = await committedContext.ActorPii
                 .IgnoreQueryFilters()
                 .SingleAsync(pii => pii.ActorId == graph.OwnerActorId);
+            AtprotoIdentity ownerIdentity = await committedContext.AtprotoIdentities
+                .IgnoreQueryFilters()
+                .SingleAsync(identity => identity.ActorId == graph.OwnerActorId);
 
             await Assert.That(homes.All(home =>
                 home.LocationPrivacyStateId == (int)LocationPrivacyStateEnum.Erased
@@ -345,8 +348,8 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             await Assert.That(await committedContext.UserPii
                 .AnyAsync(pii => pii.UserId == graph.OwnerUserId)).IsFalse();
             await Assert.That(ownerActorPii.DisplayName).IsEqualTo("Deleted user");
-            await Assert.That(ownerActorPii.Did).IsNull();
-            await Assert.That(ownerActorPii.Handle).IsNull();
+            await Assert.That(ownerIdentity.Did).IsEqualTo($"did:deleted:{ownerIdentity.Id:N}");
+            await Assert.That(ownerIdentity.Handle).IsNull();
             await Assert.That(ownerActorPii.ProfilePictureUri).IsNull();
             await Assert.That(checkpoint.AuthoritySequence).IsEqualTo(retained.AuthoritySequence);
             await Assert.That(checkpoint.IntentId).IsEqualTo(retained.IntentId);
@@ -476,6 +479,7 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             tokenRepository,
             erasureRepository,
             erasureRepository,
+            new AiConversationRepository(context),
             new PrivacyErasureProviderWorkRepository(context),
             new PrivacyErasureProviderLocatorProtector(new EphemeralDataProtectionProvider()),
             checkpointRepository,
@@ -512,31 +516,36 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
         var ownerActor = new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenantA.Id,
-            Tenant = null!,
             UserId = owner.Id,
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
             Pii = new ActorPii
             {
                 DisplayName = "ACTOR-NAME-CANARY",
-                Did = "did:plc:actor-canary",
-                Handle = "actor-canary.example",
                 ProfilePictureUri = "https://example.com/actor-canary.jpg",
             },
             ConcurrencyStamp = Guid.CreateVersion7(),
         };
+        var ownerIdentity = new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            ActorId = ownerActor.Id,
+            Actor = ownerActor,
+            Did = "did:plc:actor-canary",
+            Handle = "actor-canary.example",
+            PdsHost = "https://pds.example.invalid",
+            IsActive = true,
+            LastResolvedAt = DateTime.UtcNow,
+        };
         var tenantBActor = new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenantB.Id,
-            Tenant = null!,
             ActorTypeId = (int)ActorTypeEnum.Group,
             ActorType = null!,
             Pii = new ActorPii { DisplayName = "Tenant B organizer" },
             ConcurrencyStamp = Guid.CreateVersion7(),
         };
-        context.Actors.AddRange(ownerActor, tenantBActor);
+        context.AddRange(ownerActor, ownerIdentity, tenantBActor);
         await context.SaveChangesAsync();
 
         Location homeA = CreatePrivateHome(tenantA.Id, owner.Id, "HOME-A-NAME-CANARY");
@@ -965,6 +974,7 @@ public sealed class CoLocatedPrivacyErasureAuthorityTests(
             new UserAuthenticationTokenRepository(context),
             erasureRepository,
             erasureRepository,
+            new AiConversationRepository(context),
             new PrivacyErasureProviderWorkRepository(context),
             new PrivacyErasureProviderLocatorProtector(new EphemeralDataProtectionProvider()),
             new PrivacyErasureReplayCheckpointRepository(context),

@@ -1,6 +1,7 @@
 // ABOUTME: PostgreSQL-backed tests for AI conversation repository persistence and tenant filtering.
 // ABOUTME: Verifies migrated AI tables, aggregate updates, message ordering, quota counts, and action lookup.
 
+using System.Text.Json;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain;
@@ -466,6 +467,319 @@ public sealed class AiConversationRepositoryTests(PostgreSqlContainerFixture fix
         await Assert.That(saved.Messages.Single().Content).IsEqualTo("Dry run prompt");
     }
 
+    [Test]
+    public async Task HardDeleteUserConversationGraphAsync_DeletesTargetGraphsAcrossTenants_AndLeavesUnrelatedGraphByteEquivalent()
+    {
+        await fixture.ResetAsync();
+        var tenantA = await SeedTenantAndUserAsync("ai-delete-a");
+        var tenantB = await SeedTenantAndUserAsync("ai-delete-b", tenantA.UserId);
+        var tenantC = await SeedTenantAndUserAsync("ai-delete-c");
+
+        var targetA = await SeedConversationGraphAsync(tenantA, "Target A", DateTime.UtcNow.AddHours(-3), softDeleted: true);
+        var targetB = await SeedConversationGraphAsync(tenantB, "Target B", DateTime.UtcNow.AddHours(-2), softDeleted: true);
+        var unrelated = await SeedConversationGraphAsync(tenantC, "Unrelated", DateTime.UtcNow.AddHours(-1));
+
+        byte[] unrelatedBefore;
+        await using (var beforeContext = fixture.CreateDbContext())
+        {
+            unrelatedBefore = await SnapshotConversationGraphAsync(beforeContext, unrelated.ConversationId);
+        }
+
+        await using (var deleteContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantA.TenantId)))
+        {
+            var repository = new AiConversationRepository(deleteContext);
+            var deleted = await repository.HardDeleteUserConversationGraphAsync(tenantA.UserId, CancellationToken.None);
+
+            await Assert.That(deleted).IsEqualTo(2);
+        }
+
+        await using (var verifyContext = fixture.CreateDbContext())
+        {
+            await Assert.That(await verifyContext.AiConversations.IgnoreQueryFilters()
+                .CountAsync(conversation => conversation.UserId == tenantA.UserId)).IsEqualTo(0);
+            await Assert.That(await verifyContext.AiConversations.IgnoreQueryFilters()
+                .CountAsync(conversation => conversation.UserId == tenantB.UserId)).IsEqualTo(0);
+            await Assert.That(await verifyContext.AiMessages.IgnoreQueryFilters()
+                .CountAsync(message => message.ConversationId == targetA.ConversationId || message.ConversationId == targetB.ConversationId)).IsEqualTo(0);
+            await Assert.That(await verifyContext.AiRuns.IgnoreQueryFilters()
+                .CountAsync(run => run.ConversationId == targetA.ConversationId || run.ConversationId == targetB.ConversationId)).IsEqualTo(0);
+            await Assert.That(await verifyContext.AiConversationReferences.IgnoreQueryFilters()
+                .CountAsync(reference => reference.ConversationId == targetA.ConversationId || reference.ConversationId == targetB.ConversationId)).IsEqualTo(0);
+            await Assert.That(await verifyContext.AiProposedActions.IgnoreQueryFilters()
+                .CountAsync(action => action.ConversationId == targetA.ConversationId || action.ConversationId == targetB.ConversationId)).IsEqualTo(0);
+            await Assert.That(await verifyContext.AiToolExecutions.IgnoreQueryFilters()
+                .CountAsync(execution => execution.ProposedActionId == targetA.ProposedActionId || execution.ProposedActionId == targetB.ProposedActionId)).IsEqualTo(0);
+        }
+
+        byte[] unrelatedAfter;
+        await using (var afterContext = fixture.CreateDbContext())
+        {
+            unrelatedAfter = await SnapshotConversationGraphAsync(afterContext, unrelated.ConversationId);
+        }
+
+        await Assert.That(unrelatedAfter).IsEquivalentTo(unrelatedBefore);
+    }
+
+    [Test]
+    public async Task HardDeleteUserConversationGraphAsync_WhenCancelled_BeforeExecution_LeavesRowsUntouched()
+    {
+        await fixture.ResetAsync();
+        var tenant = await SeedTenantAndUserAsync("ai-delete-cancel");
+        var graph = await SeedConversationGraphAsync(tenant, "Cancelled", DateTime.UtcNow.AddHours(-1));
+        byte[] before;
+
+        await using (var snapshotContext = fixture.CreateDbContext())
+        {
+            before = await SnapshotConversationGraphAsync(snapshotContext, graph.ConversationId);
+        }
+
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        bool cancelled = false;
+
+        await using (var deleteContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenant.TenantId)))
+        {
+            var repository = new AiConversationRepository(deleteContext);
+            try
+            {
+                await repository.HardDeleteUserConversationGraphAsync(tenant.UserId, cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                cancelled = true;
+            }
+        }
+
+        await Assert.That(cancelled).IsTrue();
+
+        await using (var afterContext = fixture.CreateDbContext())
+        {
+            var after = await SnapshotConversationGraphAsync(afterContext, graph.ConversationId);
+            await Assert.That(after).IsEquivalentTo(before);
+        }
+    }
+
+    [Test]
+    public async Task HardDeleteUserConversationGraphAsync_IsIdempotentOnRepeatedErase()
+    {
+        await fixture.ResetAsync();
+        var tenant = await SeedTenantAndUserAsync("ai-delete-idempotent");
+        var graph = await SeedConversationGraphAsync(tenant, "Idempotent", DateTime.UtcNow.AddHours(-1));
+
+        await using (var deleteContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenant.TenantId)))
+        {
+            var repository = new AiConversationRepository(deleteContext);
+            var first = await repository.HardDeleteUserConversationGraphAsync(tenant.UserId, CancellationToken.None);
+            var second = await repository.HardDeleteUserConversationGraphAsync(tenant.UserId, CancellationToken.None);
+
+            await Assert.That(first).IsEqualTo(1);
+            await Assert.That(second).IsEqualTo(0);
+        }
+
+        await using (var verifyContext = fixture.CreateDbContext())
+        {
+            await Assert.That(await verifyContext.AiConversations.IgnoreQueryFilters()
+                .CountAsync(conversation => conversation.Id == graph.ConversationId)).IsEqualTo(0);
+            await Assert.That(await verifyContext.AiMessages.IgnoreQueryFilters()
+                .CountAsync(message => message.ConversationId == graph.ConversationId)).IsEqualTo(0);
+            await Assert.That(await verifyContext.AiRuns.IgnoreQueryFilters()
+                .CountAsync(run => run.ConversationId == graph.ConversationId)).IsEqualTo(0);
+            await Assert.That(await verifyContext.AiConversationReferences.IgnoreQueryFilters()
+                .CountAsync(reference => reference.ConversationId == graph.ConversationId)).IsEqualTo(0);
+            await Assert.That(await verifyContext.AiProposedActions.IgnoreQueryFilters()
+                .CountAsync(action => action.ConversationId == graph.ConversationId)).IsEqualTo(0);
+            await Assert.That(await verifyContext.AiToolExecutions.IgnoreQueryFilters()
+                .CountAsync(execution => execution.ProposedActionId == graph.ProposedActionId)).IsEqualTo(0);
+        }
+    }
+
+    private async Task<AiConversationGraphSeed> SeedConversationGraphAsync(
+        AiTestScope scope,
+        string title,
+        DateTime utcNow,
+        bool softDeleted = false)
+    {
+        await using var context = fixture.CreateDbContext();
+        var conversation = NewConversation(scope, title);
+        conversation.CreatedAt = utcNow;
+        conversation.UpdatedAt = utcNow;
+
+        conversation.AddMessage(AiMessageRole.User, $"{title} prompt", scope.UserId, utcNow.AddMinutes(1));
+        var assistantMessage = conversation.AddMessage(AiMessageRole.Assistant, $"{title} assistant", null, utcNow.AddMinutes(2));
+        var run = conversation.QueueRun("fake", "fake-ai-assistant-v1", utcNow.AddMinutes(3));
+        run.Start(utcNow.AddMinutes(4));
+        conversation.AddReference(
+            AiReferenceKind.Event,
+            Guid.CreateVersion7(),
+            $"{title} reference",
+            $"{title} summary",
+            scope.UserId,
+            utcNow.AddMinutes(5));
+        var proposedAction = conversation.ProposeAction(
+            AiProposedActionKind.CreateEventDraft,
+            $"{{\"title\":\"{title}\"}}",
+            assistantMessage.Id,
+            scope.UserId,
+            utcNow.AddMinutes(6));
+
+        if (softDeleted)
+        {
+            conversation.IsDeleted = true;
+            conversation.DeletedAt = utcNow.AddMinutes(9);
+            conversation.DeletedBy = scope.UserId;
+        }
+
+        context.AiConversations.Add(conversation);
+        context.AiToolExecutions.Add(new AiToolExecution
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = scope.TenantId,
+            ProposedActionId = proposedAction.Id,
+            ToolName = "CreateEventDraft",
+            StartedAt = utcNow.AddMinutes(7),
+            CompletedAt = utcNow.AddMinutes(8),
+            Succeeded = true
+        });
+        await context.SaveChangesAsync();
+        return new AiConversationGraphSeed(conversation.Id, proposedAction.Id);
+    }
+
+    private static async Task<byte[]> SnapshotConversationGraphAsync(ExploreDbContext context, Guid conversationId)
+    {
+        var conversation = await context.AiConversations
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleAsync(item => item.Id == conversationId);
+        var messageBytes = await context.AiMessages
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(message => message.ConversationId == conversationId)
+            .OrderBy(message => message.Sequence)
+            .Select(message => new
+            {
+                message.Id,
+                message.TenantId,
+                message.ConversationId,
+                message.Sequence,
+                message.RoleId,
+                message.Content,
+                message.ImageAttachmentsJson,
+                message.CreatedAt,
+                message.CreatedBy
+            })
+            .ToListAsync();
+        var runBytes = await context.AiRuns
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(run => run.ConversationId == conversationId)
+            .OrderBy(run => run.QueuedAt)
+            .Select(run => new
+            {
+                run.Id,
+                run.TenantId,
+                run.ConversationId,
+                run.StatusId,
+                run.Provider,
+                run.ModelId,
+                run.QueuedAt,
+                run.StartedAt,
+                run.CompletedAt,
+                run.FailureCode,
+                run.FailureMessage
+            })
+            .ToListAsync();
+        var referenceBytes = await context.AiConversationReferences
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(reference => reference.ConversationId == conversationId)
+            .OrderBy(reference => reference.CreatedAt)
+            .Select(reference => new
+            {
+                reference.Id,
+                reference.TenantId,
+                reference.ConversationId,
+                reference.KindId,
+                reference.ReferenceId,
+                reference.DisplayName,
+                reference.Summary,
+                reference.CreatedAt,
+                reference.CreatedBy
+            })
+            .ToListAsync();
+        var proposedActions = await context.AiProposedActions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(action => action.ConversationId == conversationId)
+            .OrderBy(action => action.CreatedAt)
+            .Select(action => new
+            {
+                action.Id,
+                action.TenantId,
+                action.ConversationId,
+                action.MessageId,
+                action.ActingActorId,
+                action.KindId,
+                action.StatusId,
+                action.PayloadJson,
+                action.ConfirmedBy,
+                action.ConfirmedAt,
+                action.RejectedBy,
+                action.RejectedAt,
+                action.ResultResourceId,
+                action.FailureCode,
+                action.FailureMessage,
+                action.CreatedAt,
+                action.CreatedBy
+            })
+            .ToListAsync();
+        var proposedActionIds = proposedActions.Select(action => action.Id).ToArray();
+        var toolExecutions = await context.AiToolExecutions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(execution => proposedActionIds.Contains(execution.ProposedActionId))
+            .OrderBy(execution => execution.StartedAt)
+            .Select(execution => new
+            {
+                execution.Id,
+                execution.TenantId,
+                execution.ProposedActionId,
+                execution.ToolName,
+                execution.StartedAt,
+                execution.CompletedAt,
+                execution.Succeeded,
+                execution.FailureCode,
+                execution.FailureMessage
+            })
+            .ToListAsync();
+
+        return JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            conversation.Id,
+            conversation.TenantId,
+            conversation.UserId,
+            conversation.ActorId,
+            conversation.StatusId,
+            conversation.Title,
+            conversation.Provider,
+            conversation.ModelId,
+            conversation.BlockedReason,
+            conversation.LastMessageSequence,
+            conversation.CreatedAt,
+            conversation.CreatedBy,
+            conversation.UpdatedAt,
+            conversation.UpdatedBy,
+            conversation.IsDeleted,
+            conversation.DeletedAt,
+            conversation.DeletedBy,
+            conversation.ConcurrencyStamp,
+            Messages = messageBytes,
+            Runs = runBytes,
+            References = referenceBytes,
+            ProposedActions = proposedActions,
+            ToolExecutions = toolExecutions
+        });
+    }
+
     private async Task<AiTestScope> SeedTenantAndUserAsync(string slugPrefix, Guid? userId = null)
     {
         await using var context = fixture.CreateDbContext();
@@ -535,4 +849,5 @@ public sealed class AiConversationRepositoryTests(PostgreSqlContainerFixture fix
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
 
     private sealed record AiTestScope(Guid TenantId, Guid UserId, Guid ConversationId);
+    private sealed record AiConversationGraphSeed(Guid ConversationId, Guid ProposedActionId);
 }

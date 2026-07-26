@@ -29,8 +29,7 @@ public class EventContactShareConsentConfiguration : IEntityTypeConfiguration<Ev
         builder.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.RecipientActor)
             .WithMany()
-            .HasForeignKey(e => new { e.TenantId, e.RecipientActorId })
-            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .HasForeignKey(e => e.RecipientActorId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.SourceEventRegistrationIntent)
             .WithMany()

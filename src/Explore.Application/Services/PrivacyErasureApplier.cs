@@ -19,6 +19,7 @@ public sealed class PrivacyErasureApplier(
     IUserAuthenticationTokenRepository tokenRepository,
     IUserLocationPrivacyErasureRepository erasureRepository,
     IUserPrivacyErasureRepository privacyErasureRepository,
+    IAiConversationRepository aiConversationRepository,
     IPrivacyErasureProviderWorkRepository providerWorkRepository,
     IPrivacyErasureProviderLocatorProtector providerLocatorProtector,
     IPrivacyErasureReplayCheckpointRepository checkpointRepository,
@@ -139,6 +140,9 @@ public sealed class PrivacyErasureApplier(
         await privacyErasureRepository.EraseMembershipsAndPreferencesAsync(
             intent.SubjectId,
             cancellationToken);
+        await aiConversationRepository.HardDeleteUserConversationGraphAsync(
+            intent.SubjectId,
+            cancellationToken);
 
         var audits = new List<EventLocationDisclosureAudit>(eventLocations.Count);
         foreach (EventLocation eventLocation in eventLocations)
@@ -162,16 +166,24 @@ public sealed class PrivacyErasureApplier(
         foreach (Actor actor in actors)
         {
             actor.UserId = null;
-            actor.PdsHost = null;
-            actor.DidCustodyTypeId = null;
+            foreach (AtprotoIdentity identity in actor.AtprotoIdentities)
+            {
+                identity.Did = $"did:deleted:{identity.Id:N}";
+                identity.Handle = null;
+                identity.PdsHost = string.Empty;
+                identity.SigningKey = null;
+                identity.IsActive = false;
+                identity.IsDeleted = true;
+                identity.DeletedAt = prepared.AppliedAtUtc;
+                identity.DeletedBy = intent.SubjectId;
+            }
+
             if (actor.Pii is null)
             {
                 continue;
             }
 
             actor.Pii.DisplayName = "Deleted user";
-            actor.Pii.Did = null;
-            actor.Pii.Handle = null;
             actor.Pii.ProfilePictureUri = null;
         }
 

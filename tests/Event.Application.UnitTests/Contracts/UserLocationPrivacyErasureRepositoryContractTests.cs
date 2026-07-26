@@ -34,6 +34,17 @@ public sealed class UserLocationPrivacyErasureRepositoryContractTests
     }
 
     [Test]
+    public async Task AiConversationGraphDelete_ReturnsTaskAndNotQueryable()
+    {
+        var method = typeof(IAiConversationRepository).GetMethod(
+            nameof(IAiConversationRepository.HardDeleteUserConversationGraphAsync));
+
+        await Assert.That(method).IsNotNull();
+        await Assert.That(method!.ReturnType).IsEqualTo(typeof(Task<int>));
+        await Assert.That(typeof(IQueryable).IsAssignableFrom(method.ReturnType)).IsFalse();
+    }
+
+    [Test]
     public async Task ProviderBackedLocalMetadataWrite_ReturnsTaskAndNotQueryable()
     {
         var method = typeof(IUserPrivacyErasureRepository).GetMethod(

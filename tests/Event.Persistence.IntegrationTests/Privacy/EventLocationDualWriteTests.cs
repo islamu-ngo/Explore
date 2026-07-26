@@ -426,8 +426,6 @@ public sealed class EventLocationDualWriteTests(PostgreSqlContainerFixture fixtu
         var actor = new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenant.Id,
-            Tenant = null!,
             UserId = user.Id,
             ActorTypeId = (int)ActorTypeEnum.User,
             ActorType = null!,
@@ -436,8 +434,6 @@ public sealed class EventLocationDualWriteTests(PostgreSqlContainerFixture fixtu
         var otherActor = new Actor
         {
             Id = Guid.CreateVersion7(),
-            TenantId = otherTenant.Id,
-            Tenant = null!,
             UserId = null,
             ActorTypeId = (int)ActorTypeEnum.Group,
             ActorType = null!,
