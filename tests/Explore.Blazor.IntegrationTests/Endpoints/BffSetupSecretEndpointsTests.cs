@@ -121,6 +121,8 @@ public sealed class BffSetupSecretEndpointsTests
         normalizedSessionCookie.Should().NotContain("; secure");
         normalizedCookie.Should().Contain("httponly");
         normalizedSessionCookie.Should().Contain("httponly");
+        normalizedCookie.Should().Contain("max-age=1800");
+        normalizedSessionCookie.Should().Contain("max-age=1800");
     }
 
     [Test]
@@ -144,6 +146,26 @@ public sealed class BffSetupSecretEndpointsTests
         normalizedSessionCookie.Should().Contain("; secure");
         normalizedCookie.Should().Contain("httponly");
         normalizedSessionCookie.Should().Contain("httponly");
+        normalizedCookie.Should().Contain("max-age=1800");
+        normalizedSessionCookie.Should().Contain("max-age=1800");
+    }
+
+    [Test]
+    public async Task SetupSecret_Get_WhenPersistedSecretIsValid_RefreshesRollingCookies()
+    {
+        using var handler = new ValidateSecretHandler(HttpStatusCode.OK, """{"valid":true}""");
+        await using var app = await CreateAppAsync(
+            handler,
+            setupSecretResolver: new StaticSetupSecretResolver("candidate-secret"));
+
+        using var response = await app.Client.GetAsync("/bff/setup-secret");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var cookies = response.Headers.GetValues("Set-Cookie").ToArray();
+        cookies.Single(value => value.StartsWith("setup-secret=", StringComparison.Ordinal))
+            .Should().Contain("max-age=1800");
+        cookies.Single(value => value.StartsWith("setup-secret-session=", StringComparison.Ordinal))
+            .Should().Contain("max-age=1800");
     }
 
     [Test]
@@ -169,7 +191,8 @@ public sealed class BffSetupSecretEndpointsTests
 
     private static async Task<TestBffApp> CreateAppAsync(
         ValidateSecretHandler handler,
-        bool useRealSetupRateLimit = false)
+        bool useRealSetupRateLimit = false,
+        ISetupSecretResolver? setupSecretResolver = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -201,7 +224,7 @@ public sealed class BffSetupSecretEndpointsTests
         builder.Services.AddSingleton<SetupSecretSessionService>();
         builder.Services.AddSingleton<ISetupSecretSessionService>(sp => sp.GetRequiredService<SetupSecretSessionService>());
         builder.Services.AddSingleton<ISetupSecretCookieProtector, PassThroughSetupSecretCookieProtector>();
-        builder.Services.AddSingleton<ISetupSecretResolver, EmptySetupSecretResolver>();
+        builder.Services.AddSingleton<ISetupSecretResolver>(setupSecretResolver ?? new EmptySetupSecretResolver());
         builder.Services.AddSingleton(new HttpClient(handler, disposeHandler: false)
         {
             BaseAddress = new Uri("https://api.example.test/")
@@ -283,5 +306,13 @@ public sealed class BffSetupSecretEndpointsTests
         {
             return SetupSecretResolutionResult.NotFound("test_secret_missing");
         }
+    }
+
+    private sealed class StaticSetupSecretResolver(string secret) : ISetupSecretResolver
+    {
+        public SetupSecretResolutionResult Resolve(
+            HttpContext? httpContext = null,
+            HttpRequestMessage? outboundRequest = null) =>
+            SetupSecretResolutionResult.FoundFrom(SetupSecretSource.ServerSideSetupSession, secret);
     }
 }

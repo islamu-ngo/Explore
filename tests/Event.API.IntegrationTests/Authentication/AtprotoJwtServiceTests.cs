@@ -62,6 +62,8 @@ public sealed class AtprotoJwtServiceTests
                 expires: DateTime.UtcNow.AddMinutes(3)),
             CreateBootstrapToken(keys.OAuthKey, tenantId, includeIssuedAt: false),
             CreateBootstrapToken(keys.OAuthKey, tenantId, issuedAt: DateTimeOffset.UtcNow.AddMinutes(2)),
+            CreateBootstrapToken(keys.OAuthKey, tenantId, classification: null),
+            CreateBootstrapToken(keys.OAuthKey, tenantId, classification: "unknown"),
             CreateBootstrapToken(keys.UnknownKey, tenantId, keyId: "unknown"),
             CreateHs256Token(tenantId),
             CreateUnsignedToken(tenantId)
@@ -71,6 +73,48 @@ public sealed class AtprotoJwtServiceTests
         {
             await Assert.That(await service.ValidateBootstrapAsync(
                 attack, tenantId, HttpMethods.Post, AtprotoJwtOptions.BridgePath, CancellationToken.None)).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task BootstrapValidationRejectsDuplicateMalformedOrHalfCanonicalActorTargetClaims()
+    {
+        using var keys = new TestKeyMaterial();
+        var service = CreateService(keys);
+        var tenantId = Guid.NewGuid();
+        var canonicalActorId = Guid.NewGuid();
+        var valid = CreateBootstrapToken(
+            keys.OAuthKey,
+            tenantId,
+            canonicalActorId: canonicalActorId,
+            expectedCanonicalActorConcurrencyStamp: Guid.NewGuid());
+        var duplicate = CreateBootstrapToken(
+            keys.OAuthKey,
+            tenantId,
+            canonicalActorId: canonicalActorId,
+            expectedCanonicalActorConcurrencyStamp: Guid.NewGuid(),
+            extraClaims: [new Claim(AtprotoJwtOptions.CanonicalActorIdClaim, Guid.NewGuid().ToString("D"))]);
+        var malformed = CreateBootstrapToken(
+            keys.OAuthKey,
+            tenantId,
+            canonicalActorId: Guid.Empty,
+            expectedCanonicalActorConcurrencyStamp: Guid.NewGuid());
+        var malformedStamp = CreateBootstrapToken(
+            keys.OAuthKey,
+            tenantId,
+            canonicalActorId: canonicalActorId,
+            extraClaims: [new Claim(AtprotoJwtOptions.ExpectedCanonicalActorConcurrencyStampClaim, "not-a-guid")]);
+        var emptyStamp = CreateBootstrapToken(
+            keys.OAuthKey,
+            tenantId,
+            canonicalActorId: canonicalActorId,
+            extraClaims: [new Claim(AtprotoJwtOptions.ExpectedCanonicalActorConcurrencyStampClaim, Guid.Empty.ToString("D"))]);
+        var half = CreateBootstrapToken(keys.OAuthKey, tenantId, canonicalActorId: canonicalActorId);
+
+        await Assert.That(await service.ValidateBootstrapAsync(valid, tenantId, HttpMethods.Post, AtprotoJwtOptions.BridgePath, CancellationToken.None)).IsNotNull();
+        foreach (var attack in new[] { duplicate, malformed, malformedStamp, emptyStamp, half })
+        {
+            await Assert.That(await service.ValidateBootstrapAsync(attack, tenantId, HttpMethods.Post, AtprotoJwtOptions.BridgePath, CancellationToken.None)).IsNull();
         }
     }
 
@@ -90,6 +134,7 @@ public sealed class AtprotoJwtServiceTests
         await Assert.That(principal!.FindFirstValue(JwtRegisteredClaimNames.Sub)).IsEqualTo(userId.ToString("D"));
         await Assert.That(principal.FindFirstValue(AtprotoJwtOptions.TenantClaim)).IsEqualTo(tenantId.ToString("D"));
         await Assert.That(principal.FindFirstValue(AtprotoJwtOptions.DidClaim)).IsEqualTo(did);
+        await Assert.That(principal.Claims.Any(claim => claim.Type is AtprotoJwtOptions.CanonicalActorIdClaim or AtprotoJwtOptions.ExpectedCanonicalActorConcurrencyStampClaim)).IsFalse();
         await Assert.That(await service.ValidateSessionAsync(issued.Token, Guid.NewGuid(), CancellationToken.None)).IsNull();
 
         var oauthSignedSession = CreateSessionToken(keys.OAuthKey, userId, tenantId, did);
@@ -307,22 +352,49 @@ public sealed class AtprotoJwtServiceTests
         DateTime? notBefore = null,
         string keyId = "oauth-active",
         DateTimeOffset? issuedAt = null,
-        bool includeIssuedAt = true) => CreateToken(
+        bool includeIssuedAt = true,
+        string? classification = "person",
+        Guid? canonicalActorId = null,
+        Guid? expectedCanonicalActorConcurrencyStamp = null,
+        IEnumerable<Claim>? extraClaims = null)
+    {
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, "event-blazor-bff"),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("D")),
+            new(AtprotoJwtOptions.TenantClaim, tenantId.ToString("D")),
+            new(AtprotoJwtOptions.DidClaim, "did:plc:bootstrap-user"),
+            new(AtprotoJwtOptions.MethodClaim, method),
+            new(AtprotoJwtOptions.PathClaim, path)
+        };
+        if (classification is not null)
+        {
+            claims.Add(new(AtprotoJwtOptions.ClassificationClaim, classification));
+        }
+        if (canonicalActorId is not null)
+        {
+            claims.Add(new(AtprotoJwtOptions.CanonicalActorIdClaim, canonicalActorId.Value.ToString("D")));
+        }
+        if (expectedCanonicalActorConcurrencyStamp is not null)
+        {
+            claims.Add(new(AtprotoJwtOptions.ExpectedCanonicalActorConcurrencyStampClaim, expectedCanonicalActorConcurrencyStamp.Value.ToString("D")));
+        }
+        if (extraClaims is not null)
+        {
+            claims.AddRange(extraClaims);
+        }
+
+        return CreateToken(
             key,
             AtprotoJwtOptions.BootstrapIssuer,
             audience,
-            [
-                new Claim(JwtRegisteredClaimNames.Sub, "event-blazor-bff"),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("D")),
-                new Claim(AtprotoJwtOptions.TenantClaim, tenantId.ToString("D")),
-                new Claim(AtprotoJwtOptions.MethodClaim, method),
-                new Claim(AtprotoJwtOptions.PathClaim, path)
-            ],
+            claims,
             expires,
             notBefore,
             keyId,
             issuedAt,
             includeIssuedAt);
+    }
 
     private static string CreateSessionToken(ECDsa key, Guid userId, Guid tenantId, string did) => CreateToken(
         key,

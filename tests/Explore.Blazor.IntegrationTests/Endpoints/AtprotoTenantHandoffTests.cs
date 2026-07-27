@@ -71,6 +71,8 @@ public sealed class AtprotoTenantHandoffTests
         ticket.Principal.FindFirstValue("did").Should().Be("did:plc:alice");
         ticket.Principal.FindFirstValue("tenant_id").Should().Be(TenantId.ToString("D"));
         ticket.Principal.FindFirstValue("auth_provider").Should().Be("atproto");
+        ticket.Principal.FindFirstValue("canonical_actor_id").Should().BeNull();
+        ticket.Principal.FindFirstValue("expected_actor_concurrency_stamp").Should().BeNull();
         ticket.Properties.GetTokenValue("access_token").Should().Be(PlatformAccessToken);
         ticket.Properties.GetTokenValue("token_type").Should().Be("Bearer");
         ticket.Properties.GetTokenValue("expires_at").Should().NotBeNullOrWhiteSpace();
@@ -178,10 +180,14 @@ public sealed class AtprotoTenantHandoffTests
                 "default",
                 new Uri($"{TenantOrigin}/"),
                 "/events?source=atproto",
-                "oauth-active"),
+                "oauth-active",
+                "person"),
             new AtprotoBffSessionResult(
                 UserId,
+                Guid.NewGuid(),
+                Guid.NewGuid(),
                 "did:plc:alice",
+                "person",
                 PlatformAccessToken,
                 DateTimeOffset.UtcNow.AddMinutes(10)),
             CancellationToken.None);

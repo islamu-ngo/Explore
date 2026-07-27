@@ -2,11 +2,13 @@
 // ABOUTME: Proves verification failures write nothing and post-commit issuance failures are safely retryable.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Authentication.Atproto.Handlers.Commands;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.Authentication.Atproto;
@@ -23,8 +25,22 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
     private readonly IActorRepository _actors = Substitute.For<IActorRepository>();
     private readonly IAtprotoIdentityRepository _atprotoIdentities = Substitute.For<IAtprotoIdentityRepository>();
+    private readonly ITenantUserRepository _tenantUsers = Substitute.For<ITenantUserRepository>();
+    private readonly ITenantUserRoleGrantRepository _tenantUserRoleGrants = Substitute.For<ITenantUserRoleGrantRepository>();
+    private readonly IOrganizationRepository _organizations = Substitute.For<IOrganizationRepository>();
+    private readonly IOrganizationTenantRepository _organizationTenants = Substitute.For<IOrganizationTenantRepository>();
+    private readonly IOrganizationMemberRepository _organizationMembers = Substitute.For<IOrganizationMemberRepository>();
+    private readonly IGroupRepository _groups = Substitute.For<IGroupRepository>();
+    private readonly IGroupTenantRepository _groupTenants = Substitute.For<IGroupTenantRepository>();
+    private readonly IGroupMemberRepository _groupMembers = Substitute.For<IGroupMemberRepository>();
+    private readonly IAdminCacheInvalidator _adminCacheInvalidator = Substitute.For<IAdminCacheInvalidator>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
+    private TenantUser? _storedTenantUser;
+    private OrganizationTenant? _storedOrganizationTenant;
+    private GroupTenant? _storedGroupTenant;
+    private bool _organizationMemberExists;
+    private bool _groupMemberExists;
 
     public BootstrapAtprotoSessionCommandHandlerTests()
     {
@@ -35,6 +51,46 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
                 Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<Func<CancellationToken, Task<AtprotoSessionBootstrapResult?>>>()(
                 call.Arg<CancellationToken>()));
+
+        _tenantUsers.GetByTenantAndUserAsync(_tenantId, _userId, Arg.Any<CancellationToken>())
+            .Returns(_ => _storedTenantUser);
+        _tenantUsers.Create(Arg.Any<TenantUser>()).Returns(call =>
+        {
+            _storedTenantUser = WithId(call.Arg<TenantUser>());
+            return _storedTenantUser;
+        });
+        _organizations.Create(Arg.Any<Organization>()).Returns(call => WithId(call.Arg<Organization>()));
+        _groups.Create(Arg.Any<Group>()).Returns(call => WithId(call.Arg<Group>()));
+        _actors.Create(Arg.Any<Actor>()).Returns(call => WithId(call.Arg<Actor>()));
+        _organizationTenants.GetByOrganizationAndTenant(
+                Arg.Any<Guid>(),
+                _tenantId,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => _storedOrganizationTenant);
+        _organizationTenants.Create(Arg.Any<OrganizationTenant>()).Returns(call =>
+        {
+            _storedOrganizationTenant = WithId(call.Arg<OrganizationTenant>());
+            return _storedOrganizationTenant;
+        });
+        _groupTenants.GetByGroupAndTenant(Arg.Any<Guid>(), _tenantId, Arg.Any<CancellationToken>())
+            .Returns(_ => _storedGroupTenant);
+        _groupTenants.Create(Arg.Any<GroupTenant>()).Returns(call =>
+        {
+            _storedGroupTenant = WithId(call.Arg<GroupTenant>());
+            return _storedGroupTenant;
+        });
+        _organizationMembers.Exists(Arg.Any<Guid>(), _userId).Returns(_ => _organizationMemberExists);
+        _organizationMembers.Create(Arg.Any<OrganizationMember>()).Returns(call =>
+        {
+            _organizationMemberExists = true;
+            return WithId(call.Arg<OrganizationMember>());
+        });
+        _groupMembers.Exists(Arg.Any<Guid>(), _userId).Returns(_ => _groupMemberExists);
+        _groupMembers.Create(Arg.Any<GroupMember>()).Returns(call =>
+        {
+            _groupMemberExists = true;
+            return WithId(call.Arg<GroupMember>());
+        });
     }
 
     [Test]
@@ -50,7 +106,7 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         await _externalLogins.DidNotReceiveWithAnyArgs().GetByProviderAndKey(default!, default!);
         await _actors.DidNotReceiveWithAnyArgs().Update(default!);
         await _atprotoIdentities.DidNotReceiveWithAnyArgs().Create(default!);
-        await _securityGateway.DidNotReceiveWithAnyArgs().PersistAsync(default!, default, default, default);
+        await _securityGateway.DidNotReceiveWithAnyArgs().PersistPreparedAsync(default!, default);
         await _tokenIssuer.DidNotReceiveWithAnyArgs().IssueAsync(default, default, default!, default);
     }
 
@@ -67,7 +123,32 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         await _users.DidNotReceiveWithAnyArgs().GetById(default);
         await _actors.DidNotReceiveWithAnyArgs().Update(default!);
         await _atprotoIdentities.DidNotReceiveWithAnyArgs().Create(default!);
-        await _securityGateway.DidNotReceiveWithAnyArgs().PersistAsync(default!, default, default, default);
+        await _securityGateway.DidNotReceiveWithAnyArgs().PersistPreparedAsync(default!, default);
+        await _tokenIssuer.DidNotReceiveWithAnyArgs().IssueAsync(default, default, default!, default);
+    }
+
+    [Test]
+    public async Task ConflictingTenantUserActorPerformsZeroIdentityOrSessionWrites()
+    {
+        ConfigureVerifiedSession();
+        var linked = ConfigureLinkedIdentity();
+        _storedTenantUser = new TenantUser
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            Tenant = null!,
+            UserId = _userId,
+            User = linked.User,
+            ActorId = Guid.NewGuid()
+        };
+
+        var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("linked_identity_incomplete");
+        await _atprotoIdentities.DidNotReceiveWithAnyArgs().Create(default!);
+        await _atprotoIdentities.DidNotReceiveWithAnyArgs().Update(default!);
+        await _securityGateway.DidNotReceiveWithAnyArgs().PersistPreparedAsync(default!, default);
         await _tokenIssuer.DidNotReceiveWithAnyArgs().IssueAsync(default, default, default!, default);
     }
 
@@ -85,7 +166,7 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         await Assert.That(result.FailureCode).IsEqualTo("account_not_linked");
         await _actors.DidNotReceiveWithAnyArgs().Update(default!);
         await _atprotoIdentities.DidNotReceiveWithAnyArgs().Create(default!);
-        await _securityGateway.DidNotReceiveWithAnyArgs().PersistAsync(default!, default, default, default);
+        await _securityGateway.DidNotReceiveWithAnyArgs().PersistPreparedAsync(default!, default);
         await _tokenIssuer.DidNotReceiveWithAnyArgs().IssueAsync(default, default, default!, default);
     }
 
@@ -108,21 +189,129 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.UserId).IsEqualTo(_userId);
+        await Assert.That(result.ActorId).IsEqualTo(linked.Actor.Id);
+        await Assert.That(result.ParticipationId).IsEqualTo(_storedTenantUser!.Id);
+        await Assert.That(result.Classification).IsEqualTo(AtprotoSubjectClassification.Person);
         await Assert.That(result.Token).IsEqualTo("platform-jwt");
         await Assert.That(createdIdentity).IsNotNull();
         await Assert.That(createdIdentity!.Did).IsEqualTo(Did);
         await Assert.That(createdIdentity.Handle).IsEqualTo("linked.example");
         await Assert.That(createdIdentity.ActorId).IsEqualTo(linked.Actor.Id);
-        await _securityGateway.Received(1).PersistAsync(
+        await _securityGateway.Received(1).PreparePersistenceAsync(
             Arg.Is<AtprotoVerifiedOAuthSession>(session => session.Did == Did),
             _tenantId,
             _userId,
             Arg.Any<CancellationToken>());
+        await _securityGateway.Received(1).PersistPreparedAsync(
+            Arg.Is<AtprotoPreparedOAuthSession>(session => session.SubjectDid == Did),
+            Arg.Any<CancellationToken>());
         Received.InOrder(() =>
         {
-            _securityGateway.PersistAsync(Arg.Any<AtprotoVerifiedOAuthSession>(), _tenantId, _userId, Arg.Any<CancellationToken>());
+            _securityGateway.PreparePersistenceAsync(Arg.Any<AtprotoVerifiedOAuthSession>(), _tenantId, _userId, Arg.Any<CancellationToken>());
+            _securityGateway.PersistPreparedAsync(Arg.Any<AtprotoPreparedOAuthSession>(), Arg.Any<CancellationToken>());
             _tokenIssuer.IssueAsync(_userId, _tenantId, Did, Arg.Any<CancellationToken>());
         });
+    }
+
+    [Test]
+    public async Task OrganizationClassificationCreatesOneGlobalSubjectAndReplaysCurrentTenantParticipation()
+    {
+        ConfigureVerifiedSession();
+        var linked = ConfigureLinkedIdentity();
+        linked.Login.TenantId = Guid.NewGuid();
+        AtprotoIdentity? storedIdentity = null;
+        _atprotoIdentities.GetByDid(Did, Arg.Any<CancellationToken>()).Returns(_ => storedIdentity);
+        _atprotoIdentities.Create(Arg.Any<AtprotoIdentity>()).Returns(call =>
+        {
+            storedIdentity = call.Arg<AtprotoIdentity>();
+            return storedIdentity;
+        });
+        _tokenIssuer.IssueAsync(_userId, _tenantId, Did, Arg.Any<CancellationToken>())
+            .Returns(new AtprotoIssuedSessionToken("organization-jwt", DateTimeOffset.UtcNow.AddMinutes(15)));
+
+        var first = await CreateHandler().Handle(
+            CreateCommand(AtprotoSubjectClassification.Organization),
+            CancellationToken.None);
+        var replay = await CreateHandler().Handle(
+            CreateCommand(AtprotoSubjectClassification.Organization),
+            CancellationToken.None);
+
+        await Assert.That(first.Success).IsTrue();
+        await Assert.That(replay.Success).IsTrue();
+        await Assert.That(first.ActorId).IsEqualTo(storedIdentity!.ActorId);
+        await Assert.That(first.ParticipationId).IsEqualTo(_storedOrganizationTenant!.Id);
+        await Assert.That(first.Classification).IsEqualTo(AtprotoSubjectClassification.Organization);
+        await _organizations.Received(1).Create(Arg.Any<Organization>());
+        await _actors.Received(1).Create(Arg.Is<Actor>(candidate =>
+            candidate.ActorTypeId == (int)ActorTypeEnum.Organization));
+        await _organizationTenants.Received(1).Create(Arg.Any<OrganizationTenant>());
+        await _organizationMembers.Received(1).Create(Arg.Is<OrganizationMember>(member =>
+            member.UserId == _userId && member.RoleId == (int)RoleEnum.OrgAdmin));
+        await _tenantUsers.Received(1).Create(Arg.Any<TenantUser>());
+    }
+
+    [Test]
+    public async Task GroupClassificationCreatesOneGlobalSubjectAndFounderMembership()
+    {
+        ConfigureVerifiedSession();
+        ConfigureLinkedIdentity();
+        AtprotoIdentity? storedIdentity = null;
+        _atprotoIdentities.GetByDid(Did, Arg.Any<CancellationToken>()).Returns(_ => storedIdentity);
+        _atprotoIdentities.Create(Arg.Any<AtprotoIdentity>()).Returns(call =>
+        {
+            storedIdentity = call.Arg<AtprotoIdentity>();
+            return storedIdentity;
+        });
+        _tokenIssuer.IssueAsync(_userId, _tenantId, Did, Arg.Any<CancellationToken>())
+            .Returns(new AtprotoIssuedSessionToken("group-jwt", DateTimeOffset.UtcNow.AddMinutes(15)));
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(AtprotoSubjectClassification.Group),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.ActorId).IsEqualTo(storedIdentity!.ActorId);
+        await Assert.That(result.ParticipationId).IsEqualTo(_storedGroupTenant!.Id);
+        await Assert.That(result.Classification).IsEqualTo(AtprotoSubjectClassification.Group);
+        await _groups.Received(1).Create(Arg.Any<Group>());
+        await _groupTenants.Received(1).Create(Arg.Any<GroupTenant>());
+        await _groupMembers.Received(1).Create(Arg.Is<GroupMember>(member =>
+            member.UserId == _userId && member.RoleId == (int)RoleEnum.GroupAdmin));
+    }
+
+    [Test]
+    public async Task ExistingDifferentKindIdentityFailsBeforeParticipationOrSessionWrites()
+    {
+        ConfigureVerifiedSession();
+        ConfigureLinkedIdentity();
+        var group = new Group { Id = Guid.NewGuid(), FullName = "Existing group" };
+        var groupActor = new Actor
+        {
+            Id = Guid.NewGuid(),
+            ActorTypeId = (int)ActorTypeEnum.Group,
+            ActorType = null!,
+            GroupId = group.Id,
+            Group = group,
+            Pii = new ActorPii { DisplayName = group.FullName }
+        };
+        _atprotoIdentities.GetByDid(Did, Arg.Any<CancellationToken>()).Returns(new AtprotoIdentity
+        {
+            Did = Did,
+            ActorId = groupActor.Id,
+            Actor = groupActor,
+            PdsHost = PdsUri.AbsoluteUri
+        });
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(AtprotoSubjectClassification.Organization),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("classification_conflict");
+        await _tenantUsers.DidNotReceiveWithAnyArgs().Create(default!);
+        await _organizations.DidNotReceiveWithAnyArgs().Create(default!);
+        await _securityGateway.DidNotReceiveWithAnyArgs().PersistPreparedAsync(default!, default);
+        await _tokenIssuer.DidNotReceiveWithAnyArgs().IssueAsync(default, default, default!, default);
     }
 
     [Test]
@@ -154,14 +343,50 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         await Assert.That(retry.Token).IsEqualTo("retry-jwt");
         await _atprotoIdentities.Received(1).Create(Arg.Any<AtprotoIdentity>());
         await _atprotoIdentities.Received(1).Update(Arg.Any<AtprotoIdentity>());
-        await _securityGateway.Received(2).PersistAsync(
+        await _securityGateway.Received(2).PreparePersistenceAsync(
             Arg.Any<AtprotoVerifiedOAuthSession>(),
             _tenantId,
             _userId,
             Arg.Any<CancellationToken>());
+        await _securityGateway.Received(2).PersistPreparedAsync(
+            Arg.Any<AtprotoPreparedOAuthSession>(),
+            Arg.Any<CancellationToken>());
     }
 
-    private void ConfigureVerifiedSession() =>
+    [Test]
+    public async Task RetryableTransactionPreparesOnceAndPersistsPreparedSessionForEachAttempt()
+    {
+        ConfigureVerifiedSession();
+        ConfigureLinkedIdentity();
+        _unitOfWork
+            .ExecuteInTransactionAsync<AtprotoSessionBootstrapResult?>(
+                Arg.Any<Func<CancellationToken, Task<AtprotoSessionBootstrapResult?>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var operation = call.Arg<Func<CancellationToken, Task<AtprotoSessionBootstrapResult?>>>();
+                var cancellationToken = call.Arg<CancellationToken>();
+                await operation(cancellationToken);
+                return await operation(cancellationToken);
+            });
+        _tokenIssuer.IssueAsync(_userId, _tenantId, Did, Arg.Any<CancellationToken>())
+            .Returns(new AtprotoIssuedSessionToken("retry-jwt", DateTimeOffset.UtcNow.AddMinutes(15)));
+
+        var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _securityGateway.Received(1).PreparePersistenceAsync(
+            Arg.Any<AtprotoVerifiedOAuthSession>(),
+            _tenantId,
+            _userId,
+            Arg.Any<CancellationToken>());
+        await _securityGateway.Received(2).PersistPreparedAsync(
+            Arg.Any<AtprotoPreparedOAuthSession>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    private void ConfigureVerifiedSession()
+    {
         _securityGateway.VerifyAsync(Arg.Any<AtprotoOAuthVerificationInput>(), Arg.Any<CancellationToken>())
             .Returns(AtprotoOAuthVerificationResult.Verified(new AtprotoVerifiedOAuthSession(
                 Did,
@@ -169,6 +394,22 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
                 PdsUri,
                 "oauth-active",
                 [1, 2, 3])));
+        _securityGateway.PreparePersistenceAsync(
+                Arg.Any<AtprotoVerifiedOAuthSession>(),
+                _tenantId,
+                _userId,
+                Arg.Any<CancellationToken>())
+            .Returns(new AtprotoPreparedOAuthSession(
+                [1, 2, 3],
+                "encryption-active",
+                1,
+                _tenantId,
+                _userId,
+                Did,
+                PdsUri.AbsoluteUri,
+                "oauth-active",
+                DateTime.UtcNow.AddHours(1)));
+    }
 
     private (UserExternalLogin Login, User User, Actor Actor) ConfigureLinkedIdentity()
     {
@@ -207,13 +448,72 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         _users,
         _actors,
         _atprotoIdentities,
+        _tenantUsers,
+        _tenantUserRoleGrants,
+        _organizations,
+        _organizationTenants,
+        _organizationMembers,
+        _groups,
+        _groupTenants,
+        _groupMembers,
+        _adminCacheInvalidator,
         _unitOfWork,
         _tenantContext,
         TimeProvider.System);
 
-    private static BootstrapAtprotoSessionCommand CreateCommand() => new(
+    private static BootstrapAtprotoSessionCommand CreateCommand(
+        AtprotoSubjectClassification classification = AtprotoSubjectClassification.Person) => new(
         Did,
         PdsUri.AbsoluteUri,
         "oauth-active",
+        classification,
         [1, 2, 3]);
+
+    private static TenantUser WithId(TenantUser entity)
+    {
+        entity.Id = entity.Id == Guid.Empty ? Guid.CreateVersion7() : entity.Id;
+        return entity;
+    }
+
+    private static Organization WithId(Organization entity)
+    {
+        entity.Id = entity.Id == Guid.Empty ? Guid.CreateVersion7() : entity.Id;
+        return entity;
+    }
+
+    private static Group WithId(Group entity)
+    {
+        entity.Id = entity.Id == Guid.Empty ? Guid.CreateVersion7() : entity.Id;
+        return entity;
+    }
+
+    private static Actor WithId(Actor entity)
+    {
+        entity.Id = entity.Id == Guid.Empty ? Guid.CreateVersion7() : entity.Id;
+        return entity;
+    }
+
+    private static OrganizationTenant WithId(OrganizationTenant entity)
+    {
+        entity.Id = entity.Id == Guid.Empty ? Guid.CreateVersion7() : entity.Id;
+        return entity;
+    }
+
+    private static GroupTenant WithId(GroupTenant entity)
+    {
+        entity.Id = entity.Id == Guid.Empty ? Guid.CreateVersion7() : entity.Id;
+        return entity;
+    }
+
+    private static OrganizationMember WithId(OrganizationMember entity)
+    {
+        entity.Id = entity.Id == Guid.Empty ? Guid.CreateVersion7() : entity.Id;
+        return entity;
+    }
+
+    private static GroupMember WithId(GroupMember entity)
+    {
+        entity.Id = entity.Id == Guid.Empty ? Guid.CreateVersion7() : entity.Id;
+        return entity;
+    }
 }

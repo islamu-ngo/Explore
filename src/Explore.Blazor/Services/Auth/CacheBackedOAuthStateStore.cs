@@ -155,6 +155,9 @@ public sealed class CacheBackedOAuthStateStore : IOAuthStateStore
             || string.IsNullOrWhiteSpace(seed.TenantSlug)
             || string.IsNullOrWhiteSpace(seed.OAuthClientKeyId)
             || seed.OAuthClientKeyId.Length > 128
+            || seed.CanonicalActorId.HasValue != seed.ExpectedCanonicalActorConcurrencyStamp.HasValue
+            || seed.CanonicalActorId == Guid.Empty
+            || seed.ExpectedCanonicalActorConcurrencyStamp == Guid.Empty
             || !IsSafeReturnPath(seed.ReturnPath)
             || !UrisEqual(storedPds, seed.ExpectedPdsUri)
             || seed.Origin.AbsolutePath != "/"

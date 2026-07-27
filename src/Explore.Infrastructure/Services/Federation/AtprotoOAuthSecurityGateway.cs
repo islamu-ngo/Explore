@@ -6,6 +6,7 @@ using CarpaNet.OAuth.Storage;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Authentication.Atproto.Models;
+using Explore.Domain;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Infrastructure.Services.Federation;
@@ -90,7 +91,7 @@ public sealed class AtprotoOAuthSecurityGateway(
         }
     }
 
-    public async Task PersistAsync(
+    public async Task<AtprotoPreparedOAuthSession> PreparePersistenceAsync(
         AtprotoVerifiedOAuthSession verifiedSession,
         Guid tenantId,
         Guid userId,
@@ -104,8 +105,59 @@ public sealed class AtprotoOAuthSecurityGateway(
             verifiedSession.Did,
             verifiedSession.PdsUri,
             verifiedSession.OAuthClientKeyId);
-        var store = new RepositoryBackedOAuthSessionStore(tokenRepository, protector, context);
-        await store.StoreAsync(verifiedSession.Did, session, cancellationToken).ConfigureAwait(false);
+        var protectedSession = await protector
+            .ProtectAsync(session, context, cancellationToken)
+            .ConfigureAwait(false);
+        return new AtprotoPreparedOAuthSession(
+            protectedSession.Ciphertext,
+            protectedSession.EncryptionKeyId,
+            AtprotoSessionEnvelopeProtector.CurrentEnvelopeVersion,
+            context.TenantId,
+            context.UserId,
+            context.ExpectedSubjectDid,
+            context.ExpectedPdsUri,
+            context.OAuthClientKeyId,
+            session.TokenSet.ExpiresAt?.UtcDateTime);
+    }
+
+    public async Task PersistPreparedAsync(
+        AtprotoPreparedOAuthSession preparedSession,
+        CancellationToken cancellationToken)
+    {
+        var existing = await tokenRepository.GetAtprotoSessionForUpdateAsync(
+            preparedSession.TenantId,
+            preparedSession.UserId,
+            RepositoryBackedAtprotoSession.Provider,
+            preparedSession.SubjectDid,
+            cancellationToken).ConfigureAwait(false);
+        if (existing is null)
+        {
+            await tokenRepository.CreateAtprotoSessionAsync(new UserAuthenticationToken
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = preparedSession.TenantId,
+                Tenant = null!,
+                UserId = preparedSession.UserId,
+                User = null!,
+                Provider = RepositoryBackedAtprotoSession.Provider,
+                SubjectDid = preparedSession.SubjectDid,
+                SessionCiphertext = preparedSession.SessionCiphertext.ToArray(),
+                EncryptionKeyId = preparedSession.EncryptionKeyId,
+                OAuthClientKeyId = preparedSession.OAuthClientKeyId,
+                EnvelopeVersion = preparedSession.EnvelopeVersion,
+                PdsHost = preparedSession.PdsHost,
+                ExpiresAt = preparedSession.ExpiresAt
+            }, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        existing.SessionCiphertext = preparedSession.SessionCiphertext.ToArray();
+        existing.EncryptionKeyId = preparedSession.EncryptionKeyId;
+        existing.OAuthClientKeyId = preparedSession.OAuthClientKeyId;
+        existing.EnvelopeVersion = preparedSession.EnvelopeVersion;
+        existing.PdsHost = preparedSession.PdsHost;
+        existing.ExpiresAt = preparedSession.ExpiresAt;
+        await tokenRepository.UpdateAtprotoSessionAsync(existing, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<AtprotoCurrentOAuthSession?> GetCurrentAsync(

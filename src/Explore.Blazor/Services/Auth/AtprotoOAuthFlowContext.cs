@@ -10,7 +10,10 @@ public sealed record AtprotoOAuthFlowSeed(
     string TenantSlug,
     Uri Origin,
     string ReturnPath,
-    string OAuthClientKeyId);
+    string OAuthClientKeyId,
+    string Classification,
+    Guid? CanonicalActorId = null,
+    Guid? ExpectedCanonicalActorConcurrencyStamp = null);
 
 public sealed record AtprotoOAuthFlowBinding(
     AtprotoOAuthFlowSeed Seed,
@@ -18,9 +21,29 @@ public sealed record AtprotoOAuthFlowBinding(
 
 public sealed record AtprotoBffSessionResult(
     Guid UserId,
+    Guid ActorId,
+    Guid ParticipationId,
     string Did,
+    string Classification,
     string AccessToken,
-    DateTimeOffset ExpiresAt);
+    DateTimeOffset ExpiresAt,
+    Guid? CanonicalActorId = null,
+    Guid? ExpectedCanonicalActorConcurrencyStamp = null);
+
+public static class AtprotoSubjectClassifications
+{
+    public const string Person = "person";
+    public const string Organization = "organization";
+    public const string Group = "group";
+
+    public static string Normalize(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        Person => Person,
+        Organization => Organization,
+        Group => Group,
+        _ => throw new InvalidOperationException("ATProto subject classification is invalid.")
+    };
+}
 
 public sealed class AtprotoOAuthFlowContext
 {

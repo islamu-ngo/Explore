@@ -32,6 +32,8 @@ public sealed class AtprotoAuthenticationFlowTests
     private const string CanonicalOrigin = "https://events.example.com";
     private const string State = "0123456789abcdef0123456789abcdef";
     private static readonly Guid TenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
+    private static readonly Guid CanonicalActorId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000003");
+    private static readonly Guid ExpectedCanonicalActorConcurrencyStamp = Guid.Parse("018e4e5c-7f00-7000-8000-000000000004");
 
     [Test]
     public async Task ChallengeIsPostOnlyAndRejectsMissingAntiforgery()
@@ -43,7 +45,7 @@ public sealed class AtprotoAuthenticationFlowTests
         var response = await InvokeChallengeAsync(
             factory,
             endpoint,
-            "{\"handle\":\"alice.example\"}");
+            "{\"handle\":\"alice.example\",\"classification\":\"person\"}");
 
         response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
         response.Body.Should().Contain("Antiforgery validation failed");
@@ -56,12 +58,12 @@ public sealed class AtprotoAuthenticationFlowTests
         {
             using var client = CreateClient(challengeFactory);
             using var firstContent = new StringContent(
-                "{\"handle\":\"alice.example\"}", Encoding.UTF8, "application/json");
+                "{\"handle\":\"alice.example\",\"classification\":\"person\"}", Encoding.UTF8, "application/json");
             using var first = await client.PostAsync(
                 "/auth/atproto/challenge",
                 firstContent);
             using var secondContent = new StringContent(
-                "{\"handle\":\"alice.example\"}", Encoding.UTF8, "application/json");
+                "{\"handle\":\"alice.example\",\"classification\":\"person\"}", Encoding.UTF8, "application/json");
             using var second = await client.PostAsync(
                 "/auth/atproto/challenge",
                 secondContent);
@@ -89,10 +91,10 @@ public sealed class AtprotoAuthenticationFlowTests
         string[] payloads =
         [
             "{}",
-            "{\"handle\":\"\"}",
-            "{\"handle\":\"single-label\"}",
-            "{\"handle\":\"bad..example\"}",
-            JsonSerializer.Serialize(new { handle = sensitiveHandle })
+            "{\"handle\":\"\",\"classification\":\"person\"}",
+            "{\"handle\":\"single-label\",\"classification\":\"person\"}",
+            "{\"handle\":\"bad..example\",\"classification\":\"person\"}",
+            JsonSerializer.Serialize(new { handle = sensitiveHandle, classification = "person" })
         ];
 
         foreach (var payload in payloads)
@@ -114,6 +116,7 @@ public sealed class AtprotoAuthenticationFlowTests
         var oversizedPayload = JsonSerializer.Serialize(new
         {
             handle = "alice.example",
+            classification = "person",
             padding = new string('x', 2200)
         });
         var oversizedResponse = await InvokeChallengeHandlerAsync(factory, oversizedPayload);
@@ -121,6 +124,79 @@ public sealed class AtprotoAuthenticationFlowTests
         oversizedResponse.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
         oversizedResponse.Location.Should().BeNull();
         oversizedResponse.Body.Should().NotContain(new string('x', 64));
+    }
+
+    [Test]
+    public async Task MissingOrUnknownClassificationIsRejectedBeforeOAuthStateCreation()
+    {
+        using var atprotoServer = new HermeticAtprotoServer();
+        using var apiServer = new HermeticBffApiServer();
+        await using var factory = CreateHappyPathFactory(false, atprotoServer, apiServer);
+
+        foreach (var payload in new[]
+                 {
+                     "{\"handle\":\"alice.example\"}",
+                     "{\"handle\":\"alice.example\",\"classification\":\"bot\"}"
+                 })
+        {
+            var response = await InvokeChallengeHandlerAsync(factory, payload);
+
+            response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+            response.Location.Should().BeNull();
+            response.Body.Should().Contain("ATProto sign-in could not be started.");
+        }
+    }
+
+    [Test]
+    public async Task CanonicalActorTargetChallengeRoundTripsOnlyAsProtectedBootstrapBinding()
+    {
+        using var atprotoServer = new HermeticAtprotoServer();
+        using var apiServer = new HermeticBffApiServer();
+        await using var factory = CreateHappyPathFactory(false, atprotoServer, apiServer);
+        using var client = CreateClient(factory);
+        var antiforgeryToken = await IssueAntiforgeryTokenAsync(client);
+        using var challengeRequest = new HttpRequestMessage(HttpMethod.Post, "/auth/atproto/challenge")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(new
+            {
+                handle = "alice.example",
+                classification = "person",
+                canonicalActorId = CanonicalActorId,
+                expectedCanonicalActorConcurrencyStamp = ExpectedCanonicalActorConcurrencyStamp
+            }), Encoding.UTF8, "application/json")
+        };
+        challengeRequest.Headers.Add("X-CSRF-TOKEN", antiforgeryToken);
+
+        using var challenge = await client.SendAsync(challengeRequest);
+        challenge.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var callbackClient = CreateClient(factory, CanonicalOrigin);
+        using var callback = await callbackClient.GetAsync(
+            $"/signin-atproto?code=authorization-code&state={Uri.EscapeDataString(atprotoServer.State!)}&iss={Uri.EscapeDataString("https://issuer.example")}");
+
+        callback.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        apiServer.CanonicalActorId.Should().Be(CanonicalActorId);
+        apiServer.ExpectedCanonicalActorConcurrencyStamp.Should().Be(ExpectedCanonicalActorConcurrencyStamp);
+    }
+
+    [Test]
+    public async Task CanonicalActorTargetChallengeRejectsHalfOrEmptyPairBeforeOAuthStateCreation()
+    {
+        using var atprotoServer = new HermeticAtprotoServer();
+        using var apiServer = new HermeticBffApiServer();
+        await using var factory = CreateHappyPathFactory(false, atprotoServer, apiServer);
+
+        foreach (var payload in new[]
+                 {
+                     JsonSerializer.Serialize(new { handle = "alice.example", classification = "person", canonicalActorId = CanonicalActorId }),
+                     JsonSerializer.Serialize(new { handle = "alice.example", classification = "person", expectedCanonicalActorConcurrencyStamp = ExpectedCanonicalActorConcurrencyStamp }),
+                     JsonSerializer.Serialize(new { handle = "alice.example", classification = "person", canonicalActorId = Guid.Empty, expectedCanonicalActorConcurrencyStamp = ExpectedCanonicalActorConcurrencyStamp })
+                 })
+        {
+            var response = await InvokeChallengeHandlerAsync(factory, payload);
+
+            response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+            atprotoServer.PushedAuthorizationRequestCount.Should().Be(0);
+        }
     }
 
     [Test]
@@ -249,7 +325,7 @@ public sealed class AtprotoAuthenticationFlowTests
         using var challengeRequest = new HttpRequestMessage(HttpMethod.Post, "/auth/atproto/challenge")
         {
             Content = new StringContent(
-                "{\"handle\":\"alice.example\",\"returnPath\":\"/events?source=atproto\"}",
+                "{\"handle\":\"alice.example\",\"returnPath\":\"/events?source=atproto\",\"classification\":\"person\"}",
                 Encoding.UTF8,
                 "application/json")
         };
@@ -318,7 +394,7 @@ public sealed class AtprotoAuthenticationFlowTests
             using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/atproto/challenge")
             {
                 Content = new StringContent(
-                    "{\"handle\":\"alice.example\"}",
+                    "{\"handle\":\"alice.example\",\"classification\":\"person\"}",
                     Encoding.UTF8,
                     "application/json")
             };
@@ -503,7 +579,7 @@ public sealed class AtprotoAuthenticationFlowTests
         using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/atproto/challenge")
         {
             Content = new StringContent(
-                "{\"handle\":\"alice.example\"}",
+                "{\"handle\":\"alice.example\",\"classification\":\"person\"}",
                 Encoding.UTF8,
                 "application/json")
         };
@@ -644,7 +720,8 @@ public sealed class AtprotoAuthenticationFlowTests
                 "default",
                 new Uri($"{CanonicalOrigin}/"),
                 "/events",
-                "oauth-active")),
+                "oauth-active",
+                "person")),
             Verifier = "verifier",
             ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(4)
         });
@@ -826,8 +903,10 @@ public sealed class AtprotoAuthenticationFlowTests
         public const string PlatformAccessToken = "opaque-platform-access-token";
         private static readonly Guid UserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000002");
         public int BridgeCalls { get; private set; }
+        public Guid? CanonicalActorId { get; private set; }
+        public Guid? ExpectedCanonicalActorConcurrencyStamp { get; private set; }
 
-        protected override Task<HttpResponseMessage> SendAsync(
+        protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
@@ -835,16 +914,30 @@ public sealed class AtprotoAuthenticationFlowTests
                 && request.RequestUri!.AbsolutePath == AtprotoBootstrapAssertionService.BridgePath)
             {
                 BridgeCalls++;
-                return Task.FromResult(Json(JsonSerializer.Serialize(new
+                using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
+                CanonicalActorId = body.RootElement.TryGetProperty("canonicalActorId", out var canonicalActorId)
+                    && canonicalActorId.ValueKind == JsonValueKind.String
+                    ? canonicalActorId.GetGuid()
+                    : null;
+                ExpectedCanonicalActorConcurrencyStamp = body.RootElement.TryGetProperty("expectedCanonicalActorConcurrencyStamp", out var expectedConcurrencyStamp)
+                    && expectedConcurrencyStamp.ValueKind == JsonValueKind.String
+                    ? expectedConcurrencyStamp.GetGuid()
+                    : null;
+                return Json(JsonSerializer.Serialize(new
                 {
                     userId = UserId,
+                    actorId = Guid.NewGuid(),
+                    participationId = Guid.NewGuid(),
                     did = "did:plc:alice",
+                    classification = "person",
+                    canonicalActorId = CanonicalActorId,
+                    expectedCanonicalActorConcurrencyStamp = ExpectedCanonicalActorConcurrencyStamp,
                     accessToken = PlatformAccessToken,
                     expiresAt = DateTimeOffset.UtcNow.AddMinutes(10)
-                })));
+                }));
             }
 
-            return Task.FromResult(Json("{\"hasAnyAuthority\":false,\"isInstanceAdmin\":false,\"adminTenantIds\":[],\"adminOrganizationIds\":[],\"adminGroupIds\":[]}"));
+            return Json("{\"hasAnyAuthority\":false,\"isInstanceAdmin\":false,\"adminTenantIds\":[],\"adminOrganizationIds\":[],\"adminGroupIds\":[]}");
         }
 
         protected override void Dispose(bool disposing)

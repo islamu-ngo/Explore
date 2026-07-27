@@ -12,6 +12,7 @@ namespace Explore.Blazor.Extensions;
 public static class BffSetupSecretEndpoints
 {
     private const int MaxSetupSecretLength = 512;
+    private static readonly TimeSpan SetupSessionLifetime = TimeSpan.FromMinutes(30);
     private const string SetupSecretCookieName = "setup-secret";
     private const string SetupSecretSessionCookieName = "setup-secret-session";
     private const string SetupSecretRequiredDetail = "Setup secret is required.";
@@ -92,6 +93,7 @@ public static class BffSetupSecretEndpoints
             return;
         }
 
+        PersistSetupSecret(ctx, sessionService, secret, ShouldUseSecureSetupCookie(ctx));
         await ctx.Response.WriteAsJsonAsync(new SetupSecretStatusResponse
         {
             HasPersistedSecret = true,
@@ -343,6 +345,12 @@ public static class BffSetupSecretEndpoints
         var cookieProtector = ctx.RequestServices.GetRequiredService<ISetupSecretCookieProtector>();
         ctx.Response.Cookies.Append(SetupSecretCookieName, cookieProtector.Protect(secret), CreateSetupCookieOptions(secureCookie));
 
+        var currentAnonymousSessionId = ctx.Request.Cookies[SetupSecretSessionCookieName];
+        if (!string.IsNullOrWhiteSpace(currentAnonymousSessionId))
+        {
+            sessionService.ClearAnonymousSession(currentAnonymousSessionId.Trim());
+        }
+
         var anonymousSessionId = sessionService.CreateAnonymousSession(secret);
         if (!string.IsNullOrWhiteSpace(anonymousSessionId))
         {
@@ -404,7 +412,7 @@ public static class BffSetupSecretEndpoints
 
     private static CookieOptions CreateSetupCookieOptions(bool secureCookie) => new()
     {
-        MaxAge = TimeSpan.FromMinutes(60),
+        MaxAge = SetupSessionLifetime,
         Path = "/",
         SameSite = SameSiteMode.Lax,
         HttpOnly = true,

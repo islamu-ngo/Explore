@@ -195,6 +195,12 @@ public static class BffAuthEndpoints
         {
             return Results.BadRequest();
         }
+        if (request.CanonicalActorId.HasValue != request.ExpectedCanonicalActorConcurrencyStamp.HasValue
+            || request.CanonicalActorId == Guid.Empty
+            || request.ExpectedCanonicalActorConcurrencyStamp == Guid.Empty)
+        {
+            return Results.BadRequest();
+        }
 
         var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("AuthEndpoints");
         var metrics = ctx.RequestServices.GetRequiredService<AtprotoAuthenticationMetrics>();
@@ -219,6 +225,9 @@ public static class BffAuthEndpoints
             var authorizationUrl = await handler.CreateAuthorizationUrlAsync(
                 request.Handle,
                 returnPath,
+                request.Classification,
+                request.CanonicalActorId,
+                request.ExpectedCanonicalActorConcurrencyStamp,
                 ctx.RequestAborted);
             metrics.Record(
                 AtprotoAuthenticationOperation.Challenge,
@@ -385,7 +394,12 @@ public static class BffAuthEndpoints
             ? value
             : "/";
 
-    private sealed record AtprotoChallengeRequest(string? Handle, string? ReturnPath);
+    private sealed record AtprotoChallengeRequest(
+        string? Handle,
+        string? ReturnPath,
+        string? Classification,
+        Guid? CanonicalActorId,
+        Guid? ExpectedCanonicalActorConcurrencyStamp);
 
     private sealed record AtprotoChallengeResponse(string AuthorizationUrl);
 
@@ -419,7 +433,10 @@ public static class BffAuthEndpoints
 
     private static async Task<bool> ShouldGateForOnboardingAsync(HttpContext ctx)
     {
-        if (!string.IsNullOrWhiteSpace(ctx.Request.Cookies["setup-secret"]))
+        var protectedSetupSecret = ctx.Request.Cookies["setup-secret"];
+        var cookieProtector = ctx.RequestServices.GetService<ISetupSecretCookieProtector>();
+        if (cookieProtector?.TryUnprotect(protectedSetupSecret, out var setupSecret) == true
+            && !string.IsNullOrWhiteSpace(setupSecret))
         {
             return false;
         }
@@ -674,7 +691,8 @@ public static class BffAuthEndpoints
         ctx.Response.Headers.CacheControl = "no-store, no-cache";
         ctx.Response.Headers.Pragma = "no-cache";
 
-        var setupSecret = ctx.Request.Cookies["setup-secret"];
+        var setupSecretResolution = ctx.RequestServices.GetRequiredService<ISetupSecretResolver>().Resolve(ctx);
+        var setupSecret = setupSecretResolution.Found ? setupSecretResolution.Secret : null;
         var schemeManager = ctx.RequestServices.GetRequiredService<IDynamicAuthSchemeManager>();
         await schemeManager.RefreshSchemesAsync(setupSecret);
 

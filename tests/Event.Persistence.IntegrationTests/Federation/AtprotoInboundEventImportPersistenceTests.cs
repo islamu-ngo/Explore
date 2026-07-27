@@ -10,6 +10,7 @@ using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Federation.Atproto.Handlers.Commands;
 using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Application.Features.Federation.Atproto.Requests.Commands;
@@ -492,7 +493,6 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
         await Assert.That(imported.CreatedAt).IsEqualTo(sourceCreatedAt.UtcDateTime);
         await Assert.That(imported.EventFormatId).IsEqualTo((int)EventFormatEnum.Digital);
         await Assert.That(imported.EventStatusId).IsEqualTo((int)EventStatusEnum.Published);
-        await Assert.That(imported.IsRegistrationRequired).IsFalse();
         await Assert.That(imported.ProvenanceSource).IsEqualTo("atproto");
         await Assert.That(imported.ProvenanceExternalId).IsEqualTo(record.Uri);
         await Assert.That(session.EventId).IsEqualTo(imported.Id);
@@ -2030,19 +2030,30 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
         AtprotoEventProjection projection,
         string? status = "#scheduled",
         string? description = null) => new(
-            tenantId,
-            record.Id,
-            record.Did,
-            record.Uri!,
-            projection.Name,
-            projection.CreatedAt,
-            description ?? projection.Description,
-            projection.SourceUrl,
-            projection.StartsAt,
-            projection.EndsAt,
-            "#virtual",
-            status,
-            projection.RsvpExpected);
+                tenantId,
+                record.Id,
+                record.Did,
+                record.Uri!,
+                projection.Name,
+                projection.CreatedAt,
+                description ?? projection.Description,
+                projection.SourceUrl,
+                projection.StartsAt,
+                projection.EndsAt,
+                "#virtual",
+                status,
+                projection.RsvpExpected)
+            {
+                ParticipationConfiguration = new ConfigureEventParticipationDto
+                {
+                    ParticipationHandlingModeId = projection.RsvpExpected == true
+                        ? (int)ParticipationHandlingModeEnum.ExternalManaged
+                        : (int)ParticipationHandlingModeEnum.InformationOnly,
+                    AdvanceRegistrationObligationId = projection.RsvpExpected == true
+                        ? (int)AdvanceRegistrationObligationEnum.Required
+                        : (int)AdvanceRegistrationObligationEnum.NotApplicable
+                }
+            };
 
     private static DateTime Utc(int hour) =>
         new(2026, 7, 18, hour, 0, 0, DateTimeKind.Utc);

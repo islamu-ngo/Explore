@@ -4,6 +4,7 @@
 using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Federation;
 
 namespace Event.Application.UnitTests.Features.Federation.Atproto;
@@ -62,6 +63,12 @@ public sealed class AtprotoFederatedEventImportPlanFactoryTests
         await Assert.That(plan.Status).IsEqualTo("#scheduled");
         await Assert.That(plan.RsvpExpected).IsTrue();
         await Assert.That(plan.SourceUrl).IsEqualTo("https://events.example.test/iftar");
+        await Assert.That(plan.ParticipationConfiguration.ParticipationHandlingModeId)
+            .IsEqualTo((int)ParticipationHandlingModeEnum.ExternalManaged);
+        await Assert.That(plan.ParticipationConfiguration.AdvanceRegistrationObligationId)
+            .IsEqualTo((int)AdvanceRegistrationObligationEnum.Required);
+        await Assert.That(plan.ParticipationConfiguration.IdentityAccessModeId).IsNull();
+        await Assert.That(plan.ParticipationConfiguration.GuestRecoveryPolicy).IsNull();
     }
 
     [Test]

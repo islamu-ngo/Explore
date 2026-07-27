@@ -16,6 +16,17 @@ public sealed record AtprotoVerifiedOAuthSession(
     string OAuthClientKeyId,
     byte[] OAuthSessionPayload);
 
+public sealed record AtprotoPreparedOAuthSession(
+    byte[] SessionCiphertext,
+    string EncryptionKeyId,
+    int EnvelopeVersion,
+    Guid TenantId,
+    Guid UserId,
+    string SubjectDid,
+    string PdsHost,
+    string OAuthClientKeyId,
+    DateTime? ExpiresAt);
+
 public sealed record AtprotoOAuthVerificationResult(
     AtprotoVerifiedOAuthSession? Session,
     string? FailureCode)
@@ -50,11 +61,33 @@ public sealed record AtprotoSessionBootstrapResult(
     bool Success,
     string FailureCode,
     Guid? UserId = null,
+    Guid? ActorId = null,
+    Guid? ParticipationId = null,
+    AtprotoSubjectClassification? Classification = null,
     string? Token = null,
-    DateTimeOffset? ExpiresAt = null)
+    DateTimeOffset? ExpiresAt = null,
+    Guid? CanonicalActorId = null,
+    Guid? ExpectedCanonicalActorConcurrencyStamp = null)
 {
     public static AtprotoSessionBootstrapResult Failed(string code) => new(false, code);
 
-    public static AtprotoSessionBootstrapResult Succeeded(Guid userId, AtprotoIssuedSessionToken token) =>
-        new(true, string.Empty, userId, token.Token, token.ExpiresAt);
+    public static AtprotoSessionBootstrapResult Succeeded(
+        Guid userId,
+        Guid actorId,
+        Guid participationId,
+        AtprotoSubjectClassification classification,
+        AtprotoIssuedSessionToken token,
+        Guid? canonicalActorId = null,
+        Guid? expectedCanonicalActorConcurrencyStamp = null) =>
+        new(
+            true,
+            string.Empty,
+            userId,
+            actorId,
+            participationId,
+            classification,
+            token.Token,
+            token.ExpiresAt,
+            canonicalActorId,
+            expectedCanonicalActorConcurrencyStamp);
 }

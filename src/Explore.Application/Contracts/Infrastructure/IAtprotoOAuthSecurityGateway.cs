@@ -11,10 +11,14 @@ public interface IAtprotoOAuthSecurityGateway
         AtprotoOAuthVerificationInput request,
         CancellationToken cancellationToken);
 
-    Task PersistAsync(
+    Task<AtprotoPreparedOAuthSession> PreparePersistenceAsync(
         AtprotoVerifiedOAuthSession verifiedSession,
         Guid tenantId,
         Guid userId,
+        CancellationToken cancellationToken);
+
+    Task PersistPreparedAsync(
+        AtprotoPreparedOAuthSession preparedSession,
         CancellationToken cancellationToken);
 
     Task<AtprotoCurrentOAuthSession?> GetCurrentAsync(

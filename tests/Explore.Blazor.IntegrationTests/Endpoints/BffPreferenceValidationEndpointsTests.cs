@@ -100,13 +100,13 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
         body.Should().Contain("Theme mode must be one of");
-        await forwarding.DidNotReceive().PersistPreferencesAsync(
-            Arg.Any<BffAppearancePreferences>(),
+        await forwarding.DidNotReceive().SetThemeModeAsync(
+            Arg.Any<string>(),
             Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task AppearanceMode_AuthenticatedValidThemeMode_PersistsThroughSparsePreferenceEndpoint()
+    public async Task AppearanceMode_AuthenticatedValidThemeMode_UsesFocusedModeEndpoint()
     {
         var defaultThemeId = Guid.NewGuid();
         var forwarding = Substitute.For<IBffPreferenceForwardingService>();
@@ -120,7 +120,7 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
                 Direction = "rtl",
                 Language = "fr"
             });
-        forwarding.PersistPreferencesAsync(Arg.Any<BffAppearancePreferences>(), Arg.Any<CancellationToken>())
+        forwarding.SetThemeModeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         await using var factory = new BlazorBffWebApplicationFactory().WithWebHostBuilder(builder =>
@@ -152,12 +152,8 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
         body.Direction.Should().Be("rtl");
         body.Language.Should().Be("fr");
         body.DefaultThemeId.Should().Be(defaultThemeId);
-        await forwarding.Received(1).PersistPreferencesAsync(
-            Arg.Is<BffAppearancePreferences>(preferences =>
-                preferences.ThemeMode == "dark"
-                && preferences.Direction == "rtl"
-                && preferences.Language == "fr"
-                && preferences.DefaultThemeId == defaultThemeId),
+        await forwarding.Received(1).SetThemeModeAsync(
+            "dark",
             Arg.Any<CancellationToken>());
     }
 

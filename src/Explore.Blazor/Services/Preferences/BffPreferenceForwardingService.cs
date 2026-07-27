@@ -29,7 +29,9 @@ public interface IBffPreferenceForwardingService
 
     Task<ICollection<Api.AvailablePresetDto>> GetAvailableThemesAsync(CancellationToken cancellationToken);
 
-    Task PersistPreferencesAsync(BffAppearancePreferences preferences, CancellationToken cancellationToken);
+    Task PersistLocalizationAsync(string? direction, string? language, CancellationToken cancellationToken);
+
+    Task SetThemeModeAsync(string mode, CancellationToken cancellationToken);
 }
 
 public sealed class BffPreferenceForwardingService(Api.IEventApiClient apiClient) : IBffPreferenceForwardingService
@@ -82,20 +84,27 @@ public sealed class BffPreferenceForwardingService(Api.IEventApiClient apiClient
     public Task<ICollection<Api.AvailablePresetDto>> GetAvailableThemesAsync(CancellationToken cancellationToken) =>
         apiClient.GetAvailableThemesAsync(cancellationToken: cancellationToken);
 
-    public async Task PersistPreferencesAsync(
-        BffAppearancePreferences preferences,
+    public async Task PersistLocalizationAsync(
+        string? direction,
+        string? language,
         CancellationToken cancellationToken)
     {
         var request = new Api.UpdateUserAppearancePreferencesDto
         {
-            ThemeMode = preferences.ThemeMode,
-            Direction = preferences.Direction,
-            Language = preferences.Language,
-            DefaultThemeId = preferences.DefaultThemeId
+            Localization = new Api.UpdateAppearanceLocalizationDto
+            {
+                Direction = direction,
+                Language = language
+            }
         };
 
         _ = await apiClient.UpdateCurrentUserAppearancePreferencesAsync(
             request,
             cancellationToken: cancellationToken);
     }
+
+    public Task SetThemeModeAsync(string mode, CancellationToken cancellationToken) =>
+        apiClient.SetAppearanceThemeModeAsync(
+            new Api.SetThemeModeRequestDto { ThemeMode = mode },
+            cancellationToken: cancellationToken);
 }

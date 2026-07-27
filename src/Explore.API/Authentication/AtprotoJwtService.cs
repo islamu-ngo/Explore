@@ -38,9 +38,15 @@ public sealed class AtprotoJwtService(
             SecretDefinitionRegistry.Keys.Atproto.OAuthClientPrivateJwks,
             cancellationToken).ConfigureAwait(false);
         var principal = Validate(token, ring, AtprotoJwtOptions.BootstrapIssuer, AtprotoJwtOptions.BootstrapAudience);
+        var did = principal?.FindFirstValue(AtprotoJwtOptions.DidClaim);
+        var classification = principal?.FindFirstValue(AtprotoJwtOptions.ClassificationClaim);
+        var canonicalActorIdClaims = principal?.FindAll(AtprotoJwtOptions.CanonicalActorIdClaim).Take(2).ToArray() ?? [];
+        var expectedConcurrencyStampClaims = principal?.FindAll(AtprotoJwtOptions.ExpectedCanonicalActorConcurrencyStampClaim).Take(2).ToArray() ?? [];
         if (principal is null
             || !Guid.TryParse(principal.FindFirstValue(AtprotoJwtOptions.TenantClaim), out var assertedTenant)
             || assertedTenant != tenantId
+            || !IsBoundedDid(did)
+            || classification is not ("person" or "organization" or "group")
             || !string.Equals(principal.FindFirstValue(AtprotoJwtOptions.MethodClaim), method, StringComparison.Ordinal)
             || !string.Equals(principal.FindFirstValue(AtprotoJwtOptions.PathClaim), path, StringComparison.Ordinal)
             || !string.Equals(principal.FindFirstValue(JwtRegisteredClaimNames.Sub), "event-blazor-bff", StringComparison.Ordinal)
@@ -51,7 +57,24 @@ public sealed class AtprotoJwtService(
             return null;
         }
 
-        return new(jti, assertedTenant);
+        if (canonicalActorIdClaims.Length != expectedConcurrencyStampClaims.Length
+            || canonicalActorIdClaims.Length > 1
+            || (canonicalActorIdClaims.Length == 1
+                && (!Guid.TryParseExact(canonicalActorIdClaims[0].Value, "D", out var canonicalActorId)
+                    || canonicalActorId == Guid.Empty
+                    || !Guid.TryParseExact(expectedConcurrencyStampClaims[0].Value, "D", out var expectedConcurrencyStamp)
+                    || expectedConcurrencyStamp == Guid.Empty)))
+        {
+            return null;
+        }
+
+        return new(
+            jti,
+            assertedTenant,
+            did!,
+            classification,
+            canonicalActorIdClaims.Length == 1 ? Guid.ParseExact(canonicalActorIdClaims[0].Value, "D") : null,
+            canonicalActorIdClaims.Length == 1 ? Guid.ParseExact(expectedConcurrencyStampClaims[0].Value, "D") : null);
     }
 
     public async Task<AtprotoIssuedSessionToken> IssueAsync(
@@ -284,6 +307,11 @@ public sealed class AtprotoJwtService(
         CryptoProviderFactory = new CryptoProviderFactory { CacheSignatureProviders = false }
     };
 
+    private static bool IsBoundedDid(string? did) =>
+        did is { Length: >= 5 and <= 2048 }
+        && did.StartsWith("did:", StringComparison.Ordinal)
+        && did.All(character => !char.IsWhiteSpace(character) && !char.IsControl(character));
+
     internal static bool IsBoundedCompactJwt(string? token, int maximumBytes) =>
         !string.IsNullOrWhiteSpace(token)
         && token.Length <= maximumBytes
@@ -291,7 +319,13 @@ public sealed class AtprotoJwtService(
         && token.All(character => character is >= '!' and <= '~');
 }
 
-public sealed record AtprotoBootstrapIdentity(string Jti, Guid TenantId);
+public sealed record AtprotoBootstrapIdentity(
+    string Jti,
+    Guid TenantId,
+    string Did,
+    string Classification,
+    Guid? CanonicalActorId,
+    Guid? ExpectedCanonicalActorConcurrencyStamp);
 
 public sealed record AtprotoSessionBridgeIdentity(
     string ReplayKey,

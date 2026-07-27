@@ -37,6 +37,40 @@ public sealed class AtprotoOAuthStoreTests
     }
 
     [Test]
+    public async Task StateRoundTripsCanonicalActorTargetOnlyWhenTheCompletePairIsPresent()
+    {
+        var fixture = CreateFixture("https://issuer.example/");
+        var canonicalActorId = Guid.NewGuid();
+        var seed = CreateSeed(new Uri("https://events.example.com/")) with
+        {
+            CanonicalActorId = canonicalActorId,
+            ExpectedCanonicalActorConcurrencyStamp = Guid.NewGuid()
+        };
+        var state = CreateState(seed);
+
+        await fixture.Store.StoreAsync("0123456789abcdef0123456789abcdef", state);
+        _ = await fixture.Store.ConsumeAsync("0123456789abcdef0123456789abcdef");
+
+        await Assert.That(fixture.Context.Binding!.Seed.CanonicalActorId).IsEqualTo(canonicalActorId);
+        await Assert.That(fixture.Context.Binding.Seed.ExpectedCanonicalActorConcurrencyStamp).IsNotEqualTo(Guid.Empty);
+    }
+
+    [Test]
+    public async Task StateRejectsTamperedOrHalfCanonicalActorTargetPair()
+    {
+        var fixture = CreateFixture("https://issuer.example/");
+        var halfPair = CreateSeed(new Uri("https://events.example.com/")) with
+        {
+            CanonicalActorId = Guid.NewGuid()
+        };
+        var tampered = CreateState(halfPair);
+
+        await Assert.That(async () => await fixture.Store.StoreAsync(
+            "0123456789abcdef0123456789abcdef",
+            tampered)).Throws<InvalidOperationException>();
+    }
+
+    [Test]
     public async Task IssuerSubstitutionConsumesAndRejectsState()
     {
         var fixture = CreateFixture("https://attacker.example/");
@@ -87,7 +121,14 @@ public sealed class AtprotoOAuthStoreTests
             options,
             TimeProvider.System);
         var seed = CreateSeed(new Uri("https://tenant.example/"));
-        var session = new AtprotoBffSessionResult(Guid.NewGuid(), seed.ExpectedDid, "opaque-platform-token", DateTimeOffset.UtcNow.AddMinutes(5));
+        var session = new AtprotoBffSessionResult(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            seed.ExpectedDid,
+            seed.Classification,
+            "opaque-platform-token",
+            DateTimeOffset.UtcNow.AddMinutes(5));
         var code = await handoffs.CreateAsync(seed, session, CancellationToken.None);
         var wrongHost = CreateRequest("https", "other.example");
         var rightHost = CreateRequest("https", "tenant.example");
@@ -97,6 +138,48 @@ public sealed class AtprotoOAuthStoreTests
 
         await Assert.That(substituted).IsNull();
         await Assert.That(replay).IsNull();
+    }
+
+    [Test]
+    public async Task HandoffPreservesCompleteCanonicalActorTargetPair()
+    {
+        var options = Options.Create(CreateOptions(useMemory: true));
+        options.Value.TenantOrigins.Add(new AtprotoTenantOrigin
+        {
+            Origin = "https://tenant.example/",
+            TenantId = TenantId,
+            TenantSlug = "default"
+        });
+        var environment = TestEnvironment();
+        var cache = new AtprotoAtomicCache([], environment, options, TimeProvider.System);
+        var handoffs = new AtprotoTenantSessionHandoffStore(
+            cache,
+            EphemeralDataProtection(),
+            CreateOriginResolver(options, environment),
+            options,
+            TimeProvider.System);
+        var canonicalActorId = Guid.NewGuid();
+        var seed = CreateSeed(new Uri("https://tenant.example/")) with
+        {
+            CanonicalActorId = canonicalActorId,
+            ExpectedCanonicalActorConcurrencyStamp = Guid.NewGuid()
+        };
+        var session = new AtprotoBffSessionResult(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            seed.ExpectedDid,
+            seed.Classification,
+            "opaque-platform-token",
+            DateTimeOffset.UtcNow.AddMinutes(5),
+            canonicalActorId,
+            seed.ExpectedCanonicalActorConcurrencyStamp);
+        var code = await handoffs.CreateAsync(seed, session, CancellationToken.None);
+
+        var handoff = await handoffs.ConsumeAsync(code, CreateRequest("https", "tenant.example"), CancellationToken.None);
+
+        await Assert.That(handoff!.Seed.CanonicalActorId).IsEqualTo(canonicalActorId);
+        await Assert.That(handoff.Session.ExpectedCanonicalActorConcurrencyStamp).IsEqualTo(seed.ExpectedCanonicalActorConcurrencyStamp);
     }
 
     private static StoreFixture CreateFixture(string callbackIssuer)
@@ -121,11 +204,11 @@ public sealed class AtprotoOAuthStoreTests
         return new(store, context, httpContext);
     }
 
-    private static OAuthStateData CreateState() => new()
+    private static OAuthStateData CreateState(AtprotoOAuthFlowSeed? seed = null) => new()
     {
         Issuer = "https://issuer.example/",
         PdsUrl = "https://pds.example/",
-        AppState = CacheBackedOAuthStateStore.EncodeAppState(CreateSeed(new Uri("https://events.example.com/"))),
+        AppState = CacheBackedOAuthStateStore.EncodeAppState(seed ?? CreateSeed(new Uri("https://events.example.com/"))),
         Verifier = "verifier",
         ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(4)
     };
@@ -137,7 +220,8 @@ public sealed class AtprotoOAuthStoreTests
         "default",
         origin,
         "/events",
-        "oauth-active");
+        "oauth-active",
+        "person");
 
     private static AtprotoAuthenticationOptions CreateOptions(bool useMemory) => new()
     {

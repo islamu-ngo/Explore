@@ -29,8 +29,8 @@ public static class AtprotoEventSourceFieldManifest
         Excluded("Event.LastSessionEndUtc", "cached schedule rollup; native time derives from eligible sessions"),
         Native("Event.EventFormat.MasterCode", "community event mode"),
         Native("Event.EventStatus.MasterCode", "community event status"),
-        Native("Event.ExternalRegistrationUrl", "community event URI"),
-        Native("Event.IsRegistrationRequired", "community event rsvpExpected"),
+        Native("Event.ParticipationConfiguration.AdvanceRegistrationObligationId", "community event rsvpExpected when required"),
+        Native("Event.PublicActions[ExternalRegistration.Active].Url", "community event registration URI"),
 
         Description("Event.Subtitle"),
         Description("Event.Content"),

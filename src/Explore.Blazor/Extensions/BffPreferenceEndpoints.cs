@@ -51,7 +51,7 @@ public static class BffPreferenceEndpoints
             .ValidateAntiforgery()
             .ExcludeFromDescription();
 
-        app.MapPut("/bff/appearance/profiles/{profileId:guid}", HandleUpdateProfileAsync)
+        app.MapPatch("/bff/appearance/profiles/{profileId:guid}", HandleUpdateProfileAsync)
             .ValidateAntiforgery()
             .ExcludeFromDescription();
 
@@ -193,10 +193,16 @@ public static class BffPreferenceEndpoints
 
         if (ctx.User.Identity?.IsAuthenticated == true)
         {
-            var persistResult = await PersistAuthenticatedAsync(ctx, updated, "Theme mode update failed", cancellationToken);
-            if (persistResult is { } problem)
+            try
             {
-                return problem;
+                await GetPreferenceForwarding(ctx).SetThemeModeAsync(mode, cancellationToken);
+            }
+            catch (Api.ApiException ex)
+            {
+                return BffForwardingResults.Problem(
+                    ex,
+                    "Authenticated theme mode could not be persisted.",
+                    "Theme mode update failed");
             }
         }
 
@@ -261,10 +267,16 @@ public static class BffPreferenceEndpoints
 
         if (ctx.User.Identity?.IsAuthenticated == true)
         {
-            var persistResult = await PersistAuthenticatedAsync(ctx, updated, "Theme preference update failed", cancellationToken);
-            if (persistResult is { } problem)
+            try
             {
-                return problem;
+                await GetPreferenceForwarding(ctx).SetThemeModeAsync(themeMode, cancellationToken);
+            }
+            catch (Api.ApiException ex)
+            {
+                return BffForwardingResults.Problem(
+                    ex,
+                    "Authenticated theme mode could not be persisted.",
+                    "Theme preference update failed");
             }
         }
 
@@ -303,7 +315,12 @@ public static class BffPreferenceEndpoints
 
         if (ctx.User.Identity?.IsAuthenticated == true)
         {
-            var persistResult = await PersistAuthenticatedAsync(ctx, updated, "Language preference update failed", cancellationToken);
+            var persistResult = await PersistAuthenticatedAsync(
+                ctx,
+                direction: null,
+                language: normalizedLang,
+                "Language preference update failed",
+                cancellationToken);
             if (persistResult is { } problem)
             {
                 return problem;
@@ -333,7 +350,12 @@ public static class BffPreferenceEndpoints
 
         if (ctx.User.Identity?.IsAuthenticated == true)
         {
-            var persistResult = await PersistAuthenticatedAsync(ctx, updated, "Direction preference update failed", cancellationToken);
+            var persistResult = await PersistAuthenticatedAsync(
+                ctx,
+                direction,
+                language: null,
+                "Direction preference update failed",
+                cancellationToken);
             if (persistResult is { } problem)
             {
                 return problem;
@@ -393,13 +415,14 @@ public static class BffPreferenceEndpoints
 
     private static async Task<IResult?> PersistAuthenticatedAsync(
         HttpContext ctx,
-        BffAppearancePreferences preferences,
+        string? direction,
+        string? language,
         string failureTitle,
         CancellationToken cancellationToken)
     {
         try
         {
-            await GetPreferenceForwarding(ctx).PersistPreferencesAsync(preferences, cancellationToken);
+            await GetPreferenceForwarding(ctx).PersistLocalizationAsync(direction, language, cancellationToken);
             return null;
         }
         catch (Api.ApiException ex)

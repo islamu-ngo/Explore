@@ -2,7 +2,9 @@
 // ABOUTME: Proves unsafe cookie-authenticated BFF requests require the X-CSRF-TOKEN header.
 
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.IntegrationTests.Fixtures;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -126,6 +128,29 @@ public sealed class BffPreferenceAntiforgeryTests : IAsyncDisposable
         using var response = await _client.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task UpdateProfile_UsesPatchAndRejectsObsoletePut()
+    {
+        var token = await IssueAntiforgeryCookieAsync();
+        var profileId = Guid.NewGuid();
+        var body = new UpdateAppearanceProfileRequestDto
+        {
+            Metadata = new UpdateAppearanceProfileMetadataDto { Name = "Updated" }
+        };
+
+        using var patchRequest = CreateMutationRequest(HttpMethod.Patch, $"/bff/appearance/profiles/{profileId}", token);
+        patchRequest.Content = JsonContent.Create(body);
+        using var patchResponse = await _client.SendAsync(patchRequest);
+
+        patchResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        using var putRequest = CreateMutationRequest(HttpMethod.Put, $"/bff/appearance/profiles/{profileId}", token);
+        putRequest.Content = JsonContent.Create(body);
+        using var putResponse = await _client.SendAsync(putRequest);
+
+        putResponse.StatusCode.Should().Be(HttpStatusCode.MethodNotAllowed);
     }
 
     public async ValueTask DisposeAsync()

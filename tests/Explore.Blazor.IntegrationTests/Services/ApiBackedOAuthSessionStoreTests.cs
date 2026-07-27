@@ -31,9 +31,28 @@ public sealed class ApiBackedOAuthSessionStoreTests
         await Assert.That(flow.SessionResult).IsNotNull();
         await Assert.That(flow.SessionResult!.UserId).IsEqualTo(UserId);
         await Assert.That(flow.SessionResult.Did).IsEqualTo("did:plc:alice");
+        await Assert.That(flow.SessionResult.Classification).IsEqualTo("person");
         await Assert.That(handler.TenantSlug).IsEqualTo("default");
         await Assert.That(handler.BootstrapAssertion).IsNotNull();
         await Assert.That(handler.RequestBody).Contains("oauth-access-token");
+    }
+
+    [Test]
+    public async Task StorePreservesCanonicalActorTargetAndRejectsBridgeTargetSubstitution()
+    {
+        using var dpopKey = await DPoPKeyPair.GenerateAsync();
+        var canonicalActorId = Guid.NewGuid();
+        var expectedConcurrencyStamp = Guid.NewGuid();
+        var flow = BoundFlow(canonicalActorId, expectedConcurrencyStamp);
+        var handler = new BridgeHandler("did:plc:alice", canonicalActorId, expectedConcurrencyStamp);
+        var store = CreateStore(flow, handler);
+
+        await store.StoreAsync("did:plc:alice", CreateSession(dpopKey));
+
+        await Assert.That(flow.SessionResult!.CanonicalActorId).IsEqualTo(canonicalActorId);
+        await Assert.That(flow.SessionResult.ExpectedCanonicalActorConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
+        await Assert.That(handler.RequestBody).Contains(canonicalActorId.ToString("D"));
+        await Assert.That(handler.BootstrapAssertion).Contains(".");
     }
 
     [Test]
@@ -88,11 +107,14 @@ public sealed class ApiBackedOAuthSessionStoreTests
         var flow = BoundFlow();
         flow.CaptureSession(new(
             UserId,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
             "did:plc:alice",
+            "person",
             "opaque-platform-token",
             DateTimeOffset.UtcNow.AddMinutes(10)));
         var expected = CreateSession(dpopKey);
-        var handler = new BridgeHandler("did:plc:alice", expected);
+        var handler = new BridgeHandler("did:plc:alice", storedSession: expected);
         var store = CreateStore(flow, handler);
 
         var restored = await store.GetAsync("did:plc:alice");
@@ -124,7 +146,9 @@ public sealed class ApiBackedOAuthSessionStoreTests
             new AtprotoAuthenticationMetrics());
     }
 
-    private static AtprotoOAuthFlowContext BoundFlow()
+    private static AtprotoOAuthFlowContext BoundFlow(
+        Guid? canonicalActorId = null,
+        Guid? expectedCanonicalActorConcurrencyStamp = null)
     {
         var flow = new AtprotoOAuthFlowContext();
         flow.BindConsumedState(new(
@@ -135,7 +159,10 @@ public sealed class ApiBackedOAuthSessionStoreTests
                 "default",
                 new("https://events.example.com/"),
                 "/events",
-                "oauth-active"),
+                "oauth-active",
+                "person",
+                canonicalActorId,
+                expectedCanonicalActorConcurrencyStamp),
             new("https://issuer.example/")));
         return flow;
     }
@@ -193,6 +220,8 @@ public sealed class ApiBackedOAuthSessionStoreTests
 
     private sealed class BridgeHandler(
         string responseDid,
+        Guid? canonicalActorId = null,
+        Guid? expectedCanonicalActorConcurrencyStamp = null,
         OAuthSessionData? storedSession = null) : HttpMessageHandler
     {
         public int CallCount { get; private set; }
@@ -238,8 +267,13 @@ public sealed class ApiBackedOAuthSessionStoreTests
             var body = JsonSerializer.Serialize(new
             {
                 userId = UserId,
-                did = responseDid,
-                accessToken = "opaque-platform-token",
+                actorId = Guid.NewGuid(),
+                participationId = Guid.NewGuid(),
+                 did = responseDid,
+                 classification = "person",
+                 canonicalActorId,
+                 expectedCanonicalActorConcurrencyStamp,
+                 accessToken = "opaque-platform-token",
                 expiresAt = DateTimeOffset.UtcNow.AddMinutes(10)
             });
             return new(HttpStatusCode.OK)

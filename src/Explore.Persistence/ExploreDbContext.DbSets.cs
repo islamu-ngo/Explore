@@ -115,6 +115,7 @@ public partial class ExploreDbContext
 
     // ===== Events =====
     public DbSet<Event> Events { get; set; }
+    public DbSet<EventParticipationConfiguration> EventParticipationConfigurations { get; set; }
     public DbSet<EventPublicAction> EventPublicActions { get; set; }
     public DbSet<EventOrganizerClaim> EventOrganizerClaims { get; set; }
     public DbSet<EventSession> EventSessions { get; set; }
@@ -154,6 +155,9 @@ public partial class ExploreDbContext
 
     // ===== Event Lookup Tables =====
     public DbSet<EventType> EventTypes { get; set; }
+    public DbSet<ParticipationHandlingMode> ParticipationHandlingModes { get; set; }
+    public DbSet<AdvanceRegistrationObligation> AdvanceRegistrationObligations { get; set; }
+    public DbSet<IdentityAccessMode> IdentityAccessModes { get; set; }
     public DbSet<EventProvenanceType> EventProvenanceTypes { get; set; }
     public DbSet<EventPublicActionKind> EventPublicActionKinds { get; set; }
     public DbSet<EventPublicActionHealthState> EventPublicActionHealthStates { get; set; }
@@ -266,7 +270,6 @@ public partial class ExploreDbContext
     public DbSet<TenantCapability> TenantCapabilities { get; set; }
 
     // ===== Federation/Indexer (ATProto) =====
-    public DbSet<IndexedDid> IndexedDids { get; set; }
     public DbSet<SyncState> SyncStates { get; set; }
     public DbSet<AtprotoRecord> AtprotoRecords { get; set; }
     public DbSet<AtprotoEventProjection> AtprotoEventProjections { get; set; }

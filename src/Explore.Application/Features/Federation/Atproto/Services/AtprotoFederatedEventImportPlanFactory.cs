@@ -2,10 +2,12 @@
 // ABOUTME: Keeps Jetstream and bounded PDS recovery on the same mapping and validation path.
 
 using System.Text.Json;
+using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Application.Features.Federation.Atproto.Validators;
 using Explore.Application.Services.Federation;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Federation;
 using Explore.Domain.Services.Scheduling;
 using FluentValidation;
@@ -67,6 +69,15 @@ public static class AtprotoFederatedEventImportPlanFactory
                 importInput.RsvpExpected)
             {
                 TimeZoneId = timeZoneId,
+                ParticipationConfiguration = new ConfigureEventParticipationDto
+                {
+                    ParticipationHandlingModeId = importInput.RsvpExpected == true
+                        ? (int)ParticipationHandlingModeEnum.ExternalManaged
+                        : (int)ParticipationHandlingModeEnum.InformationOnly,
+                    AdvanceRegistrationObligationId = importInput.RsvpExpected == true
+                        ? (int)AdvanceRegistrationObligationEnum.Required
+                        : (int)AdvanceRegistrationObligationEnum.NotApplicable
+                },
                 Thumbnail = thumbnail
             })
             .ToArray();

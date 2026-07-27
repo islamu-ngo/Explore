@@ -18,6 +18,34 @@ public class CircuitAccessTokenServiceTests
         NullLogger<CircuitTokenStore>.Instance);
 
     [Test]
+    public async Task SetupSecretSessionService_UserActivityExtendsIdleExpiration()
+    {
+        var timeProvider = new ManualTimeProvider(DateTimeOffset.Parse("2026-07-27T00:00:00Z"));
+        var service = new SetupSecretSessionService(timeProvider);
+        service.SetForUser("user-1", "setup-secret");
+
+        timeProvider.Advance(TimeSpan.FromMinutes(29));
+        await Assert.That(service.GetForUser("user-1")).IsEqualTo("setup-secret");
+        timeProvider.Advance(TimeSpan.FromMinutes(29));
+        await Assert.That(service.GetForUser("user-1")).IsEqualTo("setup-secret");
+        timeProvider.Advance(TimeSpan.FromMinutes(30) + TimeSpan.FromTicks(1));
+
+        await Assert.That(service.GetForUser("user-1")).IsNull();
+    }
+
+    [Test]
+    public async Task SetupSecretSessionService_AnonymousSessionExpiresAfterIdleTimeout()
+    {
+        var timeProvider = new ManualTimeProvider(DateTimeOffset.Parse("2026-07-27T00:00:00Z"));
+        var service = new SetupSecretSessionService(timeProvider);
+        var sessionId = service.CreateAnonymousSession("setup-secret");
+
+        timeProvider.Advance(TimeSpan.FromMinutes(30) + TimeSpan.FromTicks(1));
+
+        await Assert.That(service.GetForAnonymousSession(sessionId)).IsNull();
+    }
+
+    [Test]
     public async Task AccessTokenForwardingHandler_UsesHttpContextToken_WhenAvailable()
     {
         var userId = Guid.NewGuid().ToString();
@@ -523,5 +551,12 @@ public class CircuitAccessTokenServiceTests
             Request = request;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
         }
+    }
+
+    private sealed class ManualTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+
+        public void Advance(TimeSpan duration) => utcNow += duration;
     }
 }

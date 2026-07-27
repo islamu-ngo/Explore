@@ -460,7 +460,9 @@ public sealed class AtprotoThumbnailBlobGatewayContractTests
                 Objects.GetValueOrDefault(input.ObjectKey)?.Length ?? 0,
                 null));
 
-        public Task<FileStorageProviderStatus> TestAsync(CancellationToken cancellationToken) =>
+        public Task<FileStorageProviderStatus> TestAsync(
+            CancellationToken cancellationToken,
+            bool testWritePermissions = false) =>
             Task.FromResult(new FileStorageProviderStatus(Provider, true, true, false));
     }
 

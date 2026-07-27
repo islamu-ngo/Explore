@@ -9,6 +9,7 @@ using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
+using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using TUnit.Assertions;
@@ -22,9 +23,10 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
     private const int MaximumPublicationQueryCount = 24;
 
     [Test]
-    [NotInParallel("RealRuntimeDb")]
+    [NotInParallel("PersistenceDb")]
     public async Task GetAtprotoPublicationGraphAsync_ReturnsUntrackedTenantEntityGraphWithinBudget()
     {
+        await fixture.ResetAsync();
         (Guid tenantId, Guid eventId) = await SeedEventAsync();
         var counter = new CommandCountingInterceptor();
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
@@ -65,6 +67,7 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
     private async Task<(Guid TenantId, Guid EventId)> SeedEventAsync()
     {
         await using var context = fixture.CreateDbContext();
+        await LookupTableSeeder.SeedAsync(context);
         var tenant = new Tenant
         {
             FullName = "ATProto projection tenant",
@@ -84,14 +87,9 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
         context.AddRange(tenant, user);
         await context.SaveChangesAsync();
 
-        var actor = new Actor
-        {
-            Pii = new ActorPii { DisplayName = "Projection owner" },
-            ActorTypeId = 1,
-            ActorType = null!,
-            UserId = user.Id
-        };
+        Actor actor = CreateActor(user.Id, "Projection owner");
         context.Actors.Add(actor);
+        SetForeignKeyIfPresent(context, actor, "TenantId", tenant.Id);
         await context.SaveChangesAsync();
 
         var eventEntity = new Explore.Domain.Event
@@ -112,6 +110,7 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
             IsDeleted = false
         };
         context.Events.Add(eventEntity);
+        SetForeignKeyIfPresent(context, eventEntity, "EventProvenanceTypeId", 1);
         await context.SaveChangesAsync();
 
         DateTimeOffset start = DateTimeOffset.UtcNow.AddDays(7);
@@ -496,6 +495,28 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
         });
         await context.SaveChangesAsync();
         return (tenant.Id, eventEntity.Id);
+    }
+
+    private static Actor CreateActor(Guid userId, string displayName)
+    {
+        Actor actor = Activator.CreateInstance<Actor>();
+        actor.Pii = new ActorPii { DisplayName = displayName };
+        actor.ActorTypeId = 1;
+        actor.ActorType = null!;
+        actor.UserId = userId;
+        return actor;
+    }
+
+    private static void SetForeignKeyIfPresent(
+        ExploreDbContext context,
+        object entity,
+        string propertyName,
+        object value)
+    {
+        if (context.Model.FindEntityType(entity.GetType())?.FindProperty(propertyName) is not null)
+        {
+            context.Entry(entity).Property(propertyName).CurrentValue = value;
+        }
     }
 
     private static EventSessionGroupSession CreateGroupLink(

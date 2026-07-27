@@ -86,7 +86,8 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
             endsAt?.ToUniversalTime(),
             MapMode(eventEntity.EventFormat.MasterCode),
             MapStatus(eventEntity.EventStatus.MasterCode),
-            eventEntity.IsRegistrationRequired,
+            eventEntity.ParticipationConfiguration!.AdvanceRegistrationObligationId
+                == (int)AdvanceRegistrationObligationEnum.Required,
             MapDetails(eventEntity),
             MapOrganizer(eventEntity.Actor),
             MapSeries(eventEntity.EventSeries, eventEntity.SeriesOrder),
@@ -179,9 +180,10 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
         if (eventEntity.EventFormat is null
             || eventEntity.EventStatus is null
             || eventEntity.VisibilityType is null
-            || eventEntity.Actor?.Pii is null)
+            || eventEntity.Actor?.Pii is null
+            || eventEntity.ParticipationConfiguration is null)
         {
-            errors.Add("Required public event lookups and organizer data were not loaded.");
+            errors.Add("Required public event lookups, participation configuration, and organizer data were not loaded.");
         }
 
         if (graph.Sessions.Any(session => IsPublicSession(session) && session.EventSessionStatus is null))
@@ -742,7 +744,15 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
     private static ImmutableArray<AtprotoEventUriSnapshot> BuildUris(Event eventEntity)
     {
         var values = new List<AtprotoEventUriSnapshot>();
-        AddUri(values, eventEntity.ExternalRegistrationUrl, "Registration");
+        EventPublicAction? externalRegistration = eventEntity.PublicActions
+            .Where(action => !action.IsDeleted
+                && action.EventPublicActionKindId == (int)EventPublicActionKindEnum.ExternalRegistration
+                && action.HealthStateId == (int)EventPublicActionHealthStateEnum.Active)
+            .OrderByDescending(action => action.IsPrimary)
+            .ThenBy(action => action.SortOrder)
+            .ThenBy(action => action.Id)
+            .FirstOrDefault();
+        AddUri(values, externalRegistration?.Url, "Registration");
         AddUri(values, PublicStorageUri(eventEntity.FeaturedImage), "Featured image");
         AddUri(values, PublicStorageUri(eventEntity.BackgroundImage), "Background image");
         return values

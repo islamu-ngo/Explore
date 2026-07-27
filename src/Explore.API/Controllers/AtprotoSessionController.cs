@@ -48,23 +48,80 @@ public sealed class AtprotoSessionController(
         CancellationToken cancellationToken)
     {
         Response.Headers.CacheControl = "no-store";
+        if (!TryParseClassification(request.Classification, out var classification))
+        {
+            return ProblemResponse(StatusCodes.Status400BadRequest, "Invalid ATProto subject classification");
+        }
+
+        if (!TryGetCanonicalActorTarget(
+                request.CanonicalActorId,
+                request.ExpectedCanonicalActorConcurrencyStamp,
+                out var canonicalActorId,
+                out var expectedCanonicalActorConcurrencyStamp))
+        {
+            return ProblemResponse(StatusCodes.Status400BadRequest, "Invalid ATProto canonical Actor target");
+        }
+
+        if (!TryGetCanonicalActorTarget(
+                User.FindAll(AtprotoJwtOptions.CanonicalActorIdClaim).Select(claim => claim.Value).ToArray(),
+                User.FindAll(AtprotoJwtOptions.ExpectedCanonicalActorConcurrencyStampClaim).Select(claim => claim.Value).ToArray(),
+                out var claimedCanonicalActorId,
+                out var claimedExpectedCanonicalActorConcurrencyStamp)
+            || canonicalActorId != claimedCanonicalActorId
+            || expectedCanonicalActorConcurrencyStamp != claimedExpectedCanonicalActorConcurrencyStamp)
+        {
+            return ProblemResponse(StatusCodes.Status401Unauthorized, "ATProto bootstrap target binding mismatch");
+        }
+
+        if (!string.Equals(
+                User.FindFirstValue(AtprotoJwtOptions.DidClaim),
+                request.ExpectedDid,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                User.FindFirstValue(AtprotoJwtOptions.ClassificationClaim),
+                request.Classification,
+                StringComparison.Ordinal))
+        {
+            return ProblemResponse(StatusCodes.Status401Unauthorized, "ATProto bootstrap binding mismatch");
+        }
+
         var sessionPayload = JsonSerializer.SerializeToUtf8Bytes(request.OAuthSession);
         var result = await mediator.Send(new BootstrapAtprotoSessionCommand(
             request.ExpectedDid,
             request.ExpectedPdsUri,
             request.OAuthClientKeyId,
-            sessionPayload), cancellationToken);
+            classification,
+            sessionPayload,
+            canonicalActorId,
+            expectedCanonicalActorConcurrencyStamp), cancellationToken);
 
-        if (result.Success && result.Token is { } token && result.ExpiresAt is { } expiresAt)
+        if (result.Success
+            && result.UserId is { } userId
+            && result.ActorId is { } actorId
+            && result.ParticipationId is { } participationId
+            && result.Classification is { } resultClassification
+            && result.Token is { } token
+            && result.ExpiresAt is { } expiresAt
+            && result.CanonicalActorId == canonicalActorId
+            && result.ExpectedCanonicalActorConcurrencyStamp == expectedCanonicalActorConcurrencyStamp)
         {
-            return Ok(new BffAtprotoSessionBridgeResponse(result.UserId!.Value, request.ExpectedDid, token, expiresAt));
+            return Ok(new BffAtprotoSessionBridgeResponse(
+                userId,
+                actorId,
+                participationId,
+                request.ExpectedDid,
+                ToContractValue(resultClassification),
+                token,
+                expiresAt,
+                canonicalActorId,
+                expectedCanonicalActorConcurrencyStamp));
         }
 
         return result.FailureCode switch
         {
             "invalid_request" => ProblemResponse(StatusCodes.Status400BadRequest, "Invalid ATProto session request"),
             "account_not_linked" => ProblemResponse(StatusCodes.Status403Forbidden, "ATProto account is not linked"),
-            "linked_identity_incomplete" or "identity_conflict" =>
+            "linked_identity_incomplete" or "identity_conflict" or "classification_conflict" =>
                 ProblemResponse(StatusCodes.Status409Conflict, "ATProto identity conflict"),
             "invalid_session" or "session_binding_mismatch" or "pds_identity_mismatch" =>
                 ProblemResponse(StatusCodes.Status401Unauthorized, "ATProto session verification failed"),
@@ -110,9 +167,9 @@ public sealed class AtprotoSessionController(
     [EnableRateLimiting("write")]
     [EndpointSummary("Refresh current ATProto OAuth session")]
     [EndpointDescription("Server-private BFF operation; persists rotated OAuth state before returning a replacement session token.")]
-    [ProducesResponseType<BffAtprotoSessionBridgeResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<BffAtprotoSessionRefreshResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BffAtprotoSessionBridgeResponse>> RefreshCurrentSession(
+    public async Task<ActionResult<BffAtprotoSessionRefreshResponse>> RefreshCurrentSession(
         CancellationToken cancellationToken)
     {
         Response.Headers.CacheControl = "no-store";
@@ -125,7 +182,7 @@ public sealed class AtprotoSessionController(
             new RefreshAtprotoSessionCommand(identity),
             cancellationToken).ConfigureAwait(false);
         return result.Success && result.Token is { } token && result.ExpiresAt is { } expiresAt
-            ? Ok(new BffAtprotoSessionBridgeResponse(identity.UserId, identity.Did, token, expiresAt))
+            ? Ok(new BffAtprotoSessionRefreshResponse(identity.UserId, identity.Did, token, expiresAt))
             : ProblemResponse(StatusCodes.Status401Unauthorized, "ATProto reauthentication required");
     }
 
@@ -156,6 +213,73 @@ public sealed class AtprotoSessionController(
                && User.FindFirstValue(AtprotoJwtOptions.DidClaim) is { } did
             ? new AtprotoCurrentSessionIdentity(tenantContext.TenantId, userId, did)
             : null;
+    }
+
+    private static bool TryParseClassification(
+        string value,
+        out AtprotoSubjectClassification classification)
+    {
+        classification = value switch
+        {
+            "person" => AtprotoSubjectClassification.Person,
+            "organization" => AtprotoSubjectClassification.Organization,
+            "group" => AtprotoSubjectClassification.Group,
+            _ => default
+        };
+        return classification != default;
+    }
+
+    private static string ToContractValue(AtprotoSubjectClassification classification) => classification switch
+    {
+        AtprotoSubjectClassification.Person => "person",
+        AtprotoSubjectClassification.Organization => "organization",
+        AtprotoSubjectClassification.Group => "group",
+        _ => throw new ArgumentOutOfRangeException(nameof(classification))
+    };
+
+    private static bool TryGetCanonicalActorTarget(
+        Guid? canonicalActorId,
+        Guid? expectedCanonicalActorConcurrencyStamp,
+        out Guid? parsedCanonicalActorId,
+        out Guid? parsedExpectedCanonicalActorConcurrencyStamp)
+    {
+        parsedCanonicalActorId = canonicalActorId;
+        parsedExpectedCanonicalActorConcurrencyStamp = expectedCanonicalActorConcurrencyStamp;
+        return canonicalActorId.HasValue == expectedCanonicalActorConcurrencyStamp.HasValue
+               && canonicalActorId != Guid.Empty
+               && expectedCanonicalActorConcurrencyStamp != Guid.Empty;
+    }
+
+    private static bool TryGetCanonicalActorTarget(
+        string[] canonicalActorIdClaims,
+        string[] expectedCanonicalActorConcurrencyStampClaims,
+        out Guid? canonicalActorId,
+        out Guid? expectedCanonicalActorConcurrencyStamp)
+    {
+        canonicalActorId = null;
+        expectedCanonicalActorConcurrencyStamp = null;
+        if (canonicalActorIdClaims.Length != expectedCanonicalActorConcurrencyStampClaims.Length
+            || canonicalActorIdClaims.Length > 1)
+        {
+            return false;
+        }
+
+        if (canonicalActorIdClaims.Length == 0)
+        {
+            return true;
+        }
+
+        if (!Guid.TryParseExact(canonicalActorIdClaims[0], "D", out var parsedActorId)
+            || parsedActorId == Guid.Empty
+            || !Guid.TryParseExact(expectedCanonicalActorConcurrencyStampClaims[0], "D", out var parsedConcurrencyStamp)
+            || parsedConcurrencyStamp == Guid.Empty)
+        {
+            return false;
+        }
+
+        canonicalActorId = parsedActorId;
+        expectedCanonicalActorConcurrencyStamp = parsedConcurrencyStamp;
+        return true;
     }
 
     private ObjectResult ProblemResponse(int status, string title) => Problem(

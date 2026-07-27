@@ -30,8 +30,15 @@ public interface ISetupSecretSessionService
 
 public sealed class SetupSecretSessionService : ISetupSecretSessionService
 {
+    private static readonly TimeSpan SessionIdleTimeout = TimeSpan.FromMinutes(30);
     private readonly ConcurrentDictionary<string, SecretEntry> _userStore = new();
     private readonly ConcurrentDictionary<string, SecretEntry> _anonymousStore = new();
+    private readonly TimeProvider _timeProvider;
+
+    public SetupSecretSessionService(TimeProvider? timeProvider = null)
+    {
+        _timeProvider = timeProvider ?? TimeProvider.System;
+    }
 
     public void SetForUser(string userId, string secret)
     {
@@ -40,8 +47,9 @@ public sealed class SetupSecretSessionService : ISetupSecretSessionService
             return;
         }
 
-        _userStore[userId] = new SecretEntry(secret.Trim(), DateTime.UtcNow);
-        CleanupExpiredEntries();
+        var now = _timeProvider.GetUtcNow();
+        _userStore[userId] = new SecretEntry(secret.Trim(), now);
+        CleanupExpiredEntries(now);
     }
 
     public string? GetForUser(string userId)
@@ -51,18 +59,7 @@ public sealed class SetupSecretSessionService : ISetupSecretSessionService
             return null;
         }
 
-        if (!_userStore.TryGetValue(userId, out var entry))
-        {
-            return null;
-        }
-
-        if (entry.StoredAtUtc < DateTime.UtcNow.AddHours(-2))
-        {
-            _userStore.TryRemove(userId, out _);
-            return null;
-        }
-
-        return entry.Secret;
+        return GetAndRefresh(_userStore, userId);
     }
 
     public void ClearForUser(string userId)
@@ -83,8 +80,9 @@ public sealed class SetupSecretSessionService : ISetupSecretSessionService
         }
 
         var sessionId = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        _anonymousStore[sessionId] = new SecretEntry(secret.Trim(), DateTime.UtcNow);
-        CleanupExpiredEntries();
+        var now = _timeProvider.GetUtcNow();
+        _anonymousStore[sessionId] = new SecretEntry(secret.Trim(), now);
+        CleanupExpiredEntries(now);
         return sessionId;
     }
 
@@ -95,18 +93,7 @@ public sealed class SetupSecretSessionService : ISetupSecretSessionService
             return null;
         }
 
-        if (!_anonymousStore.TryGetValue(sessionId, out var entry))
-        {
-            return null;
-        }
-
-        if (entry.StoredAtUtc < DateTime.UtcNow.AddHours(-2))
-        {
-            _anonymousStore.TryRemove(sessionId, out _);
-            return null;
-        }
-
-        return entry.Secret;
+        return GetAndRefresh(_anonymousStore, sessionId);
     }
 
     public void ClearAnonymousSession(string sessionId)
@@ -119,21 +106,51 @@ public sealed class SetupSecretSessionService : ISetupSecretSessionService
         _anonymousStore.TryRemove(sessionId, out _);
     }
 
-    private void CleanupExpiredEntries()
+    private string? GetAndRefresh(ConcurrentDictionary<string, SecretEntry> store, string key)
     {
-        var cutoff = DateTime.UtcNow.AddHours(-2);
-        foreach (var key in _userStore.Where(kvp => kvp.Value.StoredAtUtc < cutoff).Select(kvp => kvp.Key).ToList())
+        while (store.TryGetValue(key, out var entry))
         {
-            _userStore.TryRemove(key, out _);
+            var now = _timeProvider.GetUtcNow();
+            if (entry.LastAccessedUtc < now - SessionIdleTimeout)
+            {
+                if (TryRemove(store, key, entry))
+                {
+                    return null;
+                }
+
+                continue;
+            }
+
+            if (store.TryUpdate(key, entry with { LastAccessedUtc = now }, entry))
+            {
+                return entry.Secret;
+            }
         }
 
-        foreach (var key in _anonymousStore.Where(kvp => kvp.Value.StoredAtUtc < cutoff).Select(kvp => kvp.Key).ToList())
+        return null;
+    }
+
+    private void CleanupExpiredEntries(DateTimeOffset now)
+    {
+        var cutoff = now - SessionIdleTimeout;
+        foreach (var entry in _userStore.Where(kvp => kvp.Value.LastAccessedUtc < cutoff).ToList())
         {
-            _anonymousStore.TryRemove(key, out _);
+            TryRemove(_userStore, entry.Key, entry.Value);
+        }
+
+        foreach (var entry in _anonymousStore.Where(kvp => kvp.Value.LastAccessedUtc < cutoff).ToList())
+        {
+            TryRemove(_anonymousStore, entry.Key, entry.Value);
         }
     }
 
-    private sealed record SecretEntry(string Secret, DateTime StoredAtUtc);
+    private static bool TryRemove(
+        ConcurrentDictionary<string, SecretEntry> store,
+        string key,
+        SecretEntry entry) =>
+        ((ICollection<KeyValuePair<string, SecretEntry>>)store).Remove(new KeyValuePair<string, SecretEntry>(key, entry));
+
+    private sealed record SecretEntry(string Secret, DateTimeOffset LastAccessedUtc);
 }
 
 /// <summary>

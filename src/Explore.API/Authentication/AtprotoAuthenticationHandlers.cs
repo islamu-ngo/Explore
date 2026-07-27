@@ -56,8 +56,17 @@ public sealed class AtprotoBootstrapAuthenticationHandler(
 
         var principal = new ClaimsPrincipal(new ClaimsIdentity([
             new Claim("client_id", "event-blazor-bff"),
-            new Claim(AtprotoJwtOptions.TenantClaim, identity.TenantId.ToString("D"))
+            new Claim(AtprotoJwtOptions.TenantClaim, identity.TenantId.ToString("D")),
+            new Claim(AtprotoJwtOptions.DidClaim, identity.Did),
+            new Claim(AtprotoJwtOptions.ClassificationClaim, identity.Classification)
         ], ApiAuthenticationSchemeNames.AtprotoBootstrap));
+        if (identity.CanonicalActorId is { } canonicalActorId)
+        {
+            ((ClaimsIdentity)principal.Identity!).AddClaims([
+                new(AtprotoJwtOptions.CanonicalActorIdClaim, canonicalActorId.ToString("D")),
+                new(AtprotoJwtOptions.ExpectedCanonicalActorConcurrencyStampClaim, identity.ExpectedCanonicalActorConcurrencyStamp!.Value.ToString("D"))
+            ]);
+        }
         return AuthenticateResult.Success(new AuthenticationTicket(principal, Scheme.Name));
     }
 }

@@ -10,4 +10,7 @@ public sealed record BootstrapAtprotoSessionCommand(
     string ExpectedDid,
     string ExpectedPdsUri,
     string OAuthClientKeyId,
-    byte[] OAuthSessionPayload) : IRequest<AtprotoSessionBootstrapResult>;
+    AtprotoSubjectClassification Classification,
+    byte[] OAuthSessionPayload,
+    Guid? CanonicalActorId = null,
+    Guid? ExpectedCanonicalActorConcurrencyStamp = null) : IRequest<AtprotoSessionBootstrapResult>;

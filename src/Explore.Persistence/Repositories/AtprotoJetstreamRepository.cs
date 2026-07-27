@@ -950,7 +950,6 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 importedEvent.EventStatusId = MapEventStatus(import.Status);
                 importedEvent.EventTimeZoneId = import.TimeZoneId;
                 importedEvent.Timezone = import.TimeZoneId;
-                importedEvent.IsRegistrationRequired = import.RsvpExpected ?? false;
                 importedEvent.AtprotoRecordId = canonical.Id;
                 importedEvent.AtprotoRecord = canonical;
                 importedEvent.ProvenanceSource = "atproto";
@@ -970,6 +969,13 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                     filterBypassReason,
                     cancellationToken);
             }
+
+            await EnsureParticipationConfigurationAsync(
+                importedEvent,
+                import,
+                applyAuthoritativeRefresh: !preserveHealthyEvent,
+                filterBypassReason,
+                cancellationToken);
 
             await ApplyThumbnailAsync(
                 import,
@@ -1045,6 +1051,50 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             }
             importedEvent.RecalculateScheduleSummaryFromSessions();
         }
+    }
+
+    private async Task EnsureParticipationConfigurationAsync(
+        Explore.Domain.Event importedEvent,
+        AtprotoFederatedEventImportPlan import,
+        bool applyAuthoritativeRefresh,
+        string filterBypassReason,
+        CancellationToken cancellationToken)
+    {
+        EventParticipationConfiguration? configuration = _dbContext.ChangeTracker
+            .Entries<EventParticipationConfiguration>()
+            .Where(entry => entry.State != EntityState.Deleted)
+            .Select(entry => entry.Entity)
+            .SingleOrDefault(value => value.Id == importedEvent.Id && value.TenantId == importedEvent.TenantId);
+        configuration ??= await _dbContext.EventParticipationConfigurations
+            .IgnoreAllFilters(filterBypassReason)
+            .SingleOrDefaultAsync(
+                value => value.Id == importedEvent.Id && value.TenantId == importedEvent.TenantId,
+                cancellationToken);
+
+        if (configuration is not null && !applyAuthoritativeRefresh)
+        {
+            return;
+        }
+
+        if (configuration is null)
+        {
+            configuration = EventParticipationConfiguration.Create(
+                importedEvent.Id,
+                importedEvent.TenantId,
+                import.ParticipationConfiguration.ParticipationHandlingModeId,
+                import.ParticipationConfiguration.AdvanceRegistrationObligationId,
+                import.ParticipationConfiguration.IdentityAccessModeId,
+                import.ParticipationConfiguration.GuestRecoveryPolicy,
+                now: import.CreatedAt.UtcDateTime);
+            await _dbContext.EventParticipationConfigurations.AddAsync(configuration, cancellationToken);
+            return;
+        }
+
+        configuration.Reconfigure(
+            import.ParticipationConfiguration.ParticipationHandlingModeId,
+            import.ParticipationConfiguration.AdvanceRegistrationObligationId,
+            import.ParticipationConfiguration.IdentityAccessModeId,
+            import.ParticipationConfiguration.GuestRecoveryPolicy);
     }
 
     private async Task ReconcileOriginalSourceActionAsync(

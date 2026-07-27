@@ -831,17 +831,31 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         await fixture.ResetAsync();
         FederationScope scope = await SeedScopeAsync("pds-correction-receipt");
         PdsSyncOutbox correction = CreateOutbox(scope, Utc(10));
-        correction.Status = PdsSyncStatus.Superseded;
-        correction.SupersededAt = Utc(11);
+        PdsSyncOutbox successor = CreateOutbox(
+            scope,
+            Utc(11),
+            PdsSyncOperation.Update,
+            sourceEntityId: correction.SourceEntityId,
+            sourceVersion: Guid.CreateVersion7(),
+            payload: "{\"name\":\"Corrected event\",\"createdAt\":\"2026-07-18T11:00:00Z\"}");
         await using var context = fixture.CreateDbContext();
-        context.PdsSyncOutbox.Add(correction);
+        context.PdsSyncOutbox.AddRange(correction, successor);
+        await context.SaveChangesAsync();
+        PdsSyncOutboxRepository repository = new(context);
+
+        int superseded = await repository.SupersedePriorAsync(
+            scope.TenantId,
+            correction.SourceEntityType,
+            correction.SourceEntityId,
+            successor.Id,
+            Utc(11));
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
-        PdsSyncOutboxRepository repository = new(context);
 
         bool exists = await repository.ExistsAsync(scope.TenantId, correction.Id);
         bool crossTenantExists = await repository.ExistsAsync(Guid.CreateVersion7(), correction.Id);
 
+        await Assert.That(superseded).IsEqualTo(1);
         await Assert.That(exists).IsTrue();
         await Assert.That(crossTenantExists).IsFalse();
         await Assert.That(context.ChangeTracker.Entries()).IsEmpty();
@@ -854,16 +868,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         FederationScope scope = await SeedScopeAsync("pds-event-link");
         DateTime now = Utc(10);
         await using var context = fixture.CreateDbContext();
-        var actor = new Actor
-        {
-            Id = Guid.CreateVersion7(),
-            ActorTypeId = (int)ActorTypeEnum.User,
-            ActorType = null!,
-            UserId = scope.UserId,
-            Pii = new ActorPii { DisplayName = "PDS event owner" },
-            CreatedAt = now,
-            ConcurrencyStamp = Guid.CreateVersion7()
-        };
+        Actor actor = CreateActor(scope.UserId, "PDS event owner", now);
         var eventEntity = new Explore.Domain.Event
         {
             Id = Guid.CreateVersion7(),
@@ -882,7 +887,9 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             ConcurrencyStamp = Guid.CreateVersion7()
         };
         PdsSyncOutbox outbox = CreateOutbox(scope, now.AddSeconds(1), sourceEntityId: eventEntity.Id);
-        context.AddRange(actor, eventEntity, outbox);
+        context.Actors.Add(actor);
+        SetForeignKeyIfPresent(context, actor, "TenantId", scope.TenantId);
+        context.AddRange(eventEntity, outbox);
         await context.SaveChangesAsync();
         PdsSyncOutboxRepository repository = new(context);
         PdsSyncClaim claim = (await repository.ClaimDueAsync(
@@ -1368,6 +1375,31 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         IndexedAt = observedAt,
         UpdatedAt = observedAt
     };
+
+    private static Actor CreateActor(Guid userId, string displayName, DateTime createdAt)
+    {
+        Actor actor = Activator.CreateInstance<Actor>();
+        actor.Id = Guid.CreateVersion7();
+        actor.ActorTypeId = (int)ActorTypeEnum.User;
+        actor.ActorType = null!;
+        actor.UserId = userId;
+        actor.Pii = new ActorPii { DisplayName = displayName };
+        actor.CreatedAt = createdAt;
+        actor.ConcurrencyStamp = Guid.CreateVersion7();
+        return actor;
+    }
+
+    private static void SetForeignKeyIfPresent(
+        ExploreDbContext context,
+        object entity,
+        string propertyName,
+        object value)
+    {
+        if (context.Model.FindEntityType(entity.GetType())?.FindProperty(propertyName) is not null)
+        {
+            context.Entry(entity).Property(propertyName).CurrentValue = value;
+        }
+    }
 
     private static DateTime Utc(int hour) => new(2026, 7, 18, hour, 0, 0, DateTimeKind.Utc);
 

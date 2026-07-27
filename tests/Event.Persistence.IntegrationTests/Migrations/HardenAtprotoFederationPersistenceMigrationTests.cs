@@ -2,7 +2,11 @@
 // ABOUTME: Covers the final tables, constraints, and source-version uniqueness without deleted history boundaries.
 
 using Event.Persistence.IntegrationTests.Fixtures;
+using Explore.Domain;
+using Explore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql;
 
 namespace Event.Persistence.IntegrationTests.Migrations;
@@ -31,7 +35,73 @@ public sealed class AtprotoFederationBaselineGuardTests(PostgreSqlContainerFixtu
         await Assert.That(await ReadCountAsync(
             "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public' " +
             "AND indexname IN ('ux_atproto_records_identity', 'ux_pds_sync_outbox_source_version')"))
-            .IsEqualTo(2L);
+             .IsEqualTo(2L);
+    }
+
+    [Test]
+    public async Task CurrentBaseline_GlobalizesActorLifecycleWithCaseSensitiveDidCustody()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+
+        await Assert.That(await context.Database.GetPendingMigrationsAsync()).IsEmpty();
+        await Assert.That(await ReadCountAsync(
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' " +
+            "AND table_name IN ('atproto_identities', 'actor_merges', 'external_actor_subjects', " +
+            "'organization_tenants', 'group_tenants', 'event_public_actions', 'event_provenance_types')"))
+            .IsEqualTo(7L);
+        await Assert.That(await ReadCountAsync(
+            "SELECT COUNT(*) FROM pg_constraint WHERE conname IN " +
+            "('fk_atproto_identities_did_custody_types_did_custody_type_id', " +
+            "'ck_actors_exactly_one_owner', 'ck_pds_sync_outbox_payload_shape')"))
+            .IsEqualTo(3L);
+        await Assert.That(await ReadCountAsync(
+            "SELECT COUNT(*) FROM pg_attribute attribute_entry " +
+            "JOIN pg_class table_entry ON table_entry.oid = attribute_entry.attrelid " +
+            "JOIN pg_collation collation_entry ON collation_entry.oid = attribute_entry.attcollation " +
+            "WHERE table_entry.relname = 'atproto_identities' " +
+            "AND attribute_entry.attname = 'did' AND collation_entry.collname = 'C'"))
+            .IsEqualTo(1L);
+    }
+
+    [Test]
+    public async Task CurrentBaseline_RejectsDuplicateExternalProviderIdentityAcrossTenants()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenantA = CreateTenant("provider-identity-a");
+        var tenantB = CreateTenant("provider-identity-b");
+        var userA = CreateUser("provider-identity-a");
+        var userB = CreateUser("provider-identity-b");
+        context.AddRange(tenantA, tenantB, userA, userB);
+        await context.SaveChangesAsync();
+
+        var providerKey = "did:plc:" + new string('a', 2040);
+        context.UserExternalLogins.Add(CreateExternalLogin(tenantA.Id, userA.Id, providerKey));
+        await context.SaveChangesAsync();
+        context.UserExternalLogins.Add(CreateExternalLogin(tenantB.Id, userB.Id, providerKey));
+
+        await Assert.That(() => context.SaveChangesAsync()).Throws<DbUpdateException>();
+        await Assert.That(await ReadCountAsync(
+            "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public' " +
+            "AND indexname = 'ix_user_external_logins_provider_provider_key'"))
+            .IsEqualTo(1L);
+    }
+
+    [Test]
+    public async Task CurrentBaseline_RejectsLifecycleDowngradeWithoutMutatingMigrationHistory()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        IMigrator migrator = context.GetService<IMigrator>();
+        const string migrationId = "20260726210851_RetireIndexedDidAuthority";
+
+        var downgrade = await Assert.That(async () =>
+                await migrator.MigrateAsync("20260724223948_ClearExpiredPrivacyErasureCredentials"))
+            .Throws<NotSupportedException>();
+
+        await Assert.That(downgrade!.Message).Contains("Restore a backup");
+        await Assert.That(await context.Database.GetAppliedMigrationsAsync()).Contains(migrationId);
     }
 
     private async Task<long> ReadCountAsync(string sql)
@@ -41,4 +111,39 @@ public sealed class AtprotoFederationBaselineGuardTests(PostgreSqlContainerFixtu
         await using var command = new NpgsqlCommand(sql, connection);
         return (long)(await command.ExecuteScalarAsync())!;
     }
+
+    private static Tenant CreateTenant(string slug) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        FullName = slug,
+        Slug = slug,
+        TenantStatusId = (int)TenantStatusEnum.Active,
+        TenantStatus = null!
+    };
+
+    private static User CreateUser(string emailPrefix) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        Pii = new UserPii
+        {
+            Email = $"{emailPrefix}@example.com",
+            FirstName = "Provider",
+            LastName = "Identity"
+        },
+        EmailVerified = true,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    private static UserExternalLogin CreateExternalLogin(Guid tenantId, Guid userId, string providerKey) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        TenantId = tenantId,
+        Tenant = null!,
+        UserId = userId,
+        User = null!,
+        Provider = "atproto",
+        ProviderKey = providerKey,
+        ProviderDisplayName = "ATProto",
+        CreatedAt = DateTime.UtcNow
+    };
 }

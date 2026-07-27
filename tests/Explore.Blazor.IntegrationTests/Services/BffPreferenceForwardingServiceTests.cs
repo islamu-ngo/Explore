@@ -26,7 +26,7 @@ public sealed class BffPreferenceForwardingServiceTests
     }
 
     [Test]
-    public async Task PersistPreferencesAsync_MapsPreferenceDtoToApiUpdateRequest()
+    public async Task PersistLocalizationAsync_MapsOnlySuppliedLocalizationLeaves()
     {
         var apiClient = Substitute.For<IEventApiClient>();
         UpdateUserAppearancePreferencesDto? captured = null;
@@ -35,16 +35,28 @@ public sealed class BffPreferenceForwardingServiceTests
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponseOfGuid());
         var service = new BffPreferenceForwardingService(apiClient);
-        var defaultThemeId = Guid.NewGuid();
-        var preferences = new BffAppearancePreferences("dark", "rtl", "fr", defaultThemeId);
-
-        await service.PersistPreferencesAsync(preferences, CancellationToken.None);
+        await service.PersistLocalizationAsync("rtl", null, CancellationToken.None);
 
         captured.Should().NotBeNull();
-        captured!.ThemeMode.Should().Be("dark");
-        captured.Direction.Should().Be("rtl");
-        captured.Language.Should().Be("fr");
-        captured.DefaultThemeId.Should().Be(defaultThemeId);
+        captured!.Localization.Should().NotBeNull();
+        captured.Localization!.Direction.Should().Be("rtl");
+        captured.Localization.Language.Should().BeNull();
+    }
+
+    [Test]
+    public async Task SetThemeModeAsync_UsesFocusedModeOperation()
+    {
+        var apiClient = Substitute.For<IEventApiClient>();
+        var service = new BffPreferenceForwardingService(apiClient);
+
+        await service.SetThemeModeAsync("dark", CancellationToken.None);
+
+        await apiClient.Received(1).SetAppearanceThemeModeAsync(
+            Arg.Is<SetThemeModeRequestDto>(request => request.ThemeMode == "dark"),
+            cancellationToken: Arg.Any<CancellationToken>());
+        await apiClient.DidNotReceive().UpdateCurrentUserAppearancePreferencesAsync(
+            Arg.Any<UpdateUserAppearancePreferencesDto>(),
+            cancellationToken: Arg.Any<CancellationToken>());
     }
 
     [Test]

@@ -102,6 +102,7 @@
 </MudContainer>
 
 @code {
+    private const string PersonClassification = "person";
     private bool _isLoading = true;
     private bool _isAutoRedirecting;
     private bool _hasTriggeredRedirect;
@@ -262,7 +263,7 @@
             response = await BffClient.SendAsync<AtprotoChallengeRequest, AtprotoChallengeResponse>(
                 HttpMethod.Post,
                 "/auth/atproto/challenge",
-                new(_atprotoHandle.Trim(), _returnUrl));
+                new(_atprotoHandle.Trim(), _returnUrl, PersonClassification));
         }
         catch (Exception)
         {
@@ -347,7 +348,10 @@
         }
     }
 
-    private sealed record AtprotoChallengeRequest(string Handle, string ReturnPath);
+    private sealed record AtprotoChallengeRequest(
+        string Handle,
+        string ReturnPath,
+        string Classification);
 
     private sealed record AtprotoChallengeResponse(string AuthorizationUrl);
 

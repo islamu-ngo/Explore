@@ -4,6 +4,7 @@
 namespace Explore.Application.Features.Federation.Atproto.Models;
 
 using Explore.Application.Models.Storage;
+using Explore.Application.DTOs.Event;
 
 public sealed record AtprotoFederatedEventImportPlan(
     Guid TenantId,
@@ -21,6 +22,7 @@ public sealed record AtprotoFederatedEventImportPlan(
     bool? RsvpExpected)
 {
     public string TimeZoneId { get; init; } = "UTC";
+    public required ConfigureEventParticipationDto ParticipationConfiguration { get; init; }
     public AtprotoThumbnailBlobCandidate? Thumbnail { get; init; }
     public FileStorageWriteResult? StagedThumbnail { get; init; }
 }

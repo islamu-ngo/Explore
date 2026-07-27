@@ -15,12 +15,17 @@ namespace Explore.Blazor.IntegrationTests.Services;
 public sealed class AtprotoBootstrapAssertionServiceTests
 {
     [Test]
-    public async Task IssueBindsClientTenantMethodAndExactRouteWithoutUserIdentity()
+    public async Task IssueBindsTenantDidClassificationAndExactRouteWithoutUserIdentity()
     {
         var tenantId = Guid.NewGuid();
         var service = CreateService();
 
-        var token = service.Issue(tenantId, HttpMethod.Post, AtprotoBootstrapAssertionService.BridgePath);
+        var token = service.Issue(
+            tenantId,
+            "did:plc:alice",
+            "organization",
+            HttpMethod.Post,
+            AtprotoBootstrapAssertionService.BridgePath);
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
 
         await Assert.That(jwt.Issuer).IsEqualTo(AtprotoBootstrapAssertionService.Issuer);
@@ -31,7 +36,39 @@ public sealed class AtprotoBootstrapAssertionServiceTests
             .IsEqualTo(HttpMethods.Post);
         await Assert.That(jwt.Claims.Single(claim => claim.Type == AtprotoBootstrapAssertionService.PathClaim).Value)
             .IsEqualTo(AtprotoBootstrapAssertionService.BridgePath);
-        await Assert.That(jwt.Claims.Any(claim => claim.Type is "did" or "user_id" or "email")).IsFalse();
+        await Assert.That(jwt.Claims.Single(claim => claim.Type == AtprotoBootstrapAssertionService.DidClaim).Value)
+            .IsEqualTo("did:plc:alice");
+        await Assert.That(jwt.Claims.Single(claim => claim.Type == AtprotoBootstrapAssertionService.ClassificationClaim).Value)
+            .IsEqualTo("organization");
+        await Assert.That(jwt.Claims.Any(claim => claim.Type is "user_id" or "email")).IsFalse();
+    }
+
+    [Test]
+    public async Task IssueOmitsOrIncludesExactlyOneCompleteCanonicalActorTargetPair()
+    {
+        var service = CreateService();
+        var tenantId = Guid.NewGuid();
+        var canonicalActorId = Guid.NewGuid();
+        var expectedConcurrencyStamp = Guid.NewGuid();
+
+        var omitted = new JwtSecurityTokenHandler().ReadJwtToken(service.Issue(
+            tenantId,
+            "did:plc:alice",
+            "organization",
+            HttpMethod.Post,
+            AtprotoBootstrapAssertionService.BridgePath));
+        var present = new JwtSecurityTokenHandler().ReadJwtToken(service.Issue(
+            tenantId,
+            "did:plc:alice",
+            "organization",
+            HttpMethod.Post,
+            AtprotoBootstrapAssertionService.BridgePath,
+            canonicalActorId,
+            expectedConcurrencyStamp));
+
+        await Assert.That(omitted.Claims.Any(claim => claim.Type is AtprotoBootstrapAssertionService.CanonicalActorIdClaim or AtprotoBootstrapAssertionService.ExpectedCanonicalActorConcurrencyStampClaim)).IsFalse();
+        await Assert.That(present.Claims.Single(claim => claim.Type == AtprotoBootstrapAssertionService.CanonicalActorIdClaim).Value).IsEqualTo(canonicalActorId.ToString("D"));
+        await Assert.That(present.Claims.Single(claim => claim.Type == AtprotoBootstrapAssertionService.ExpectedCanonicalActorConcurrencyStampClaim).Value).IsEqualTo(expectedConcurrencyStamp.ToString("D"));
     }
 
     [Test]
@@ -50,7 +87,9 @@ public sealed class AtprotoBootstrapAssertionServiceTests
         using var invoker = new HttpMessageInvoker(handler);
         using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.example.test/api/auth/atproto/session");
         request.Headers.TryAddWithoutValidation(AtprotoBootstrapAssertionService.HeaderName, "browser-controlled");
-        AtprotoBootstrapRequestOptions.BindTenant(request, tenantId);
+        var canonicalActorId = Guid.NewGuid();
+        var expectedConcurrencyStamp = Guid.NewGuid();
+        AtprotoBootstrapRequestOptions.Bind(request, tenantId, "did:plc:alice", "group", canonicalActorId, expectedConcurrencyStamp);
 
         using var response = await invoker.SendAsync(request, CancellationToken.None);
 
@@ -58,6 +97,14 @@ public sealed class AtprotoBootstrapAssertionServiceTests
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(captured.Assertion!);
         await Assert.That(jwt.Claims.Single(claim => claim.Type == AtprotoBootstrapAssertionService.TenantClaim).Value)
             .IsEqualTo(tenantId.ToString("D"));
+        await Assert.That(jwt.Claims.Single(claim => claim.Type == AtprotoBootstrapAssertionService.DidClaim).Value)
+            .IsEqualTo("did:plc:alice");
+        await Assert.That(jwt.Claims.Single(claim => claim.Type == AtprotoBootstrapAssertionService.ClassificationClaim).Value)
+            .IsEqualTo("group");
+        await Assert.That(jwt.Claims.Single(claim => claim.Type == AtprotoBootstrapAssertionService.CanonicalActorIdClaim).Value)
+            .IsEqualTo(canonicalActorId.ToString("D"));
+        await Assert.That(jwt.Claims.Single(claim => claim.Type == AtprotoBootstrapAssertionService.ExpectedCanonicalActorConcurrencyStampClaim).Value)
+            .IsEqualTo(expectedConcurrencyStamp.ToString("D"));
 
         using var unbound = new HttpRequestMessage(HttpMethod.Post, "https://api.example.test/api/auth/atproto/session");
         unbound.Headers.TryAddWithoutValidation(AtprotoBootstrapAssertionService.HeaderName, "browser-controlled");

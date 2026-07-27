@@ -11,6 +11,8 @@ public class AtprotoIdentity : IAuditableEntity, ISoftDeletable, IConcurrencyAwa
     public required string Did { get; set; }
     public Guid ActorId { get; set; }
     public required Actor Actor { get; set; }
+    public int? DidCustodyTypeId { get; set; }
+    public DidCustodyType? DidCustodyType { get; set; }
     public string? Handle { get; set; }
     public required string PdsHost { get; set; }
     public string? SigningKey { get; set; }

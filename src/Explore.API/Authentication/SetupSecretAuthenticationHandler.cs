@@ -48,8 +48,7 @@ public sealed class SetupSecretAuthenticationHandler(
             return Task.FromResult(AuthenticateResult.Fail("Setup-secret authentication failed."));
         }
 
-        if (setupSecretProvider.IsTimedOut
-            || !setupSecretProvider.ValidateSecret(values[0]))
+        if (!setupSecretProvider.ValidateSecret(values[0]))
         {
             return Task.FromResult(AuthenticateResult.Fail("Setup-secret authentication failed."));
         }

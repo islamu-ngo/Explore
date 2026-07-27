@@ -13,7 +13,7 @@ public sealed class AtprotoIdentityConfiguration : IEntityTypeConfiguration<Atpr
     public void Configure(EntityTypeBuilder<AtprotoIdentity> builder)
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
-        builder.Property(e => e.Did).HasMaxLength(2048).IsRequired();
+        builder.Property(e => e.Did).HasMaxLength(2048).IsRequired().UseCollation("C");
         builder.Property(e => e.Handle).HasMaxLength(253);
         builder.Property(e => e.PdsHost).HasMaxLength(2048).IsRequired();
         builder.Property(e => e.SigningKey).HasMaxLength(2048);
@@ -24,6 +24,11 @@ public sealed class AtprotoIdentityConfiguration : IEntityTypeConfiguration<Atpr
         builder.HasOne(e => e.Actor)
             .WithMany(e => e.AtprotoIdentities)
             .HasForeignKey(e => e.ActorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.DidCustodyType)
+            .WithMany()
+            .HasForeignKey(e => e.DidCustodyTypeId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

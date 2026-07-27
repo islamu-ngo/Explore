@@ -38,6 +38,7 @@ public sealed class AtprotoAuthenticationHandler(
         var authorizationUrl = await CreateAuthorizationUrlAsync(
             handle,
             properties.RedirectUri ?? storedReturnPath ?? "/",
+            AtprotoSubjectClassifications.Person,
             Context.RequestAborted).ConfigureAwait(false);
         Response.Redirect(authorizationUrl);
     }
@@ -45,9 +46,30 @@ public sealed class AtprotoAuthenticationHandler(
     public async Task<string> CreateAuthorizationUrlAsync(
         string? rawHandle,
         string returnPath,
+        string? rawClassification,
+        CancellationToken cancellationToken)
+        => await CreateAuthorizationUrlAsync(
+            rawHandle,
+            returnPath,
+            rawClassification,
+            null,
+            null,
+            cancellationToken).ConfigureAwait(false);
+
+    public async Task<string> CreateAuthorizationUrlAsync(
+        string? rawHandle,
+        string returnPath,
+        string? rawClassification,
+        Guid? canonicalActorId,
+        Guid? expectedCanonicalActorConcurrencyStamp,
         CancellationToken cancellationToken)
     {
         var handle = NormalizeHandle(rawHandle);
+        var classification = AtprotoSubjectClassifications.Normalize(rawClassification);
+        if (!IsValidCanonicalActorTarget(canonicalActorId, expectedCanonicalActorConcurrencyStamp))
+        {
+            throw new InvalidOperationException("ATProto canonical Actor target is invalid.");
+        }
         if (!IsSafeReturnPath(returnPath))
         {
             throw new InvalidOperationException("ATProto return path is invalid.");
@@ -63,7 +85,10 @@ public sealed class AtprotoAuthenticationHandler(
             tenantOrigin.TenantSlug,
             tenantOrigin.Origin,
             returnPath,
-            lease.PinnedKeyId);
+            lease.PinnedKeyId,
+            classification,
+            canonicalActorId,
+            expectedCanonicalActorConcurrencyStamp);
         var authorizationUrl = await lease.Session.AuthorizeAsync(
             resolved.Did,
             CacheBackedOAuthStateStore.EncodeAppState(seed),
@@ -113,7 +138,10 @@ public sealed class AtprotoAuthenticationHandler(
         if (!client.IsAuthenticated
             || !string.Equals(client.AuthenticatedDid, binding.Seed.ExpectedDid, StringComparison.Ordinal)
             || !UrisEqual(client.BaseUrl, binding.Seed.ExpectedPdsUri)
-            || !string.Equals(session.Did, binding.Seed.ExpectedDid, StringComparison.Ordinal))
+            || !string.Equals(session.Did, binding.Seed.ExpectedDid, StringComparison.Ordinal)
+            || !string.Equals(session.Classification, binding.Seed.Classification, StringComparison.Ordinal)
+            || session.CanonicalActorId != binding.Seed.CanonicalActorId
+            || session.ExpectedCanonicalActorConcurrencyStamp != binding.Seed.ExpectedCanonicalActorConcurrencyStamp)
         {
             throw new InvalidOperationException("ATProto callback identity binding failed.");
         }
@@ -185,6 +213,11 @@ public sealed class AtprotoAuthenticationHandler(
         && !value.StartsWith("/\\", StringComparison.Ordinal)
         && !value.Contains('\r')
         && !value.Contains('\n');
+
+    private static bool IsValidCanonicalActorTarget(Guid? canonicalActorId, Guid? expectedConcurrencyStamp) =>
+        canonicalActorId.HasValue == expectedConcurrencyStamp.HasValue
+        && canonicalActorId != Guid.Empty
+        && expectedConcurrencyStamp != Guid.Empty;
 
     private static bool UrisEqual(Uri left, Uri right) =>
         string.Equals(left.AbsoluteUri.TrimEnd('/'), right.AbsoluteUri.TrimEnd('/'), StringComparison.Ordinal);

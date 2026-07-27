@@ -9,6 +9,7 @@ using System.Text.Json;
 using CarpaNet.OAuth;
 using CarpaNet.OAuth.Crypto;
 using CarpaNet.OAuth.Storage;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Secrets;
@@ -61,7 +62,12 @@ public sealed class AtprotoOAuthSecurityGatewayTests
 
         var tenantId = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        await fixture.Gateway.PersistAsync(verified.Session, tenantId, userId, CancellationToken.None);
+        var prepared = await fixture.Gateway.PreparePersistenceAsync(
+            verified.Session,
+            tenantId,
+            userId,
+            CancellationToken.None);
+        await fixture.Gateway.PersistPreparedAsync(prepared, CancellationToken.None);
         var row = fixture.GetPersistedRow() ?? throw new InvalidOperationException("Encrypted session row was not stored.");
         await Assert.That(Encoding.UTF8.GetString(row.SessionCiphertext)).DoesNotContain(AccessToken);
 
@@ -109,6 +115,15 @@ public sealed class AtprotoOAuthSecurityGatewayTests
             users,
             actors,
             atprotoIdentities,
+            Substitute.For<ITenantUserRepository>(),
+            Substitute.For<ITenantUserRoleGrantRepository>(),
+            Substitute.For<IOrganizationRepository>(),
+            Substitute.For<IOrganizationTenantRepository>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            Substitute.For<IGroupRepository>(),
+            Substitute.For<IGroupTenantRepository>(),
+            Substitute.For<IGroupMemberRepository>(),
+            Substitute.For<IAdminCacheInvalidator>(),
             unitOfWork,
             tenantContext,
             TimeProvider.System);
@@ -118,6 +133,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
             Did,
             Pds,
             OAuthKeyId,
+            AtprotoSubjectClassification.Person,
             payload), CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
@@ -139,12 +155,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         var userId = Guid.NewGuid();
         var expired = CreateSession();
         expired.TokenSet.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1);
-        await fixture.Gateway.PersistAsync(new AtprotoVerifiedOAuthSession(
-            Did,
-            "gateway-user.example",
-            new Uri(Pds),
-            OAuthKeyId,
-            JsonSerializer.SerializeToUtf8Bytes(expired)), tenantId, userId, CancellationToken.None);
+        await PersistCurrentSessionAsync(fixture, tenantId, userId, expired);
 
         var result = await fixture.Gateway.RefreshAsync(
             new AtprotoCurrentSessionIdentity(tenantId, userId, Did),
@@ -199,12 +210,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         var userId = Guid.NewGuid();
         OAuthSessionData expired = CreateSession();
         expired.TokenSet.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1);
-        await fixture.Gateway.PersistAsync(new AtprotoVerifiedOAuthSession(
-            Did,
-            "gateway-user.example",
-            new Uri(Pds),
-            OAuthKeyId,
-            JsonSerializer.SerializeToUtf8Bytes(expired)), tenantId, userId, CancellationToken.None);
+        await PersistCurrentSessionAsync(fixture, tenantId, userId, expired);
         var refreshLock = new BlockingRefreshLock(released: false);
         fixture.Transport.RefreshLeaseHeld = () => refreshLock.IsHeld;
         AtprotoPdsDeliveryGateway gateway = CreateDeliveryGateway(fixture, refreshLock);
@@ -246,12 +252,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         var userId = Guid.NewGuid();
         OAuthSessionData expired = CreateSession();
         expired.TokenSet.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1);
-        await fixture.Gateway.PersistAsync(new AtprotoVerifiedOAuthSession(
-            Did,
-            "gateway-user.example",
-            new Uri(Pds),
-            OAuthKeyId,
-            JsonSerializer.SerializeToUtf8Bytes(expired)), tenantId, userId, CancellationToken.None);
+        await PersistCurrentSessionAsync(fixture, tenantId, userId, expired);
         fixture.TokenRepository.UpdateAtprotoSessionAsync(
                 Arg.Any<UserAuthenticationToken>(),
                 Arg.Any<CancellationToken>())
@@ -384,16 +385,61 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         await Assert.That(fixture.GetPersistedRow()).IsNotNull();
     }
 
-    private static Task PersistCurrentSessionAsync(GatewayFixture fixture, Guid tenantId, Guid userId) =>
-        fixture.Gateway.PersistAsync(new AtprotoVerifiedOAuthSession(
-            Did,
-            "gateway-user.example",
-            new Uri(Pds),
-            OAuthKeyId,
-            JsonSerializer.SerializeToUtf8Bytes(CreateSession())),
+    [Test]
+    public async Task PreparedPersistenceResolvesTheEncryptionKeyOnceAndSafelyReusesCiphertext()
+    {
+        var fixture = CreateFixture(Did);
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var prepared = await fixture.Gateway.PreparePersistenceAsync(
+            new AtprotoVerifiedOAuthSession(
+                Did,
+                "gateway-user.example",
+                new Uri(Pds),
+                OAuthKeyId,
+                JsonSerializer.SerializeToUtf8Bytes(CreateSession())),
             tenantId,
             userId,
             CancellationToken.None);
+
+        await fixture.Gateway.PersistPreparedAsync(prepared, CancellationToken.None);
+        var firstCiphertext = (fixture.GetPersistedRow() ?? throw new InvalidOperationException("Encrypted session row was not stored."))
+            .SessionCiphertext.ToArray();
+        await fixture.Gateway.PersistPreparedAsync(prepared, CancellationToken.None);
+        prepared.SessionCiphertext[0] ^= byte.MaxValue;
+
+        var persisted = fixture.GetPersistedRow() ?? throw new InvalidOperationException("Encrypted session row was not stored.");
+        await Assert.That(persisted.SessionCiphertext).IsEquivalentTo(firstCiphertext);
+        await fixture.SecretResolver.Received(1).ResolveAsync(
+            SecretDefinitionRegistry.Keys.Atproto.SessionEncryptionKeyRing,
+            null,
+            Arg.Any<CancellationToken>());
+        await fixture.TokenRepository.Received(1).CreateAtprotoSessionAsync(
+            Arg.Any<UserAuthenticationToken>(),
+            Arg.Any<CancellationToken>());
+        await fixture.TokenRepository.Received(1).UpdateAtprotoSessionAsync(
+            Arg.Any<UserAuthenticationToken>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    private static async Task PersistCurrentSessionAsync(
+        GatewayFixture fixture,
+        Guid tenantId,
+        Guid userId,
+        OAuthSessionData? session = null)
+    {
+        var prepared = await fixture.Gateway.PreparePersistenceAsync(
+            new AtprotoVerifiedOAuthSession(
+                Did,
+                "gateway-user.example",
+                new Uri(Pds),
+                OAuthKeyId,
+                JsonSerializer.SerializeToUtf8Bytes(session ?? CreateSession())),
+            tenantId,
+            userId,
+            CancellationToken.None);
+        await fixture.Gateway.PersistPreparedAsync(prepared, CancellationToken.None);
+    }
 
     private static AtprotoPdsDeliveryRequest CreateDeliveryRequest(Guid tenantId, Guid userId) => new(
         tenantId,
@@ -509,8 +555,9 @@ public sealed class AtprotoOAuthSecurityGatewayTests
                 oauthFactory,
                 tokenRepository,
                 protector,
-                refreshLock,
-                Substitute.For<ILogger<AtprotoOAuthSecurityGateway>>()),
+            refreshLock,
+            Substitute.For<ILogger<AtprotoOAuthSecurityGateway>>()),
+            resolver,
             coreFactory,
             protector,
             tokenRepository,
@@ -588,6 +635,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
 
     private sealed record GatewayFixture(
         AtprotoOAuthSecurityGateway Gateway,
+        ISecretResolver SecretResolver,
         AtprotoCoreClientFactory CoreFactory,
         AtprotoSessionEnvelopeProtector Protector,
         IUserAuthenticationTokenRepository TokenRepository,
