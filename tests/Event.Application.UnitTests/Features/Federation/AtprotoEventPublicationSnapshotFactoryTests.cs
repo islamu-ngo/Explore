@@ -9,6 +9,7 @@ using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.Federation;
@@ -28,7 +29,43 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
         await Assert.That(result.IsEligible).IsTrue();
         await Assert.That(result.Snapshot!.Name).IsEqualTo("Public event");
         await Assert.That(result.Snapshot.Organizer.DisplayName).IsEqualTo("Organizer");
+        await Assert.That(result.Snapshot.RsvpExpected).IsFalse();
+        await Assert.That(result.Snapshot.Uris.Any(uri => uri.Name == "Registration")).IsFalse();
         await Assert.That(result.Snapshot.ToString()).DoesNotContain("private-provider-canary");
+    }
+
+    [Test]
+    public async Task CreateAsync_RequiredParticipationWithActiveExternalAction_DerivesRsvpAndRegistrationUri()
+    {
+        AtprotoEventPublicationEntityGraph graph = CreateGraph();
+        graph.Event.ParticipationConfiguration!.Reconfigure(
+            (int)ParticipationHandlingModeEnum.ExternalManaged,
+            (int)AdvanceRegistrationObligationEnum.Required,
+            identityAccessModeId: null,
+            guestRecoveryPolicy: null);
+        var action = new EventPublicAction
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = graph.Event.TenantId,
+            EventId = graph.Event.Id,
+            EventPublicActionKindId = (int)EventPublicActionKindEnum.ExternalRegistration,
+            HealthStateId = (int)EventPublicActionHealthStateEnum.Active,
+            IsPrimary = true,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        action.SetDestination(ExternalActionUrl.Create("https://registration.example.test/public-event"));
+        graph.Event.PublicActions.Add(action);
+
+        AtprotoEventPublicationSnapshotResult result = await CreateFactory().CreateAsync(
+            graph,
+            new(2026, 7, 18, 12, 0, 0, TimeSpan.Zero));
+
+        await Assert.That(result.IsEligible).IsTrue();
+        await Assert.That(result.Snapshot!.RsvpExpected).IsTrue();
+        await Assert.That(result.Snapshot.Uris).Contains(uri =>
+            uri.Name == "Registration"
+            && uri.Uri == "https://registration.example.test/public-event");
     }
 
     [Test]
@@ -273,6 +310,14 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
             CreatedAt = new DateTime(2026, 7, 18, 10, 0, 0, DateTimeKind.Utc),
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+        eventEntity.ParticipationConfiguration = EventParticipationConfiguration.Create(
+            eventEntity.Id,
+            tenantId,
+            (int)ParticipationHandlingModeEnum.InformationOnly,
+            (int)AdvanceRegistrationObligationEnum.NotApplicable,
+            identityAccessModeId: null,
+            guestRecoveryPolicy: null,
+            DateTime.UtcNow);
         return new(eventEntity, [], [], [], [], [], [], [], [], [], [], [], [], [], [], []);
     }
 
@@ -289,8 +334,14 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
         eventEntity.Content = "<p>event-content-canary</p>";
         eventEntity.Slug = "event-slug-canary";
         eventEntity.PublicCode = "EVENT-CODE-CANARY";
-        eventEntity.ExternalRegistrationUrl = "https://example.test/register/maximal";
-        eventEntity.IsRegistrationRequired = true;
+        eventEntity.ParticipationConfiguration = EventParticipationConfiguration.Create(
+            eventEntity.Id,
+            tenantId,
+            (int)ParticipationHandlingModeEnum.ExternalManaged,
+            (int)AdvanceRegistrationObligationEnum.Required,
+            identityAccessModeId: null,
+            guestRecoveryPolicy: null,
+            DateTime.UtcNow);
         eventEntity.Price = 12.50m;
         eventEntity.CurrencyCode = "EUR";
         eventEntity.TotalViews = 42;

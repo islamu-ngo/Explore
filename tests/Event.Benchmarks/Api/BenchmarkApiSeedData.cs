@@ -112,12 +112,14 @@ internal static class BenchmarkApiSeedData
     {
         for (var index = 0; index < EventCount; index++)
         {
+            Guid eventId = IncrementGuid(BenchmarkEventIdStart, index);
             var sessionStartUtc = DateTimeOffset.UtcNow.AddDays(index + 1).AddHours(index % 6);
             var sessionDate = DateOnly.FromDateTime(sessionStartUtc.UtcDateTime);
+            bool requiresRegistration = index % 3 == 0;
 
             yield return new Explore.Domain.Event
             {
-                Id = IncrementGuid(BenchmarkEventIdStart, index),
+                Id = eventId,
                 Title = $"Benchmark API Event {index + 1:00}",
                 Subtitle = "Representative benchmark event",
                 Description = "Seeded by Event.Benchmarks so API list benchmarks serialize non-empty event payloads.",
@@ -140,8 +142,19 @@ internal static class BenchmarkApiSeedData
                 Timezone = TimezoneId,
                 EventTimeZoneId = TimezoneId,
                 TotalViews = index * 17,
-                IsRegistrationRequired = index % 3 == 0,
-                RegistrationPolicyId = index % 3 == 0 ? (int)EventRegistrationPolicyEnum.SessionSelectionOnly : null,
+                ParticipationConfiguration = EventParticipationConfiguration.Create(
+                    eventId,
+                    SeedIds.DefaultTenantId,
+                    requiresRegistration
+                        ? (int)ParticipationHandlingModeEnum.PlatformManaged
+                        : (int)ParticipationHandlingModeEnum.InformationOnly,
+                    requiresRegistration
+                        ? (int)AdvanceRegistrationObligationEnum.Required
+                        : (int)AdvanceRegistrationObligationEnum.NotApplicable,
+                    requiresRegistration ? (int)IdentityAccessModeEnum.AccountRequired : null,
+                    guestRecoveryPolicy: null,
+                    SeedTimestamp),
+                RegistrationPolicyId = requiresRegistration ? (int)EventRegistrationPolicyEnum.SessionSelectionOnly : null,
                 SessionCount = 1,
                 CreatedAt = SeedTimestamp.AddMinutes(index),
                 CreatedBy = BenchmarkUserId,

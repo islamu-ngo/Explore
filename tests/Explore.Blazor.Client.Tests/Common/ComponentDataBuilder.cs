@@ -1,3 +1,6 @@
+// ABOUTME: Bogus-based fake data generators for generated Blazor client contracts.
+// ABOUTME: Keeps test fixtures aligned with typed event participation and current API DTOs.
+
 using Bogus;
 
 namespace Explore.Blazor.Client.Tests.Common;
@@ -76,9 +79,11 @@ public static class ComponentDataBuilder
         // Featured Image
         .RuleFor(e => e.FeaturedImageId, f => Guid.NewGuid())
         .RuleFor(e => e.FeaturedImageUri, f => f.Internet.Url())
-        // Registration
-        .RuleFor(e => e.IsRegistrationRequired, f => f.Random.Bool())
-        .RuleFor(e => e.ExternalRegistrationUrl, f => f.Random.Bool() ? f.Internet.Url() : null)
+        .RuleFor(e => e.ParticipationConfiguration, _ => new EventParticipationConfigurationDto
+        {
+            ParticipationHandlingModeId = 1,
+            AdvanceRegistrationObligationId = 1
+        })
         // Session info
         .RuleFor(e => e.SessionCount, f => f.Random.Int(1, 10))
         // Madhab (optional)
@@ -100,8 +105,11 @@ public static class ComponentDataBuilder
         .RuleFor(e => e.Description, f => f.Lorem.Paragraphs(2))
         .RuleFor(e => e.Slug, f => f.Lorem.Slug(3))
         .RuleFor(e => e.TotalViews, f => f.Random.Int(0, 10000))
-        .RuleFor(e => e.IsRegistrationRequired, f => f.Random.Bool())
-        .RuleFor(e => e.ExternalRegistrationUrl, f => f.Random.Bool() ? f.Internet.Url() : null)
+        .RuleFor(e => e.ParticipationConfiguration, _ => new ParticipationConfiguration
+        {
+            ParticipationHandlingModeId = 1,
+            AdvanceRegistrationObligationId = 1
+        })
         // Price is double? (verified from API line 24545)
         .RuleFor(e => e.Price, f => f.Random.Bool() ? (double?)f.Random.Double(0, 100) : null)
         .RuleFor(e => e.CurrencyCode, f => f.Finance.Currency().Code)
@@ -138,7 +146,11 @@ public static class ComponentDataBuilder
         .RuleFor(e => e.AudienceAgeId, f => f.Random.Int(1, 5))
         .RuleFor(e => e.VisibilityTypeId, f => f.Random.Int(1, 3))
         .RuleFor(e => e.EventFormatId, f => f.Random.Int(1, 3))
-        .RuleFor(e => e.IsRegistrationRequired, f => f.Random.Bool());
+        .RuleFor(e => e.ParticipationConfiguration, _ => new ConfigureEventParticipationDto
+        {
+            ParticipationHandlingModeId = 1,
+            AdvanceRegistrationObligationId = 1
+        });
 
     #endregion
 

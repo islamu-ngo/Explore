@@ -84,6 +84,8 @@ internal static class AtprotoEventProjectionSourceContract
 
     private static readonly ImmutableArray<string> ConditionalPolicyPaths =
     [
+        "Event.ParticipationConfiguration.AdvanceRegistrationObligationId",
+        "Event.PublicActions[ExternalRegistration.Active].Url",
         "EventCustomPropertyDefinition.ExposureLevel!=Public",
         "EventSessionCustomPropertyDefinition.ExposureLevel!=Public",
         "StorageObject.Visibility!=public_image",

@@ -21,7 +21,6 @@ public static class DataBuilder
         .RuleFor(e => e.Content, f => f.Lorem.Paragraph())
         .RuleFor(e => e.FirstSessionDate, f => f.Date.FutureDateOnly())
         .RuleFor(e => e.LastSessionDate, (f, e) => e.FirstSessionDate?.AddDays(1))
-        .RuleFor(e => e.IsRegistrationRequired, f => f.Random.Bool())
         .RuleFor(e => e.TotalViews, f => f.Random.Int(0, 10000))
         .RuleFor(e => e.EventTypeId, f => f.Random.Int(1, 5))
         .RuleFor(e => e.AudienceGenderId, f => f.Random.Int(1, 4))
@@ -220,13 +219,6 @@ public static class DataBuilder
     #endregion
 
     #region Federation Entities
-
-    public static Faker<IndexedDid> IndexedDid => new Faker<IndexedDid>()
-        .RuleFor(i => i.Did, f => $"did:plc:{f.Random.AlphaNumeric(24)}")
-        .RuleFor(i => i.Handle, f => $"{f.Internet.UserName()}.bsky.social")
-        .RuleFor(i => i.PdsHost, f => "bsky.social")
-        .RuleFor(i => i.IsActive, f => true)
-        .RuleFor(i => i.LastIndexedAt, f => f.Date.Recent());
 
     public static Faker<AtprotoRecord> AtprotoRecord => new Faker<AtprotoRecord>()
         .RuleFor(a => a.Id, f => Guid.NewGuid())

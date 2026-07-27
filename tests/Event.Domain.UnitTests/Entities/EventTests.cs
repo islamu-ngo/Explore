@@ -1,3 +1,6 @@
+// ABOUTME: Verifies the Event aggregate's required contracts, relationships, and default state.
+// ABOUTME: Guards the breaking removal of obsolete participation fields from the Domain model.
+
 namespace Event.Domain.UnitTests.Entities;
 
 using Explore.Domain;
@@ -40,7 +43,6 @@ public class EventTests
         var entity = CreateEvent();
 
         await Assert.That(entity.TotalViews).IsEqualTo(0);
-        await Assert.That(entity.IsRegistrationRequired).IsFalse();
         await Assert.That(entity.IsDeleted).IsFalse();
     }
 
@@ -54,7 +56,6 @@ public class EventTests
         await Assert.That(entity.Price).IsNull();
         await Assert.That(entity.CurrencyCode).IsNull();
         await Assert.That(entity.Slug).IsNull();
-        await Assert.That(entity.ExternalRegistrationUrl).IsNull();
         await Assert.That(entity.Timezone).IsNull();
         await Assert.That(entity.BackgroundColor).IsNull();
         await Assert.That(entity.BackgroundImageId).IsNull();
@@ -94,6 +95,23 @@ public class EventTests
         var entity = CreateEvent();
 
         await Assert.That(entity.TechAspect).IsNull();
+    }
+
+    [Test]
+    public async Task ParticipationConfiguration_DefaultValue_IsExpected()
+    {
+        var entity = CreateEvent();
+
+        await Assert.That(entity.ParticipationConfiguration).IsNull();
+    }
+
+    [Test]
+    public async Task LegacyParticipationProperties_AreAbsent()
+    {
+        var eventType = typeof(global::Explore.Domain.Event);
+
+        await Assert.That(eventType.GetProperty("IsRegistrationRequired")).IsNull();
+        await Assert.That(eventType.GetProperty("ExternalRegistrationUrl")).IsNull();
     }
 
     [Test]

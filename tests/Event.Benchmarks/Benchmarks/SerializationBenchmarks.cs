@@ -6,6 +6,7 @@ using BenchmarkDotNet.Attributes;
 using Event.Benchmarks.Configuration;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Serialization;
+using Explore.Domain.Enums;
 
 namespace Event.Benchmarks.Benchmarks;
 
@@ -43,8 +44,20 @@ public class SerializationBenchmarks
             CurrencyCode = "EUR",
             FeaturedImageId = Guid.NewGuid(),
             FeaturedImageUri = "https://cdn.openislamu.org/events/summit-2026.jpg",
-            IsRegistrationRequired = true,
-            ExternalRegistrationUrl = "https://event.openislamu.org/register/summit-2026",
+            ParticipationConfiguration = new EventParticipationConfigurationDto
+            {
+                EventId = Guid.NewGuid(),
+                ConcurrencyStamp = Guid.NewGuid(),
+                ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.PlatformManaged,
+                ParticipationHandlingModeCode = "PLATFORM_MANAGED",
+                ParticipationHandlingModeName = "Platform managed",
+                AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.Required,
+                AdvanceRegistrationObligationCode = "REQUIRED",
+                AdvanceRegistrationObligationName = "Required",
+                IdentityAccessModeId = (int)IdentityAccessModeEnum.AccountRequired,
+                IdentityAccessModeCode = "ACCOUNT_REQUIRED",
+                IdentityAccessModeName = "Account required"
+            },
             EventStatusId = 2,
             EventStatusFullName = "Published",
             VisibilityTypeId = 1,
