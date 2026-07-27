@@ -1,0 +1,225 @@
+// ABOUTME: API contract tests for event participation configuration.
+// ABOUTME: Verifies the write route metadata and command forwarding without touching a database.
+
+using System.Net;
+using System.Net.Http.Json;
+using System.Linq;
+using System.Reflection;
+using Event.Api.IntegrationTests.Fixtures;
+using Event.Api.IntegrationTests.Helpers;
+using Explore.API.Attributes;
+using Explore.API.Controllers;
+using Explore.API.Extensions;
+using Explore.API.Hateoas;
+using Explore.Application.Authorization;
+using Explore.Application.DTOs.Event;
+using Explore.Application.Features.EventParticipation.Requests.Commands;
+using Explore.Application.Hateoas;
+using Explore.Application.Responses;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace Event.Api.IntegrationTests.Features;
+
+public sealed class EventParticipationControllerTests
+{
+    [Test]
+    public async Task ConfigureRoute_UsesExplicitAuthenticatedWriteContract()
+    {
+        var action = typeof(EventParticipationController).GetMethod(nameof(EventParticipationController.Configure))!;
+        var route = action.GetCustomAttribute<HttpPatchAttribute>()!;
+
+        await Assert.That(route.Template).IsEqualTo(string.Empty);
+        await Assert.That(route.Name).IsEqualTo(RouteNames.ConfigureEventParticipation);
+        await Assert.That(action.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        await Assert.That(action.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull();
+        await Assert.That(action.GetCustomAttribute<EndpointClassificationAttribute>()!.Class)
+            .IsEqualTo(EndpointClass.Authenticated);
+        await Assert.That(action.GetCustomAttribute<EnableRateLimitingAttribute>()!.PolicyName)
+            .IsEqualTo(RateLimitingExtensions.WritePolicy);
+        await Assert.That(action.GetCustomAttribute<ConsumesAttribute>()!.ContentTypes)
+            .Contains(HateoasConstants.JsonMediaType);
+        await Assert.That(LinkRelations.ConfigureParticipation).IsEqualTo("configure-participation");
+
+        var commandAuthorization = typeof(ConfigureEventParticipationCommand)
+            .GetCustomAttribute<AuthorizeResourceAttribute>()!;
+        await Assert.That(commandAuthorization.Resource).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(commandAuthorization.Action).IsEqualTo(AuthorizationActions.Update);
+
+        var secureRequest = new ConfigureEventParticipationCommand
+        {
+            EventId = Guid.NewGuid(),
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            ParticipationConfiguration = CreateParticipationConfiguration()
+        };
+        await Assert.That(((ISecureRequest)secureRequest).ResourceId)
+            .IsEqualTo(secureRequest.EventId.ToString());
+
+        await AssertProducesProblem(action, StatusCodes.Status400BadRequest);
+        await AssertProducesProblem(action, StatusCodes.Status401Unauthorized);
+        await AssertProducesProblem(action, StatusCodes.Status403Forbidden);
+        await AssertProducesProblem(action, StatusCodes.Status404NotFound);
+        await AssertProducesProblem(action, StatusCodes.Status409Conflict);
+    }
+
+    [Test]
+    public async Task Configure_WhenCommandSucceeds_ForwardsHeaderAndBodyToMediator()
+    {
+        using var mediator = new EventParticipationMediatorStub(request => request switch
+        {
+            ConfigureEventParticipationCommand command => new BaseCommandResponse<Guid>
+            {
+                Success = true,
+                Id = command.EventId,
+                Message = "Event participation configuration updated."
+            },
+            _ => throw new InvalidOperationException($"Unexpected request: {request.GetType().Name}")
+        });
+        await using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+
+        Guid eventId = Guid.NewGuid();
+        Guid concurrencyStamp = Guid.NewGuid();
+        using var request = CreateAuthenticatedJsonRequest(
+            HttpMethod.Patch,
+            $"/api/events/{eventId}/participation",
+            CreateParticipationConfiguration(),
+            concurrencyStamp);
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var command = mediator.LastRequest as ConfigureEventParticipationCommand;
+        await Assert.That(command).IsNotNull();
+        await Assert.That(command!.EventId).IsEqualTo(eventId);
+        await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(concurrencyStamp);
+        await Assert.That(command.ParticipationConfiguration.ParticipationHandlingModeId)
+            .IsEqualTo((int)Explore.Domain.Enums.ParticipationHandlingModeEnum.InformationOnly);
+        await Assert.That(command.ParticipationConfiguration.AdvanceRegistrationObligationId)
+            .IsEqualTo((int)Explore.Domain.Enums.AdvanceRegistrationObligationEnum.NotApplicable);
+    }
+
+    [Test]
+    public async Task Configure_WhenCommandReportsConcurrencyConflict_UsesConflictHelper()
+    {
+        using var mediator = new EventParticipationMediatorStub(request => request switch
+        {
+            ConfigureEventParticipationCommand => new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                FailureCode = "event_participation_configuration_concurrency_conflict",
+                Message = "Event participation configuration conflict."
+            },
+            _ => throw new InvalidOperationException($"Unexpected request: {request.GetType().Name}")
+        });
+        await using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+
+        using var request = CreateAuthenticatedJsonRequest(
+            HttpMethod.Patch,
+            $"/api/events/{Guid.NewGuid()}/participation",
+            CreateParticipationConfiguration(),
+            Guid.NewGuid());
+
+        var response = await client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
+            response,
+            HttpStatusCode.Conflict,
+            "Event participation configuration conflict");
+    }
+
+    private static WebApplicationFactory<Program> CreateFactoryWithMediator(IMediator mediator)
+    {
+        var factory = new AuthenticatedWebApplicationFactory();
+
+        return factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IMediator>();
+                services.AddSingleton(mediator);
+            });
+        });
+    }
+
+    private static HttpRequestMessage CreateAuthenticatedJsonRequest<TValue>(
+        HttpMethod method,
+        string url,
+        TValue body,
+        Guid? ifMatch = null)
+    {
+        var request = new HttpRequestMessage(method, url)
+        {
+            Content = JsonContent.Create(body)
+        };
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid()));
+        if (ifMatch.HasValue)
+        {
+            request.Headers.TryAddWithoutValidation("If-Match", ifMatch.Value.ToString("D"));
+        }
+
+        return request;
+    }
+
+    private static ConfigureEventParticipationDto CreateParticipationConfiguration() => new()
+    {
+        ParticipationHandlingModeId = (int)Explore.Domain.Enums.ParticipationHandlingModeEnum.InformationOnly,
+        AdvanceRegistrationObligationId = (int)Explore.Domain.Enums.AdvanceRegistrationObligationEnum.NotApplicable
+    };
+
+    private static async Task AssertProducesProblem(MethodInfo action, int statusCode)
+    {
+        await Assert.That(action.GetCustomAttributes<ProducesResponseTypeAttribute>()
+            .Any(attribute => attribute.StatusCode == statusCode && attribute.Type == typeof(ProblemDetails))).IsTrue();
+    }
+
+    private sealed class EventParticipationMediatorStub(Func<object, object> responseFactory) : IMediator, IDisposable
+    {
+        public object? LastRequest { get; private set; }
+
+        public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
+        {
+            LastRequest = request;
+            object response = responseFactory(request);
+            return Task.FromResult((TResponse)response);
+        }
+
+        public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default)
+            where TRequest : IRequest
+        {
+            LastRequest = request;
+            return Task.CompletedTask;
+        }
+
+        public Task<object?> Send(object request, CancellationToken cancellationToken = default)
+        {
+            LastRequest = request;
+            return Task.FromResult<object?>(responseFactory(request));
+        }
+
+        public Task Publish(object notification, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task Publish<TNotification>(TNotification notification, CancellationToken cancellationToken = default)
+            where TNotification : INotification
+            => Task.CompletedTask;
+
+        public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public void Dispose()
+        {
+        }
+    }
+}

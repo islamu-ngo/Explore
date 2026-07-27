@@ -1,0 +1,32 @@
+/* ABOUTME: Scoped BEM layout for the Studio participation configuration editor. */
+/* ABOUTME: Uses shared spacing and form tokens while remaining responsive and RTL-safe. */
+
+.participation-configuration-editor,
+.participation-configuration-editor__intro,
+.participation-configuration-editor__fields {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.participation-configuration-editor__fields {
+    gap: var(--isl-space-5);
+}
+
+.participation-configuration-editor__message {
+    display: grid;
+    gap: var(--isl-space-2);
+    padding: var(--isl-space-4);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.participation-configuration-editor__message ul {
+    margin-block: 0;
+    padding-inline-start: var(--isl-space-6);
+}
+
+.participation-configuration-editor__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-3);
+}
