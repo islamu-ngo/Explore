@@ -30,7 +30,6 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Slug).HasMaxLength(200);
         builder.Property(e => e.PublicCode).HasMaxLength(12).IsRequired();
         builder.Property(e => e.CurrencyCode).HasMaxLength(3);
-        builder.Property(e => e.ExternalRegistrationUrl).HasMaxLength(2048);
         builder.Property(e => e.Timezone).HasMaxLength(100);
         builder.Property(e => e.EventTimeZoneId).HasMaxLength(100);
         builder.Property(e => e.ProvenanceSource).HasMaxLength(100);

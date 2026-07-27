@@ -36,7 +36,6 @@ public static class EventRedactionSentinelPolicy
         new("Event", "Description", EventRedactionValueKind.DisplayText, 150, false, "Public summary text."),
         new("Event", "Content", EventRedactionValueKind.DisplayText, 5000, false, "Long public body text."),
         new("Event", "Slug", EventRedactionValueKind.DeterministicSlug, 200, false, "Route text must remain non-content and unique enough for the event."),
-        new("Event", "ExternalRegistrationUrl", EventRedactionValueKind.Null, 2048, false, "External registration URL can identify the event."),
         new("Event", "CurrencyCode", EventRedactionValueKind.Null, 3, false, "Short constrained code; clear rather than force display sentinel."),
         new("Event", "Timezone", EventRedactionValueKind.Null, 100, false, "Operational text; clear for data minimization."),
         new("Event", "EventTimeZoneId", EventRedactionValueKind.Null, 100, false, "Operational text; clear for data minimization."),

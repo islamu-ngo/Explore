@@ -138,7 +138,6 @@ public sealed class EventHeavyRedactionRepositoryTests(PostgreSqlContainerFixtur
             Slug = "illegal-event",
             FeaturedImageId = image.Id,
             BackgroundImageId = image.Id,
-            ExternalRegistrationUrl = "https://register.example.com/illegal",
             AtprotoRecordId = atprotoRecord.Id,
             ActorId = actor.Id,
             Actor = null!,

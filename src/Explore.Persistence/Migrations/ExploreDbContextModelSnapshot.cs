@@ -1569,7 +1569,12 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(2048)
                         .HasColumnType("character varying(2048)")
-                        .HasColumnName("did");
+                        .HasColumnName("did")
+                        .UseCollation("C");
+
+                    b.Property<int?>("DidCustodyTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("did_custody_type_id");
 
                     b.Property<string>("Handle")
                         .HasMaxLength(253)
@@ -1637,6 +1642,9 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("Did")
                         .IsUnique()
                         .HasDatabaseName("ix_atproto_identities_did");
+
+                    b.HasIndex("DidCustodyTypeId")
+                        .HasDatabaseName("ix_atproto_identities_did_custody_type_id");
 
                     b.ToTable("atproto_identities", (string)null);
                 });
@@ -11548,46 +11556,6 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("incoming_webhook_settlement_sources", (string)null);
                 });
 
-            modelBuilder.Entity("Explore.Domain.IndexedDid", b =>
-                {
-                    b.Property<string>("Did")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("did");
-
-                    b.Property<string>("Handle")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("handle");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<DateTime>("LastIndexedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_indexed_at");
-
-                    b.Property<DateTime?>("LastSeenAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_seen_at");
-
-                    b.Property<string>("PdsHost")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("pds_host");
-
-                    b.Property<string>("SigningKey")
-                        .HasColumnType("text")
-                        .HasColumnName("signing_key");
-
-                    b.HasKey("Did")
-                        .HasName("pk_indexed_dids");
-
-                    b.ToTable("indexed_dids", (string)null);
-                });
-
             modelBuilder.Entity("Explore.Domain.InstanceBootstrapState", b =>
                 {
                     b.Property<Guid>("Id")
@@ -19226,8 +19194,8 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("provider_display_name");
 
                     b.Property<string>("ProviderKey")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
                         .HasColumnName("provider_key");
 
                     b.Property<Guid>("TenantId")
@@ -19254,6 +19222,11 @@ namespace Explore.Persistence.Migrations
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_user_external_logins_user_id");
+
+                    b.HasIndex("Provider", "ProviderKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_external_logins_provider_provider_key")
+                        .HasFilter("provider IS NOT NULL AND provider_key IS NOT NULL");
 
                     b.ToTable("user_external_logins", (string)null);
                 });
@@ -22849,7 +22822,15 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_atproto_identities_actors_actor_id");
 
+                    b.HasOne("Explore.Domain.DidCustodyType", "DidCustodyType")
+                        .WithMany()
+                        .HasForeignKey("DidCustodyTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_atproto_identities_did_custody_types_did_custody_type_id");
+
                     b.Navigation("Actor");
+
+                    b.Navigation("DidCustodyType");
                 });
 
             modelBuilder.Entity("Explore.Domain.AtprotoIdentityModerationRecord", b =>

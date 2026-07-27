@@ -89,7 +89,6 @@ public class EventSoftDeleteTests(PostgreSqlContainerFixture fixture)
             EventFormatId = 1,
             EventFormat = null!,
             TotalViews = 0,
-            IsRegistrationRequired = false,
             ConcurrencyStamp = Guid.NewGuid()
         };
         context.Events.Add(survivingEvent);
@@ -166,7 +165,6 @@ public class EventSoftDeleteTests(PostgreSqlContainerFixture fixture)
             EventFormatId = 1,
             EventFormat = null!,
             TotalViews = 0,
-            IsRegistrationRequired = false,
             ConcurrencyStamp = Guid.NewGuid()
         };
         context.Events.Add(@event);

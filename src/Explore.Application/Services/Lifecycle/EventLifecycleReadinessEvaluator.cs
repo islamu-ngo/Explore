@@ -207,11 +207,6 @@ public sealed class EventLifecycleReadinessEvaluator : IEventLifecycleReadinessE
                 }
                 break;
 
-            case EventFieldKey.RegistrationRequired:
-                // IsRegistrationRequired is a bool with implicit default; no missing state possible.
-                // No error can be emitted for this field key.
-                break;
-
             case EventFieldKey.ProvenanceSource:
                 if (string.IsNullOrWhiteSpace(@event.ProvenanceSource))
                 {

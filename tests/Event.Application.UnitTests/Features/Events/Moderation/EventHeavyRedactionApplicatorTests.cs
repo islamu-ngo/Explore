@@ -59,7 +59,6 @@ public sealed class EventHeavyRedactionApplicatorTests
         await Assert.That(@event.EventStatusId).IsEqualTo((int)EventStatusEnum.Moderated);
         await Assert.That(@event.Title).IsEqualTo(EventRedactionSentinelPolicy.DisplayText);
         await Assert.That(@event.Slug).StartsWith("redacted-event-");
-        await Assert.That(@event.ExternalRegistrationUrl).IsNull();
         await Assert.That(@event.ProvenanceSource).IsNull();
         await Assert.That(@event.ProvenanceExternalId).IsNull();
         await Assert.That(@event.AtprotoRecordId).IsNull();
@@ -117,7 +116,6 @@ public sealed class EventHeavyRedactionApplicatorTests
         Description = "Illegal Description",
         Content = "Illegal Content",
         Slug = "illegal-title",
-        ExternalRegistrationUrl = "https://register.example.com/illegal",
         CurrencyCode = "EUR",
         Timezone = "Europe/Brussels",
         EventTimeZoneId = "Europe/Brussels",

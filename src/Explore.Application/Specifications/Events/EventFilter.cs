@@ -150,12 +150,6 @@ public sealed class EventFilter : IFilterSpecification<Event>
         new(EventFilterType.Free, e => e.Price == null || e.Price == 0);
 
     /// <summary>
-    /// Filters events that require registration.
-    /// </summary>
-    public static EventFilter RegistrationRequired() =>
-        new(EventFilterType.RegistrationRequired, e => e.IsRegistrationRequired);
-
-    /// <summary>
     /// Filters events to only those publicly visible in discovery listings.
     /// Excludes Draft, Moderated, and Archived statuses, and Unlisted/Private/MembersOnly visibility types.
     /// Shows only Public visibility events with Published, Cancelled, or Completed status.
@@ -187,6 +181,5 @@ public enum EventFilterType
     DateFrom,
     DateTo,
     Free,
-    RegistrationRequired,
     PubliclyDiscoverable
 }

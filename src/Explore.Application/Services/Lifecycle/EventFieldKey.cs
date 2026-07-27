@@ -60,7 +60,6 @@ public enum EventFieldKey
     Price,
 
     /// <summary>Whether registration is required.</summary>
-    RegistrationRequired,
 
     /// <summary>Import/archive provenance source identifier.</summary>
     ProvenanceSource,

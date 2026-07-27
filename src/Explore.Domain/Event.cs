@@ -57,7 +57,6 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public StorageObject? FeaturedImage { get; set; }
 
     public int TotalViews { get; set; }
-    public bool IsRegistrationRequired { get; set; }
 
     [ForeignKey("Madhab")]
     public int? MadhabId { get; set; }
@@ -74,6 +73,7 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public ICollection<EventModerationRecord> ModerationRecords { get; set; } = new List<EventModerationRecord>();
     public ICollection<EventPublicAction> PublicActions { get; set; } = new List<EventPublicAction>();
     public ICollection<EventOrganizerClaim> OrganizerClaims { get; set; } = new List<EventOrganizerClaim>();
+    public EventParticipationConfiguration? ParticipationConfiguration { get; set; }
 
     public string? Slug { get; set; }
     public string PublicCode { get; set; } = string.Empty;
@@ -88,7 +88,6 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public int EventStatusId { get; set; }
     public required EventStatus EventStatus { get; set; }
 
-    public string? ExternalRegistrationUrl { get; set; }
     public DateOnly? FirstSessionDate { get; set; }
     public DateOnly? LastSessionDate { get; set; }
     public string? Timezone { get; set; }

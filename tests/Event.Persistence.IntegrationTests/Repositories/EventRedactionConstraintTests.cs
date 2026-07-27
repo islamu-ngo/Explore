@@ -192,7 +192,6 @@ public sealed class EventRedactionConstraintTests(PostgreSqlContainerFixture fix
             Description = EventRedactionSentinelPolicy.DisplayText,
             Content = EventRedactionSentinelPolicy.DisplayText,
             Slug = Slug("event", eventId),
-            ExternalRegistrationUrl = null,
             CurrencyCode = null,
             Timezone = null,
             EventTimeZoneId = null,
@@ -211,8 +210,7 @@ public sealed class EventRedactionConstraintTests(PostgreSqlContainerFixture fix
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,
-            TotalViews = 0,
-            IsRegistrationRequired = false
+            TotalViews = 0
         };
         context.Events.Add(@event);
         await context.SaveChangesAsync();
