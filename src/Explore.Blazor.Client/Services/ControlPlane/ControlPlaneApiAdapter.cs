@@ -127,7 +127,30 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
         Guid versionId,
         TenantPlanDraft draft,
         CancellationToken cancellationToken = default) =>
-        apiClient.UpdateControlPlaneTenantPlanVersionDraftAsync(versionId, draft, cancellationToken: cancellationToken);
+        apiClient.UpdateControlPlaneTenantPlanVersionDraftAsync(
+            versionId,
+            new PatchControlPlaneTenantPlanVersionDraftDto
+            {
+                Pricing = new PatchTenantPlanPricingDto
+                {
+                    Amount = draft.Pricing.Amount,
+                    CurrencyCode = draft.Pricing.CurrencyCode,
+                    BillingPeriod = draft.Pricing.BillingPeriod
+                },
+                IsActiveForProvisioning = new PatchTenantPlanProvisioningDto
+                {
+                    Value = draft.IsActiveForProvisioning
+                },
+                SettingOverrides = new PatchTenantPlanSettingOverridesDto
+                {
+                    Values = draft.SettingOverrides
+                },
+                QuotaLimits = new PatchTenantPlanQuotaLimitsDto
+                {
+                    Values = draft.QuotaLimits
+                }
+            },
+            cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> PublishVersionAsync(
         Guid versionId,

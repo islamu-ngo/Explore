@@ -44,6 +44,17 @@ public sealed class TenantPlanRepository(ExploreDbContext dbContext)
             .FirstOrDefaultAsync(version => version.Id == versionId, cancellationToken);
     }
 
+    public Task<TenantPlanVersion?> GetVersionForUpdateAsync(
+        Guid versionId,
+        CancellationToken cancellationToken = default)
+    {
+        return dbContext.TenantPlanVersions
+            .Include(version => version.TenantPlan)
+            .Include(version => version.Settings)
+            .Include(version => version.Quotas)
+            .FirstOrDefaultAsync(version => version.Id == versionId, cancellationToken);
+    }
+
     public async Task CreateVersionAsync(TenantPlanVersion version, CancellationToken cancellationToken = default)
     {
         await dbContext.TenantPlanVersions.AddAsync(version, cancellationToken);

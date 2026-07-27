@@ -71,14 +71,26 @@ internal static class ControlPlaneTenantPlanDraftMapper
 
     public static void ApplyToVersion(TenantPlanVersion version, TenantPlanDraft draft)
     {
-        version.PriceAmount = draft.Pricing.Amount;
-        version.CurrencyCode = draft.Pricing.CurrencyCode.Trim().ToUpperInvariant();
-        version.BillingPeriod = draft.Pricing.BillingPeriod.Trim();
+        ApplyPricing(version, draft.Pricing);
         version.IsActiveForProvisioning = draft.IsActiveForProvisioning;
-        version.Settings.Clear();
-        version.Quotas.Clear();
+        ReplaceSettings(version, draft.SettingOverrides);
+        ReplaceQuotas(version, draft.QuotaLimits);
+    }
 
-        foreach (TenantPlanSettingOverride setting in draft.SettingOverrides)
+    public static void ApplyPricing(TenantPlanVersion version, TenantPlanPricing pricing)
+    {
+        version.PriceAmount = pricing.Amount;
+        version.CurrencyCode = pricing.CurrencyCode.Trim().ToUpperInvariant();
+        version.BillingPeriod = pricing.BillingPeriod.Trim();
+    }
+
+    public static void ReplaceSettings(
+        TenantPlanVersion version,
+        IReadOnlyList<TenantPlanSettingOverride> settings)
+    {
+        version.Settings.Clear();
+
+        foreach (TenantPlanSettingOverride setting in settings)
         {
             version.Settings.Add(new TenantPlanVersionSetting
             {
@@ -90,8 +102,15 @@ internal static class ControlPlaneTenantPlanDraftMapper
                 IsLocked = setting.IsLocked
             });
         }
+    }
 
-        foreach (TenantPlanQuotaLimit quota in draft.QuotaLimits)
+    public static void ReplaceQuotas(
+        TenantPlanVersion version,
+        IReadOnlyList<TenantPlanQuotaLimit> quotas)
+    {
+        version.Quotas.Clear();
+
+        foreach (TenantPlanQuotaLimit quota in quotas)
         {
             version.Quotas.Add(new TenantPlanVersionQuota
             {

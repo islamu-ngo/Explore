@@ -206,21 +206,23 @@ public sealed class ControlPlaneController : ExploreControllerBase
         return response.Success ? Ok(response) : BadRequest(response);
     }
 
-    [HttpPut("plans/versions/{versionId:guid}", Name = RouteNames.UpdateControlPlaneTenantPlanVersionDraft)]
+    [HttpPatch("plans/versions/{versionId:guid}", Name = RouteNames.UpdateControlPlaneTenantPlanVersionDraft)]
     [EnableRateLimiting(RateLimitingExtensions.ControlPlanePolicy)]
     [RequestTimeout(RequestTimeoutExtensions.ControlPlanePolicy)]
     [EndpointSummary("Update Control Plane Tenant Plan Version Draft")]
-    [EndpointDescription("Updates a draft SaaS tenant plan version before publication.")]
+    [EndpointDescription("Partially updates draft SaaS tenant plan version groups before publication.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateTenantPlanVersionDraft(
         Guid versionId,
-        [FromBody] TenantPlanDraft draft,
+        [FromBody] PatchControlPlaneTenantPlanVersionDraftDto update,
         CancellationToken cancellationToken = default)
     {
-        var response = await _mediator.Send(new UpdateControlPlaneTenantPlanVersionDraftCommand(versionId, draft), cancellationToken);
+        var response = await _mediator.Send(
+            new UpdateControlPlaneTenantPlanVersionDraftCommand(versionId, update),
+            cancellationToken);
 
         return response.Success ? Ok(response) : BadRequest(response);
     }

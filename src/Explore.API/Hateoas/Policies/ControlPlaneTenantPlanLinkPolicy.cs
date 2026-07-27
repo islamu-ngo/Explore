@@ -83,7 +83,7 @@ public sealed class ControlPlaneTenantPlanDetailLinkPolicy : ILinkPolicy<Control
         string planKey,
         Guid? versionId = null,
         Guid? sourceVersionId = null) =>
-        new LinkDefinition(rel, routeName, routeValues, routeName == RouteNames.UpdateControlPlaneTenantPlanVersionDraft ? "PUT" : "POST", title, RequiresAuth: true)
+        new LinkDefinition(rel, routeName, routeValues, "POST", title, RequiresAuth: true)
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 settingKey,
@@ -131,7 +131,7 @@ internal static class ControlPlaneTenantPlanVersionLinks
                 "update-version-draft",
                 RouteNames.UpdateControlPlaneTenantPlanVersionDraft,
                 new { versionId = version.Id },
-                "PUT",
+                "PATCH",
                 "Update plan version draft",
                 UpdateControlPlaneTenantPlanVersionDraftCommand.SettingKey,
                 planKey,

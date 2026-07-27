@@ -345,13 +345,26 @@ public sealed class TenantPlanCqrsHandlerTests
             QuotaKey = TenantPlanQuotaKeys.StorageBytes,
             Limit = 1024
         });
-        repository.GetVersionAsync(draft.Id, Arg.Any<CancellationToken>()).Returns(draft);
+        repository.GetVersionForUpdateAsync(draft.Id, Arg.Any<CancellationToken>()).Returns(draft);
         var handler = new UpdateControlPlaneTenantPlanVersionDraftCommandHandler(repository);
 
         var result = await handler.Handle(
-            new UpdateControlPlaneTenantPlanVersionDraftCommand(draft.Id, CreateValidDraft() with
+            new UpdateControlPlaneTenantPlanVersionDraftCommand(draft.Id, new PatchControlPlaneTenantPlanVersionDraftDto
             {
-                Pricing = new TenantPlanPricing(49m, "EUR", TenantPlanBillingPeriods.Monthly)
+                Pricing = new PatchTenantPlanPricingDto
+                {
+                    Amount = 49m,
+                    CurrencyCode = "EUR",
+                    BillingPeriod = TenantPlanBillingPeriods.Monthly
+                },
+                SettingOverrides = new PatchTenantPlanSettingOverridesDto
+                {
+                    Values = CreateValidDraft().SettingOverrides
+                },
+                QuotaLimits = new PatchTenantPlanQuotaLimitsDto
+                {
+                    Values = CreateValidDraft().QuotaLimits
+                }
             }),
             CancellationToken.None);
 
@@ -359,7 +372,52 @@ public sealed class TenantPlanCqrsHandlerTests
         await Assert.That(draft.PriceAmount).IsEqualTo(49m);
         await Assert.That(draft.Settings.Single().SettingKey).IsEqualTo(GovernanceSettingKeys.AiAssistant.Enabled);
         await Assert.That(draft.Quotas.Single().QuotaKey).IsEqualTo(TenantPlanQuotaKeys.AiDailyTenantMessages);
-        await repository.Received(1).ReplaceVersionContentAsync(draft, Arg.Any<CancellationToken>());
+        await repository.Received(1).UpdateVersionAsync(draft, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateDraft_WhenContentGroupsAreOmitted_PreservesSettingsAndQuotas()
+    {
+        var repository = Substitute.For<ITenantPlanRepository>();
+        TenantPlan plan = CreatePlan("community", "Community");
+        TenantPlanVersion draft = CreateVersion(plan, versionNumber: 2, TenantPlanStatusEnum.Draft, 29m, true);
+        var existingSetting = new TenantPlanVersionSetting
+        {
+            Id = Guid.NewGuid(),
+            SettingKey = GovernanceSettingKeys.AiAssistant.Enabled,
+            JsonValue = "true",
+            IsLocked = false
+        };
+        var existingQuota = new TenantPlanVersionQuota
+        {
+            Id = Guid.NewGuid(),
+            QuotaKey = TenantPlanQuotaKeys.AiDailyTenantMessages,
+            Limit = 1000
+        };
+        draft.Settings.Add(existingSetting);
+        draft.Quotas.Add(existingQuota);
+        repository.GetVersionForUpdateAsync(draft.Id, Arg.Any<CancellationToken>()).Returns(draft);
+        var handler = new UpdateControlPlaneTenantPlanVersionDraftCommandHandler(repository);
+
+        var result = await handler.Handle(
+            new UpdateControlPlaneTenantPlanVersionDraftCommand(
+                draft.Id,
+                new PatchControlPlaneTenantPlanVersionDraftDto
+                {
+                    Pricing = new PatchTenantPlanPricingDto
+                    {
+                        Amount = 49m,
+                        CurrencyCode = "EUR",
+                        BillingPeriod = TenantPlanBillingPeriods.Monthly
+                    }
+                }),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(draft.PriceAmount).IsEqualTo(49m);
+        await Assert.That(draft.Settings.Single()).IsEqualTo(existingSetting);
+        await Assert.That(draft.Quotas.Single()).IsEqualTo(existingQuota);
+        await repository.Received(1).UpdateVersionAsync(draft, Arg.Any<CancellationToken>());
     }
 
     [Test]

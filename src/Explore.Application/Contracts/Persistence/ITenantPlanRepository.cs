@@ -13,6 +13,10 @@ public interface ITenantPlanRepository : IGenericRepository<TenantPlan, Guid>
 
     Task<TenantPlanVersion?> GetVersionAsync(Guid versionId, CancellationToken cancellationToken = default);
 
+    Task<TenantPlanVersion?> GetVersionForUpdateAsync(
+        Guid versionId,
+        CancellationToken cancellationToken = default);
+
     Task CreateVersionAsync(TenantPlanVersion version, CancellationToken cancellationToken = default);
 
     Task ReplaceVersionContentAsync(TenantPlanVersion version, CancellationToken cancellationToken = default);
