@@ -80,8 +80,7 @@ public class SchedulingConstraintTests
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,
-            TotalViews = 0,
-            IsRegistrationRequired = false
+            TotalViews = 0
         };
         context.Events.Add(event2);
         await context.SaveChangesAsync();
@@ -497,8 +496,7 @@ public class SchedulingConstraintTests
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,
-            TotalViews = 0,
-            IsRegistrationRequired = false
+            TotalViews = 0
         };
         context.Events.Add(@event);
         await context.SaveChangesAsync();

@@ -1058,8 +1058,7 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,
-            TotalViews = 0,
-            IsRegistrationRequired = true
+            TotalViews = 0
         };
         context.Events.Add(@event);
         await context.SaveChangesAsync();

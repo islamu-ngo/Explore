@@ -189,7 +189,6 @@ public sealed class EventRegistrationCoverageReplacementTests(PostgreSqlContaine
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,
-            IsRegistrationRequired = true,
             ConcurrencyStamp = Guid.CreateVersion7(),
         };
         context.Events.Add(@event);

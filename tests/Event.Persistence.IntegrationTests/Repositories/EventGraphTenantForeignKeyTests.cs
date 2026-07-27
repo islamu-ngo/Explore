@@ -243,7 +243,6 @@ public sealed class EventGraphTenantForeignKeyTests(PostgreSqlContainerFixture f
             VisibilityTypeId = 1,
             VisibilityType = null!,
             TotalViews = 0,
-            IsRegistrationRequired = false,
             ConcurrencyStamp = Guid.NewGuid()
         };
 

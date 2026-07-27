@@ -216,8 +216,7 @@ public class EventDayRepositoryTests
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,
-            TotalViews = 0,
-            IsRegistrationRequired = false
+            TotalViews = 0
         };
         context.Events.Add(@event);
         await context.SaveChangesAsync();

@@ -179,7 +179,6 @@ public sealed class EventAiReferenceRepositoryTests(PostgreSqlContainerFixture f
             EventFormatId = 1,
             EventFormat = null!,
             TotalViews = 0,
-            IsRegistrationRequired = false,
             CreatedAt = DateTime.UtcNow,
             ConcurrencyStamp = Guid.CreateVersion7(),
         };

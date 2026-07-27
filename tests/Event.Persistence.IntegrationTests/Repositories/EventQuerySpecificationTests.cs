@@ -409,7 +409,6 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
             EventFormatId = formatId,
             EventFormat = null!,
             TotalViews = 0,
-            IsRegistrationRequired = false,
             FirstSessionDate = firstSessionDate,
             ConcurrencyStamp = Guid.NewGuid()
         };

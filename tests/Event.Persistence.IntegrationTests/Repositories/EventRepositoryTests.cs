@@ -76,8 +76,7 @@ public class EventRepositoryTests
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,
-            TotalViews = 0,
-            IsRegistrationRequired = false
+            TotalViews = 0
         };
 
         // Act
@@ -146,8 +145,7 @@ public class EventRepositoryTests
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,
-            TotalViews = 0,
-            IsRegistrationRequired = false
+            TotalViews = 0
         };
 
         await repository.Create(@event);
