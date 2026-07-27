@@ -68,10 +68,6 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
             .SetValidator(new OptionalGuidLookupValueValidator<UpdateEventFeaturedImageDto>("FeaturedImage", dto => dto.Value, storageObjectRepository.Exists))
             .When(dto => dto.FeaturedImage is not null);
 
-        RuleFor(dto => dto.ExternalRegistrationUrl!)
-            .SetValidator(new OptionalStringValueValidator<UpdateEventExternalRegistrationUrlDto>("ExternalRegistrationUrl", 500, dto => dto.Value))
-            .When(dto => dto.ExternalRegistrationUrl is not null);
-
         RuleFor(dto => dto.Visibility!)
             .SetValidator(new RequiredLookupValueValidator<UpdateEventVisibilityDto>("Visibility", dto => dto.Value, visibilityTypeRepository.Exists))
             .When(dto => dto.Visibility is not null);
@@ -137,8 +133,6 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
         dto.Price is not null ||
         dto.CurrencyCode is not null ||
         dto.FeaturedImage is not null ||
-        dto.RegistrationRequired is not null ||
-        dto.ExternalRegistrationUrl is not null ||
         dto.Visibility is not null ||
         dto.Format is not null ||
         dto.Madhab is not null ||

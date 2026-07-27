@@ -19,8 +19,6 @@ public class UpdateEventDto
     public UpdateEventPriceDto? Price { get; set; }
     public UpdateEventCurrencyCodeDto? CurrencyCode { get; set; }
     public UpdateEventFeaturedImageDto? FeaturedImage { get; set; }
-    public UpdateEventRegistrationRequiredDto? RegistrationRequired { get; set; }
-    public UpdateEventExternalRegistrationUrlDto? ExternalRegistrationUrl { get; set; }
     public UpdateEventVisibilityDto? Visibility { get; set; }
     public UpdateEventFormatDto? Format { get; set; }
     public UpdateEventMadhabDto? Madhab { get; set; }
@@ -88,16 +86,6 @@ public class UpdateEventCurrencyCodeDto
 public class UpdateEventFeaturedImageDto
 {
     public OptionalUpdate<Guid?> Value { get; set; } = OptionalUpdate<Guid?>.Unspecified();
-}
-
-public class UpdateEventRegistrationRequiredDto
-{
-    public bool Value { get; set; }
-}
-
-public class UpdateEventExternalRegistrationUrlDto
-{
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
 }
 
 public class UpdateEventVisibilityDto

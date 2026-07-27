@@ -83,8 +83,6 @@ public partial class EventDetailsSidebar : ComponentBase
 
     private bool CanOpenEventPage => !IsSelectedEventModerated;
 
-    private bool CanUsePublicEventActions => !IsSelectedEventModerated && !IsSelectedEventPast;
-
     private string? ExternalEventUrl =>
         SelectedEvent?.IsFederatedDiscoveryEvent() == true ? SelectedEvent.GetHalHref("source") : null;
 
@@ -92,7 +90,12 @@ public partial class EventDetailsSidebar : ComponentBase
         $"Open {SelectedEvent?.Title} on its external platform in a new tab";
 
     private bool CanRegisterSelectedEvent =>
-        CanUsePublicEventActions && EventDetail?.HasHalLink("register") == true;
+        EventDetail?.HasHalLink("start-registration") == true;
+
+    private string? ExternalParticipationUrl => EventDetail?.GetHalHref("external-registration");
+
+    private string ExternalParticipationLabel =>
+        EventDetail?.GetHalTitle("external-registration") ?? "Continue on external site";
 
     private async Task HandleCloseClickAsync()
     {
@@ -206,9 +209,9 @@ public partial class EventDetailsSidebar : ComponentBase
             return detail.RegistrationPolicyFullName;
         }
 
-        return detail.IsRegistrationRequired == true
-            ? "Registration required"
-            : "Registration optional";
+        return detail.ParticipationConfiguration?.AdvanceRegistrationObligationName
+            ?? detail.ParticipationConfiguration?.ParticipationHandlingModeName
+            ?? "Participation details not specified";
     }
 
     private static Color GetFormatColor(EventDto detail)

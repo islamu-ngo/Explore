@@ -18,26 +18,48 @@ public sealed class EventDetailsSidebarTests : IDisposable
     }
 
     [Test]
-    public async Task Render_WhenRegisterHalLinkExists_ShowsRegisterAction()
+    public async Task Render_WhenStartRegistrationHalLinkExists_ShowsNativeRegistrationAction()
     {
         var eventId = Guid.NewGuid();
 
         var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
             .Add(component => component.SelectedEvent, CreateEventListItem(eventId))
-            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeRegisterLink: true)));
+            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeStartRegistrationLink: true)));
 
         await Assert.That(cut.Markup).Contains("Register for this Event");
     }
 
     [Test]
-    public async Task Render_WhenRegisterHalLinkIsMissing_HidesRegisterAction()
+    public async Task Render_WhenParticipationLinksAreMissing_HidesParticipationActions()
     {
         var eventId = Guid.NewGuid();
 
         var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
             .Add(component => component.SelectedEvent, CreateEventListItem(eventId))
-            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeRegisterLink: false)));
+            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeStartRegistrationLink: false)));
 
+        await Assert.That(cut.Markup).DoesNotContain("Register for this Event");
+        await Assert.That(cut.FindAll("[data-testid='external-participation-action']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task Render_WhenExternalRegistrationHalLinkExists_UsesStoredRedirectHrefAndTitle()
+    {
+        var eventId = Guid.NewGuid();
+        const string href = "/api/events/public-actions/123/redirect";
+        const string title = "Reserve with the organizer";
+        var detail = CreateEventDetail(eventId, includeStartRegistrationLink: false);
+        detail.AdditionalProperties = CreateHalLink("external-registration", href, title);
+
+        var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
+            .Add(component => component.SelectedEvent, CreateEventListItem(eventId))
+            .Add(component => component.EventDetail, detail));
+
+        var link = cut.Find("[data-testid='external-participation-action']");
+        await Assert.That(link.GetAttribute("href")).IsEqualTo(href);
+        await Assert.That(link.GetAttribute("target")).IsEqualTo("_blank");
+        await Assert.That(link.GetAttribute("rel")).IsEqualTo("noopener noreferrer");
+        await Assert.That(link.TextContent).Contains(title);
         await Assert.That(cut.Markup).DoesNotContain("Register for this Event");
     }
 
@@ -50,7 +72,7 @@ public sealed class EventDetailsSidebarTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
             .Add(component => component.SelectedEvent, eventItem)
-            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeRegisterLink: false))
+            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeStartRegistrationLink: false))
             .Add(component => component.IsDetailImageLoading, false));
 
         await Assert.That(cut.Markup).Contains("aria-label=\"View full-size image for Registration Affordance Event\"");
@@ -64,7 +86,7 @@ public sealed class EventDetailsSidebarTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
             .Add(component => component.SelectedEvent, CreateEventListItem(eventId))
-            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeRegisterLink: false)));
+            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeStartRegistrationLink: false)));
 
         await Assert.That(cut.Markup).Contains("aria-label=\"View full-size image for Registration Affordance Event\"");
         await Assert.That(cut.Markup).Contains("aria-haspopup=\"dialog\"");
@@ -85,7 +107,7 @@ public sealed class EventDetailsSidebarTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
             .Add(component => component.SelectedEvent, eventItem)
-            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeRegisterLink: false)));
+            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeStartRegistrationLink: false)));
 
         var link = cut.Find("a.event-details-sidebar__external-link");
         await Assert.That(link.TextContent).Contains("Open");
@@ -103,7 +125,7 @@ public sealed class EventDetailsSidebarTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
             .Add(component => component.SelectedEvent, CreateEventListItem(eventId))
-            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeRegisterLink: false)));
+            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeStartRegistrationLink: false)));
 
         await Assert.That(cut.FindAll("a.event-details-sidebar__external-link")).IsEmpty();
     }
@@ -164,17 +186,29 @@ public sealed class EventDetailsSidebarTests : IDisposable
         FirstSessionDate = DateTimeOffset.UtcNow.AddDays(7)
     };
 
-    private static EventDto CreateEventDetail(Guid eventId, bool includeRegisterLink) => new()
+    private static EventDto CreateEventDetail(Guid eventId, bool includeStartRegistrationLink) => new()
     {
         Id = eventId,
         Title = "Registration Affordance Event",
         Description = "An event used to verify HAL-gated registration affordances.",
         EventStatusMasterCode = "PUBLISHED",
-        IsRegistrationRequired = true,
-        AdditionalProperties = includeRegisterLink
-            ? CreateHalLinks("register")
+        AdditionalProperties = includeStartRegistrationLink
+            ? CreateHalLinks("start-registration")
             : []
     };
+
+    private static Dictionary<string, object> CreateHalLink(string relation, string href, string title)
+    {
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            [relation] = new { href, method = "GET", title }
+        }));
+
+        return new Dictionary<string, object>
+        {
+            ["_links"] = doc.RootElement.Clone()
+        };
+    }
 
     private static Dictionary<string, object> CreateHalLinks(params string[] linkRels)
     {

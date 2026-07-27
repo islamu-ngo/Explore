@@ -65,9 +65,7 @@ public class EventDto
     public Guid FeaturedImageId { get; set; }
     public string? FeaturedImageUri { get; set; }
 
-    // Registration
-    public bool IsRegistrationRequired { get; set; }
-    public string? ExternalRegistrationUrl { get; set; }
+    public EventParticipationConfigurationDto? ParticipationConfiguration { get; set; }
     public int? RegistrationPolicyId { get; set; }
     public string? RegistrationPolicyFullName { get; set; }
     public string? RegistrationPolicyMasterCode { get; set; }

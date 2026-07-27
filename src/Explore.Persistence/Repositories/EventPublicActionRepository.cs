@@ -52,7 +52,11 @@ public sealed class EventPublicActionRepository(ExploreDbContext dbContext)
     {
         IQueryable<EventPublicAction> query = dbContext.EventPublicActions
             .Include(action => action.EventPublicActionKind)
-            .Include(action => action.HealthState);
+            .Include(action => action.HealthState)
+            .Include(action => action.Event)
+                .ThenInclude(@event => @event!.Actor)
+            .Include(action => action.Event)
+                .ThenInclude(@event => @event!.EventProvenanceType);
 
         return trackChanges ? query : query.AsNoTracking();
     }

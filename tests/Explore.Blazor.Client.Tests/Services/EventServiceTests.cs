@@ -36,6 +36,189 @@ public class EventServiceTests
         _service = new EventService(_apiClient, _logger);
     }
 
+    [Test]
+    public async Task UpdateSessionGroupAsync_ForwardsRouteIdGroupedBodyAndIfMatch()
+    {
+        var sectionId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        var request = new UpdateEventSessionGroupRequestDto
+        {
+            Metadata = new UpdateEventSessionGroupMetadataDto { Name = "Main stage" }
+        };
+        _apiClient.UpdateEventSessionGroupAsync(
+                sectionId,
+                request,
+                $"\"{concurrencyStamp:D}\"",
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Id = sectionId, Success = true });
+
+        var result = await _service.UpdateSessionGroupAsync(sectionId, concurrencyStamp, request);
+
+        await Assert.That(result.Success).IsTrue();
+        await _apiClient.Received(1).UpdateEventSessionGroupAsync(
+            sectionId,
+            request,
+            $"\"{concurrencyStamp:D}\"",
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ConfigureEventParticipationAsync_ForwardsGeneratedDtoAndConcurrencyStamp()
+    {
+        var eventId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        var configuration = new ConfigureEventParticipationDto
+        {
+            ParticipationHandlingModeId = 4,
+            AdvanceRegistrationObligationId = 3,
+            IdentityAccessModeId = 2,
+            GuestRecoveryPolicy = 1
+        };
+        _apiClient.ConfigureEventParticipationAsync(
+                eventId,
+                configuration,
+                concurrencyStamp,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Id = eventId, Success = true });
+
+        var result = await _service.ConfigureEventParticipationAsync(
+            eventId,
+            configuration,
+            concurrencyStamp);
+
+        await Assert.That(result.Success).IsTrue();
+        await _apiClient.Received(1).ConfigureEventParticipationAsync(
+            eventId,
+            configuration,
+            concurrencyStamp,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ConfigureEventParticipationAsync_WhenConflict_ReturnsRefreshableFailure()
+    {
+        var eventId = Guid.NewGuid();
+        var configuration = new ConfigureEventParticipationDto();
+        _apiClient.ConfigureEventParticipationAsync(
+                eventId,
+                configuration,
+                Arg.Any<Guid?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException<ProblemDetails>(
+                "Conflict",
+                409,
+                string.Empty,
+                new Dictionary<string, IEnumerable<string>>(),
+                new ProblemDetails { Detail = "The participation configuration changed." },
+                null));
+
+        var result = await _service.ConfigureEventParticipationAsync(
+            eventId,
+            configuration,
+            Guid.NewGuid());
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("event_participation_configuration_concurrency_conflict");
+        await Assert.That(result.Message).Contains("changed");
+        await Assert.That(result.Errors).Contains("Refresh the event and try again.");
+    }
+
+    [Test]
+    public async Task SubmitEventOrganizerClaimAsync_ForwardsGeneratedRequest()
+    {
+        var eventId = Guid.NewGuid();
+        var request = new SubmitEventOrganizerClaimDto
+        {
+            ClaimantActorId = Guid.NewGuid(),
+            EvidenceType = "website",
+            EvidenceReference = "https://organizer.test/about"
+        };
+        _apiClient.SubmitEventOrganizerClaimAsync(
+                eventId,
+                request,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+
+        var result = await _service.SubmitEventOrganizerClaimAsync(eventId, request);
+
+        await Assert.That(result).IsTrue();
+        await _apiClient.Received(1).SubmitEventOrganizerClaimAsync(
+            eventId,
+            request,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetClaimantOrganizerClaimsAsync_ReturnsGeneratedCollectionItems()
+    {
+        var claimantActorId = Guid.NewGuid();
+        var claim = new HalResourceOfEventOrganizerClaimDto
+        {
+            Id = Guid.NewGuid(),
+            EventId = Guid.NewGuid(),
+            ClaimantActorId = claimantActorId,
+            EvidenceType = "website",
+            EvidenceReference = "https://organizer.test"
+        };
+        _apiClient.GetClaimantOrganizerClaimsAsync(
+                claimantActorId,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new HalCollectionResourceOfEventOrganizerClaimDto
+            {
+                _embedded = new HalCollectionEmbeddedOfEventOrganizerClaimDto { Items = [claim] }
+            });
+
+        var result = await _service.GetClaimantOrganizerClaimsAsync(claimantActorId);
+
+        await Assert.That(result).Contains(claim);
+    }
+
+    [Test]
+    public async Task GetEventPublicActionsAsync_ReturnsGeneratedHalItems()
+    {
+        var eventId = Guid.NewGuid();
+        var action = new HalResourceOfEventPublicActionDto
+        {
+            Id = Guid.NewGuid(),
+            EventId = eventId,
+            DestinationDomain = "registration.example",
+            Url = "https://registration.example",
+            _links = new Dictionary<string, HalLink>
+            {
+                ["external-registration"] = new() { Href = "/api/events/actions/redirect", Method = "GET" }
+            }
+        };
+        _apiClient.GetEventPublicActionsAsync(
+                eventId,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new HalCollectionResourceOfEventPublicActionDto
+            {
+                _embedded = new HalCollectionEmbeddedOfEventPublicActionDto { Items = [action] }
+            });
+
+        var result = await _service.GetEventPublicActionsAsync(eventId);
+
+        await Assert.That(result).Contains(action);
+    }
+
     #region GetAllEventsAsync Tests
 
     [Test]

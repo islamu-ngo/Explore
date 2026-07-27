@@ -1,5 +1,5 @@
 // ABOUTME: Unit-level HATEOAS policy tests for event detail affordance metadata.
-// ABOUTME: Guards add-session authorization context used by Cerbos/local parity checks.
+// ABOUTME: Guards event mutation authorization context and aspect lifecycle affordances.
 
 namespace Event.Api.IntegrationTests.Features.Hateoas;
 
@@ -10,11 +10,39 @@ using Explore.Application.Authorization;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Hateoas;
 using Explore.Domain.Enums;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using TUnit.Core;
 
 public sealed class EventLinkPolicyTests
 {
+    [Test]
+    public async Task AspectLinks_TransitionFromCreateToEditWhenAspectExists()
+    {
+        var dto = CreateEventDto(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var policy = new EventDetailLinkPolicy();
+
+        var createLinks = policy.GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test"))).ToList();
+
+        var createIslamic = createLinks.Single(link => link.Rel == "islamic-aspect:create");
+        var createTech = createLinks.Single(link => link.Rel == "tech-aspect:create");
+        await Assert.That(createIslamic.RouteName).IsEqualTo(RouteNames.CreateEventIslamicAspect);
+        await Assert.That(createIslamic.Method).IsEqualTo(HttpMethods.Post);
+        await Assert.That(createTech.RouteName).IsEqualTo(RouteNames.CreateEventTechAspect);
+        await Assert.That(createTech.Method).IsEqualTo(HttpMethods.Post);
+
+        dto.AvailableAspects = ["Islamic", "Tech"];
+        var editLinks = policy.GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test"))).ToList();
+
+        var editIslamic = editLinks.Single(link => link.Rel == "islamic-aspect:edit");
+        var editTech = editLinks.Single(link => link.Rel == "tech-aspect:edit");
+        await Assert.That(editIslamic.RouteName).IsEqualTo(RouteNames.UpdateEventIslamicAspect);
+        await Assert.That(editIslamic.Method).IsEqualTo(HttpMethods.Patch);
+        await Assert.That(editTech.RouteName).IsEqualTo(RouteNames.UpdateEventTechAspect);
+        await Assert.That(editTech.Method).IsEqualTo(HttpMethods.Patch);
+        await Assert.That(editLinks.Any(link => link.Rel.EndsWith(":create", StringComparison.Ordinal))).IsFalse();
+    }
+
     [Test]
     public async Task AddSessionLinks_UseEventSessionPreCreateAuthorizationContext()
     {
@@ -279,6 +307,15 @@ public sealed class EventLinkPolicyTests
         await Assert.That(submit.Method).IsEqualTo("POST");
         await Assert.That(submit.RequiresAuth).IsTrue();
         await Assert.That(submit.AdvertiseWhenAnonymous).IsTrue();
+
+        var claim = links.Single(definition => definition.Rel == LinkRelations.ClaimEvent);
+        await Assert.That(claim.PermissionResourceKind).IsEqualTo(ResourceKinds.EventOrganizerClaim);
+        await Assert.That(claim.PermissionResourceId).IsEqualTo(eventId.ToString());
+        await Assert.That(claim.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
+        await Assert.That(claim.PermissionResourceAttributes["tenantId"]).IsEqualTo(dto.TenantId.ToString());
+
+        var claims = links.Single(definition => definition.Rel == LinkRelations.OrganizerClaims);
+        await Assert.That(claims.PermissionResourceKind).IsEqualTo(ResourceKinds.EventOrganizerClaim);
     }
 
     [Test]
@@ -294,11 +331,162 @@ public sealed class EventLinkPolicyTests
         await Assert.That(links.Any(definition => definition.Rel == LinkRelations.ReportEvent)).IsFalse();
     }
 
+    [Test]
+    public async Task PublishedNonPublicEvent_DoesNotAdvertisePublicActionOrClaimAffordances()
+    {
+        var dto = CreateEventDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            status: EventStatusEnum.Published,
+            statusName: "Published",
+            statusCode: "PUBLISHED");
+        dto.VisibilityTypeId = (int)VisibilityTypeEnum.Unlisted;
+        dto.VisibilityTypeFullName = "Unlisted";
+        dto.VisibilityTypeMasterCode = "UNLISTED";
+
+        var links = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        foreach (var relation in new[]
+        {
+            LinkRelations.PublicActions,
+            LinkRelations.ClaimEvent,
+            LinkRelations.SuggestCorrection,
+            LinkRelations.ReportExternalLink
+        })
+        {
+            await Assert.That(links.Any(definition => definition.Rel == relation)).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task ParticipationConfigurationLinks_UseModeSpecificAffordances()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var organizerActorId = Guid.NewGuid();
+        var baseDto = CreateEventDto(eventId, tenantId, Guid.NewGuid(), provenanceTypeId: (int)EventProvenanceTypeEnum.OrganizerCreated, provenanceTypeCode: "ORGANIZER_CREATED", organizerActorId: organizerActorId);
+
+        baseDto.ParticipationConfiguration = new EventParticipationConfigurationDto { ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly };
+        var configuredLinks = new EventDetailLinkPolicy()
+            .GetLinks(baseDto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        var configure = configuredLinks.Single(link => link.Rel == LinkRelations.ConfigureParticipation);
+        await Assert.That(configure.RouteName).IsEqualTo(RouteNames.ConfigureEventParticipation);
+        await Assert.That(configure.Method).IsEqualTo(HttpMethods.Patch);
+        await Assert.That(configure.RequiresAuth).IsTrue();
+        await Assert.That(configure.PermissionAction).IsEqualTo(AuthorizationActions.Update);
+        await Assert.That(configure.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(new RouteValueDictionary(configure.RouteValues)["eventId"]).IsEqualTo(eventId);
+
+        foreach (var mode in new[] { ParticipationHandlingModeEnum.InformationOnly, ParticipationHandlingModeEnum.WalkIn })
+        {
+            baseDto.ParticipationConfiguration = new EventParticipationConfigurationDto { ParticipationHandlingModeId = (int)mode };
+            baseDto.PublicActions.Clear();
+
+            var links = new EventDetailLinkPolicy()
+                .GetLinks(baseDto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+                .ToList();
+
+            await Assert.That(links.Any(link => link.Rel is LinkRelations.ExternalRegistration or LinkRelations.StartRegistration)).IsFalse();
+        }
+
+        baseDto.ParticipationConfiguration = new EventParticipationConfigurationDto { ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.ExternalManaged };
+        baseDto.PublicActions =
+        [
+            new EventPublicActionDto
+            {
+                Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
+                EventId = eventId,
+                KindId = (int)EventPublicActionKindEnum.ExternalRegistration,
+                Url = "https://example.com/secondary",
+                DestinationDomain = "example.com",
+                SortOrder = 20,
+                IsPrimary = false
+            },
+            new EventPublicActionDto
+            {
+                Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                EventId = eventId,
+                KindId = (int)EventPublicActionKindEnum.ExternalRegistration,
+                Url = "https://example.com/primary",
+                DestinationDomain = "example.com",
+                SortOrder = 10,
+                IsPrimary = true
+            },
+            new EventPublicActionDto
+            {
+                Id = Guid.Parse("00000000-0000-0000-0000-000000000003"),
+                EventId = eventId,
+                KindId = (int)EventPublicActionKindEnum.Livestream,
+                Url = "https://example.com/live",
+                DestinationDomain = "example.com",
+                SortOrder = 1,
+                IsPrimary = true
+            }
+        ];
+
+        var externalLinks = new EventDetailLinkPolicy()
+            .GetLinks(baseDto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .Where(link => link.Rel == LinkRelations.ExternalRegistration)
+            .ToList();
+
+        await Assert.That(externalLinks.Count).IsEqualTo(1);
+        var external = externalLinks.Single();
+        await Assert.That(external.RouteName).IsEqualTo(RouteNames.RedirectEventPublicAction);
+        await Assert.That(external.Method).IsEqualTo(HttpMethods.Get);
+        await Assert.That(external.Title).IsEqualTo("Register on organizer website");
+        var externalRouteValues = new RouteValueDictionary(external.RouteValues);
+        await Assert.That(externalRouteValues["eventId"]).IsEqualTo(eventId);
+        await Assert.That(externalRouteValues["actionId"]).IsEqualTo(Guid.Parse("00000000-0000-0000-0000-000000000001"));
+        await Assert.That(externalRouteValues["surface"]).IsEqualTo("event_detail");
+
+        baseDto.ProvenanceTypeId = (int)EventProvenanceTypeEnum.Imported;
+        baseDto.ProvenanceTypeCode = "IMPORTED";
+        baseDto.OrganizerActorId = null;
+
+        var importedLinks = new EventDetailLinkPolicy()
+            .GetLinks(baseDto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .Where(link => link.Rel == LinkRelations.ExternalRegistration)
+            .ToList();
+
+        await Assert.That(importedLinks.Single().Title).IsEqualTo("View original event page");
+
+        baseDto.OrganizerActorId = organizerActorId;
+        var verifiedImportedLink = new EventDetailLinkPolicy()
+            .GetLinks(baseDto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .Single(link => link.Rel == LinkRelations.ExternalRegistration);
+
+        await Assert.That(verifiedImportedLink.Title).IsEqualTo("Register on organizer website");
+
+        baseDto.ParticipationConfiguration = new EventParticipationConfigurationDto { ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.PlatformManaged };
+        baseDto.PublicActions.Clear();
+
+        var platformLinks = new EventDetailLinkPolicy()
+            .GetLinks(baseDto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .Where(link => link.Rel == LinkRelations.StartRegistration)
+            .ToList();
+
+        await Assert.That(platformLinks.Count).IsEqualTo(1);
+        var platform = platformLinks.Single();
+        await Assert.That(platform.RouteName).IsEqualTo(RouteNames.CreateEventRegistration);
+        await Assert.That(platform.Method).IsEqualTo(HttpMethods.Post);
+        await Assert.That(platform.RequiresAuth).IsTrue();
+        await Assert.That(platform.PermissionAction).IsEqualTo(AuthorizationActions.Create);
+        await Assert.That(platform.PermissionResourceKind).IsEqualTo(ResourceKinds.EventRegistration);
+    }
+
     private static EventDto CreateEventDto(
         Guid eventId,
         Guid tenantId,
         Guid? organizationId,
         Guid? userId = null,
+        int provenanceTypeId = 0,
+        string? provenanceTypeCode = null,
+        Guid? organizerActorId = null,
         EventStatusEnum status = EventStatusEnum.Draft,
         string statusName = "Draft",
         string statusCode = "DRAFT") => new()
@@ -312,6 +500,9 @@ public sealed class EventLinkPolicyTests
             ActorTypeFullName = userId.HasValue ? "User" : "Organization",
             ActorUserId = userId,
             ActorOrganizationId = organizationId,
+            ProvenanceTypeId = provenanceTypeId,
+            ProvenanceTypeCode = provenanceTypeCode,
+            OrganizerActorId = organizerActorId,
             EventStatusId = (int)status,
             EventStatusFullName = statusName,
             EventStatusMasterCode = statusCode,

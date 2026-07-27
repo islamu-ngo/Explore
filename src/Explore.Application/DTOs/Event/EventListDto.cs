@@ -9,7 +9,6 @@ namespace Explore.Application.DTOs.Event;
 
 public class EventListDto
 {
-    //edit: added it back need to investigate!: only ommited isRegistrationRequired cause no need to display it in list view (or maybe well.. like when user clicks on register from the listview page then directly go to form so will need it! TODO need to investigate)
     public Guid Id { get; set; }
     public required string Title { get; set; }
     public string? Subtitle { get; set; }
@@ -40,6 +39,8 @@ public class EventListDto
     public Guid? ActorProfilePictureId { get; set; }
     public string? ActorProfilePictureUri { get; set; }
 
+    public string? ProvenanceTypeCode { get; set; }
+
     // Pricing
     public decimal? Price { get; set; }
     public string? CurrencyCode { get; set; }
@@ -48,9 +49,7 @@ public class EventListDto
     public Guid FeaturedImageId { get; set; }
     public string? FeaturedImageUri { get; set; }
 
-    // Registration
-    public bool IsRegistrationRequired { get; set; }
-    public string? ExternalRegistrationUrl { get; set; }
+    public EventParticipationConfigurationDto? ParticipationConfiguration { get; set; }
     public int? RegistrationPolicyId { get; set; }
     public string? RegistrationPolicyFullName { get; set; }
 

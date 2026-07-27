@@ -283,13 +283,6 @@
                                 <span>Download .ics</span>
                             </a>
                         }
-                        @if (!string.IsNullOrEmpty(_eventDetails.ExternalRegistrationUrl))
-                        {
-                            <a href="@_eventDetails.ExternalRegistrationUrl" target="_blank" class="event-sidebar-link d-flex align-center gap-2">
-                                <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" />
-                                <span>External Registration</span>
-                            </a>
-                        }
                         @if (_canViewModerationReports)
                         {
                             <a href="@GetModerationReportsHref()" class="event-sidebar-link d-flex align-center gap-2">
@@ -383,6 +376,11 @@
                         <div class="mb-8"></div>
                     }
 
+                    @if (string.Equals(_eventDetails.ProvenanceTypeCode, "COMMUNITY_REPORTED", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <EventProvenancePanel Event="_eventDetails" />
+                    }
+
                     @* Date & Time Block *@
                     <div class="d-flex align-center gap-4 mb-6">
                         <div class="event-icon-box event-icon-box--calendar">
@@ -410,10 +408,12 @@
                         </div>
                     </div>
 
-                    @* Registration Card *@
+                    @* Participation Card *@
+                    @if (HasParticipationAction || _isUserRegistered)
+                    {
                     <div class="event-registration-card mb-12">
                         <div class="event-registration-card__header">
-                            Registration
+                            Participation
                         </div>
                         <div class="event-registration-card__body">
                             @if (IsCancelledEvent())
@@ -436,7 +436,7 @@
                                     </div>
                                 </div>
                             }
-                            else
+                            else if (CanStartRegistration)
                             {
                                 <div class="d-flex flex-column flex-sm-row justify-space-between align-sm-center gap-4 mb-4">
                                     <div>
@@ -479,8 +479,25 @@
                                     </div>
                                 }
                             }
+                            else if (ExternalParticipationHref is { } externalParticipationHref)
+                            {
+                                <div class="d-flex flex-column flex-sm-row justify-space-between align-sm-center gap-4">
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        Participation is handled on an external site.
+                                    </MudText>
+                                    <a href="@externalParticipationHref"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       class="event-sidebar-link d-flex align-center gap-2">
+                                        <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" />
+                                        <span>@ExternalParticipationLabel</span>
+                                        <span class="sr-only">(opens in new tab)</span>
+                                    </a>
+                                </div>
+                            }
                         </div>
                     </div>
+                    }
 
                     @* About Section *@
                     <section class="mb-12">

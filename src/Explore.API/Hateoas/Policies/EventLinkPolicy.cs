@@ -4,6 +4,7 @@
 namespace Explore.API.Hateoas.Policies;
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
 using Explore.API.Hateoas;
 using Explore.Application.Authorization;
@@ -14,6 +15,7 @@ using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.Hateoas;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
 
 /// <summary>
 /// Link policy for EventDto (detail view).
@@ -159,7 +161,8 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Events.ViewManagement, ResourceDescriptors.Event, dto);
 
-        if (dto.EventStatusId == (int)EventStatusEnum.Published)
+        if (dto.EventStatusId == (int)EventStatusEnum.Published
+            && dto.VisibilityTypeId == (int)VisibilityTypeEnum.Public)
         {
             yield return new LinkDefinition(
                 LinkRelations.PublicActions,
@@ -211,7 +214,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     HttpMethods.Post,
                     "Claim this event",
                     RequiresAuth: true)
-                    .RequirePermission(AuthorizationActions.Events.ClaimOrganizer, ResourceDescriptors.Event, dto);
+                    .RequirePermission(AuthorizationActions.Events.ClaimOrganizer, ResourceDescriptors.EventOrganizerClaimForEvent, dto);
             }
         }
 
@@ -225,15 +228,28 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             .RequirePermission(AuthorizationActions.Events.ManagePublicActions, ResourceDescriptors.Event, dto);
 
         yield return new LinkDefinition(
+            LinkRelations.ConfigureParticipation,
+            RouteNames.ConfigureEventParticipation,
+            new { eventId = dto.Id },
+            HttpMethods.Patch,
+            "Configure participation",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
+
+        foreach (var link in GetParticipationLinks(dto))
+        {
+            yield return link;
+        }
+
+        yield return new LinkDefinition(
             LinkRelations.OrganizerClaims,
             RouteNames.GetEventOrganizerClaims,
             new { eventId = dto.Id },
             HttpMethods.Get,
             "Organizer claims",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Events.ViewOrganizerClaims, ResourceDescriptors.Event, dto);
+            .RequirePermission(AuthorizationActions.Events.ViewOrganizerClaims, ResourceDescriptors.EventOrganizerClaimForEvent, dto);
 
-        // Aspect links - conditionally included based on available aspects
         if (dto.AvailableAspects?.Contains("Islamic") == true || dto.IslamicAspect != null)
         {
             yield return new LinkDefinition(
@@ -242,15 +258,22 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 new { id = dto.Id },
                 "GET",
                 "Islamic aspect details");
+            yield return new LinkDefinition(
+                "islamic-aspect:edit",
+                RouteNames.UpdateEventIslamicAspect,
+                new { id = dto.Id },
+                HttpMethods.Patch,
+                "Edit Islamic aspect",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
         }
         else
         {
-            // Even if aspect doesn't exist, provide link to create it
             yield return new LinkDefinition(
                 "islamic-aspect:create",
-                RouteNames.UpsertEventIslamicAspect,
+                RouteNames.CreateEventIslamicAspect,
                 new { id = dto.Id },
-                "PUT",
+                HttpMethods.Post,
                 "Add Islamic aspect",
                 RequiresAuth: true)
                 .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
@@ -264,15 +287,22 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 new { id = dto.Id },
                 "GET",
                 "Tech aspect details");
+            yield return new LinkDefinition(
+                "tech-aspect:edit",
+                RouteNames.UpdateEventTechAspect,
+                new { id = dto.Id },
+                HttpMethods.Patch,
+                "Edit Tech aspect",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
         }
         else
         {
-            // Even if aspect doesn't exist, provide link to create it
             yield return new LinkDefinition(
                 "tech-aspect:create",
-                RouteNames.UpsertEventTechAspect,
+                RouteNames.CreateEventTechAspect,
                 new { id = dto.Id },
-                "PUT",
+                HttpMethods.Post,
                 "Add Tech aspect",
                 RequiresAuth: true)
                 .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
@@ -400,27 +430,73 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             "Delete event",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.Event, dto);
+    }
 
-        // Registration link - if registration is required
-        if (dto.IsRegistrationRequired)
+    private static IEnumerable<LinkDefinition> GetParticipationLinks(EventDto dto)
+    {
+        var participationModeId = dto.ParticipationConfiguration?.ParticipationHandlingModeId;
+        if (!participationModeId.HasValue || !Enum.IsDefined(typeof(ParticipationHandlingModeEnum), participationModeId.Value))
         {
-            if (!string.IsNullOrEmpty(dto.ExternalRegistrationUrl))
-            {
-                // External registration - we don't generate a link, but the URL is in the DTO
-            }
-            else
-            {
+            yield break;
+        }
+
+        switch ((ParticipationHandlingModeEnum)participationModeId.Value)
+        {
+            case ParticipationHandlingModeEnum.InformationOnly:
+            case ParticipationHandlingModeEnum.WalkIn:
+                yield break;
+            case ParticipationHandlingModeEnum.ExternalManaged:
+                foreach (var link in GetExternalRegistrationLinks(dto))
+                {
+                    yield return link;
+                }
+
+                yield break;
+            case ParticipationHandlingModeEnum.PlatformManaged:
                 yield return new LinkDefinition(
-                    "register",
+                    LinkRelations.StartRegistration,
                     RouteNames.CreateEventRegistration,
                     new { eventId = dto.Id },
-                    "POST",
+                    HttpMethods.Post,
                     "Register for event",
                     RequiresAuth: true)
                     .RequirePermission(AuthorizationActions.Create, typeof(EventRegistrationDto), "event_registration");
-            }
+
+                yield break;
         }
     }
+
+    private static IEnumerable<LinkDefinition> GetExternalRegistrationLinks(EventDto dto)
+    {
+        var action = dto.PublicActions
+            .Where(action => action.KindId == (int)EventPublicActionKindEnum.ExternalRegistration)
+            .OrderByDescending(action => action.IsPrimary)
+            .ThenBy(action => action.SortOrder)
+            .ThenBy(action => action.Id)
+            .FirstOrDefault();
+
+        if (action is null)
+        {
+            yield break;
+        }
+
+        yield return new LinkDefinition(
+            LinkRelations.ExternalRegistration,
+            RouteNames.RedirectEventPublicAction,
+            new { eventId = dto.Id, actionId = action.Id, surface = EventDetailSurface },
+            HttpMethods.Get,
+            GetExternalRegistrationLabel(dto));
+    }
+
+    private static string GetExternalRegistrationLabel(EventDto dto)
+    {
+        var authority = EventAuthorityRules.Resolve(dto.ProvenanceTypeId, dto.ActorId, dto.OrganizerActorId);
+        return authority.HasParticipationManagementAuthority
+                ? "Register on organizer website"
+                : "View original event page";
+    }
+
+    private const string EventDetailSurface = "event_detail";
 
     private static bool CanSubscribeToOrganizer(int actorTypeId) => actorTypeId is (int)ActorTypeEnum.Organization or (int)ActorTypeEnum.Group;
 
@@ -479,7 +555,8 @@ public sealed class EventCollectionLinkPolicy : ICollectionLinkPolicy<EventListD
             "GET",
             dto.ActorDisplayName);
 
-        if (dto.EventStatusId == (int)EventStatusEnum.Published)
+        if (dto.EventStatusId == (int)EventStatusEnum.Published
+            && dto.VisibilityTypeId == (int)VisibilityTypeEnum.Public)
         {
             yield return new LinkDefinition(
                 LinkRelations.EventReportOptions,

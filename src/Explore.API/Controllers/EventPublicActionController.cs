@@ -12,6 +12,7 @@ using Explore.Application.Features.EventPublicActions.Requests.Commands;
 using Explore.Application.Features.EventPublicActions.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
+using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -119,6 +120,7 @@ public sealed class EventPublicActionController : ExploreControllerBase
     public async Task<ActionResult> RedirectToAction(
         Guid eventId,
         Guid actionId,
+        [FromQuery] string? surface,
         CancellationToken cancellationToken = default)
     {
         var action = await _mediator.Send(
@@ -128,6 +130,10 @@ public sealed class EventPublicActionController : ExploreControllerBase
         {
             return this.ToNotFoundProblem(PublicActionNotFoundProblem);
         }
+
+        await _mediator.Send(
+            new RecordEventPublicActionEngagementCommand((EventPublicActionKindEnum)action.KindId, surface),
+            cancellationToken);
 
         return Redirect(action.Url);
     }

@@ -12,6 +12,8 @@ namespace Explore.API.Hateoas.Policies;
 
 public sealed class EventPublicActionDetailLinkPolicy : ILinkPolicy<EventPublicActionDto>
 {
+    private const string EventDetailSurface = "event_detail";
+
     public IEnumerable<LinkDefinition> GetLinks(EventPublicActionDto dto, ClaimsPrincipal? user)
     {
         yield return new LinkDefinition(
@@ -34,7 +36,7 @@ public sealed class EventPublicActionDetailLinkPolicy : ILinkPolicy<EventPublicA
             HttpMethods.Put,
             "Update public action",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Events.ManagePublicActions, ResourceKinds.Event, dto.EventId.ToString());
+            .RequirePermission(AuthorizationActions.Events.ManagePublicActions, ResourceDescriptors.EventPublicAction, dto);
         yield return new LinkDefinition(
             LinkRelations.Delete,
             RouteNames.DeleteEventPublicAction,
@@ -42,13 +44,13 @@ public sealed class EventPublicActionDetailLinkPolicy : ILinkPolicy<EventPublicA
             HttpMethods.Delete,
             "Delete public action",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Events.ManagePublicActions, ResourceKinds.Event, dto.EventId.ToString());
+            .RequirePermission(AuthorizationActions.Events.ManagePublicActions, ResourceDescriptors.EventPublicAction, dto);
     }
 
     private static LinkDefinition DestinationLink(EventPublicActionDto dto) => new(
         GetDestinationRelation(dto.KindId),
         RouteNames.RedirectEventPublicAction,
-        new { eventId = dto.EventId, actionId = dto.Id },
+        new { eventId = dto.EventId, actionId = dto.Id, surface = EventDetailSurface },
         HttpMethods.Get,
         dto.Label ?? dto.KindName ?? "Open external destination");
 
@@ -93,7 +95,7 @@ public sealed class EventPublicActionCollectionLinkPolicy : ICollectionLinkPolic
             HttpMethods.Put,
             "Update public action",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Events.ManagePublicActions, ResourceKinds.Event, dto.EventId.ToString());
+            .RequirePermission(AuthorizationActions.Events.ManagePublicActions, ResourceDescriptors.EventPublicAction, dto);
         yield return new LinkDefinition(
             LinkRelations.Delete,
             RouteNames.DeleteEventPublicAction,
@@ -101,7 +103,7 @@ public sealed class EventPublicActionCollectionLinkPolicy : ICollectionLinkPolic
             HttpMethods.Delete,
             "Delete public action",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Events.ManagePublicActions, ResourceKinds.Event, dto.EventId.ToString());
+            .RequirePermission(AuthorizationActions.Events.ManagePublicActions, ResourceDescriptors.EventPublicAction, dto);
     }
 
     private static string GetDestinationRelation(int kindId) => (EventPublicActionKindEnum)kindId switch

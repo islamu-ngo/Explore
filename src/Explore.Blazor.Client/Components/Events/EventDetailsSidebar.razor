@@ -165,6 +165,11 @@
                 @GetTruncatedDescription(SelectedEvent.Description)
             </MudText>
 
+            @if (string.Equals(EventDetail?.ProvenanceTypeCode, "COMMUNITY_REPORTED", StringComparison.OrdinalIgnoreCase))
+            {
+                <EventProvenancePanel Event="EventDetail!" />
+            }
+
             <MudDivider Class="mb-4" />
 
             @* ── Core Info ── *@
@@ -681,28 +686,6 @@
                     </MudSimpleTable>
                 }
 
-                @* ── Registration Info ── *@
-                @if (EventDetail?.IsRegistrationRequired == true || !string.IsNullOrEmpty(EventDetail?.ExternalRegistrationUrl))
-                {
-                    <MudDivider Class="mb-4" />
-                    <MudText Typo="Typo.overline" Class="mb-2" Style="font-weight: 600;">REGISTRATION</MudText>
-                    <MudStack Spacing="1" Class="mb-4">
-                        @if (EventDetail.IsRegistrationRequired == true)
-                        {
-                            <MudText Typo="Typo.body2">
-                                <MudIcon Icon="@Icons.Material.Filled.HowToReg" Size="Size.Small" Color="Color.Warning" Style="vertical-align: middle;" Class="mr-1" />
-                                Registration required
-                            </MudText>
-                        }
-                        @if (!string.IsNullOrEmpty(EventDetail.ExternalRegistrationUrl))
-                        {
-                            <MudLink Href="@EventDetail.ExternalRegistrationUrl" Target="_blank" Typo="Typo.body2">
-                                <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" Style="vertical-align: middle;" Class="mr-1" />
-                                External Registration
-                            </MudLink>
-                        }
-                    </MudStack>
-                }
             }
 
             <MudDivider Class="mb-4" />
@@ -740,6 +723,18 @@
                            Class="rounded-lg">
                     Register for this Event
                 </MudButton>
+            }
+            else if (ExternalParticipationUrl is { } externalParticipationUrl)
+            {
+                <a href="@externalParticipationUrl"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="event-sidebar-link d-flex align-center justify-center gap-2"
+                   data-testid="external-participation-action">
+                    <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" />
+                    <span>@ExternalParticipationLabel</span>
+                    <span class="sr-only">(opens in new tab)</span>
+                </a>
             }
         </div>
 

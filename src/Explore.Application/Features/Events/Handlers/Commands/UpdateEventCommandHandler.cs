@@ -159,8 +159,6 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
             ApplyPrice(eventEntity, update.Price);
             ApplyCurrencyCode(eventEntity, update.CurrencyCode);
             ApplyFeaturedImage(eventEntity, update.FeaturedImage);
-            ApplyRegistrationRequired(eventEntity, update.RegistrationRequired);
-            ApplyExternalRegistrationUrl(eventEntity, update.ExternalRegistrationUrl);
             ApplyVisibility(eventEntity, update.Visibility);
             ApplyFormat(eventEntity, update.Format);
             ApplyMadhab(eventEntity, update.Madhab);
@@ -414,22 +412,6 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         if (update?.Value.HasValue == true)
         {
             eventEntity.FeaturedImageId = update.Value.Value;
-        }
-    }
-
-    private static void ApplyRegistrationRequired(Explore.Domain.Event eventEntity, UpdateEventRegistrationRequiredDto? update)
-    {
-        if (update is not null)
-        {
-            eventEntity.IsRegistrationRequired = update.Value;
-        }
-    }
-
-    private static void ApplyExternalRegistrationUrl(Explore.Domain.Event eventEntity, UpdateEventExternalRegistrationUrlDto? update)
-    {
-        if (update?.Value.HasValue == true)
-        {
-            eventEntity.ExternalRegistrationUrl = update.Value.Value;
         }
     }
 

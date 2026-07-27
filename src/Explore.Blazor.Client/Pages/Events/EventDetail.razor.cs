@@ -797,7 +797,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     /// </summary>
     private async Task OpenRegistrationDialog()
     {
-        if (_eventDetails == null) return;
+        if (_eventDetails == null || !CanStartRegistration) return;
 
         if (!await IsAuthenticatedForProtectedActionAsync())
         {
@@ -884,7 +884,7 @@ public partial class EventDetail : ComponentBase, IDisposable
         if (!HasAvailableRegistrationTarget()) return "Registration unavailable";
         // This will now catch both authenticated (but not registered) users
         // AND unauthenticated users perfectly
-        return _eventDetails?.IsRegistrationRequired == true ? "Register now" : "Join us";
+        return "Register now";
     }
 
     /// <summary>
@@ -909,7 +909,7 @@ public partial class EventDetail : ComponentBase, IDisposable
 
     private bool HasAvailableRegistrationTarget()
     {
-        if (_eventDetails is null)
+        if (_eventDetails is null || !CanStartRegistration)
         {
             return false;
         }
@@ -2201,10 +2201,19 @@ public partial class EventDetail : ComponentBase, IDisposable
             return _eventDetails.RegistrationPolicyFullName;
         }
 
-        return _eventDetails?.IsRegistrationRequired == true
-            ? "Registration required"
-            : "Registration optional";
+        return _eventDetails?.ParticipationConfiguration?.AdvanceRegistrationObligationName
+            ?? _eventDetails?.ParticipationConfiguration?.ParticipationHandlingModeName
+            ?? "Participation details not specified";
     }
+
+    private bool CanStartRegistration => _eventDetails?.HasHalLink("start-registration") == true;
+
+    private string? ExternalParticipationHref => _eventDetails?.GetHalHref("external-registration");
+
+    private string ExternalParticipationLabel =>
+        _eventDetails?.GetHalTitle("external-registration") ?? "Continue on external site";
+
+    private bool HasParticipationAction => CanStartRegistration || ExternalParticipationHref is not null;
 
     private string GetProgramSummary()
     {

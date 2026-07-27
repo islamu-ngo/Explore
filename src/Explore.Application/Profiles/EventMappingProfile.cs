@@ -34,15 +34,44 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.KindCode, opt => opt.MapFrom(src => src.EventPublicActionKind != null ? src.EventPublicActionKind.MasterCode : null))
             .ForMember(dest => dest.KindName, opt => opt.MapFrom(src => src.EventPublicActionKind != null ? src.EventPublicActionKind.FullName : null))
             .ForMember(dest => dest.HealthStateCode, opt => opt.MapFrom(src => src.HealthState != null ? src.HealthState.MasterCode : null))
-            .ForMember(dest => dest.HealthStateName, opt => opt.MapFrom(src => src.HealthState != null ? src.HealthState.FullName : null));
+            .ForMember(dest => dest.HealthStateName, opt => opt.MapFrom(src => src.HealthState != null ? src.HealthState.FullName : null))
+            .ForMember(dest => dest.EventActorId, opt => opt.MapFrom(src => src.Event != null ? src.Event.ActorId : Guid.Empty))
+            .ForMember(dest => dest.EventActorUserId, opt => opt.MapFrom(src => src.Event != null && src.Event.Actor != null ? src.Event.Actor.UserId : null))
+            .ForMember(dest => dest.EventActorOrganizationId, opt => opt.MapFrom(src => src.Event != null && src.Event.Actor != null ? src.Event.Actor.OrganizationId : null))
+            .ForMember(dest => dest.EventActorGroupId, opt => opt.MapFrom(src => src.Event != null && src.Event.Actor != null ? src.Event.Actor.GroupId : null))
+            .ForMember(dest => dest.EventProvenanceTypeId, opt => opt.MapFrom(src => src.Event != null ? src.Event.EventProvenanceTypeId : 0))
+            .ForMember(dest => dest.EventProvenanceTypeCode, opt => opt.MapFrom(src => src.Event != null && src.Event.EventProvenanceType != null ? src.Event.EventProvenanceType.MasterCode : null))
+            .ForMember(dest => dest.EventOrganizerActorId, opt => opt.MapFrom(src => src.Event != null ? src.Event.OrganizerActorId : null))
+            .ForMember(dest => dest.EventSubmittedByUserId, opt => opt.MapFrom(src => src.Event != null ? src.Event.SubmittedByUserId : null));
+
+        CreateMap<EventParticipationConfiguration, EventParticipationConfigurationDto>()
+            .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.ParticipationHandlingModeCode, opt => opt.MapFrom(src => src.ParticipationHandlingMode != null ? src.ParticipationHandlingMode.MasterCode : null))
+            .ForMember(dest => dest.ParticipationHandlingModeName, opt => opt.MapFrom(src => src.ParticipationHandlingMode != null ? src.ParticipationHandlingMode.FullName : null))
+            .ForMember(dest => dest.AdvanceRegistrationObligationCode, opt => opt.MapFrom(src => src.AdvanceRegistrationObligation != null ? src.AdvanceRegistrationObligation.MasterCode : null))
+            .ForMember(dest => dest.AdvanceRegistrationObligationName, opt => opt.MapFrom(src => src.AdvanceRegistrationObligation != null ? src.AdvanceRegistrationObligation.FullName : null))
+            .ForMember(dest => dest.IdentityAccessModeCode, opt => opt.MapFrom(src => src.IdentityAccessMode != null ? src.IdentityAccessMode.MasterCode : null))
+            .ForMember(dest => dest.IdentityAccessModeName, opt => opt.MapFrom(src => src.IdentityAccessMode != null ? src.IdentityAccessMode.FullName : null));
 
         CreateMap<EventOrganizerClaim, EventOrganizerClaimDto>()
             .ForMember(dest => dest.ClaimantActorDisplayName, opt => opt.MapFrom(src => src.ClaimantActor != null ? src.ClaimantActor.DisplayName : null))
+            .ForMember(dest => dest.ClaimantActorUserId, opt => opt.MapFrom(src => src.ClaimantActor != null ? src.ClaimantActor.UserId : null))
+            .ForMember(dest => dest.ClaimantActorOrganizationId, opt => opt.MapFrom(src => src.ClaimantActor != null ? src.ClaimantActor.OrganizationId : null))
+            .ForMember(dest => dest.ClaimantActorGroupId, opt => opt.MapFrom(src => src.ClaimantActor != null ? src.ClaimantActor.GroupId : null))
             .ForMember(dest => dest.StatusCode, opt => opt.MapFrom(src => src.Status != null ? src.Status.MasterCode : null))
-            .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => src.Status != null ? src.Status.FullName : null));
+            .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => src.Status != null ? src.Status.FullName : null))
+            .ForMember(dest => dest.EventActorId, opt => opt.MapFrom(src => src.Event != null ? src.Event.ActorId : Guid.Empty))
+            .ForMember(dest => dest.EventActorUserId, opt => opt.MapFrom(src => src.Event != null && src.Event.Actor != null ? src.Event.Actor.UserId : null))
+            .ForMember(dest => dest.EventActorOrganizationId, opt => opt.MapFrom(src => src.Event != null && src.Event.Actor != null ? src.Event.Actor.OrganizationId : null))
+            .ForMember(dest => dest.EventActorGroupId, opt => opt.MapFrom(src => src.Event != null && src.Event.Actor != null ? src.Event.Actor.GroupId : null))
+            .ForMember(dest => dest.EventProvenanceTypeId, opt => opt.MapFrom(src => src.Event != null ? src.Event.EventProvenanceTypeId : 0))
+            .ForMember(dest => dest.EventProvenanceTypeCode, opt => opt.MapFrom(src => src.Event != null && src.Event.EventProvenanceType != null ? src.Event.EventProvenanceType.MasterCode : null))
+            .ForMember(dest => dest.EventOrganizerActorId, opt => opt.MapFrom(src => src.Event != null ? src.Event.OrganizerActorId : null))
+            .ForMember(dest => dest.EventSubmittedByUserId, opt => opt.MapFrom(src => src.Event != null ? src.Event.SubmittedByUserId : null));
 
         // Event → EventDto
         CreateMap<Event, EventDto>()
+            .ForMember(dest => dest.ParticipationConfiguration, opt => opt.MapFrom(src => src.ParticipationConfiguration))
             .ForMember(dest => dest.ProvenanceTypeId, opt => opt.MapFrom(src => src.EventProvenanceTypeId))
             .ForMember(dest => dest.ProvenanceTypeCode, opt => opt.MapFrom(src => src.EventProvenanceType != null ? src.EventProvenanceType.MasterCode : null))
             .ForMember(dest => dest.ProvenanceTypeName, opt => opt.MapFrom(src => src.EventProvenanceType != null ? src.EventProvenanceType.FullName : null))
@@ -101,6 +130,7 @@ public class EventMappingProfile : Profile
 
         // Event → EventListDto
         CreateMap<Event, EventListDto>()
+            .ForMember(dest => dest.ParticipationConfiguration, opt => opt.MapFrom(src => src.ParticipationConfiguration))
             .ForMember(dest => dest.EventTypeFullName, opt => opt.MapFrom(src => src.EventType != null ? src.EventType.FullName : null))
             .ForMember(dest => dest.AudienceGenderFullName, opt => opt.MapFrom(src => src.AudienceGender != null ? src.AudienceGender.FullName : null))
             .ForMember(dest => dest.AudienceAgeFullName, opt => opt.MapFrom(src => src.AudienceAge != null ? src.AudienceAge.FullName : null))
@@ -114,6 +144,7 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.ActorGroupId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.GroupId : null))
             .ForMember(dest => dest.ActorProfilePictureId, opt => opt.Ignore())
             .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureUri : null))
+            .ForMember(dest => dest.ProvenanceTypeCode, opt => opt.MapFrom(src => src.EventProvenanceType != null ? src.EventProvenanceType.MasterCode : null))
             .ForMember(dest => dest.FeaturedImageUri, opt => opt.MapFrom(src => src.FeaturedImage != null ? src.FeaturedImage.Uri : null))
             .ForMember(dest => dest.EventStatusFullName, opt => opt.MapFrom(src => src.EventStatus != null ? src.EventStatus.FullName : null))
             .ForMember(dest => dest.VisibilityTypeFullName, opt => opt.MapFrom(src => src.VisibilityType != null ? src.VisibilityType.FullName : null))

@@ -73,6 +73,15 @@ public interface IEventService
     Task<EventProgramSummaryDto?> GetEventProgramSummaryAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<EventProgramSummaryDto?> GetManagedEventProgramSummaryAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<EventPublishReadinessDto?> GetEventPublishReadinessAsync(Guid eventId, CancellationToken cancellationToken = default);
+    Task<ICollection<HalResourceOfEventOrganizerClaimDto>> GetClaimantOrganizerClaimsAsync(Guid claimantActorId, CancellationToken cancellationToken = default);
+    Task<ICollection<HalResourceOfEventPublicActionDto>> GetEventPublicActionsAsync(Guid eventId, CancellationToken cancellationToken = default);
+    Task<bool> SubmitEventOrganizerClaimAsync(Guid eventId, SubmitEventOrganizerClaimDto request, CancellationToken cancellationToken = default);
+    Task<bool> WithdrawEventOrganizerClaimAsync(Guid eventId, Guid claimId, Guid? concurrencyStamp, CancellationToken cancellationToken = default);
+    Task<BaseCommandResponseOfGuid> ConfigureEventParticipationAsync(
+        Guid eventId,
+        ConfigureEventParticipationDto configuration,
+        Guid expectedConcurrencyStamp,
+        CancellationToken cancellationToken = default);
     Task<bool> DeleteEventAsync(Guid eventId);
     Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, EventDraftEditModel request);
     Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDraftRequestDto request, string? idempotencyKey = null);
@@ -97,7 +106,10 @@ public interface IEventService
     Task<ICollection<HalResourceOfEventSessionGroupListDto>> GetSessionGroupsByEventAsync(Guid eventId);
     Task<ICollection<HalResourceOfEventSessionGroupListDto>> GetManagedSessionGroupsByEventAsync(Guid eventId);
     Task<BaseCommandResponseOfGuid> CreateSessionGroupAsync(CreateEventSessionGroupRequestDto group);
-    Task<BaseCommandResponseOfGuid> UpdateSessionGroupAsync(UpdateEventSessionGroupRequestDto group);
+    Task<BaseCommandResponseOfGuid> UpdateSessionGroupAsync(
+        Guid sessionGroupId,
+        Guid expectedConcurrencyStamp,
+        UpdateEventSessionGroupRequestDto group);
     Task<bool> DeleteSessionGroupAsync(Guid eventId, Guid sessionGroupId);
     Task<BaseCommandResponseOfGuid> AssignSessionToGroupAsync(Guid eventId, Guid eventSessionGroupId, Guid eventSessionId, bool isPrimary = true, int sortOrder = 0);
     Task<BaseCommandResponseOfGuid> UnassignSessionFromGroupAsync(Guid eventId, Guid eventSessionGroupId, Guid eventSessionId);
@@ -543,8 +555,6 @@ public partial class EventService : IEventService
         Price = new UpdateEventPriceDto { Value = OptionalDecimal(request.Price) },
         CurrencyCode = new UpdateEventCurrencyCodeDto { Value = OptionalString(request.CurrencyCode) },
         FeaturedImage = new UpdateEventFeaturedImageDto { Value = OptionalGuid(request.FeaturedImageId) },
-        RegistrationRequired = new UpdateEventRegistrationRequiredDto { Value = request.IsRegistrationRequired.GetValueOrDefault() },
-        ExternalRegistrationUrl = new UpdateEventExternalRegistrationUrlDto { Value = OptionalString(request.ExternalRegistrationUrl) },
         Visibility = new UpdateEventVisibilityDto { Value = request.VisibilityTypeId.GetValueOrDefault(1) },
         Format = new UpdateEventFormatDto { Value = request.EventFormatId.GetValueOrDefault(1) },
         Madhab = new UpdateEventMadhabDto { Value = OptionalInt(request.MadhabId) },
@@ -991,19 +1001,24 @@ public partial class EventService : IEventService
         }
     }
 
-    public async Task<BaseCommandResponseOfGuid> UpdateSessionGroupAsync(UpdateEventSessionGroupRequestDto group)
+    public async Task<BaseCommandResponseOfGuid> UpdateSessionGroupAsync(
+        Guid sessionGroupId,
+        Guid expectedConcurrencyStamp,
+        UpdateEventSessionGroupRequestDto group)
     {
         try
         {
-            return await _apiClient.UpdateEventSessionGroupAsync(group.Id ?? Guid.Empty, group);
+            return await _apiClient.UpdateEventSessionGroupAsync(
+                sessionGroupId,
+                group,
+                $"\"{expectedConcurrencyStamp:D}\"");
         }
         catch (Exception ex)
         {
             _logger.LogError(
                 ex,
-                "Error updating program section {SessionGroupId} for event {EventId}",
-                group.Id,
-                group.EventId);
+                "Error updating program section {SessionGroupId}",
+                sessionGroupId);
             return new BaseCommandResponseOfGuid
             {
                 Success = false,
@@ -1261,8 +1276,7 @@ public partial class EventService : IEventService
             CurrencyCode = eventDetails?.CurrencyCode,
             FeaturedImageId = eventDetails?.FeaturedImageId,
             FeaturedImageUri = featuredImageUri,
-            IsRegistrationRequired = eventDetails?.IsRegistrationRequired,
-            ExternalRegistrationUrl = eventDetails?.ExternalRegistrationUrl,
+            ParticipationConfiguration = ToEventListParticipationConfiguration(eventDetails?.ParticipationConfiguration),
             RegistrationPolicyId = eventDetails?.RegistrationPolicyId,
             RegistrationPolicyFullName = eventDetails?.RegistrationPolicyFullName,
             EventStatusId = eventDetails?.EventStatusId ?? 0,
@@ -1290,6 +1304,25 @@ public partial class EventService : IEventService
     {
         return referenceDate.HasValue && referenceDate.Value.Date < DateTimeOffset.UtcNow.Date;
     }
+
+    private static ParticipationConfiguration2? ToEventListParticipationConfiguration(ParticipationConfiguration? configuration) =>
+        configuration is null
+            ? null
+            : new ParticipationConfiguration2
+            {
+                EventId = configuration.EventId,
+                ConcurrencyStamp = configuration.ConcurrencyStamp,
+                ParticipationHandlingModeId = configuration.ParticipationHandlingModeId,
+                ParticipationHandlingModeCode = configuration.ParticipationHandlingModeCode,
+                ParticipationHandlingModeName = configuration.ParticipationHandlingModeName,
+                AdvanceRegistrationObligationId = configuration.AdvanceRegistrationObligationId,
+                AdvanceRegistrationObligationCode = configuration.AdvanceRegistrationObligationCode,
+                AdvanceRegistrationObligationName = configuration.AdvanceRegistrationObligationName,
+                IdentityAccessModeId = configuration.IdentityAccessModeId,
+                IdentityAccessModeCode = configuration.IdentityAccessModeCode,
+                IdentityAccessModeName = configuration.IdentityAccessModeName,
+                GuestRecoveryPolicy = configuration.GuestRecoveryPolicy
+            };
 
     public Task<BaseCommandResponseOfGuid> UpdateRegistrationAsync(
         Guid registrationId,
@@ -1339,6 +1372,124 @@ public partial class EventService : IEventService
         {
             _logger.LogError(ex, "Error fetching managed session {SessionId} on event {EventId}", sessionId, eventId);
             return null;
+        }
+    }
+
+    public async Task<ICollection<HalResourceOfEventOrganizerClaimDto>> GetClaimantOrganizerClaimsAsync(
+        Guid claimantActorId,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _apiClient.GetClaimantOrganizerClaimsAsync(claimantActorId, cancellationToken: cancellationToken);
+        return response._embedded?.Items ?? [];
+    }
+
+    public async Task<ICollection<HalResourceOfEventPublicActionDto>> GetEventPublicActionsAsync(
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _apiClient.GetEventPublicActionsAsync(eventId, cancellationToken: cancellationToken);
+        return response._embedded?.Items ?? [];
+    }
+
+    public async Task<bool> SubmitEventOrganizerClaimAsync(
+        Guid eventId,
+        SubmitEventOrganizerClaimDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _apiClient.SubmitEventOrganizerClaimAsync(eventId, request, cancellationToken: cancellationToken);
+        return response.Success == true;
+    }
+
+    public async Task<bool> WithdrawEventOrganizerClaimAsync(
+        Guid eventId,
+        Guid claimId,
+        Guid? concurrencyStamp,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _apiClient.WithdrawEventOrganizerClaimAsync(
+            eventId,
+            claimId,
+            concurrencyStamp?.ToString(),
+            cancellationToken: cancellationToken);
+        return response.Success == true;
+    }
+
+    public async Task<BaseCommandResponseOfGuid> ConfigureEventParticipationAsync(
+        Guid eventId,
+        ConfigureEventParticipationDto configuration,
+        Guid expectedConcurrencyStamp,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventId == Guid.Empty || expectedConcurrencyStamp == Guid.Empty)
+        {
+            return new BaseCommandResponseOfGuid
+            {
+                Id = eventId,
+                Success = false,
+                Message = "Event and configuration concurrency metadata are required.",
+                FailureCode = "participation_configuration_metadata_missing"
+            };
+        }
+
+        try
+        {
+            return await _apiClient.ConfigureEventParticipationAsync(
+                eventId,
+                configuration,
+                expectedConcurrencyStamp,
+                cancellationToken: cancellationToken);
+        }
+        catch (ApiException<ValidationProblemDetails> ex) when (ex.StatusCode == 400)
+        {
+            _logger.LogWarning("Participation configuration validation failed for event {EventId}", eventId);
+            return new BaseCommandResponseOfGuid
+            {
+                Id = eventId,
+                Success = false,
+                Message = ex.Result?.Detail ?? ex.Result?.Title ?? "Participation configuration is invalid.",
+                Errors = ex.Result?.Errors?.SelectMany(error => error.Value).ToList() ?? [],
+                FailureCode = "participation_configuration_validation_failed"
+            };
+        }
+        catch (ApiException<ProblemDetails> ex) when (ex.StatusCode == 409)
+        {
+            _logger.LogWarning("Participation configuration update was stale for event {EventId}", eventId);
+            return new BaseCommandResponseOfGuid
+            {
+                Id = eventId,
+                Success = false,
+                Message = ex.Result?.Detail ?? ex.Result?.Title ?? "Participation configuration changed since it was loaded.",
+                Errors = ["Refresh the event and try again."],
+                FailureCode = "event_participation_configuration_concurrency_conflict"
+            };
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogWarning("Participation configuration update failed for event {EventId} with status {StatusCode}", eventId, ex.StatusCode);
+            return new BaseCommandResponseOfGuid
+            {
+                Id = eventId,
+                Success = false,
+                Message = ex.StatusCode switch
+                {
+                    401 => "Sign in again before saving participation configuration.",
+                    403 => "You are not authorized to configure participation for this event.",
+                    404 => "This event is no longer available.",
+                    _ => "Participation configuration could not be saved."
+                },
+                FailureCode = "participation_configuration_save_failed"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error configuring participation for event {EventId}", eventId);
+            return new BaseCommandResponseOfGuid
+            {
+                Id = eventId,
+                Success = false,
+                Message = "Participation configuration could not be saved.",
+                FailureCode = "participation_configuration_save_failed"
+            };
         }
     }
 

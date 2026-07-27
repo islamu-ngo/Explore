@@ -110,6 +110,48 @@ public sealed class EventDetailTests : IDisposable
     }
 
     [Test]
+    public async Task Render_WhenParticipationLinksAreMissing_HidesParticipationCard()
+    {
+        RegisterEventDetailServices(CreateEventDto("PUBLISHED", "Published"));
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).DoesNotContain("event-registration-card");
+        await Assert.That(cut.Markup).DoesNotContain("Register now");
+    }
+
+    [Test]
+    public async Task Render_WhenStartRegistrationLinkExists_ShowsNativeRegistrationAction()
+    {
+        RegisterEventDetailServices(CreateEventDto("PUBLISHED", "Published", "start-registration"));
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => cut.Markup.Contains("Register now", StringComparison.Ordinal), TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).Contains("Register now");
+        await Assert.That(cut.Markup).DoesNotContain("Continue on external site");
+    }
+
+    [Test]
+    public async Task Render_WhenExternalRegistrationLinkExists_UsesHalTitleAndStoredRedirectHref()
+    {
+        const string href = "/api/events/public-actions/456/redirect";
+        const string title = "Continue with the organizer";
+        var eventDto = CreateEventDto("PUBLISHED", "Published");
+        eventDto.AdditionalProperties = CreateHalLink("external-registration", href, title);
+        RegisterEventDetailServices(eventDto);
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        var link = cut.WaitForElement($"a[href='{href}']", TimeSpan.FromSeconds(3));
+
+        await Assert.That(link.TextContent).Contains(title);
+        await Assert.That(link.GetAttribute("target")).IsEqualTo("_blank");
+        await Assert.That(link.GetAttribute("rel")).IsEqualTo("noopener noreferrer");
+        await Assert.That(cut.Markup).DoesNotContain("Register now");
+    }
+
+    [Test]
     public async Task Render_WhenReportEventLinkReturned_ShowsHeaderReportAction()
     {
         RegisterEventDetailServices(CreateEventDto("PUBLISHED", "Published", "report-event"));
@@ -557,6 +599,18 @@ public sealed class EventDetailTests : IDisposable
         return new Dictionary<string, object>
         {
             ["_links"] = doc.RootElement.GetProperty("_links").Clone()
+        };
+    }
+
+    private static Dictionary<string, object> CreateHalLink(string relation, string href, string title)
+    {
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            [relation] = new { href, method = "GET", title }
+        }));
+        return new Dictionary<string, object>
+        {
+            ["_links"] = doc.RootElement.Clone()
         };
     }
 

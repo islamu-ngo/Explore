@@ -5,6 +5,7 @@ using System.Diagnostics.Metrics;
 using Explore.Application.Features.SupportAccess;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Enums;
 
 namespace Explore.Application.Telemetry;
 
@@ -25,6 +26,7 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _eventReportWorkflowActions;
     private readonly Counter<long> _eventReportProviderSyncs;
     private readonly Counter<long> _eventReportProviderCallbacks;
+    private readonly Counter<long> _eventPublicActionEngagements;
     private readonly Counter<long> _registrationsCreated;
     private readonly Counter<long> _organizationsCreated;
     private readonly Counter<long> _authorizationDecisions;
@@ -137,6 +139,11 @@ public sealed class BusinessMetrics : IDisposable
             "explore.event_reports.provider_callbacks",
             unit: "{callback}",
             description: "Total moderation provider callback outcomes by bounded provider, outcome, and failure category");
+
+        _eventPublicActionEngagements = meter.CreateCounter<long>(
+            "explore.event_public_actions.engagements",
+            unit: "{engagement}",
+            description: "Total public-action redirects issued by bounded action kind, surface, and outcome");
 
         _registrationsCreated = meter.CreateCounter<long>(
             "explore.registrations.created",
@@ -517,6 +524,14 @@ public sealed class BusinessMetrics : IDisposable
     {
         _eventsPublished.Add(1,
             new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"));
+    }
+
+    public void RecordEventPublicActionEngagement(EventPublicActionKindEnum actionKind, string? surface)
+    {
+        _eventPublicActionEngagements.Add(1,
+            new KeyValuePair<string, object?>("action_kind", NormalizeEventPublicActionKind(actionKind)),
+            new KeyValuePair<string, object?>("surface", NormalizeEventPublicActionSurface(surface)),
+            new KeyValuePair<string, object?>("outcome", "redirect_issued"));
     }
 
     public void RecordEventModerationAction(
@@ -1222,6 +1237,31 @@ public sealed class BusinessMetrics : IDisposable
         return string.IsNullOrWhiteSpace(value)
             ? "unknown"
             : value.Trim().ToLowerInvariant();
+    }
+
+    private static string NormalizeEventPublicActionKind(EventPublicActionKindEnum actionKind)
+    {
+        return actionKind switch
+        {
+            EventPublicActionKindEnum.OriginalSource => "original_source",
+            EventPublicActionKindEnum.ExternalEventPage => "external_event_page",
+            EventPublicActionKindEnum.ExternalRegistration => "external_registration",
+            EventPublicActionKindEnum.OptionalQuestionnaire => "optional_questionnaire",
+            EventPublicActionKindEnum.Livestream => "livestream",
+            EventPublicActionKindEnum.OrganizerContact => "organizer_contact",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeEventPublicActionSurface(string? surface)
+    {
+        return NormalizeTag(surface) switch
+        {
+            "event_detail" => "event_detail",
+            "event_list" => "event_list",
+            "event_preview" => "event_preview",
+            _ => "other"
+        };
     }
 
     private static string NormalizeNotificationFanoutKind(string? fanoutKind) => NormalizeTag(fanoutKind) switch

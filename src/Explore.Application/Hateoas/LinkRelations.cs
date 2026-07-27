@@ -304,6 +304,8 @@ public static class LinkRelations
 
     public const string PublicActions = "public-actions";
     public const string ManagePublicActions = "manage-public-actions";
+    public const string ConfigureParticipation = "configure-participation";
+    public const string StartRegistration = "start-registration";
     public const string ViewOriginalSource = "view-original-source";
     public const string ExternalEventPage = "external-event-page";
     public const string ExternalRegistration = "external-registration";
