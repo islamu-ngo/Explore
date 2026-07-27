@@ -216,6 +216,11 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     RequiresAuth: true)
                     .RequirePermission(AuthorizationActions.Events.ClaimOrganizer, ResourceDescriptors.EventOrganizerClaimForEvent, dto);
             }
+
+            foreach (var link in GetParticipationLinks(dto, user))
+            {
+                yield return link;
+            }
         }
 
         yield return new LinkDefinition(
@@ -234,12 +239,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             HttpMethods.Patch,
             "Configure participation",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
-
-        foreach (var link in GetParticipationLinks(dto))
-        {
-            yield return link;
-        }
+            .RequirePermission(AuthorizationActions.Events.ManageRegistrations, ResourceDescriptors.Event, dto);
 
         yield return new LinkDefinition(
             LinkRelations.OrganizerClaims,
@@ -432,7 +432,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.Event, dto);
     }
 
-    private static IEnumerable<LinkDefinition> GetParticipationLinks(EventDto dto)
+    private static IEnumerable<LinkDefinition> GetParticipationLinks(EventDto dto, ClaimsPrincipal? user)
     {
         var participationModeId = dto.ParticipationConfiguration?.ParticipationHandlingModeId;
         if (!participationModeId.HasValue || !Enum.IsDefined(typeof(ParticipationHandlingModeEnum), participationModeId.Value))
@@ -453,14 +453,23 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
 
                 yield break;
             case ParticipationHandlingModeEnum.PlatformManaged:
-                yield return new LinkDefinition(
-                    LinkRelations.StartRegistration,
+                var isAuthenticated = user?.Identity?.IsAuthenticated == true;
+                var registrationLink = new LinkDefinition(
+                    isAuthenticated ? LinkRelations.StartRegistration : LinkRelations.SignInToRegister,
                     RouteNames.CreateEventRegistration,
                     new { eventId = dto.Id },
                     HttpMethods.Post,
                     "Register for event",
-                    RequiresAuth: true)
-                    .RequirePermission(AuthorizationActions.Create, typeof(EventRegistrationDto), "event_registration");
+                    RequiresAuth: true);
+
+                yield return isAuthenticated
+                    ? registrationLink.RequirePermission(
+                        AuthorizationActions.Create,
+                        ResourceKinds.EventRegistration,
+                        dto.Id.ToString(),
+                        ResourceDescriptors.Event.GetResourceAttributes(dto),
+                        ResourceDescriptors.Event.GetScope(dto))
+                    : registrationLink.AdvertisedWhenAnonymous();
 
                 yield break;
         }

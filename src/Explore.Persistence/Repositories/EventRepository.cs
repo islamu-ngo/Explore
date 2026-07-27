@@ -24,6 +24,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
     {
         return await _dbContext.Events
             .AsNoTracking()
+            .Include(e => e.ParticipationConfiguration)
             .FirstOrDefaultAsync(e => e.Id == id);
     }
 
@@ -71,6 +72,8 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         return await _dbContext.Events
             .AsNoTracking()
             .IgnoreTenantFilter(TenantFilterBypassReasons.EventAuthorizationTargetResolution)
+            .Include(e => e.ParticipationConfiguration)
+            .Include(e => e.OrganizerActor)
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
     }
 
@@ -100,6 +103,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         return await _dbContext.Events
             .AsNoTracking()
             .Include(eventEntity => eventEntity.Actor)
+            .Include(eventEntity => eventEntity.OrganizerActor)
             .Where(eventEntity => normalizedIds.Contains(eventEntity.Id))
             .OrderBy(eventEntity => eventEntity.Id)
             .ToListAsync(cancellationToken);

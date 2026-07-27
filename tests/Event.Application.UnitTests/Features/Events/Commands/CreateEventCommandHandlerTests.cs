@@ -763,7 +763,7 @@ public class CreateEventCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_CreatesEventOwnerAssignmentForCreator()
+    public async Task Handle_OrganizerCreatedEvent_AssignsEventOwnerToCreator()
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
@@ -786,7 +786,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
         _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
-            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: false));
 
         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
@@ -805,6 +805,32 @@ public class CreateEventCommandHandlerTests
             && a.EventId == result.Id
             && a.TenantId == tenantId
             && a.ExpiresAtUtc == null));
+    }
+
+    [Test]
+    public async Task Handle_CommunityReportedEvent_DoesNotAssignEventOwnerToCreator()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var command = new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Community report",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
+                Sessions = [CreateSessionRequest()]
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(Guid.NewGuid());
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _eventRoleAssignmentRepository.DidNotReceive().Create(Arg.Any<EventRoleAssignment>());
     }
 
     [Test]

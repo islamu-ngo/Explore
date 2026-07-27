@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventParticipation.Requests.Commands;
 
-[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrations)]
 public sealed class ConfigureEventParticipationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventId { get; set; }

@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json.Serialization;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.EventAspects;
 using Explore.Application.DTOs.Tag;
@@ -54,6 +55,12 @@ public class EventDto
     public string? ProvenanceTypeName { get; set; }
     public Guid? SubmittedByUserId { get; set; }
     public Guid? OrganizerActorId { get; set; }
+    [JsonIgnore]
+    public Guid? OrganizerActorUserId { get; set; }
+    [JsonIgnore]
+    public Guid? OrganizerActorOrganizationId { get; set; }
+    [JsonIgnore]
+    public Guid? OrganizerActorGroupId { get; set; }
     public string? SourcePublisherName { get; set; }
     public List<EventPublicActionDto> PublicActions { get; set; } = new();
 

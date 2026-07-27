@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for privacy-fenced, capacity-aware event registration creation.
-// ABOUTME: Verifies atomic registration writes, waitlist outcomes, and durable side effects.
+// ABOUTME: Unit tests for participation-gated, privacy-fenced, capacity-aware event registration creation.
+// ABOUTME: Verifies fail-closed authority, atomic registration writes, waitlist outcomes, and durable side effects.
 
 using System.Diagnostics.Metrics;
 using Event.Application.UnitTests.Common;
@@ -137,6 +137,39 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             _webhookPublisher,
             Substitute.For<ILogger<CreateEventRegistrationCommandHandler>>(),
             planner);
+
+    [Test]
+    [Arguments(null)]
+    [Arguments((int)ParticipationHandlingModeEnum.InformationOnly)]
+    [Arguments((int)ParticipationHandlingModeEnum.WalkIn)]
+    [Arguments((int)ParticipationHandlingModeEnum.ExternalManaged)]
+    [Arguments(999)]
+    public async Task HandleWhenParticipationDoesNotAllowNativeWorkflowRejectsWithoutSideEffects(
+        int? participationHandlingModeId)
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        Guid userId = Guid.CreateVersion7();
+        Guid sessionId = Guid.CreateVersion7();
+        SetupValidRegistration(tenantId, eventId, userId, sessionId);
+        _eventRepository.GetById(eventId).Returns(CreateEvent(
+            eventId,
+            tenantId,
+            participationHandlingModeId: participationHandlingModeId));
+
+        BaseCommandResponse<Guid> result = await _handler.Handle(
+            CreateSessionRegistrationCommand(eventId, userId, sessionId),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Event Registration failed.");
+        await Assert.That(result.Errors).Contains("Native registration is not available for this event.");
+        await _intentRepository.DidNotReceiveWithAnyArgs().CreateWithChildrenAndCapacityAsync(
+            default!, default!, default, default, default, default, default, default, default, default);
+        await _recipientNotificationMaterializer.DidNotReceiveWithAnyArgs()
+            .MaterializeInCurrentTransactionAsync(default!, default);
+        await _webhookPublisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default);
+    }
 
     [Test]
     public async Task HandleWhenFenceAppearsBeforeTransactionRejectsWithoutRegistrationWrites()
@@ -1205,7 +1238,8 @@ public sealed class CreateEventRegistrationCommandHandlerTests
     private static Explore.Domain.Event CreateEvent(
         Guid eventId,
         Guid tenantId,
-        EventRegistrationPolicyEnum policy = EventRegistrationPolicyEnum.SessionSelectionOnly)
+        EventRegistrationPolicyEnum policy = EventRegistrationPolicyEnum.SessionSelectionOnly,
+        int? participationHandlingModeId = (int)ParticipationHandlingModeEnum.PlatformManaged)
     {
         return new Explore.Domain.Event
         {
@@ -1220,8 +1254,39 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,
-            RegistrationPolicyId = (int)policy
+            RegistrationPolicyId = (int)policy,
+            ParticipationConfiguration = participationHandlingModeId.HasValue
+                ? CreateParticipationConfiguration(eventId, tenantId, participationHandlingModeId.Value)
+                : null
         };
+    }
+
+    private static EventParticipationConfiguration CreateParticipationConfiguration(
+        Guid eventId,
+        Guid tenantId,
+        int participationHandlingModeId)
+    {
+        ParticipationHandlingModeEnum validMode = Enum.IsDefined(
+            typeof(ParticipationHandlingModeEnum),
+            participationHandlingModeId)
+                ? (ParticipationHandlingModeEnum)participationHandlingModeId
+                : ParticipationHandlingModeEnum.PlatformManaged;
+        EventParticipationConfiguration configuration = EventParticipationConfiguration.Create(
+            eventId,
+            tenantId,
+            (int)validMode,
+            validMode is ParticipationHandlingModeEnum.InformationOnly or ParticipationHandlingModeEnum.WalkIn
+                ? (int)AdvanceRegistrationObligationEnum.NotApplicable
+                : (int)AdvanceRegistrationObligationEnum.Required,
+            validMode == ParticipationHandlingModeEnum.PlatformManaged
+                ? (int)IdentityAccessModeEnum.AccountRequired
+                : null,
+            guestRecoveryPolicy: null,
+            DateTime.UtcNow);
+        typeof(EventParticipationConfiguration)
+            .GetProperty(nameof(EventParticipationConfiguration.ParticipationHandlingModeId))!
+            .SetValue(configuration, participationHandlingModeId);
+        return configuration;
     }
 
     private static EventSession CreateEventSession(

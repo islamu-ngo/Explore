@@ -1,6 +1,7 @@
 // ABOUTME: Thin API controller for configuring event participation.
 // ABOUTME: Dispatches the existing CQRS command and maps command failures to RFC 7807 responses.
 
+using System.ComponentModel.DataAnnotations;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
@@ -55,9 +56,16 @@ public sealed class EventParticipationController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Configure(
         Guid eventId,
         [FromBody] ConfigureEventParticipationDto participationConfiguration,
-        [FromHeader(Name = "If-Match")] Guid expectedConcurrencyStamp,
+        [FromHeader(Name = "If-Match"), Required] string? ifMatch,
         CancellationToken cancellationToken = default)
     {
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
+        {
+            return this.ToValidationProblem(
+                ConfigureValidationProblem,
+                "If-Match header is required and must contain the current event participation concurrency stamp.");
+        }
+
         var response = await _mediator.Send(new ConfigureEventParticipationCommand
         {
             EventId = eventId,
@@ -81,5 +89,22 @@ public sealed class EventParticipationController : ControllerBase
         }
 
         return Ok(response);
+    }
+
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
+
+        var value = ifMatch.Trim();
+        if (value.Length != 38 || value[0] != '"' || value[^1] != '"')
+        {
+            return false;
+        }
+
+        return Guid.TryParse(value[1..^1], out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 }

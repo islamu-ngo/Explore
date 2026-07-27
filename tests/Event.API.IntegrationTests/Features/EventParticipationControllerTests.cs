@@ -1,6 +1,7 @@
 // ABOUTME: API contract tests for event participation configuration.
 // ABOUTME: Verifies the write route metadata and command forwarding without touching a database.
 
+using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Net.Http.Json;
 using System.Linq;
@@ -31,6 +32,16 @@ namespace Event.Api.IntegrationTests.Features;
 public sealed class EventParticipationControllerTests
 {
     [Test]
+    public async Task ConfigureCommand_UsesManageRegistrationsAuthorization()
+    {
+        var commandAuthorization = typeof(ConfigureEventParticipationCommand)
+            .GetCustomAttribute<AuthorizeResourceAttribute>()!;
+
+        await Assert.That(commandAuthorization.Resource).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(commandAuthorization.Action).IsEqualTo(AuthorizationActions.Events.ManageRegistrations);
+    }
+
+    [Test]
     public async Task ConfigureRoute_UsesExplicitAuthenticatedWriteContract()
     {
         var action = typeof(EventParticipationController).GetMethod(nameof(EventParticipationController.Configure))!;
@@ -48,10 +59,15 @@ public sealed class EventParticipationControllerTests
             .Contains(HateoasConstants.JsonMediaType);
         await Assert.That(LinkRelations.ConfigureParticipation).IsEqualTo("configure-participation");
 
+        var ifMatchParameter = action.GetParameters()
+            .Single(parameter => parameter.GetCustomAttribute<FromHeaderAttribute>()?.Name == "If-Match");
+        await Assert.That(ifMatchParameter.ParameterType).IsEqualTo(typeof(string));
+        await Assert.That(ifMatchParameter.GetCustomAttribute<RequiredAttribute>()).IsNotNull();
+
         var commandAuthorization = typeof(ConfigureEventParticipationCommand)
             .GetCustomAttribute<AuthorizeResourceAttribute>()!;
         await Assert.That(commandAuthorization.Resource).IsEqualTo(ResourceKinds.Event);
-        await Assert.That(commandAuthorization.Action).IsEqualTo(AuthorizationActions.Update);
+        await Assert.That(commandAuthorization.Action).IsEqualTo(AuthorizationActions.Events.ManageRegistrations);
 
         var secureRequest = new ConfigureEventParticipationCommand
         {
@@ -67,6 +83,21 @@ public sealed class EventParticipationControllerTests
         await AssertProducesProblem(action, StatusCodes.Status403Forbidden);
         await AssertProducesProblem(action, StatusCodes.Status404NotFound);
         await AssertProducesProblem(action, StatusCodes.Status409Conflict);
+    }
+
+    [Test]
+    public async Task ConfigureDto_RequiresModeAndObligationOnly()
+    {
+        var dtoType = typeof(ConfigureEventParticipationDto);
+
+        await Assert.That(dtoType.GetProperty(nameof(ConfigureEventParticipationDto.ParticipationHandlingModeId))!
+            .GetCustomAttribute<RequiredAttribute>()).IsNotNull();
+        await Assert.That(dtoType.GetProperty(nameof(ConfigureEventParticipationDto.AdvanceRegistrationObligationId))!
+            .GetCustomAttribute<RequiredAttribute>()).IsNotNull();
+        await Assert.That(dtoType.GetProperty(nameof(ConfigureEventParticipationDto.IdentityAccessModeId))!
+            .GetCustomAttribute<RequiredAttribute>()).IsNull();
+        await Assert.That(dtoType.GetProperty(nameof(ConfigureEventParticipationDto.GuestRecoveryPolicy))!
+            .GetCustomAttribute<RequiredAttribute>()).IsNull();
     }
 
     [Test]
@@ -137,6 +168,26 @@ public sealed class EventParticipationControllerTests
             "Event participation configuration conflict");
     }
 
+    [Test]
+    public Task Configure_WhenIfMatchIsMissing_ReturnsValidationProblemDetails()
+        => AssertInvalidIfMatchRejectedAsync(null);
+
+    [Test]
+    public Task Configure_WhenIfMatchIsEmpty_ReturnsValidationProblemDetails()
+        => AssertInvalidIfMatchRejectedAsync(string.Empty);
+
+    [Test]
+    public Task Configure_WhenIfMatchIsUnquoted_ReturnsValidationProblemDetails()
+        => AssertInvalidIfMatchRejectedAsync(Guid.NewGuid().ToString("D"));
+
+    [Test]
+    public Task Configure_WhenIfMatchIsWeak_ReturnsValidationProblemDetails()
+        => AssertInvalidIfMatchRejectedAsync($"W/\"{Guid.NewGuid():D}\"");
+
+    [Test]
+    public Task Configure_WhenIfMatchIsMalformed_ReturnsValidationProblemDetails()
+        => AssertInvalidIfMatchRejectedAsync("\"not-a-guid\"");
+
     private static WebApplicationFactory<Program> CreateFactoryWithMediator(IMediator mediator)
     {
         var factory = new AuthenticatedWebApplicationFactory();
@@ -164,7 +215,7 @@ public sealed class EventParticipationControllerTests
         request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid()));
         if (ifMatch.HasValue)
         {
-            request.Headers.TryAddWithoutValidation("If-Match", ifMatch.Value.ToString("D"));
+            request.Headers.TryAddWithoutValidation("If-Match", $"\"{ifMatch.Value:D}\"");
         }
 
         return request;
@@ -178,8 +229,37 @@ public sealed class EventParticipationControllerTests
 
     private static async Task AssertProducesProblem(MethodInfo action, int statusCode)
     {
+        var problemType = statusCode == StatusCodes.Status400BadRequest
+            ? typeof(ValidationProblemDetails)
+            : typeof(ProblemDetails);
+
         await Assert.That(action.GetCustomAttributes<ProducesResponseTypeAttribute>()
-            .Any(attribute => attribute.StatusCode == statusCode && attribute.Type == typeof(ProblemDetails))).IsTrue();
+            .Any(attribute => attribute.StatusCode == statusCode && attribute.Type == problemType)).IsTrue();
+    }
+
+    private static async Task AssertInvalidIfMatchRejectedAsync(string? ifMatch)
+    {
+        using var mediator = new EventParticipationMediatorStub(_ =>
+            throw new InvalidOperationException("Mediator should not run when If-Match is invalid."));
+        await using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedJsonRequest(
+            HttpMethod.Patch,
+            $"/api/events/{Guid.NewGuid():D}/participation",
+            CreateParticipationConfiguration());
+        if (ifMatch is not null)
+        {
+            request.Headers.TryAddWithoutValidation("If-Match", ifMatch);
+        }
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        await Assert.That(problem).IsNotNull();
+        await Assert.That(problem!.Status).IsEqualTo(StatusCodes.Status400BadRequest);
+        await Assert.That(problem.Errors).IsNotEmpty();
+        await Assert.That(mediator.LastRequest).IsNull();
     }
 
     private sealed class EventParticipationMediatorStub(Func<object, object> responseFactory) : IMediator, IDisposable

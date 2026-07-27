@@ -118,6 +118,16 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             return await MaskIfFencedAsync(dto.UserId, response, cancellationToken);
         }
 
+        if (parentEvent.ParticipationConfiguration is null
+            || !EventAuthorityRules.IsNativeWorkflowAllowed(
+                parentEvent.ParticipationConfiguration.ParticipationHandlingModeId))
+        {
+            response.Success = false;
+            response.Message = "Event Registration failed.";
+            response.Errors = ["Native registration is not available for this event."];
+            return await MaskIfFencedAsync(dto.UserId, response, cancellationToken);
+        }
+
         var user = await _userRepository.GetById(dto.UserId);
         if (user is null)
         {

@@ -438,6 +438,11 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         Guid creatorUserId,
         CancellationToken ct)
     {
+        if (eventEntity.EventProvenanceTypeId == (int)EventProvenanceTypeEnum.CommunityReported)
+        {
+            return;
+        }
+
         var assignment = EventRoleAssignment.Create(
             eventEntity.TenantId,
             eventEntity.Id,

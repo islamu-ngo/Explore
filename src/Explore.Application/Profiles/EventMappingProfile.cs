@@ -15,6 +15,7 @@ using Explore.Application.DTOs.EventTags;
 using Explore.Application.DTOs.EventType;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
 using EventSeriesNS = Explore.Application.DTOs.EventSeries;
 
 namespace Explore.Application.Profiles;
@@ -76,7 +77,11 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.ProvenanceTypeCode, opt => opt.MapFrom(src => src.EventProvenanceType != null ? src.EventProvenanceType.MasterCode : null))
             .ForMember(dest => dest.ProvenanceTypeName, opt => opt.MapFrom(src => src.EventProvenanceType != null ? src.EventProvenanceType.FullName : null))
             .ForMember(dest => dest.PublicActions, opt => opt.MapFrom(src => src.PublicActions
-                .Where(action => action.HealthStateId == (int)EventPublicActionHealthStateEnum.Active)
+                .Where(action => action.HealthStateId == (int)EventPublicActionHealthStateEnum.Active
+                    && src.ParticipationConfiguration != null
+                    && EventAuthorityRules.IsPublicActionAllowed(
+                        src.ParticipationConfiguration.ParticipationHandlingModeId,
+                        action.EventPublicActionKindId))
                 .OrderBy(action => action.SortOrder)
                 .ThenBy(action => action.Id)))
             // Event Type
@@ -101,6 +106,9 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.ActorGroupId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.GroupId : null))
             .ForMember(dest => dest.ActorProfilePictureId, opt => opt.Ignore())
             .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureUri : null))
+            .ForMember(dest => dest.OrganizerActorUserId, opt => opt.MapFrom(src => src.OrganizerActor != null ? src.OrganizerActor.UserId : null))
+            .ForMember(dest => dest.OrganizerActorOrganizationId, opt => opt.MapFrom(src => src.OrganizerActor != null ? src.OrganizerActor.OrganizationId : null))
+            .ForMember(dest => dest.OrganizerActorGroupId, opt => opt.MapFrom(src => src.OrganizerActor != null ? src.OrganizerActor.GroupId : null))
             // Featured Image
             .ForMember(dest => dest.FeaturedImageUri, opt => opt.MapFrom(src => src.FeaturedImage != null ? src.FeaturedImage.Uri : null))
             // Background Image
