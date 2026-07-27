@@ -3,13 +3,13 @@
 
 # ATProto Federation Actor Lifecycle - Implementation Plan
 
-Last Updated: 2026-07-26 Europe/Brussels
+Last Updated: 2026-07-27 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** Complete the global-subject architecture consistently. `Actor`, `User`, `Organization`, `Group`, and unclassified external subjects are global. `TenantUser`, `OrganizationTenant`, and `GroupTenant` own tenant-specific participation, policy, moderation, hierarchy, settings, and profile overrides. ATProto registration classifies a verified global identity without duplicating subjects per tenant.
 - **Task directory:** `dev/active/atproto-federation-actor-lifecycle/`.
-- **Planning status:** Re-baselined after user/CTO correction; awaiting review. Runtime implementation has not started.
+- **Implementation status:** Phases 0-4 and Task 5.1 protected Person/Organization/Group onboarding are implemented. Task 5.2 promotion/consolidation and Phases 6-7 remain open.
 - **Superseded decisions:** Both `ActorTenantPresence` and the temporary return to tenant-scoped Actor are rejected. A generic presence row would duplicate concrete participation lifecycles.
 - **Predecessor:** `dev/active/atproto-auth/` remains authoritative for implemented OAuth/DPoP verification, canonical `AtprotoRecord`, Jetstream, outbox, recovery, Event/EventSession materialization, source metadata, and zero echo.
 - **Matched intents:** `add-ef-migration`, `update-repository-query`, `add-cqrs-handler`, `add-get-endpoint`, `add-write-endpoint`, `openapi-contract-change`, `add-hal-link`, `blazor-component-affordance`, and `bff-auth-bug`.
@@ -285,7 +285,7 @@ Actor-wide action requires instance authority. Tenant admins mutate concrete par
 
 #### Task 2.1: Implement reviewed migration, preflight, filters, and FK conversion
 - **Type/Layer:** create/modify; Persistence/Docs.
-- **Files:** configurations, DbContext sets/filters, all Actor/Organization/Group FKs, EF migration/snapshot, schema/upgrade docs, PostgreSQL tests.
+- **Files:** configurations, DbContext sets/filters, all Actor/Organization/Group FKs, guarded `GlobalizeAtprotoActorLifecycle` and `RetireIndexedDidAuthority` migrations/designers/snapshot, schema/upgrade docs, PostgreSQL tests.
 - **Acceptance:** User actors deduplicate by global User proof; exact-DID actors deduplicate only under compatible owner-kind rules; unproven Organizations/Groups remain distinct; current org/group rows create participation; hierarchy/members/settings/media move correctly; Event/subscription Actor FKs become simple; identity union migrates; row counts/FKs/audit preserved or migration aborts.
 - **Dependencies/Effort:** 1.1, 1.2; XL.
 
@@ -332,9 +332,12 @@ Actor-wide action requires instance authority. Tenant admins mutate concrete par
 - **Rollback:** Verification/classification conflict creates no partial account, subject, participation, or membership.
 
 #### Task 5.1: Add protected classification onboarding
+- **Status:** Complete as of 2026-07-27 Europe/Brussels.
 - **Type/Layer:** create/modify; BFF/Application/API.
 - **Files:** auth state/assertion, bootstrap command/result, classification contracts, User/login/TenantUser/global subject/participation operations, tests/security docs.
 - **Acceptance:** OAuth controls remain; every success resolves User/login/TenantUser; Person/Organization/Group is explicit intent; managed subject creates/resolves current participation under policy; same DID may authenticate User and represent managed Actor; audit remains User; replay is safe.
+- **Implemented:** Classification is signed and validated end-to-end; the linked-account bootstrap transaction preflights all no-write conflicts before resolving the User, personal Actor, represented global subject, current participation, and founder membership; cross-kind identities return `classification_conflict`; provider/key uniqueness is database-enforced across the full 2,048-character DID boundary; session JWT issuance remains post-commit.
+- **Evidence:** Release build 0 errors; focused Application 9/9, BFF 18/18, API JWT 6/6, Infrastructure gateway 12/12, architecture 15/15, and PostgreSQL baseline guards 4/4 passed; EF model parity is clean and guarded migration SQL was reviewed.
 - **Dependencies/Effort:** 3.2, 4.2; XL.
 
 #### Task 5.2: Promote external subject or consolidate proven same-kind subject
@@ -419,7 +422,7 @@ Each phase runs exactly one Release build plus its selected fastest relevant non
 
 ## 12. Migration And Compatibility
 
-- Build identity groups from global UserId and exact DID only. Names and profiles are not identity evidence.
+- Build identity groups from global UserId and exact DID only. Names and profiles are not identity evidence. The cutover uses two sequential migrations so legacy IndexedDid metadata is promoted only after the global identity table exists.
 - Each current Organization/Group row becomes a global subject plus one tenant participation unless a compatible exact DID proves consolidation.
 - Deduplicate User Actors across tenants by UserId; prefer valid current User ownership, then deterministic oldest ID, preserving tenant overrides.
 - Convert Event and ActorSubscription Actor FKs from composite to simple; retain tenant indexes for queries.
