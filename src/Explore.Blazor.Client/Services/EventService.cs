@@ -1305,10 +1305,10 @@ public partial class EventService : IEventService
         return referenceDate.HasValue && referenceDate.Value.Date < DateTimeOffset.UtcNow.Date;
     }
 
-    private static ParticipationConfiguration2? ToEventListParticipationConfiguration(ParticipationConfiguration? configuration) =>
+    private static EventParticipationConfigurationDto? ToEventListParticipationConfiguration(ParticipationConfiguration? configuration) =>
         configuration is null
             ? null
-            : new ParticipationConfiguration2
+            : new EventParticipationConfigurationDto
             {
                 EventId = configuration.EventId,
                 ConcurrencyStamp = configuration.ConcurrencyStamp,

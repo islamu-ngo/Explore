@@ -6,7 +6,7 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 > **Audience:** Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** API
-> **Last Verified:** 2026-07-26
+> **Last Verified:** 2026-07-27
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`, `Explore.API/Authentication/`, `Explore.API/Extensions/`, `Explore.API/OpenApi/`, `Explore.API/Explore.API.csproj`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs`, `Event.API.IntegrationTests/Features/OpenApiParityTests.cs`
 
 ## Scope
@@ -101,15 +101,22 @@ Three-reader non-URL versioning — clients may use any of the following; all th
 3. Every endpoint has named routes (via `RouteNames` constants) for HATEOAS link generation.
 4. Endpoints include `[ProducesResponseType]` and XML doc summaries for OpenAPI quality.
 
+### Grouped Entity PATCH Contracts
+
+Tag, Tenant metadata, tenant navigation links, footer link groups, footer links, control-plane tenant-plan drafts, current-user appearance localization, user appearance profiles, UI themes, EventLocation disclosure, EventSession agenda items, EventSession groups, and EventSession speaker assignments use route-ID or current-resource `PATCH`. Their bodies contain only nullable logical groups; omitted groups preserve persisted values, and identity comes from the route plus trusted tenant context rather than body-owned IDs. Session-group and speaker updates require the observed concurrency stamp through strong `If-Match`; group list/detail reads expose that stamp. Islamic and Tech aspects use explicit `POST` create operations and grouped `PATCH` updates instead of upsert. Appearance active-profile selection, current theme mode, profile archive, Tenant lifecycle, navigation reorder, footer reorder, and tenant-plan publish/archive/clone remain dedicated actions rather than generic property groups. UI-theme PATCH keeps the observed row version at the wrapper level and validates the merged metadata/state/palette candidate before one transactional update.
+
+Tenant navigation and footer-link URLs accept relative paths or HTTPS URLs by default. The instance-only `security.require_https_external_urls` setting defaults to `true`; setting it to `false` permits HTTP only for deployments that explicitly trust an HTTP-only private network.
+
 ### Event Provenance, Public Actions, And Organizer Claims
 
 Event reads expose typed provenance plus reviewed `Active` public actions. External destinations are stored as `EventPublicAction` records rather than caller-supplied redirect URLs.
 
 - Anonymous `GET /api/events/{eventId}/public-actions` and `GET /api/events/{eventId}/public-actions/{actionId}` return only active reviewed actions for a published public event.
 - Anonymous `GET /api/events/{eventId}/public-actions/{actionId}/redirect` resolves the stored action by `eventId` and `actionId`, returns `302`, and is `no-store`. It never accepts a destination or return URL from the request.
+- Public-action DTOs instruct clients to open external destinations in a new tab with `rel="noopener noreferrer"`; these values are fixed by the server.
 - Authenticated `POST /api/events/{eventId}/public-actions`, `PUT /api/events/{eventId}/public-actions/{actionId}`, and `DELETE /api/events/{eventId}/public-actions/{actionId}` manage actions through event authorization. Updating a destination returns it to pending review; deletion requires the current concurrency stamp in `If-Match`.
 - Organizer-claim list/detail, submit, withdraw, and review operations live under `/api/events/{eventId}/organizer-claims`; claimant-scoped reads use `GET /api/actors/{claimantActorId}/organizer-claims`. All claim reads are authenticated and `no-store`; withdraw requires `If-Match`.
-- Event and child-resource HAL policies independently emit source/action, claim, correction, unsafe-link reporting, withdrawal, and review affordances. Clients must use `_links`, not provenance, actor ids, or role claims, to decide which controls to render.
+- Event-bound claim requests and HAL checks authorize as `islamuevent_event_organizer_claim` while carrying server-only parent-event and claim metadata. Withdrawal uses `withdraw-organizer-claim`; before provider evaluation, the server loads the persisted claim and claimant actor and supplies claimant user, organization, or group ownership as non-serialized authorization attributes. Request route/body ownership is never trusted. Public action, claim, correction, and unsafe-link affordances require a published public event; withdrawal and review candidates require a pending or evidence-required claim. Clients must use `_links`, not provenance, actor ids, status inference, or role claims, to decide which controls to render.
 
 ### Template Sync Endpoints
 
@@ -160,11 +167,12 @@ EmailDispatch admin routes live under `/api/admin/email-dispatch` and are authen
 
 Notification preference routes are authenticated private preference endpoints. They return a HAL `NotificationPreferenceMatrixDto` and expose mutation affordances only through `_links`.
 
-- `GET /api/notification/preferences/me`, `PUT /api/notification/preferences/me`, and `PUT /api/notification/preferences/me/mute` manage the current user's matrix.
-- `GET|PUT /api/organization/{id}/notification-preferences` and `PUT /api/organization/{id}/notification-preferences/mute` manage organization-scoped defaults/overrides through organization resource authorization.
-- `GET|PUT /api/group/{id}/notification-preferences` and `PUT /api/group/{id}/notification-preferences/mute` manage group-scoped defaults/overrides through group resource authorization.
+- `GET /api/notification/preferences/me`, `PATCH /api/notification/preferences/me`, and `PUT /api/notification/preferences/me/mute` manage the current user's matrix.
+- `GET|PATCH /api/organization/{id}/notification-preferences` and `PUT /api/organization/{id}/notification-preferences/mute` manage organization-scoped defaults/overrides through organization resource authorization.
+- `GET|PATCH /api/group/{id}/notification-preferences` and `PUT /api/group/{id}/notification-preferences/mute` manage group-scoped defaults/overrides through group resource authorization.
 - Response `_links.self`, `_links.save`, and `_links.set-mute` are the only UI authority for rendering save and mute controls. Clients must not infer preference editability from roles or claims.
-- Command handlers reject attempts to disable required categories or write through broader locks; validation failures return ProblemDetails through the standard command-response mapping.
+- Matrix PATCH bodies contain an optional `cells` group. Omitted cells preserve stored choices; an absent or empty group fails validation. Command handlers validate every supplied cell before opening the write transaction, so required or broader-locked cells reject the whole request without partial writes.
+- `PATCH /api/actor-subscriptions/actors/{targetActorId}/notification-level` takes actor identity only from the route. Its body contains `expectedConcurrencyStamp` and an optional `notificationLevel` group; the group is required for a non-empty patch, and a missing subscription returns typed `404` ProblemDetails.
 
 ### Browser Web Push Endpoints
 
@@ -997,10 +1005,10 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
      - `POST /api/notification/read-all` — bulk mark all as read (YouTube-style, timestamp cutoff)
      - `DELETE /api/notification/{id}` — soft delete
      - `GET /api/notification/preferences/me` — current user's HAL notification preference matrix
-     - `PUT /api/notification/preferences/me` — save editable current-user preference cells
-     - `PUT /api/notification/preferences/me/mute` — set current-user non-essential notification mute state
-     - `GET|PUT /api/organization/{id}/notification-preferences` and `/mute` — organization-scoped notification preferences
-     - `GET|PUT /api/group/{id}/notification-preferences` and `/mute` — group-scoped notification preferences
+      - `PATCH /api/notification/preferences/me` — patch supplied current-user preference cells
+      - `PUT /api/notification/preferences/me/mute` — set current-user non-essential notification mute state
+      - `GET|PATCH /api/organization/{id}/notification-preferences` plus `PUT .../mute` — organization-scoped notification preferences
+      - `GET|PATCH /api/group/{id}/notification-preferences` plus `PUT .../mute` — group-scoped notification preferences
      - `GET /api/notification/web-push/config` — public enabled flag and VAPID public key only
      - `GET /api/notification/web-push/subscription?deviceIdentifier=...` — safe current-device subscription status
      - `POST /api/notification/web-push/subscriptions` — enroll or refresh the current browser
@@ -1009,7 +1017,7 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `GET /api/actor-subscriptions` — current user's paged actor subscriptions
    - `GET /api/actor-subscriptions/actors/{targetActorId}` — current user's subscription state for a target actor
    - `POST /api/actor-subscriptions` — subscribe to an organization/group actor
-   - `PATCH /api/actor-subscriptions/actors/{targetActorId}/notification-level` — update subscription notification level with concurrency stamp
+   - `PATCH /api/actor-subscriptions/actors/{targetActorId}/notification-level` — patch the route-owned subscription notification-level group with a concurrency stamp
    - `DELETE /api/actor-subscriptions/actors/{targetActorId}` — unsubscribe with concurrency stamp
 9. Footer management:
    - `GET /api/footer/config`: public footer config (`AllowAnonymous`)
@@ -1018,11 +1026,11 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `GET /api/footer/link-groups`: list link groups (`Authorize`)
    - `GET /api/footer/link-groups/{id}`: link group detail (`Authorize`)
    - `POST /api/footer/link-groups`: create link group; requires authenticated tenant update authorization
-   - `PUT /api/footer/link-groups/{id}`: update link group; requires authenticated tenant update authorization
+   - `PATCH /api/footer/link-groups/{id}`: update supplied link-group fields; requires authenticated tenant update authorization
    - `DELETE /api/footer/link-groups/{id}`: delete link group; requires authenticated tenant update authorization
    - `POST /api/footer/link-groups/reorder`: reorder link groups; requires authenticated tenant update authorization
    - `POST /api/footer/link-groups/{groupId}/links`: create link in group; requires authenticated tenant update authorization
-   - `PUT /api/footer/links/{id}`: update link; requires authenticated tenant update authorization
+   - `PATCH /api/footer/links/{id}`: update supplied link fields; requires authenticated tenant update authorization
    - `DELETE /api/footer/links/{id}`: delete link; requires authenticated tenant update authorization
    - Link mutations remain explicit operations and repeat the effective link-group governance check server-side. Clients render link management only when the settings resource includes `manage-link-groups`.
 10. Actor appearance:

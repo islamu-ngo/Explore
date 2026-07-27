@@ -107,7 +107,7 @@ Setup-secret handling is intentionally BFF-owned:
 
 1. The browser sees only BFF-mediated cookie/session state, not the raw setup-secret persistence model.
 2. Setup-secret forwarding uses `ISetupSecretResolver` with this trusted source order: BFF-owned setup handshake/session state, protected BFF-issued setup cookie, then explicit local/development/bootstrap configuration fallback. Inbound request headers are never a setup-secret source.
-3. The setup cookie is protected with ASP.NET Core Data Protection, `HttpOnly`, short-lived, invalidated by the BFF setup-secret endpoints, and `Secure` outside local development.
+3. The setup cookie is protected with time-limited ASP.NET Core Data Protection, `HttpOnly`, invalidated by the BFF setup-secret endpoints, and `Secure` outside local development. The cookie and server-side entry use a 30-minute rolling inactivity timeout refreshed by successful status and synchronization calls.
 4. `SameSite=Lax` is intentional because onboarding may cross top-level OIDC redirects before the first administrator completes setup.
 5. Setup-secret validation is rate-limited at the BFF edge and again at the API edge.
 6. The BFF limiter partitions requests by authenticated user when available, then antiforgery/session cookie state, then IP as the final fallback.
@@ -230,6 +230,12 @@ Blazor registration flows must classify that command response through `EventList
 4. `Failed` for safe service-layer failures.
 
 `EventRegistrationService` converts generated-client `ApiException` values into bounded `FailureCode`, `Message`, and `Errors` values. Components should display those safe messages and log exceptions with structured context; they must not show raw exception text, provider response bodies, database details, bearer-token errors, or generated-client stack details. Event detail registration buttons remain HAL-gated: render the registration action only when the event detail resource contains the `register` link relation.
+
+### Community Event Provenance And Claims
+
+`COMMUNITY_REPORTED` provenance is immutable disclosure metadata. `EventCard` renders its "Community reported" badge in every layout outside tenant-configurable card fields, while `EventDetail` and `EventDetailsSidebar` reuse `EventProvenancePanel` for typed DTO facts. The panel may open only sanitized same-origin HAL redirect links in a new tab with opener isolation; it must never render a raw external DTO destination or invent source dates, domains, or verification state.
+
+Correction, unsafe-link reporting, claim submission, and withdrawal remain HAL-driven through `suggest-correction`, `report-external-link`, `claim-event`, and item-level `withdraw-claim`. Fixed reporting intents submit reason `other` with `event_correction_suggestion` or `unsafe_external_link` as the subcategory. The signed-in claimant collection is filtered to the displayed event, but withdrawal visibility comes only from each claim item's `withdraw-claim` link; roles, browser claims, and local claimant-ID comparisons are never authorization sources. Reviewed public actions load through `public-actions`, render only sanitized item-level redirect links, and visibly disclose the DTO-provided destination domain without using the raw destination URL.
 
 ### Event Management And Moderation UI
 

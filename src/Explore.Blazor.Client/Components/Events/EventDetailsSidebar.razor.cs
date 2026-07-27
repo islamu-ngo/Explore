@@ -83,6 +83,8 @@ public partial class EventDetailsSidebar : ComponentBase
 
     private bool CanOpenEventPage => !IsSelectedEventModerated;
 
+    private bool CanUsePublicEventActions => !IsSelectedEventModerated && !IsSelectedEventPast;
+
     private string? ExternalEventUrl =>
         SelectedEvent?.IsFederatedDiscoveryEvent() == true ? SelectedEvent.GetHalHref("source") : null;
 

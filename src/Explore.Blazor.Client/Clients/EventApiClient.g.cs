@@ -661,11 +661,11 @@ namespace Explore.Blazor.Client.Clients
         /// Update Control Plane Tenant Plan Version Draft
         /// </summary>
         /// <remarks>
-        /// Updates a draft SaaS tenant plan version before publication.
+        /// Partially updates draft SaaS tenant plan version groups before publication.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateControlPlaneTenantPlanVersionDraftAsync(System.Guid versionId, TenantPlanDraft body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateControlPlaneTenantPlanVersionDraftAsync(System.Guid versionId, PatchControlPlaneTenantPlanVersionDraftDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -1212,14 +1212,25 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Create/Update Event Islamic Aspect
+        /// Create Event Islamic Aspect
         /// </summary>
         /// <remarks>
-        /// Creates or updates the Islamic-specific characteristics of an event. Includes Madhab, prayer-based scheduling, gender segregation mode, and language settings.
+        /// Creates the Islamic-specific characteristics of an event. Includes Madhab, prayer-based scheduling, gender segregation mode, and language settings.
+        /// </remarks>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CreateEventIslamicAspectAsync(System.Guid id, CreateUpdateIslamicAspectDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update Event Islamic Aspect
+        /// </summary>
+        /// <remarks>
+        /// Partially updates grouped Islamic-specific characteristics for an existing event aspect.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpsertEventIslamicAspectAsync(System.Guid id, CreateUpdateIslamicAspectDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventIslamicAspectAsync(System.Guid id, UpdateEventIslamicAspectDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -1245,14 +1256,25 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Create/Update Event Tech Aspect
+        /// Create Event Tech Aspect
         /// </summary>
         /// <remarks>
-        /// Creates or updates the tech/developer-specific characteristics of an event. Includes skill level requirements, hackathon track, tech stack tags, and competition details.
+        /// Creates the tech/developer-specific characteristics of an event. Includes skill level requirements, hackathon track, tech stack tags, and competition details.
+        /// </remarks>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CreateEventTechAspectAsync(System.Guid id, CreateUpdateTechAspectDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update Event Tech Aspect
+        /// </summary>
+        /// <remarks>
+        /// Partially updates grouped tech-specific characteristics for an existing event aspect.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpsertEventTechAspectAsync(System.Guid id, CreateUpdateTechAspectDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventTechAspectAsync(System.Guid id, UpdateEventTechAspectDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -1848,6 +1870,17 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Configure event participation
+        /// </summary>
+        /// <remarks>
+        /// Configures event participation for the event using the supplied concurrency stamp.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ConfigureEventParticipationAsync(System.Guid eventId, ConfigureEventParticipationDto body, System.Guid? if_Match = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get event public actions
         /// </summary>
         /// <remarks>
@@ -1909,7 +1942,7 @@ namespace Explore.Blazor.Client.Clients
         /// Redirects to the stored destination of an active reviewed public action.
         /// </remarks>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task RedirectEventPublicActionAsync(System.Guid eventId, System.Guid actionId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task RedirectEventPublicActionAsync(System.Guid eventId, System.Guid actionId, string? surface = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -2122,7 +2155,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Agenda Item
         /// </summary>
         /// <remarks>
-        /// Update an existing agenda item
+        /// Partially update an existing agenda item. Route identity is authoritative.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -2429,11 +2462,11 @@ namespace Explore.Blazor.Client.Clients
         /// Update Event Session Group
         /// </summary>
         /// <remarks>
-        /// Update a track, devroom, stage, or program section for an event.
+        /// Partially update a program section. Route identity is authoritative and If-Match must contain its current concurrency stamp.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventSessionGroupAsync(System.Guid id, UpdateEventSessionGroupRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventSessionGroupAsync(System.Guid id, UpdateEventSessionGroupRequestDto body, string? if_Match = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -2598,7 +2631,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventSessionSpeakerAsync(System.Guid eventSessionId, System.Guid id, UpdateEventSessionSpeakerDto body, string? if_Match = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventSessionSpeakerAsync(System.Guid id, UpdateEventSessionSpeakerDto body, string? if_Match = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -2965,7 +2998,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateFooterLinkGroupAsync(System.Guid id, UpdateFooterLinkGroupRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateFooterLinkGroupAsync(System.Guid id, PatchFooterLinkGroupDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
@@ -2985,7 +3018,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateFooterLinkAsync(System.Guid id, UpdateFooterLinkRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateFooterLinkAsync(System.Guid id, PatchFooterLinkDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
@@ -3096,7 +3129,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Group Notification Preferences
         /// </summary>
         /// <remarks>
-        /// Save editable group-scoped notification preference cells.
+        /// Patch supplied group-scoped notification preference cells while preserving omitted cells.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -4530,7 +4563,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Current User Notification Preferences
         /// </summary>
         /// <remarks>
-        /// Saves editable notification preference cells for the authenticated user. Required or locked cells are rejected.
+        /// Patches supplied notification preference cells for the authenticated user. Omitted cells are preserved; required or locked cells are rejected atomically.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -4739,7 +4772,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Organization Notification Preferences
         /// </summary>
         /// <remarks>
-        /// Save editable organization-scoped notification preference cells.
+        /// Patch supplied organization-scoped notification preference cells while preserving omitted cells.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -5412,7 +5445,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Tag
         /// </summary>
         /// <remarks>
-        /// Update an existing tag's information.
+        /// Partially update an existing tag. The route ID and resolved tenant are authoritative.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -5499,7 +5532,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Tenant
         /// </summary>
         /// <remarks>
-        /// Update an existing tenant
+        /// Partially update tenant metadata. Lifecycle transitions use dedicated control-plane actions.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -5543,7 +5576,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Tenant Navigation Link
         /// </summary>
         /// <remarks>
-        /// Update an existing navigation link
+        /// Partially update an existing navigation link; reorder remains a separate action.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -5683,6 +5716,17 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Test Tenant Storage Connection
+        /// </summary>
+        /// <remarks>
+        /// Tests the current tenant's effective storage provider, including an S3 write/delete probe when applicable.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<InstanceStorageProviderStatusDto> TestTenantStorageConnectionAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get all tenant user role grants
         /// </summary>
         /// <remarks>
@@ -5796,7 +5840,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update UI Theme
         /// </summary>
         /// <remarks>
-        /// Updates an existing UI theme. The caller must match the theme's scope (platform or tenant) authorization.
+        /// Updates supplied metadata, state, or palette groups on an existing UI theme. The caller must match the theme's scope authorization.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -5829,7 +5873,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Appearance Preferences
         /// </summary>
         /// <remarks>
-        /// Updates sparse user-scoped appearance preferences such as theme mode, text direction, language, and default theme/profile reference.
+        /// Updates supplied current-user language or text-direction preferences without changing theme mode or active profile.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -5884,7 +5928,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update User Appearance Profile
         /// </summary>
         /// <remarks>
-        /// Updates a user-owned appearance profile's palette or metadata.
+        /// Updates supplied metadata or palette groups on a user-owned appearance profile.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -13009,11 +13053,11 @@ namespace Explore.Blazor.Client.Clients
         /// Update Control Plane Tenant Plan Version Draft
         /// </summary>
         /// <remarks>
-        /// Updates a draft SaaS tenant plan version before publication.
+        /// Partially updates draft SaaS tenant plan version groups before publication.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateControlPlaneTenantPlanVersionDraftAsync(System.Guid versionId, TenantPlanDraft body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateControlPlaneTenantPlanVersionDraftAsync(System.Guid versionId, PatchControlPlaneTenantPlanVersionDraftDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (versionId == null)
                 throw new System.ArgumentNullException("versionId");
@@ -13034,7 +13078,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -20429,14 +20473,14 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Create/Update Event Islamic Aspect
+        /// Create Event Islamic Aspect
         /// </summary>
         /// <remarks>
-        /// Creates or updates the Islamic-specific characteristics of an event. Includes Madhab, prayer-based scheduling, gender segregation mode, and language settings.
+        /// Creates the Islamic-specific characteristics of an event. Includes Madhab, prayer-based scheduling, gender segregation mode, and language settings.
         /// </remarks>
-        /// <returns>OK</returns>
+        /// <returns>Created</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpsertEventIslamicAspectAsync(System.Guid id, CreateUpdateIslamicAspectDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CreateEventIslamicAspectAsync(System.Guid id, CreateUpdateIslamicAspectDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -20457,7 +20501,145 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/event/{id}/aspects/islamic"
+                    urlBuilder_.Append("api/event/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/aspects/islamic");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update Event Islamic Aspect
+        /// </summary>
+        /// <remarks>
+        /// Partially updates grouped Islamic-specific characteristics for an existing event aspect.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventIslamicAspectAsync(System.Guid id, UpdateEventIslamicAspectDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (id == null)
+                throw new System.ArgumentNullException("id");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -20764,14 +20946,14 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Create/Update Event Tech Aspect
+        /// Create Event Tech Aspect
         /// </summary>
         /// <remarks>
-        /// Creates or updates the tech/developer-specific characteristics of an event. Includes skill level requirements, hackathon track, tech stack tags, and competition details.
+        /// Creates the tech/developer-specific characteristics of an event. Includes skill level requirements, hackathon track, tech stack tags, and competition details.
         /// </remarks>
-        /// <returns>OK</returns>
+        /// <returns>Created</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpsertEventTechAspectAsync(System.Guid id, CreateUpdateTechAspectDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CreateEventTechAspectAsync(System.Guid id, CreateUpdateTechAspectDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -20792,7 +20974,145 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/event/{id}/aspects/tech"
+                    urlBuilder_.Append("api/event/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/aspects/tech");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update Event Tech Aspect
+        /// </summary>
+        /// <remarks>
+        /// Partially updates grouped tech-specific characteristics for an existing event aspect.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventTechAspectAsync(System.Guid id, UpdateEventTechAspectDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (id == null)
+                throw new System.ArgumentNullException("id");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -26599,7 +26919,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -27642,6 +27962,157 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Configure event participation
+        /// </summary>
+        /// <remarks>
+        /// Configures event participation for the event using the supplied concurrency stamp.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ConfigureEventParticipationAsync(System.Guid eventId, ConfigureEventParticipationDto body, System.Guid? if_Match = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (if_Match != null)
+                        request_.Headers.TryAddWithoutValidation("If-Match", ConvertToString(if_Match, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/participation"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/participation");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get event public actions
         /// </summary>
         /// <remarks>
@@ -28262,7 +28733,7 @@ namespace Explore.Blazor.Client.Clients
         /// Redirects to the stored destination of an active reviewed public action.
         /// </remarks>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task RedirectEventPublicActionAsync(System.Guid eventId, System.Guid actionId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task RedirectEventPublicActionAsync(System.Guid eventId, System.Guid actionId, string? surface = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (eventId == null)
                 throw new System.ArgumentNullException("eventId");
@@ -28290,6 +28761,10 @@ namespace Explore.Blazor.Client.Clients
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(actionId, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/redirect");
                     urlBuilder_.Append('?');
+                    if (surface != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("surface")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(surface, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
                     if (api_version != null)
                     {
                         urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
@@ -30810,7 +31285,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Agenda Item
         /// </summary>
         /// <remarks>
-        /// Update an existing agenda item
+        /// Partially update an existing agenda item. Route identity is authoritative.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -30835,7 +31310,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -30891,6 +31366,36 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         {
@@ -34239,11 +34744,11 @@ namespace Explore.Blazor.Client.Clients
         /// Update Event Session Group
         /// </summary>
         /// <remarks>
-        /// Update a track, devroom, stage, or program section for an event.
+        /// Partially update a program section. Route identity is authoritative and If-Match must contain its current concurrency stamp.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventSessionGroupAsync(System.Guid id, UpdateEventSessionGroupRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventSessionGroupAsync(System.Guid id, UpdateEventSessionGroupRequestDto body, string? if_Match = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -34258,13 +34763,16 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
 
+                    if (if_Match != null)
+                        request_.Headers.TryAddWithoutValidation("If-Match", ConvertToString(if_Match, System.Globalization.CultureInfo.InvariantCulture));
+
                     if (x_Api_Version != null)
                         request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -34332,6 +34840,16 @@ namespace Explore.Blazor.Client.Clients
                             throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
                         if (status_ == 404)
                         {
                             var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
@@ -34340,6 +34858,16 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         {
@@ -35981,11 +36509,8 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventSessionSpeakerAsync(System.Guid eventSessionId, System.Guid id, UpdateEventSessionSpeakerDto body, string? if_Match = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventSessionSpeakerAsync(System.Guid id, UpdateEventSessionSpeakerDto body, string? if_Match = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
-            if (eventSessionId == null)
-                throw new System.ArgumentNullException("eventSessionId");
-
             if (id == null)
                 throw new System.ArgumentNullException("id");
 
@@ -36013,10 +36538,8 @@ namespace Explore.Blazor.Client.Clients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/eventsessionspeaker/management/by-session/{eventSessionId}/{id}"
-                    urlBuilder_.Append("api/eventsessionspeaker/management/by-session/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventSessionId, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append('/');
+                    // Operation Path: "api/eventsessionspeaker/management/{id}"
+                    urlBuilder_.Append("api/eventsessionspeaker/management/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append('?');
                     if (api_version != null)
@@ -40522,7 +41045,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateFooterLinkGroupAsync(System.Guid id, UpdateFooterLinkGroupRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateFooterLinkGroupAsync(System.Guid id, PatchFooterLinkGroupDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -40543,7 +41066,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -40926,7 +41449,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateFooterLinkAsync(System.Guid id, UpdateFooterLinkRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateFooterLinkAsync(System.Guid id, PatchFooterLinkDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -40947,7 +41470,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -42144,7 +42667,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Group Notification Preferences
         /// </summary>
         /// <remarks>
-        /// Save editable group-scoped notification preference cells.
+        /// Patch supplied group-scoped notification preference cells while preserving omitted cells.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -42169,7 +42692,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -57022,7 +57545,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Current User Notification Preferences
         /// </summary>
         /// <remarks>
-        /// Saves editable notification preference cells for the authenticated user. Required or locked cells are rejected.
+        /// Patches supplied notification preference cells for the authenticated user. Omitted cells are preserved; required or locked cells are rejected atomically.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -57044,7 +57567,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -59102,7 +59625,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Organization Notification Preferences
         /// </summary>
         /// <remarks>
-        /// Save editable organization-scoped notification preference cells.
+        /// Patch supplied organization-scoped notification preference cells while preserving omitted cells.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -59127,7 +59650,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -66580,7 +67103,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Tag
         /// </summary>
         /// <remarks>
-        /// Update an existing tag's information.
+        /// Partially update an existing tag. The route ID and resolved tenant are authoritative.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -66605,7 +67128,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -67437,7 +67960,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Tenant
         /// </summary>
         /// <remarks>
-        /// Update an existing tenant
+        /// Partially update tenant metadata. Lifecycle transitions use dedicated control-plane actions.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -67462,7 +67985,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -67837,7 +68360,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Tenant Navigation Link
         /// </summary>
         /// <remarks>
-        /// Update an existing navigation link
+        /// Partially update an existing navigation link; reorder remains a separate action.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -67862,7 +68385,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -69269,6 +69792,113 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Test Tenant Storage Connection
+        /// </summary>
+        /// <remarks>
+        /// Tests the current tenant's effective storage provider, including an S3 write/delete probe when applicable.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<InstanceStorageProviderStatusDto> TestTenantStorageConnectionAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenant/settings/storage/test"
+                    urlBuilder_.Append("api/tenant/settings/storage/test");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<InstanceStorageProviderStatusDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get all tenant user role grants
         /// </summary>
         /// <remarks>
@@ -70305,7 +70935,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update UI Theme
         /// </summary>
         /// <remarks>
-        /// Updates an existing UI theme. The caller must match the theme's scope (platform or tenant) authorization.
+        /// Updates supplied metadata, state, or palette groups on an existing UI theme. The caller must match the theme's scope authorization.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -70330,7 +70960,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -70652,7 +71282,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update Appearance Preferences
         /// </summary>
         /// <remarks>
-        /// Updates sparse user-scoped appearance preferences such as theme mode, text direction, language, and default theme/profile reference.
+        /// Updates supplied current-user language or text-direction preferences without changing theme mode or active profile.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -70674,7 +71304,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -71184,7 +71814,7 @@ namespace Explore.Blazor.Client.Clients
         /// Update User Appearance Profile
         /// </summary>
         /// <remarks>
-        /// Updates a user-owned appearance profile's palette or metadata.
+        /// Updates supplied metadata or palette groups on a user-owned appearance profile.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -71209,7 +71839,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -71255,6 +71885,16 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         if (status_ == 401)
@@ -80039,6 +80679,36 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ConfigureEventParticipationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ParticipationHandlingModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? AdvanceRegistrationObligationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? IdentityAccessModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("guestRecoveryPolicy")]
+        public int? GuestRecoveryPolicy { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ConfirmEventLocationRemediationDto
     {
 
@@ -81725,11 +82395,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("featuredImageId")]
         public System.Guid? FeaturedImageId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("isRegistrationRequired")]
-        public bool? IsRegistrationRequired { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("externalRegistrationUrl")]
-        public string? ExternalRegistrationUrl { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("participationConfiguration")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ConfigureEventParticipationDto ParticipationConfiguration { get; set; } = new ConfigureEventParticipationDto();
 
         [System.Text.Json.Serialization.JsonPropertyName("visibilityTypeId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -85367,11 +86035,8 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("featuredImageUri")]
         public string? FeaturedImageUri { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("isRegistrationRequired")]
-        public bool? IsRegistrationRequired { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("externalRegistrationUrl")]
-        public string? ExternalRegistrationUrl { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("participationConfiguration")]
+        public ParticipationConfiguration? ParticipationConfiguration { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("registrationPolicyId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -85720,6 +86385,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("actorProfilePictureUri")]
         public string? ActorProfilePictureUri { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("provenanceTypeCode")]
+        public string? ProvenanceTypeCode { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("price")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
         public double? Price { get; set; } = default!;
@@ -85733,11 +86401,8 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("featuredImageUri")]
         public string? FeaturedImageUri { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("isRegistrationRequired")]
-        public bool? IsRegistrationRequired { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("externalRegistrationUrl")]
-        public string? ExternalRegistrationUrl { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("participationConfiguration")]
+        public EventParticipationConfigurationDto? ParticipationConfiguration { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("registrationPolicyId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -86215,6 +86880,60 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EventParticipationConfigurationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("concurrencyStamp")]
+        public System.Guid? ConcurrencyStamp { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ParticipationHandlingModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeCode")]
+        public string? ParticipationHandlingModeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeName")]
+        public string? ParticipationHandlingModeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? AdvanceRegistrationObligationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationCode")]
+        public string? AdvanceRegistrationObligationCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationName")]
+        public string? AdvanceRegistrationObligationName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? IdentityAccessModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeCode")]
+        public string? IdentityAccessModeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeName")]
+        public string? IdentityAccessModeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("guestRecoveryPolicy")]
+        public int? GuestRecoveryPolicy { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class EventPolicyDto
     {
 
@@ -86514,6 +87233,12 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("isPrimary")]
         public bool? IsPrimary { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("openInNewTab")]
+        public bool? OpenInNewTab { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("rel")]
+        public string? Rel { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -87821,6 +88546,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("concurrencyStamp")]
+        public System.Guid? ConcurrencyStamp { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -87876,6 +88604,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("concurrencyStamp")]
+        public System.Guid? ConcurrencyStamp { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -89431,6 +90162,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("openInNewTab")]
         public bool? OpenInNewTab { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isActive")]
+        public bool? IsActive { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("order")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -95062,11 +95796,8 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("featuredImageUri")]
         public string? FeaturedImageUri { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("isRegistrationRequired")]
-        public bool? IsRegistrationRequired { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("externalRegistrationUrl")]
-        public string? ExternalRegistrationUrl { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("participationConfiguration")]
+        public ParticipationConfiguration2? ParticipationConfiguration { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("registrationPolicyId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -95293,6 +96024,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("actorProfilePictureUri")]
         public string? ActorProfilePictureUri { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("provenanceTypeCode")]
+        public string? ProvenanceTypeCode { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("price")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
         public double? Price { get; set; } = default!;
@@ -95306,11 +96040,8 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("featuredImageUri")]
         public string? FeaturedImageUri { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("isRegistrationRequired")]
-        public bool? IsRegistrationRequired { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("externalRegistrationUrl")]
-        public string? ExternalRegistrationUrl { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("participationConfiguration")]
+        public ParticipationConfiguration3? ParticipationConfiguration { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("registrationPolicyId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -95590,6 +96321,12 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("isPrimary")]
         public bool? IsPrimary { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("openInNewTab")]
+        public bool? OpenInNewTab { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("rel")]
+        public string? Rel { get; set; } = default!;
 
         /// <summary>
         /// HAL hypermedia links
@@ -96243,6 +96980,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("concurrencyStamp")]
+        public System.Guid? ConcurrencyStamp { get; set; } = default!;
+
         /// <summary>
         /// HAL hypermedia links
         /// </summary>
@@ -96310,6 +97050,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("concurrencyStamp")]
+        public System.Guid? ConcurrencyStamp { get; set; } = default!;
 
         /// <summary>
         /// HAL hypermedia links
@@ -100666,8 +101409,9 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
         public double? Price { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("isRegistrationRequired")]
-        public bool? IsRegistrationRequired { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("participationConfiguration")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ConfigureEventParticipationDto ParticipationConfiguration { get; set; } = new ConfigureEventParticipationDto();
 
         [System.Text.Json.Serialization.JsonPropertyName("featuredImageId")]
         public System.Guid? FeaturedImageId { get; set; } = default!;
@@ -100994,6 +101738,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("preflight")]
+        public S3PreflightResult? Preflight { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -104045,6 +104792,27 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class OptionalUpdateOfDateTime
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasValue")]
+        public bool? HasValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public System.DateTimeOffset? Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class OptionalUpdateOfDateTimeOffset
     {
 
@@ -104354,6 +105122,28 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("value")]
         [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<PosthogPersonProfiles>))]
         public PosthogPersonProfiles? Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class OptionalUpdateOfPrayerTime
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasValue")]
+        public bool? HasValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<PrayerTime>))]
+        public PrayerTime? Value { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -105357,6 +106147,33 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchControlPlaneTenantPlanVersionDraftDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("pricing")]
+        public PatchTenantPlanPricingDto? Pricing { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isActiveForProvisioning")]
+        public PatchTenantPlanProvisioningDto? IsActiveForProvisioning { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("settingOverrides")]
+        public PatchTenantPlanSettingOverridesDto? SettingOverrides { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quotaLimits")]
+        public PatchTenantPlanQuotaLimitsDto? QuotaLimits { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PatchDomainSettingsDto
     {
 
@@ -105434,6 +106251,165 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("lockTenantCopyright")]
         public OptionalUpdateOfboolean? LockTenantCopyright { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchFooterLinkDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("label")]
+        public PatchFooterLinkLabelDto? Label { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("url")]
+        public PatchFooterLinkUrlDto? Url { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("openInNewTab")]
+        public PatchFooterLinkOpenInNewTabDto? OpenInNewTab { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isActive")]
+        public PatchFooterLinkIsActiveDto? IsActive { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchFooterLinkGroupDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        public PatchFooterLinkGroupTitleDto? Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isActive")]
+        public PatchFooterLinkGroupIsActiveDto? IsActive { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchFooterLinkGroupIsActiveDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public bool? Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchFooterLinkGroupTitleDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchFooterLinkIsActiveDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public bool? Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchFooterLinkLabelDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchFooterLinkOpenInNewTabDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public bool? Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchFooterLinkUrlDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Value { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -105882,6 +106858,85 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("value")]
         public OptionalUpdateOfstring? Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchTenantPlanPricingDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("amount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? Amount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("billingPeriod")]
+        public string? BillingPeriod { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchTenantPlanProvisioningDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public bool? Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchTenantPlanQuotaLimitsDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public System.Collections.Generic.ICollection<TenantPlanQuotaLimit>? Values { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchTenantPlanSettingOverridesDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public System.Collections.Generic.ICollection<TenantPlanSettingOverride>? Values { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -108075,6 +109130,69 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("acknowledgeUncertainProviderPublications")]
         public bool? AcknowledgeUncertainProviderPublications { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class S3PreflightResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool? IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canRead")]
+        public bool? CanRead { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canWrite")]
+        public bool? CanWrite { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bucketName")]
+        public string? BucketName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endpoint")]
+        public string? Endpoint { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("steps")]
+        public System.Collections.Generic.ICollection<S3PreflightStepResult>? Steps { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class S3PreflightStepResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("stepName")]
+        public string? StepName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public string? Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("errorCode")]
+        public string? ErrorCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("message")]
+        public string? Message { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("detail")]
+        public string? Detail { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -111400,15 +112518,95 @@ namespace Explore.Blazor.Client.Clients
     public partial class UpdateActorSubscriptionNotificationLevelDto
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("targetActorId")]
-        public System.Guid? TargetActorId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("notificationLevelId")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? NotificationLevelId { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("notificationLevel")]
+        public UpdateActorSubscriptionNotificationLevelValueDto? NotificationLevel { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("expectedConcurrencyStamp")]
-        public System.Guid? ExpectedConcurrencyStamp { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid ExpectedConcurrencyStamp { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateActorSubscriptionNotificationLevelValueDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Id { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateAppearanceLocalizationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("direction")]
+        public string? Direction { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("language")]
+        public string? Language { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateAppearanceProfileMetadataDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string? Name { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("themeMode")]
+        public string? ThemeMode { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateAppearanceProfilePalettesDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("light")]
+        public UiThemePaletteDto? Light { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dark")]
+        public UiThemePaletteDto? Dark { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -111425,17 +112623,11 @@ namespace Explore.Blazor.Client.Clients
     public partial class UpdateAppearanceProfileRequestDto
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
-        public string? Name { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("metadata")]
+        public UpdateAppearanceProfileMetadataDto? Metadata { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("lightPaletteSnapshot")]
-        public UiThemePaletteDto? LightPaletteSnapshot { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("darkPaletteSnapshot")]
-        public UiThemePaletteDto? DarkPaletteSnapshot { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("themeMode")]
-        public string? ThemeMode { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("palettes")]
+        public UpdateAppearanceProfilePalettesDto? Palettes { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112366,12 +113558,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("featuredImage")]
         public UpdateEventFeaturedImageDto? FeaturedImage { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("registrationRequired")]
-        public UpdateEventRegistrationRequiredDto? RegistrationRequired { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("externalRegistrationUrl")]
-        public UpdateEventExternalRegistrationUrlDto? ExternalRegistrationUrl { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("visibility")]
         public UpdateEventVisibilityDto? Visibility { get; set; } = default!;
 
@@ -112456,24 +113642,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UpdateEventExternalRegistrationUrlDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("value")]
-        public OptionalUpdateOfstring? Value { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UpdateEventFeaturedImageDto
     {
 
@@ -112511,46 +113679,185 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventIslamicAspectDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("jurisprudence")]
+        public UpdateEventIslamicJurisprudenceDto? Jurisprudence { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("prayerSchedule")]
+        public UpdateEventIslamicPrayerScheduleDto? PrayerSchedule { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participation")]
+        public UpdateEventIslamicParticipationDto? Participation { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("language")]
+        public UpdateEventIslamicLanguageDto? Language { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventIslamicJurisprudenceDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("madhabId")]
+        public OptionalUpdateOfint? MadhabId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventIslamicLanguageDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("primaryLanguageId")]
+        public OptionalUpdateOfint? PrimaryLanguageId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventIslamicParticipationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("genderMode")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<GenderSegregationMode>))]
+        public GenderSegregationMode? GenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("includesQuranRecitation")]
+        public bool? IncludesQuranRecitation { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventIslamicPrayerScheduleDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("referencePrayer")]
+        public OptionalUpdateOfPrayerTime? ReferencePrayer { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("prayerTimeOffset")]
+        public OptionalUpdateOfint? PrayerTimeOffset { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventLocationDisclosureAudienceDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("fullDetailsAudienceId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? FullDetailsAudienceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("revealFullDetailsFromUtc")]
+        public OptionalUpdateOfDateTime? RevealFullDetailsFromUtc { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UpdateEventLocationDisclosureDto
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("showVenueName")]
-        public bool ShowVenueName { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("showCity")]
-        public bool ShowCity { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("showCountry")]
-        public bool ShowCountry { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("showRoomName")]
-        public bool ShowRoomName { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("showStreetAddress")]
-        public bool ShowStreetAddress { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("showPostcode")]
-        public bool ShowPostcode { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("showCoordinates")]
-        public bool ShowCoordinates { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("fullDetailsAudienceId")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int FullDetailsAudienceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("revealFullDetailsFromUtc")]
-        public System.DateTimeOffset? RevealFullDetailsFromUtc { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("expectedPolicyVersion")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int ExpectedPolicyVersion { get; set; } = default!;
+        public int? ExpectedPolicyVersion { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("expectedConcurrencyStamp")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public System.Guid ExpectedConcurrencyStamp { get; set; } = default!;
+        public System.Guid? ExpectedConcurrencyStamp { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fields")]
+        public UpdateEventLocationDisclosureFieldsDto? Fields { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("audience")]
+        public UpdateEventLocationDisclosureAudienceDto? Audience { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventLocationDisclosureFieldsDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("showVenueName")]
+        public bool? ShowVenueName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("showCity")]
+        public bool? ShowCity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("showCountry")]
+        public bool? ShowCountry { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("showRoomName")]
+        public bool? ShowRoomName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("showStreetAddress")]
+        public bool? ShowStreetAddress { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("showPostcode")]
+        public bool? ShowPostcode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("showCoordinates")]
+        public bool? ShowCoordinates { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112668,24 +113975,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("value")]
         public OptionalUpdateOfint? Value { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UpdateEventRegistrationRequiredDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("value")]
-        public bool? Value { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112892,33 +114181,98 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventSessionAgendaItemContentDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        public string? Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public OptionalUpdateOfstring? Description { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UpdateEventSessionAgendaItemDto
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("relationship")]
+        public UpdateEventSessionAgendaItemRelationshipDto? Relationship { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("content")]
+        public UpdateEventSessionAgendaItemContentDto? Content { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("schedule")]
+        public UpdateEventSessionAgendaItemScheduleDto? Schedule { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("location")]
+        public UpdateEventSessionAgendaItemLocationDto? Location { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventSessionAgendaItemLocationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public OptionalUpdateOfGuid? Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventSessionAgendaItemRelationshipDto
+    {
 
         [System.Text.Json.Serialization.JsonPropertyName("eventSessionId")]
         public System.Guid? EventSessionId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventSessionAgendaItemScheduleDto
+    {
 
         [System.Text.Json.Serialization.JsonPropertyName("startTime")]
         public System.DateTimeOffset? StartTime { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("endTime")]
         public System.DateTimeOffset? EndTime { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Title { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("description")]
-        public string? Description { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("locationId")]
-        public System.Guid? LocationId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
-        public System.Guid? TenantId { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -113186,40 +114540,105 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UpdateEventSessionGroupRequestDto
+    public partial class UpdateEventSessionGroupMetadataDto
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
-        public System.Guid? EventId { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("name")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Name { get; set; } = default!;
+        public string? Name { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("slug")]
-        public string? Slug { get; set; } = default!;
+        public OptionalUpdateOfstring? Slug { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
-        public string? Description { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("locationId")]
-        public System.Guid? LocationId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("roomId")]
-        public System.Guid? RoomId { get; set; } = default!;
+        public OptionalUpdateOfstring? Description { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("color")]
-        public string? Color { get; set; } = default!;
+        public OptionalUpdateOfstring? Color { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventSessionGroupOrderingDto
+    {
 
         [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? SortOrder { get; set; } = default!;
 
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventSessionGroupPlacementDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("locationId")]
+        public OptionalUpdateOfGuid? LocationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("roomId")]
+        public OptionalUpdateOfGuid? RoomId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventSessionGroupPublicationDto
+    {
+
         [System.Text.Json.Serialization.JsonPropertyName("isPublished")]
         public bool? IsPublished { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventSessionGroupRequestDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("metadata")]
+        public UpdateEventSessionGroupMetadataDto? Metadata { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("placement")]
+        public UpdateEventSessionGroupPlacementDto? Placement { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ordering")]
+        public UpdateEventSessionGroupOrderingDto? Ordering { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publication")]
+        public UpdateEventSessionGroupPublicationDto? Publication { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -113655,6 +115074,121 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventTechAspectDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("repository")]
+        public UpdateEventTechRepositoryDto? Repository { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("classification")]
+        public UpdateEventTechClassificationDto? Classification { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participation")]
+        public UpdateEventTechParticipationDto? Participation { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("prize")]
+        public UpdateEventTechPrizeDto? Prize { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventTechClassificationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("hackathonTrack")]
+        public OptionalUpdateOfstring? HackathonTrack { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("skillLevel")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SkillLevel>))]
+        public SkillLevel? SkillLevel { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("techStackTags")]
+        public OptionalUpdateOfstring? TechStackTags { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventTechParticipationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("requiresLaptop")]
+        public bool? RequiresLaptop { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isCodingCompetition")]
+        public bool? IsCodingCompetition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventTechPrizeDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxTeamSize")]
+        public OptionalUpdateOfint? MaxTeamSize { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("prizePool")]
+        public OptionalUpdateOfdecimal? PrizePool { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("prizeCurrencyCode")]
+        public OptionalUpdateOfstring? PrizeCurrencyCode { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateEventTechRepositoryDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("githubRepoUrl")]
+        public OptionalUpdateOfstring? GithubRepoUrl { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UpdateEventTemplateDto
     {
 
@@ -113774,57 +115308,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
         public System.DateTimeOffset? ExpiresAt { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UpdateFooterLinkGroupRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Title { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isActive")]
-        public bool IsActive { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UpdateFooterLinkRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("label")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Label { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("url")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Url { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("openInNewTab")]
-        public bool OpenInNewTab { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isActive")]
-        public bool IsActive { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -114885,19 +116368,49 @@ namespace Explore.Blazor.Client.Clients
     public partial class UpdateTagDto
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("masterCode")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string MasterCode { get; set; } = default!;
+        public UpdateTagMasterCodeDto? MasterCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("fullName")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string FullName { get; set; } = default!;
+        public UpdateTagFullNameDto? FullName { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
-        public System.Guid? TenantId { get; set; } = default!;
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateTagFullNameDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateTagMasterCodeDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Value { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -114914,19 +116427,30 @@ namespace Explore.Blazor.Client.Clients
     public partial class UpdateTenantDto
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("fullName")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string FullName { get; set; } = default!;
+        public UpdateTenantFullNameDto? FullName { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("slug")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Slug { get; set; } = default!;
+        public UpdateTenantSlugDto? Slug { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("isActive")]
-        public bool? IsActive { get; set; } = default!;
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateTenantFullNameDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Value { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -114943,20 +116467,72 @@ namespace Explore.Blazor.Client.Clients
     public partial class UpdateTenantNavigationLinkDto
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("label")]
-        public string? Label { get; set; } = default!;
+        public UpdateTenantNavigationLinkLabelDto? Label { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("url")]
-        public string? Url { get; set; } = default!;
+        public UpdateTenantNavigationLinkUrlDto? Url { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("icon")]
-        public string? Icon { get; set; } = default!;
+        public UpdateTenantNavigationLinkIconDto? Icon { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("openInNewTab")]
-        public bool? OpenInNewTab { get; set; } = default!;
+        public UpdateTenantNavigationLinkOpenInNewTabDto? OpenInNewTab { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateTenantNavigationLinkIconDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public OptionalUpdateOfstring? Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateTenantNavigationLinkLabelDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateTenantNavigationLinkOpenInNewTabDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public bool? Value { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -114979,6 +116555,25 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("order")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? Order { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateTenantNavigationLinkUrlDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Value { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -115115,11 +116710,56 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateTenantSlugDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UpdateUiThemeDto
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("rowVersion")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int RowVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("metadata")]
+        public UpdateUiThemeMetadataDto? Metadata { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("state")]
+        public UpdateUiThemeStateDto? State { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("palettes")]
+        public UpdateUiThemePalettesDto? Palettes { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateUiThemeMetadataDto
+    {
 
         [System.Text.Json.Serialization.JsonPropertyName("themeKey")]
         public string? ThemeKey { get; set; } = default!;
@@ -115128,7 +116768,43 @@ namespace Explore.Blazor.Client.Clients
         public string? DisplayName { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
-        public string? Description { get; set; } = default!;
+        public OptionalUpdateOfstring? Description { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateUiThemePalettesDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("light")]
+        public UiThemePaletteDto? Light { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dark")]
+        public UiThemePaletteDto? Dark { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateUiThemeStateDto
+    {
 
         [System.Text.Json.Serialization.JsonPropertyName("isActive")]
         public bool? IsActive { get; set; } = default!;
@@ -115139,16 +116815,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? SortOrder { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("rowVersion")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? RowVersion { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("lightPalette")]
-        public UiThemePaletteDto? LightPalette { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("darkPalette")]
-        public UiThemePaletteDto? DarkPalette { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -115165,17 +116831,8 @@ namespace Explore.Blazor.Client.Clients
     public partial class UpdateUserAppearancePreferencesDto
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("themeMode")]
-        public string? ThemeMode { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("direction")]
-        public string? Direction { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("language")]
-        public string? Language { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("defaultThemeId")]
-        public System.Guid? DefaultThemeId { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("localization")]
+        public UpdateAppearanceLocalizationDto? Localization { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -117416,6 +119073,60 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ParticipationConfiguration
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("concurrencyStamp")]
+        public System.Guid? ConcurrencyStamp { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ParticipationHandlingModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeCode")]
+        public string? ParticipationHandlingModeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeName")]
+        public string? ParticipationHandlingModeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? AdvanceRegistrationObligationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationCode")]
+        public string? AdvanceRegistrationObligationCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationName")]
+        public string? AdvanceRegistrationObligationName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? IdentityAccessModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeCode")]
+        public string? IdentityAccessModeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeName")]
+        public string? IdentityAccessModeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("guestRecoveryPolicy")]
+        public int? GuestRecoveryPolicy { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Fields
     {
 
@@ -118559,6 +120270,114 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ParticipationConfiguration2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("concurrencyStamp")]
+        public System.Guid? ConcurrencyStamp { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ParticipationHandlingModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeCode")]
+        public string? ParticipationHandlingModeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeName")]
+        public string? ParticipationHandlingModeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? AdvanceRegistrationObligationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationCode")]
+        public string? AdvanceRegistrationObligationCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationName")]
+        public string? AdvanceRegistrationObligationName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? IdentityAccessModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeCode")]
+        public string? IdentityAccessModeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeName")]
+        public string? IdentityAccessModeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("guestRecoveryPolicy")]
+        public int? GuestRecoveryPolicy { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ParticipationConfiguration3
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("concurrencyStamp")]
+        public System.Guid? ConcurrencyStamp { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ParticipationHandlingModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeCode")]
+        public string? ParticipationHandlingModeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeName")]
+        public string? ParticipationHandlingModeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? AdvanceRegistrationObligationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationCode")]
+        public string? AdvanceRegistrationObligationCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationName")]
+        public string? AdvanceRegistrationObligationName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? IdentityAccessModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeCode")]
+        public string? IdentityAccessModeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeName")]
+        public string? IdentityAccessModeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("guestRecoveryPolicy")]
+        public int? GuestRecoveryPolicy { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Fields2
     {
 
@@ -119275,6 +121094,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("preflight")]
+        public Preflight? Preflight { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -120306,6 +122128,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("preflight")]
+        public Preflight2? Preflight { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -122127,6 +123952,39 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Preflight
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool? IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canRead")]
+        public bool? CanRead { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canWrite")]
+        public bool? CanWrite { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bucketName")]
+        public string? BucketName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endpoint")]
+        public string? Endpoint { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("steps")]
+        public System.Collections.Generic.ICollection<Steps>? Steps { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Routes6
     {
 
@@ -122232,6 +124090,39 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Preflight2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool? IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canRead")]
+        public bool? CanRead { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canWrite")]
+        public bool? CanWrite { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bucketName")]
+        public string? BucketName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endpoint")]
+        public string? Endpoint { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("steps")]
+        public System.Collections.Generic.ICollection<Steps2>? Steps { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Routes8
     {
 
@@ -122253,6 +124144,66 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("isReadOnly")]
         public bool? IsReadOnly { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Steps
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("stepName")]
+        public string? StepName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public string? Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("errorCode")]
+        public string? ErrorCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("message")]
+        public string? Message { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("detail")]
+        public string? Detail { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Steps2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("stepName")]
+        public string? StepName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public string? Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("errorCode")]
+        public string? ErrorCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("message")]
+        public string? Message { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("detail")]
+        public string? Detail { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

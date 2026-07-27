@@ -96,7 +96,7 @@ Current security gates:
 
 The `MultiAuth` policy selector preserves the Keycloak and API-key branches and adds two purpose-separated ATProto schemes:
 
-- `AtprotoBootstrap` is valid only for `POST /api/auth/atproto/session`. The BFF signs a one-minute ES256 assertion with the OAuth-client key ring and binds issuer, audience, tenant, method, path, `iat`, expiry, and single-use `jti`. The assertion carries no DID or user authority. Browser-supplied bootstrap headers are stripped, and the BFF injects a server-created assertion only for the private bridge request.
+- `AtprotoBootstrap` is valid only for `POST /api/auth/atproto/session`. The BFF signs a one-minute ES256 assertion with the OAuth-client key ring and binds issuer, audience, tenant, exact DID, explicit Person/Organization/Group classification, method, path, `iat`, expiry, and single-use `jti`. The assertion carries no user authority. Browser-supplied bootstrap headers are stripped, and the BFF injects a server-created assertion only for the private bridge request.
 - The API atomically consumes the bootstrap `jti` in the durable idempotency table before dispatch. PostgreSQL `INSERT ... ON CONFLICT DO NOTHING` makes concurrent replay have exactly one winner across API instances.
 - The private bridge is excluded from API discovery and generated browser clients, rate-limited as a write, request-size bounded, and returned with `no-store`. It accepts opaque CarpaNet session material only over the server-to-server BFF boundary.
 - Infrastructure restores the OAuth session through CarpaNet, permits token refresh through the constrained ATProto transport, calls the user's PDS `com.atproto.server.getSession`, and requires the authenticated DID, returned DID, expected canonical HTTPS PDS, and linked tenant identity to agree before any write.
@@ -156,7 +156,7 @@ In YARP transforms:
   3. explicit local/development/bootstrap configuration fallback.
 - Inbound request headers are never trusted as setup-secret sources. Browser-controlled `X-Setup-Secret` values must be stripped and ignored by both YARP and server-side forwarding handlers.
 
-This prevents stale outgoing proxy headers and browser-controlled privileged headers from leaking across requests. Treat the setup secret as bootstrap-only sensitive material; the BFF protects the setup cookie with ASP.NET Core Data Protection and forwards only resolver output to downstream API calls.
+This prevents stale outgoing proxy headers and browser-controlled privileged headers from leaking across requests. Treat the setup secret as bootstrap-only sensitive material; the BFF protects the setup cookie with a 30-minute time-limited ASP.NET Core Data Protection payload, applies the same rolling inactivity limit to server-side setup sessions, and forwards only resolver output to downstream API calls.
 
 ## Embedded Control Plane Boundary
 

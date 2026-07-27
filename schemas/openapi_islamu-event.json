@@ -5736,12 +5736,12 @@
       }
     },
     "/api/admin/control-plane/plans/versions/{versionId}": {
-      "put": {
+      "patch": {
         "tags": [
           "ControlPlane"
         ],
         "summary": "Update Control Plane Tenant Plan Version Draft",
-        "description": "Updates a draft SaaS tenant plan version before publication.",
+        "description": "Partially updates draft SaaS tenant plan version groups before publication.",
         "operationId": "UpdateControlPlaneTenantPlanVersionDraft",
         "parameters": [
           {
@@ -5772,17 +5772,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantPlanDraft"
+                "$ref": "#/components/schemas/PatchControlPlaneTenantPlanVersionDraftDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantPlanDraft"
+                "$ref": "#/components/schemas/PatchControlPlaneTenantPlanVersionDraftDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantPlanDraft"
+                "$ref": "#/components/schemas/PatchControlPlaneTenantPlanVersionDraftDto"
               }
             }
           },
@@ -12612,13 +12612,13 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "post": {
         "tags": [
           "Event"
         ],
-        "summary": "Create/Update Event Islamic Aspect",
-        "description": "Creates or updates the Islamic-specific characteristics of an event. Includes Madhab, prayer-based scheduling, gender segregation mode, and language settings.",
-        "operationId": "UpsertEventIslamicAspect",
+        "summary": "Create Event Islamic Aspect",
+        "description": "Creates the Islamic-specific characteristics of an event. Includes Madhab, prayer-based scheduling, gender segregation mode, and language settings.",
+        "operationId": "CreateEventIslamicAspect",
         "parameters": [
           {
             "name": "id",
@@ -12654,6 +12654,142 @@
             "application/*+json; v=0.1": {
               "schema": {
                 "$ref": "#/components/schemas/CreateUpdateIslamicAspectDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      },
+      "patch": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Update Event Islamic Aspect",
+        "description": "Partially updates grouped Islamic-specific characteristics for an existing event aspect.",
+        "operationId": "UpdateEventIslamicAspect",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventIslamicAspectDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventIslamicAspectDto"
               }
             }
           },
@@ -12881,13 +13017,13 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "post": {
         "tags": [
           "Event"
         ],
-        "summary": "Create/Update Event Tech Aspect",
-        "description": "Creates or updates the tech/developer-specific characteristics of an event. Includes skill level requirements, hackathon track, tech stack tags, and competition details.",
-        "operationId": "UpsertEventTechAspect",
+        "summary": "Create Event Tech Aspect",
+        "description": "Creates the tech/developer-specific characteristics of an event. Includes skill level requirements, hackathon track, tech stack tags, and competition details.",
+        "operationId": "CreateEventTechAspect",
         "parameters": [
           {
             "name": "id",
@@ -12923,6 +13059,142 @@
             "application/*+json; v=0.1": {
               "schema": {
                 "$ref": "#/components/schemas/CreateUpdateTechAspectDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      },
+      "patch": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Update Event Tech Aspect",
+        "description": "Partially updates grouped tech-specific characteristics for an existing event aspect.",
+        "operationId": "UpdateEventTechAspect",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventTechAspectDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventTechAspectDto"
               }
             }
           },
@@ -18248,7 +18520,7 @@
       }
     },
     "/api/events/{eventId}/locations/{eventLocationId}/disclosure": {
-      "put": {
+      "patch": {
         "tags": [
           "EventLocation"
         ],
@@ -19332,6 +19604,170 @@
         "x-rate-limit-policy": "Write"
       }
     },
+    "/api/events/{eventId}/participation": {
+      "patch": {
+        "tags": [
+          "EventParticipation"
+        ],
+        "summary": "Configure event participation",
+        "description": "Configures event participation for the event using the supplied concurrency stamp.",
+        "operationId": "ConfigureEventParticipation",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigureEventParticipationDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigureEventParticipationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
     "/api/events/{eventId}/public-actions": {
       "get": {
         "tags": [
@@ -19916,6 +20352,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "surface",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -22206,12 +22649,12 @@
         },
         "x-endpoint-class": "Public"
       },
-      "put": {
+      "patch": {
         "tags": [
           "EventSessionAgendaItem"
         ],
         "summary": "Update Agenda Item",
-        "description": "Update an existing agenda item",
+        "description": "Partially update an existing agenda item. Route identity is authoritative.",
         "operationId": "UpdateEventSessionAgendaItem",
         "parameters": [
           {
@@ -22241,11 +22684,6 @@
         "requestBody": {
           "content": {
             "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateEventSessionAgendaItemDto"
-              }
-            },
-            "text/json; v=0.1": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateEventSessionAgendaItemDto"
               }
@@ -22295,6 +22733,66 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -25301,12 +25799,12 @@
         },
         "x-endpoint-class": "Public"
       },
-      "put": {
+      "patch": {
         "tags": [
           "EventSessionGroup"
         ],
         "summary": "Update Event Session Group",
-        "description": "Update a track, devroom, stage, or program section for an event.",
+        "description": "Partially update a program section. Route identity is authoritative and If-Match must contain its current concurrency stamp.",
         "operationId": "UpdateEventSessionGroup",
         "parameters": [
           {
@@ -25316,6 +25814,13 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -25418,8 +25923,54 @@
               "application/problem+json": { }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "application/problem+json": { }
+            }
+          },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "application/problem+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -26953,7 +27504,7 @@
         "x-endpoint-class": "Authenticated"
       }
     },
-    "/api/eventsessionspeaker/management/by-session/{eventSessionId}/{id}": {
+    "/api/eventsessionspeaker/management/{id}": {
       "patch": {
         "tags": [
           "EventSessionSpeaker"
@@ -26962,15 +27513,6 @@
         "description": "Update the actor or target session for an event session speaker assignment.",
         "operationId": "UpdateEventSessionSpeaker",
         "parameters": [
-          {
-            "name": "eventSessionId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
           {
             "name": "id",
             "in": "path",
@@ -27122,7 +27664,9 @@
           }
         },
         "x-endpoint-class": "Authenticated"
-      },
+      }
+    },
+    "/api/eventsessionspeaker/management/by-session/{eventSessionId}/{id}": {
       "delete": {
         "tags": [
           "EventSessionSpeaker"
@@ -31025,7 +31569,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "Footer"
         ],
@@ -31059,17 +31603,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateFooterLinkGroupRequest"
+                "$ref": "#/components/schemas/PatchFooterLinkGroupDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateFooterLinkGroupRequest"
+                "$ref": "#/components/schemas/PatchFooterLinkGroupDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateFooterLinkGroupRequest"
+                "$ref": "#/components/schemas/PatchFooterLinkGroupDto"
               }
             }
           },
@@ -31383,7 +31927,7 @@
       }
     },
     "/api/footer/links/{id}": {
-      "put": {
+      "patch": {
         "tags": [
           "Footer"
         ],
@@ -31417,17 +31961,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateFooterLinkRequest"
+                "$ref": "#/components/schemas/PatchFooterLinkDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateFooterLinkRequest"
+                "$ref": "#/components/schemas/PatchFooterLinkDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateFooterLinkRequest"
+                "$ref": "#/components/schemas/PatchFooterLinkDto"
               }
             }
           },
@@ -32406,12 +32950,12 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "Group"
         ],
         "summary": "Update Group Notification Preferences",
-        "description": "Save editable group-scoped notification preference cells.",
+        "description": "Patch supplied group-scoped notification preference cells while preserving omitted cells.",
         "operationId": "UpdateGroupNotificationPreferences",
         "parameters": [
           {
@@ -45356,12 +45900,12 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "Notification"
         ],
         "summary": "Update Current User Notification Preferences",
-        "description": "Saves editable notification preference cells for the authenticated user. Required or locked cells are rejected.",
+        "description": "Patches supplied notification preference cells for the authenticated user. Omitted cells are preserved; required or locked cells are rejected atomically.",
         "operationId": "UpdateCurrentUserNotificationPreferences",
         "parameters": [
           {
@@ -47104,12 +47648,12 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "Organization"
         ],
         "summary": "Update Organization Notification Preferences",
-        "description": "Save editable organization-scoped notification preference cells.",
+        "description": "Patch supplied organization-scoped notification preference cells while preserving omitted cells.",
         "operationId": "UpdateOrganizationNotificationPreferences",
         "parameters": [
           {
@@ -53269,12 +53813,12 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "Tag"
         ],
         "summary": "Update Tag",
-        "description": "Update an existing tag's information.",
+        "description": "Partially update an existing tag. The route ID and resolved tenant are authoritative.",
         "operationId": "UpdateTag",
         "parameters": [
           {
@@ -53931,12 +54475,12 @@
         "x-endpoint-class": "Authenticated",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "Tenant"
         ],
         "summary": "Update Tenant",
-        "description": "Update an existing tenant",
+        "description": "Partially update tenant metadata. Lifecycle transitions use dedicated control-plane actions.",
         "operationId": "UpdateTenant",
         "parameters": [
           {
@@ -54254,12 +54798,12 @@
       }
     },
     "/api/tenant/navigation/{id}": {
-      "put": {
+      "patch": {
         "tags": [
           "Tenant"
         ],
         "summary": "Update Tenant Navigation Link",
-        "description": "Update an existing navigation link",
+        "description": "Partially update an existing navigation link; reorder remains a separate action.",
         "operationId": "UpdateTenantNavigationLink",
         "parameters": [
           {
@@ -55522,6 +56066,86 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/tenant/settings/storage/test": {
+      "post": {
+        "tags": [
+          "TenantStorageSettings"
+        ],
+        "summary": "Test Tenant Storage Connection",
+        "description": "Tests the current tenant's effective storage provider, including an S3 write/delete probe when applicable.",
+        "operationId": "TestTenantStorageConnection",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageProviderStatusDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageProviderStatusDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/tenant-user-role-grants": {
       "get": {
         "tags": [
@@ -56360,12 +56984,12 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "UiThemeAdmin"
         ],
         "summary": "Update UI Theme",
-        "description": "Updates an existing UI theme. The caller must match the theme's scope (platform or tenant) authorization.",
+        "description": "Updates supplied metadata, state, or palette groups on an existing UI theme. The caller must match the theme's scope authorization.",
         "operationId": "UpdateUiTheme",
         "parameters": [
           {
@@ -56684,12 +57308,12 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "UserAppearance"
         ],
         "summary": "Update Appearance Preferences",
-        "description": "Updates sparse user-scoped appearance preferences such as theme mode, text direction, language, and default theme/profile reference.",
+        "description": "Updates supplied current-user language or text-direction preferences without changing theme mode or active profile.",
         "operationId": "UpdateCurrentUserAppearancePreferences",
         "parameters": [
           {
@@ -57194,12 +57818,12 @@
       }
     },
     "/api/user/appearance/profiles/{profileId}": {
-      "put": {
+      "patch": {
         "tags": [
           "UserAppearance"
         ],
         "summary": "Update User Appearance Profile",
-        "description": "Updates a user-owned appearance profile's palette or metadata.",
+        "description": "Updates supplied metadata or palette groups on a user-owned appearance profile.",
         "operationId": "UpdateAppearanceProfile",
         "parameters": [
           {
@@ -57263,6 +57887,26 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/UserAppearanceProfileDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -65356,6 +66000,46 @@
           }
         }
       },
+      "ConfigureEventParticipationDto": {
+        "type": "object",
+        "properties": {
+          "participationHandlingModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "advanceRegistrationObligationId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "identityAccessModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "guestRecoveryPolicy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GuestRecoveryPolicyEnum"
+              }
+            ]
+          }
+        }
+      },
       "ConfirmEventLocationRemediationDto": {
         "required": [
           "expectedPolicyVersion",
@@ -67368,7 +68052,8 @@
       },
       "CreateEventDraftRequestDto": {
         "required": [
-          "title"
+          "title",
+          "participationConfiguration"
         ],
         "type": "object",
         "properties": {
@@ -67462,14 +68147,8 @@
             ],
             "format": "uuid"
           },
-          "isRegistrationRequired": {
-            "type": "boolean"
-          },
-          "externalRegistrationUrl": {
-            "type": [
-              "null",
-              "string"
-            ]
+          "participationConfiguration": {
+            "$ref": "#/components/schemas/ConfigureEventParticipationDto"
           },
           "visibilityTypeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -72301,14 +72980,82 @@
               "string"
             ]
           },
-          "isRegistrationRequired": {
-            "type": "boolean"
-          },
-          "externalRegistrationUrl": {
-            "type": [
-              "null",
-              "string"
-            ]
+          "participationConfiguration": {
+            "type": "object",
+            "properties": {
+              "eventId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "concurrencyStamp": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "participationHandlingModeId": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "participationHandlingModeCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "participationHandlingModeName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "advanceRegistrationObligationId": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "advanceRegistrationObligationCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "advanceRegistrationObligationName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "identityAccessModeId": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "null",
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "identityAccessModeCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "identityAccessModeName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "guestRecoveryPolicy": {
+                "type": "integer"
+              }
+            }
           },
           "registrationPolicyId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -72798,6 +73545,12 @@
               "string"
             ]
           },
+          "provenanceTypeCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "price": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
             "type": [
@@ -72823,13 +73576,14 @@
               "string"
             ]
           },
-          "isRegistrationRequired": {
-            "type": "boolean"
-          },
-          "externalRegistrationUrl": {
-            "type": [
-              "null",
-              "string"
+          "participationConfiguration": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventParticipationConfigurationDto"
+              }
             ]
           },
           "registrationPolicyId": {
@@ -73591,6 +74345,90 @@
         ],
         "type": "string"
       },
+      "EventParticipationConfigurationDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participationHandlingModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "participationHandlingModeCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "participationHandlingModeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "advanceRegistrationObligationId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "advanceRegistrationObligationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "advanceRegistrationObligationName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "identityAccessModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "identityAccessModeCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "identityAccessModeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "guestRecoveryPolicy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GuestRecoveryPolicyEnum"
+              }
+            ]
+          }
+        }
+      },
       "EventPolicyDto": {
         "type": "object",
         "properties": {
@@ -73965,6 +74803,15 @@
           },
           "isPrimary": {
             "type": "boolean"
+          },
+          "openInNewTab": {
+            "type": "boolean"
+          },
+          "rel": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -75947,6 +76794,10 @@
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -76124,6 +76975,10 @@
             "type": "boolean"
           },
           "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           }
@@ -78499,6 +79354,9 @@
           "openInNewTab": {
             "type": "boolean"
           },
+          "isActive": {
+            "type": "boolean"
+          },
           "order": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -78939,6 +79797,9 @@
             ]
           }
         }
+      },
+      "GuestRecoveryPolicyEnum": {
+        "type": "integer"
       },
       "HalCollectionEmbeddedOfActorListDto": {
         "type": "object",
@@ -85758,14 +86619,82 @@
               "string"
             ]
           },
-          "isRegistrationRequired": {
-            "type": "boolean"
-          },
-          "externalRegistrationUrl": {
-            "type": [
-              "null",
-              "string"
-            ]
+          "participationConfiguration": {
+            "type": "object",
+            "properties": {
+              "eventId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "concurrencyStamp": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "participationHandlingModeId": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "participationHandlingModeCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "participationHandlingModeName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "advanceRegistrationObligationId": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "advanceRegistrationObligationCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "advanceRegistrationObligationName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "identityAccessModeId": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "null",
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "identityAccessModeCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "identityAccessModeName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "guestRecoveryPolicy": {
+                "type": "integer"
+              }
+            }
           },
           "registrationPolicyId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -86127,6 +87056,12 @@
               "string"
             ]
           },
+          "provenanceTypeCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "price": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
             "type": [
@@ -86152,14 +87087,82 @@
               "string"
             ]
           },
-          "isRegistrationRequired": {
-            "type": "boolean"
-          },
-          "externalRegistrationUrl": {
-            "type": [
-              "null",
-              "string"
-            ]
+          "participationConfiguration": {
+            "type": "object",
+            "properties": {
+              "eventId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "concurrencyStamp": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "participationHandlingModeId": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "participationHandlingModeCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "participationHandlingModeName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "advanceRegistrationObligationId": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "advanceRegistrationObligationCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "advanceRegistrationObligationName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "identityAccessModeId": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "null",
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "identityAccessModeCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "identityAccessModeName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "guestRecoveryPolicy": {
+                "type": "integer"
+              }
+            }
           },
           "registrationPolicyId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -86698,6 +87701,15 @@
           },
           "isPrimary": {
             "type": "boolean"
+          },
+          "openInNewTab": {
+            "type": "boolean"
+          },
+          "rel": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "_links": {
             "type": "object",
@@ -87961,6 +88973,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "_links": {
             "type": "object",
             "additionalProperties": {
@@ -88151,6 +89167,10 @@
             "type": "boolean"
           },
           "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -90378,6 +91398,55 @@
                   "null",
                   "string"
                 ]
+              },
+              "preflight": {
+                "type": "object",
+                "properties": {
+                  "isSuccess": {
+                    "type": "boolean"
+                  },
+                  "canRead": {
+                    "type": "boolean"
+                  },
+                  "canWrite": {
+                    "type": "boolean"
+                  },
+                  "bucketName": {
+                    "type": "string"
+                  },
+                  "endpoint": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "stepName": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "errorCode": {
+                          "type": [
+                            "null",
+                            "string"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": [
+                            "null",
+                            "string"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
               }
             }
           },
@@ -95437,7 +96506,8 @@
           "tenantId",
           "ownerActorId",
           "provenanceSource",
-          "provenanceExternalId"
+          "provenanceExternalId",
+          "participationConfiguration"
         ],
         "type": "object",
         "properties": {
@@ -95524,8 +96594,8 @@
             ],
             "format": "double"
           },
-          "isRegistrationRequired": {
-            "type": "boolean"
+          "participationConfiguration": {
+            "$ref": "#/components/schemas/ConfigureEventParticipationDto"
           },
           "featuredImageId": {
             "type": [
@@ -95863,6 +96933,16 @@
             "type": [
               "null",
               "string"
+            ]
+          },
+          "preflight": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/S3PreflightResult"
+              }
             ]
           }
         }
@@ -96211,6 +97291,55 @@
                   "null",
                   "string"
                 ]
+              },
+              "preflight": {
+                "type": "object",
+                "properties": {
+                  "isSuccess": {
+                    "type": "boolean"
+                  },
+                  "canRead": {
+                    "type": "boolean"
+                  },
+                  "canWrite": {
+                    "type": "boolean"
+                  },
+                  "bucketName": {
+                    "type": "string"
+                  },
+                  "endpoint": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "stepName": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "errorCode": {
+                          "type": [
+                            "null",
+                            "string"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": [
+                            "null",
+                            "string"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
               }
             }
           }
@@ -100248,6 +101377,21 @@
           }
         }
       },
+      "OptionalUpdateOfDateTime": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "OptionalUpdateOfDateTimeOffset": {
         "type": "object",
         "properties": {
@@ -100481,6 +101625,24 @@
           },
           "value": {
             "$ref": "#/components/schemas/PosthogPersonProfiles"
+          }
+        }
+      },
+      "OptionalUpdateOfPrayerTime": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PrayerTime"
+              }
+            ]
           }
         }
       },
@@ -101588,6 +102750,51 @@
           }
         }
       },
+      "PatchControlPlaneTenantPlanVersionDraftDto": {
+        "type": "object",
+        "properties": {
+          "pricing": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantPlanPricingDto"
+              }
+            ]
+          },
+          "isActiveForProvisioning": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantPlanProvisioningDto"
+              }
+            ]
+          },
+          "settingOverrides": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantPlanSettingOverridesDto"
+              }
+            ]
+          },
+          "quotaLimits": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantPlanQuotaLimitsDto"
+              }
+            ]
+          }
+        }
+      },
       "PatchDomainSettingsDto": {
         "type": "object",
         "properties": {
@@ -101645,6 +102852,142 @@
           },
           "lockTenantCopyright": {
             "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchFooterLinkDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchFooterLinkLabelDto"
+              }
+            ]
+          },
+          "url": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchFooterLinkUrlDto"
+              }
+            ]
+          },
+          "openInNewTab": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchFooterLinkOpenInNewTabDto"
+              }
+            ]
+          },
+          "isActive": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchFooterLinkIsActiveDto"
+              }
+            ]
+          }
+        }
+      },
+      "PatchFooterLinkGroupDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchFooterLinkGroupTitleDto"
+              }
+            ]
+          },
+          "isActive": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchFooterLinkGroupIsActiveDto"
+              }
+            ]
+          }
+        }
+      },
+      "PatchFooterLinkGroupIsActiveDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "PatchFooterLinkGroupTitleDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "PatchFooterLinkIsActiveDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "PatchFooterLinkLabelDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "PatchFooterLinkOpenInNewTabDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "PatchFooterLinkUrlDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
           }
         }
       },
@@ -101975,6 +103318,71 @@
         "properties": {
           "value": {
             "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "PatchTenantPlanPricingDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currencyCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "billingPeriod": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PatchTenantPlanProvisioningDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "PatchTenantPlanQuotaLimitsDto": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TenantPlanQuotaLimit"
+            }
+          }
+        }
+      },
+      "PatchTenantPlanSettingOverridesDto": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TenantPlanSettingOverride"
+            }
           }
         }
       },
@@ -103858,6 +105266,58 @@
           },
           "acknowledgeUncertainProviderPublications": {
             "type": "boolean"
+          }
+        }
+      },
+      "S3PreflightResult": {
+        "type": "object",
+        "properties": {
+          "isSuccess": {
+            "type": "boolean"
+          },
+          "canRead": {
+            "type": "boolean"
+          },
+          "canWrite": {
+            "type": "boolean"
+          },
+          "bucketName": {
+            "type": "string"
+          },
+          "endpoint": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/S3PreflightStepResult"
+            }
+          }
+        }
+      },
+      "S3PreflightStepResult": {
+        "type": "object",
+        "properties": {
+          "stepName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "errorCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -107365,19 +108825,20 @@
         }
       },
       "UpdateActorSubscriptionNotificationLevelDto": {
+        "required": [
+          "expectedConcurrencyStamp"
+        ],
         "type": "object",
         "properties": {
-          "targetActorId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "notificationLevelId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+          "notificationLevel": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateActorSubscriptionNotificationLevelValueDto"
+              }
+            ]
           },
           "expectedConcurrencyStamp": {
             "type": "string",
@@ -107385,7 +108846,40 @@
           }
         }
       },
-      "UpdateAppearanceProfileRequestDto": {
+      "UpdateActorSubscriptionNotificationLevelValueDto": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateAppearanceLocalizationDto": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "language": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "UpdateAppearanceProfileMetadataDto": {
         "type": "object",
         "properties": {
           "name": {
@@ -107394,30 +108888,60 @@
               "string"
             ]
           },
-          "lightPaletteSnapshot": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UiThemePaletteDto"
-              }
-            ]
-          },
-          "darkPaletteSnapshot": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UiThemePaletteDto"
-              }
-            ]
-          },
           "themeMode": {
             "type": [
               "null",
               "string"
+            ]
+          }
+        }
+      },
+      "UpdateAppearanceProfilePalettesDto": {
+        "type": "object",
+        "properties": {
+          "light": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UiThemePaletteDto"
+              }
+            ]
+          },
+          "dark": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UiThemePaletteDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateAppearanceProfileRequestDto": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateAppearanceProfileMetadataDto"
+              }
+            ]
+          },
+          "palettes": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateAppearanceProfilePalettesDto"
+              }
             ]
           }
         }
@@ -108361,26 +109885,6 @@
               }
             ]
           },
-          "registrationRequired": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateEventRegistrationRequiredDto"
-              }
-            ]
-          },
-          "externalRegistrationUrl": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateEventExternalRegistrationUrlDto"
-              }
-            ]
-          },
           "visibility": {
             "oneOf": [
               {
@@ -108519,14 +110023,6 @@
           }
         }
       },
-      "UpdateEventExternalRegistrationUrlDto": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "$ref": "#/components/schemas/OptionalUpdateOfstring"
-          }
-        }
-      },
       "UpdateEventFeaturedImageDto": {
         "type": "object",
         "properties": {
@@ -108548,58 +110044,119 @@
           }
         }
       },
-      "UpdateEventLocationDisclosureDto": {
-        "required": [
-          "showVenueName",
-          "showCity",
-          "showCountry",
-          "showRoomName",
-          "showStreetAddress",
-          "showPostcode",
-          "showCoordinates",
-          "fullDetailsAudienceId",
-          "revealFullDetailsFromUtc",
-          "expectedPolicyVersion",
-          "expectedConcurrencyStamp"
-        ],
+      "UpdateEventIslamicAspectDto": {
         "type": "object",
         "properties": {
-          "showVenueName": {
-            "type": "boolean"
+          "jurisprudence": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventIslamicJurisprudenceDto"
+              }
+            ]
           },
-          "showCity": {
-            "type": "boolean"
+          "prayerSchedule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventIslamicPrayerScheduleDto"
+              }
+            ]
           },
-          "showCountry": {
-            "type": "boolean"
+          "participation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventIslamicParticipationDto"
+              }
+            ]
           },
-          "showRoomName": {
-            "type": "boolean"
+          "language": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventIslamicLanguageDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventIslamicJurisprudenceDto": {
+        "type": "object",
+        "properties": {
+          "madhabId": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventIslamicLanguageDto": {
+        "type": "object",
+        "properties": {
+          "primaryLanguageId": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventIslamicParticipationDto": {
+        "type": "object",
+        "properties": {
+          "genderMode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GenderSegregationMode"
+              }
+            ]
           },
-          "showStreetAddress": {
-            "type": "boolean"
+          "includesQuranRecitation": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "UpdateEventIslamicPrayerScheduleDto": {
+        "type": "object",
+        "properties": {
+          "referencePrayer": {
+            "$ref": "#/components/schemas/OptionalUpdateOfPrayerTime"
           },
-          "showPostcode": {
-            "type": "boolean"
-          },
-          "showCoordinates": {
-            "type": "boolean"
-          },
+          "prayerTimeOffset": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "UpdateEventLocationDisclosureAudienceDto": {
+        "type": "object",
+        "properties": {
           "fullDetailsAudienceId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int32"
           },
           "revealFullDetailsFromUtc": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
+            "$ref": "#/components/schemas/OptionalUpdateOfDateTime"
+          }
+        }
+      },
+      "UpdateEventLocationDisclosureDto": {
+        "type": "object",
+        "properties": {
           "expectedPolicyVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -108611,6 +110168,73 @@
           "expectedConcurrencyStamp": {
             "type": "string",
             "format": "uuid"
+          },
+          "fields": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventLocationDisclosureFieldsDto"
+              }
+            ]
+          },
+          "audience": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventLocationDisclosureAudienceDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventLocationDisclosureFieldsDto": {
+        "type": "object",
+        "properties": {
+          "showVenueName": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "showCity": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "showCountry": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "showRoomName": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "showStreetAddress": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "showPostcode": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "showCoordinates": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },
@@ -108696,14 +110320,6 @@
         "properties": {
           "value": {
             "$ref": "#/components/schemas/OptionalUpdateOfint"
-          }
-        }
-      },
-      "UpdateEventRegistrationRequiredDto": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "type": "boolean"
           }
         }
       },
@@ -108839,47 +110455,98 @@
           }
         }
       },
-      "UpdateEventSessionAgendaItemDto": {
-        "required": [
-          "title"
-        ],
+      "UpdateEventSessionAgendaItemContentDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "eventSessionId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "startTime": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "endTime": {
-            "type": "string",
-            "format": "date-time"
-          },
           "title": {
-            "type": "string"
-          },
-          "description": {
             "type": [
               "null",
               "string"
             ]
           },
-          "locationId": {
+          "description": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventSessionAgendaItemDto": {
+        "type": "object",
+        "properties": {
+          "relationship": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionAgendaItemRelationshipDto"
+              }
+            ]
+          },
+          "content": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionAgendaItemContentDto"
+              }
+            ]
+          },
+          "schedule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionAgendaItemScheduleDto"
+              }
+            ]
+          },
+          "location": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionAgendaItemLocationDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventSessionAgendaItemLocationDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateEventSessionAgendaItemRelationshipDto": {
+        "type": "object",
+        "properties": {
+          "eventSessionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "UpdateEventSessionAgendaItemScheduleDto": {
+        "type": "object",
+        "properties": {
+          "startTime": {
             "type": [
               "null",
               "string"
             ],
-            "format": "uuid"
+            "format": "date-time"
           },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
+          "endTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -109247,65 +110914,104 @@
           }
         }
       },
-      "UpdateEventSessionGroupRequestDto": {
-        "required": [
-          "name"
-        ],
+      "UpdateEventSessionGroupMetadataDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "eventId": {
-            "type": "string",
-            "format": "uuid"
-          },
           "name": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "slug": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           },
           "description": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "locationId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "roomId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           },
           "color": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventSessionGroupOrderingDto": {
+        "type": "object",
+        "properties": {
           "sortOrder": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "UpdateEventSessionGroupPlacementDto": {
+        "type": "object",
+        "properties": {
+          "locationId": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
           },
+          "roomId": {
+            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
+          }
+        }
+      },
+      "UpdateEventSessionGroupPublicationDto": {
+        "type": "object",
+        "properties": {
           "isPublished": {
-            "type": "boolean"
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "UpdateEventSessionGroupRequestDto": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionGroupMetadataDto"
+              }
+            ]
+          },
+          "placement": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionGroupPlacementDto"
+              }
+            ]
+          },
+          "ordering": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionGroupOrderingDto"
+              }
+            ]
+          },
+          "publication": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionGroupPublicationDto"
+              }
+            ]
           }
         }
       },
@@ -109575,6 +111281,111 @@
           }
         }
       },
+      "UpdateEventTechAspectDto": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventTechRepositoryDto"
+              }
+            ]
+          },
+          "classification": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventTechClassificationDto"
+              }
+            ]
+          },
+          "participation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventTechParticipationDto"
+              }
+            ]
+          },
+          "prize": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventTechPrizeDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventTechClassificationDto": {
+        "type": "object",
+        "properties": {
+          "hackathonTrack": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "skillLevel": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SkillLevel"
+              }
+            ]
+          },
+          "techStackTags": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventTechParticipationDto": {
+        "type": "object",
+        "properties": {
+          "requiresLaptop": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "isCodingCompetition": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "UpdateEventTechPrizeDto": {
+        "type": "object",
+        "properties": {
+          "maxTeamSize": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          },
+          "prizePool": {
+            "$ref": "#/components/schemas/OptionalUpdateOfdecimal"
+          },
+          "prizeCurrencyCode": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateEventTechRepositoryDto": {
+        "type": "object",
+        "properties": {
+          "githubRepoUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
       "UpdateEventTemplateDto": {
         "type": "object",
         "properties": {
@@ -109690,44 +111501,6 @@
               "string"
             ],
             "format": "date-time"
-          }
-        }
-      },
-      "UpdateFooterLinkGroupRequest": {
-        "required": [
-          "title",
-          "isActive"
-        ],
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          }
-        }
-      },
-      "UpdateFooterLinkRequest": {
-        "required": [
-          "label",
-          "url",
-          "openInNewTab",
-          "isActive"
-        ],
-        "type": "object",
-        "properties": {
-          "label": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          },
-          "openInNewTab": {
-            "type": "boolean"
-          },
-          "isActive": {
-            "type": "boolean"
           }
         }
       },
@@ -110237,7 +112010,10 @@
         "type": "object",
         "properties": {
           "cells": {
-            "type": "array",
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "$ref": "#/components/schemas/UpdateNotificationPreferenceCellDto"
             }
@@ -110662,71 +112438,160 @@
         }
       },
       "UpdateTagDto": {
+        "type": "object",
+        "properties": {
+          "masterCode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateTagMasterCodeDto"
+              }
+            ]
+          },
+          "fullName": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateTagFullNameDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateTagFullNameDto": {
         "required": [
-          "masterCode",
-          "fullName"
+          "value"
         ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "masterCode": {
+          "value": {
             "type": "string"
-          },
-          "fullName": {
+          }
+        }
+      },
+      "UpdateTagMasterCodeDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
             "type": "string"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
           }
         }
       },
       "UpdateTenantDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateTenantFullNameDto"
+              }
+            ]
+          },
+          "slug": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateTenantSlugDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateTenantFullNameDto": {
         "required": [
-          "fullName",
-          "slug"
+          "value"
         ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "fullName": {
+          "value": {
             "type": "string"
-          },
-          "slug": {
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
           }
         }
       },
       "UpdateTenantNavigationLinkDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
           "label": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateTenantNavigationLinkLabelDto"
+              }
+            ]
           },
           "url": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateTenantNavigationLinkUrlDto"
+              }
+            ]
           },
           "icon": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateTenantNavigationLinkIconDto"
+              }
             ]
           },
           "openInNewTab": {
-            "type": "boolean"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateTenantNavigationLinkOpenInNewTabDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateTenantNavigationLinkIconDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateTenantNavigationLinkLabelDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateTenantNavigationLinkOpenInNewTabDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },
@@ -110744,6 +112609,17 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "UpdateTenantNavigationLinkUrlDto": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
           }
         }
       },
@@ -110863,39 +112739,23 @@
           }
         }
       },
-      "UpdateUiThemeDto": {
+      "UpdateTenantSlugDto": {
+        "required": [
+          "value"
+        ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "themeKey": {
+          "value": {
             "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "isDefault": {
-            "type": "boolean"
-          },
-          "sortOrder": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
+          }
+        }
+      },
+      "UpdateUiThemeDto": {
+        "required": [
+          "rowVersion"
+        ],
+        "type": "object",
+        "properties": {
           "rowVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -110904,32 +112764,121 @@
             ],
             "format": "uint32"
           },
-          "lightPalette": {
-            "$ref": "#/components/schemas/UiThemePaletteDto"
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateUiThemeMetadataDto"
+              }
+            ]
           },
-          "darkPalette": {
-            "$ref": "#/components/schemas/UiThemePaletteDto"
+          "state": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateUiThemeStateDto"
+              }
+            ]
+          },
+          "palettes": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateUiThemePalettesDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateUiThemeMetadataDto": {
+        "type": "object",
+        "properties": {
+          "themeKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateUiThemePalettesDto": {
+        "type": "object",
+        "properties": {
+          "light": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UiThemePaletteDto"
+              }
+            ]
+          },
+          "dark": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UiThemePaletteDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateUiThemeStateDto": {
+        "type": "object",
+        "properties": {
+          "isActive": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "isDefault": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
       "UpdateUserAppearancePreferencesDto": {
         "type": "object",
         "properties": {
-          "themeMode": {
-            "type": "string"
-          },
-          "direction": {
-            "type": "string"
-          },
-          "language": {
-            "type": "string"
-          },
-          "defaultThemeId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
+          "localization": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateAppearanceLocalizationDto"
+              }
+            ]
           }
         }
       },
@@ -113169,6 +115118,9 @@
     },
     {
       "name": "EventOrganizerClaim"
+    },
+    {
+      "name": "EventParticipation"
     },
     {
       "name": "EventPublicAction"

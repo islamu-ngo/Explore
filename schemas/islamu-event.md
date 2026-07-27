@@ -236,6 +236,45 @@ Table "event_formats" {
   Note: 'Lookup: event delivery mode. Values: InPerson(1), Virtual(2), Hybrid(3). Seeded.'
 }
 
+Table "participation_handling_modes" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_participation_handling_modes_master_code']
+  }
+
+  Note: 'Lookup: participation authority. Values: INFORMATION_ONLY(1), WALK_IN(2), EXTERNAL_MANAGED(3), PLATFORM_MANAGED(4). Runtime-seeded.'
+}
+
+Table "advance_registration_obligations" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_advance_registration_obligations_master_code']
+  }
+
+  Note: 'Lookup: advance-registration requirement. Values: NOT_APPLICABLE(1), OPTIONAL(2), REQUIRED(3). Runtime-seeded.'
+}
+
+Table "identity_access_modes" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_identity_access_modes_master_code']
+  }
+
+  Note: 'Lookup: participation identity access. Values: ACCOUNT_REQUIRED(1), GUEST_ALLOWED(2), CAPABILITY_TOKEN_ALLOWED(3). Runtime-seeded.'
+}
+
 Table "event_provenance_types" {
   "id" int [pk, not null]
   "master_code" varchar(100) [not null]
@@ -843,20 +882,6 @@ Table "atproto_event_projections" {
   }
 
   Note: 'Bounded typed public projection materialized atomically with its canonical event record; source URLs are HTTPS-only and tenant presentation is resolved separately.'
-}
-
-Table "indexed_dids" {
-  "did" varchar(255) [pk, not null]
-  "handle" varchar(255)
-  "pds_host" varchar(500) [not null]
-  "signing_key" text
-  "is_active" boolean [not null]
-  "last_indexed_at" timestamptz [not null]
-  "last_seen_at" timestamptz
-
-  indexes {
-    did [unique]
-  }
 }
 
 Table "sync_states" {
@@ -2948,17 +2973,16 @@ Table "actors" {
   "user_id" uuid
   "organization_id" uuid
   "group_id" uuid
-  "tenant_id" uuid [not null]
-  "profile_picture_id" uuid
-  "banner_picture_id" uuid
-  "background_image_id" uuid
+  "external_actor_subject_id" uuid
+  "service_principal_id" uuid
+  "is_suspended" boolean [not null, default: false]
+  "suspended_at" timestamptz
+  "suspended_by" uuid
+  "moderation_reason_code" text
   "background_color" varchar(50)
   "background_effect" varchar(50)
   "banner_color" varchar(50)
-  "did_custody_type_id" int
-  "pds_host" varchar(500)
   "description" varchar(500)
-  "indexed_at" timestamptz
   "profile_picture_cid" varchar(500)
   "created_at" timestamptz [not null]
   "created_by" uuid
@@ -2970,32 +2994,83 @@ Table "actors" {
 
   indexes {
     (actor_type_id) [name: 'ix_actors_actor_type_id']
-    (background_image_id) [name: 'ix_actors_background_image_id']
-    (banner_picture_id) [name: 'ix_actors_banner_picture_id']
-    (did_custody_type_id) [name: 'ix_actors_did_custody_type_id']
     (user_id) [unique, name: 'ix_actors_user_id', note: 'filtered: user_id IS NOT NULL']
     (organization_id) [unique, name: 'ix_actors_organization_id', note: 'filtered: organization_id IS NOT NULL']
     (group_id) [unique, name: 'ix_actors_group_id', note: 'filtered: group_id IS NOT NULL']
-    (profile_picture_id) [name: 'ix_actors_profile_picture_id']
-    (tenant_id, id) [unique, name: 'ak_actors_tenant_id_id']
-    (tenant_id) [name: 'ix_actors_tenant_id']
+    (external_actor_subject_id) [unique, note: 'filtered: external_actor_subject_id IS NOT NULL']
+    (service_principal_id) [unique, note: 'filtered: service_principal_id IS NOT NULL']
   }
 
-  Note: 'Federated identity (User|Org|Group|Bot). Check: CK_Actor_UserOrOrganization ensures exactly one owner FK or none (bot/service).'
+  Note: 'Global represented subject. Check ck_actors_exactly_one_owner requires exactly one User, Organization, Group, ExternalActorSubject, or ServicePrincipal owner.'
 }
 
 
 Table "actor_pii" {
   "actor_id" uuid [pk, not null, note: 'shared PK with actors']
   "display_name" varchar(500) [not null]
-  "did" varchar(500)
-  "handle" varchar(500)
   "profile_picture_uri" varchar(500)
+}
+
+Table "atproto_identities" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "did" varchar(2048) [not null, note: 'exact, case-sensitive C collation']
+  "actor_id" uuid [not null]
+  "did_custody_type_id" int
+  "handle" varchar(253)
+  "pds_host" varchar(2048) [not null]
+  "signing_key" varchar(2048)
+  "is_active" boolean [not null]
+  "is_suspended" boolean [not null]
+  "suspended_at" timestamptz
+  "suspended_by" uuid
+  "moderation_reason_code" varchar(128)
+  "last_resolved_at" timestamptz [not null]
+  "last_seen_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
 
   indexes {
-    did [name: 'ix_actor_pii_did']
-    handle [name: 'ix_actor_pii_handle']
+    did [unique, name: 'ix_atproto_identities_did']
+    actor_id [name: 'ix_atproto_identities_actor_id']
   }
+}
+
+Table "external_actor_subjects" {
+  "id" uuid [pk, not null]
+  "first_observed_at" timestamptz [not null]
+  "last_observed_at" timestamptz [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+}
+
+Table "service_principals" {
+  "id" uuid [pk, not null]
+  "code" varchar(128) [not null, unique]
+  "display_name" varchar(500) [not null]
+  "created_at" timestamptz [not null]
+  "concurrency_stamp" uuid [not null]
+}
+
+Table "actor_merges" {
+  "id" uuid [pk, not null]
+  "source_actor_id" uuid [not null, unique]
+  "canonical_actor_id" uuid [not null]
+  "proof_kind" int [not null]
+  "evidence_reference" varchar(2048) [not null]
+  "merged_at" timestamptz [not null]
+  "merged_by" uuid [not null]
 }
 
 Table "actor_key_stores" {
@@ -3210,27 +3285,44 @@ Table "user_appearance_preferences" {
 Table "organizations" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "website_url" varchar(2048)
-  "approval_status_id" int [not null]
-  "tenant_id" uuid [not null]
-  "actor_id" uuid
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
-  "approved_at" timestamptz
-  "approved_by" uuid
-  "approval_notes" text
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
   "concurrency_stamp" uuid [not null]
 
-  indexes {
-    (tenant_id, is_deleted, approval_status_id) [name: 'ix_organizations_tenant_active_status']
-    tenant_id [name: 'ix_organizations_tenant']
-  }
+  Note: 'Global canonical organization. Tenant approval and local profile state live in organization_tenants.'
+}
 
-  Note: 'Approval-gated org. Soft-deletable, concurrency-protected.'
+Table "organization_tenants" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid [not null]
+  "organization_id" uuid [not null]
+  "approval_status_id" int [not null, default: 1]
+  "is_visible" boolean [not null]
+  "is_organizer_eligible" boolean [not null]
+  "is_suspended" boolean [not null]
+  "display_name_override" varchar(500)
+  "description_override" varchar(5000)
+  "website_url_override" varchar(2048)
+  "contact_email_override" varchar(500)
+  "profile_picture_id" uuid
+  "banner_picture_id" uuid
+  "background_image_id" uuid
+  "approved_at" timestamptz
+  "approved_by" uuid
+  "approval_notes" text
+  "created_at" timestamptz [not null]
+  "is_deleted" boolean [not null]
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, organization_id) [unique, note: 'filtered: is_deleted = false']
+    (tenant_id, id) [unique]
+  }
 }
 
 Table "organization_pii" {
@@ -3249,7 +3341,7 @@ Table "organization_pii" {
 
 Table "organization_members" {
   "id" uuid [pk, not null, note: 'uuidv7()']
-  "organization_id" uuid [not null]
+  "organization_tenant_id" uuid [not null]
   "user_id" uuid [not null]
   "role_id" int [not null]
   "organization_position_id" int
@@ -3263,14 +3355,14 @@ Table "organization_members" {
   "deleted_by" uuid
 
   indexes {
-    (organization_id, user_id) [unique, name: 'ix_orgmembers_org_user']
+    (organization_tenant_id, user_id) [unique, name: 'ix_orgmembers_org_user']
     user_id [name: 'ix_orgmembers_user']
   }
 }
 
 Table "organization_reviews" {
   "id" uuid [pk, not null, note: 'uuidv7()']
-  "organization_id" uuid [not null]
+  "organization_tenant_id" uuid [not null]
   "event_id" uuid [not null]
   "user_id" uuid [not null]
   "reviewer_name" varchar(200) [not null]
@@ -3298,7 +3390,7 @@ Table "organization_setting_overrides" {
   "updated_by" uuid
 
   indexes {
-    (organization_id, setting_key) [unique]
+    (organization_tenant_id, setting_key) [unique]
   }
 }
 
@@ -3326,12 +3418,6 @@ Table "groups" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "full_name" varchar(500) [not null]
   "description" varchar(5000)
-  "profile_picture_id" uuid
-  "approval_status_id" int [not null]
-  "tenant_id" uuid [not null]
-  "actor_id" uuid
-  "parent_organization_id" uuid
-  "parent_group_id" uuid
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -3341,22 +3427,42 @@ Table "groups" {
   "deleted_by" uuid
   "concurrency_stamp" uuid [not null]
 
+  Note: 'Global canonical group. Tenant approval, hierarchy, and local profile state live in group_tenants.'
+}
+
+Table "group_tenants" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid [not null]
+  "group_id" uuid [not null]
+  "approval_status_id" int [not null, default: 1]
+  "is_visible" boolean [not null]
+  "is_organizer_eligible" boolean [not null]
+  "is_suspended" boolean [not null]
+  "display_name_override" varchar(500)
+  "description_override" varchar(5000)
+  "profile_picture_id" uuid
+  "banner_picture_id" uuid
+  "background_image_id" uuid
+  "parent_organization_tenant_id" uuid
+  "parent_group_tenant_id" uuid
+  "approved_at" timestamptz
+  "approved_by" uuid
+  "approval_notes" text
+  "created_at" timestamptz [not null]
+  "is_deleted" boolean [not null]
+  "concurrency_stamp" uuid [not null]
+
   indexes {
-    actor_id [name: 'ix_groups_actor_id']
-    approval_status_id [name: 'ix_groups_approval_status_id']
-    profile_picture_id [name: 'ix_groups_profile_picture_id']
-    (tenant_id, full_name) [name: 'ix_groups_tenant_name']
-    (tenant_id, parent_group_id) [name: 'ix_groups_tenant_parent_group']
-    (tenant_id, parent_organization_id) [name: 'ix_groups_tenant_parent_organization']
-    (tenant_id, is_deleted, approval_status_id) [name: 'ix_groups_tenant_active_status']
+    (tenant_id, group_id) [unique, note: 'filtered: is_deleted = false']
+    (tenant_id, id) [unique]
   }
 
-  Note: 'Community groups. Approval-gated, soft-deletable, concurrency-protected. Checks: ck_groups_no_self_parent, ck_groups_parent_exclusive.'
+  Note: 'Tenant-local group participation. Checks enforce one parent kind and prevent self-parenting.'
 }
 
 Table "group_members" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
-  "group_id" uuid [not null]
+  "group_tenant_id" uuid [not null]
   "user_id" uuid [not null]
   "role_id" int [not null]
   "group_position_id" int
@@ -3370,14 +3476,14 @@ Table "group_members" {
   "deleted_by" uuid
 
   indexes {
-    (group_id, user_id) [unique]
+    (group_tenant_id, user_id) [unique]
   }
 }
 
 Table "group_setting_overrides" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "tenant_id" uuid [not null]
-  "group_id" uuid [not null]
+  "group_tenant_id" uuid [not null]
   "setting_key" varchar(256) [not null]
   "value" text [not null]
   "created_at" timestamptz [not null]
@@ -4061,6 +4167,25 @@ Table "event_tags" {
     (tenant_id, event_id, tag_id) [unique, name: 'ix_event_tags_tenant_event_tag']
     (tenant_id, tag_id) [name: 'ix_event_tags_tenant_id_tag_id']
   }
+}
+
+Table "event_participation_configurations" {
+  "id" uuid [pk, not null, note: 'Shared primary key with events.id']
+  "tenant_id" uuid [not null]
+  "participation_handling_mode_id" int [not null]
+  "advance_registration_obligation_id" int [not null]
+  "identity_access_mode_id" int
+  "guest_recovery_policy" int [note: 'Nullable scalar enum; intentionally not a lookup table']
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  Note: 'Tenant-scoped 1:1 Event participation policy. Identity and recovery apply only when the typed handling mode permits them.'
 }
 
 Table "event_public_actions" {
@@ -4889,36 +5014,43 @@ Ref: "actors"."actor_type_id" > "actor_types"."id" [delete: restrict]
 Ref: "actors"."user_id" - "users"."id" [delete: restrict]
 Ref: "actors"."organization_id" - "organizations"."id" [delete: restrict]
 Ref: "actors"."group_id" - "groups"."id" [delete: restrict]
+Ref: "actors"."external_actor_subject_id" - "external_actor_subjects"."id" [delete: restrict]
+Ref: "actors"."service_principal_id" - "service_principals"."id" [delete: restrict]
 Ref: "actor_pii"."actor_id" - "actors"."id" [delete: cascade]
+Ref: "atproto_identities"."actor_id" > "actors"."id" [delete: restrict]
+Ref: "atproto_identities"."did_custody_type_id" > "did_custody_types"."id" [delete: restrict]
+Ref: "actor_merges"."source_actor_id" > "actors"."id" [delete: restrict]
+Ref: "actor_merges"."canonical_actor_id" > "actors"."id" [delete: restrict]
 Ref: "actor_key_stores"."actor_id" > "actors"."id" [delete: cascade]
 Ref: "actor_subscriptions"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "actor_subscriptions".("tenant_id", "subscriber_tenant_user_id") > "tenant_users".("tenant_id", "id") [delete: restrict]
 Ref: "actor_subscriptions"."subscriber_user_id" > "users"."id" [delete: restrict]
-Ref: "actor_subscriptions".("tenant_id", "target_actor_id") > "actors".("tenant_id", "id") [delete: restrict]
+Ref: "actor_subscriptions"."target_actor_id" > "actors"."id" [delete: restrict]
 Ref: "actor_subscriptions"."target_actor_type_id" > "actor_types"."id" [delete: restrict]
 Ref: "actor_subscriptions"."status_id" > "actor_subscription_statuses"."id" [delete: restrict]
 Ref: "actor_subscriptions"."notification_level_id" > "actor_subscription_notification_levels"."id" [delete: restrict]
 
 // Organizations & Groups
-Ref: "organizations"."approval_status_id" > "approval_statuses"."id" [delete: restrict]
-Ref: "organizations"."actor_id" - "actors"."id" [delete: restrict]
 Ref: "organization_pii"."organization_id" - "organizations"."id" [delete: cascade]
-Ref: "organization_members"."organization_id" > "organizations"."id" [delete: restrict]
+Ref: "organization_tenants"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "organization_tenants"."organization_id" > "organizations"."id" [delete: restrict]
+Ref: "organization_tenants"."approval_status_id" > "approval_statuses"."id" [delete: restrict]
+Ref: "organization_members".("tenant_id", "organization_tenant_id") > "organization_tenants".("tenant_id", "id") [delete: cascade]
 Ref: "organization_members"."user_id" > "users"."id" [delete: restrict]
 Ref: "organization_members"."organization_position_id" > "organization_positions"."id" [delete: restrict]
 Ref: "organization_reviews"."organization_id" > "organizations"."id" [delete: restrict]
 Ref: "organization_reviews"."event_id" > "events"."id" [delete: restrict]
-Ref: "organization_setting_overrides"."organization_id" > "organizations"."id" [delete: restrict]
+Ref: "organization_setting_overrides".("tenant_id", "organization_tenant_id") > "organization_tenants".("tenant_id", "id") [delete: cascade]
 Ref: "organization_policy_sets"."organization_id" - "organizations"."id" [delete: cascade]
-Ref: "groups"."approval_status_id" > "approval_statuses"."id" [delete: restrict]
-Ref: "groups"."actor_id" - "actors"."id" [delete: restrict]
-Ref: "groups"."profile_picture_id" > "storage_objects"."id" [delete: set null]
-Ref: "groups"."parent_group_id" > "groups"."id" [delete: restrict]
-Ref: "groups"."parent_organization_id" > "organizations"."id" [delete: restrict]
-Ref: "group_members"."group_id" > "groups"."id" [delete: restrict]
+Ref: "group_tenants"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "group_tenants"."group_id" > "groups"."id" [delete: restrict]
+Ref: "group_tenants"."approval_status_id" > "approval_statuses"."id" [delete: restrict]
+Ref: "group_tenants".("tenant_id", "parent_group_tenant_id") > "group_tenants".("tenant_id", "id") [delete: restrict]
+Ref: "group_tenants".("tenant_id", "parent_organization_tenant_id") > "organization_tenants".("tenant_id", "id") [delete: restrict]
+Ref: "group_members".("tenant_id", "group_tenant_id") > "group_tenants".("tenant_id", "id") [delete: cascade]
 Ref: "group_members"."user_id" > "users"."id" [delete: restrict]
 Ref: "group_members"."group_position_id" > "group_positions"."id" [delete: restrict]
-Ref: "group_setting_overrides"."group_id" > "groups"."id" [delete: restrict]
+Ref: "group_setting_overrides".("tenant_id", "group_tenant_id") > "group_tenants".("tenant_id", "id") [delete: cascade]
 
 // Taxonomy
 // Tenant-scoped event-graph FKs below intentionally include tenant_id in the physical database model.
@@ -4985,6 +5117,11 @@ Ref: "events"."audience_age_id" > "audience_ages"."id" [delete: restrict]
 Ref: "events"."madhab_id" > "madhabs"."id" [delete: restrict]
 Ref: "events"."atproto_record_id" > "atproto_records"."id" [delete: set null]
 Ref: "events"."event_series_id" > "event_series"."id" [delete: restrict]
+Ref: "event_participation_configurations"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_participation_configurations".("tenant_id", "id") > "events".("tenant_id", "id") [delete: cascade]
+Ref: "event_participation_configurations"."participation_handling_mode_id" > "participation_handling_modes"."id" [delete: restrict]
+Ref: "event_participation_configurations"."advance_registration_obligation_id" > "advance_registration_obligations"."id" [delete: restrict]
+Ref: "event_participation_configurations"."identity_access_mode_id" > "identity_access_modes"."id" [delete: restrict]
 Ref: "event_public_actions"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "event_public_actions".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
 Ref: "event_public_actions"."event_public_action_kind_id" > "event_public_action_kinds"."id" [delete: restrict]
