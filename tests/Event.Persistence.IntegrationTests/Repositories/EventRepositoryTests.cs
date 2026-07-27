@@ -68,6 +68,7 @@ public class EventRepositoryTests
             AudienceAgeId = 1,
             ActorId = actor.Id,
             Actor = null!,
+            OrganizerActorId = actor.Id,
             TenantId = tenant.Id,
             Tenant = tenant,
             VisibilityTypeId = 1,
@@ -85,6 +86,8 @@ public class EventRepositoryTests
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result.Id).IsEqualTo(eventId);
+        await Assert.That(result.OrganizerActor).IsNotNull();
+        await Assert.That(result.OrganizerActor!.Id).IsEqualTo(actor.Id);
 
         // Verify with new context
         using var verifyContext = _fixture.CreateDbContext();

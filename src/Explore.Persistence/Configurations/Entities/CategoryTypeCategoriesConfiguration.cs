@@ -1,3 +1,6 @@
+// ABOUTME: Configures tenant-scoped category-to-type relationships and their uniqueness boundary.
+// ABOUTME: Prevents concurrent writes from creating duplicate category/type assignments.
+
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +11,9 @@ public class CategoryTypeCategoriesConfiguration : IEntityTypeConfiguration<Cate
 {
     public void Configure(EntityTypeBuilder<CategoryTypeCategories> builder)
     {
+        builder.HasIndex(e => new { e.TenantId, e.CategoryId, e.CategoryTypeId })
+            .IsUnique();
+
         builder.HasOne(e => e.Category)
             .WithMany()
             .HasForeignKey(e => e.CategoryId)

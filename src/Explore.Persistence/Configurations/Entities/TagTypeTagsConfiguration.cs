@@ -1,3 +1,6 @@
+// ABOUTME: Configures tenant-scoped tag-to-type relationships and their uniqueness boundary.
+// ABOUTME: Prevents concurrent writes from creating duplicate tag/type assignments.
+
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +11,9 @@ public class TagTypeTagsConfiguration : IEntityTypeConfiguration<TagTypeTags>
 {
     public void Configure(EntityTypeBuilder<TagTypeTags> builder)
     {
+        builder.HasIndex(e => new { e.TenantId, e.TagId, e.TagTypeId })
+            .IsUnique();
+
         builder.HasOne(e => e.Tag)
             .WithMany()
             .HasForeignKey(e => e.TagId)
