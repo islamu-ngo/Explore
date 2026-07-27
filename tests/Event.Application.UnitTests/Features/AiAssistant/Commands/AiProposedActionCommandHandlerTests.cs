@@ -80,7 +80,7 @@ public sealed class AiProposedActionCommandHandlerTests
     [Test]
     public async Task Confirm_WhenCreateEventDraftIsProposed_DispatchesCreateEventCommandAndMarksExecuted()
     {
-        AiProposedAction action = CreateProposedAction(payloadJson: "{\"title\":\"Community Dinner\"}");
+        AiProposedAction action = CreateProposedAction(payloadJson: "{\"title\":\"Community Dinner\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}");
         CreateEventCommand? sentCommand = null;
         _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
         _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
@@ -122,7 +122,7 @@ public sealed class AiProposedActionCommandHandlerTests
             + Convert.ToBase64String(imageBytes)
             + "\",\"fileName\":\"poster.png\",\"sizeBytes\":4}]";
         AiProposedAction action = CreateProposedAction(
-            payloadJson: "{\"title\":\"Poster Event\"}",
+            payloadJson: "{\"title\":\"Poster Event\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}",
             sourceImageAttachmentsJson: imageAttachmentsJson);
         CreateStorageUploadSessionCommand? uploadCommand = null;
         FinalizeStorageUploadSessionCommand? finalizeCommand = null;
@@ -176,7 +176,7 @@ public sealed class AiProposedActionCommandHandlerTests
     public async Task Confirm_WhenCreateEventDraftUsesAllowedOrganization_DispatchesOrganizationScopedCreateCommand()
     {
         var organizationId = Guid.CreateVersion7();
-        AiProposedAction action = CreateProposedAction(payloadJson: "{\"title\":\"Community Dinner\",\"organizationId\":\"" + organizationId + "\"}");
+        AiProposedAction action = CreateProposedAction(payloadJson: "{\"title\":\"Community Dinner\",\"organizationId\":\"" + organizationId + "\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}");
         CreateEventCommand? sentCommand = null;
         _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(_userId, Arg.Any<string>()).Returns([organizationId]);
         _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
@@ -208,7 +208,11 @@ public sealed class AiProposedActionCommandHandlerTests
                 "eventFormatId": 999,
                 "madhabId": 999,
                 "categoryIds": ["{{categoryId}}"],
-                "tagIds": ["{{tagId}}"]
+                "tagIds": ["{{tagId}}"],
+                "participationConfiguration": {
+                  "participationHandlingModeId": 1,
+                  "advanceRegistrationObligationId": 1
+                }
               }
               """);
         CreateEventCommand? sentCommand = null;
@@ -256,6 +260,10 @@ public sealed class AiProposedActionCommandHandlerTests
                   "startTime": "2026-07-10T18:00:00Z",
                   "endTime": "2026-07-10T20:00:00Z",
                   "speakerActorIds": ["{{speakerActorId}}"]
+                },
+                "participationConfiguration": {
+                  "participationHandlingModeId": 1,
+                  "advanceRegistrationObligationId": 1
                 }
               }
               """);
@@ -287,7 +295,7 @@ public sealed class AiProposedActionCommandHandlerTests
         var aiGroupId = Guid.CreateVersion7();
         AiProposedAction action = CreateProposedAction(
             actorId: selectedActorId,
-            payloadJson: "{\"title\":\"Community Dinner\",\"organizationId\":\"" + aiOrganizationId + "\",\"groupId\":\"" + aiGroupId + "\"}");
+            payloadJson: "{\"title\":\"Community Dinner\",\"organizationId\":\"" + aiOrganizationId + "\",\"groupId\":\"" + aiGroupId + "\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}");
         CreateEventCommand? sentCommand = null;
         _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(_userId, Arg.Any<string>())
             .Returns([selectedOrganizationId]);
@@ -314,7 +322,7 @@ public sealed class AiProposedActionCommandHandlerTests
         var aiOrganizationId = Guid.CreateVersion7();
         AiProposedAction action = CreateProposedAction(
             actorId: selectedActorId,
-            payloadJson: "{\"title\":\"Community Dinner\",\"organizationId\":\"" + aiOrganizationId + "\"}");
+            payloadJson: "{\"title\":\"Community Dinner\",\"organizationId\":\"" + aiOrganizationId + "\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}");
         CreateEventCommand? sentCommand = null;
         _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(_userId, Arg.Any<string>())
             .Returns([aiOrganizationId]);
@@ -343,7 +351,7 @@ public sealed class AiProposedActionCommandHandlerTests
         var aiOrganizationId = Guid.CreateVersion7();
         AiProposedAction action = CreateProposedAction(
             actorId: selectedActorId,
-            payloadJson: "{\"title\":\"Community Dinner\",\"organizationId\":\"" + aiOrganizationId + "\"}");
+            payloadJson: "{\"title\":\"Community Dinner\",\"organizationId\":\"" + aiOrganizationId + "\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}");
         CreateEventCommand? sentCommand = null;
         _groupMemberRepository.GetGroupIdsWhereUserHasPermission(_userId, Arg.Any<string>())
             .Returns([selectedGroupId]);
@@ -478,7 +486,7 @@ public sealed class AiProposedActionCommandHandlerTests
         Guid? tenantId = null,
         Guid? userId = null,
         Guid? actorId = null,
-        string payloadJson = "{\"title\":\"Draft\"}",
+        string payloadJson = "{\"title\":\"Draft\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}",
         string? sourceImageAttachmentsJson = null)
     {
         Guid actionTenantId = tenantId ?? _tenantId;

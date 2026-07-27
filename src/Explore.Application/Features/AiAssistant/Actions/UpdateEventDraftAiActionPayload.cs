@@ -1,6 +1,8 @@
 // ABOUTME: Defines the safe AI-proposed payload shape for draft event updates.
 // ABOUTME: Excludes tenant, actor, lifecycle status, ownership, and schedule projection fields.
 
+using Explore.Application.DTOs.Event;
+
 namespace Explore.Application.Features.AiAssistant.Actions;
 
 public sealed class UpdateEventDraftAiActionPayload
@@ -8,6 +10,7 @@ public sealed class UpdateEventDraftAiActionPayload
     public Guid? EventId { get; init; }
 
     public Guid? ExpectedConcurrencyStamp { get; init; }
+    public Guid? ExpectedParticipationConfigurationConcurrencyStamp { get; init; }
 
     public string? Title { get; init; }
 
@@ -31,9 +34,7 @@ public sealed class UpdateEventDraftAiActionPayload
 
     public Guid? FeaturedImageId { get; init; }
 
-    public bool IsRegistrationRequired { get; init; }
-
-    public string? ExternalRegistrationUrl { get; init; }
+    public ConfigureEventParticipationDto? ParticipationConfiguration { get; init; }
 
     public int VisibilityTypeId { get; init; } = 1;
 

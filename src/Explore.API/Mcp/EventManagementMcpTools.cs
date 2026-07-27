@@ -1871,8 +1871,13 @@ public sealed class EventManagementMcpTools(
             dto.LastSessionDate,
             dto.Timezone,
             dto.SessionCount,
-            dto.IsRegistrationRequired,
-            dto.RegistrationPolicyFullName);
+            dto.ParticipationConfiguration?.ParticipationHandlingModeCode,
+            dto.ParticipationConfiguration?.ParticipationHandlingModeName,
+            dto.ParticipationConfiguration?.AdvanceRegistrationObligationCode,
+            dto.ParticipationConfiguration?.AdvanceRegistrationObligationName,
+            dto.ParticipationConfiguration?.IdentityAccessModeCode,
+            dto.ParticipationConfiguration?.IdentityAccessModeName,
+            dto.ParticipationConfiguration?.GuestRecoveryPolicy);
 
     private static EventMcpDetailDescriptor MapDetail(EventDto dto)
     {
@@ -1894,8 +1899,13 @@ public sealed class EventManagementMcpTools(
             dto.LastSessionDate,
             dto.Timezone,
             dto.SessionCount,
-            dto.IsRegistrationRequired,
-            dto.RegistrationPolicyFullName,
+            dto.ParticipationConfiguration?.ParticipationHandlingModeCode,
+            dto.ParticipationConfiguration?.ParticipationHandlingModeName,
+            dto.ParticipationConfiguration?.AdvanceRegistrationObligationCode,
+            dto.ParticipationConfiguration?.AdvanceRegistrationObligationName,
+            dto.ParticipationConfiguration?.IdentityAccessModeCode,
+            dto.ParticipationConfiguration?.IdentityAccessModeName,
+            dto.ParticipationConfiguration?.GuestRecoveryPolicy,
             dto.Categories.Select(category => category.FullName).WhereNotBlank().ToArray(),
             dto.Tags.Select(tag => tag.FullName).WhereNotBlank().ToArray(),
             dto.AvailableAspects.WhereNotBlank().ToArray(),

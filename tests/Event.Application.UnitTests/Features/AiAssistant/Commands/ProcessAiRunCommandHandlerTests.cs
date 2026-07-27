@@ -121,7 +121,7 @@ public sealed class ProcessAiRunCommandHandlerTests
         _chatProvider.SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>())
             .Returns(AiChatProviderResult.Success(new AiChatResponse(
                 "Provider text that must not persist",
-                [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Provider draft\"}")],
+                [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Provider draft\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}")],
                 new AiTokenUsage(1, 2, 3))));
 
         await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
@@ -149,7 +149,7 @@ public sealed class ProcessAiRunCommandHandlerTests
         _chatProvider.SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>())
             .Returns(AiChatProviderResult.Success(new AiChatResponse(
                 string.Empty,
-                [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Draft\"}")],
+                [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Draft\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}")],
                 new AiTokenUsage(1, 2, 3))));
 
         await CreateHandler().Handle(CreateCommand(mode: AiAssistantInteractionModes.Build), CancellationToken.None);
@@ -174,7 +174,7 @@ public sealed class ProcessAiRunCommandHandlerTests
         _chatProvider.SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>())
             .Returns(AiChatProviderResult.Success(new AiChatResponse(
                 "Text-only answer",
-                [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"ShouldNotPersist\"}")],
+                [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"ShouldNotPersist\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}")],
                 new AiTokenUsage(1, 2, 3))));
 
         await CreateHandler().Handle(CreateCommand(mode: AiAssistantInteractionModes.Ask), CancellationToken.None);
@@ -243,7 +243,7 @@ public sealed class ProcessAiRunCommandHandlerTests
                     new AiTokenUsage(1, 2, 3))),
                 AiChatProviderResult.Success(new AiChatResponse(
                     string.Empty,
-                    [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Corrected Draft\"}")],
+                    [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Corrected Draft\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}")],
                     new AiTokenUsage(1, 2, 3))));
 
         await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
@@ -276,7 +276,7 @@ public sealed class ProcessAiRunCommandHandlerTests
                 AiChatProviderResult.Failure("invalid_response", "AI provider returned an empty text response."),
                 AiChatProviderResult.Success(new AiChatResponse(
                     string.Empty,
-                    [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Poster Draft\"}")],
+                    [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Poster Draft\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}")],
                     new AiTokenUsage(1, 2, 3))));
 
         await CreateHandler().Handle(CreateCommand(), CancellationToken.None);

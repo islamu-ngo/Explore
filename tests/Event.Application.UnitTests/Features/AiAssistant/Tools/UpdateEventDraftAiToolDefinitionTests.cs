@@ -39,7 +39,7 @@ public sealed class UpdateEventDraftAiToolDefinitionTests
     }
 
     [Test]
-    public async Task JsonSchema_RequiresEventIdConcurrencyStampAndTitleOnly()
+    public async Task JsonSchema_RequiresEventAndParticipationConfigurationConcurrencyStampsTitleAndConfiguration()
     {
         using var document = JsonDocument.Parse(UpdateEventDraftAiToolDefinition.JsonSchema);
         var root = document.RootElement;
@@ -49,7 +49,13 @@ public sealed class UpdateEventDraftAiToolDefinitionTests
             .ToArray();
 
         await Assert.That(root.GetProperty("additionalProperties").GetBoolean()).IsFalse();
-        await Assert.That(requiredFields).IsEquivalentTo(["eventId", "expectedConcurrencyStamp", "title"]);
+        await Assert.That(requiredFields).IsEquivalentTo([
+            "eventId",
+            "expectedConcurrencyStamp",
+            "expectedParticipationConfigurationConcurrencyStamp",
+            "title",
+            "participationConfiguration"
+        ]);
     }
 
     [Test]
@@ -120,12 +126,15 @@ public sealed class UpdateEventDraftAiToolDefinitionTests
     {
         var eventId = Guid.CreateVersion7();
         var concurrencyStamp = Guid.CreateVersion7();
+        var participationConfigurationConcurrencyStamp = Guid.CreateVersion7();
         var imageId = Guid.CreateVersion7();
         var templateId = Guid.CreateVersion7();
         var seriesId = Guid.CreateVersion7();
         var basePayload = $$"""
             "eventId": "{{eventId}}",
             "expectedConcurrencyStamp": "{{concurrencyStamp}}",
+            "expectedParticipationConfigurationConcurrencyStamp": "{{participationConfigurationConcurrencyStamp}}",
+            "participationConfiguration": {"participationHandlingModeId": 1, "advanceRegistrationObligationId": 1},
             "title": "Draft update"
             """;
 
@@ -133,6 +142,7 @@ public sealed class UpdateEventDraftAiToolDefinitionTests
         {
             "eventId" => $"{{{basePayload}}}",
             "expectedConcurrencyStamp" => $"{{{basePayload}}}",
+            "expectedParticipationConfigurationConcurrencyStamp" => $"{{{basePayload}}}",
             "title" => $"{{{basePayload}}}",
             "subtitle" => $"{{{basePayload},\"subtitle\":\"Subtitle\"}}",
             "description" => $"{{{basePayload},\"description\":\"Short description\"}}",
@@ -144,8 +154,7 @@ public sealed class UpdateEventDraftAiToolDefinitionTests
             "price" => $"{{{basePayload},\"price\":12.5}}",
             "currencyCode" => $"{{{basePayload},\"currencyCode\":\"EUR\"}}",
             "featuredImageId" => $"{{{basePayload},\"featuredImageId\":\"{imageId}\"}}",
-            "isRegistrationRequired" => $"{{{basePayload},\"isRegistrationRequired\":true}}",
-            "externalRegistrationUrl" => $"{{{basePayload},\"externalRegistrationUrl\":\"https://example.test/register\"}}",
+            "participationConfiguration" => $"{{{basePayload}}}",
             "visibilityTypeId" => $"{{{basePayload},\"visibilityTypeId\":1}}",
             "eventFormatId" => $"{{{basePayload},\"eventFormatId\":1}}",
             "madhabId" => $"{{{basePayload},\"madhabId\":1}}",

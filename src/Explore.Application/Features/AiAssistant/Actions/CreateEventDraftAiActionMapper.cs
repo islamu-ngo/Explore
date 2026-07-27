@@ -8,6 +8,7 @@ using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.AiAssistant.Prompting;
 using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Domain.Ai;
+using Explore.Domain.Services.Registration;
 
 namespace Explore.Application.Features.AiAssistant.Actions;
 
@@ -92,7 +93,6 @@ public sealed class CreateEventDraftAiActionMapper
             || !ValidateLength(payload.Content, 5000, "content", out lengthFailure)
             || !ValidateLength(payload.Slug, 500, "slug", out lengthFailure)
             || !ValidateLength(payload.CurrencyCode, 3, "currencyCode", out lengthFailure)
-            || !ValidateLength(payload.ExternalRegistrationUrl, 500, "externalRegistrationUrl", out lengthFailure)
             || !ValidateLength(payload.Timezone, 100, "timezone", out lengthFailure)
             || !ValidateLength(payload.EventTimeZoneId, 100, "eventTimeZoneId", out lengthFailure))
         {
@@ -104,6 +104,24 @@ public sealed class CreateEventDraftAiActionMapper
             return CreateEventDraftAiActionMappingResult.Failure(
                 "invalid_numeric_value",
                 "AI event draft price cannot be negative.");
+        }
+
+        if (payload.ParticipationConfiguration is null)
+        {
+            return CreateEventDraftAiActionMappingResult.Failure(
+                "missing_participation_configuration",
+                "AI event draft payload must include a participation configuration.");
+        }
+
+        if (EventAuthorityRules.ValidateParticipationConfiguration(
+                payload.ParticipationConfiguration.ParticipationHandlingModeId,
+                payload.ParticipationConfiguration.AdvanceRegistrationObligationId,
+                payload.ParticipationConfiguration.IdentityAccessModeId,
+                payload.ParticipationConfiguration.GuestRecoveryPolicy).FirstOrDefault() is { } participationError)
+        {
+            return CreateEventDraftAiActionMappingResult.Failure(
+                "invalid_participation_configuration",
+                $"{participationError.Code}: {participationError.Message}");
         }
 
         var hasForcedOwnerScope = context.HasForcedOwnerScope;
@@ -152,8 +170,7 @@ public sealed class CreateEventDraftAiActionMapper
             GroupId = groupId,
             Price = payload.Price,
             CurrencyCode = Normalize(payload.CurrencyCode),
-            IsRegistrationRequired = payload.IsRegistrationRequired,
-            ExternalRegistrationUrl = Normalize(payload.ExternalRegistrationUrl),
+            ParticipationConfiguration = payload.ParticipationConfiguration,
             VisibilityTypeId = payload.VisibilityTypeId == 0 ? 1 : payload.VisibilityTypeId,
             EventFormatId = payload.EventFormatId == 0 ? 1 : payload.EventFormatId,
             MadhabId = payload.MadhabId,

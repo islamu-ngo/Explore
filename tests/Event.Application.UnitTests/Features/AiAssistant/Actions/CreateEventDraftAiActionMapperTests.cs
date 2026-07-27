@@ -26,7 +26,11 @@ public sealed class CreateEventDraftAiActionMapperTests
                 "eventFormatId": 999,
                 "madhabId": 999,
                 "categoryIds": ["{{categoryId}}"],
-                "tagIds": ["{{tagId}}", "{{tagId}}"]
+                "tagIds": ["{{tagId}}", "{{tagId}}"],
+                "participationConfiguration": {
+                  "participationHandlingModeId": 1,
+                  "advanceRegistrationObligationId": 1
+                }
               }
               """);
 
@@ -80,6 +84,10 @@ public sealed class CreateEventDraftAiActionMapperTests
                   "title": " Opening Lecture ",
                   "eventSessionKindId": 2,
                   "speakerActorIds": ["{{speakerActorId}}", "{{speakerActorId}}"]
+                },
+                "participationConfiguration": {
+                  "participationHandlingModeId": 1,
+                  "advanceRegistrationObligationId": 1
                 }
               }
               """);
@@ -114,6 +122,10 @@ public sealed class CreateEventDraftAiActionMapperTests
                 },
                 "session": {
                   "startTime": "2026-07-10T18:00:00Z"
+                },
+                "participationConfiguration": {
+                  "participationHandlingModeId": 1,
+                  "advanceRegistrationObligationId": 1
                 }
               }
               """);
@@ -173,7 +185,7 @@ public sealed class CreateEventDraftAiActionMapperTests
         var organizationId = Guid.CreateVersion7();
         var groupId = Guid.CreateVersion7();
         var result = new CreateEventDraftAiActionMapper().Map(
-            $"{{\"title\":\"Draft\",\"organizationId\":\"{organizationId}\",\"groupId\":\"{groupId}\"}}",
+            $"{{\"title\":\"Draft\",\"organizationId\":\"{organizationId}\",\"groupId\":\"{groupId}\",\"participationConfiguration\":{{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}}}",
             new CreateEventDraftAiActionMappingContext(
                 new HashSet<Guid> { organizationId },
                 new HashSet<Guid> { groupId }));
@@ -187,7 +199,7 @@ public sealed class CreateEventDraftAiActionMapperTests
     {
         var organizationId = Guid.CreateVersion7();
         var result = new CreateEventDraftAiActionMapper().Map(
-            $"{{\"title\":\"Draft\",\"organizationId\":\"{organizationId}\"}}");
+            $"{{\"title\":\"Draft\",\"organizationId\":\"{organizationId}\",\"participationConfiguration\":{{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}}}");
 
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("invalid_organization_scope");
@@ -198,7 +210,7 @@ public sealed class CreateEventDraftAiActionMapperTests
     {
         var organizationId = Guid.CreateVersion7();
         var result = new CreateEventDraftAiActionMapper().Map(
-            $"{{\"title\":\"Draft\",\"organizationId\":\"{organizationId}\"}}",
+            $"{{\"title\":\"Draft\",\"organizationId\":\"{organizationId}\",\"participationConfiguration\":{{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}}}",
             new CreateEventDraftAiActionMappingContext(
                 new HashSet<Guid> { organizationId },
                 new HashSet<Guid>()));
@@ -213,7 +225,7 @@ public sealed class CreateEventDraftAiActionMapperTests
     {
         var groupId = Guid.CreateVersion7();
         var result = new CreateEventDraftAiActionMapper().Map(
-            $"{{\"title\":\"Draft\",\"groupId\":\"{groupId}\"}}");
+            $"{{\"title\":\"Draft\",\"groupId\":\"{groupId}\",\"participationConfiguration\":{{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}}}");
 
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("invalid_group_scope");

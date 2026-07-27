@@ -149,7 +149,6 @@ public sealed class AiToolContractRegistry : IAiToolContractRegistry
 
         changed |= MoveAliasedProperty(payload, payload, "title", "eventTitle", "eventName", "name");
         changed |= MoveAliasedProperty(payload, payload, "description", "summary", "shortDescription");
-        changed |= MoveAliasedProperty(payload, payload, "externalRegistrationUrl", "registrationUrl", "registrationLink");
         changed |= MoveAliasedProperty(payload, payload, "eventUrl", "url", "eventLink", "websiteUrl");
 
         changed |= NormalizeIslamicAspectAliases(payload);

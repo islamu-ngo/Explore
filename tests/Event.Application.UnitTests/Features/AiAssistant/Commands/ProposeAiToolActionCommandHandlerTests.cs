@@ -249,6 +249,8 @@ public sealed class ProposeAiToolActionCommandHandlerTests
               {
                 "eventId": "{{Guid.CreateVersion7()}}",
                 "expectedConcurrencyStamp": "{{Guid.CreateVersion7()}}",
+                "expectedParticipationConfigurationConcurrencyStamp": "{{Guid.CreateVersion7()}}",
+                "participationConfiguration": { "participationHandlingModeId": 1, "advanceRegistrationObligationId": 1 },
                 "title": "Updated MCP event draft"
               }
               """), CancellationToken.None);
@@ -405,7 +407,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
 
     private ProposeAiToolActionCommand CreateCommand(
         string toolName = "CreateEventDraft",
-        string payloadJson = "{ \"title\": \"MCP event draft\" }")
+        string payloadJson = "{ \"title\": \"MCP event draft\", \"participationConfiguration\": { \"participationHandlingModeId\": 1, \"advanceRegistrationObligationId\": 1 } }")
         => new()
         {
             ConversationId = _conversationId,

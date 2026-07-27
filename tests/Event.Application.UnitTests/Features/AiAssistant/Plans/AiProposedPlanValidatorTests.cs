@@ -184,7 +184,7 @@ public sealed class AiProposedPlanValidatorTests
     private static AiProposedPlanStep CreateStep(
         string stepId = "step-1",
         string toolName = "CreateEventDraft",
-        string payloadJson = "{\"title\":\"Community dinner\"}",
+        string payloadJson = "{\"title\":\"Community dinner\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}",
         DateTime? capturedAtUtc = null,
         AiPlanStepStatus status = AiPlanStepStatus.Proposed,
         bool requiresClarification = false,

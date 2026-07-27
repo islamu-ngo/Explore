@@ -1,6 +1,8 @@
 // ABOUTME: Bounded public event descriptors returned by MCP event-management tools.
 // ABOUTME: Keeps MCP read outputs small and excludes tenant, auth, and write-control data.
 
+using Explore.Domain.Enums;
+
 namespace Explore.API.Mcp;
 
 public sealed record EventMcpSearchResultDescriptor(
@@ -498,8 +500,13 @@ public sealed record EventMcpSummaryDescriptor(
     DateOnly? LastSessionDate,
     string? Timezone,
     int? SessionCount,
-    bool IsRegistrationRequired,
-    string? RegistrationPolicy);
+    string? ParticipationHandlingModeCode,
+    string? ParticipationHandlingModeName,
+    string? AdvanceRegistrationObligationCode,
+    string? AdvanceRegistrationObligationName,
+    string? IdentityAccessModeCode,
+    string? IdentityAccessModeName,
+    GuestRecoveryPolicyEnum? GuestRecoveryPolicy);
 
 public sealed record EventMcpEventResultDescriptor(
     bool Found,
@@ -531,8 +538,13 @@ public sealed record EventMcpDetailDescriptor(
     DateOnly? LastSessionDate,
     string? Timezone,
     int? SessionCount,
-    bool IsRegistrationRequired,
-    string? RegistrationPolicy,
+    string? ParticipationHandlingModeCode,
+    string? ParticipationHandlingModeName,
+    string? AdvanceRegistrationObligationCode,
+    string? AdvanceRegistrationObligationName,
+    string? IdentityAccessModeCode,
+    string? IdentityAccessModeName,
+    GuestRecoveryPolicyEnum? GuestRecoveryPolicy,
     IReadOnlyList<string> Categories,
     IReadOnlyList<string> Tags,
     IReadOnlyList<string> AvailableAspects,

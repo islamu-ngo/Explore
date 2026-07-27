@@ -6,6 +6,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.Features.AiAssistant.Prompting;
 using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Domain.Ai;
+using Explore.Domain.Services.Registration;
 
 namespace Explore.Application.Features.AiAssistant.Actions;
 
@@ -81,6 +82,14 @@ public sealed class UpdateEventDraftAiActionMapper
                 "AI event draft update payload must include the expected concurrency stamp.");
         }
 
+        if (payload.ExpectedParticipationConfigurationConcurrencyStamp is not { } expectedParticipationConfigurationConcurrencyStamp
+            || expectedParticipationConfigurationConcurrencyStamp == Guid.Empty)
+        {
+            return UpdateEventDraftAiActionMappingResult.Failure(
+                "missing_expected_participation_configuration_concurrency_stamp",
+                "AI event draft update payload must include the expected participation configuration concurrency stamp.");
+        }
+
         var title = Normalize(payload.Title);
         if (string.IsNullOrWhiteSpace(title))
         {
@@ -95,7 +104,6 @@ public sealed class UpdateEventDraftAiActionMapper
             || !ValidateLength(payload.Content, 5000, "content", out lengthFailure)
             || !ValidateLength(payload.Slug, 500, "slug", out lengthFailure)
             || !ValidateLength(payload.CurrencyCode, 3, "currencyCode", out lengthFailure)
-            || !ValidateLength(payload.ExternalRegistrationUrl, 500, "externalRegistrationUrl", out lengthFailure)
             || !ValidateLength(payload.Timezone, 500, "timezone", out lengthFailure)
             || !ValidateLength(payload.EventTimeZoneId, 500, "eventTimeZoneId", out lengthFailure)
             || !ValidateLength(payload.BackgroundColor, 100, "backgroundColor", out lengthFailure)
@@ -118,9 +126,28 @@ public sealed class UpdateEventDraftAiActionMapper
                 "AI event draft update series order cannot be negative.");
         }
 
+        if (payload.ParticipationConfiguration is null)
+        {
+            return UpdateEventDraftAiActionMappingResult.Failure(
+                "missing_participation_configuration",
+                "AI event draft update payload must include a participation configuration.");
+        }
+
+        if (EventAuthorityRules.ValidateParticipationConfiguration(
+                payload.ParticipationConfiguration.ParticipationHandlingModeId,
+                payload.ParticipationConfiguration.AdvanceRegistrationObligationId,
+                payload.ParticipationConfiguration.IdentityAccessModeId,
+                payload.ParticipationConfiguration.GuestRecoveryPolicy).FirstOrDefault() is { } participationError)
+        {
+            return UpdateEventDraftAiActionMappingResult.Failure(
+                "invalid_participation_configuration",
+                $"{participationError.Code}: {participationError.Message}");
+        }
+
         var draft = new UpdateEventDraftRequestDto
         {
             ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+            ExpectedParticipationConfigurationConcurrencyStamp = expectedParticipationConfigurationConcurrencyStamp,
             Title = title,
             Subtitle = Normalize(payload.Subtitle),
             Description = Normalize(payload.Description),
@@ -132,8 +159,7 @@ public sealed class UpdateEventDraftAiActionMapper
             Price = payload.Price,
             CurrencyCode = Normalize(payload.CurrencyCode),
             FeaturedImageId = payload.FeaturedImageId,
-            IsRegistrationRequired = payload.IsRegistrationRequired,
-            ExternalRegistrationUrl = Normalize(payload.ExternalRegistrationUrl),
+            ParticipationConfiguration = payload.ParticipationConfiguration,
             VisibilityTypeId = payload.VisibilityTypeId,
             EventFormatId = payload.EventFormatId,
             MadhabId = payload.MadhabId,

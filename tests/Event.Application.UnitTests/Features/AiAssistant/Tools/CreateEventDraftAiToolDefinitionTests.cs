@@ -118,7 +118,7 @@ public sealed class CreateEventDraftAiToolDefinitionTests
 
         var result = registry.ValidatePayload(
             AiProposedActionKind.CreateEventDraft,
-            "{\"title\":\"Community Dinner\",\"organizationId\":\"example-org\"}");
+            "{\"title\":\"Community Dinner\",\"organizationId\":\"example-org\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}");
 
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("invalid_tool_argument_format");
@@ -145,7 +145,11 @@ public sealed class CreateEventDraftAiToolDefinitionTests
                 "eventFormatId": 999,
                 "madhabId": 999,
                 "categoryIds": ["{{categoryId}}"],
-                "tagIds": ["{{tagId}}"]
+                "tagIds": ["{{tagId}}"],
+                "participationConfiguration": {
+                  "participationHandlingModeId": 1,
+                  "advanceRegistrationObligationId": 1
+                }
               }
               """,
             allowProviderNormalization: true);
@@ -177,7 +181,11 @@ public sealed class CreateEventDraftAiToolDefinitionTests
                 "locationName": "Islamic Centre",
                 "roomName": "Main Hall",
                 "startTime": "2026-07-10T18:00:00Z",
-                "genderMode": 3
+                "genderMode": 3,
+                "participationConfiguration": {
+                  "participationHandlingModeId": 1,
+                  "advanceRegistrationObligationId": 1
+                }
               }
               """,
             allowProviderNormalization: true);
@@ -211,7 +219,7 @@ public sealed class CreateEventDraftAiToolDefinitionTests
         var categoryId = Guid.CreateVersion7();
         var tagId = Guid.CreateVersion7();
 
-        return fieldName switch
+        var sample = fieldName switch
         {
             "title" => ("{\"title\":\"Draft\"}", CreateEventDraftAiActionMappingContext.Empty),
             "subtitle" => ("{\"title\":\"Draft\",\"subtitle\":\"Subtitle\"}", CreateEventDraftAiActionMappingContext.Empty),
@@ -225,8 +233,7 @@ public sealed class CreateEventDraftAiToolDefinitionTests
             "groupId" => ($"{{\"title\":\"Draft\",\"groupId\":\"{groupId}\"}}", new CreateEventDraftAiActionMappingContext(new HashSet<Guid>(), new HashSet<Guid> { groupId })),
             "price" => ("{\"title\":\"Draft\",\"price\":12.5}", CreateEventDraftAiActionMappingContext.Empty),
             "currencyCode" => ("{\"title\":\"Draft\",\"currencyCode\":\"EUR\"}", CreateEventDraftAiActionMappingContext.Empty),
-            "isRegistrationRequired" => ("{\"title\":\"Draft\",\"isRegistrationRequired\":true}", CreateEventDraftAiActionMappingContext.Empty),
-            "externalRegistrationUrl" => ("{\"title\":\"Draft\",\"externalRegistrationUrl\":\"https://example.test/register\"}", CreateEventDraftAiActionMappingContext.Empty),
+            "participationConfiguration" => ("{\"title\":\"Draft\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}", CreateEventDraftAiActionMappingContext.Empty),
             "visibilityTypeId" => ("{\"title\":\"Draft\",\"visibilityTypeId\":1}", CreateEventDraftAiActionMappingContext.Empty),
             "eventFormatId" => ("{\"title\":\"Draft\",\"eventFormatId\":1}", CreateEventDraftAiActionMappingContext.Empty),
             "madhabId" => ("{\"title\":\"Draft\",\"madhabId\":1}", CreateEventDraftAiActionMappingContext.Empty),
@@ -241,5 +248,9 @@ public sealed class CreateEventDraftAiToolDefinitionTests
             "session" => ("{\"title\":\"Draft\",\"session\":{\"startTime\":\"2026-07-10T18:00:00Z\",\"endTime\":\"2026-07-10T20:00:00Z\"}}", CreateEventDraftAiActionMappingContext.Empty),
             _ => throw new InvalidOperationException($"No valid mapper payload sample exists for allowed AI field '{fieldName}'.")
         };
+
+        return fieldName == "participationConfiguration"
+            ? sample
+            : (sample.Item1[..^1] + ",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}", sample.Item2);
     }
 }

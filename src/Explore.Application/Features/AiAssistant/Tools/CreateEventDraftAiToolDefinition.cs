@@ -63,8 +63,7 @@ public static class CreateEventDraftAiToolDefinition
         "groupId",
         "price",
         "currencyCode",
-        "isRegistrationRequired",
-        "externalRegistrationUrl",
+        "participationConfiguration",
         "visibilityTypeId",
         "eventFormatId",
         "madhabId",
@@ -104,7 +103,7 @@ public static class CreateEventDraftAiToolDefinition
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["title"],
+          "required": ["title", "participationConfiguration"],
           "properties": {
             "title": { "type": "string", "maxLength": 200 },
             "subtitle": { "type": "string", "maxLength": 200 },
@@ -118,8 +117,17 @@ public static class CreateEventDraftAiToolDefinition
             "groupId": { "type": "string", "format": "uuid" },
             "price": { "type": "number", "minimum": 0 },
             "currencyCode": { "type": "string", "maxLength": 3 },
-            "isRegistrationRequired": { "type": "boolean" },
-            "externalRegistrationUrl": { "type": "string", "maxLength": 500 },
+            "participationConfiguration": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["participationHandlingModeId", "advanceRegistrationObligationId"],
+              "properties": {
+                "participationHandlingModeId": { "type": "integer", "minimum": 1 },
+                "advanceRegistrationObligationId": { "type": "integer", "minimum": 1 },
+                "identityAccessModeId": { "type": "integer", "minimum": 1 },
+                "guestRecoveryPolicy": { "type": "integer", "enum": [1, 2, 3, 4, 5] }
+              }
+            },
             "visibilityTypeId": { "type": "integer" },
             "eventFormatId": { "type": "integer" },
             "madhabId": { "type": "integer" },

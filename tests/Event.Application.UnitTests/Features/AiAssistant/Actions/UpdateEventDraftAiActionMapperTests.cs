@@ -14,12 +14,15 @@ public sealed class UpdateEventDraftAiActionMapperTests
     {
         var eventId = Guid.CreateVersion7();
         var concurrencyStamp = Guid.CreateVersion7();
+        var participationConfigurationConcurrencyStamp = Guid.CreateVersion7();
 
         var result = new UpdateEventDraftAiActionMapper().Map(
             $$"""
               {
                 "eventId": "{{eventId}}",
                 "expectedConcurrencyStamp": "{{concurrencyStamp}}",
+                "expectedParticipationConfigurationConcurrencyStamp": "{{participationConfigurationConcurrencyStamp}}",
+                "participationConfiguration": { "participationHandlingModeId": 1, "advanceRegistrationObligationId": 1 },
                 "title": "  Community Iftar Updated  ",
                 "description": "Evening meal update",
                 "visibilityTypeId": 2,
@@ -75,7 +78,7 @@ public sealed class UpdateEventDraftAiActionMapperTests
     public async Task Map_WhenTitleIsMissing_ReturnsMissingTitleFailure()
     {
         var result = new UpdateEventDraftAiActionMapper().Map(
-            $"{{\"eventId\":\"{Guid.CreateVersion7()}\",\"expectedConcurrencyStamp\":\"{Guid.CreateVersion7()}\"}}");
+            $"{{\"eventId\":\"{Guid.CreateVersion7()}\",\"expectedConcurrencyStamp\":\"{Guid.CreateVersion7()}\",\"expectedParticipationConfigurationConcurrencyStamp\":\"{Guid.CreateVersion7()}\",\"participationConfiguration\":{{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}}}");
 
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("missing_title");
@@ -89,6 +92,8 @@ public sealed class UpdateEventDraftAiActionMapperTests
               {
                 "eventId": "{{Guid.CreateVersion7()}}",
                 "expectedConcurrencyStamp": "{{Guid.CreateVersion7()}}",
+                "expectedParticipationConfigurationConcurrencyStamp": "{{Guid.CreateVersion7()}}",
+                "participationConfiguration": { "participationHandlingModeId": 1, "advanceRegistrationObligationId": 1 },
                 "title": "{{new string('A', 501)}}"
               }
               """);
@@ -147,6 +152,8 @@ public sealed class UpdateEventDraftAiActionMapperTests
               {
                 "eventId": "{{Guid.CreateVersion7()}}",
                 "expectedConcurrencyStamp": "{{Guid.CreateVersion7()}}",
+                "expectedParticipationConfigurationConcurrencyStamp": "{{Guid.CreateVersion7()}}",
+                "participationConfiguration": { "participationHandlingModeId": 1, "advanceRegistrationObligationId": 1 },
                 "title": "Draft",
                 "price": -1
               }
@@ -164,6 +171,8 @@ public sealed class UpdateEventDraftAiActionMapperTests
               {
                 "eventId": "{{Guid.CreateVersion7()}}",
                 "expectedConcurrencyStamp": "{{Guid.CreateVersion7()}}",
+                "expectedParticipationConfigurationConcurrencyStamp": "{{Guid.CreateVersion7()}}",
+                "participationConfiguration": { "participationHandlingModeId": 1, "advanceRegistrationObligationId": 1 },
                 "title": "Draft",
                 "seriesOrder": -1
               }

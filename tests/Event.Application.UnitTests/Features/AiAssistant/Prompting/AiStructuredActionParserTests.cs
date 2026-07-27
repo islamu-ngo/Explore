@@ -16,7 +16,7 @@ public sealed class AiStructuredActionParserTests
     public async Task Parse_WhenPayloadIsJsonObject_ReturnsParsedAction()
     {
         var result = new AiStructuredActionParser().Parse(
-            [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Draft\"}", "Create draft")]);
+            [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Draft\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}", "Create draft")]);
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.Actions.Count).IsEqualTo(1);
@@ -31,7 +31,7 @@ public sealed class AiStructuredActionParserTests
         [
             new AiProposedActionCandidate(
                 AiProposedActionKind.CreateEventDraft,
-                "{\"title\":\"Community Dinner\",\"organizationId\":\"example-org\"}",
+                "{\"title\":\"Community Dinner\",\"organizationId\":\"example-org\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}",
                 "Create draft")
         ]);
 
@@ -50,7 +50,7 @@ public sealed class AiStructuredActionParserTests
         [
             new AiProposedActionCandidate(
                 AiProposedActionKind.CreateEventDraft,
-                $"{{\"title\":\"Community Dinner\",\"eventTypeId\":999,\"categoryIds\":[\"{validCategoryId}\"],\"tagIds\":[\"{validTagId}\"]}}",
+                $"{{\"title\":\"Community Dinner\",\"eventTypeId\":999,\"categoryIds\":[\"{validCategoryId}\"],\"tagIds\":[\"{validTagId}\"],\"participationConfiguration\":{{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}}}",
                 "Create draft")
         ]);
 
@@ -78,7 +78,11 @@ public sealed class AiStructuredActionParserTests
                     "country": "Belgium",
                     "city": "Brussels",
                     "roomName": "Main Hall",
-                    "genderMode": 3
+                    "genderMode": 3,
+                    "participationConfiguration": {
+                      "participationHandlingModeId": 1,
+                      "advanceRegistrationObligationId": 1
+                    }
                   }
                   """,
                 "Create draft")
@@ -124,6 +128,10 @@ public sealed class AiStructuredActionParserTests
                     },
                     "session": {
                       "startTime": "2026-07-10T18:00:00Z"
+                    },
+                    "participationConfiguration": {
+                      "participationHandlingModeId": 1,
+                      "advanceRegistrationObligationId": 1
                     }
                   }
                   """,

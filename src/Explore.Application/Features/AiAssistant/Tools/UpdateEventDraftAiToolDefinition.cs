@@ -56,6 +56,7 @@ public static class UpdateEventDraftAiToolDefinition
     {
         "eventId",
         "expectedConcurrencyStamp",
+        "expectedParticipationConfigurationConcurrencyStamp",
         "title",
         "subtitle",
         "description",
@@ -67,8 +68,7 @@ public static class UpdateEventDraftAiToolDefinition
         "price",
         "currencyCode",
         "featuredImageId",
-        "isRegistrationRequired",
-        "externalRegistrationUrl",
+        "participationConfiguration",
         "visibilityTypeId",
         "eventFormatId",
         "madhabId",
@@ -132,10 +132,11 @@ public static class UpdateEventDraftAiToolDefinition
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["eventId", "expectedConcurrencyStamp", "title"],
+          "required": ["eventId", "expectedConcurrencyStamp", "expectedParticipationConfigurationConcurrencyStamp", "title", "participationConfiguration"],
           "properties": {
             "eventId": { "type": "string", "format": "uuid" },
             "expectedConcurrencyStamp": { "type": "string", "format": "uuid" },
+            "expectedParticipationConfigurationConcurrencyStamp": { "type": "string", "format": "uuid" },
             "title": { "type": "string", "maxLength": 500 },
             "subtitle": { "type": "string", "maxLength": 200 },
             "description": { "type": "string", "maxLength": 150 },
@@ -147,8 +148,17 @@ public static class UpdateEventDraftAiToolDefinition
             "price": { "type": "number", "minimum": 0 },
             "currencyCode": { "type": "string", "maxLength": 3 },
             "featuredImageId": { "type": "string", "format": "uuid" },
-            "isRegistrationRequired": { "type": "boolean" },
-            "externalRegistrationUrl": { "type": "string", "maxLength": 500 },
+            "participationConfiguration": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["participationHandlingModeId", "advanceRegistrationObligationId"],
+              "properties": {
+                "participationHandlingModeId": { "type": "integer", "minimum": 1 },
+                "advanceRegistrationObligationId": { "type": "integer", "minimum": 1 },
+                "identityAccessModeId": { "type": "integer", "minimum": 1 },
+                "guestRecoveryPolicy": { "type": "integer", "enum": [1, 2, 3, 4, 5] }
+              }
+            },
             "visibilityTypeId": { "type": "integer" },
             "eventFormatId": { "type": "integer" },
             "madhabId": { "type": "integer" },
