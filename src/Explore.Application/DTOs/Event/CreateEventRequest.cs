@@ -24,8 +24,7 @@ public class CreateEventRequest
     public decimal? Price { get; set; }
     public string? CurrencyCode { get; set; }
     public Guid? FeaturedImageId { get; set; }
-    public bool IsRegistrationRequired { get; set; }
-    public string? ExternalRegistrationUrl { get; set; }
+    public required ConfigureEventParticipationDto ParticipationConfiguration { get; set; }
     public int EventStatusId { get; set; } = 1;
     public int VisibilityTypeId { get; set; } = 1;
     public int EventFormatId { get; set; } = 1;

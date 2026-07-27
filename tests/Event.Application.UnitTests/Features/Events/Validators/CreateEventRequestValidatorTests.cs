@@ -91,7 +91,8 @@ public class CreateEventRequestValidatorTests
     {
         var request = new CreateEventRequest
         {
-            Title = "Imported program"
+            Title = "Imported program",
+            ParticipationConfiguration = CreateParticipationConfiguration()
         };
 
         var result = await _validator.ValidateAsync(request);
@@ -110,6 +111,7 @@ public class CreateEventRequestValidatorTests
         var request = new CreateEventRequest
         {
             Title = "Draft with long card summary",
+            ParticipationConfiguration = CreateParticipationConfiguration(),
             Description = new string('a', 151)
         };
 
@@ -125,6 +127,7 @@ public class CreateEventRequestValidatorTests
         var request = new CreateEventRequest
         {
             Title = "Draft with long content",
+            ParticipationConfiguration = CreateParticipationConfiguration(),
             Content = new string('a', 5001)
         };
 
@@ -140,6 +143,7 @@ public class CreateEventRequestValidatorTests
         var request = new CreateEventRequest
         {
             Title = "Draft at content limits",
+            ParticipationConfiguration = CreateParticipationConfiguration(),
             Description = new string('a', 150),
             Content = new string('b', 5000)
         };
@@ -155,6 +159,7 @@ public class CreateEventRequestValidatorTests
         var request = new CreateEventRequest
         {
             Title = "Draft without sessions",
+            ParticipationConfiguration = CreateParticipationConfiguration(),
             Sessions = []
         };
 
@@ -208,6 +213,11 @@ public class CreateEventRequestValidatorTests
         EventTypeId = 1,
         AudienceGenderId = 1,
         AudienceAgeId = 1,
+            ParticipationConfiguration = new ConfigureEventParticipationDto
+        {
+            ParticipationHandlingModeId = 1,
+            AdvanceRegistrationObligationId = 1
+        },
         Sessions =
         [
             new CreateEventSessionRequest
@@ -217,6 +227,12 @@ public class CreateEventRequestValidatorTests
                 EndTime = DateTimeOffset.UtcNow.AddDays(1).AddHours(2)
             }
         ]
+    };
+
+    private static ConfigureEventParticipationDto CreateParticipationConfiguration() => new()
+    {
+        ParticipationHandlingModeId = 1,
+        AdvanceRegistrationObligationId = 1
     };
 
 }

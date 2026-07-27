@@ -45,5 +45,9 @@ public sealed class ImportEventRequestDtoValidator : AbstractValidator<ImportEve
 
         RuleFor(x => x.Timezone)
             .MaximumLength(100).WithMessage("Timezone must not exceed 100 characters.");
+
+        RuleFor(x => x.ParticipationConfiguration)
+            .NotNull().WithMessage("ParticipationConfiguration is required.")
+            .SetValidator(new ConfigureEventParticipationDtoValidator());
     }
 }

@@ -57,7 +57,6 @@ public sealed class ImportEventCommandHandler(
                 EventFormat = null!,
                 Timezone = request.Timezone,
                 Price = request.Price,
-                IsRegistrationRequired = request.IsRegistrationRequired,
                 FeaturedImageId = request.FeaturedImageId,
                 EventStatusId = (int)EventStatusEnum.Draft,
                 EventStatus = null!,
@@ -65,6 +64,15 @@ public sealed class ImportEventCommandHandler(
                 Actor = null!,
                 TotalViews = 0
             };
+
+            eventEntity.ParticipationConfiguration = EventParticipationConfiguration.Create(
+                eventEntity.Id,
+                request.TenantId,
+                request.ParticipationConfiguration.ParticipationHandlingModeId,
+                request.ParticipationConfiguration.AdvanceRegistrationObligationId,
+                request.ParticipationConfiguration.IdentityAccessModeId,
+                request.ParticipationConfiguration.GuestRecoveryPolicy,
+                DateTime.UtcNow);
 
             EventLifecyclePolicy policy = await policyProvider.GetEffectivePolicyAsync(request.TenantId, ValidationProfile.EventImportCreate, token);
             LifecycleReadinessResult readiness = readinessEvaluator.Evaluate(eventEntity, ValidationProfile.EventImportCreate, policy);

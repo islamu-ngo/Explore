@@ -238,6 +238,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Test Event",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 Subtitle = "Test Subtitle",
                 Description = "Description",
                 EventTypeId = 1,
@@ -260,7 +261,10 @@ public class CreateEventCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
-        await _eventRepository.Received(1).Create(Arg.Any<Explore.Domain.Event>());
+        await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
+            entity.ParticipationConfiguration != null
+            && entity.ParticipationConfiguration.ParticipationHandlingModeId == (int)ParticipationHandlingModeEnum.InformationOnly
+            && entity.ParticipationConfiguration.AdvanceRegistrationObligationId == (int)AdvanceRegistrationObligationEnum.NotApplicable));
         await _eventSessionRepository.Received(1).Create(Arg.Any<EventSession>());
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
     }
@@ -276,6 +280,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Generic Event",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 Subtitle = "Test Subtitle",
                 Description = "Description",
                 EventTypeId = null,
@@ -307,6 +312,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Imported program",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 Sessions = [CreateSessionRequest()]
             }
         };
@@ -339,6 +345,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Published without program items",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 EventStatusId = (int)EventStatusEnum.Published,
                 Sessions = []
             }
@@ -396,6 +403,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Community event",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 EventStatusId = (int)EventStatusEnum.Published,
                 Sessions = []
             }
@@ -460,6 +468,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Invalid community event",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 Price = -1,
                 EventStatusId = (int)EventStatusEnum.Published
             }
@@ -487,6 +496,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Poster venue event",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 EventStatusId = (int)EventStatusEnum.Published,
                 Locations =
                 [
@@ -561,6 +571,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Draft with internal sessions",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 Sessions = [CreateSessionRequest()]
             }
         };
@@ -595,6 +606,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Structured Poster Event",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 IslamicAspect = new()
                 {
                     GenderMode = GenderSegregationMode.Segregated
@@ -699,6 +711,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Invalid Islamic Event",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 Sessions = [session]
             }
         };
@@ -723,6 +736,7 @@ public class CreateEventCommandHandlerTests
             {
                 OrganizationId = organizationId,
                 Title = "Test Event",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 EventTypeId = 1,
                 AudienceGenderId = 1,
                 AudienceAgeId = 1,
@@ -759,6 +773,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Owner Test Event",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 Subtitle = "Test Subtitle",
                 Description = "Description",
                 EventTypeId = 1,
@@ -804,6 +819,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Published Event",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 Subtitle = "Test Subtitle",
                 Description = "Description",
                 EventTypeId = 1,
@@ -866,6 +882,7 @@ public class CreateEventCommandHandlerTests
             Request = new CreateEventRequest
             {
                 Title = "Published Event",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 Subtitle = "Test Subtitle",
                 Description = "Description",
                 EventTypeId = 1,
@@ -905,6 +922,12 @@ public class CreateEventCommandHandlerTests
         await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
     }
+
+    private static ConfigureEventParticipationDto CreateParticipationConfiguration() => new()
+    {
+        ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly,
+        AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable
+    };
 
     private static CreateEventSessionRequest CreateSessionRequest() => new()
     {

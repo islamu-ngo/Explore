@@ -51,7 +51,10 @@ public sealed class ImportEventCommandHandlerTests
             && entity.EventFormatId == (int)EventFormatEnum.Local
             && entity.EventProvenanceTypeId == (int)EventProvenanceTypeEnum.Imported
             && entity.ProvenanceSource == request.ProvenanceSource
-            && entity.ProvenanceExternalId == request.ProvenanceExternalId));
+            && entity.ProvenanceExternalId == request.ProvenanceExternalId
+            && entity.ParticipationConfiguration != null
+            && entity.ParticipationConfiguration.ParticipationHandlingModeId == (int)ParticipationHandlingModeEnum.InformationOnly
+            && entity.ParticipationConfiguration.AdvanceRegistrationObligationId == (int)AdvanceRegistrationObligationEnum.NotApplicable));
         await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(request.TenantId), Arg.Any<CancellationToken>());
     }
 
@@ -113,7 +116,12 @@ public sealed class ImportEventCommandHandlerTests
         TenantId = Guid.NewGuid(),
         OwnerActorId = Guid.NewGuid(),
         ProvenanceSource = "legacy-system",
-        ProvenanceExternalId = "legacy-123"
+        ProvenanceExternalId = "legacy-123",
+            ParticipationConfiguration = new ConfigureEventParticipationDto
+        {
+            ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly,
+            AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable
+        }
     };
 
     private static EventLifecyclePolicy CreateImportPolicy() => new()

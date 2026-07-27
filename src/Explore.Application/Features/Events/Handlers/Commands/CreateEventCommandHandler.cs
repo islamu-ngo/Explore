@@ -340,8 +340,9 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             ? (DateOnly?)null
             : _scheduleProjectionCalculator.Project(lastSession.StartTime, lastSession.EndTime, timezoneId).LocalStartDate;
 
-        return new Event
+        var eventEntity = new Event
         {
+            Id = Guid.CreateVersion7(),
             Title = dto.Title,
             Subtitle = dto.Subtitle,
             Description = dto.Description,
@@ -354,8 +355,6 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             Price = dto.Price,
             CurrencyCode = dto.CurrencyCode,
             FeaturedImageId = dto.FeaturedImageId,
-            IsRegistrationRequired = dto.IsRegistrationRequired,
-            ExternalRegistrationUrl = dto.ExternalRegistrationUrl,
             EventStatusId = eventStatusId,
             VisibilityTypeId = dto.VisibilityTypeId == 0 ? 1 : dto.VisibilityTypeId,
             EventFormatId = dto.EventFormatId == 0 ? 1 : dto.EventFormatId,
@@ -390,6 +389,16 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             CreatedBy = currentUserId,
             IsDeleted = false
         };
+
+        eventEntity.ParticipationConfiguration = EventParticipationConfiguration.Create(
+            eventEntity.Id,
+            eventEntity.TenantId,
+            dto.ParticipationConfiguration.ParticipationHandlingModeId,
+            dto.ParticipationConfiguration.AdvanceRegistrationObligationId,
+            dto.ParticipationConfiguration.IdentityAccessModeId,
+            dto.ParticipationConfiguration.GuestRecoveryPolicy,
+            createdAt.UtcDateTime);
+        return eventEntity;
     }
 
     private static string GeneratePublicCode() => Guid.CreateVersion7().ToString("N")[..12];
@@ -606,7 +615,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 EventSessionStatusId = eventEntity.EventStatusId == (int)EventStatusEnum.Published
                     ? (int)EventSessionStatusEnum.Published
                     : (int)EventSessionStatusEnum.Draft,
-                RegistrationModeId = sessionDto.RegistrationModeId ?? (dto.IsRegistrationRequired ? 1 : null),
+                RegistrationModeId = sessionDto.RegistrationModeId,
                 Price = sessionDto.Price,
                 CurrencyCode = sessionDto.CurrencyCode,
                 Slug = string.IsNullOrWhiteSpace(sessionDto.Slug)
@@ -658,7 +667,6 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             EventSessionStatusId = eventEntity.EventStatusId == (int)EventStatusEnum.Published
                 ? (int)EventSessionStatusEnum.Published
                 : (int)EventSessionStatusEnum.Draft,
-            RegistrationModeId = dto.IsRegistrationRequired ? 1 : null,
             Slug = SlugGenerator.FromTitle($"{eventEntity.Title}-session-1", "session")
         };
 

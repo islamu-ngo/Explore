@@ -18,6 +18,6 @@ public sealed class ImportEventRequestDto
     public int? EventFormatId { get; set; }
     public string? Timezone { get; set; }
     public decimal? Price { get; set; }
-    public bool IsRegistrationRequired { get; set; }
+    public required ConfigureEventParticipationDto ParticipationConfiguration { get; set; }
     public Guid? FeaturedImageId { get; set; }
 }

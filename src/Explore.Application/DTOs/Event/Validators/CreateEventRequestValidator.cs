@@ -46,7 +46,9 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
         RuleFor(p => p.Content).MaximumLength(5000).When(p => !string.IsNullOrWhiteSpace(p.Content));
         RuleFor(p => p.Slug).MaximumLength(500).When(p => !string.IsNullOrWhiteSpace(p.Slug));
         RuleFor(p => p.CurrencyCode).MaximumLength(3).When(p => !string.IsNullOrWhiteSpace(p.CurrencyCode));
-        RuleFor(p => p.ExternalRegistrationUrl).MaximumLength(500).When(p => !string.IsNullOrWhiteSpace(p.ExternalRegistrationUrl));
+        RuleFor(p => p.ParticipationConfiguration)
+            .NotNull().WithMessage("ParticipationConfiguration is required.")
+            .SetValidator(new ConfigureEventParticipationDtoValidator());
         RuleFor(p => p.Timezone).MaximumLength(100).When(p => !string.IsNullOrWhiteSpace(p.Timezone));
         RuleFor(p => p.EventTimeZoneId).MaximumLength(100).When(p => !string.IsNullOrWhiteSpace(p.EventTimeZoneId));
         RuleFor(p => p)
