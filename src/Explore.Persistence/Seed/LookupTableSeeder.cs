@@ -69,6 +69,7 @@ public static class LookupTableSeeder
         await SeedDidCustodyTypesAsync(context, cancellationToken);
         await SeedEventFormatsAsync(context, cancellationToken);
         await SeedEventAuthorityLookupsAsync(context, cancellationToken);
+        await SeedEventParticipationLookupsAsync(context, cancellationToken);
         await SeedEventStatusesAsync(context, cancellationToken);
         await SeedEventSessionStatusesAsync(context, cancellationToken);
         await SeedEventTypesAsync(context, cancellationToken);
@@ -1478,6 +1479,43 @@ public static class LookupTableSeeder
             ct);
     }
 
+    internal static async Task SeedEventParticipationLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new ParticipationHandlingMode[]
+            {
+                new() { Id = (int)ParticipationHandlingModeEnum.InformationOnly, MasterCode = "INFORMATION_ONLY", FullName = "Information only", Description = "The event provides information without a participation workflow" },
+                new() { Id = (int)ParticipationHandlingModeEnum.WalkIn, MasterCode = "WALK_IN", FullName = "Walk-in", Description = "Participation is handled in person without advance registration" },
+                new() { Id = (int)ParticipationHandlingModeEnum.ExternalManaged, MasterCode = "EXTERNAL_MANAGED", FullName = "Externally managed", Description = "Participation is managed by an external destination" },
+                new() { Id = (int)ParticipationHandlingModeEnum.PlatformManaged, MasterCode = "PLATFORM_MANAGED", FullName = "Platform managed", Description = "Participation is managed by this platform" }
+            },
+            row => row.Id,
+            ct);
+
+        await SeedMissingLookupRowsAsync(
+            context,
+            new AdvanceRegistrationObligation[]
+            {
+                new() { Id = (int)AdvanceRegistrationObligationEnum.NotApplicable, MasterCode = "NOT_APPLICABLE", FullName = "Not applicable", Description = "Advance registration does not apply" },
+                new() { Id = (int)AdvanceRegistrationObligationEnum.Optional, MasterCode = "OPTIONAL", FullName = "Optional", Description = "Advance registration is optional" },
+                new() { Id = (int)AdvanceRegistrationObligationEnum.Required, MasterCode = "REQUIRED", FullName = "Required", Description = "Advance registration is required" }
+            },
+            row => row.Id,
+            ct);
+
+        await SeedMissingLookupRowsAsync(
+            context,
+            new IdentityAccessMode[]
+            {
+                new() { Id = (int)IdentityAccessModeEnum.AccountRequired, MasterCode = "ACCOUNT_REQUIRED", FullName = "Account required", Description = "Participation requires an authenticated account" },
+                new() { Id = (int)IdentityAccessModeEnum.GuestAllowed, MasterCode = "GUEST_ALLOWED", FullName = "Guest allowed", Description = "Participation allows guest identity" },
+                new() { Id = (int)IdentityAccessModeEnum.CapabilityTokenAllowed, MasterCode = "CAPABILITY_TOKEN_ALLOWED", FullName = "Capability token allowed", Description = "Participation allows scoped capability-token access" }
+            },
+            row => row.Id,
+            ct);
+    }
+
     private static async Task SeedSystemSettingsAsync(ExploreDbContext context, CancellationToken ct)
     {
         var seedTimestamp = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -1718,7 +1756,16 @@ public static class LookupTableSeeder
         AddPermissions("atproto_record", "Federation", RoleScopeEnum.Platform, noDelete);
 
         // Event operational roles group (event-scoped v1 vocabulary)
-        AddPermissions("event", "Event Operations", RoleScopeEnum.Event, ["manage-team", "manage-owner", "transfer-ownership", "manage-finance"]);
+        AddPermissions("event", "Event Operations", RoleScopeEnum.Event,
+        [
+            "manage-team",
+            "manage-owner",
+            "transfer-ownership",
+            "manage-finance",
+            "manage-public-actions",
+            "view-organizer-claims",
+            "review-organizer-claim"
+        ]);
         AddPermissions("event_registration", "Event Operations", RoleScopeEnum.Event, ["manage"]);
         AddPermissions("event_check_in", "Event Operations", RoleScopeEnum.Event, ["view", "manage"]);
 
@@ -1774,6 +1821,9 @@ public static class LookupTableSeeder
             PermissionCodes.EventManageOwner,
             PermissionCodes.EventTransferOwnership,
             PermissionCodes.EventManageFinance,
+            PermissionCodes.EventManagePublicActions,
+            PermissionCodes.EventViewOrganizerClaims,
+            PermissionCodes.EventReviewOrganizerClaim,
             PermissionCodes.EventRegistrationManage,
             PermissionCodes.EventCheckInView,
             PermissionCodes.EventCheckInManage
@@ -1811,6 +1861,8 @@ public static class LookupTableSeeder
                 PermissionCodes.EventManageOwner,
                 PermissionCodes.EventTransferOwnership,
                 PermissionCodes.EventManageFinance,
+                PermissionCodes.EventManagePublicActions,
+                PermissionCodes.EventViewOrganizerClaims,
                 "event_day:view",
                 PermissionCodes.EventDayCreate,
                 PermissionCodes.EventDayUpdate,
@@ -1841,6 +1893,8 @@ public static class LookupTableSeeder
                 PermissionCodes.EventUpdate,
                 PermissionCodes.EventPublish,
                 PermissionCodes.EventManageTeam,
+                PermissionCodes.EventManagePublicActions,
+                PermissionCodes.EventViewOrganizerClaims,
                 "event_day:view",
                 PermissionCodes.EventDayCreate,
                 PermissionCodes.EventDayUpdate,

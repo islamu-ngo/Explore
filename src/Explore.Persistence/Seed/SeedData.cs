@@ -683,6 +683,10 @@ public static class SeedData
         .Select(CreateEvent)
         .ToList();
 
+    public static IReadOnlyList<EventParticipationConfiguration> IslamicEventParticipationConfigurations => IslamicEventSpecs
+        .Select(CreateParticipationConfiguration)
+        .ToList();
+
     public static IReadOnlyList<EventIslamicAspect> IslamicEventAspects => IslamicEventSpecs
         .Select(spec => new EventIslamicAspect
         {
@@ -709,7 +713,8 @@ public static class SeedData
             BannerImageId = SeedIds.DefaultEventImageId,
             IsPublished = true,
             SortOrder = day.Number,
-            AllowsDayScopeRegistration = spec.IsRegistrationRequired,
+            AllowsDayScopeRegistration = spec.Participation.AdvanceRegistrationObligation
+                != AdvanceRegistrationObligationEnum.NotApplicable,
             TenantId = SeedIds.DefaultTenantId,
             Tenant = null!,
             CreatedAt = SeedTimestamp,
@@ -882,6 +887,12 @@ public static class SeedData
 
     private const string BrusselsTimezone = "Europe/Brussels";
 
+    private static readonly ParticipationConfigurationSpec PlatformManagedRequiredAccountParticipation = new(
+        ParticipationHandlingModeEnum.PlatformManaged,
+        AdvanceRegistrationObligationEnum.Required,
+        IdentityAccessModeEnum.AccountRequired,
+        GuestRecoveryPolicy: null);
+
     private static readonly IReadOnlyList<IslamicEventSpec> IslamicEventSpecs =
     [
         new(
@@ -899,9 +910,9 @@ public static class SeedData
             1,
             PrayerTime.Dhuhr,
             -120,
-            true,
-            0,
-            true,
+            IncludesQuranRecitation: true,
+            Price: 0,
+            Participation: PlatformManagedRequiredAccountParticipation,
             SeedIds.BrusselsIslamicCenterLocationId,
             [SeedIds.QuranCategoryId, SeedIds.IslamicStudiesCategoryId],
             [SeedIds.FreeTagId, SeedIds.InPersonTagId, SeedIds.BeginnerTagId],
@@ -924,9 +935,9 @@ public static class SeedData
             2,
             PrayerTime.Asr,
             30,
-            false,
-            10,
-            true,
+            IncludesQuranRecitation: false,
+            Price: 10,
+            Participation: PlatformManagedRequiredAccountParticipation,
             SeedIds.BrusselsIslamicCenterLocationId,
             [SeedIds.FiqhCategoryId, SeedIds.IslamicStudiesCategoryId],
             [SeedIds.PaidTagId, SeedIds.InPersonTagId, SeedIds.IntermediateTagId],
@@ -949,9 +960,9 @@ public static class SeedData
             2,
             PrayerTime.Maghrib,
             20,
-            false,
-            0,
-            true,
+            IncludesQuranRecitation: false,
+            Price: 0,
+            Participation: PlatformManagedRequiredAccountParticipation,
             SeedIds.AntwerpMasjidLocationId,
             [SeedIds.SeerahCategoryId, SeedIds.CommunityEventsCategoryId],
             [SeedIds.FreeTagId, SeedIds.InPersonTagId, SeedIds.OnlineTagId, SeedIds.BeginnerTagId],
@@ -974,9 +985,9 @@ public static class SeedData
             2,
             PrayerTime.Isha,
             -30,
-            true,
-            15,
-            true,
+            IncludesQuranRecitation: true,
+            Price: 15,
+            Participation: PlatformManagedRequiredAccountParticipation,
             SeedIds.BrusselsIslamicCenterLocationId,
             [SeedIds.FiqhCategoryId, SeedIds.QuranCategoryId, SeedIds.CommunityEventsCategoryId],
             [SeedIds.PaidTagId, SeedIds.InPersonTagId, SeedIds.IntermediateTagId],
@@ -999,9 +1010,9 @@ public static class SeedData
             2,
             null,
             null,
-            false,
-            0,
-            true,
+            IncludesQuranRecitation: false,
+            Price: 0,
+            Participation: PlatformManagedRequiredAccountParticipation,
             SeedIds.OnlineLocationId,
             [SeedIds.HadithCategoryId, SeedIds.IslamicStudiesCategoryId],
             [SeedIds.FreeTagId, SeedIds.OnlineTagId, SeedIds.BeginnerTagId],
@@ -1024,9 +1035,9 @@ public static class SeedData
             1,
             null,
             null,
-            true,
-            5,
-            true,
+            IncludesQuranRecitation: true,
+            Price: 5,
+            Participation: PlatformManagedRequiredAccountParticipation,
             SeedIds.BrusselsIslamicCenterLocationId,
             [SeedIds.ArabicLanguageCategoryId, SeedIds.QuranCategoryId],
             [SeedIds.PaidTagId, SeedIds.InPersonTagId, SeedIds.OnlineTagId, SeedIds.BeginnerTagId],
@@ -1049,9 +1060,9 @@ public static class SeedData
             2,
             PrayerTime.Asr,
             45,
-            false,
-            0,
-            true,
+            IncludesQuranRecitation: false,
+            Price: 0,
+            Participation: PlatformManagedRequiredAccountParticipation,
             SeedIds.AntwerpMasjidLocationId,
             [SeedIds.AqeedahCategoryId, SeedIds.CommunityEventsCategoryId],
             [SeedIds.FreeTagId, SeedIds.InPersonTagId, SeedIds.BeginnerTagId],
@@ -1074,9 +1085,9 @@ public static class SeedData
             2,
             PrayerTime.Maghrib,
             -20,
-            true,
-            0,
-            true,
+            IncludesQuranRecitation: true,
+            Price: 0,
+            Participation: PlatformManagedRequiredAccountParticipation,
             SeedIds.BrusselsIslamicCenterLocationId,
             [SeedIds.CommunityEventsCategoryId, SeedIds.IslamicStudiesCategoryId],
             [SeedIds.FreeTagId, SeedIds.InPersonTagId, SeedIds.BeginnerTagId],
@@ -1134,7 +1145,6 @@ public static class SeedData
             CurrencyCode = "EUR",
             FeaturedImageId = SeedIds.DefaultEventImageId,
             TotalViews = spec.Number * 11,
-            IsRegistrationRequired = spec.IsRegistrationRequired,
             MadhabId = (int?)spec.Madhab,
             TenantId = SeedIds.DefaultTenantId,
             Tenant = null!,
@@ -1152,7 +1162,7 @@ public static class SeedData
             LastSessionEndUtc = lastSessionEnd,
             Timezone = BrusselsTimezone,
             EventTimeZoneId = BrusselsTimezone,
-            RegistrationPolicyId = spec.IsRegistrationRequired ? 1 : null,
+            RegistrationPolicyId = (int)EventRegistrationPolicyEnum.SessionSelectionOnly,
             CreatedAt = SeedTimestamp,
             ConcurrencyStamp = spec.Id,
             BackgroundColor = spec.GenderMode switch
@@ -1169,6 +1179,16 @@ public static class SeedData
 
     private static string BuildCardDescription(string description) =>
         description.Length <= 150 ? description : description[..150];
+
+    private static EventParticipationConfiguration CreateParticipationConfiguration(IslamicEventSpec spec) =>
+        EventParticipationConfiguration.Create(
+            spec.Id,
+            SeedIds.DefaultTenantId,
+            (int)spec.Participation.HandlingMode,
+            (int)spec.Participation.AdvanceRegistrationObligation,
+            spec.Participation.IdentityAccessMode is { } identityAccessMode ? (int)identityAccessMode : null,
+            spec.Participation.GuestRecoveryPolicy,
+            SeedTimestamp);
 
     private static EventSession CreateSession(
         IslamicEventSpec spec,
@@ -1272,7 +1292,7 @@ public static class SeedData
         int? PrayerOffsetMinutes,
         bool IncludesQuranRecitation,
         decimal Price,
-        bool IsRegistrationRequired,
+        ParticipationConfigurationSpec Participation,
         Guid PrimaryLocationId,
         IReadOnlyList<Guid> CategoryIds,
         IReadOnlyList<Guid> TagIds,
@@ -1280,6 +1300,12 @@ public static class SeedData
         IReadOnlyList<GroupSpec> Groups,
         IReadOnlyList<SessionSpec> Sessions,
         IReadOnlyList<AgendaItemSpec> AgendaItems);
+
+    private sealed record ParticipationConfigurationSpec(
+        ParticipationHandlingModeEnum HandlingMode,
+        AdvanceRegistrationObligationEnum AdvanceRegistrationObligation,
+        IdentityAccessModeEnum? IdentityAccessMode,
+        GuestRecoveryPolicyEnum? GuestRecoveryPolicy);
 
     private sealed record DaySpec(
         int Number,

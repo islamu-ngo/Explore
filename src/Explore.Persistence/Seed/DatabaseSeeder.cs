@@ -210,6 +210,11 @@ public static class DatabaseSeeder
         IReadOnlyList<EventSessionAgendaItem> sessionAgendaItems = SeedData.IslamicSessionAgendaItems;
 
         await AddMissingSeedRowsAsync(context, events, e => e.Id, ct);
+        await AddMissingSeedRowsAsync(
+            context,
+            SeedData.IslamicEventParticipationConfigurations,
+            configuration => configuration.Id,
+            ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicEventAspects, aspect => aspect.Id, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicEventDays, day => day.Id, ct);
         await EnsureIslamicEventLocationAuthoritiesAsync(
