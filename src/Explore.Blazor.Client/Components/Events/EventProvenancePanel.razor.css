@@ -1,0 +1,62 @@
+/* ABOUTME: Tokenized, RTL-safe presentation for immutable event provenance facts and actions. */
+/* ABOUTME: Uses logical properties and the repository design-system surface tokens. */
+
+.event-provenance-panel {
+    display: grid;
+    gap: var(--isl-space-4);
+    padding: var(--isl-space-4);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-lg);
+    background: var(--isl-color-surface);
+}
+
+.event-provenance-panel__heading,
+.event-provenance-panel__source-link,
+.event-provenance-panel__public-action,
+.event-provenance-panel__actions,
+.event-provenance-panel__claim {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-2);
+}
+
+.event-provenance-panel__heading {
+    align-items: flex-start;
+}
+
+.event-provenance-panel__fact {
+    display: grid;
+    gap: var(--isl-space-1);
+}
+
+.event-provenance-panel__source-link {
+    inline-size: fit-content;
+    color: var(--isl-color-primary);
+}
+
+.event-provenance-panel__actions {
+    flex-wrap: wrap;
+}
+
+.event-provenance-panel__claims {
+    display: grid;
+    gap: var(--isl-space-2);
+}
+
+.event-provenance-panel__public-actions {
+    display: grid;
+    gap: var(--isl-space-2);
+}
+
+.event-provenance-panel__public-action {
+    inline-size: fit-content;
+    color: var(--isl-color-primary);
+}
+
+.event-provenance-panel__domain {
+    color: var(--isl-color-text-secondary);
+}
+
+.event-provenance-panel__claim {
+    justify-content: space-between;
+}

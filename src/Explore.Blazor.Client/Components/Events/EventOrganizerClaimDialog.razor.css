@@ -1,0 +1,16 @@
+/* ABOUTME: Tokenized, RTL-safe layout for the organizer claim dialog. */
+/* ABOUTME: Keeps validation fields and actions readable without global styling. */
+
+.event-organizer-claim-dialog__form {
+    display: grid;
+    gap: var(--isl-space-4);
+    min-inline-size: min(28rem, 100%);
+}
+
+.event-organizer-claim-dialog__submit-proxy {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+}

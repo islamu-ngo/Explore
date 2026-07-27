@@ -1,0 +1,247 @@
+@* ABOUTME: Immutable provenance disclosure and HAL-gated community-event actions. *@
+@* ABOUTME: Displays only event DTO facts and safe same-origin HAL redirect links. *@
+
+@using Explore.Blazor.Client.Components.EventReporting
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Services.Shell
+
+@inject IEventService EventService
+@inject IDialogService DialogService
+@inject IAccessibilityFocusService FocusService
+@inject IAccessibilityAnnouncerService Announcer
+@inject UiShellState ShellState
+
+@if (IsCommunityReported)
+{
+    <section class="event-provenance-panel" aria-labelledby="@HeadingId">
+        <div class="event-provenance-panel__heading">
+            <MudIcon Icon="@Icons.Material.Outlined.Groups" Color="Color.Info" aria-hidden="true" />
+            <div>
+                <MudText HtmlTag="h2" Typo="Typo.h6" id="@HeadingId">Community reported</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    This listing was shared by the community and its provenance remains part of the event record.
+                </MudText>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Event.SourcePublisherName))
+        {
+            <div class="event-provenance-panel__fact">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Source publisher</MudText>
+                <MudText Typo="Typo.body2">@Event.SourcePublisherName</MudText>
+            </div>
+        }
+
+        @if (SourceHref is not null)
+        {
+            <a class="event-provenance-panel__source-link"
+               href="@SourceHref"
+               target="_blank"
+               rel="noopener noreferrer"
+               aria-label="Open original source in a new tab">
+                <span>Open original source</span>
+                <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" aria-hidden="true" />
+            </a>
+        }
+
+        <div class="event-provenance-panel__actions">
+            @if (Event.HasHalLink("suggest-correction"))
+            {
+                <AppButton Variant="Variant.Outlined" Size="Size.Small" OnClick="OpenCorrectionReportAsync">
+                    Suggest a correction
+                </AppButton>
+            }
+            @if (Event.HasHalLink("report-external-link"))
+            {
+                <AppButton Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small" OnClick="OpenUnsafeLinkReportAsync">
+                    Report unsafe link
+                </AppButton>
+            }
+            @if (Event.HasHalLink("claim-event"))
+            {
+                <AppButton Variant="Variant.Outlined" Size="Size.Small" OnClick="OpenClaimAsync">
+                    Claim this event
+                </AppButton>
+            }
+        </div>
+
+        @if (PublicActionLinks.Count > 0)
+        {
+            <div class="event-provenance-panel__public-actions" aria-label="External event actions">
+                @foreach (var action in PublicActionLinks)
+                {
+                    <a class="event-provenance-panel__public-action"
+                       href="@action.Href"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       aria-label="@($"{action.Label} on {action.DestinationDomain} in a new tab")">
+                        <span>@action.Label</span>
+                        <span class="event-provenance-panel__domain">@action.DestinationDomain</span>
+                        <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" aria-hidden="true" />
+                    </a>
+                }
+            </div>
+        }
+
+        @if (_claims.Count > 0)
+        {
+            <div class="event-provenance-panel__claims" aria-label="Organizer claims">
+                @foreach (var claim in _claims)
+                {
+                    <div class="event-provenance-panel__claim">
+                        <MudText Typo="Typo.body2">@(claim.StatusName ?? claim.StatusCode ?? "Claim submitted")</MudText>
+                        @if (CanWithdraw(claim))
+                        {
+                            <AppButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small" OnClick="_ => WithdrawAsync(claim)">
+                                Withdraw claim
+                            </AppButton>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private const string CorrectionReasonCode = "event_correction_suggestion";
+    private const string UnsafeLinkReasonCode = "unsafe_external_link";
+
+    [Parameter, EditorRequired] public EventDto Event { get; set; } = default!;
+
+    private readonly List<HalResourceOfEventOrganizerClaimDto> _claims = [];
+    private readonly List<HalResourceOfEventPublicActionDto> _publicActions = [];
+    private string HeadingId => $"event-provenance-{Event.Id:N}";
+    private bool IsCommunityReported => string.Equals(Event.ProvenanceTypeCode, "COMMUNITY_REPORTED", StringComparison.OrdinalIgnoreCase);
+    private string? SourceHref => Event.GetHalHref("source");
+    private IReadOnlyList<PublicActionLink> PublicActionLinks => _publicActions
+        .Select(GetPublicActionLink)
+        .OfType<PublicActionLink>()
+        .ToArray();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _claims.Clear();
+        _publicActions.Clear();
+        if (!IsCommunityReported || Event.Id is not Guid eventId)
+            return;
+
+        if (ShellState.ActiveActorId is Guid claimantActorId)
+        {
+            try
+            {
+                var claims = await EventService.GetClaimantOrganizerClaimsAsync(claimantActorId);
+                _claims.AddRange(claims.Where(claim => claim.EventId == eventId));
+            }
+            catch (Exception)
+            {
+                await Announcer.AnnounceAssertiveAsync("Organizer claims could not be loaded.");
+            }
+        }
+
+        if (Event.HasHalLink("public-actions"))
+        {
+            try
+            {
+                _publicActions.AddRange(await EventService.GetEventPublicActionsAsync(eventId));
+            }
+            catch (Exception)
+            {
+                await Announcer.AnnounceAssertiveAsync("External event actions could not be loaded.");
+            }
+        }
+    }
+
+    private async Task OpenReportAsync(string reasonCode, string title)
+    {
+        if (Event.Id is not Guid eventId)
+            return;
+
+        var parameters = new DialogParameters<ReportEventDialog>
+        {
+            { dialog => dialog.EventId, eventId },
+            { dialog => dialog.EventTitle, Event.Title },
+            { dialog => dialog.FixedSubcategoryCode, reasonCode }
+        };
+        await FocusService.SaveFocusAsync();
+        try
+        {
+            var dialog = await ReportEventDialog.ShowAsync(DialogService, title, parameters, DialogOptionsFactory.Medium());
+            await dialog.Result;
+        }
+        finally
+        {
+            await FocusService.RestoreFocusAsync();
+        }
+    }
+
+    private Task OpenCorrectionReportAsync(MouseEventArgs _) =>
+        OpenReportAsync(CorrectionReasonCode, "Suggest a correction");
+
+    private Task OpenUnsafeLinkReportAsync(MouseEventArgs _) =>
+        OpenReportAsync(UnsafeLinkReasonCode, "Report unsafe link");
+
+    private async Task OpenClaimAsync(MouseEventArgs _)
+    {
+        if (!Event.HasHalLink("claim-event") || Event.Id is not Guid eventId)
+            return;
+
+        var parameters = new DialogParameters<EventOrganizerClaimDialog> { { dialog => dialog.EventId, eventId } };
+        await FocusService.SaveFocusAsync();
+        try
+        {
+            var dialog = await DialogService.ShowAsync<EventOrganizerClaimDialog>("Claim this event", parameters, DialogOptionsFactory.Medium());
+            var result = await dialog.Result;
+            if (result is { Canceled: false, Data: true })
+                await OnParametersSetAsync();
+        }
+        finally
+        {
+            await FocusService.RestoreFocusAsync();
+        }
+    }
+
+    private bool CanWithdraw(HalResourceOfEventOrganizerClaimDto claim) =>
+        claim._links?.ContainsKey("withdraw-claim") == true;
+
+    private static PublicActionLink? GetPublicActionLink(HalResourceOfEventPublicActionDto action)
+    {
+        if (string.IsNullOrWhiteSpace(action.DestinationDomain) || action._links is null)
+            return null;
+
+        foreach (var relation in action._links.Keys)
+        {
+            if (relation is "self" or "event" or "edit" or "delete")
+                continue;
+
+            var href = action.GetHalHref(relation);
+            if (href is not null)
+                return new PublicActionLink(action.Label ?? action.KindName ?? "Open", action.DestinationDomain, href);
+        }
+
+        return null;
+    }
+
+    private async Task WithdrawAsync(HalResourceOfEventOrganizerClaimDto claim)
+    {
+        if (!CanWithdraw(claim) || Event.Id is not Guid eventId || claim.Id is not Guid claimId)
+            return;
+
+        try
+        {
+            if (!await EventService.WithdrawEventOrganizerClaimAsync(eventId, claimId, claim.ConcurrencyStamp))
+            {
+                await Announcer.AnnounceAssertiveAsync("The organizer claim could not be withdrawn.");
+                return;
+            }
+            _claims.Remove(claim);
+            await Announcer.AnnouncePoliteAsync("Organizer claim withdrawn.");
+        }
+        catch (Exception)
+        {
+            await Announcer.AnnounceAssertiveAsync("The organizer claim could not be withdrawn.");
+        }
+    }
+
+    private sealed record PublicActionLink(string Label, string DestinationDomain, string Href);
+}

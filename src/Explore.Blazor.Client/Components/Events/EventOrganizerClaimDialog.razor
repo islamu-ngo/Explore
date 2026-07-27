@@ -1,0 +1,120 @@
+@* ABOUTME: Validated MudBlazor dialog for submitting an organizer claim for a community-reported event. *@
+@* ABOUTME: Uses the active shell actor and generated API contract without exposing local authorization decisions. *@
+
+@using System.ComponentModel.DataAnnotations
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Services.Shell
+
+@inject IEventService EventService
+@inject UiShellState ShellState
+@inject IAccessibilityAnnouncerService Announcer
+
+<MudDialog Class="event-organizer-claim-dialog">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Claim this event</MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm EditContext="_editContext" OnValidSubmit="SubmitAsync" FormName="event-organizer-claim">
+            <DataAnnotationsValidator />
+            <div class="event-organizer-claim-dialog__form">
+                @if (_error is not null)
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">@_error</MudAlert>
+                }
+                <AppTextField T="string"
+                              Label="Evidence type"
+                              Value="_model.EvidenceType"
+                              ValueChanged="value => _model.EvidenceType = value ?? string.Empty"
+                              For="() => _model.EvidenceType"
+                              Required="true"
+                              MaxLength="80"
+                              Disabled="_submitting"
+                              FullWidth="true" />
+                <AppTextField T="string"
+                              Label="Evidence reference"
+                              Value="_model.EvidenceReference"
+                              ValueChanged="value => _model.EvidenceReference = value ?? string.Empty"
+                              For="() => _model.EvidenceReference"
+                              Required="true"
+                              MaxLength="512"
+                              Lines="3"
+                              Disabled="_submitting"
+                              FullWidth="true" />
+                <button type="submit" class="event-organizer-claim-dialog__submit-proxy" disabled="@_submitting">Submit claim</button>
+            </div>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <AppButton Variant="Variant.Text" Color="Color.Default" Disabled="_submitting" OnClick="_ => MudDialog.Cancel()">
+            Cancel
+        </AppButton>
+        <AppButton ButtonType="ButtonType.Submit"
+                   Disabled="_submitting"
+                   OnClick="SubmitFromActionAsync">
+            @(_submitting ? "Submitting..." : "Submit claim")
+        </AppButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Guid EventId { get; set; }
+
+    private readonly ClaimInput _model = new();
+    private EditContext? _editContext;
+    private bool _submitting;
+    private string? _error;
+
+    protected override void OnInitialized() => _editContext = new EditContext(_model);
+
+    private async Task SubmitFromActionAsync(MouseEventArgs _)
+    {
+        if (_editContext?.Validate() == true)
+            await SubmitAsync();
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_submitting || ShellState.ActiveActorId is not Guid actorId)
+        {
+            _error = "Choose an active organizer before submitting a claim.";
+            return;
+        }
+
+        _submitting = true;
+        _error = null;
+        try
+        {
+            var submitted = await EventService.SubmitEventOrganizerClaimAsync(
+                EventId,
+                new SubmitEventOrganizerClaimDto
+                {
+                    ClaimantActorId = actorId,
+                    EvidenceType = _model.EvidenceType.Trim(),
+                    EvidenceReference = _model.EvidenceReference.Trim()
+                });
+            if (!submitted)
+            {
+                _error = "The organizer claim could not be submitted.";
+                return;
+            }
+            await Announcer.AnnouncePoliteAsync("Organizer claim submitted.");
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception)
+        {
+            _error = "The organizer claim could not be submitted.";
+            await Announcer.AnnounceAssertiveAsync(_error);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private sealed class ClaimInput
+    {
+        [Required, MaxLength(80)] public string EvidenceType { get; set; } = string.Empty;
+        [Required, MaxLength(512)] public string EvidenceReference { get; set; } = string.Empty;
+    }
+}
