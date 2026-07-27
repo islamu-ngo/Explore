@@ -62,7 +62,7 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
 
         var policy = await _storagePolicyResolver.ResolveAsync(null, cancellationToken);
         var envBackedS3Config = _s3ConfigResolver is null ? null : await _s3ConfigResolver.ResolveAsync(cancellationToken);
-        var providerStatus = await TestProviderAsync(cancellationToken);
+        var providerStatus = await TestProviderAsync(testWritePermissions: false, cancellationToken);
         var usage = await ReadUsageAsync(cancellationToken);
 
         return new InstanceStorageSettingsDto
@@ -164,11 +164,16 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
     }
 
     public async Task<InstanceStorageProviderStatusDto> TestProviderAsync(CancellationToken cancellationToken = default)
+        => await TestProviderAsync(testWritePermissions: true, cancellationToken);
+
+    private async Task<InstanceStorageProviderStatusDto> TestProviderAsync(
+        bool testWritePermissions,
+        CancellationToken cancellationToken)
     {
         try
         {
             var provider = await _storagePolicyResolver.ResolveProviderAsync(null, cancellationToken);
-            var status = await provider.TestAsync(cancellationToken);
+            var status = await provider.TestAsync(cancellationToken, testWritePermissions);
 
             _metrics.RecordStorageProviderTest(
                 status.Provider,
@@ -404,7 +409,8 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
             SupportsServerSideStreaming = status.SupportsServerSideStreaming,
             SupportsBrowserDirectUpload = status.SupportsBrowserDirectUpload,
             FailureCode = status.FailureCode,
-            Message = status.Message
+            Message = status.Message,
+            Preflight = status.Preflight
         };
 
     private static InstanceStorageUsageDto MapUsage(IReadOnlyList<StorageUsageCounter> counters)

@@ -217,6 +217,7 @@ public static class PersistenceServicesRegistration
 
         // Event Repositories
         services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<IEventParticipationConfigurationRepository, EventParticipationConfigurationRepository>();
         services.AddScoped<IEventPublicActionRepository, EventPublicActionRepository>();
         services.AddScoped<IEventOrganizerClaimRepository, EventOrganizerClaimRepository>();
         services.AddScoped<IEventHeavyRedactionRepository, EventHeavyRedactionRepository>();
@@ -337,7 +338,6 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IAtprotoEventProjectionRepository, AtprotoEventProjectionRepository>();
         services.AddScoped<IAtprotoJetstreamRepository, AtprotoJetstreamRepository>();
         services.AddScoped<IAtprotoPdsSnapshotRepository, AtprotoJetstreamRepository>();
-        services.AddScoped<IIndexedDidRepository, IndexedDidRepository>();
         services.AddScoped<ISyncStateRepository, SyncStateRepository>();
 
         // Settings Repositories
