@@ -56,6 +56,10 @@
     border: 1px solid var(--mud-palette-lines-default);
 }
 
+::deep .event-card__provenance-badge {
+    white-space: nowrap;
+}
+
 /* ── Shared Image Styles ── */
 
 ::deep .event-card__image-blur {

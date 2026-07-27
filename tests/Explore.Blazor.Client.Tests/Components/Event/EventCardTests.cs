@@ -74,6 +74,34 @@ public class EventCardTests : IDisposable
     [Arguments(LayoutMode.CompactGrid)]
     [Arguments(LayoutMode.DetailedList)]
     [Arguments(LayoutMode.SingleRow)]
+    public async Task EventCard_CommunityReportedBadge_CannotBeConfiguredAway(LayoutMode layout)
+    {
+        var eventDto = CreateTestEvent();
+        eventDto.ProvenanceTypeCode = "COMMUNITY_REPORTED";
+        var visibility = new Dictionary<string, bool>
+        {
+            ["event_list.card.show_date"] = false,
+            ["event_list.card.show_location"] = false,
+            ["event_list.card.show_organizer"] = false,
+            ["event_list.card.show_description"] = false,
+            ["event_list.card.show_price"] = false,
+            ["event_list.card.show_status"] = false,
+            ["event_list.card.show_provenance"] = false
+        };
+
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
+            .Add(component => component.Event, eventDto)
+            .Add(component => component.Layout, layout)
+            .Add(component => component.CardFieldVisibility, visibility));
+
+        await Assert.That(cut.FindAll(".event-card__provenance-badge").Count).IsEqualTo(1);
+        await Assert.That(cut.Markup).Contains("Community reported");
+    }
+
+    [Test]
+    [Arguments(LayoutMode.CompactGrid)]
+    [Arguments(LayoutMode.DetailedList)]
+    [Arguments(LayoutMode.SingleRow)]
     public async Task EventCardImagesAreAccessibleLazyAndLayoutStable(LayoutMode layout)
     {
         var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p

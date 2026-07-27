@@ -110,6 +110,11 @@ public partial class EventCard : ComponentBase
     private string EventTypeName =>
         !string.IsNullOrEmpty(Event.EventTypeFullName) ? Event.EventTypeFullName : "Event";
 
+    private bool IsCommunityReported => string.Equals(
+        Event.ProvenanceTypeCode,
+        "COMMUNITY_REPORTED",
+        StringComparison.OrdinalIgnoreCase);
+
     private string LocationText
     {
         get

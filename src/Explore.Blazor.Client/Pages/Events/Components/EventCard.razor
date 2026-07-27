@@ -104,6 +104,12 @@
                             AT Protocol
                         </MudChip>
                     }
+                    @if (IsCommunityReported)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled" Class="event-card__provenance-badge">
+                            Community reported
+                        </MudChip>
+                    }
                     @if (AtprotoDeliveryLabel is { } compactDeliveryLabel)
                     {
                         <MudChip T="string" Size="Size.Small" Color="@AtprotoDeliveryColor" Variant="Variant.Filled"
@@ -280,6 +286,10 @@
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled">AT Protocol</MudChip>
                         }
+                        @if (IsCommunityReported)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled" Class="event-card__provenance-badge">Community reported</MudChip>
+                        }
                         @if (AtprotoDeliveryLabel is { } detailedDeliveryLabel)
                         {
                             <MudChip T="string" Size="Size.Small" Color="@AtprotoDeliveryColor" Variant="Variant.Filled">
@@ -452,6 +462,10 @@
                         @if (IsFederated)
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled">AT Protocol</MudChip>
+                        }
+                        @if (IsCommunityReported)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled" Class="event-card__provenance-badge">Community reported</MudChip>
                         }
                         @if (AtprotoDeliveryLabel is { } rowDeliveryLabel)
                         {
