@@ -57,7 +57,7 @@ public sealed class EventLocationControllerTests
         AssertPublic(actions, "GetPublic", HttpMethods.Get, "public");
         AssertPrivate(actions, "GetMyAccess", HttpMethods.Get, "my-access");
         AssertPrivate(actions, "GetManagement", HttpMethods.Get, "{eventLocationId:guid}/management");
-        AssertPrivate(actions, "UpdateDisclosure", HttpMethods.Put, "{eventLocationId:guid}/disclosure");
+        AssertPrivate(actions, "UpdateDisclosure", HttpMethods.Patch, "{eventLocationId:guid}/disclosure");
 
         AuthorizeResourceAttribute? updateAuthorization =
             typeof(UpdateEventLocationPolicyCommand).GetCustomAttribute<AuthorizeResourceAttribute>();

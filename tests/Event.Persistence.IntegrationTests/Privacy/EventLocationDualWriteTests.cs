@@ -491,8 +491,7 @@ public sealed class EventLocationDualWriteTests(PostgreSqlContainerFixture fixtu
         EventFormat = null!,
         VisibilityTypeId = (int)VisibilityTypeEnum.Private,
         VisibilityType = null!,
-        TotalViews = 0,
-        IsRegistrationRequired = false
+        TotalViews = 0
     };
 
     private static Location CreateLocation(Guid tenantId, string name) => new()

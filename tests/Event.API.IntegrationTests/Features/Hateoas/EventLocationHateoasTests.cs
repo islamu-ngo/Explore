@@ -32,7 +32,7 @@ public sealed class EventLocationHateoasTests
     {
         MethodInfo action = typeof(EventLocationController).GetMethod(
             nameof(EventLocationController.UpdateDisclosure))!;
-        HttpPutAttribute route = action.GetCustomAttribute<HttpPutAttribute>()!;
+        HttpPatchAttribute route = action.GetCustomAttribute<HttpPatchAttribute>()!;
         AuthorizeResourceAttribute authorization = typeof(UpdateEventLocationPolicyCommand)
             .GetCustomAttribute<AuthorizeResourceAttribute>()!;
         var eventId = Guid.CreateVersion7();
@@ -61,7 +61,7 @@ public sealed class EventLocationHateoasTests
         await Assert.That(resource.Links.ContainsKey(LinkRelations.Edit)).IsTrue();
         await Assert.That(resource.Links[LinkRelations.Edit].Href)
             .IsEqualTo($"/api/events/{eventId:D}/locations/{eventLocationId:D}/disclosure");
-        await Assert.That(resource.Links[LinkRelations.Edit].Method).IsEqualTo(HttpMethods.Put);
+        await Assert.That(resource.Links[LinkRelations.Edit].Method).IsEqualTo(HttpMethods.Patch);
         await AssertDirectMutationParityAsync(checks, eventId);
     }
 

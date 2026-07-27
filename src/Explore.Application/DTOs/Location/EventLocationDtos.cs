@@ -4,6 +4,7 @@
 using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.LocationPrivacy;
+using Explore.Application.Models.Common;
 
 namespace Explore.Application.DTOs.Location;
 
@@ -257,18 +258,31 @@ public sealed record EventLocationDisclosurePolicyDto(
     int FullDetailsAudienceId,
     DateTime? RevealFullDetailsFromUtc);
 
-public sealed record UpdateEventLocationDisclosureDto(
-    bool ShowVenueName,
-    bool ShowCity,
-    bool ShowCountry,
-    bool ShowRoomName,
-    bool ShowStreetAddress,
-    bool ShowPostcode,
-    bool ShowCoordinates,
-    int FullDetailsAudienceId,
-    DateTime? RevealFullDetailsFromUtc,
-    int ExpectedPolicyVersion,
-    Guid ExpectedConcurrencyStamp);
+public sealed class UpdateEventLocationDisclosureDto
+{
+    public int ExpectedPolicyVersion { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; set; }
+    public UpdateEventLocationDisclosureFieldsDto? Fields { get; set; }
+    public UpdateEventLocationDisclosureAudienceDto? Audience { get; set; }
+}
+
+public sealed class UpdateEventLocationDisclosureFieldsDto
+{
+    public bool? ShowVenueName { get; set; }
+    public bool? ShowCity { get; set; }
+    public bool? ShowCountry { get; set; }
+    public bool? ShowRoomName { get; set; }
+    public bool? ShowStreetAddress { get; set; }
+    public bool? ShowPostcode { get; set; }
+    public bool? ShowCoordinates { get; set; }
+}
+
+public sealed class UpdateEventLocationDisclosureAudienceDto
+{
+    public int? FullDetailsAudienceId { get; set; }
+    public OptionalUpdate<DateTime?> RevealFullDetailsFromUtc { get; set; }
+        = OptionalUpdate<DateTime?>.Unspecified();
+}
 
 public sealed record ConfirmEventLocationRemediationDto(
     int ExpectedPolicyVersion,

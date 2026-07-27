@@ -2,8 +2,8 @@
 // ABOUTME: Requires both observed aggregate concurrency and policy-version tokens.
 
 using Explore.Application.Authorization;
+using Explore.Application.DTOs.Location;
 using Explore.Application.Responses;
-using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.EventLocations.Requests.Commands;
@@ -15,9 +15,8 @@ public sealed record UpdateEventLocationPolicyCommand : IRequest<BaseCommandResp
     public Guid EventLocationId { get; init; }
     public Guid ExpectedConcurrencyStamp { get; init; }
     public int ExpectedPolicyVersion { get; init; }
-    public EventLocationDisclosureFields SelectedFields { get; init; }
-    public LocationDisclosureAudienceEnum FullDetailsAudience { get; init; }
-    public DateTime? RevealFullDetailsFromUtc { get; init; }
+    public UpdateEventLocationDisclosureFieldsDto? Fields { get; init; }
+    public UpdateEventLocationDisclosureAudienceDto? Audience { get; init; }
     public bool NeedsPrivacyReview { get; init; }
 
     string? ISecureRequest.ResourceId => EventId.ToString("D");

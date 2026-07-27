@@ -5,6 +5,7 @@ using Explore.Application.Caching;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Location;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventLocations.Requests.Commands;
 using Explore.Application.Features.EventLocations.Validators;
@@ -64,10 +65,19 @@ public sealed class UpdateEventLocationPolicyCommandHandler(
                 throw ConcurrencyConflict(eventLocation.Id);
             }
 
+            EventLocationDisclosureFields selectedFields = MergeSelectedFields(eventLocation, request.Fields);
+            var fullDetailsAudience = (LocationDisclosureAudienceEnum)(
+                request.Audience?.FullDetailsAudienceId ?? eventLocation.FullDetailsAudienceId);
+            DateTime? revealFullDetailsFromUtc = eventLocation.RevealFullDetailsFromUtc;
+            if (request.Audience?.RevealFullDetailsFromUtc is { HasValue: true } revealUpdate)
+            {
+                revealFullDetailsFromUtc = revealUpdate.Value;
+            }
+
             if (eventLocation.IsToBeAnnounced
-                && (request.SelectedFields != EventLocationDisclosureFields.None
-                    || request.FullDetailsAudience != LocationDisclosureAudienceEnum.Never
-                    || request.RevealFullDetailsFromUtc.HasValue))
+                && (selectedFields != EventLocationDisclosureFields.None
+                    || fullDetailsAudience != LocationDisclosureAudienceEnum.Never
+                    || revealFullDetailsFromUtc.HasValue))
             {
                 return Failure(
                     eventLocation.Id,
@@ -76,9 +86,9 @@ public sealed class UpdateEventLocationPolicyCommandHandler(
             }
 
             EventLocationDisclosureAudit audit = eventLocation.ChangeDisclosurePolicy(
-                request.SelectedFields,
-                request.FullDetailsAudience,
-                request.RevealFullDetailsFromUtc,
+                selectedFields,
+                fullDetailsAudience,
+                revealFullDetailsFromUtc,
                 request.ExpectedPolicyVersion,
                 actorUserId,
                 EventLocationDisclosureAuditReasonEnum.OrganizerPolicyChange,
@@ -98,6 +108,26 @@ public sealed class UpdateEventLocationPolicyCommandHandler(
             CancellationToken.None);
         return result;
     }
+
+    private static EventLocationDisclosureFields MergeSelectedFields(
+        EventLocation eventLocation,
+        UpdateEventLocationDisclosureFieldsDto? update)
+    {
+        EventLocationDisclosureFields fields = EventLocationDisclosureFields.None;
+        fields = SetField(fields, EventLocationDisclosureFields.VenueName, update?.ShowVenueName ?? eventLocation.ShowVenueName);
+        fields = SetField(fields, EventLocationDisclosureFields.City, update?.ShowCity ?? eventLocation.ShowCity);
+        fields = SetField(fields, EventLocationDisclosureFields.Country, update?.ShowCountry ?? eventLocation.ShowCountry);
+        fields = SetField(fields, EventLocationDisclosureFields.RoomName, update?.ShowRoomName ?? eventLocation.ShowRoomName);
+        fields = SetField(fields, EventLocationDisclosureFields.StreetAddress, update?.ShowStreetAddress ?? eventLocation.ShowStreetAddress);
+        fields = SetField(fields, EventLocationDisclosureFields.Postcode, update?.ShowPostcode ?? eventLocation.ShowPostcode);
+        fields = SetField(fields, EventLocationDisclosureFields.Coordinates, update?.ShowCoordinates ?? eventLocation.ShowCoordinates);
+        return fields;
+    }
+
+    private static EventLocationDisclosureFields SetField(
+        EventLocationDisclosureFields fields,
+        EventLocationDisclosureFields field,
+        bool enabled) => enabled ? fields | field : fields;
 
     private static ConcurrencyConflictException ConcurrencyConflict(Guid eventLocationId) => new(
         ConcurrencyConflictException.ConcurrentUpdate,

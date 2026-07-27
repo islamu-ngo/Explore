@@ -5,10 +5,10 @@ using Explore.Application.Caching;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Location;
 using Explore.Application.Features.EventLocations.Handlers.Commands;
 using Explore.Application.Features.EventLocations.Requests.Commands;
 using Explore.Domain;
-using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 
@@ -53,8 +53,7 @@ public sealed class EventLocationPolicyExactCacheInvalidationTests
             EventLocationId = placement.Id,
             ExpectedConcurrencyStamp = placement.ConcurrencyStamp,
             ExpectedPolicyVersion = placement.PolicyVersion,
-            SelectedFields = EventLocationDisclosureFields.Country,
-            FullDetailsAudience = LocationDisclosureAudienceEnum.Never,
+            Fields = new UpdateEventLocationDisclosureFieldsDto { ShowCountry = true },
             NeedsPrivacyReview = false
         };
 
@@ -101,8 +100,7 @@ public sealed class EventLocationPolicyExactCacheInvalidationTests
             EventLocationId = placement.Id,
             ExpectedConcurrencyStamp = placement.ConcurrencyStamp,
             ExpectedPolicyVersion = placement.PolicyVersion,
-            SelectedFields = EventLocationDisclosureFields.City,
-            FullDetailsAudience = LocationDisclosureAudienceEnum.Never
+            Fields = new UpdateEventLocationDisclosureFieldsDto { ShowCity = true }
         };
 
         var response = await handler.Handle(command, cancellation.Token);

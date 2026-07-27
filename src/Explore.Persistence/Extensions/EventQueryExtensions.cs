@@ -13,6 +13,12 @@ internal static class EventQueryExtensions
         return query
             .Include(e => e.EventType)
             .Include(e => e.EventProvenanceType)
+            .Include(e => e.ParticipationConfiguration)
+                .ThenInclude(configuration => configuration!.ParticipationHandlingMode)
+            .Include(e => e.ParticipationConfiguration)
+                .ThenInclude(configuration => configuration!.AdvanceRegistrationObligation)
+            .Include(e => e.ParticipationConfiguration)
+                .ThenInclude(configuration => configuration!.IdentityAccessMode)
             .Include(e => e.PublicActions)
                 .ThenInclude(action => action.EventPublicActionKind)
             .Include(e => e.PublicActions)

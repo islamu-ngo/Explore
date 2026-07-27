@@ -12,7 +12,6 @@ using Explore.Application.Features.EventLocations.Requests.Commands;
 using Explore.Application.Features.EventLocations.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
-using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -138,7 +137,7 @@ public sealed class EventLocationController(
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [PrivateNoStore]
-    [HttpPut("{eventLocationId:guid}/disclosure", Name = RouteNames.UpdateEventLocationDisclosure)]
+    [HttpPatch("{eventLocationId:guid}/disclosure", Name = RouteNames.UpdateEventLocationDisclosure)]
     [EndpointSummary("Update event location disclosure")]
     [EndpointDescription("Updates organizer-selected disclosure fields using required policy and aggregate concurrency tokens.")]
     [Consumes("application/json")]
@@ -161,9 +160,8 @@ public sealed class EventLocationController(
                 EventLocationId = eventLocationId,
                 ExpectedConcurrencyStamp = request.ExpectedConcurrencyStamp,
                 ExpectedPolicyVersion = request.ExpectedPolicyVersion,
-                SelectedFields = ToSelectedFields(request),
-                FullDetailsAudience = (LocationDisclosureAudienceEnum)request.FullDetailsAudienceId,
-                RevealFullDetailsFromUtc = request.RevealFullDetailsFromUtc,
+                Fields = request.Fields,
+                Audience = request.Audience,
                 NeedsPrivacyReview = false
             },
             cancellationToken);
@@ -217,16 +215,4 @@ public sealed class EventLocationController(
             : this.ToCommandValidationProblem(response, RemediationValidationProblem);
     }
 
-    private static EventLocationDisclosureFields ToSelectedFields(UpdateEventLocationDisclosureDto request)
-    {
-        EventLocationDisclosureFields fields = EventLocationDisclosureFields.None;
-        fields |= request.ShowVenueName ? EventLocationDisclosureFields.VenueName : EventLocationDisclosureFields.None;
-        fields |= request.ShowCity ? EventLocationDisclosureFields.City : EventLocationDisclosureFields.None;
-        fields |= request.ShowCountry ? EventLocationDisclosureFields.Country : EventLocationDisclosureFields.None;
-        fields |= request.ShowRoomName ? EventLocationDisclosureFields.RoomName : EventLocationDisclosureFields.None;
-        fields |= request.ShowStreetAddress ? EventLocationDisclosureFields.StreetAddress : EventLocationDisclosureFields.None;
-        fields |= request.ShowPostcode ? EventLocationDisclosureFields.Postcode : EventLocationDisclosureFields.None;
-        fields |= request.ShowCoordinates ? EventLocationDisclosureFields.Coordinates : EventLocationDisclosureFields.None;
-        return fields;
-    }
 }

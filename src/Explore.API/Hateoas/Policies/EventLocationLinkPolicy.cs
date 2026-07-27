@@ -28,7 +28,7 @@ public sealed class EventLocationManagementLinkPolicy(IHttpContextAccessor httpC
             LinkRelations.Edit,
             RouteNames.UpdateEventLocationDisclosure,
             new { eventId, eventLocationId = dto.EventLocationId },
-            HttpMethods.Put,
+            HttpMethods.Patch,
             "Update location disclosure",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update,

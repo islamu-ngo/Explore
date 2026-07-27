@@ -539,8 +539,7 @@ public sealed class EventLocationPrivacyRepositoryTests(ProjectionTestContainerF
             EventFormat = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            TotalViews = 0,
-            IsRegistrationRequired = false
+            TotalViews = 0
         };
         var location = new Location
         {
