@@ -473,8 +473,8 @@
 
         await RunLookupEditAsync<UpdateTagDto>(
             options => EditTagDialog.ShowAsync(DialogService, "Edit Tag", parameters, options),
-            AdminService.UpdateTagAsync,
-            dto => dto.FullName,
+            dto => AdminService.UpdateTagAsync(tagDetails.Id!.Value, dto),
+            dto => dto.FullName?.Value,
             "Tag",
             LoadTagsAsync);
     }

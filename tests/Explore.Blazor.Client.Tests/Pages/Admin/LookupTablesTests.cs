@@ -156,7 +156,7 @@ public class LookupTablesTests : IDisposable
     {
         // Arrange
         var component = CreateLookupComponentInstance();
-        var updateDto = new UpdateTagDto { FullName = "Youth" };
+        var updateDto = new UpdateTagDto { FullName = new() { Value = "Youth" } };
         var dialogReference = Substitute.For<IDialogReference>();
         dialogReference.Result.Returns(DialogResult.Ok(updateDto));
 
@@ -167,7 +167,7 @@ public class LookupTablesTests : IDisposable
             component,
             _ => Task.FromResult(dialogReference),
             _ => Task.FromResult(false),
-            dto => dto.FullName,
+            dto => dto.FullName!.Value,
             "Tag",
             () =>
             {
