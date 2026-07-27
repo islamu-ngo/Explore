@@ -11,6 +11,7 @@ using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
 
 namespace Explore.Application.Features.Federation.Atproto.Services;
 
@@ -744,14 +745,19 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
     private static ImmutableArray<AtprotoEventUriSnapshot> BuildUris(Event eventEntity)
     {
         var values = new List<AtprotoEventUriSnapshot>();
-        EventPublicAction? externalRegistration = eventEntity.PublicActions
-            .Where(action => !action.IsDeleted
-                && action.EventPublicActionKindId == (int)EventPublicActionKindEnum.ExternalRegistration
-                && action.HealthStateId == (int)EventPublicActionHealthStateEnum.Active)
-            .OrderByDescending(action => action.IsPrimary)
-            .ThenBy(action => action.SortOrder)
-            .ThenBy(action => action.Id)
-            .FirstOrDefault();
+        EventPublicAction? externalRegistration = eventEntity.ParticipationConfiguration is { } participationConfiguration
+            ? eventEntity.PublicActions
+                .Where(action => !action.IsDeleted
+                    && action.EventPublicActionKindId == (int)EventPublicActionKindEnum.ExternalRegistration
+                    && action.HealthStateId == (int)EventPublicActionHealthStateEnum.Active
+                    && EventAuthorityRules.IsPublicActionAllowed(
+                        participationConfiguration.ParticipationHandlingModeId,
+                        action.EventPublicActionKindId))
+                .OrderByDescending(action => action.IsPrimary)
+                .ThenBy(action => action.SortOrder)
+                .ThenBy(action => action.Id)
+                .FirstOrDefault()
+            : null;
         AddUri(values, externalRegistration?.Url, "Registration");
         AddUri(values, PublicStorageUri(eventEntity.FeaturedImage), "Featured image");
         AddUri(values, PublicStorageUri(eventEntity.BackgroundImage), "Background image");

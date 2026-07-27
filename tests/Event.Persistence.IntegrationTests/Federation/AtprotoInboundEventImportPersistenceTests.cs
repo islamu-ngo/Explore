@@ -6,6 +6,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
+using CarpaNet;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
@@ -1339,6 +1340,103 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
     }
 
     [Test]
+    public async Task JetstreamHandler_SvgThumbnailPreservesCanonicalImportWithoutStorageOrFeaturedImage()
+    {
+        await fixture.ResetAsync();
+        ImportScope scope = await SeedScopeAsync("atproto-import-task24-svg");
+        const string svgActiveContent =
+            """<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>""";
+        byte[] svgBytes = Encoding.UTF8.GetBytes(svgActiveContent);
+        string svgCid = ATCid.FromSha256Hash(SHA256.HashData(svgBytes)).Value;
+        string storageRoot = Path.Combine(
+            Path.GetTempPath(),
+            $"event-task24-svg-storage-{Guid.CreateVersion7():N}");
+        try
+        {
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.Configure<LocalFileStorageOptions>(options => options.RootPath = storageRoot);
+            services.AddSingleton<IFileStorageProvider, LocalFileStorageProvider>();
+            await using ServiceProvider serviceProvider = services.BuildServiceProvider();
+            IFileStorageProvider storage = serviceProvider.GetRequiredService<IFileStorageProvider>();
+            var transport = new DeterministicThumbnailTransport(svgBytes, "image/svg+xml");
+            var gateway = new AtprotoThumbnailBlobGateway(
+                transport.CreatePrimaryHandler,
+                storage,
+                maximumBytes: svgBytes.Length,
+                requestTimeout: TimeSpan.FromSeconds(5));
+
+            await using ExploreDbContext context = fixture.CreateDbContext();
+            var repository = new AtprotoJetstreamRepository(context);
+            DateTime observedAt = CurrentUtc();
+            AtprotoJetstreamClaim claim = await ClaimAsync(repository, observedAt);
+            AtprotoRecord record = Record(
+                1,
+                observedAt,
+                "SVG thumbnail event",
+                "https://events.example/svg-thumbnail");
+            record.RecordJson = ExtensibleRecordJson(
+                "SVG thumbnail event",
+                svgCid,
+                "image/svg+xml",
+                svgBytes.Length);
+            JsonNode recordJson = JsonNode.Parse(record.RecordJson)!;
+            recordJson["futureExtension"]!["svgScript"] = svgActiveContent;
+            record.RecordJson = recordJson.ToJsonString();
+            string expectedJson = record.RecordJson;
+            AtprotoEventProjection projection = Projection(
+                record,
+                "SVG thumbnail event",
+                UtcOffset(10),
+                UtcOffset(13),
+                UtcOffset(14),
+                "https://events.example/svg-thumbnail",
+                observedAt);
+            var applyRequest = new AtprotoJetstreamApplyRequest(
+                claim,
+                ExpectedCursor: 0,
+                NextCursor: 1,
+                record,
+                [Presentation(scope.TenantId)],
+                Quarantine: null,
+                observedAt,
+                EventProjection: projection);
+            var handler = new ImportAtprotoFederatedEventCommandHandler(repository, gateway);
+
+            bool applied = await handler.Handle(
+                new ImportAtprotoFederatedEventCommand(applyRequest),
+                CancellationToken.None);
+
+            context.ChangeTracker.Clear();
+            AtprotoRecord canonical = await context.AtprotoRecords.AsNoTracking().SingleAsync();
+            Explore.Domain.Event imported = await context.Events.AsNoTracking().SingleAsync();
+            EventSession session = await context.EventSessions.AsNoTracking().SingleAsync();
+            await Assert.That(applied).IsTrue();
+            JsonNode persistedJson = JsonNode.Parse(canonical.RecordJson!)!;
+            await Assert.That(JsonNode.DeepEquals(persistedJson, JsonNode.Parse(expectedJson))).IsTrue();
+            await Assert.That(persistedJson["futureExtension"]!["svgScript"]!.GetValue<string>())
+                .IsEqualTo(svgActiveContent);
+            await Assert.That(imported.AtprotoRecordId).IsEqualTo(canonical.Id);
+            await Assert.That(session.EventId).IsEqualTo(imported.Id);
+            await Assert.That(imported.FeaturedImageId).IsNull();
+            await Assert.That(await context.StorageObjects.CountAsync()).IsEqualTo(0);
+            await Assert.That(await context.PdsSyncOutbox.CountAsync()).IsEqualTo(0);
+            await Assert.That(transport.IdentityRequests).IsEqualTo(0);
+            await Assert.That(transport.BlobRequests).IsEqualTo(0);
+            await Assert.That(Directory.Exists(storageRoot)
+                ? Directory.EnumerateFiles(storageRoot, "*", SearchOption.AllDirectories).Any()
+                : false).IsFalse();
+        }
+        finally
+        {
+            if (Directory.Exists(storageRoot))
+            {
+                Directory.Delete(storageRoot, recursive: true);
+            }
+        }
+    }
+
+    [Test]
     public async Task PdsSnapshotReconcile_ExtensibleReplayAndUpdatePreserveJsonSlugsTimezoneImagesAndNoEcho()
     {
         await fixture.ResetAsync();
@@ -1924,7 +2022,9 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
         }
         """;
 
-    private sealed class DeterministicThumbnailTransport(byte[] bytes)
+    private sealed class DeterministicThumbnailTransport(
+        byte[] bytes,
+        string contentType = "image/png")
     {
         public int IdentityRequests { get; private set; }
         public int BlobRequests { get; private set; }
@@ -1947,7 +2047,7 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
             BlobRequests++;
             BlobRequestUris.Add(request.RequestUri.AbsoluteUri);
             var content = new ByteArrayContent(bytes);
-            content.Headers.ContentType = MediaTypeHeaderValue.Parse("image/png");
+            content.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
         }
 

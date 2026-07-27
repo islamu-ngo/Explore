@@ -247,8 +247,12 @@ public sealed class AtprotoThumbnailBlobGateway : IAtprotoThumbnailBlobGateway
         return value is not null
             && value.Parameters.Count == 0
             && mimeType is not null
-            && mimeType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
-            && mimeType.Length > "image/".Length;
+            && mimeType.ToLowerInvariant() is
+                "image/jpeg" or
+                "image/png" or
+                "image/gif" or
+                "image/webp" or
+                "image/avif";
     }
 
     private static bool IsSupportedDid(string did)

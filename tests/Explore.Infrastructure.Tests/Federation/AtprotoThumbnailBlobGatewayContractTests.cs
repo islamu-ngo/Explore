@@ -58,6 +58,48 @@ public sealed class AtprotoThumbnailBlobGatewayContractTests
     }
 
     [Test]
+    [Arguments("image/svg+xml")]
+    [Arguments("IMAGE/SVG+XML")]
+    [Arguments("image/svg+xml; charset=utf-8")]
+    [Arguments("image/bmp")]
+    [Arguments("text/plain")]
+    public async Task FetchAndStageAsync_NonAllowlistedCandidateNeverFetchesOrStages(string mimeType)
+    {
+        var fixture = new Fixture(ImageBytes) { ResponseMimeType = mimeType };
+
+        var result = await fixture.Gateway.FetchAndStageAsync(
+            Candidate(Cid, mimeType, ImageBytes.Length),
+            TenantId(),
+            CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await Assert.That(fixture.IdentityRequests).IsEqualTo(0);
+        await Assert.That(fixture.PdsRequests).IsEqualTo(0);
+        await Assert.That(fixture.Storage.WriteCount).IsEqualTo(0);
+        await Assert.That(fixture.Storage.Objects).IsEmpty();
+    }
+
+    [Test]
+    [Arguments("image/jpeg")]
+    [Arguments("ImAgE/PnG")]
+    [Arguments("image/gif")]
+    [Arguments("image/webp")]
+    [Arguments("image/avif")]
+    public async Task FetchAndStageAsync_AllowlistedRasterMimeStagesCaseInsensitively(string mimeType)
+    {
+        var fixture = new Fixture(ImageBytes) { ResponseMimeType = mimeType.ToUpperInvariant() };
+
+        var result = await fixture.Gateway.FetchAndStageAsync(
+            Candidate(Cid, mimeType, ImageBytes.Length),
+            TenantId(),
+            CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(fixture.Storage.WriteCount).IsEqualTo(1);
+        await Assert.That(fixture.Storage.Objects.Count).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task FetchAndStageAsync_ReResolvesDidForEveryCallAndUsesRemappedPds()
     {
         var fixture = new Fixture(ImageBytes)
@@ -222,6 +264,19 @@ public sealed class AtprotoThumbnailBlobGatewayContractTests
     public async Task FetchAndStageAsync_NonImageResponseMimeDoesNotStage(string responseMime)
     {
         var fixture = new Fixture(ImageBytes) { ResponseMimeType = responseMime };
+
+        var result = await fixture.Gateway.FetchAndStageAsync(
+            Candidate(Cid, "image/png", MaximumBytes), TenantId(), CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await Assert.That(fixture.Storage.WriteCount).IsEqualTo(0);
+        await Assert.That(fixture.Storage.Objects).IsEmpty();
+    }
+
+    [Test]
+    public async Task FetchAndStageAsync_DeclaredAndResponseRasterMimeMustMatch()
+    {
+        var fixture = new Fixture(ImageBytes) { ResponseMimeType = "image/jpeg" };
 
         var result = await fixture.Gateway.FetchAndStageAsync(
             Candidate(Cid, "image/png", MaximumBytes), TenantId(), CancellationToken.None);

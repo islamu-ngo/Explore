@@ -69,6 +69,37 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
     }
 
     [Test]
+    public async Task CreateAsync_PlatformManagedEvent_HidesStaleExternalRegistrationUri()
+    {
+        AtprotoEventPublicationEntityGraph graph = CreateGraph();
+        graph.Event.ParticipationConfiguration!.Reconfigure(
+            (int)ParticipationHandlingModeEnum.PlatformManaged,
+            (int)AdvanceRegistrationObligationEnum.Required,
+            (int)IdentityAccessModeEnum.AccountRequired,
+            guestRecoveryPolicy: null);
+        var action = new EventPublicAction
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = graph.Event.TenantId,
+            EventId = graph.Event.Id,
+            EventPublicActionKindId = (int)EventPublicActionKindEnum.ExternalRegistration,
+            HealthStateId = (int)EventPublicActionHealthStateEnum.Active,
+            IsPrimary = true,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        action.SetDestination(ExternalActionUrl.Create("https://registration.example.test/stale"));
+        graph.Event.PublicActions.Add(action);
+
+        AtprotoEventPublicationSnapshotResult result = await CreateFactory().CreateAsync(
+            graph,
+            new(2026, 7, 18, 12, 0, 0, TimeSpan.Zero));
+
+        await Assert.That(result.IsEligible).IsTrue();
+        await Assert.That(result.Snapshot!.Uris.Any(uri => uri.Name == "Registration")).IsFalse();
+    }
+
+    [Test]
     public async Task CreateAsync_RawLocationWithoutEventLocationAssociation_IsIneligible()
     {
         AtprotoEventPublicationEntityGraph graph = CreateGraph();
