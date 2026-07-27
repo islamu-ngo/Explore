@@ -1,6 +1,7 @@
-// ABOUTME: Code-behind for AppWorkspaceRail — permanent shell chrome consuming workspace registry and shell state.
-// ABOUTME: Filters authenticated workspaces via AuthenticationStateProvider and server-gated availability from UiShellContextService.
+// ABOUTME: Code-behind for permanent workspace chrome, tenant links, and the mobile Links sheet.
+// ABOUTME: Loads observable tenant navigation state and filters workspaces through server-gated availability.
 
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Services;
@@ -30,16 +31,31 @@ public partial class AppWorkspaceRail : ComponentBase, IDisposable
     [Inject]
     private ITranslationService TranslationService { get; set; } = null!;
 
+    [Inject]
+    private ITenantNavigationService TenantNavigationService { get; set; } = null!;
+
+    [Inject]
+    private TenantNavLinksState TenantNavLinksState { get; set; } = null!;
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = null!;
+
     private IReadOnlyList<WorkspaceDescriptor> _visibleWorkspaces = [];
     private IReadOnlyList<SettingsLink> _settingsLinks = [];
     private bool _showSiteAdministration;
+    private bool _isMobileLinksSheetOpen;
     private bool _disposed;
+
+    private IReadOnlyList<TenantNavigationLinkDto> TenantLinks => TenantNavLinksState.Links;
 
     protected override async Task OnInitializedAsync()
     {
         ShellState.Changed += OnShellStateChanged;
         CurrentUserState.OnChanged += OnCurrentUserChanged;
-        await RefreshVisibleWorkspacesAsync();
+        TenantNavLinksState.OnChange += OnTenantNavLinksChanged;
+        await Task.WhenAll(
+            RefreshVisibleWorkspacesAsync(),
+            TenantNavLinksState.EnsureLoadedAsync(TenantNavigationService));
     }
 
     private async Task RefreshVisibleWorkspacesAsync()
@@ -107,6 +123,16 @@ public partial class AppWorkspaceRail : ComponentBase, IDisposable
 
     private void OnShellStateChanged() => _ = InvokeAsync(StateHasChanged);
 
+    private void OnTenantNavLinksChanged() => _ = InvokeAsync(() =>
+    {
+        if (TenantLinks.Count == 0)
+        {
+            _isMobileLinksSheetOpen = false;
+        }
+
+        StateHasChanged();
+    });
+
     private void OnCurrentUserChanged() => _ = InvokeAsync(async () =>
     {
         await RefreshVisibleWorkspacesAsync();
@@ -121,6 +147,9 @@ public partial class AppWorkspaceRail : ComponentBase, IDisposable
     private static string GetLinkClass(bool isActive, bool isUtilityOpen) =>
         $"app-workspace-rail__link{(isActive ? " app-workspace-rail__link--active" : string.Empty)}{(isUtilityOpen ? " app-workspace-rail__link--utility-open" : string.Empty)}";
 
+    private static string GetTenantLinkClass(bool isActive) =>
+        $"app-workspace-rail__link app-workspace-rail__link--tenant{(isActive ? " app-workspace-rail__link--active" : string.Empty)}";
+
     private string GetRoute(WorkspaceDescriptor workspace) => workspace.Key == WorkspaceKey.Settings
         ? "/settings/personal"
         : ShellState.GetLastRoute(workspace.Key) ?? workspace.BaseRoute;
@@ -132,6 +161,42 @@ public partial class AppWorkspaceRail : ComponentBase, IDisposable
             ShellState.NavigateToPersonalSettings(GetRoute(workspace), args);
         }
     }
+
+    private bool IsTenantLinkActive(TenantNavigationLinkDto link)
+    {
+        if (link.OpenInNewTab == true || string.IsNullOrWhiteSpace(link.Url))
+        {
+            return false;
+        }
+
+        try
+        {
+            var current = new Uri(NavigationManager.Uri);
+            var target = NavigationManager.ToAbsoluteUri(link.Url);
+            if (!string.Equals(current.GetLeftPart(UriPartial.Authority), target.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var targetPath = target.AbsolutePath.TrimEnd('/');
+            var currentPath = current.AbsolutePath.TrimEnd('/');
+            if (targetPath.Length == 0)
+            {
+                return currentPath.Length == 0;
+            }
+
+            return string.Equals(currentPath, targetPath, StringComparison.OrdinalIgnoreCase)
+                || currentPath.StartsWith($"{targetPath}/", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (UriFormatException)
+        {
+            return false;
+        }
+    }
+
+    private void OpenMobileLinksSheet() => _isMobileLinksSheetOpen = true;
+
+    private void CloseMobileLinksSheet() => _isMobileLinksSheetOpen = false;
 
     private string GetLabel(WorkspaceDescriptor workspace)
     {
@@ -176,6 +241,7 @@ public partial class AppWorkspaceRail : ComponentBase, IDisposable
 
         ShellState.Changed -= OnShellStateChanged;
         CurrentUserState.OnChanged -= OnCurrentUserChanged;
+        TenantNavLinksState.OnChange -= OnTenantNavLinksChanged;
         _disposed = true;
         GC.SuppressFinalize(this);
     }

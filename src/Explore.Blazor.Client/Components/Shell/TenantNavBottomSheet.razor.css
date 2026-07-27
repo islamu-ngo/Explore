@@ -1,0 +1,121 @@
+/* ABOUTME: Mobile bottom-sheet layout, touch targets, active states, and composited motion. */
+/* ABOUTME: Uses shell tokens, logical properties, and reduced-motion fallbacks for accessible navigation. */
+
+.tenant-nav-bottom-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: var(--isl-dock-z-inspector, 1400);
+}
+
+.tenant-nav-bottom-sheet__backdrop {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    padding: 0;
+    border: 0;
+    background: var(--isl-dock-backdrop-color, oklch(0 0 0 / 42%));
+    animation: tenant-nav-backdrop-in 200ms ease-out both;
+}
+
+.tenant-nav-bottom-sheet__panel {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 0;
+    max-block-size: min(70dvh, 32rem);
+    overflow-y: auto;
+    padding: var(--isl-space-2) var(--isl-space-4) calc(var(--isl-space-4) + env(safe-area-inset-bottom));
+    border-start-start-radius: var(--isl-radius-card);
+    border-start-end-radius: var(--isl-radius-card);
+    background: var(--mud-palette-surface);
+    box-shadow: var(--isl-shadow-lg);
+    animation: tenant-nav-sheet-in 240ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.tenant-nav-bottom-sheet__handle {
+    inline-size: var(--isl-space-10);
+    block-size: var(--isl-space-1);
+    margin: 0 auto var(--isl-space-2);
+    border-radius: var(--isl-radius-full);
+    background: var(--mud-palette-lines-default);
+}
+
+.tenant-nav-bottom-sheet__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+    margin-block-end: var(--isl-space-2);
+}
+
+.tenant-nav-bottom-sheet__title {
+    margin: 0;
+    color: var(--mud-palette-text-primary);
+    font-size: var(--mud-typography-h6-size);
+    font-weight: 600;
+}
+
+.tenant-nav-bottom-sheet__list {
+    display: grid;
+    gap: var(--isl-space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tenant-nav-bottom-sheet__link {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-3);
+    min-block-size: var(--isl-space-12);
+    padding: var(--isl-space-2) var(--isl-space-3);
+    border-inline-start: var(--isl-focus-ring-width) solid transparent;
+    border-radius: var(--isl-radius-button);
+    color: var(--mud-palette-text-primary);
+    text-decoration: none;
+    transition: background-color 150ms ease, color 150ms ease;
+}
+
+.tenant-nav-bottom-sheet__link:hover {
+    background: var(--isl-state-hover);
+}
+
+.tenant-nav-bottom-sheet__link--active {
+    border-inline-start-color: var(--mud-palette-primary);
+    background: var(--isl-state-active);
+    color: var(--mud-palette-primary);
+}
+
+.tenant-nav-bottom-sheet__label {
+    flex: 1;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+}
+
+.tenant-nav-bottom-sheet__link ::deep .tenant-nav-bottom-sheet__status-icon {
+    flex: 0 0 auto;
+    color: var(--mud-palette-text-secondary);
+}
+
+@keyframes tenant-nav-backdrop-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes tenant-nav-sheet-in {
+    from {
+        opacity: 0.72;
+        transform: translateY(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tenant-nav-bottom-sheet__backdrop,
+    .tenant-nav-bottom-sheet__panel {
+        animation-duration: 1ms;
+    }
+}

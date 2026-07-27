@@ -1,0 +1,65 @@
+@* ABOUTME: Accessible mobile bottom sheet projection of tenant-configured navigation links. *@
+@* ABOUTME: Traps focus, supports backdrop and Escape dismissal, and closes after link activation. *@
+
+@if (IsOpen)
+{
+    <div class="tenant-nav-bottom-sheet"
+         data-testid="tenant-nav-bottom-sheet-overlay"
+         @onkeydown="HandleKeyDownAsync">
+        <button type="button"
+                class="tenant-nav-bottom-sheet__backdrop"
+                aria-label="Close navigation links"
+                data-testid="tenant-nav-bottom-sheet-backdrop"
+                @onclick="CloseAsync"></button>
+        <MudFocusTrap DefaultFocus="DefaultFocus.FirstChild">
+            <section id="tenant-nav-bottom-sheet"
+                     class="tenant-nav-bottom-sheet__panel"
+                     role="dialog"
+                     aria-modal="true"
+                     aria-labelledby="tenant-nav-bottom-sheet-title"
+                     data-testid="tenant-nav-bottom-sheet">
+                <div class="tenant-nav-bottom-sheet__handle" aria-hidden="true"></div>
+                <header class="tenant-nav-bottom-sheet__header">
+                    <h2 id="tenant-nav-bottom-sheet-title" class="tenant-nav-bottom-sheet__title">Navigation Links</h2>
+                    <AppIconButton Icon="@Icons.Material.Filled.Close"
+                                   OnClick="CloseAsync"
+                                   id="tenant-nav-bottom-sheet-close"
+                                   data-testid="tenant-nav-bottom-sheet-close"
+                                   aria-label="Close navigation links" />
+                </header>
+                <ul class="tenant-nav-bottom-sheet__list">
+                    @foreach (var link in Links.OrderBy(link => link.Order))
+                    {
+                        var isActive = IsActive(link);
+                        <li @key="link.Id" class="tenant-nav-bottom-sheet__item">
+                            <a href="@link.Url"
+                               class="@GetLinkClass(isActive)"
+                               target="@(link.OpenInNewTab == true ? "_blank" : null)"
+                               rel="@(link.OpenInNewTab == true ? "noopener noreferrer" : null)"
+                               aria-current="@(isActive ? "page" : null)"
+                               @onclick="@(() => HandleLinkClickAsync(link))"
+                               @onclick:preventDefault="@(link.OpenInNewTab != true)"
+                               data-testid="tenant-bottom-sheet-link">
+                                <TenantNavigationLinkIcon Icon="@link.Icon" Url="@link.Url" />
+                                <span class="tenant-nav-bottom-sheet__label">@link.Label</span>
+                                @if (isActive)
+                                {
+                                    <span class="sr-only">Current page</span>
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                             Class="tenant-nav-bottom-sheet__status-icon"
+                                             aria-hidden="true" />
+                                }
+                                else if (link.OpenInNewTab == true)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.OpenInNew"
+                                             Class="tenant-nav-bottom-sheet__status-icon"
+                                             aria-hidden="true" />
+                                }
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </section>
+        </MudFocusTrap>
+    </div>
+}

@@ -1,3 +1,6 @@
+/* ABOUTME: Scoped BEM styles for the top navigation shell and responsive search/actions layout. */
+/* ABOUTME: Covers branding, preferences, profile menus, and mobile search without tenant links. */
+
 /*
  * NavMenu Component Styles - BEM Methodology
  * Block: navbar
@@ -9,8 +12,6 @@
  *       .navbar__brand-icon
  *       .navbar__brand-text
  *         .navbar__brand-highlight
- *     .navbar__links
- *       .navbar__link / .navbar__link--active
  *     .navbar__actions
  *       .navbar__theme-toggle
  *       .navbar__create-event-btn
@@ -142,17 +143,6 @@
 }
 
 /* ========================================
-   Element: navbar__links
-   Center navigation links container
-   ======================================== */
-.navbar__links {
-    flex: 0 0 auto; /* Stop it from growing to make space for search */
-    display: flex;
-    justify-content: center;
-    gap: 0.375rem;
-}
-
-/* ========================================
    Element: navbar__search
    Global Search in Navbar
    ======================================== */
@@ -182,29 +172,6 @@
 
 ::deep .navbar__search-input .mud-input-slot {
     padding-inline: var(--isl-space-4) !important;
-}
-
-/* Element: navbar__link */
-.navbar__link {
-    padding: var(--isl-space-2) 1.125rem;
-    border-radius: var(--isl-radius-md);
-    color: var(--mud-palette-text-secondary);
-    font-weight: 700;
-    font-size: 0.95rem;
-    text-decoration: none;
-    transition: all 0.2s ease;
-
-    &:hover {
-        color: var(--mud-palette-text-primary);
-        background: color-mix(in oklch, var(--mud-palette-surface) 50%, transparent);
-    }
-
-    /* Modifier: navbar__link--active */
-    &.navbar__link--active {
-        background: var(--mud-palette-surface);
-        color: var(--mud-palette-primary);
-        box-shadow: var(--isl-shadow-xs);
-    }
 }
 
 /* ========================================
@@ -640,8 +607,7 @@
    Responsive Styles — Tablet (601px – 840px)
    Search collapses to icon-only toggle button (in actions).
    Brand name stays FULL single-row — there is enough space.
-   Nav links hidden.
-   FIX: margin-left:auto on actions keeps brand pinned left next to
+   FIX: auto inline margin on actions keeps brand pinned next to
         sidebar toggle instead of floating to center under space-between.
    ======================================== */
 @media (max-width: 52.5em) { /* <= 840px */
@@ -653,13 +619,9 @@
         display: inline-flex; /* Show search icon button */
     }
 
-    .navbar__links {
-        display: none;
-    }
-
     /* Push actions to the right; brand + sidebar-toggle stay left-pinned */
     .navbar__actions {
-        margin-left: auto;
+        margin-inline-start: auto;
     }
 }
 

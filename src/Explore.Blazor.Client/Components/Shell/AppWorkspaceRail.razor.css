@@ -33,9 +33,18 @@
     position: relative;
 }
 
-/* Pin the last item (Settings) to the block-end of the rail */
-.app-workspace-rail__item:last-child {
+/* Pin Settings to the block-end without letting long tenant lists hide it. */
+.app-workspace-rail__item--settings {
     margin-block-start: auto;
+}
+
+.app-workspace-rail__divider {
+    margin: var(--isl-space-2) var(--isl-space-3);
+    border-block-start: 1px solid var(--mud-palette-lines-default);
+}
+
+.app-workspace-rail__item--mobile-links-tab {
+    display: none;
 }
 
 .app-workspace-rail__link {
@@ -51,6 +60,14 @@
     color: var(--mud-palette-text-secondary);
     text-decoration: none;
     transition: background 150ms ease, color 150ms ease;
+}
+
+button.app-workspace-rail__link {
+    inline-size: 100%;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
 }
 
 .app-workspace-rail__link:hover {
@@ -159,8 +176,21 @@
         justify-content: space-around;
     }
 
-    .app-workspace-rail__item:last-child {
+    .app-workspace-rail__item {
+        flex: 1 1 0;
+    }
+
+    .app-workspace-rail__item--settings {
         margin-block-start: 0;
+    }
+
+    .app-workspace-rail__item--tenant,
+    .app-workspace-rail__divider {
+        display: none;
+    }
+
+    .app-workspace-rail__item--mobile-links-tab {
+        display: block;
     }
 
     .app-workspace-rail__link {

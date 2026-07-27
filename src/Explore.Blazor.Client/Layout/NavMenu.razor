@@ -1,4 +1,4 @@
-@* ABOUTME: Top navigation shell with tenant links, search, preferences, and profile/admin dropdown. *@
+@* ABOUTME: Top navigation shell with branding, search, preferences, and profile/admin controls. *@
 @* ABOUTME: Uses BFF/API-backed status models for admin affordance visibility instead of browser claims. *@
 @using Explore.Blazor.Client.Routing.ControlPlane
 @*
@@ -7,7 +7,7 @@
     Elements: __content, __brand, __brand-icon, __brand-text, __brand-highlight,
               __brand-text--stackable, __brand-part-top, __brand-part-bottom,
               __search, __search-toggle, __search-overlay, __search-overlay-input,
-              __search-back-btn, __links, __link, __actions, __theme-toggle,
+              __search-back-btn, __actions, __theme-toggle,
               __create-event-btn, __login-btn,
               __user-dropdown, __user-btn, __user-avatar, __user-name, __user-arrow,
               __dropdown-menu, __dropdown-header, __dropdown-divider, __dropdown-section-label,
@@ -15,7 +15,7 @@
               __dropdown-submenu, __dropdown-submenu-item, __dropdown-submenu-name,
               __dropdown-submenu-action, __dropdown-submenu-empty, __dropdown-submenu-divider,
               __dropdown-submenu-create, __dropdown-overlay
-    Modifiers: __link--active, __dropdown-menu--open, __dropdown-item--danger,
+    Modifiers: __dropdown-menu--open, __dropdown-item--danger,
                __dropdown-item--expandable, __dropdown-submenu-name--text,
                __brand-text--stackable, navbar--search-active
 *@
@@ -111,31 +111,6 @@
                        KeyModifiers="@(new[] { JsKeyModifier.ControlLeft })"
                        OnHotkeyPressed="FocusSearchAsync" />
         }
-
-
-        <!-- Center Navigation -->
-        <div class="navbar__links">
-            @* Dynamic tenant navigation links *@
-            @foreach (var link in _navigationLinks.OrderBy(l => l.Order))
-            {
-                var icon = string.IsNullOrWhiteSpace(link.Icon) ? Icons.Material.Filled.Link : link.Icon;
-
-                @if (link.OpenInNewTab == true)
-                {
-                    <a @key="link.Id" href="@link.Url" target="_blank" rel="noopener noreferrer" class="navbar__link" title="@link.Label">
-                        <MudIcon Icon="@icon" Size="Size.Small" Class="mr-2" />
-                        @link.Label
-                    </a>
-                }
-                else
-                {
-                    <NavLink @key="link.Id" href="@link.Url" class="navbar__link" Match="NavLinkMatch.Prefix" ActiveClass="navbar__link--active" title="@link.Label">
-                        <MudIcon Icon="@icon" Size="Size.Small" Class="mr-2" />
-                        @link.Label
-                    </NavLink>
-                }
-            }
-        </div>
 
         <!-- Right Actions -->
         <div class="navbar__actions">

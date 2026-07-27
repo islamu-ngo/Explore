@@ -39,12 +39,6 @@ public partial class NavMenu : IDisposable
     protected IUserSettingsService UserSettingsService { get; set; } = null!;
 
     [Inject]
-    protected ITenantNavigationService TenantNavigationService { get; set; } = null!;
-
-    [Inject]
-    protected TenantNavLinksState TenantNavLinksState { get; set; } = null!;
-
-    [Inject]
     protected IEventCreationEligibilityService EventCreationEligibilityService { get; set; } = null!;
 
     [Inject]
@@ -81,7 +75,6 @@ public partial class NavMenu : IDisposable
     public string SearchQuery { get; set; } = "";
     private MudTextField<string> _searchField = null!;
     private MudTextField<string> _overlaySearchField = null!;
-    private IReadOnlyList<TenantNavigationLinkDto> _navigationLinks = [];
     private EventCreationEligibility _eventCreationEligibility = EventCreationEligibility.NotEligible;
     private bool _isSingleTenantMode = true;
     private bool _isCurrentUserInstanceAdmin;
@@ -122,13 +115,11 @@ public partial class NavMenu : IDisposable
     protected override async Task OnInitializedAsync()
     {
         AiAssistantState.OnChange += StateHasChanged;
-        TenantNavLinksState.OnChange += StateHasChanged;
         DockLayoutState.Changed += OnDockLayoutChanged;
         UiShellState.Changed += StateHasChanged;
         CurrentUserState.OnChanged += OnCurrentUserChanged;
         await LoadPublicExperienceAsync();
         await LoadCurrentUserAsync();
-        await LoadNavigationLinksAsync();
         await LoadEventCreationEligibilityAsync();
         await LoadShellContextAsync();
     }
@@ -411,32 +402,6 @@ public partial class NavMenu : IDisposable
                || _groupScopes.Count > 0;
     }
 
-    private async Task LoadNavigationLinksAsync()
-    {
-        var shellTask = PublicExperienceService.GetCachedShellAsync();
-        var shell = shellTask is null ? null : await shellTask;
-        if (shell?.Navigation?.Links?.Count > 0)
-        {
-            _navigationLinks = shell.Navigation.Links
-                .Where(link => !string.IsNullOrWhiteSpace(link.Label) && !string.IsNullOrWhiteSpace(link.Url))
-                .OrderBy(link => link.SortOrder)
-                .ThenBy(link => link.Label, StringComparer.OrdinalIgnoreCase)
-                .Select(link => new TenantNavigationLinkDto
-                {
-                    Id = Guid.CreateVersion7(),
-                    Label = link.Label!,
-                    Url = link.Url!,
-                    Order = link.SortOrder ?? 0,
-                    OpenInNewTab = false
-                })
-                .ToList();
-            return;
-        }
-
-        await TenantNavLinksState.EnsureLoadedAsync(TenantNavigationService);
-        _navigationLinks = TenantNavLinksState.Links;
-    }
-
     private async Task LoadEventCreationEligibilityAsync()
     {
         try
@@ -540,7 +505,6 @@ public partial class NavMenu : IDisposable
     public void Dispose()
     {
         AiAssistantState.OnChange -= StateHasChanged;
-        TenantNavLinksState.OnChange -= StateHasChanged;
         DockLayoutState.Changed -= OnDockLayoutChanged;
         UiShellState.Changed -= StateHasChanged;
         CurrentUserState.OnChanged -= OnCurrentUserChanged;

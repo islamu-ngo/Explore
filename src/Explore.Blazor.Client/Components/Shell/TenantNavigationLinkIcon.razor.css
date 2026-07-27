@@ -1,0 +1,20 @@
+/* ABOUTME: Scoped sizing for tenant navigation Material icons and discovered favicons. */
+/* ABOUTME: Keeps both icon sources aligned to the design system's 24px shell icon slot. */
+
+.tenant-navigation-link-icon {
+    display: grid;
+    place-items: center;
+    inline-size: var(--isl-space-6);
+    block-size: var(--isl-space-6);
+    flex: 0 0 auto;
+}
+
+.tenant-navigation-link-icon ::deep .mud-icon-root,
+.tenant-navigation-link-icon__favicon {
+    inline-size: 100%;
+    block-size: 100%;
+}
+
+.tenant-navigation-link-icon__favicon {
+    object-fit: contain;
+}

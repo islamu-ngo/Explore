@@ -3,7 +3,9 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.Shell;
+using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Shell;
+using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Shell;
 
 namespace Explore.Blazor.Client.Tests.Components.Shell;
@@ -18,6 +20,10 @@ public sealed class AppWorkspaceRailTests : IDisposable
         _ctx.Services.AddScoped<IWorkspaceRegistry, WorkspaceRegistry>();
         _ctx.Services.AddScoped<WorkspaceRouteClassifier>();
         _ctx.Services.AddScoped<UiShellState>();
+        _ctx.Services.AddScoped<TenantNavLinksState>();
+        var tenantNavigationService = Substitute.For<ITenantNavigationService>();
+        tenantNavigationService.GetNavigationLinksAsync().Returns([]);
+        _ctx.Services.AddSingleton(tenantNavigationService);
         _shellContextService.GetCachedContextAsync(Arg.Any<CancellationToken>())
             .Returns(new UiShellContextDto
             {

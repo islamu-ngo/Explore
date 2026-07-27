@@ -1,0 +1,59 @@
+@* ABOUTME: Renders a configured tenant-link icon or discovers the target site's root favicon. *@
+@* ABOUTME: Falls back to the Material Link icon when no safe favicon can be loaded. *@
+
+<span class="tenant-navigation-link-icon" aria-hidden="true">
+    @if (!string.IsNullOrWhiteSpace(Icon))
+    {
+        <MudIcon Icon="@Icon" />
+    }
+    else if (!_faviconFailed && _faviconUrl is not null)
+    {
+        <img class="tenant-navigation-link-icon__favicon"
+             src="@_faviconUrl"
+             alt=""
+             width="24"
+             height="24"
+             loading="lazy"
+             referrerpolicy="no-referrer"
+             @onerror="HandleFaviconError" />
+    }
+    else
+    {
+        <MudIcon Icon="@Icons.Material.Filled.Link" />
+    }
+</span>
+
+@code {
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string? Url { get; set; }
+
+    private string? _faviconUrl;
+    private string? _resolvedUrl;
+    private bool _faviconFailed;
+
+    protected override void OnParametersSet()
+    {
+        if (string.Equals(_resolvedUrl, Url, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _resolvedUrl = Url;
+        _faviconUrl = ResolveFaviconUrl(Url);
+        _faviconFailed = false;
+    }
+
+    private static string? ResolveFaviconUrl(string? url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            || (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+        {
+            return null;
+        }
+
+        return new Uri(uri, "/favicon.ico").AbsoluteUri;
+    }
+
+    private void HandleFaviconError() => _faviconFailed = true;
+}

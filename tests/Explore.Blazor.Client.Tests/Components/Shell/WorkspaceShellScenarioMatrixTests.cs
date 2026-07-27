@@ -61,6 +61,9 @@ public sealed class WorkspaceShellScenarioMatrixTests
         context.Services.AddScoped<WorkspaceRouteClassifier>();
         context.Services.AddScoped<UiShellState>();
         context.Services.AddSingleton(new TenantNavLinksState());
+        var tenantNavigationService = Substitute.For<ITenantNavigationService>();
+        tenantNavigationService.GetNavigationLinksAsync().Returns([]);
+        context.Services.AddSingleton(tenantNavigationService);
 
         var shellContextService = Substitute.For<IUiShellContextService>();
         shellContextService.GetCachedContextAsync(Arg.Any<CancellationToken>())
