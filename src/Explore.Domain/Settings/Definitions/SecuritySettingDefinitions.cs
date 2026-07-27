@@ -1,12 +1,14 @@
-// ABOUTME: Setting definitions for authorization provider selection.
-// ABOUTME: Instance-only setting controlling which authorization backend is used.
+// ABOUTME: Instance security settings for authorization selection and external URL transport policy.
+// ABOUTME: Defaults public-facing URLs to HTTPS while permitting explicit private-network opt-out.
+
+using Explore.Domain.Constants;
 
 namespace Explore.Domain.Settings.Definitions;
 
 public static class SecuritySettingDefinitions
 {
     public static readonly SettingDefinition AuthorizationProvider = new(
-        Key: "authorization.provider",
+        Key: GovernanceSettingKeys.Security.AuthorizationProvider,
         ValueType: SettingValueType.String,
         DefaultValue: "\"cerbos\"",
         Category: "Security",
@@ -14,5 +16,16 @@ public static class SecuritySettingDefinitions
         MinScope: SettingScope.Instance,
         MaxScope: SettingScope.Instance);
 
-    public static IReadOnlyList<SettingDefinition> All => [AuthorizationProvider];
+    public static readonly SettingDefinition RequireHttpsExternalUrls = new(
+        Key: GovernanceSettingKeys.Security.RequireHttpsExternalUrls,
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "true",
+        Category: "Security",
+        Description: "Require HTTPS for externally addressed URLs; disable only for trusted HTTP-only private networks",
+        MinScope: SettingScope.Instance,
+        MaxScope: SettingScope.Instance,
+        IsLockable: false);
+
+    public static IReadOnlyList<SettingDefinition> All =>
+        [AuthorizationProvider, RequireHttpsExternalUrls];
 }

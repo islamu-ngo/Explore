@@ -19,6 +19,9 @@ public static class PermissionCodes
     public const string EventManageOwner = "event:manage-owner";
     public const string EventTransferOwnership = "event:transfer-ownership";
     public const string EventManageFinance = "event:manage-finance";
+    public const string EventManagePublicActions = "event:manage-public-actions";
+    public const string EventViewOrganizerClaims = "event:view-organizer-claims";
+    public const string EventReviewOrganizerClaim = "event:review-organizer-claim";
 
     // ===== Event Day =====
     public const string EventDayCreate = "event_day:create";

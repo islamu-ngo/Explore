@@ -198,6 +198,7 @@ public static class GovernanceSettingKeys
     public static class Security
     {
         public const string AuthorizationProvider = "authorization.provider";
+        public const string RequireHttpsExternalUrls = "security.require_https_external_urls";
     }
 
     public static class SupportAccess
