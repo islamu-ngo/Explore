@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for converting untrusted AI event aspect proposals into safe aspect commands.
-// ABOUTME: Covers Islamic and Tech aspect upsert/delete validation, module context, and destructive metadata.
+// ABOUTME: Covers Islamic and Tech aspect grouped-update/delete validation, module context, and destructive metadata.
 
 using Explore.Application.Features.AiAssistant.Actions;
 using Explore.Application.Features.AiAssistant.Prompting;
@@ -11,7 +11,7 @@ namespace Event.Application.UnitTests.Features.AiAssistant.Actions;
 public sealed class EventAspectAiActionMapperTests
 {
     [Test]
-    public async Task MapIslamicUpsert_WhenPayloadIsValid_ReturnsUpsertCommand()
+    public async Task MapIslamicUpsert_WhenPayloadIsValid_ReturnsGroupedUpdateCommand()
     {
         var eventId = Guid.CreateVersion7();
         var concurrencyStamp = Guid.CreateVersion7();
@@ -36,14 +36,14 @@ public sealed class EventAspectAiActionMapperTests
         await Assert.That(result.EventId).IsEqualTo(eventId);
         await Assert.That(result.Command).IsNotNull();
         await Assert.That(result.Command!.EventId).IsEqualTo(eventId);
-        await Assert.That(result.Command.AspectDto.ReferencePrayer).IsEqualTo(PrayerTime.Dhuhr);
-        await Assert.That(result.Command.AspectDto.GenderMode).IsEqualTo(GenderSegregationMode.Family);
+        await Assert.That(result.Command.AspectDto.PrayerSchedule!.ReferencePrayer.Value).IsEqualTo(PrayerTime.Dhuhr);
+        await Assert.That(result.Command.AspectDto.Participation!.GenderMode).IsEqualTo(GenderSegregationMode.Family);
         await Assert.That(result.PermissionContext!.ExpectedConcurrencyStamp).IsEqualTo(concurrencyStamp);
         await Assert.That(result.PermissionContext.AspectKind).IsEqualTo("islamic");
     }
 
     [Test]
-    public async Task MapTechUpsert_WhenPayloadIsValid_ReturnsUpsertCommand()
+    public async Task MapTechUpsert_WhenPayloadIsValid_ReturnsGroupedUpdateCommand()
     {
         var eventId = Guid.CreateVersion7();
         var concurrencyStamp = Guid.CreateVersion7();
@@ -71,9 +71,9 @@ public sealed class EventAspectAiActionMapperTests
         await Assert.That(result.EventId).IsEqualTo(eventId);
         await Assert.That(result.Command).IsNotNull();
         await Assert.That(result.Command!.EventId).IsEqualTo(eventId);
-        await Assert.That(result.Command.AspectDto.SkillLevel).IsEqualTo(SkillLevel.Intermediate);
-        await Assert.That(result.Command.AspectDto.HackathonTrack).IsEqualTo("AI track");
-        await Assert.That(result.Command.AspectDto.PrizeCurrencyCode).IsEqualTo("EUR");
+        await Assert.That(result.Command.AspectDto.Classification!.SkillLevel).IsEqualTo(SkillLevel.Intermediate);
+        await Assert.That(result.Command.AspectDto.Classification.HackathonTrack.Value).IsEqualTo("AI track");
+        await Assert.That(result.Command.AspectDto.Prize!.PrizeCurrencyCode.Value).IsEqualTo("EUR");
         await Assert.That(result.PermissionContext!.ExpectedConcurrencyStamp).IsEqualTo(concurrencyStamp);
         await Assert.That(result.PermissionContext.AspectKind).IsEqualTo("tech");
     }

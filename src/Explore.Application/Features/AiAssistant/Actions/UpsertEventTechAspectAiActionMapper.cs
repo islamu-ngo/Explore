@@ -1,4 +1,4 @@
-// ABOUTME: Maps untrusted AI Tech aspect proposals into safe aspect upsert commands.
+// ABOUTME: Maps untrusted AI Tech aspect proposals into explicit grouped update commands.
 // ABOUTME: Validates Tech module context, event concurrency, and bounded competition fields.
 
 using System.Text.Json;
@@ -102,19 +102,31 @@ public sealed class UpsertEventTechAspectAiActionMapper
                 "AI Tech aspect prize currency code must be a 3-letter ISO code.");
         }
 
-        var dto = new CreateUpdateTechAspectDto
+        var dto = new UpdateEventTechAspectDto
         {
-            GithubRepoUrl = githubRepoUrl,
-            HackathonTrack = Normalize(payload.HackathonTrack),
-            SkillLevel = (SkillLevel)skillLevel,
-            TechStackTags = Normalize(payload.TechStackTags),
-            RequiresLaptop = payload.RequiresLaptop,
-            IsCodingCompetition = payload.IsCodingCompetition,
-            MaxTeamSize = payload.MaxTeamSize,
-            PrizePool = payload.PrizePool,
-            PrizeCurrencyCode = prizeCurrencyCode
+            Repository = new UpdateEventTechRepositoryDto
+            {
+                GithubRepoUrl = new(true, githubRepoUrl)
+            },
+            Classification = new UpdateEventTechClassificationDto
+            {
+                HackathonTrack = new(true, Normalize(payload.HackathonTrack)),
+                SkillLevel = (SkillLevel)skillLevel,
+                TechStackTags = new(true, Normalize(payload.TechStackTags))
+            },
+            Participation = new UpdateEventTechParticipationDto
+            {
+                RequiresLaptop = payload.RequiresLaptop,
+                IsCodingCompetition = payload.IsCodingCompetition
+            },
+            Prize = new UpdateEventTechPrizeDto
+            {
+                MaxTeamSize = new(true, payload.MaxTeamSize),
+                PrizePool = new(true, payload.PrizePool),
+                PrizeCurrencyCode = new(true, prizeCurrencyCode)
+            }
         };
-        var command = new UpsertEventTechAspectCommand
+        var command = new UpdateEventTechAspectCommand
         {
             EventId = contextResult.EventId!.Value,
             AspectDto = dto
@@ -223,14 +235,14 @@ public sealed class UpsertEventTechAspectAiActionMapper
 public sealed record UpsertEventTechAspectAiActionMappingResult(
     bool Succeeded,
     Guid? EventId,
-    UpsertEventTechAspectCommand? Command,
+    UpdateEventTechAspectCommand? Command,
     EventAspectAiPermissionContext? PermissionContext,
     string? FailureCode,
     string? FailureMessage)
 {
     public static UpsertEventTechAspectAiActionMappingResult Success(
         Guid eventId,
-        UpsertEventTechAspectCommand command,
+        UpdateEventTechAspectCommand command,
         EventAspectAiPermissionContext permissionContext)
         => new(true, eventId, command, permissionContext, null, null);
 

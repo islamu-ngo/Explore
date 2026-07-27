@@ -1,4 +1,4 @@
-// ABOUTME: Maps untrusted AI Islamic aspect proposals into safe aspect upsert commands.
+// ABOUTME: Maps untrusted AI Islamic aspect proposals into explicit grouped update commands.
 // ABOUTME: Validates aspect module context, event concurrency, and bounded Islamic aspect fields.
 
 using System.Text.Json;
@@ -81,16 +81,28 @@ public sealed class UpsertEventIslamicAspectAiActionMapper
                 "AI Islamic aspect lookup references must be positive identifiers.");
         }
 
-        var dto = new CreateUpdateIslamicAspectDto
+        var dto = new UpdateEventIslamicAspectDto
         {
-            MadhabId = payload.MadhabId,
-            ReferencePrayer = payload.ReferencePrayer.HasValue ? (PrayerTime)payload.ReferencePrayer.Value : null,
-            PrayerTimeOffset = payload.PrayerTimeOffset,
-            GenderMode = (GenderSegregationMode)genderMode,
-            IncludesQuranRecitation = payload.IncludesQuranRecitation,
-            PrimaryLanguageId = payload.PrimaryLanguageId
+            Jurisprudence = new UpdateEventIslamicJurisprudenceDto
+            {
+                MadhabId = new(true, payload.MadhabId)
+            },
+            PrayerSchedule = new UpdateEventIslamicPrayerScheduleDto
+            {
+                ReferencePrayer = new(true, payload.ReferencePrayer.HasValue ? (PrayerTime)payload.ReferencePrayer.Value : null),
+                PrayerTimeOffset = new(true, payload.PrayerTimeOffset)
+            },
+            Participation = new UpdateEventIslamicParticipationDto
+            {
+                GenderMode = (GenderSegregationMode)genderMode,
+                IncludesQuranRecitation = payload.IncludesQuranRecitation
+            },
+            Language = new UpdateEventIslamicLanguageDto
+            {
+                PrimaryLanguageId = new(true, payload.PrimaryLanguageId)
+            }
         };
-        var command = new UpsertEventIslamicAspectCommand
+        var command = new UpdateEventIslamicAspectCommand
         {
             EventId = contextResult.EventId!.Value,
             AspectDto = dto
@@ -177,14 +189,14 @@ public sealed class UpsertEventIslamicAspectAiActionMapper
 public sealed record UpsertEventIslamicAspectAiActionMappingResult(
     bool Succeeded,
     Guid? EventId,
-    UpsertEventIslamicAspectCommand? Command,
+    UpdateEventIslamicAspectCommand? Command,
     EventAspectAiPermissionContext? PermissionContext,
     string? FailureCode,
     string? FailureMessage)
 {
     public static UpsertEventIslamicAspectAiActionMappingResult Success(
         Guid eventId,
-        UpsertEventIslamicAspectCommand command,
+        UpdateEventIslamicAspectCommand command,
         EventAspectAiPermissionContext permissionContext)
         => new(true, eventId, command, permissionContext, null, null);
 
