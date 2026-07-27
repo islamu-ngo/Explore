@@ -5,6 +5,7 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Domain;
+using Explore.Domain.Constants;
 
 namespace Explore.Infrastructure.Services;
 
@@ -17,7 +18,7 @@ public partial class FallbackAuthorizationService
         if (checks.Count == 0)
             return [];
 
-        if (checks.Count <= 2)
+        if (checks.Count <= 2 || _machinePrincipalAccessor.IsMachineCaller)
         {
             var smallResults = new bool[checks.Count];
             for (var i = 0; i < checks.Count; i++)
@@ -55,6 +56,9 @@ public partial class FallbackAuthorizationService
         bool IsTenantAdmin,
         Guid TenantId,
         IReadOnlySet<Guid> AdminOrgIds,
+        IReadOnlySet<Guid> AdminGroupIds,
+        IReadOnlySet<Guid> EventCreateOrgIds,
+        IReadOnlySet<Guid> EventCreateGroupIds,
         Guid? UserId);
 
     private async Task<AuthorityProfile> ResolveAuthorityProfileAsync(CancellationToken cancellationToken)
@@ -63,9 +67,30 @@ public partial class FallbackAuthorizationService
         var tenantId = _tenantContext.TenantId;
         var isTenantAdmin = !isInstanceAdmin && await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
         var adminOrgIds = (await _adminContext.GetAdminOrganizationIdsAsync(cancellationToken) ?? []).ToHashSet();
+        var adminGroupIds = (await _adminContext.GetAdminGroupIdsAsync(cancellationToken) ?? []).ToHashSet();
 
         var userId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
-        return new AuthorityProfile(isInstanceAdmin, isTenantAdmin, tenantId, adminOrgIds, userId);
+        var eventCreateOrgIds = userId.HasValue
+            ? (await _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+                userId.Value,
+                PermissionCodes.EventCreate,
+                cancellationToken) ?? []).ToHashSet()
+            : [];
+        var eventCreateGroupIds = userId.HasValue
+            ? (await _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+                userId.Value,
+                PermissionCodes.EventCreate,
+                cancellationToken) ?? []).ToHashSet()
+            : [];
+        return new AuthorityProfile(
+            isInstanceAdmin,
+            isTenantAdmin,
+            tenantId,
+            adminOrgIds,
+            adminGroupIds,
+            eventCreateOrgIds,
+            eventCreateGroupIds,
+            userId);
     }
 
     private bool EvaluateWithProfile(
@@ -76,6 +101,12 @@ public partial class FallbackAuthorizationService
         string action,
         IDictionary<string, object>? resourceAttributes)
     {
+        if (!IsSupportedEventResourceAction(resourceKind, action))
+        {
+            LogDecision("deny", "unsupported_event_action", resourceKind, resourceId, action);
+            return false;
+        }
+
         if (profile.IsInstanceAdmin && !RequiresDirectEventAuthority(resourceKind, action))
         {
             LogDecision("allow", "is_instance_admin", resourceKind, resourceId, action);
@@ -122,8 +153,14 @@ public partial class FallbackAuthorizationService
                         : (IsTenantAdminForResourceTenant(profile, resourceKind, resourceId, resourceAttributes)
                             && (resourceKind != ResourceKinds.Event || IsTenantAdminEventAction(action)))
                             || IsOrgAdminFromProfile(profile, resourceAttributes, resourceId)
-                            || IsActorUserOwnerFromProfile(profile, resourceAttributes)
-                            || HasEventRolePermission(eventAuthority, resourceKind, resourceId, action, resourceAttributes)),
+                             || IsActorUserOwnerFromProfile(profile, resourceAttributes)
+                             || HasEventRolePermission(eventAuthority, resourceKind, resourceId, action, resourceAttributes)),
+            "islamuevent_event_organizer_claim" => EvaluateEventOrganizerClaimWithProfile(
+                profile,
+                eventAuthority,
+                resourceId,
+                action,
+                resourceAttributes),
             "islamuevent_event_registration" => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
                 && (action is "create" or "view"
                     || action == AuthorizationActions.Delete
@@ -159,6 +196,52 @@ public partial class FallbackAuthorizationService
         }
 
         return profile.IsTenantAdmin;
+    }
+
+    private static bool EvaluateEventOrganizerClaimWithProfile(
+        AuthorityProfile profile,
+        EventAuthoritySnapshot? eventAuthority,
+        string resourceId,
+        string action,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        if (!HasEventContextForProfile(
+                profile,
+                ResourceKinds.EventOrganizerClaim,
+                resourceId,
+                resourceAttributes))
+        {
+            return false;
+        }
+
+        if (action == AuthorizationActions.Events.ClaimOrganizer)
+        {
+            return !profile.IsInstanceAdmin && profile.UserId.HasValue;
+        }
+
+        if (action == AuthorizationActions.Events.WithdrawOrganizerClaim)
+        {
+            return !profile.IsInstanceAdmin && IsClaimantActorOwnerFromProfile(profile, resourceAttributes);
+        }
+
+        if (profile.IsTenantAdmin && IsTenantAdminEventAction(action))
+        {
+            return true;
+        }
+
+        if (action == AuthorizationActions.Events.ReviewOrganizerClaim)
+        {
+            return false;
+        }
+
+        return IsOrgAdminFromProfile(profile, resourceAttributes, resourceId)
+            || IsActorUserOwnerFromProfile(profile, resourceAttributes)
+            || HasEventRolePermission(
+                eventAuthority,
+                ResourceKinds.EventOrganizerClaim,
+                resourceId,
+                action,
+                resourceAttributes);
     }
 
     private static bool EvaluateUserWithProfile(AuthorityProfile profile, string resourceId, string action)
@@ -287,6 +370,23 @@ public partial class FallbackAuthorizationService
         return profile.UserId.HasValue
             && TryResolveGuidAttribute(resourceAttributes, "userId", out var ownerUserId)
             && ownerUserId == profile.UserId.Value;
+    }
+
+    private static bool IsClaimantActorOwnerFromProfile(
+        AuthorityProfile profile,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        if (!profile.UserId.HasValue)
+        {
+            return false;
+        }
+
+        return TryResolveGuidAttribute(resourceAttributes, "claimantUserId", out var claimantUserId)
+                && claimantUserId == profile.UserId.Value
+            || TryResolveGuidAttribute(resourceAttributes, "claimantOrganizationId", out var claimantOrganizationId)
+                && profile.EventCreateOrgIds.Contains(claimantOrganizationId)
+            || TryResolveGuidAttribute(resourceAttributes, "claimantGroupId", out var claimantGroupId)
+                && profile.EventCreateGroupIds.Contains(claimantGroupId);
     }
 
     private static bool IsAdminForOrgScope(

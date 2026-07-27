@@ -8,6 +8,7 @@ using Cerbos.Sdk.Response;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Settings;
 using Explore.Domain.Constants;
@@ -24,6 +25,8 @@ public class CerbosAuthorizationServiceTests
 {
     private readonly IAdminContext _adminContext;
     private readonly IMachinePrincipalAccessor _machinePrincipalAccessor;
+    private readonly IOrganizationMemberRepository _organizationMemberRepository;
+    private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<CerbosAuthorizationService> _logger;
@@ -34,6 +37,8 @@ public class CerbosAuthorizationServiceTests
     {
         _adminContext = Substitute.For<IAdminContext>();
         _machinePrincipalAccessor = Substitute.For<IMachinePrincipalAccessor>();
+        _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
         _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _tenantContext = Substitute.For<ITenantContext>();
         _logger = Substitute.For<ILogger<CerbosAuthorizationService>>();
@@ -166,13 +171,26 @@ public class CerbosAuthorizationServiceTests
         var userId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
+        var eventCreateOrganizationId = Guid.NewGuid();
+        var eventCreateGroupId = Guid.NewGuid();
         var eventAuthoritySnapshotService = Substitute.For<IEventAuthoritySnapshotService>();
 
         _adminContext.UserId.Returns(userId);
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
         _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminGroupIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
         _tenantContext.TenantId.Returns(tenantId);
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
+            .Returns([eventCreateOrganizationId]);
+        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
+            .Returns([eventCreateGroupId]);
 
         eventAuthoritySnapshotService.GetForUserAndEventsAsync(
                 tenantId,
@@ -217,6 +235,12 @@ public class CerbosAuthorizationServiceTests
         await Assert.That(capturedRequest).IsNotNull();
         await Assert.That(capturedRequest!.Principal.Attr.ContainsKey("eventAssignments")).IsTrue();
         await Assert.That(capturedRequest.Principal.Attr.ContainsKey("nowUtc")).IsTrue();
+        var eventCreateOrganizations = capturedRequest.Principal.Attr["eventCreateOrganizations"]
+            .ListValue.Values.Select(value => value.StringValue).ToArray();
+        var eventCreateGroups = capturedRequest.Principal.Attr["eventCreateGroups"]
+            .ListValue.Values.Select(value => value.StringValue).ToArray();
+        await Assert.That(eventCreateOrganizations).IsEquivalentTo([eventCreateOrganizationId.ToString()]);
+        await Assert.That(eventCreateGroups).IsEquivalentTo([eventCreateGroupId.ToString()]);
 
         var assignmentFields = capturedRequest.Principal.Attr["eventAssignments"]
             .StructValue.Fields[eventId.ToString()]
@@ -484,7 +508,9 @@ public class CerbosAuthorizationServiceTests
             new CerbosPrincipalBuilder(
                 _adminContext,
                 _machinePrincipalAccessor,
-                eventAuthoritySnapshotService ?? Substitute.For<IEventAuthoritySnapshotService>()),
+                eventAuthoritySnapshotService ?? Substitute.For<IEventAuthoritySnapshotService>(),
+                _organizationMemberRepository,
+                _groupMemberRepository),
             _adminContext,
             _machinePrincipalAccessor,
             _settingsResolver,

@@ -10,6 +10,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventCustomProperty;
 using Explore.Application.DTOs.EventDay;
+using Explore.Application.DTOs.EventOrganizerClaim;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
@@ -72,6 +73,12 @@ public static class ResourceDescriptors
 
     public static readonly ResourceDescriptor<EventDto> Event = new(
         ResourceKinds.Event,
+        dto => dto.Id.ToString(),
+        EventAttributes,
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<EventDto> EventOrganizerClaimForEvent = new(
+        ResourceKinds.EventOrganizerClaim,
         dto => dto.Id.ToString(),
         EventAttributes,
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
@@ -345,6 +352,18 @@ public static class ResourceDescriptors
             ["userId"] = dto.UserId.ToString(),
             ["tenantId"] = dto.TenantId.ToString()
         },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<EventPublicActionDto> EventPublicAction = new(
+        ResourceKinds.Event,
+        dto => dto.EventId.ToString(),
+        EventPublicActionAttributes,
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<EventOrganizerClaimDto> EventOrganizerClaim = new(
+        ResourceKinds.EventOrganizerClaim,
+        dto => dto.EventId.ToString(),
+        EventOrganizerClaimAttributes,
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
     public static readonly ResourceDescriptor<EventSessionAgendaItemDto> EventSessionAgendaItem = new(
@@ -695,6 +714,67 @@ public static class ResourceDescriptors
         AddIfPresent(attributes, "userId", dto.ActorUserId);
         AddIfPresent(attributes, "organizationId", dto.ActorOrganizationId);
         AddIfPresent(attributes, "groupId", dto.ActorGroupId);
+        return attributes;
+    }
+
+    private static Dictionary<string, object> EventPublicActionAttributes(EventPublicActionDto dto)
+    {
+        var attributes = EventChildAttributes(
+            dto.EventId,
+            dto.TenantId,
+            dto.EventActorId,
+            dto.EventActorUserId,
+            dto.EventActorOrganizationId,
+            dto.EventActorGroupId,
+            dto.EventProvenanceTypeId,
+            dto.EventProvenanceTypeCode,
+            dto.EventOrganizerActorId,
+            dto.EventSubmittedByUserId);
+        attributes["publicActionId"] = dto.Id.ToString();
+        return attributes;
+    }
+
+    private static Dictionary<string, object> EventOrganizerClaimAttributes(EventOrganizerClaimDto dto)
+    {
+        var attributes = EventChildAttributes(
+            dto.EventId,
+            dto.TenantId,
+            dto.EventActorId,
+            dto.EventActorUserId,
+            dto.EventActorOrganizationId,
+            dto.EventActorGroupId,
+            dto.EventProvenanceTypeId,
+            dto.EventProvenanceTypeCode,
+            dto.EventOrganizerActorId,
+            dto.EventSubmittedByUserId);
+        attributes["claimId"] = dto.Id.ToString();
+        attributes["claimantActorId"] = dto.ClaimantActorId.ToString();
+        AddIfPresent(attributes, "claimantUserId", dto.ClaimantActorUserId);
+        AddIfPresent(attributes, "claimantOrganizationId", dto.ClaimantActorOrganizationId);
+        AddIfPresent(attributes, "claimantGroupId", dto.ClaimantActorGroupId);
+        attributes["status"] = dto.StatusCode ?? dto.StatusId.ToString();
+        return attributes;
+    }
+
+    private static Dictionary<string, object> EventChildAttributes(
+        Guid eventId,
+        Guid tenantId,
+        Guid actorId,
+        Guid? userId,
+        Guid? organizationId,
+        Guid? groupId,
+        int provenanceTypeId,
+        string? provenanceTypeCode,
+        Guid? organizerActorId,
+        Guid? submittedByUserId)
+    {
+        var attributes = BaseEventAttributes(eventId, tenantId, actorId);
+        AddIfPresent(attributes, "userId", userId);
+        AddIfPresent(attributes, "organizationId", organizationId);
+        AddIfPresent(attributes, "groupId", groupId);
+        attributes["provenanceType"] = provenanceTypeCode ?? provenanceTypeId.ToString();
+        AddIfPresent(attributes, "organizerActorId", organizerActorId);
+        AddIfPresent(attributes, "submittedByUserId", submittedByUserId);
         return attributes;
     }
 

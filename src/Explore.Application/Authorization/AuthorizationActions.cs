@@ -77,6 +77,7 @@ public static class AuthorizationActions
         public const string Create = AuthorizationActions.Create;
         public const string Update = AuthorizationActions.Update;
         public const string Delete = AuthorizationActions.Delete;
+        public const string Publish = "publish";
         public const string ModerateLight = "moderate-light";
         public const string ModerateHeavy = "moderate-heavy";
         public const string Unmoderate = "unmoderate";
@@ -87,6 +88,7 @@ public static class AuthorizationActions
         public const string ManageFinance = "manage-finance";
         public const string ManagePublicActions = "manage-public-actions";
         public const string ClaimOrganizer = "claim-organizer";
+        public const string WithdrawOrganizerClaim = "withdraw-organizer-claim";
         public const string ReviewOrganizerClaim = "review-organizer-claim";
         public const string ViewOrganizerClaims = "view-organizer-claims";
         public const string ManageRegistrations = "manage-registrations";

@@ -5,6 +5,7 @@ using Explore.Application.Authentication;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Settings;
 using Explore.Domain.Constants;
@@ -35,7 +36,14 @@ public class FallbackAuthorizationMachineCallerTests
         _logger = Substitute.For<ILogger<FallbackAuthorizationService>>();
 
         _sut = new FallbackAuthorizationService(
-            _adminContext, _machinePrincipalAccessor, _eventAuthoritySnapshotService, _settingsResolver, _tenantContext, _logger);
+            _adminContext,
+            _machinePrincipalAccessor,
+            _eventAuthoritySnapshotService,
+            Substitute.For<IOrganizationMemberRepository>(),
+            Substitute.For<IGroupMemberRepository>(),
+            _settingsResolver,
+            _tenantContext,
+            _logger);
     }
 
     private void SetMachineContext(ExternalApiKeyOwnerType ownerType, Guid? tenantId, Guid ownerId, params string[] scopes)

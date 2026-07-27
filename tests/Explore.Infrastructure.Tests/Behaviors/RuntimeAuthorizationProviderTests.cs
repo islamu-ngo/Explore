@@ -75,7 +75,12 @@ public class RuntimeAuthorizationProviderTests
         var runtimeProvider = new RuntimeAuthorizationProvider(
             new CerbosAuthorizationService(
                 cerbosClient,
-                new CerbosPrincipalBuilder(adminContext, machinePrincipalAccessor, Substitute.For<IEventAuthoritySnapshotService>()),
+                new CerbosPrincipalBuilder(
+                    adminContext,
+                    machinePrincipalAccessor,
+                    Substitute.For<IEventAuthoritySnapshotService>(),
+                    Substitute.For<IOrganizationMemberRepository>(),
+                    Substitute.For<IGroupMemberRepository>()),
                 adminContext,
                 machinePrincipalAccessor,
                 settingsResolver,
@@ -87,6 +92,8 @@ public class RuntimeAuthorizationProviderTests
                 adminContext,
                 machinePrincipalAccessor,
                 Substitute.For<IEventAuthoritySnapshotService>(),
+                Substitute.For<IOrganizationMemberRepository>(),
+                Substitute.For<IGroupMemberRepository>(),
                 settingsResolver,
                 tenantContext,
                 Substitute.For<ILogger<FallbackAuthorizationService>>()),
@@ -711,13 +718,20 @@ public class RuntimeAuthorizationProviderTests
             adminContext,
             machinePrincipalAccessor,
             Substitute.For<IEventAuthoritySnapshotService>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            Substitute.For<IGroupMemberRepository>(),
             settingsResolver,
             tenantContext,
             Substitute.For<ILogger<FallbackAuthorizationService>>());
 
         var cerbosProvider = new CerbosAuthorizationService(
             cerbosClient,
-            new CerbosPrincipalBuilder(adminContext, machinePrincipalAccessor, Substitute.For<IEventAuthoritySnapshotService>()),
+            new CerbosPrincipalBuilder(
+                adminContext,
+                machinePrincipalAccessor,
+                Substitute.For<IEventAuthoritySnapshotService>(),
+                Substitute.For<IOrganizationMemberRepository>(),
+                Substitute.For<IGroupMemberRepository>()),
             adminContext,
             machinePrincipalAccessor,
             settingsResolver,

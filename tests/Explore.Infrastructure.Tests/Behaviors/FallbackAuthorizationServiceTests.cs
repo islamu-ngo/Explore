@@ -4,6 +4,7 @@
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Settings;
@@ -20,6 +21,8 @@ public class FallbackAuthorizationServiceTests
     private readonly IAdminContext _adminContext;
     private readonly IMachinePrincipalAccessor _machinePrincipalAccessor;
     private readonly IEventAuthoritySnapshotService _eventAuthoritySnapshotService;
+    private readonly IOrganizationMemberRepository _organizationMemberRepository;
+    private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<FallbackAuthorizationService> _logger;
@@ -67,6 +70,8 @@ public class FallbackAuthorizationServiceTests
         _adminContext = Substitute.For<IAdminContext>();
         _machinePrincipalAccessor = Substitute.For<IMachinePrincipalAccessor>();
         _eventAuthoritySnapshotService = Substitute.For<IEventAuthoritySnapshotService>();
+        _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
         _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _tenantContext = Substitute.For<ITenantContext>();
         _logger = Substitute.For<ILogger<FallbackAuthorizationService>>();
@@ -79,6 +84,8 @@ public class FallbackAuthorizationServiceTests
             _adminContext,
             _machinePrincipalAccessor,
             _eventAuthoritySnapshotService,
+            _organizationMemberRepository,
+            _groupMemberRepository,
             _settingsResolver,
             _tenantContext,
             _logger);
@@ -1978,6 +1985,350 @@ public class FallbackAuthorizationServiceTests
         await Assert.That(results[0]).IsTrue();
         await Assert.That(results[1]).IsFalse();
         await Assert.That(results[2]).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_EventFuturePhaseActions_DeniedEvenWithDirectOrganizationAuthority()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+        var attributes = CreateEventContextAttributes();
+        attributes["organizationId"] = TestOrgId;
+
+        foreach (var action in new[]
+        {
+            AuthorizationActions.Events.ManageRegistrations,
+            AuthorizationActions.Events.ManageTickets,
+            AuthorizationActions.Events.ManageAttendees
+        })
+        {
+            await Assert.That(await _service.IsAllowedAsync(
+                ResourceKinds.Event,
+                attributes["eventId"].ToString()!,
+                action,
+                attributes)).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task IsAllowed_EventUnknownAction_DeniedBeforeInstanceAdminWildcard()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var attributes = CreateEventContextAttributes();
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            attributes["eventId"].ToString()!,
+            "unsupported-action",
+            attributes);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_EventFuturePhaseActions_DeniedBeforeInstanceAdminWildcard()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        var attributes = CreateEventContextAttributes();
+        var resourceId = attributes["eventId"].ToString()!;
+        var checks = new List<AuthorizationCheck>
+        {
+            new(ResourceKinds.Event, resourceId, AuthorizationActions.View, attributes),
+            new(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageRegistrations, attributes),
+            new(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageTickets, attributes),
+            new(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageAttendees, attributes)
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results[0]).IsTrue();
+        await Assert.That(results[1]).IsFalse();
+        await Assert.That(results[2]).IsFalse();
+        await Assert.That(results[3]).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_OrganizerClaimUsesExplicitActionCatalog()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        var attributes = CreateEventContextAttributes();
+        attributes["claimId"] = Guid.NewGuid();
+        var resourceId = attributes["eventId"].ToString()!;
+
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.EventOrganizerClaim,
+            resourceId,
+            AuthorizationActions.Events.ReviewOrganizerClaim,
+            attributes)).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.EventOrganizerClaim,
+            resourceId,
+            AuthorizationActions.Events.WithdrawOrganizerClaim,
+            attributes)).IsFalse();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.EventOrganizerClaim,
+            resourceId,
+            AuthorizationActions.Events.ManageAttendees,
+            attributes)).IsFalse();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.EventOrganizerClaim,
+            resourceId,
+            AuthorizationActions.Events.ManagePublicActions,
+            attributes)).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_WithdrawOrganizerClaim_RequiresClaimantActorControl()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.UserId.Returns(TestUserId);
+        var attributes = CreateEventContextAttributes();
+        attributes["claimId"] = Guid.NewGuid();
+
+        attributes["claimantUserId"] = TestUserId;
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.EventOrganizerClaim,
+            attributes["claimId"].ToString()!,
+            AuthorizationActions.Events.WithdrawOrganizerClaim,
+            attributes)).IsTrue();
+
+        attributes.Remove("claimantUserId");
+        attributes["claimantOrganizationId"] = TestOrgId;
+        _organizationMemberRepository.HasPermissionInOrganization(
+                TestOrgId,
+                TestUserId,
+                PermissionCodes.EventCreate)
+            .Returns(true);
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.EventOrganizerClaim,
+            attributes["claimId"].ToString()!,
+            AuthorizationActions.Events.WithdrawOrganizerClaim,
+            attributes)).IsTrue();
+
+        attributes.Remove("claimantOrganizationId");
+        attributes["claimantGroupId"] = TestGroupId;
+        _groupMemberRepository.HasPermissionInGroup(
+                TestGroupId,
+                TestUserId,
+                PermissionCodes.EventCreate)
+            .Returns(true);
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.EventOrganizerClaim,
+            attributes["claimId"].ToString()!,
+            AuthorizationActions.Events.WithdrawOrganizerClaim,
+            attributes)).IsTrue();
+
+        _groupMemberRepository.HasPermissionInGroup(
+                TestGroupId,
+                TestUserId,
+                PermissionCodes.EventCreate)
+            .Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.EventOrganizerClaim,
+            attributes["claimId"].ToString()!,
+            AuthorizationActions.Events.WithdrawOrganizerClaim,
+            attributes)).IsFalse();
+
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        attributes.Remove("claimantGroupId");
+        attributes["claimantUserId"] = TestUserId;
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.EventOrganizerClaim,
+            attributes["claimId"].ToString()!,
+            AuthorizationActions.Events.WithdrawOrganizerClaim,
+            attributes)).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_WithdrawOrganizerClaim_DeniesEventCreateMemberForUnrelatedClaimantActor()
+    {
+        var unrelatedOrganizationId = Guid.NewGuid();
+        var unrelatedGroupId = Guid.NewGuid();
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.UserId.Returns(TestUserId);
+        _organizationMemberRepository.HasPermissionInOrganization(
+                unrelatedOrganizationId,
+                TestUserId,
+                PermissionCodes.EventCreate)
+            .Returns(true);
+        _groupMemberRepository.HasPermissionInGroup(
+                unrelatedGroupId,
+                TestUserId,
+                PermissionCodes.EventCreate)
+            .Returns(true);
+        var organizationClaim = CreateEventContextAttributes();
+        organizationClaim["claimantOrganizationId"] = TestOrgId;
+        var groupClaim = CreateEventContextAttributes();
+        groupClaim["claimantGroupId"] = TestGroupId;
+
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.EventOrganizerClaim,
+            Guid.NewGuid().ToString(),
+            AuthorizationActions.Events.WithdrawOrganizerClaim,
+            organizationClaim)).IsFalse();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.EventOrganizerClaim,
+            Guid.NewGuid().ToString(),
+            AuthorizationActions.Events.WithdrawOrganizerClaim,
+            groupClaim)).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_WithdrawOrganizerClaim_UsesClaimantOwnerProfileOnly()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.UserId.Returns(TestUserId);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminGroupIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+                TestUserId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
+            .Returns([TestOrgId]);
+        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+                TestUserId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
+            .Returns([TestGroupId]);
+        var personal = CreateEventContextAttributes();
+        personal["claimantUserId"] = TestUserId;
+        var organization = CreateEventContextAttributes();
+        organization["claimantOrganizationId"] = TestOrgId;
+        var group = CreateEventContextAttributes();
+        group["claimantGroupId"] = TestGroupId;
+        var unrelatedOrganization = CreateEventContextAttributes();
+        unrelatedOrganization["claimantOrganizationId"] = Guid.NewGuid();
+        var unrelatedGroup = CreateEventContextAttributes();
+        unrelatedGroup["claimantGroupId"] = Guid.NewGuid();
+
+        var results = await _service.IsAllowedBatchAsync(
+        [
+            new(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, personal),
+            new(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, organization),
+            new(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, group),
+            new(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, unrelatedOrganization),
+            new(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, unrelatedGroup)
+        ]);
+
+        await Assert.That(results[0]).IsTrue();
+        await Assert.That(results[1]).IsTrue();
+        await Assert.That(results[2]).IsTrue();
+        await Assert.That(results[3]).IsFalse();
+        await Assert.That(results[4]).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_EventRolePermissionsMatchPublicActionAndOrganizerClaimPolicy()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+        ConfigureEventAuthority(
+            userId,
+            eventId,
+            PermissionCodes.EventManagePublicActions,
+            PermissionCodes.EventViewOrganizerClaims);
+        var attributes = CreateEventContextAttributes(eventId);
+        attributes["claimId"] = Guid.NewGuid();
+
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            eventId.ToString(),
+            AuthorizationActions.Events.ManagePublicActions,
+            attributes)).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.EventOrganizerClaim,
+            eventId.ToString(),
+            AuthorizationActions.Events.ViewOrganizerClaims,
+            attributes)).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.EventOrganizerClaim,
+            eventId.ToString(),
+            AuthorizationActions.Events.ReviewOrganizerClaim,
+            attributes)).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_TenantAdminCanViewAndReviewOrganizerClaims()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        var attributes = CreateEventContextAttributes();
+        attributes["claimId"] = Guid.NewGuid();
+        var eventId = attributes["eventId"].ToString()!;
+        var checks = new[]
+        {
+            new AuthorizationCheck(ResourceKinds.EventOrganizerClaim, eventId, AuthorizationActions.Events.ViewOrganizerClaims, attributes),
+            new AuthorizationCheck(ResourceKinds.EventOrganizerClaim, eventId, AuthorizationActions.Events.ReviewOrganizerClaim, attributes)
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results[0]).IsTrue();
+        await Assert.That(results[1]).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_EventResourceDeniesOrganizerClaimActions()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        var attributes = CreateEventContextAttributes();
+        var resourceId = attributes["eventId"].ToString()!;
+
+        foreach (var action in new[]
+        {
+            AuthorizationActions.Events.ClaimOrganizer,
+            AuthorizationActions.Events.WithdrawOrganizerClaim,
+            AuthorizationActions.Events.ViewOrganizerClaims,
+            AuthorizationActions.Events.ReviewOrganizerClaim
+        })
+        {
+            await Assert.That(await _service.IsAllowedAsync(
+                ResourceKinds.Event,
+                resourceId,
+                action,
+                attributes)).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_MachineCallerDeniesOrganizerClaimsBeforeAdminWildcard()
+    {
+        _machinePrincipalAccessor.IsMachineCaller.Returns(true);
+        _machinePrincipalAccessor.Current.Returns(new Explore.Application.Authentication.ApiKeyPrincipalContext(
+            "instance-admin-key",
+            null,
+            Explore.Domain.Enums.ExternalApiKeyOwnerType.InstanceAdmin,
+            TestInstanceId,
+            [ExternalApiKeyScopes.AdminInstance]));
+        var attributes = CreateEventContextAttributes();
+        var resourceId = attributes["eventId"].ToString()!;
+        var checks = new[]
+        {
+            new AuthorizationCheck(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ClaimOrganizer, attributes),
+            new AuthorizationCheck(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.WithdrawOrganizerClaim, attributes),
+            new AuthorizationCheck(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ViewOrganizerClaims, attributes),
+            new AuthorizationCheck(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ReviewOrganizerClaim, attributes)
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        foreach (var result in results)
+        {
+            await Assert.That(result).IsFalse();
+        }
     }
 
     // === Unknown Resource Kind ===

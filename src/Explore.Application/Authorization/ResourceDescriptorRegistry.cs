@@ -12,6 +12,7 @@ using Explore.Application.DTOs.EmailDispatch;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventDay;
+using Explore.Application.DTOs.EventOrganizerClaim;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
@@ -128,6 +129,7 @@ public static class ResourceDescriptorRegistry
         // Event Registration
         [typeof(EventRegistrationDto)] = global::Explore.Application.Authorization.ResourceKinds.EventRegistration,
         [typeof(EventRegistrationListDto)] = global::Explore.Application.Authorization.ResourceKinds.EventRegistration,
+        [typeof(EventOrganizerClaimDto)] = global::Explore.Application.Authorization.ResourceKinds.EventOrganizerClaim,
 
         // Category
         [typeof(CategoryDto)] = global::Explore.Application.Authorization.ResourceKinds.Category,

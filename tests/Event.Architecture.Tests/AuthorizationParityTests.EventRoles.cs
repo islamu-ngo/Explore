@@ -5,6 +5,9 @@ namespace Event.Architecture.Tests;
 
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Explore.Application.Authorization;
+using Explore.Application.Features.EventOrganizerClaims.Requests.Commands;
+using Explore.Application.Features.EventOrganizerClaims.Requests.Queries;
 using Explore.Infrastructure.Services;
 
 public partial class AuthorizationParityTests
@@ -33,7 +36,8 @@ public partial class AuthorizationParityTests
         "islamuevent_event_day",
         "islamuevent_event_agenda_item",
         "islamuevent_event_session_agenda_item",
-        "islamuevent_event_registration"
+        "islamuevent_event_registration",
+        "islamuevent_event_organizer_claim"
     ];
 
     [Test]
@@ -182,5 +186,47 @@ public partial class AuthorizationParityTests
         await Assert.That(missing)
             .IsEmpty()
             .Because($"These event-family resource kinds are missing from FallbackAuthorizationService: [{string.Join(", ", missing)}]");
+    }
+
+    [Test]
+    [DisplayName("Event-bound organizer claim requests use the organizer-claim resource")]
+    public async Task EventBoundOrganizerClaimRequests_ShouldUse_OrganizerClaimResource()
+    {
+        var requestTypes = new[]
+        {
+            typeof(SubmitEventOrganizerClaimCommand),
+            typeof(WithdrawEventOrganizerClaimCommand),
+            typeof(ReviewEventOrganizerClaimCommand),
+            typeof(GetEventOrganizerClaimsRequest),
+            typeof(GetEventOrganizerClaimRequest)
+        };
+
+        foreach (var requestType in requestTypes)
+        {
+            var attribute = requestType.GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+                .Cast<AuthorizeResourceAttribute>()
+                .Single();
+            await Assert.That(attribute.Resource)
+                .IsEqualTo(ResourceKinds.EventOrganizerClaim)
+                .Because($"{requestType.Name} must authorize against the claim policy while its event metadata is enriched server-side.");
+        }
+
+        var withdrawAttribute = typeof(WithdrawEventOrganizerClaimCommand)
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+            .Cast<AuthorizeResourceAttribute>()
+            .Single();
+        await Assert.That(withdrawAttribute.Action)
+            .IsEqualTo(AuthorizationActions.Events.WithdrawOrganizerClaim);
+        var submitAttribute = typeof(SubmitEventOrganizerClaimCommand)
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+            .Cast<AuthorizeResourceAttribute>()
+            .Single();
+        await Assert.That(submitAttribute.Action)
+            .IsEqualTo(AuthorizationActions.Events.ClaimOrganizer);
+
+        await Assert.That(typeof(GetClaimantOrganizerClaimsRequest)
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true))
+            .IsEmpty()
+            .Because("Cross-event claimant listing remains handler-authorized by current claimant control.");
     }
 }

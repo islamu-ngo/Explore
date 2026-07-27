@@ -3,6 +3,7 @@
 
 using Explore.Application.Authorization;
 using Explore.Domain;
+using Explore.Domain.Constants;
 
 namespace Explore.Infrastructure.Services;
 
@@ -426,8 +427,19 @@ public partial class FallbackAuthorizationService
 
         if (action == AuthorizationActions.Events.ClaimOrganizer)
         {
-            return !await _adminContext.IsInstanceAdminAsync(cancellationToken)
+            return !_machinePrincipalAccessor.IsMachineCaller
+                && !await _adminContext.IsInstanceAdminAsync(cancellationToken)
                 && (_adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken)).HasValue;
+        }
+
+        if (action == AuthorizationActions.Events.WithdrawOrganizerClaim)
+        {
+            if (await _adminContext.IsInstanceAdminAsync(cancellationToken))
+            {
+                return false;
+            }
+
+            return await IsClaimantActorOwnerAsync(resourceAttributes, cancellationToken);
         }
 
         if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken)
@@ -504,6 +516,36 @@ public partial class FallbackAuthorizationService
 
         var currentUserId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
         return currentUserId == ownerUserId;
+    }
+
+    private async Task<bool> IsClaimantActorOwnerAsync(
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        var currentUserId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
+        if (!currentUserId.HasValue)
+        {
+            return false;
+        }
+
+        if (TryResolveGuidAttribute(resourceAttributes, "claimantUserId", out var claimantUserId))
+        {
+            return claimantUserId == currentUserId.Value;
+        }
+
+        if (TryResolveGuidAttribute(resourceAttributes, "claimantOrganizationId", out var claimantOrganizationId))
+        {
+            return await _organizationMemberRepository.HasPermissionInOrganization(
+                claimantOrganizationId,
+                currentUserId.Value,
+                PermissionCodes.EventCreate);
+        }
+
+        return TryResolveGuidAttribute(resourceAttributes, "claimantGroupId", out var claimantGroupId)
+            && await _groupMemberRepository.HasPermissionInGroup(
+                claimantGroupId,
+                currentUserId.Value,
+                PermissionCodes.EventCreate);
     }
 
     private async Task<bool> EvaluateEventRolePermissionAsync(

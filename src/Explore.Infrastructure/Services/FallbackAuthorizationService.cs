@@ -5,6 +5,7 @@ using System.Diagnostics;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Settings;
 using Microsoft.Extensions.Logging;
@@ -21,6 +22,8 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
     private readonly IAdminContext _adminContext;
     private readonly IMachinePrincipalAccessor _machinePrincipalAccessor;
     private readonly IEventAuthoritySnapshotService _eventAuthoritySnapshotService;
+    private readonly IOrganizationMemberRepository _organizationMemberRepository;
+    private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IHierarchicalSettingsResolver _resolver;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<FallbackAuthorizationService> _logger;
@@ -58,6 +61,8 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         IAdminContext adminContext,
         IMachinePrincipalAccessor machinePrincipalAccessor,
         IEventAuthoritySnapshotService eventAuthoritySnapshotService,
+        IOrganizationMemberRepository organizationMemberRepository,
+        IGroupMemberRepository groupMemberRepository,
         IHierarchicalSettingsResolver resolver,
         ITenantContext tenantContext,
         ILogger<FallbackAuthorizationService> logger)
@@ -65,6 +70,8 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         _adminContext = adminContext;
         _machinePrincipalAccessor = machinePrincipalAccessor;
         _eventAuthoritySnapshotService = eventAuthoritySnapshotService;
+        _organizationMemberRepository = organizationMemberRepository;
+        _groupMemberRepository = groupMemberRepository;
         _resolver = resolver;
         _tenantContext = tenantContext;
         _logger = logger;
@@ -77,6 +84,12 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         IDictionary<string, object>? resourceAttributes = null,
         CancellationToken cancellationToken = default)
     {
+        if (!IsSupportedEventResourceAction(resourceKind, action))
+        {
+            LogDecision("deny", "unsupported_event_action", resourceKind, resourceId, action);
+            return false;
+        }
+
         var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(cancellationToken);
         if (isInstanceAdmin && !RequiresDirectEventAuthority(resourceKind, action))
         {
@@ -294,20 +307,45 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         resourceKind is ResourceKinds.Event or ResourceKinds.EventOrganizerClaim &&
         action is AuthorizationActions.Update
             or AuthorizationActions.Delete
+            or AuthorizationActions.Events.Publish
             or AuthorizationActions.Events.ManageTeam
             or AuthorizationActions.Events.ManageOwner
             or AuthorizationActions.Events.TransferOwnership
             or AuthorizationActions.Events.ManageFinance
             or AuthorizationActions.Events.ManagePublicActions
             or AuthorizationActions.Events.ClaimOrganizer
+            or AuthorizationActions.Events.WithdrawOrganizerClaim
             or AuthorizationActions.Events.ViewOrganizerClaims
             or AuthorizationActions.Events.ReviewOrganizerClaim;
 
     private static bool IsOrganizerClaimAction(string action) =>
-        action is AuthorizationActions.Events.ManagePublicActions
-            or AuthorizationActions.Events.ClaimOrganizer
+        action is AuthorizationActions.Events.ClaimOrganizer
+            or AuthorizationActions.Events.WithdrawOrganizerClaim
             or AuthorizationActions.Events.ViewOrganizerClaims
             or AuthorizationActions.Events.ReviewOrganizerClaim;
+
+    private static bool IsSupportedEventResourceAction(string resourceKind, string action) => resourceKind switch
+    {
+        ResourceKinds.Event => IsEventAction(action),
+        ResourceKinds.EventOrganizerClaim => IsOrganizerClaimAction(action),
+        _ => true
+    };
+
+    private static bool IsEventAction(string action) =>
+        action is AuthorizationActions.View
+            or AuthorizationActions.Create
+            or AuthorizationActions.Update
+            or AuthorizationActions.Delete
+            or AuthorizationActions.Events.Publish
+            or AuthorizationActions.Events.ViewManagement
+            or AuthorizationActions.Events.ModerateLight
+            or AuthorizationActions.Events.ModerateHeavy
+            or AuthorizationActions.Events.Unmoderate
+            or AuthorizationActions.Events.ManageTeam
+            or AuthorizationActions.Events.ManageOwner
+            or AuthorizationActions.Events.TransferOwnership
+            or AuthorizationActions.Events.ManageFinance
+            or AuthorizationActions.Events.ManagePublicActions;
 
     private static bool IsTenantAdminEventAction(string action) =>
         action is AuthorizationActions.View
@@ -328,9 +366,11 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
     {
         const string productNamespacePrefix = "islamuevent_";
 
-        var permissionResourceKind = resourceKind.StartsWith(productNamespacePrefix, StringComparison.Ordinal)
-            ? resourceKind[productNamespacePrefix.Length..]
-            : resourceKind;
+        var permissionResourceKind = resourceKind == ResourceKinds.EventOrganizerClaim
+            ? "event"
+            : resourceKind.StartsWith(productNamespacePrefix, StringComparison.Ordinal)
+                ? resourceKind[productNamespacePrefix.Length..]
+                : resourceKind;
         var permissionAction = resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ViewManagement
             ? AuthorizationActions.View
             : action;

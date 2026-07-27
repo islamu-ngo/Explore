@@ -4,7 +4,9 @@
 using Cerbos.Sdk.Builder;
 using Explore.Application.Authentication;
 using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 
 namespace Explore.Infrastructure.Services;
@@ -27,15 +29,21 @@ public class CerbosPrincipalBuilder
     private readonly IAdminContext _adminContext;
     private readonly IMachinePrincipalAccessor _machinePrincipalAccessor;
     private readonly IEventAuthoritySnapshotService _eventAuthoritySnapshotService;
+    private readonly IOrganizationMemberRepository _organizationMemberRepository;
+    private readonly IGroupMemberRepository _groupMemberRepository;
 
     public CerbosPrincipalBuilder(
         IAdminContext adminContext,
         IMachinePrincipalAccessor machinePrincipalAccessor,
-        IEventAuthoritySnapshotService eventAuthoritySnapshotService)
+        IEventAuthoritySnapshotService eventAuthoritySnapshotService,
+        IOrganizationMemberRepository organizationMemberRepository,
+        IGroupMemberRepository groupMemberRepository)
     {
         _adminContext = adminContext;
         _machinePrincipalAccessor = machinePrincipalAccessor;
         _eventAuthoritySnapshotService = eventAuthoritySnapshotService;
+        _organizationMemberRepository = organizationMemberRepository;
+        _groupMemberRepository = groupMemberRepository;
     }
 
     /// <summary>
@@ -70,6 +78,14 @@ public class CerbosPrincipalBuilder
         var adminTenantIds = await _adminContext.GetAdminTenantIdsAsync(userId, cancellationToken);
         var adminOrgIds = await _adminContext.GetAdminOrganizationIdsAsync(userId, cancellationToken);
         var adminGroupIds = await _adminContext.GetAdminGroupIdsAsync(userId, cancellationToken);
+        var eventCreateOrganizationIds = await _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+            userId,
+            PermissionCodes.EventCreate,
+            cancellationToken) ?? [];
+        var eventCreateGroupIds = await _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+            userId,
+            PermissionCodes.EventCreate,
+            cancellationToken) ?? [];
 
         var tenantMemberships = adminTenantIds
             .ToDictionary(id => id.ToString(), _ => AttributeValue.StringValue("admin"));
@@ -84,7 +100,11 @@ public class CerbosPrincipalBuilder
             .WithAttribute("isInstanceAdmin", AttributeValue.BoolValue(isInstanceAdmin))
             .WithAttribute("tenantMemberships", AttributeValue.MapValue(tenantMemberships))
             .WithAttribute("orgMemberships", AttributeValue.MapValue(orgMemberships))
-            .WithAttribute("groupMemberships", AttributeValue.MapValue(groupMemberships));
+            .WithAttribute("groupMemberships", AttributeValue.MapValue(groupMemberships))
+            .WithAttribute("eventCreateOrganizations", AttributeValue.ListValue(
+                eventCreateOrganizationIds.Select(id => AttributeValue.StringValue(id.ToString())).ToArray()))
+            .WithAttribute("eventCreateGroups", AttributeValue.ListValue(
+                eventCreateGroupIds.Select(id => AttributeValue.StringValue(id.ToString())).ToArray()));
     }
 
     /// <summary>
@@ -113,6 +133,8 @@ public class CerbosPrincipalBuilder
             .WithAttribute("tenantMemberships", AttributeValue.MapValue(tenantMemberships))
             .WithAttribute("orgMemberships", AttributeValue.MapValue(orgMemberships))
             .WithAttribute("groupMemberships", AttributeValue.MapValue(groupMemberships))
+            .WithAttribute("eventCreateOrganizations", AttributeValue.ListValue([]))
+            .WithAttribute("eventCreateGroups", AttributeValue.ListValue([]))
             .WithAttribute("is_machine", AttributeValue.BoolValue(true))
             .WithAttribute("api_key_id", AttributeValue.StringValue(machineContext.KeyId))
             .WithAttribute("owner_type", AttributeValue.StringValue(machineContext.OwnerType.ToString().ToLowerInvariant()))

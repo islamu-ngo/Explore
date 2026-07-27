@@ -1,8 +1,9 @@
-// ABOUTME: Domain entity representing an actor in the system.
-// An actor can be either a User or an Organization and is the entity that performs actions.
+// ABOUTME: Global Actor identity with exactly one concrete User, Organization, Group, external, or service owner.
+// ABOUTME: Enforces verified external promotion and evidence-preserving merged-source retirement transitions.
 
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
+using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
@@ -84,4 +85,140 @@ public class Actor : IAuditableEntity, ISoftDeletable, IConcurrencyAware
     public Guid? DeletedBy { get; set; }
     public Guid ConcurrencyStamp { get; set; }
 
+    public void PromoteToOrganization(
+        Organization organization,
+        ActorType organizationActorType,
+        DateTime when,
+        Guid by)
+    {
+        ArgumentNullException.ThrowIfNull(organization);
+        ValidateTargetOwner(organization.Id, organization.IsDeleted, organization.Actor, nameof(organization));
+        ValidateTargetActorType(organizationActorType, ActorTypeEnum.Organization, nameof(organizationActorType));
+        ExternalActorSubject externalSubject = RequireActiveExternalUnclassifiedSource();
+        ValidateTransitionAudit(by);
+
+        externalSubject.Retire(when, by);
+        externalSubject.Actor = null;
+        ExternalActorSubjectId = null;
+        ExternalActorSubject = null;
+        OrganizationId = organization.Id;
+        Organization = organization;
+        organization.Actor = this;
+        ActorTypeId = organizationActorType.Id;
+        ActorType = organizationActorType;
+        MarkUpdated(when, by);
+    }
+
+    public void PromoteToGroup(
+        Group group,
+        ActorType groupActorType,
+        DateTime when,
+        Guid by)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        ValidateTargetOwner(group.Id, group.IsDeleted, group.Actor, nameof(group));
+        ValidateTargetActorType(groupActorType, ActorTypeEnum.Group, nameof(groupActorType));
+        ExternalActorSubject externalSubject = RequireActiveExternalUnclassifiedSource();
+        ValidateTransitionAudit(by);
+
+        externalSubject.Retire(when, by);
+        externalSubject.Actor = null;
+        ExternalActorSubjectId = null;
+        ExternalActorSubject = null;
+        GroupId = group.Id;
+        Group = group;
+        group.Actor = this;
+        ActorTypeId = groupActorType.Id;
+        ActorType = groupActorType;
+        MarkUpdated(when, by);
+    }
+
+    public void RetireAsMergedSource(DateTime when, Guid by)
+    {
+        RequireActiveExternalUnclassifiedSource();
+        ValidateTransitionAudit(by);
+
+        IsDeleted = true;
+        DeletedAt = when;
+        DeletedBy = by;
+        MarkUpdated(when, by);
+    }
+
+    private ExternalActorSubject RequireActiveExternalUnclassifiedSource()
+    {
+        if (IsDeleted || IsSuspended)
+        {
+            throw new InvalidOperationException("Only an active Actor can transition from an external subject.");
+        }
+
+        if (ActorTypeId != (int)ActorTypeEnum.ExternalUnclassified)
+        {
+            throw new InvalidOperationException("Only an ExternalUnclassified Actor can transition from an external subject.");
+        }
+
+        if (UserId is not null || User is not null
+            || OrganizationId is not null || Organization is not null
+            || GroupId is not null || Group is not null
+            || ServicePrincipalId is not null || ServicePrincipal is not null)
+        {
+            throw new InvalidOperationException("The Actor must be owned only by an external Actor subject.");
+        }
+
+        if (ExternalActorSubjectId is not Guid externalSubjectId
+            || externalSubjectId == Guid.Empty
+            || ExternalActorSubject is null
+            || ExternalActorSubject.Id != externalSubjectId
+            || ExternalActorSubject.IsDeleted
+            || ExternalActorSubject.Actor is not null && !ReferenceEquals(ExternalActorSubject.Actor, this))
+        {
+            throw new InvalidOperationException("The Actor must have one active matching external Actor subject owner.");
+        }
+
+        return ExternalActorSubject;
+    }
+
+    private void ValidateTargetOwner(Guid ownerId, bool ownerIsDeleted, Actor? existingActor, string parameterName)
+    {
+        if (ownerId == Guid.Empty)
+        {
+            throw new ArgumentException("The promoted owner must have an ID.", parameterName);
+        }
+
+        if (ownerIsDeleted)
+        {
+            throw new InvalidOperationException("The promoted owner must be active.");
+        }
+
+        if (existingActor is not null && !ReferenceEquals(existingActor, this))
+        {
+            throw new InvalidOperationException("The promoted owner already belongs to another Actor.");
+        }
+    }
+
+    private static void ValidateTargetActorType(
+        ActorType actorType,
+        ActorTypeEnum expectedType,
+        string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(actorType, parameterName);
+        if (actorType.Id != (int)expectedType)
+        {
+            throw new ArgumentException($"The Actor type must be {expectedType}.", parameterName);
+        }
+    }
+
+    private static void ValidateTransitionAudit(Guid by)
+    {
+        if (by == Guid.Empty)
+        {
+            throw new ArgumentException("A transitioning user is required.", nameof(by));
+        }
+    }
+
+    private void MarkUpdated(DateTime when, Guid by)
+    {
+        UpdatedAt = when;
+        UpdatedBy = by;
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
 }

@@ -109,6 +109,7 @@ public static class InfrastructureServicesRegistration
         // Legacy S3-compatible object storage service. New local-first flows use IFileStorageProvider.
         services.AddScoped<IS3ConfigResolver, S3ConfigResolver>();
         services.AddSingleton<IS3ClientFactory, S3ClientFactory>();
+        services.AddScoped<IS3PreflightVerifier, S3PreflightVerifier>();
         services.AddScoped<IObjectStorageService, ObjectStorageService>();
         services.AddOptions<LocalFileStorageOptions>()
             .Bind(configuration.GetSection(LocalFileStorageOptions.SectionName));

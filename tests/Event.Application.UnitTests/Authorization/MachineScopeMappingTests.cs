@@ -27,6 +27,27 @@ public class MachineScopeMappingTests
     }
 
     [Test]
+    public async Task ScopesPermit_WithAdminInstanceScope_DeniesAllOrganizerClaimActions()
+    {
+        var scopes = new[] { ExternalApiKeyScopes.AdminInstance };
+
+        foreach (var action in new[]
+        {
+            AuthorizationActions.Events.ClaimOrganizer,
+            AuthorizationActions.Events.WithdrawOrganizerClaim,
+            AuthorizationActions.Events.ManagePublicActions,
+            AuthorizationActions.Events.ViewOrganizerClaims,
+            AuthorizationActions.Events.ReviewOrganizerClaim
+        })
+        {
+            await Assert.That(MachineScopeMapping.ScopesPermit(
+                scopes,
+                ResourceKinds.EventOrganizerClaim,
+                action)).IsFalse();
+        }
+    }
+
+    [Test]
     public async Task ScopesPermit_WithEventsReadOnly_AllowsEventReadButDeniesWrite()
     {
         var scopes = new[] { ExternalApiKeyScopes.EventsRead };

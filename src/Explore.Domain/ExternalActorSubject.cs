@@ -19,4 +19,24 @@ public class ExternalActorSubject : IAuditableEntity, ISoftDeletable, IConcurren
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
     public Guid ConcurrencyStamp { get; set; }
+
+    public void Retire(DateTime when, Guid by)
+    {
+        if (IsDeleted)
+        {
+            throw new InvalidOperationException("The external Actor subject is already retired.");
+        }
+
+        if (by == Guid.Empty)
+        {
+            throw new ArgumentException("A retiring user is required.", nameof(by));
+        }
+
+        IsDeleted = true;
+        DeletedAt = when;
+        DeletedBy = by;
+        UpdatedAt = when;
+        UpdatedBy = by;
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
 }
