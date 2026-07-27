@@ -46,19 +46,26 @@
                     </MudAlert>
                 }
 
-                <MudSelect T="string"
-                           Label="Reason"
-                           Variant="Variant.Outlined"
-                           Required="true"
-                           Disabled="_isSubmitting"
-                           @bind-Value="_selectedReasonCode">
-                    @foreach (var option in ReasonOptions)
-                    {
-                        <MudSelectItem T="string" Value="@option.ReasonCode">
-                            @option.ReasonName
-                        </MudSelectItem>
-                    }
-                </MudSelect>
+                @if (string.IsNullOrWhiteSpace(FixedSubcategoryCode))
+                {
+                    <MudSelect T="string"
+                               Label="Reason"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               Disabled="_isSubmitting"
+                               @bind-Value="_selectedReasonCode">
+                        @foreach (var option in ReasonOptions)
+                        {
+                            <MudSelectItem T="string" Value="@option.ReasonCode">
+                                @option.ReasonName
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else if (FixedIntentLabel is not null)
+                {
+                    <MudText Typo="Typo.subtitle2">@FixedIntentLabel</MudText>
+                }
 
                 @if (SelectedReason is not null && !string.IsNullOrWhiteSpace(SelectedReason.Description))
                 {

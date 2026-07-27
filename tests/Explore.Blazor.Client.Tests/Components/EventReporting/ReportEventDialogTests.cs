@@ -118,15 +118,40 @@ public sealed class ReportEventDialogTests : IDisposable
         await announcer.DidNotReceive().AnnounceAssertiveAsync(Arg.Any<string>());
     }
 
+    [Test]
+    [Arguments("event_correction_suggestion", "Suggest a correction")]
+    [Arguments("unsafe_external_link", "Report unsafe link")]
+    public async Task Submit_WithFixedIntent_UsesStableReasonAndSubcategory(string subcategoryCode, string reasonLabel)
+    {
+        var eventId = Guid.NewGuid();
+        var service = RegisterReportingService(eventId, "other", reasonLabel);
+        SubmitEventReportDto? capturedRequest = null;
+        service.SubmitAsync(Arg.Do<SubmitEventReportDto>(request => capturedRequest = request), Arg.Any<CancellationToken>())
+            .Returns(EventReportSubmissionResult.Failed("Keep the dialog open for inspection."));
+
+        var cut = RenderDialog(eventId, subcategoryCode);
+        cut.WaitForState(() => !GetPrivateField<bool>(cut.Instance, "_isLoadingOptions"), TimeSpan.FromSeconds(3));
+        SetPrivateField(cut.Instance, "_reporterText", "Correct this community listing.");
+
+        await InvokePrivateTaskAsync(cut.Instance, "SubmitAsync");
+
+        await Assert.That(cut.Markup).Contains(reasonLabel);
+        await Assert.That(cut.FindAll(".mud-select")).IsEmpty();
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.ReasonCode).IsEqualTo("other");
+        await Assert.That(capturedRequest.SubcategoryCode).IsEqualTo(subcategoryCode);
+    }
+
     public void Dispose() => _ctx.Dispose();
 
-    private IRenderedComponent<ReportEventDialog> RenderDialog(Guid eventId)
+    private IRenderedComponent<ReportEventDialog> RenderDialog(Guid eventId, string? fixedReasonCode = null)
     {
         _dialogProvider = _ctx.Render<MudDialogProvider>();
         var parameters = new DialogParameters<ReportEventDialog>
         {
             { component => component.EventId, eventId },
-            { component => component.EventTitle, "Community Program" }
+            { component => component.EventTitle, "Community Program" },
+            { component => component.FixedSubcategoryCode, fixedReasonCode }
         };
         var dialogService = _ctx.Services.GetRequiredService<IDialogService>();
         _ = dialogService.ShowAsync<ReportEventDialog>("Report event", parameters);
@@ -136,7 +161,10 @@ public sealed class ReportEventDialogTests : IDisposable
         return _dialogProvider.FindComponent<ReportEventDialog>();
     }
 
-    private IEventReportingService RegisterReportingService(Guid eventId)
+    private IEventReportingService RegisterReportingService(
+        Guid eventId,
+        string reasonCode = "spam",
+        string reasonName = "Spam")
     {
         var service = Substitute.For<IEventReportingService>();
         service.GetOptionsAsync(eventId, Arg.Any<CancellationToken>())
@@ -150,8 +178,8 @@ public sealed class ReportEventDialogTests : IDisposable
                     new ReasonOptions2
                     {
                         ReasonId = 1,
-                        ReasonCode = "spam",
-                        ReasonName = "Spam",
+                        ReasonCode = reasonCode,
+                        ReasonName = reasonName,
                         Description = "Misleading, repetitive, or promotional content."
                     }
                 ]

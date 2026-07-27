@@ -19,6 +19,7 @@ public partial class ReportEventDialog : ComponentBase
 
     [Parameter] public Guid EventId { get; set; }
     [Parameter] public string? EventTitle { get; set; }
+    [Parameter] public string? FixedSubcategoryCode { get; set; }
 
     private HalResourceOfEventReportOptionsDto? _options;
     private string? _selectedReasonCode;
@@ -33,6 +34,13 @@ public partial class ReportEventDialog : ComponentBase
 
     private ReasonOptions2? SelectedReason =>
         ReasonOptions.FirstOrDefault(option => string.Equals(option.ReasonCode, _selectedReasonCode, StringComparison.Ordinal));
+
+    private string? FixedIntentLabel => FixedSubcategoryCode switch
+    {
+        "event_correction_suggestion" => "Suggest a correction",
+        "unsafe_external_link" => "Report unsafe link",
+        _ => null
+    };
 
     private int MaxReporterTextLength => Math.Max(1, _options?.MaxReporterTextLength ?? 2_000);
     private int ReporterTextLength => _reporterText?.Length ?? 0;
@@ -53,7 +61,9 @@ public partial class ReportEventDialog : ComponentBase
     protected override async Task OnInitializedAsync()
     {
         _options = await EventReportingService.GetOptionsAsync(EventId);
-        _selectedReasonCode = ReasonOptions.FirstOrDefault()?.ReasonCode;
+        _selectedReasonCode = string.IsNullOrWhiteSpace(FixedSubcategoryCode)
+            ? ReasonOptions.FirstOrDefault()?.ReasonCode
+            : ReasonOptions.FirstOrDefault(option => string.Equals(option.ReasonCode, "other", StringComparison.Ordinal))?.ReasonCode;
         _isLoadingOptions = false;
     }
 
@@ -93,6 +103,7 @@ public partial class ReportEventDialog : ComponentBase
         {
             EventId = EventId,
             ReasonCode = _selectedReasonCode,
+            SubcategoryCode = FixedSubcategoryCode,
             ReporterText = _reporterText!.Trim(),
             ReportCaseUpdatesConsent = _reportCaseUpdatesConsent,
             ReportFollowUpContactConsent = _reportFollowUpContactConsent,
