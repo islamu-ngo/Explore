@@ -136,9 +136,9 @@ public class NotificationController : ControllerBase
         return Ok(resource);
     }
 
-    [HttpPut("preferences/me", Name = Hateoas.RouteNames.UpdateCurrentUserNotificationPreferences)]
+    [HttpPatch("preferences/me", Name = Hateoas.RouteNames.UpdateCurrentUserNotificationPreferences)]
     [EndpointSummary("Update Current User Notification Preferences")]
-    [EndpointDescription("Saves editable notification preference cells for the authenticated user. Required or locked cells are rejected.")]
+    [EndpointDescription("Patches supplied notification preference cells for the authenticated user. Omitted cells are preserved; required or locked cells are rejected atomically.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]

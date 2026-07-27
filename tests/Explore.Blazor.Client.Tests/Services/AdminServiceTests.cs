@@ -529,18 +529,20 @@ public class AdminServiceTests
     }
 
     [Test]
-    public async Task UpdateTagAsync_ReturnsFalse_WhenIdIsNull()
+    public async Task UpdateTagAsync_ReturnsFalse_WhenApiFails()
     {
         // Arrange
-        var dto = new UpdateTagDto { Id = null, FullName = "No ID Tag" };
+        var id = Guid.NewGuid();
+        var dto = new UpdateTagDto { FullName = new() { Value = "Updated Tag" } };
+        _apiClient.UpdateTagAsync(Arg.Any<Guid>(), Arg.Any<UpdateTagDto>())
+            .ThrowsAsync(new ApiException("Bad Request", 400, "validation error", null, null));
 
         // Act
-        var result = await _service.UpdateTagAsync(dto);
+        var result = await _service.UpdateTagAsync(id, dto);
 
         // Assert
         await Assert.That(result).IsFalse();
-        await _apiClient.DidNotReceive().UpdateTagAsync(
-            Arg.Any<Guid>(), Arg.Any<UpdateTagDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).UpdateTagAsync(id, dto);
     }
 
     [Test]

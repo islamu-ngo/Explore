@@ -10,6 +10,8 @@ using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
+using Explore.API.Hateoas.Policies;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.Features.Notifications.Requests.Commands;
 using Explore.Application.Features.Notifications.Requests.Queries;
@@ -31,6 +33,32 @@ namespace Event.Api.IntegrationTests.Features;
 
 public sealed class NotificationControllerTests
 {
+    [Test]
+    [Arguments("organization", ResourceKinds.Organization)]
+    [Arguments("group", ResourceKinds.Group)]
+    public async Task ScopedPreferenceMutationLinksRequireUpdatePermission(
+        string scope,
+        string expectedResourceKind)
+    {
+        var resourceId = Guid.NewGuid();
+        var policy = new NotificationPreferenceMatrixLinkPolicy();
+        var matrix = new NotificationPreferenceMatrixDto
+        {
+            Scope = scope,
+            OrganizationId = scope == "organization" ? resourceId : null,
+            GroupId = scope == "group" ? resourceId : null
+        };
+
+        var links = policy.GetLinks(matrix, user: null).ToArray();
+
+        foreach (var link in links.Where(link => link.Rel is "save" or "set-mute"))
+        {
+            await Assert.That(link.PermissionResourceKind).IsEqualTo(expectedResourceKind);
+            await Assert.That(link.PermissionAction).IsEqualTo(AuthorizationActions.Update);
+            await Assert.That(link.PermissionResourceId).IsEqualTo(resourceId.ToString());
+        }
+    }
+
     [Test]
     public async Task Archive_WhenNotificationMissing_ReturnsNotFoundProblemDetails()
     {
@@ -130,6 +158,7 @@ public sealed class NotificationControllerTests
         var links = root.GetProperty("_links");
         await Assert.That(links.TryGetProperty("self", out _)).IsTrue();
         await Assert.That(links.TryGetProperty("save", out _)).IsTrue();
+        await Assert.That(links.GetProperty("save").GetProperty("method").GetString()).IsEqualTo(HttpMethods.Patch);
         await Assert.That(links.TryGetProperty("set-mute", out _)).IsTrue();
         await Assert.That(links.TryGetProperty("subscribe-web-push", out _)).IsTrue();
 
@@ -147,7 +176,7 @@ public sealed class NotificationControllerTests
         });
         using var factory = CreateFactoryWithMediator(mediator);
         using var client = factory.CreateClient();
-        using var request = CreateAuthenticatedRequest(HttpMethod.Put, "/api/notification/preferences/me");
+        using var request = CreateAuthenticatedRequest(HttpMethod.Patch, "/api/notification/preferences/me");
         request.Content = JsonContent.Create(new UpdateNotificationPreferenceMatrixDto
         {
             Cells =
@@ -169,7 +198,7 @@ public sealed class NotificationControllerTests
             "Notification preference validation failed");
         var command = mediator.LastRequest as UpdateCurrentUserNotificationPreferenceMatrixCommand;
         await Assert.That(command).IsNotNull();
-        await Assert.That(command!.Cells.Count).IsEqualTo(1);
+        await Assert.That(command!.Cells!.Count).IsEqualTo(1);
     }
 
     [Test]

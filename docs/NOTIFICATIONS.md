@@ -6,7 +6,7 @@ ABOUTME: Separates durable in-app notifications, browser Web Push refresh delive
 > **Audience:** Admins | Integrators | Contributors
 > **Status:** Implemented
 > **Owner:** Product/Admin
-> **Last Verified:** 2026-07-20
+> **Last Verified:** 2026-07-27
 > **Source Anchors:** `Explore.Application/Features/Notifications/`, `Explore.Application/Features/EventReporting/`, `Explore.Application/Services/EventPublishedNotificationFanoutService.cs`, `Explore.Application/Services/EventModerationNotificationFanoutService.cs`, `Explore.Application/Services/EventModerationOutboxMessageFactory.cs`, `Explore.Application/Services/NotificationRefreshStreamService.cs`, `Explore.Application/Features/Events/Handlers/Commands/PublishEventCommandHandler.cs`, `Explore.Application/Features/Events/Handlers/Commands/ModerateEventCommandHandler.cs`, `Explore.Application/Features/Events/Handlers/Commands/HeavyRedactEventCommandHandler.cs`, `Explore.Application/Features/EventReporting/Handlers/Commands/ExecuteReportDecisionCommandHandler.cs`, `Explore.API/Controllers/NotificationController.cs`, `Explore.API/Controllers/ActorSubscriptionController.cs`, `Explore.Blazor.Client/Services/Interop/NotificationRefreshStreamClient.cs`, `Explore.Blazor.Client/Layout/NotificationBell.razor.cs`, `Explore.Blazor.Client/Helpers/NotificationNavigationHelper.cs`, `Explore.Blazor.Client/Pages/Notifications/Notifications.razor`, `docs/EMAIL_NOTIFICATIONS.md`
 
 Notifications are authenticated, user-owned, tenant-scoped in-app records. They power the notification bell, notification panel, and full inbox page. Event-published actor-subscription fanout and event-moderation attendee fanout are implemented through the transactional outbox and create durable in-app `Notification` rows. The SSE stream is a one-way refresh hint for unread count/inbox state; it does not replace durable notification rows, list/detail APIs, SMTP email delivery, push delivery, or external delivery receipts.
@@ -54,20 +54,20 @@ All notification endpoints require an authenticated user. Handler and repository
 | Snooze or unsnooze | `PATCH /api/notification/{id}/snooze?snoozedUntil=...` |
 | Soft delete | `DELETE /api/notification/{id}` |
 | Current-user preference matrix | `GET /api/notification/preferences/me` |
-| Save current-user preferences | `PUT /api/notification/preferences/me` |
+| Patch current-user preferences | `PATCH /api/notification/preferences/me` |
 | Set current-user mute | `PUT /api/notification/preferences/me/mute` |
 | Get public Web Push configuration | `GET /api/notification/web-push/config` |
 | Get current browser subscription status | `GET /api/notification/web-push/subscription?deviceIdentifier=...` |
 | Subscribe current browser | `POST /api/notification/web-push/subscriptions` |
 | Unsubscribe current browser | `DELETE /api/notification/web-push/subscriptions/{subscriptionId}` |
-| Organization preference matrix | `GET|PUT /api/organization/{id}/notification-preferences` and `PUT /api/organization/{id}/notification-preferences/mute` |
-| Group preference matrix | `GET|PUT /api/group/{id}/notification-preferences` and `PUT /api/group/{id}/notification-preferences/mute` |
+| Organization preference matrix | `GET|PATCH /api/organization/{id}/notification-preferences` and `PUT /api/organization/{id}/notification-preferences/mute` |
+| Group preference matrix | `GET|PATCH /api/group/{id}/notification-preferences` and `PUT /api/group/{id}/notification-preferences/mute` |
 
 When documenting filters, use the source API names. For notification type filtering, use `notificationTypeId`; do not copy stale shorthand such as `type` unless the controller changes.
 
-Actor-subscription state and mutations are separate authenticated endpoints under `/api/actor-subscriptions`. The API exposes current-user subscription state, subscribe, unsubscribe, and notification-level update flows. UI affordances for subscription actions must be gated from HAL `_links` on actor, event organizer, and actor-subscription resources; clients must not infer those actions from local roles or claims.
+Actor-subscription state and mutations are separate authenticated endpoints under `/api/actor-subscriptions`. `PATCH /api/actor-subscriptions/actors/{targetActorId}/notification-level` uses the route actor ID plus a body-owned concurrency stamp and nullable `notificationLevel` group; the body cannot select another actor. The API also exposes current-user subscription state, subscribe, and unsubscribe flows. UI affordances for subscription actions must be gated from HAL `_links` on actor, event organizer, and actor-subscription resources; clients must not infer those actions from local roles or claims.
 
-Notification preference responses are HAL resources. The Blazor matrix renders `save` and `set-mute` actions only when the server emits those links.
+Notification preference responses are HAL resources. The Blazor matrix renders `save` and `set-mute` actions only when the server emits those links. The `save` relation uses PATCH; mute remains a focused PUT action.
 
 ## UI Behavior
 

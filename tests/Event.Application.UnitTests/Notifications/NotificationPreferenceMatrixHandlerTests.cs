@@ -108,6 +108,27 @@ public sealed class NotificationPreferenceMatrixHandlerTests
     }
 
     [Test]
+    public async Task Save_OmittedCellsFailsBeforeWrite()
+    {
+        var handler = new UpdateCurrentUserNotificationPreferenceMatrixCommandHandler(
+            _preferenceRepository,
+            _resolver,
+            _unitOfWork,
+            _privacyErasureStateRepository,
+            _tenantContext,
+            _currentUserService);
+
+        var result = await handler.Handle(
+            new UpdateCurrentUserNotificationPreferenceMatrixCommand(),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("At least one preference cell is required.");
+        await _preferenceRepository.DidNotReceive().UpsertUserPreferenceAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Save_EditableCellWritesInsideTransaction()
     {
         SetupMetadata();

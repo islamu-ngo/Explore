@@ -34,7 +34,7 @@ public sealed class UpdateCurrentUserNotificationPreferenceMatrixCommandHandler(
             return FencedFailure();
         }
 
-        if (request.Cells.Count == 0)
+        if (request.Cells is not { Count: > 0 } cells)
         {
             return await unitOfWork.ExecuteSerializableAsync(async token =>
                 await IsFencedAsync(userId.Value, token)
@@ -50,7 +50,7 @@ public sealed class UpdateCurrentUserNotificationPreferenceMatrixCommandHandler(
         var errors = new List<string>();
         var validated = new List<(int CategoryId, int ChannelId, bool IsEnabled)>();
 
-        foreach (var cell in request.Cells)
+        foreach (var cell in cells)
         {
             var categoryCode = Normalize(cell.CategoryCode);
             var channelCode = Normalize(cell.ChannelCode);

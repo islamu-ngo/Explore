@@ -60,7 +60,7 @@ public interface IAdminService
     Task<ICollection<TagListDto>> GetTagsAsync();
     Task<TagDto?> GetTagByIdAsync(Guid id);
     Task<bool> CreateTagAsync(CreateTagDto tag);
-    Task<bool> UpdateTagAsync(UpdateTagDto tag);
+    Task<bool> UpdateTagAsync(Guid id, UpdateTagDto tag);
     Task<bool> DeleteTagAsync(Guid id);
 
     // Location CRUD
@@ -637,26 +637,21 @@ public class AdminService : IAdminService
         }
     }
 
-    public async Task<bool> UpdateTagAsync(UpdateTagDto tag)
+    public async Task<bool> UpdateTagAsync(Guid id, UpdateTagDto tag)
     {
         try
         {
-            if (!tag.Id.HasValue)
-            {
-                _logger.LogWarning("[AdminService.UpdateTagAsync] Tag ID is null, cannot update");
-                return false;
-            }
-            await _apiClient.UpdateTagAsync(tag.Id.Value, tag);
+            await _apiClient.UpdateTagAsync(id, tag);
             return true;
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "[AdminService.UpdateTagAsync] API error updating tag. TagId: {TagId}, StatusCode: {StatusCode}", tag.Id, ex.StatusCode);
+            _logger.LogError(ex, "[AdminService.UpdateTagAsync] API error updating tag. TagId: {TagId}, StatusCode: {StatusCode}", id, ex.StatusCode);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[AdminService.UpdateTagAsync] Unexpected error updating tag. TagId: {TagId}", tag.Id);
+            _logger.LogError(ex, "[AdminService.UpdateTagAsync] Unexpected error updating tag. TagId: {TagId}", id);
             return false;
         }
     }

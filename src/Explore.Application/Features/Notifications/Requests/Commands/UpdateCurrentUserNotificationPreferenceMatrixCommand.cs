@@ -9,5 +9,5 @@ namespace Explore.Application.Features.Notifications.Requests.Commands;
 
 public sealed class UpdateCurrentUserNotificationPreferenceMatrixCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public IReadOnlyList<UpdateNotificationPreferenceCellDto> Cells { get; set; } = [];
+    public IReadOnlyList<UpdateNotificationPreferenceCellDto>? Cells { get; set; }
 }

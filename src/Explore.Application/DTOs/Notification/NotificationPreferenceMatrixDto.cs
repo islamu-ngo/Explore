@@ -56,7 +56,7 @@ public sealed class NotificationPreferenceMuteDto
 
 public sealed class UpdateNotificationPreferenceMatrixDto
 {
-    public IReadOnlyList<UpdateNotificationPreferenceCellDto> Cells { get; set; } = [];
+    public IReadOnlyList<UpdateNotificationPreferenceCellDto>? Cells { get; set; }
 }
 
 public sealed class UpdateNotificationPreferenceCellDto

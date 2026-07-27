@@ -5,6 +5,7 @@ namespace Explore.API.Hateoas.Policies;
 
 using System.Collections.Generic;
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.Hateoas;
@@ -127,26 +128,32 @@ public sealed class NotificationPreferenceMatrixLinkPolicy :
 {
     public IEnumerable<LinkDefinition> GetLinks(NotificationPreferenceMatrixDto dto, ClaimsPrincipal? user)
     {
-        var (selfRoute, saveRoute, muteRoute, routeValues, titlePrefix) = dto.Scope switch
+        var (selfRoute, saveRoute, muteRoute, routeValues, titlePrefix, permissionResourceKind, permissionResourceId) = dto.Scope switch
         {
             "organization" => (
                 RouteNames.GetOrganizationNotificationPreferences,
                 RouteNames.UpdateOrganizationNotificationPreferences,
                 RouteNames.SetOrganizationNotificationPreferenceMute,
                 (object?)new { id = dto.OrganizationId },
-                "Organization"),
+                "Organization",
+                ResourceKinds.Organization,
+                dto.OrganizationId?.ToString()),
             "group" => (
                 RouteNames.GetGroupNotificationPreferences,
                 RouteNames.UpdateGroupNotificationPreferences,
                 RouteNames.SetGroupNotificationPreferenceMute,
                 (object?)new { id = dto.GroupId },
-                "Group"),
+                "Group",
+                ResourceKinds.Group,
+                dto.GroupId?.ToString()),
             _ => (
                 RouteNames.GetCurrentUserNotificationPreferences,
                 RouteNames.UpdateCurrentUserNotificationPreferences,
                 RouteNames.SetCurrentUserNotificationPreferenceMute,
                 null,
-                "Current user")
+                "Current user",
+                (string?)null,
+                (string?)null)
         };
 
         yield return new LinkDefinition(
@@ -161,9 +168,12 @@ public sealed class NotificationPreferenceMatrixLinkPolicy :
             "save",
             saveRoute,
             routeValues,
-            "PUT",
-            "Save notification preference choices",
-            RequiresAuth: true);
+            "PATCH",
+            "Patch notification preference choices",
+            RequiresAuth: true,
+            PermissionResourceKind: permissionResourceKind,
+            PermissionAction: permissionResourceKind is null ? null : AuthorizationActions.Update,
+            PermissionResourceId: permissionResourceId);
 
         yield return new LinkDefinition(
             "set-mute",
@@ -171,7 +181,10 @@ public sealed class NotificationPreferenceMatrixLinkPolicy :
             routeValues,
             "PUT",
             "Set notification preference mute state",
-            RequiresAuth: true);
+            RequiresAuth: true,
+            PermissionResourceKind: permissionResourceKind,
+            PermissionAction: permissionResourceKind is null ? null : AuthorizationActions.Update,
+            PermissionResourceId: permissionResourceId);
 
         if (dto.Scope == "user")
         {

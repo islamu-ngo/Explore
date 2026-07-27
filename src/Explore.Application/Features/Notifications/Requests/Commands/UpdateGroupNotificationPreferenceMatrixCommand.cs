@@ -12,7 +12,7 @@ namespace Explore.Application.Features.Notifications.Requests.Commands;
 public sealed class UpdateGroupNotificationPreferenceMatrixCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid GroupId { get; set; }
-    public IReadOnlyList<UpdateNotificationPreferenceCellDto> Cells { get; set; } = [];
+    public IReadOnlyList<UpdateNotificationPreferenceCellDto>? Cells { get; set; }
 
     string? ISecureRequest.ResourceId => GroupId.ToString();
 }

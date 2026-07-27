@@ -75,13 +75,13 @@ public sealed class UpdateGroupNotificationPreferenceMatrixCommandHandler(
     }
 
     private async Task<(List<string> Errors, List<(int CategoryId, int ChannelId, bool IsEnabled)> Cells)> ValidateCellsAsync(
-        IReadOnlyList<DTOs.Notification.UpdateNotificationPreferenceCellDto> cells,
+        IReadOnlyList<DTOs.Notification.UpdateNotificationPreferenceCellDto>? cells,
         Guid userId,
         Guid? organizationId,
         Guid groupId,
         CancellationToken cancellationToken)
     {
-        if (cells.Count == 0)
+        if (cells is not { Count: > 0 })
         {
             return (["At least one preference cell is required."], []);
         }
