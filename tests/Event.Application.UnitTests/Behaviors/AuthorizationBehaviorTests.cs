@@ -8,14 +8,26 @@ using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.EventCategories;
 using Explore.Application.DTOs.EventRegistration;
+using Explore.Application.DTOs.EventOrganizerClaim;
+using Explore.Application.DTOs.EventSessionAgendaItem;
+using Explore.Application.DTOs.EventSessionGroup;
+using Explore.Application.DTOs.EventSessionSpeaker;
+using Explore.Application.DTOs.EventTags;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventCustomPropertyProjections.Requests.Queries;
+using Explore.Application.Features.EventCategories.Requests.Commands;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
+using Explore.Application.Features.EventOrganizerClaims.Requests.Commands;
+using Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
+using Explore.Application.Features.EventSessionGroups.Requests.Commands;
+using Explore.Application.Features.EventSessionSpeakers.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.EventSessionCustomPropertyProjections.Requests.Queries;
+using Explore.Application.Features.EventTags.Requests.Commands;
 using Explore.Application.Features.OrganizationMembers.Requests.Queries;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
@@ -233,6 +245,11 @@ public class AuthorizationBehaviorTests
             Request = new CreateEventRequest
             {
                 Title = "Community Dinner",
+            ParticipationConfiguration = new ConfigureEventParticipationDto
+                {
+                    ParticipationHandlingModeId = 1,
+                    AdvanceRegistrationObligationId = 1
+                },
                 OrganizationId = organizationId,
                 GroupId = groupId
             }
@@ -377,11 +394,9 @@ public class AuthorizationBehaviorTests
             Actor = new Actor
             {
                 Id = actorId,
-                TenantId = tenantId,
                 OrganizationId = organizationId,
                 ActorTypeId = 2,
                 ActorType = null!,
-                Tenant = null!,
                 Pii = new ActorPii { DisplayName = "ISLAMU" }
             },
             Tenant = null!,
@@ -621,8 +636,16 @@ public class AuthorizationBehaviorTests
             Id = memberId,
             TenantId = tenantId,
             Tenant = null!,
-            OrganizationId = organizationId,
-            Organization = null!,
+            OrganizationTenantId = Guid.NewGuid(),
+            OrganizationTenant = new OrganizationTenant
+            {
+                OrganizationId = organizationId,
+                Organization = new Organization { Id = organizationId, Pii = new OrganizationPii { FullName = "Organization" } },
+                TenantId = tenantId,
+                Tenant = null!,
+                ApprovalStatusId = 1,
+                ApprovalStatus = null!
+            },
             UserId = userId,
             User = null!,
             RoleId = 2,
@@ -807,6 +830,480 @@ public class AuthorizationBehaviorTests
     }
 
     [Test]
+    public async Task Handle_WithEventCategoryUpdate_BindsPersistedParentEventBeforeAuthorization()
+    {
+        var assignmentRepository = Substitute.For<IEventCategoriesRepository>();
+        var eventRepository = Substitute.For<IEventRepository>();
+        var assignmentId = Guid.NewGuid();
+        var persistedEventId = Guid.NewGuid();
+        var persistedTenantId = Guid.NewGuid();
+        var command = new UpdateEventCategoriesCommand
+        {
+            EventCategoryId = assignmentId,
+            EventId = Guid.NewGuid(),
+            TenantId = Guid.NewGuid(),
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            EventCategoriesDto = new UpdateEventCategoriesDto
+            {
+                Category = new UpdateEventCategoriesCategoryDto { CategoryId = Guid.NewGuid() }
+            }
+        };
+        assignmentRepository.GetById(assignmentId).Returns(new EventCategories
+        {
+            Id = assignmentId,
+            EventId = persistedEventId,
+            TenantId = persistedTenantId,
+            Event = null!,
+            CategoryId = Guid.NewGuid(),
+            Category = null!,
+            Tenant = null!
+        });
+        eventRepository.GetEventWithDetails(persistedEventId).Returns(CreateAuthorizationEvent(
+            persistedEventId,
+            persistedTenantId,
+            Guid.NewGuid()));
+        _authService.IsAllowedAsync(
+                ResourceKinds.Event,
+                persistedEventId.ToString(),
+                AuthorizationActions.Update,
+                Arg.Any<IDictionary<string, object>?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var behavior = new AuthorizationBehavior<UpdateEventCategoriesCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<UpdateEventCategoriesCommand, BaseCommandResponse<Guid>>>>(),
+            eventRepository,
+            eventCategoriesRepository: assignmentRepository);
+
+        await behavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }), CancellationToken.None);
+
+        await Assert.That(command.EventId).IsEqualTo(persistedEventId);
+        await Assert.That(command.TenantId).IsEqualTo(persistedTenantId);
+    }
+
+    [Test]
+    public async Task Handle_WithEventTagUpdate_BindsPersistedParentEventBeforeAuthorization()
+    {
+        var assignmentRepository = Substitute.For<IEventTagsRepository>();
+        var eventRepository = Substitute.For<IEventRepository>();
+        var assignmentId = Guid.NewGuid();
+        var persistedEventId = Guid.NewGuid();
+        var persistedTenantId = Guid.NewGuid();
+        var command = new UpdateEventTagsCommand
+        {
+            EventTagId = assignmentId,
+            EventId = Guid.NewGuid(),
+            TenantId = Guid.NewGuid(),
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            EventTagsDto = new UpdateEventTagsDto
+            {
+                Tag = new UpdateEventTagsTagDto { TagId = Guid.NewGuid() }
+            }
+        };
+        assignmentRepository.GetById(assignmentId).Returns(new EventTags
+        {
+            Id = assignmentId,
+            EventId = persistedEventId,
+            TenantId = persistedTenantId,
+            Event = null!,
+            TagId = Guid.NewGuid(),
+            Tag = null!,
+            Tenant = null!
+        });
+        eventRepository.GetEventWithDetails(persistedEventId).Returns(CreateAuthorizationEvent(
+            persistedEventId,
+            persistedTenantId,
+            Guid.NewGuid()));
+        _authService.IsAllowedAsync(
+                ResourceKinds.Event,
+                persistedEventId.ToString(),
+                AuthorizationActions.Update,
+                Arg.Any<IDictionary<string, object>?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var behavior = new AuthorizationBehavior<UpdateEventTagsCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<UpdateEventTagsCommand, BaseCommandResponse<Guid>>>>(),
+            eventRepository,
+            eventTagsRepository: assignmentRepository);
+
+        await behavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }), CancellationToken.None);
+
+        await Assert.That(command.EventId).IsEqualTo(persistedEventId);
+        await Assert.That(command.TenantId).IsEqualTo(persistedTenantId);
+    }
+
+    [Test]
+    public async Task Handle_WithEventSessionAgendaItemUpdate_BindsPersistedContextBeforeAuthorization()
+    {
+        var assignmentRepository = Substitute.For<IEventSessionAgendaItemRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var assignmentId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        tenantContext.TenantId.Returns(tenantId);
+        var command = new UpdateEventSessionAgendaItemCommand
+        {
+            EventSessionAgendaItemId = assignmentId,
+            AgendaItemDto = new UpdateEventSessionAgendaItemDto
+            {
+                Content = new UpdateEventSessionAgendaItemContentDto { Title = "Agenda item" }
+            }
+        };
+        assignmentRepository.GetByIdWithDetails(assignmentId, Arg.Any<CancellationToken>()).Returns(
+            new EventSessionAgendaItem
+            {
+                Id = assignmentId,
+                EventSessionId = sessionId,
+                EventSession = new EventSession
+                {
+                    Id = sessionId,
+                    EventId = eventId,
+                    Event = null!,
+                    TenantId = tenantId,
+                    Tenant = null!
+                },
+                StartTime = DateTimeOffset.UtcNow,
+                EndTime = DateTimeOffset.UtcNow.AddHours(1),
+                Title = "Agenda item",
+                TenantId = tenantId,
+                Tenant = null!
+            });
+        _authService.IsAllowedAsync(
+                ResourceKinds.EventSessionAgendaItem,
+                assignmentId.ToString(),
+                AuthorizationActions.Update,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["eventSessionId"].Equals(sessionId.ToString())
+                    && attributes["eventId"].Equals(eventId.ToString())
+                    && attributes["tenantId"].Equals(tenantId.ToString())),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var behavior = new AuthorizationBehavior<UpdateEventSessionAgendaItemCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionAgendaItemCommand, BaseCommandResponse<Guid>>>>(),
+            tenantContext: tenantContext,
+            eventSessionAgendaItemRepository: assignmentRepository);
+
+        await behavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }), CancellationToken.None);
+
+        await Assert.That(command.EventSessionAgendaItemId).IsEqualTo(assignmentId);
+        await Assert.That(command.EventSessionId).IsEqualTo(sessionId);
+        await Assert.That(command.EventId).IsEqualTo(eventId);
+        await Assert.That(command.TenantId).IsEqualTo(tenantId);
+    }
+
+    [Test]
+    public async Task Handle_WithEventSessionGroupUpdate_BindsPersistedContextBeforeAuthorization()
+    {
+        var assignmentRepository = Substitute.For<IEventSessionGroupRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var assignmentId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        tenantContext.TenantId.Returns(tenantId);
+        var command = new UpdateEventSessionGroupCommand
+        {
+            EventSessionGroupId = assignmentId,
+            EventSessionGroup = new UpdateEventSessionGroupRequestDto
+            {
+                Metadata = new UpdateEventSessionGroupMetadataDto { Name = "Program section" }
+            },
+            TenantId = Guid.NewGuid()
+        };
+        assignmentRepository.GetForUpdateAsync(assignmentId, Arg.Any<CancellationToken>()).Returns(
+            new EventSessionGroup
+            {
+                Id = assignmentId,
+                EventId = eventId,
+                Event = null!,
+                Name = "Program section",
+                TenantId = tenantId,
+                Tenant = null!
+            });
+        _authService.IsAllowedAsync(
+                ResourceKinds.EventSessionGroup,
+                assignmentId.ToString(),
+                AuthorizationActions.Update,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["eventId"].Equals(eventId.ToString())
+                    && attributes["tenantId"].Equals(tenantId.ToString())),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var behavior = new AuthorizationBehavior<UpdateEventSessionGroupCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionGroupCommand, BaseCommandResponse<Guid>>>>(),
+            tenantContext: tenantContext,
+            eventSessionGroupRepository: assignmentRepository);
+
+        await behavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }), CancellationToken.None);
+
+        await Assert.That(command.EventSessionGroupId).IsEqualTo(assignmentId);
+        await Assert.That(command.EventId).IsEqualTo(eventId);
+        await Assert.That(command.TenantId).IsEqualTo(tenantId);
+    }
+
+    [Test]
+    public async Task Handle_WithEventSessionSpeakerUpdate_BindsPersistedParentSessionBeforeAuthorization()
+    {
+        var assignmentRepository = Substitute.For<IEventSessionSpeakerRepository>();
+        var sessionRepository = Substitute.For<IEventSessionRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var assignmentId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        tenantContext.TenantId.Returns(tenantId);
+        var command = new UpdateEventSessionSpeakerCommand
+        {
+            EventSessionSpeakerId = assignmentId,
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            SpeakerDto = new UpdateEventSessionSpeakerDto
+            {
+                Actor = new UpdateEventSessionSpeakerActorDto { ActorId = Guid.NewGuid() }
+            }
+        };
+        assignmentRepository.GetById(assignmentId).Returns(new EventSessionSpeaker
+        {
+            Id = assignmentId,
+            EventSessionId = sessionId,
+            EventSession = null!,
+            ActorId = Guid.NewGuid(),
+            Actor = null!,
+            TenantId = tenantId,
+            Tenant = null!
+        });
+        sessionRepository.GetSessionWithDetails(sessionId).Returns(new EventSession
+        {
+            Id = sessionId,
+            EventId = eventId,
+            Event = null!,
+            TenantId = tenantId,
+            Tenant = null!
+        });
+        _authService.IsAllowedAsync(
+                ResourceKinds.EventSession,
+                sessionId.ToString(),
+                AuthorizationActions.Update,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["eventSessionId"].Equals(sessionId.ToString())
+                    && attributes["eventId"].Equals(eventId.ToString())
+                    && attributes["tenantId"].Equals(tenantId.ToString())),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var behavior = new AuthorizationBehavior<UpdateEventSessionSpeakerCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionSpeakerCommand, BaseCommandResponse<Guid>>>>(),
+            eventSessionRepository: sessionRepository,
+            tenantContext: tenantContext,
+            eventSessionSpeakerRepository: assignmentRepository);
+
+        await behavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }), CancellationToken.None);
+
+        await Assert.That(command.EventSessionId).IsEqualTo(sessionId);
+        await Assert.That(command.EventId).IsEqualTo(eventId);
+        await Assert.That(command.TenantId).IsEqualTo(tenantId);
+    }
+
+    [Test]
+    public async Task Handle_WithMissingEventSessionAgendaItem_DeniesBeforeAuthorization()
+    {
+        var assignmentRepository = Substitute.For<IEventSessionAgendaItemRepository>();
+        var command = new UpdateEventSessionAgendaItemCommand
+        {
+            EventSessionAgendaItemId = Guid.NewGuid(),
+            AgendaItemDto = new UpdateEventSessionAgendaItemDto
+            {
+                Content = new UpdateEventSessionAgendaItemContentDto { Title = "Agenda item" }
+            }
+        };
+        var behavior = new AuthorizationBehavior<UpdateEventSessionAgendaItemCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionAgendaItemCommand, BaseCommandResponse<Guid>>>>(),
+            eventSessionAgendaItemRepository: assignmentRepository);
+
+        await Assert.ThrowsAsync<AuthorizationException>(() => behavior.Handle(
+            command,
+            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            CancellationToken.None));
+        await _authService.DidNotReceiveWithAnyArgs().IsAllowedAsync(default!, default!, default!, default, default);
+    }
+
+    [Test]
+    public async Task Handle_WithCrossTenantEventSessionSpeaker_DeniesBeforeAuthorization()
+    {
+        var assignmentRepository = Substitute.For<IEventSessionSpeakerRepository>();
+        var sessionRepository = Substitute.For<IEventSessionRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var assignmentId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var persistedTenantId = Guid.NewGuid();
+        tenantContext.TenantId.Returns(Guid.NewGuid());
+        assignmentRepository.GetById(assignmentId).Returns(new EventSessionSpeaker
+        {
+            Id = assignmentId,
+            EventSessionId = sessionId,
+            EventSession = null!,
+            ActorId = Guid.NewGuid(),
+            Actor = null!,
+            TenantId = persistedTenantId,
+            Tenant = null!
+        });
+        sessionRepository.GetSessionWithDetails(sessionId).Returns(new EventSession
+        {
+            Id = sessionId,
+            EventId = Guid.NewGuid(),
+            Event = null!,
+            TenantId = persistedTenantId,
+            Tenant = null!
+        });
+        var command = new UpdateEventSessionSpeakerCommand
+        {
+            EventSessionSpeakerId = assignmentId,
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            SpeakerDto = new UpdateEventSessionSpeakerDto
+            {
+                Actor = new UpdateEventSessionSpeakerActorDto { ActorId = Guid.NewGuid() }
+            }
+        };
+        var behavior = new AuthorizationBehavior<UpdateEventSessionSpeakerCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionSpeakerCommand, BaseCommandResponse<Guid>>>>(),
+            eventSessionRepository: sessionRepository,
+            tenantContext: tenantContext,
+            eventSessionSpeakerRepository: assignmentRepository);
+
+        await Assert.ThrowsAsync<AuthorizationException>(() => behavior.Handle(
+            command,
+            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            CancellationToken.None));
+        await _authService.DidNotReceiveWithAnyArgs().IsAllowedAsync(default!, default!, default!, default, default);
+    }
+
+    [Test]
+    public async Task Handle_WithOrganizerClaim_PreservesClaimMetadataAndEnrichesParentEvent()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var eventId = Guid.NewGuid();
+        var claimId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var organizationId = Guid.NewGuid();
+        eventRepository.GetEventWithDetails(eventId).Returns(CreateAuthorizationEvent(
+            eventId,
+            tenantId,
+            organizationId));
+        _authService.IsAllowedAsync(
+                ResourceKinds.EventOrganizerClaim,
+                eventId.ToString(),
+                AuthorizationActions.Events.ReviewOrganizerClaim,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["claimId"].Equals(claimId.ToString())
+                    && attributes["eventId"].Equals(eventId.ToString())
+                    && attributes["tenantId"].Equals(tenantId.ToString())
+                    && attributes["organizationId"].Equals(organizationId.ToString())),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var behavior = new AuthorizationBehavior<ReviewEventOrganizerClaimCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<ReviewEventOrganizerClaimCommand, BaseCommandResponse<Guid>>>>(),
+            eventRepository);
+        var request = new ReviewEventOrganizerClaimCommand
+        {
+            EventId = eventId,
+            ClaimId = claimId,
+            Review = new ReviewEventOrganizerClaimDto
+            {
+                Decision = EventOrganizerClaimReviewDecision.Reject,
+                ReasonCode = "NOT_VERIFIED",
+                ExpectedConcurrencyStamp = Guid.NewGuid()
+            }
+        };
+
+        var result = await behavior.Handle(
+            request,
+            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await eventRepository.Received(1).GetEventWithDetails(eventId);
+    }
+
+    [Test]
+    public async Task Handle_WithdrawOrganizerClaim_UsesPersistedClaimantOwnershipInsteadOfRouteFields()
+    {
+        var persistedEventId = Guid.NewGuid();
+        var routeEventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var claimantActorId = Guid.NewGuid();
+        var claimantUserId = Guid.NewGuid();
+        var claim = EventOrganizerClaim.CreatePending(
+            tenantId,
+            persistedEventId,
+            claimantActorId,
+            "domain-proof",
+            "bounded-reference",
+            DateTime.UtcNow);
+        var claimantActor = new Actor
+        {
+            Id = claimantActorId,
+            UserId = claimantUserId,
+            ActorTypeId = 1,
+            ActorType = null!,
+            Pii = new ActorPii { DisplayName = "Claimant" }
+        };
+        var claimRepository = Substitute.For<IEventOrganizerClaimRepository>();
+        var actorRepository = Substitute.For<IActorRepository>();
+        var eventRepository = Substitute.For<IEventRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        tenantContext.TenantId.Returns(tenantId);
+        claimRepository.GetDetailsAsync(claim.Id, false, Arg.Any<CancellationToken>()).Returns(claim);
+        actorRepository.GetActorWithDetails(claimantActorId, Arg.Any<CancellationToken>()).Returns(claimantActor);
+        eventRepository.GetEventWithDetails(persistedEventId).Returns(CreateAuthorizationEvent(
+            persistedEventId,
+            tenantId,
+            Guid.NewGuid()));
+        _authService.IsAllowedAsync(
+                ResourceKinds.EventOrganizerClaim,
+                claim.Id.ToString("D"),
+                AuthorizationActions.Events.WithdrawOrganizerClaim,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["eventId"].Equals(persistedEventId.ToString("D"))
+                    && attributes["claimId"].Equals(claim.Id.ToString("D"))
+                    && attributes["claimantActorId"].Equals(claimantActorId.ToString("D"))
+                    && attributes["claimantUserId"].Equals(claimantUserId.ToString("D"))),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var behavior = new AuthorizationBehavior<WithdrawEventOrganizerClaimCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<WithdrawEventOrganizerClaimCommand, BaseCommandResponse<Guid>>>>(),
+            eventRepository: eventRepository,
+            tenantContext: tenantContext,
+            eventOrganizerClaimRepository: claimRepository,
+            actorRepository: actorRepository);
+        var request = new WithdrawEventOrganizerClaimCommand
+        {
+            EventId = routeEventId,
+            ClaimId = claim.Id,
+            ExpectedConcurrencyStamp = Guid.NewGuid()
+        };
+
+        var result = await behavior.Handle(
+            request,
+            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await eventRepository.Received(1).GetEventWithDetails(persistedEventId);
+        await eventRepository.DidNotReceive().GetEventWithDetails(routeEventId);
+    }
+
+    [Test]
     public async Task Handle_WithAuthorizeResourceAndISecureRequest_NullResourceId_FallsBackToTypeName()
     {
         // Arrange
@@ -880,11 +1377,9 @@ public class AuthorizationBehaviorTests
             Actor = new Actor
             {
                 Id = actorId,
-                TenantId = tenantId,
                 OrganizationId = organizationId,
                 ActorTypeId = 2,
                 ActorType = null!,
-                Tenant = null!,
                 Pii = new ActorPii { DisplayName = "Organizer" }
             },
             Tenant = null!,

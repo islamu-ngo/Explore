@@ -10,6 +10,7 @@ using Explore.Application.Features.EventSessionAgendaItems.Handlers.Commands;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
 using Explore.Application.Services;
 using Explore.Domain;
+using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -110,7 +111,7 @@ public sealed class EventSessionAgendaItemCommandHandlerTests
         Guid tenantId = Guid.CreateVersion7();
         Guid actorUserId = Guid.CreateVersion7();
         EventSession previousSession = CreateSession(tenantId, Guid.CreateVersion7(), Guid.CreateVersion7());
-        EventSession destinationSession = CreateSession(tenantId, Guid.CreateVersion7(), Guid.CreateVersion7());
+        EventSession destinationSession = CreateSession(tenantId, previousSession.EventId, Guid.CreateVersion7());
         EventLocation previousPlacement = EventLocation.CreatePhysical(
             tenantId,
             previousSession.EventId,
@@ -122,24 +123,19 @@ public sealed class EventSessionAgendaItemCommandHandlerTests
             previousSession,
             previousPlacement.LocationId);
         agendaItem.AssignEventLocation(previousPlacement);
-        UpdateEventSessionAgendaItemDto dto = UpdateDto(agendaItem.Id, destinationSession.Id, locationId: null);
+        UpdateEventSessionAgendaItemDto dto = UpdateDto(destinationSession.Id, locationId: null);
         bool insideTransaction = false;
         var agendaRepository = Substitute.For<IEventSessionAgendaItemRepository>();
         var sessionRepository = Substitute.For<IEventSessionRepository>();
         var locationRepository = Substitute.For<ILocationRepository>();
         var eventLocationRepository = Substitute.For<IEventLocationRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var mapper = Substitute.For<IMapper>();
+        var cache = Substitute.For<HybridCache>();
 
+        sessionRepository.GetById(previousSession.Id).Returns(previousSession);
         sessionRepository.Exists(destinationSession.Id).Returns(true);
         sessionRepository.GetById(destinationSession.Id).Returns(destinationSession);
         agendaRepository.GetById(agendaItem.Id).Returns(agendaItem);
-        mapper.Map(dto, agendaItem).Returns(_ =>
-        {
-            agendaItem.EventSessionId = destinationSession.Id;
-            agendaItem.LocationId = null;
-            return agendaItem;
-        });
         eventLocationRepository.GetForUpdateAsync(previousPlacement.Id, Arg.Any<CancellationToken>())
             .Returns(previousPlacement);
         eventLocationRepository.FindActiveToBeAnnouncedAsync(
@@ -182,10 +178,14 @@ public sealed class EventSessionAgendaItemCommandHandlerTests
             locationRepository,
             unitOfWork,
             CreateAttachmentService(eventLocationRepository, tenantId, actorUserId),
-            mapper);
+            cache);
 
         var result = await handler.Handle(
-            new UpdateEventSessionAgendaItemCommand { AgendaItemDto = dto },
+            new UpdateEventSessionAgendaItemCommand
+            {
+                EventSessionAgendaItemId = agendaItem.Id,
+                AgendaItemDto = dto
+            },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
@@ -196,6 +196,41 @@ public sealed class EventSessionAgendaItemCommandHandlerTests
         await Assert.That(agendaItem.LocationId).IsNull();
         await Assert.That(previousPlacement.IsDeleted).IsTrue();
         await eventLocationRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateRejectsDestinationSessionFromAnotherEventBeforeUnitOfWork()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        EventSession currentSession = CreateSession(tenantId, Guid.CreateVersion7(), Guid.CreateVersion7());
+        EventSession destinationSession = CreateSession(tenantId, Guid.CreateVersion7(), Guid.CreateVersion7());
+        EventSessionAgendaItem agendaItem = CreateAgendaItem(tenantId, currentSession, locationId: null);
+        var agendaRepository = Substitute.For<IEventSessionAgendaItemRepository>();
+        var sessionRepository = Substitute.For<IEventSessionRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+
+        agendaRepository.GetById(agendaItem.Id).Returns(agendaItem);
+        sessionRepository.GetById(currentSession.Id).Returns(currentSession);
+        sessionRepository.GetById(destinationSession.Id).Returns(destinationSession);
+        var handler = new UpdateEventSessionAgendaItemCommandHandler(
+            agendaRepository,
+            sessionRepository,
+            Substitute.For<ILocationRepository>(),
+            unitOfWork,
+            CreateAttachmentService(Substitute.For<IEventLocationRepository>(), tenantId, Guid.CreateVersion7()),
+            Substitute.For<HybridCache>());
+
+        var result = await handler.Handle(new UpdateEventSessionAgendaItemCommand
+        {
+            EventSessionAgendaItemId = agendaItem.Id,
+            AgendaItemDto = UpdateDto(destinationSession.Id, locationId: null)
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("another event");
+        await unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
+            Arg.Any<Func<CancellationToken, Task>>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -465,16 +500,18 @@ public sealed class EventSessionAgendaItemCommandHandlerTests
         LocationId = locationId
     };
 
-    private static UpdateEventSessionAgendaItemDto UpdateDto(
-        Guid id,
-        Guid sessionId,
-        Guid? locationId) => new()
+    private static UpdateEventSessionAgendaItemDto UpdateDto(Guid sessionId, Guid? locationId) => new()
         {
-            Id = id,
-            EventSessionId = sessionId,
-            Title = "Moved agenda item",
-            StartTime = new DateTimeOffset(2026, 7, 19, 12, 0, 0, TimeSpan.Zero),
-            EndTime = new DateTimeOffset(2026, 7, 19, 13, 0, 0, TimeSpan.Zero),
-            LocationId = locationId
+            Relationship = new UpdateEventSessionAgendaItemRelationshipDto { EventSessionId = sessionId },
+            Content = new UpdateEventSessionAgendaItemContentDto { Title = "Moved agenda item" },
+            Schedule = new UpdateEventSessionAgendaItemScheduleDto
+            {
+                StartTime = new DateTimeOffset(2026, 7, 19, 12, 0, 0, TimeSpan.Zero),
+                EndTime = new DateTimeOffset(2026, 7, 19, 13, 0, 0, TimeSpan.Zero)
+            },
+            Location = new UpdateEventSessionAgendaItemLocationDto
+            {
+                Value = new Explore.Application.Models.Common.OptionalUpdate<Guid?>(true, locationId)
+            }
         };
 }

@@ -87,7 +87,7 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
         var result = await _handler.Handle(CreateCommand(entity, new UpdateEventSessionSpeakerDto
         {
             Actor = new UpdateEventSessionSpeakerActorDto { ActorId = newActorId }
-        }), CancellationToken.None);
+        }, eventId), CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(entity.ActorId).IsEqualTo(newActorId);
@@ -112,7 +112,7 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
         var result = await _handler.Handle(CreateCommand(entity, new UpdateEventSessionSpeakerDto
         {
             Actor = new UpdateEventSessionSpeakerActorDto { ActorId = newActorId }
-        }), CancellationToken.None);
+        }, eventId), CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Errors).Contains("Actor is already assigned as a speaker for this event session.");
@@ -140,6 +140,33 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WithTargetSessionFromAnotherEvent_ReturnsValidationFailureWithoutSaving()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var currentSessionId = Guid.NewGuid();
+        var targetSessionId = Guid.NewGuid();
+        var entity = CreateSpeakerAssignment(tenantId: tenantId, eventSessionId: currentSessionId);
+        _repository.GetById(entity.Id).Returns(entity);
+        _eventSessionRepository.GetById(currentSessionId)
+            .Returns(CreateSession(currentSessionId, tenantId, eventId));
+        _eventSessionRepository.GetById(targetSessionId)
+            .Returns(CreateSession(targetSessionId, tenantId, Guid.NewGuid()));
+
+        var result = await _handler.Handle(CreateCommand(entity, new UpdateEventSessionSpeakerDto
+        {
+            Session = new UpdateEventSessionSpeakerSessionDto { EventSessionId = targetSessionId }
+        }, eventId), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors)
+            .Contains("Event session must belong to the same event as the speaker assignment.");
+        await _repository.DidNotReceive().Update(Arg.Any<EventSessionSpeaker>());
+        await _repository.DidNotReceiveWithAnyArgs().GetBySessionAndActor(default, default, default, default);
+        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Handle_WithActorChange_ForwardsCancellationTokenToDuplicateCheck()
     {
         var tenantId = Guid.NewGuid();
@@ -157,18 +184,21 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
         await _handler.Handle(CreateCommand(entity, new UpdateEventSessionSpeakerDto
         {
             Actor = new UpdateEventSessionSpeakerActorDto { ActorId = newActorId }
-        }), cancellation.Token);
+        }, eventId), cancellation.Token);
 
         await _repository.Received(1)
             .GetBySessionAndActor(sessionId, newActorId, entity.Id, cancellation.Token);
     }
 
-    private static UpdateEventSessionSpeakerCommand CreateCommand(EventSessionSpeaker entity, UpdateEventSessionSpeakerDto dto) =>
+    private static UpdateEventSessionSpeakerCommand CreateCommand(
+        EventSessionSpeaker entity,
+        UpdateEventSessionSpeakerDto dto,
+        Guid? eventId = null) =>
         new()
         {
             EventSessionSpeakerId = entity.Id,
             EventSessionId = entity.EventSessionId,
-            EventId = Guid.NewGuid(),
+            EventId = eventId ?? Guid.NewGuid(),
             TenantId = entity.TenantId,
             ExpectedConcurrencyStamp = entity.ConcurrencyStamp,
             SpeakerDto = dto

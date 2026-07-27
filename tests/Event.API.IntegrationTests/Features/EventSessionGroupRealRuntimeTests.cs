@@ -75,18 +75,30 @@ public class EventSessionGroupRealRuntimeTests(RealRuntimeApiFixture fixture)
 
         var scenario = await SeedEventAsync("Session Group Update Event");
         var sectionId = await SeedProgramSectionAsync(scenario.EventId, scenario.TenantId, "Workshop rooms");
+        Guid concurrencyStamp;
+        await using (var scope = _fixture.Factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            concurrencyStamp = await context.EventSessionGroups
+                .IgnoreQueryFilters()
+                .Where(group => group.Id == sectionId)
+                .Select(group => group.ConcurrencyStamp)
+                .SingleAsync();
+        }
         var updateDto = new UpdateEventSessionGroupRequestDto
         {
-            Id = sectionId,
-            EventId = scenario.EventId,
-            Name = "Workshop track",
-            Slug = "workshop-track",
-            Description = "Hands-on sessions",
-            Color = "#915f2d",
-            SortOrder = 25,
-            IsPublished = true
+            Metadata = new UpdateEventSessionGroupMetadataDto
+            {
+                Name = "Workshop track",
+                Slug = new Explore.Application.Models.Common.OptionalUpdate<string?>(true, "workshop-track"),
+                Description = new Explore.Application.Models.Common.OptionalUpdate<string?>(true, "Hands-on sessions"),
+                Color = new Explore.Application.Models.Common.OptionalUpdate<string?>(true, "#915f2d")
+            },
+            Ordering = new UpdateEventSessionGroupOrderingDto { SortOrder = 25 },
+            Publication = new UpdateEventSessionGroupPublicationDto { IsPublished = true }
         };
-        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"{BaseUrl}/{sectionId}", scenario.UserId);
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Patch, $"{BaseUrl}/{sectionId}", scenario.UserId);
+        request.Headers.TryAddWithoutValidation("If-Match", $"\"{concurrencyStamp}\"");
         request.Content = JsonContent.Create(updateDto);
 
         var response = await _fixture.Client.SendAsync(request);

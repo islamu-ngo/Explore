@@ -52,6 +52,7 @@ public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEve
         if (speaker == null)
         {
             response.Success = false;
+            response.FailureCode = "event_session_speaker_not_found";
             response.Message = "Speaker assignment not found.";
             return response;
         }
@@ -69,6 +70,13 @@ public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEve
         }
 
         var previousSession = await _eventSessionRepository.GetById(speaker.EventSessionId);
+        if (previousSession is null ||
+            previousSession.EventId != request.EventId ||
+            previousSession.TenantId != request.TenantId)
+        {
+            return ValidationFailure("Speaker assignment context no longer matches its persisted event session.");
+        }
+
         var targetSessionId = request.SpeakerDto.Session?.EventSessionId ?? speaker.EventSessionId;
         var targetActorId = request.SpeakerDto.Actor?.ActorId ?? speaker.ActorId;
 
@@ -81,6 +89,11 @@ public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEve
         if (targetSession.TenantId != speaker.TenantId)
         {
             return ValidationFailure("Event session must belong to the same tenant as the speaker assignment.");
+        }
+
+        if (targetSession.EventId != request.EventId)
+        {
+            return ValidationFailure("Event session must belong to the same event as the speaker assignment.");
         }
 
         var targetActor = await _actorRepository.GetById(targetActorId);

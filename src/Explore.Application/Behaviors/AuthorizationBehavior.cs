@@ -9,6 +9,13 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Exceptions;
+using Explore.Application.Features.EventCategories.Requests.Commands;
+using Explore.Application.Features.EventOrganizerClaims.Requests.Commands;
+using Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
+using Explore.Application.Features.EventSessionGroups.Requests.Commands;
+using Explore.Application.Features.EventSessionLanguages.Requests.Commands;
+using Explore.Application.Features.EventSessionSpeakers.Requests.Commands;
+using Explore.Application.Features.EventTags.Requests.Commands;
 using Explore.Domain;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -35,6 +42,14 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
     private readonly IEventSessionRepository? _eventSessionRepository;
     private readonly IWebhookOwnershipScopeResolver? _webhookOwnershipScopeResolver;
     private readonly IEventRegistrationRepository? _eventRegistrationRepository;
+    private readonly IEventSessionLanguageRepository? _eventSessionLanguageRepository;
+    private readonly IEventCategoriesRepository? _eventCategoriesRepository;
+    private readonly IEventTagsRepository? _eventTagsRepository;
+    private readonly IEventOrganizerClaimRepository? _eventOrganizerClaimRepository;
+    private readonly IActorRepository? _actorRepository;
+    private readonly IEventSessionAgendaItemRepository? _eventSessionAgendaItemRepository;
+    private readonly IEventSessionGroupRepository? _eventSessionGroupRepository;
+    private readonly IEventSessionSpeakerRepository? _eventSessionSpeakerRepository;
     private readonly ITenantContext? _tenantContext;
 
     public AuthorizationBehavior(
@@ -46,7 +61,15 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         IEventSessionRepository? eventSessionRepository = null,
         IWebhookOwnershipScopeResolver? webhookOwnershipScopeResolver = null,
         IEventRegistrationRepository? eventRegistrationRepository = null,
-        ITenantContext? tenantContext = null)
+        ITenantContext? tenantContext = null,
+        IEventSessionLanguageRepository? eventSessionLanguageRepository = null,
+        IEventCategoriesRepository? eventCategoriesRepository = null,
+        IEventTagsRepository? eventTagsRepository = null,
+        IEventOrganizerClaimRepository? eventOrganizerClaimRepository = null,
+        IActorRepository? actorRepository = null,
+        IEventSessionAgendaItemRepository? eventSessionAgendaItemRepository = null,
+        IEventSessionGroupRepository? eventSessionGroupRepository = null,
+        IEventSessionSpeakerRepository? eventSessionSpeakerRepository = null)
     {
         _authorizationProvider = authorizationProvider;
         _logger = logger;
@@ -57,6 +80,14 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         _webhookOwnershipScopeResolver = webhookOwnershipScopeResolver;
         _eventRegistrationRepository = eventRegistrationRepository;
         _tenantContext = tenantContext;
+        _eventSessionLanguageRepository = eventSessionLanguageRepository;
+        _eventCategoriesRepository = eventCategoriesRepository;
+        _eventTagsRepository = eventTagsRepository;
+        _eventOrganizerClaimRepository = eventOrganizerClaimRepository;
+        _actorRepository = actorRepository;
+        _eventSessionAgendaItemRepository = eventSessionAgendaItemRepository;
+        _eventSessionGroupRepository = eventSessionGroupRepository;
+        _eventSessionSpeakerRepository = eventSessionSpeakerRepository;
     }
 
     public async Task<TResponse> Handle(
@@ -95,7 +126,138 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
             var resourceAttributes = (request is ISecureRequest sr)
                 ? sr.ResourceAttributes
                 : null;
-            if (attribute.Resource == ResourceKinds.Webhook &&
+            if (request is UpdateEventSessionLanguageCommand languageRequest)
+            {
+                var assignment = _eventSessionLanguageRepository is null
+                    ? null
+                    : await _eventSessionLanguageRepository.GetById(languageRequest.EventSessionLanguageId);
+                if (assignment is null)
+                {
+                    throw new AuthorizationException(attribute.Resource, attribute.Action);
+                }
+
+                languageRequest.EventSessionId = assignment.EventSessionId;
+                resourceId = assignment.EventSessionId.ToString();
+            }
+            else if (request is UpdateEventCategoriesCommand categoryRequest)
+            {
+                var assignment = _eventCategoriesRepository is null
+                    ? null
+                    : await _eventCategoriesRepository.GetById(categoryRequest.EventCategoryId);
+                if (assignment is null)
+                {
+                    throw new AuthorizationException(attribute.Resource, attribute.Action);
+                }
+
+                categoryRequest.EventId = assignment.EventId;
+                categoryRequest.TenantId = assignment.TenantId;
+                resourceId = assignment.EventId.ToString();
+            }
+            else if (request is UpdateEventTagsCommand tagRequest)
+            {
+                var assignment = _eventTagsRepository is null
+                    ? null
+                    : await _eventTagsRepository.GetById(tagRequest.EventTagId);
+                if (assignment is null)
+                {
+                    throw new AuthorizationException(attribute.Resource, attribute.Action);
+                }
+
+                tagRequest.EventId = assignment.EventId;
+                tagRequest.TenantId = assignment.TenantId;
+                resourceId = assignment.EventId.ToString();
+            }
+            else if (request is UpdateEventSessionAgendaItemCommand agendaItemRequest)
+            {
+                var assignmentId = agendaItemRequest.EventSessionAgendaItemId;
+                var assignment = _eventSessionAgendaItemRepository is null
+                    ? null
+                    : await _eventSessionAgendaItemRepository.GetByIdWithDetails(
+                        assignmentId,
+                        cancellationToken);
+                if (assignment?.EventSession is null ||
+                    assignment.EventSession.TenantId != assignment.TenantId ||
+                    (_tenantContext is not null && assignment.TenantId != _tenantContext.TenantId))
+                {
+                    throw new AuthorizationException(attribute.Resource, attribute.Action);
+                }
+
+                agendaItemRequest.EventSessionAgendaItemId = assignment.Id;
+                agendaItemRequest.EventSessionId = assignment.EventSessionId;
+                agendaItemRequest.EventId = assignment.EventSession.EventId;
+                agendaItemRequest.TenantId = assignment.TenantId;
+                resourceId = assignment.Id.ToString();
+                resourceAttributes = new Dictionary<string, object>
+                {
+                    ["eventSessionId"] = assignment.EventSessionId.ToString(),
+                    ["eventId"] = assignment.EventSession.EventId.ToString(),
+                    ["tenantId"] = assignment.TenantId.ToString()
+                };
+            }
+            else if (request is UpdateEventSessionGroupCommand groupRequest)
+            {
+                var assignmentId = groupRequest.EventSessionGroupId;
+                var assignment = _eventSessionGroupRepository is null
+                    ? null
+                    : await _eventSessionGroupRepository.GetForUpdateAsync(
+                        assignmentId,
+                        cancellationToken);
+                if (assignment is null ||
+                    (_tenantContext is not null && assignment.TenantId != _tenantContext.TenantId))
+                {
+                    throw new AuthorizationException(attribute.Resource, attribute.Action);
+                }
+
+                groupRequest.EventSessionGroupId = assignment.Id;
+                groupRequest.EventId = assignment.EventId;
+                groupRequest.TenantId = assignment.TenantId;
+                resourceId = assignment.Id.ToString();
+                resourceAttributes = new Dictionary<string, object>
+                {
+                    ["eventId"] = assignment.EventId.ToString(),
+                    ["tenantId"] = assignment.TenantId.ToString()
+                };
+            }
+            else if (request is UpdateEventSessionSpeakerCommand speakerRequest)
+            {
+                var assignment = _eventSessionSpeakerRepository is null
+                    ? null
+                    : await _eventSessionSpeakerRepository.GetById(speakerRequest.EventSessionSpeakerId);
+                var session = assignment is null || _eventSessionRepository is null
+                    ? null
+                    : await _eventSessionRepository.GetSessionWithDetails(assignment.EventSessionId);
+                if (assignment is null ||
+                    session is null ||
+                    assignment.TenantId != session.TenantId ||
+                    (_tenantContext is not null && assignment.TenantId != _tenantContext.TenantId))
+                {
+                    throw new AuthorizationException(attribute.Resource, attribute.Action);
+                }
+
+                speakerRequest.EventSessionId = session.Id;
+                speakerRequest.EventId = session.EventId;
+                speakerRequest.TenantId = session.TenantId;
+                resourceId = session.Id.ToString();
+                resourceAttributes = new Dictionary<string, object>
+                {
+                    ["eventSessionId"] = session.Id.ToString(),
+                    ["eventId"] = session.EventId.ToString(),
+                    ["tenantId"] = session.TenantId.ToString()
+                };
+            }
+
+            if (request is WithdrawEventOrganizerClaimCommand withdrawRequest)
+            {
+                resourceId = withdrawRequest.ClaimId.ToString("D");
+                resourceAttributes = await ResolvePersistedOrganizerClaimOwnershipAsync(
+                    withdrawRequest.ClaimId,
+                    cancellationToken);
+                if (resourceAttributes is null)
+                {
+                    throw new AuthorizationException(attribute.Resource, attribute.Action);
+                }
+            }
+            else if (attribute.Resource == ResourceKinds.Webhook &&
                 request is IWebhookPersistedOwnerRequest persistedOwnerRequest)
             {
                 var ownership = await ResolvePersistedWebhookOwnershipAsync(
@@ -197,6 +359,9 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         return resourceKind switch
         {
             ResourceKinds.Event => await EnrichEventResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
+            ResourceKinds.EventOrganizerClaim => TryGetGuidAttribute(resourceAttributes, "eventId", out var eventId)
+                ? await EnrichEventResourceAttributesAsync(eventId.ToString("D"), resourceAttributes, cancellationToken)
+                : resourceAttributes,
             ResourceKinds.EventSession => await EnrichEventSessionResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.EventRegistration => await EnrichEventRegistrationResourceAttributesAsync(resourceId, cancellationToken),
             ResourceKinds.OrganizationMember => await EnrichOrganizationMemberResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
@@ -204,6 +369,49 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
             ResourceKinds.CustomPropertyProjection => await EnrichCustomPropertyProjectionResourceAttributesAsync(resourceAttributes, cancellationToken),
             _ => resourceAttributes
         };
+    }
+
+    private async Task<IDictionary<string, object>?> ResolvePersistedOrganizerClaimOwnershipAsync(
+        Guid claimId,
+        CancellationToken cancellationToken)
+    {
+        if (claimId == Guid.Empty ||
+            _eventOrganizerClaimRepository is null ||
+            _actorRepository is null ||
+            _tenantContext is null)
+        {
+            return null;
+        }
+
+        var claim = await _eventOrganizerClaimRepository.GetDetailsAsync(
+            claimId,
+            trackChanges: false,
+            cancellationToken);
+        if (claim is null || claim.TenantId != _tenantContext.TenantId)
+        {
+            return null;
+        }
+
+        var claimantActor = await _actorRepository.GetActorWithDetails(
+            claim.ClaimantActorId,
+            cancellationToken);
+        if (claimantActor is null || claimantActor.Id != claim.ClaimantActorId)
+        {
+            return null;
+        }
+
+        var attributes = new Dictionary<string, object>
+        {
+            ["tenantId"] = claim.TenantId.ToString("D"),
+            ["eventId"] = claim.EventId.ToString("D"),
+            ["claimId"] = claim.Id.ToString("D"),
+            ["claimantActorId"] = claim.ClaimantActorId.ToString("D"),
+            ["status"] = claim.Status?.MasterCode ?? claim.StatusId.ToString()
+        };
+        AddIfMissing(attributes, "claimantUserId", claimantActor.UserId);
+        AddIfMissing(attributes, "claimantOrganizationId", claimantActor.OrganizationId);
+        AddIfMissing(attributes, "claimantGroupId", claimantActor.GroupId);
+        return attributes;
     }
 
     private async Task<IDictionary<string, object>?> EnrichEventRegistrationResourceAttributesAsync(
@@ -409,7 +617,7 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
 
         AddIfMissing(enriched, "memberId", member.Id.ToString());
         AddIfMissing(enriched, "tenantId", member.TenantId.ToString());
-        AddIfMissing(enriched, "organizationId", member.OrganizationId.ToString());
+        AddIfMissing(enriched, "organizationId", member.OrganizationTenant.OrganizationId.ToString());
         AddIfMissing(enriched, "userId", member.UserId.ToString());
 
         return enriched;

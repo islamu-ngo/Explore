@@ -1,65 +1,43 @@
 // ABOUTME: FluentValidation rules for updating event session groups under an existing event.
 // ABOUTME: Confirms group/event/location/room references through tenant-filtered repositories.
 
-using Explore.Application.Contracts.Persistence;
+// ABOUTME: Structural validation for grouped program-section PATCH requests.
+// ABOUTME: Persisted tenant, uniqueness, placement, and concurrency invariants remain handler-owned.
+
 using FluentValidation;
 
 namespace Explore.Application.DTOs.EventSessionGroup.Validators;
 
 public class UpdateEventSessionGroupRequestDtoValidator : AbstractValidator<UpdateEventSessionGroupRequestDto>
 {
-    public UpdateEventSessionGroupRequestDtoValidator(
-        IEventRepository eventRepository,
-        IEventSessionGroupRepository eventSessionGroupRepository,
-        ILocationRepository locationRepository,
-        ILocationRoomRepository locationRoomRepository)
+    public UpdateEventSessionGroupRequestDtoValidator()
     {
-        RuleFor(request => request.Id)
-            .NotEmpty().WithMessage("{PropertyName} is required.")
-            .MustAsync(async (id, cancellationToken) => await eventSessionGroupRepository.Exists(id))
-            .WithMessage("Event session group does not exist.");
-
-        RuleFor(request => request.EventId)
-            .NotEmpty().WithMessage("{PropertyName} is required.")
-            .MustAsync(async (id, cancellationToken) => await eventRepository.Exists(id))
-            .WithMessage("Event does not exist.");
-
-        RuleFor(request => request.Name)
-            .NotEmpty().WithMessage("{PropertyName} is required.")
-            .MaximumLength(200).WithMessage("{PropertyName} must not exceed 200 characters.");
-
-        RuleFor(request => request.Slug)
-            .MaximumLength(200).WithMessage("{PropertyName} must not exceed 200 characters.");
-
-        RuleFor(request => request.Description)
-            .MaximumLength(2000).WithMessage("{PropertyName} must not exceed 2000 characters.");
-
-        RuleFor(request => request.Color)
-            .MaximumLength(32).WithMessage("{PropertyName} must not exceed 32 characters.");
-
-        RuleFor(request => request.SortOrder)
-            .GreaterThanOrEqualTo(0).WithMessage("{PropertyName} must be non-negative.");
-
-        RuleFor(request => request.LocationId)
-            .MustAsync(async (id, cancellationToken) => !id.HasValue || await locationRepository.Exists(id.Value))
-            .WithMessage("Location does not exist.");
-
-        RuleFor(request => request.RoomId)
-            .MustAsync(async (id, cancellationToken) => !id.HasValue || await locationRoomRepository.Exists(id.Value))
-            .WithMessage("Room does not exist.");
-
         RuleFor(request => request)
-            .MustAsync(async (request, cancellationToken) =>
-            {
-                if (!request.RoomId.HasValue)
-                    return true;
+            .Must(request => request.Metadata is not null || request.Placement is not null
+                || request.Ordering is not null || request.Publication is not null)
+            .WithMessage("At least one update group is required.");
 
-                var room = await locationRoomRepository.GetById(request.RoomId.Value);
-                if (room is null)
-                    return true;
-
-                return !request.LocationId.HasValue || room.LocationId == request.LocationId.Value;
-            })
-            .WithMessage("Room must belong to the selected location.");
+        When(request => request.Metadata is not null, () =>
+        {
+            RuleFor(request => request.Metadata!)
+                .Must(metadata => metadata.Name is not null || metadata.Slug.HasValue
+                    || metadata.Description.HasValue || metadata.Color.HasValue)
+                .WithMessage("Metadata must include at least one value.");
+            RuleFor(request => request.Metadata!.Name).MaximumLength(200);
+            RuleFor(request => request.Metadata!.Slug.Value).MaximumLength(200)
+                .When(request => request.Metadata!.Slug.HasValue);
+            RuleFor(request => request.Metadata!.Description.Value).MaximumLength(2000)
+                .When(request => request.Metadata!.Description.HasValue);
+            RuleFor(request => request.Metadata!.Color.Value).MaximumLength(32)
+                .When(request => request.Metadata!.Color.HasValue);
+        });
+        When(request => request.Placement is not null, () =>
+            RuleFor(request => request.Placement!)
+                .Must(placement => placement.LocationId.HasValue || placement.RoomId.HasValue)
+                .WithMessage("Placement must include at least one value."));
+        When(request => request.Ordering is not null, () =>
+            RuleFor(request => request.Ordering!.SortOrder).NotNull().GreaterThanOrEqualTo(0));
+        When(request => request.Publication is not null, () =>
+            RuleFor(request => request.Publication!.IsPublished).NotNull());
     }
 }

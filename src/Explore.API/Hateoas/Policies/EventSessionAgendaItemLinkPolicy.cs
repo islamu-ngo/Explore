@@ -48,7 +48,7 @@ public sealed class EventSessionAgendaItemDetailLinkPolicy : ILinkPolicy<EventSe
             LinkRelations.Edit,
             RouteNames.UpdateEventSessionAgendaItem,
             new { id = dto.Id },
-            "PUT",
+            HttpMethods.Patch,
             "Update agenda item",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSessionAgendaItem, dto);

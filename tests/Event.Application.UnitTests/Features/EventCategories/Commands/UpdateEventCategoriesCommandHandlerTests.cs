@@ -2,6 +2,7 @@
 // ABOUTME: Covers validation, concurrency, duplicate checks, one-save updates, and cache invalidation.
 
 using Explore.Application.Caching;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventCategories;
 using Explore.Application.Exceptions;
@@ -48,6 +49,22 @@ public sealed class UpdateEventCategoriesCommandHandlerTests
         await Assert.That(result.Errors).Contains("At least one event category update group must be provided.");
         await _repository.DidNotReceive().Update(Arg.Any<Explore.Domain.EventCategories>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WithMismatchedPersistedAuthorizationContext_ThrowsBeforeMutation()
+    {
+        var entity = CreateEventCategory();
+        _repository.GetById(entity.Id).Returns(entity);
+        var command = CreateCommand(entity, new UpdateEventCategoriesDto
+        {
+            Category = new UpdateEventCategoriesCategoryDto { CategoryId = Guid.NewGuid() }
+        });
+        command.EventId = Guid.NewGuid();
+
+        await Assert.That(async () => await _handler.Handle(command, CancellationToken.None))
+            .Throws<AuthorizationException>();
+        await _repository.DidNotReceive().Update(Arg.Any<Explore.Domain.EventCategories>());
     }
 
     [Test]

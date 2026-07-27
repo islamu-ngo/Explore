@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Explore.Application.Caching;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventTags.Validators;
 using Explore.Application.Exceptions;
@@ -54,6 +55,11 @@ public class UpdateEventTagsCommandHandler : IRequestHandler<UpdateEventTagsComm
             response.Success = false;
             response.Message = "Event Tag not found.";
             return response;
+        }
+
+        if (eventTags.EventId != request.EventId || eventTags.TenantId != request.TenantId)
+        {
+            throw new AuthorizationException(ResourceKinds.Event, AuthorizationActions.Update);
         }
 
         if (eventTags.ConcurrencyStamp != request.ExpectedConcurrencyStamp)

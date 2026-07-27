@@ -1,6 +1,6 @@
 // ABOUTME: MediatR command for updating an agenda item.
-// ABOUTME: Carries the UpdateEventSessionAgendaItemDto payload.
-using System;
+// ABOUTME: Carries route-owned identity, grouped PATCH data, and server-bound authorization context.
+
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.Responses;
@@ -11,7 +11,17 @@ namespace Explore.Application.Features.EventSessionAgendaItems.Requests.Commands
 [AuthorizeResource(ResourceKinds.EventSessionAgendaItem, AuthorizationActions.Update)]
 public class UpdateEventSessionAgendaItemCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public Guid EventSessionAgendaItemId { get; set; }
     public required UpdateEventSessionAgendaItemDto AgendaItemDto { get; set; }
+    public Guid EventSessionId { get; set; }
+    public Guid EventId { get; set; }
+    public Guid TenantId { get; set; }
 
-    string? ISecureRequest.ResourceId => AgendaItemDto.Id.ToString();
+    string? ISecureRequest.ResourceId => EventSessionAgendaItemId.ToString();
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["eventSessionId"] = EventSessionId.ToString(),
+        ["eventId"] = EventId.ToString(),
+        ["tenantId"] = TenantId.ToString()
+    };
 }

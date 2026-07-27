@@ -1,16 +1,19 @@
 // ABOUTME: API contract tests for event-session speaker management routes.
-// ABOUTME: Verifies nested session route metadata and trusted context command forwarding.
+// ABOUTME: Verifies canonical update identity plus session-scoped create/delete context forwarding.
 
+using Microsoft.AspNetCore.Http;
 using System.Net.Http.Json;
 using System.Reflection;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
 using Explore.API.Controllers;
 using Explore.API.Hateoas;
+using Explore.API.Hateoas.Policies;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.Features.EventSessions.Requests.Queries;
 using Explore.Application.Features.EventSessionSpeakers.Requests.Commands;
+using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -25,7 +28,7 @@ namespace Event.Api.IntegrationTests.Features;
 public sealed class EventSessionSpeakerControllerTests
 {
     [Test]
-    public async Task ManagementRoutes_UseStableNestedRouteNames()
+    public async Task ManagementRoutes_UseStableCanonicalRouteNames()
     {
         await AssertRoute(
             nameof(EventSessionSpeakerController.GetBySession),
@@ -40,13 +43,35 @@ public sealed class EventSessionSpeakerControllerTests
         await AssertRoute(
             nameof(EventSessionSpeakerController.Update),
             typeof(HttpPatchAttribute),
-            "management/by-session/{eventSessionId:guid}/{id:guid}",
+            "management/{id:guid}",
             RouteNames.UpdateEventSessionSpeaker);
         await AssertRoute(
             nameof(EventSessionSpeakerController.Delete),
             typeof(HttpDeleteAttribute),
             "management/by-session/{eventSessionId:guid}/{id:guid}",
             RouteNames.DeleteEventSessionSpeaker);
+    }
+
+    [Test]
+    public async Task DetailEditLink_UsesOnlyRelationshipIdForCanonicalPatchRoute()
+    {
+        var assignmentId = Guid.NewGuid();
+        var policy = new EventSessionSpeakerDetailLinkPolicy();
+        var edit = policy.GetLinks(new EventSessionSpeakerDto
+            {
+                Id = assignmentId,
+                EventSessionId = Guid.NewGuid(),
+                EventId = Guid.NewGuid(),
+                TenantId = Guid.NewGuid(),
+                ActorId = Guid.NewGuid()
+            }, null)
+            .Single(link => link.Rel == LinkRelations.Edit);
+
+        await Assert.That(edit.RouteName).IsEqualTo(RouteNames.UpdateEventSessionSpeaker);
+        await Assert.That(edit.Method).IsEqualTo(HttpMethods.Patch);
+        await Assert.That(edit.RouteValues!.GetType().GetProperty("id")?.GetValue(edit.RouteValues))
+            .IsEqualTo(assignmentId);
+        await Assert.That(edit.RouteValues.GetType().GetProperty("eventSessionId")).IsNull();
     }
 
     [Test]
@@ -109,7 +134,7 @@ public sealed class EventSessionSpeakerControllerTests
         using var client = factory.CreateClient();
         using var request = CreateAuthenticatedJsonRequest(
             HttpMethod.Patch,
-            $"/api/eventsessionspeaker/management/by-session/{Guid.NewGuid():D}/{Guid.NewGuid():D}",
+            $"/api/eventsessionspeaker/management/{Guid.NewGuid():D}",
             new UpdateEventSessionSpeakerDto
             {
                 Actor = new UpdateEventSessionSpeakerActorDto { ActorId = Guid.NewGuid() }

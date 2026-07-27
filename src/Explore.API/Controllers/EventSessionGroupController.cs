@@ -247,27 +247,34 @@ public class EventSessionGroupController : ControllerBase
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateEventSessionGroup)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateEventSessionGroup)]
     [EndpointSummary("Update Event Session Group")]
-    [EndpointDescription("Update a track, devroom, stage, or program section for an event.")]
+    [EndpointDescription("Partially update a program section. Route identity is authoritative and If-Match must contain its current concurrency stamp.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
         [FromBody] UpdateEventSessionGroupRequestDto group,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
         CancellationToken cancellationToken = default)
     {
-        if (id != group.Id)
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
         {
-            return this.ToValidationProblem(UpdateValidationProblem, "Event session group ID mismatch.");
+            return this.ToValidationProblem(
+                UpdateValidationProblem,
+                "If-Match header is required and must contain the current event session group concurrency stamp.");
         }
 
         var response = await _mediator.Send(
             new UpdateEventSessionGroupCommand
             {
+                EventSessionGroupId = id,
+                ExpectedConcurrencyStamp = expectedConcurrencyStamp,
                 EventSessionGroup = group,
                 TenantId = _tenantContext.TenantId
             },
@@ -279,6 +286,20 @@ public class EventSessionGroupController : ControllerBase
         }
 
         return Ok(response);
+    }
+
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+            return false;
+
+        var value = ifMatch.Trim();
+        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        value = value.Trim('"');
+        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 
     /// <summary>

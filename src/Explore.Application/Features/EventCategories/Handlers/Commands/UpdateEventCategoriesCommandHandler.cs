@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Explore.Application.Caching;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventCategories.Validators;
 using Explore.Application.Exceptions;
@@ -54,6 +55,11 @@ public class UpdateEventCategoriesCommandHandler : IRequestHandler<UpdateEventCa
             response.Success = false;
             response.Message = "Event Category not found.";
             return response;
+        }
+
+        if (eventCategories.EventId != request.EventId || eventCategories.TenantId != request.TenantId)
+        {
+            throw new AuthorizationException(ResourceKinds.Event, AuthorizationActions.Update);
         }
 
         if (eventCategories.ConcurrencyStamp != request.ExpectedConcurrencyStamp)

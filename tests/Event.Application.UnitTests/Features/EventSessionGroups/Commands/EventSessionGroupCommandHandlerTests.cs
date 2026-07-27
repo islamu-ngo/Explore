@@ -9,6 +9,7 @@ using Explore.Application.Features.EventSessionGroups.Handlers.Commands;
 using Explore.Application.Features.EventSessionGroups.Requests.Commands;
 using Explore.Application.Services;
 using Explore.Domain;
+using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -26,6 +27,7 @@ public class EventSessionGroupCommandHandlerTests
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly IMapper _mapper = Substitute.For<IMapper>();
+    private readonly HybridCache _cache = Substitute.For<HybridCache>();
 
     public EventSessionGroupCommandHandlerTests()
     {
@@ -136,13 +138,13 @@ public class EventSessionGroupCommandHandlerTests
         var groupId = Guid.NewGuid();
         var parentEvent = CreateEvent(eventId, tenantId);
         var currentGroup = CreateGroup(groupId, eventId, tenantId, parentEvent);
+        currentGroup.ConcurrencyStamp = Guid.NewGuid();
         currentGroup.Slug = "workshops";
         var existingGroup = CreateGroup(Guid.NewGuid(), eventId, tenantId, parentEvent);
         existingGroup.IsPublished = false;
         existingGroup.Slug = "main-track";
 
-        _eventRepository.Exists(eventId).Returns(true);
-        _groupRepository.Exists(groupId).Returns(true);
+        _eventRepository.GetById(eventId).Returns(parentEvent);
         _groupRepository.GetForUpdateAsync(groupId, Arg.Any<CancellationToken>()).Returns(currentGroup);
         _groupRepository.GetActiveByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([currentGroup, existingGroup]);
 
@@ -152,16 +154,20 @@ public class EventSessionGroupCommandHandlerTests
             _locationRepository,
             _roomRepository,
             _unitOfWork,
-            _eventLocationAttachmentService);
+            _eventLocationAttachmentService,
+            _cache);
 
         var result = await handler.Handle(new UpdateEventSessionGroupCommand
         {
+            EventSessionGroupId = groupId,
+            ExpectedConcurrencyStamp = currentGroup.ConcurrencyStamp,
             EventSessionGroup = new UpdateEventSessionGroupRequestDto
             {
-                Id = groupId,
-                EventId = eventId,
-                Name = "Renamed track",
-                Slug = "MAIN-TRACK"
+                Metadata = new UpdateEventSessionGroupMetadataDto
+                {
+                    Name = "Renamed track",
+                    Slug = new Explore.Application.Models.Common.OptionalUpdate<string?>(true, "MAIN-TRACK")
+                }
             }
         }, CancellationToken.None);
 

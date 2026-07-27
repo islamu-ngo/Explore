@@ -22,4 +22,5 @@ public class EventSessionGroupDto
     public int SortOrder { get; set; }
     public bool IsPublished { get; set; }
     public Guid TenantId { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 }

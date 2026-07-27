@@ -150,22 +150,28 @@ public class EventSessionAgendaItemController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/eventsessionagendaitem/{id}
+    // PATCH: api/eventsessionagendaitem/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id}", Name = RouteNames.UpdateEventSessionAgendaItem)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateEventSessionAgendaItem)]
     [EndpointSummary("Update Agenda Item")]
-    [EndpointDescription("Update an existing agenda item")]
+    [EndpointDescription("Partially update an existing agenda item. Route identity is authoritative.")]
+    [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventSessionAgendaItemDto agendaItem, CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
+        Guid id,
+        [FromBody] UpdateEventSessionAgendaItemDto agendaItem,
+        CancellationToken cancellationToken = default)
     {
-        if (id != agendaItem.Id)
+        var command = new UpdateEventSessionAgendaItemCommand
         {
-            return this.ToValidationProblem(UpdateValidationProblem, "Agenda item ID mismatch.");
-        }
-
-        var command = new UpdateEventSessionAgendaItemCommand { AgendaItemDto = agendaItem };
+            EventSessionAgendaItemId = id,
+            AgendaItemDto = agendaItem
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)

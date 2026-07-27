@@ -3,10 +3,14 @@
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
 
 using Event.Api.IntegrationTests.Fixtures;
 
 using Explore.Application.DTOs.EventSessionGroup;
+using Explore.API.Controllers;
+using Explore.API.Hateoas;
+using Microsoft.AspNetCore.Mvc;
 
 using TUnit.Assertions;
 using TUnit.Core;
@@ -24,6 +28,22 @@ public class EventSessionGroupControllerTests
     public EventSessionGroupControllerTests(ApiTestFixture fixture)
     {
         _fixture = fixture;
+    }
+
+    [Test]
+    public async Task ProgramUpdateRoutes_AreCanonicalPatchContracts()
+    {
+        var agendaRoute = typeof(EventSessionAgendaItemController)
+            .GetMethod(nameof(EventSessionAgendaItemController.Update))!
+            .GetCustomAttribute<HttpPatchAttribute>()!;
+        var groupRoute = typeof(EventSessionGroupController)
+            .GetMethod(nameof(EventSessionGroupController.Update))!
+            .GetCustomAttribute<HttpPatchAttribute>()!;
+
+        await Assert.That(agendaRoute.Template).IsEqualTo("{id:guid}");
+        await Assert.That(agendaRoute.Name).IsEqualTo(RouteNames.UpdateEventSessionAgendaItem);
+        await Assert.That(groupRoute.Template).IsEqualTo("{id:guid}");
+        await Assert.That(groupRoute.Name).IsEqualTo(RouteNames.UpdateEventSessionGroup);
     }
 
     [Test]
@@ -49,15 +69,15 @@ public class EventSessionGroupControllerTests
         var id = Guid.NewGuid();
         var updateDto = new UpdateEventSessionGroupRequestDto
         {
-            Id = id,
-            EventId = Guid.NewGuid(),
-            Name = "Updated main stage",
-            Slug = "updated-main-stage",
-            SortOrder = 20,
-            IsPublished = true
+            Metadata = new UpdateEventSessionGroupMetadataDto { Name = "Updated main stage" }
         };
 
-        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", updateDto);
+        var request = new HttpRequestMessage(HttpMethod.Patch, $"{BaseUrl}/{id}")
+        {
+            Content = JsonContent.Create(updateDto)
+        };
+        request.Headers.TryAddWithoutValidation("If-Match", $"\"{Guid.NewGuid()}\"");
+        var response = await _fixture.Client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }

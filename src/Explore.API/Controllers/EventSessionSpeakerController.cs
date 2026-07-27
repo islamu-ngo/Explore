@@ -137,7 +137,7 @@ public sealed class EventSessionSpeakerController : ControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPatch("management/by-session/{eventSessionId:guid}/{id:guid}", Name = RouteNames.UpdateEventSessionSpeaker)]
+    [HttpPatch("management/{id:guid}", Name = RouteNames.UpdateEventSessionSpeaker)]
     [EndpointSummary("Update event session speaker assignment")]
     [EndpointDescription("Update the actor or target session for an event session speaker assignment.")]
     [Consumes(HateoasConstants.JsonMediaType)]
@@ -148,7 +148,6 @@ public sealed class EventSessionSpeakerController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
-        Guid eventSessionId,
         Guid id,
         [FromBody] UpdateEventSessionSpeakerDto speaker,
         [FromHeader(Name = "If-Match")] string? ifMatch,
@@ -161,25 +160,18 @@ public sealed class EventSessionSpeakerController : ControllerBase
                 IfMatchValidationProblem.FallbackDetail);
         }
 
-        var context = await GetSessionContextOrNullAsync(eventSessionId, cancellationToken);
-        if (context is null)
-        {
-            return this.ToNotFoundProblem(EventSessionNotFoundProblem);
-        }
-
         var response = await _mediator.Send(new UpdateEventSessionSpeakerCommand
         {
             EventSessionSpeakerId = id,
             SpeakerDto = speaker,
-            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
-            EventSessionId = eventSessionId,
-            EventId = context.EventId,
-            TenantId = context.TenantId
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp
         }, cancellationToken);
 
         if (!response.Success)
         {
-            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
+            return response.FailureCode == "event_session_speaker_not_found"
+                ? this.ToNotFoundProblem(EventSessionSpeakerNotFoundProblem, response.Message)
+                : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);

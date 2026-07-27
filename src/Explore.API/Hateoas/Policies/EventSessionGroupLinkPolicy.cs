@@ -50,7 +50,7 @@ public sealed class EventSessionGroupDetailLinkPolicy : ILinkPolicy<EventSession
             LinkRelations.Edit,
             RouteNames.UpdateEventSessionGroup,
             new { id = dto.Id },
-            "PUT",
+            HttpMethods.Patch,
             "Update program section",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSessionGroup, dto);

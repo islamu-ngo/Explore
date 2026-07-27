@@ -1,13 +1,16 @@
-// ABOUTME: Handler for updating event session groups without changing tenant ownership.
-// ABOUTME: Validates same-event consistency and keeps sessions assigned through join entities.
+// ABOUTME: Applies grouped route-ID updates to event session groups without changing ownership.
+// ABOUTME: Enforces concurrency, merged placement validity, slug uniqueness, and parent cache convergence.
 
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSessionGroup.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessionGroups.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Domain;
 using MediatR;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Explore.Application.Features.EventSessionGroups.Handlers.Commands;
 
@@ -19,6 +22,7 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
     private readonly ILocationRoomRepository _locationRoomRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly EventLocationAttachmentService _eventLocationAttachmentService;
+    private readonly HybridCache _cache;
 
     public UpdateEventSessionGroupCommandHandler(
         IEventSessionGroupRepository eventSessionGroupRepository,
@@ -26,7 +30,8 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
         ILocationRepository locationRepository,
         ILocationRoomRepository locationRoomRepository,
         IUnitOfWork unitOfWork,
-        EventLocationAttachmentService eventLocationAttachmentService)
+        EventLocationAttachmentService eventLocationAttachmentService,
+        HybridCache cache)
     {
         _eventSessionGroupRepository = eventSessionGroupRepository;
         _eventRepository = eventRepository;
@@ -34,17 +39,14 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
         _locationRoomRepository = locationRoomRepository;
         _unitOfWork = unitOfWork;
         _eventLocationAttachmentService = eventLocationAttachmentService;
+        _cache = cache;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventSessionGroupCommand request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validator = new UpdateEventSessionGroupRequestDtoValidator(
-            _eventRepository,
-            _eventSessionGroupRepository,
-            _locationRepository,
-            _locationRoomRepository);
+        var validator = new UpdateEventSessionGroupRequestDtoValidator();
         var validationResult = await validator.ValidateAsync(request.EventSessionGroup, cancellationToken);
 
         if (!validationResult.IsValid)
@@ -55,7 +57,7 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
             return response;
         }
 
-        var group = await _eventSessionGroupRepository.GetForUpdateAsync(request.EventSessionGroup.Id, cancellationToken);
+        var group = await _eventSessionGroupRepository.GetForUpdateAsync(request.EventSessionGroupId, cancellationToken);
         if (group is null)
         {
             response.Success = false;
@@ -63,17 +65,51 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
             return response;
         }
 
-        if (group.EventId != request.EventSessionGroup.EventId)
+        if (group.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
         {
-            response.Success = false;
-            response.Message = "Event session group does not belong to the requested event.";
-            return response;
+            throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The event session group was modified by another request. Reload and retry.",
+                nameof(EventSessionGroup),
+                group.Id.ToString());
+        }
+
+        Event? parentEvent = await _eventRepository.GetById(group.EventId);
+        if (parentEvent is null || parentEvent.TenantId != group.TenantId)
+            return Failure(response, "Event session group parent event was not found in the current tenant.");
+
+        string name = request.EventSessionGroup.Metadata?.Name ?? group.Name;
+        string? slug = request.EventSessionGroup.Metadata?.Slug.HasValue == true
+            ? request.EventSessionGroup.Metadata.Slug.Value
+            : group.Slug;
+        Guid? locationId = request.EventSessionGroup.Placement?.LocationId.HasValue == true
+            ? request.EventSessionGroup.Placement.LocationId.Value
+            : group.LocationId;
+        Guid? roomId = request.EventSessionGroup.Placement?.RoomId.HasValue == true
+            ? request.EventSessionGroup.Placement.RoomId.Value
+            : group.RoomId;
+
+        if (string.IsNullOrWhiteSpace(name))
+            return Failure(response, "Event session group name is required.");
+
+        if (locationId.HasValue)
+        {
+            Location? location = await _locationRepository.GetById(locationId.Value);
+            if (location is null || location.TenantId != group.TenantId)
+                return Failure(response, "Location does not belong to the current tenant.");
+        }
+
+        if (roomId.HasValue)
+        {
+            LocationRoom? room = await _locationRoomRepository.GetById(roomId.Value);
+            if (room is null || !locationId.HasValue || room.LocationId != locationId.Value)
+                return Failure(response, "Room must belong to the selected location.");
         }
 
         if (await SlugExistsForEventAsync(
-                request.EventSessionGroup.EventId,
-                request.EventSessionGroup.Slug,
-                request.EventSessionGroup.Id,
+                group.EventId,
+                slug,
+                group.Id,
                 cancellationToken))
         {
             response.Success = false;
@@ -83,29 +119,49 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
         }
 
         Guid? previousEventLocationId = group.EventLocationId;
-        group.Name = request.EventSessionGroup.Name;
-        group.Slug = request.EventSessionGroup.Slug;
-        group.Description = request.EventSessionGroup.Description;
-        group.Color = request.EventSessionGroup.Color;
-        group.SortOrder = request.EventSessionGroup.SortOrder;
-        group.IsPublished = request.EventSessionGroup.IsPublished;
+        group.Name = name;
+        group.Slug = slug;
+        if (request.EventSessionGroup.Metadata?.Description.HasValue == true)
+            group.Description = request.EventSessionGroup.Metadata.Description.Value;
+        if (request.EventSessionGroup.Metadata?.Color.HasValue == true)
+            group.Color = request.EventSessionGroup.Metadata.Color.Value;
+        if (request.EventSessionGroup.Ordering?.SortOrder is { } sortOrder)
+            group.SortOrder = sortOrder;
+        if (request.EventSessionGroup.Publication?.IsPublished is { } isPublished)
+            group.IsPublished = isPublished;
 
         await _unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            EventLocation eventLocation = await _eventLocationAttachmentService.ResolveAsync(
-                group.EventId,
-                request.EventSessionGroup.LocationId,
-                previousEventLocationId,
-                token);
-            group.AssignEventLocation(eventLocation);
-            group.RoomId = request.EventSessionGroup.RoomId;
+            if (request.EventSessionGroup.Placement?.LocationId.HasValue == true)
+            {
+                EventLocation eventLocation = await _eventLocationAttachmentService.ResolveAsync(
+                    group.EventId,
+                    locationId,
+                    previousEventLocationId,
+                    token);
+                group.AssignEventLocation(eventLocation);
+            }
+            if (request.EventSessionGroup.Placement?.RoomId.HasValue == true)
+                group.RoomId = roomId;
             await _eventSessionGroupRepository.Update(group);
-            await _eventLocationAttachmentService.DetachIfUnreferencedAsync(previousEventLocationId, token);
+            if (request.EventSessionGroup.Placement?.LocationId.HasValue == true)
+                await _eventLocationAttachmentService.DetachIfUnreferencedAsync(previousEventLocationId, token);
         }, cancellationToken);
+
+        await _cache.RemoveAsync($"event:detail:{group.EventId}", cancellationToken);
+        await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(group.TenantId), cancellationToken);
 
         response.Success = true;
         response.Id = group.Id;
         response.Message = "Event session group updated successfully.";
+        return response;
+    }
+
+    private static BaseCommandResponse<Guid> Failure(BaseCommandResponse<Guid> response, string message)
+    {
+        response.Success = false;
+        response.Message = message;
+        response.Errors = [message];
         return response;
     }
 
