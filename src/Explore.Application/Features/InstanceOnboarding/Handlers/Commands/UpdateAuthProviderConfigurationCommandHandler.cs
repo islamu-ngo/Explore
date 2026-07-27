@@ -63,7 +63,7 @@ public class UpdateAuthProviderConfigurationCommandHandler :
         UpdateAuthProviderConfigurationDuringSetupCommand request,
         CancellationToken cancellationToken)
     {
-        if (!_setupSecretProvider.IsSetupModeActive || _setupSecretProvider.IsTimedOut)
+        if (!_setupSecretProvider.IsSetupModeActive)
         {
             return new BaseCommandResponse<Guid>
             {

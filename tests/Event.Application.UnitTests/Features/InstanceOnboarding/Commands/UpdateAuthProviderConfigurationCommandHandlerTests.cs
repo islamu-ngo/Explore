@@ -75,14 +75,9 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
     }
 
     [Test]
-    [Arguments(false, false)]
-    [Arguments(true, true)]
-    public async Task HandleSetup_WhenSetupModeBecomesInactiveOrExpires_DeniesMutation(
-        bool isSetupModeActive,
-        bool isTimedOut)
+    public async Task HandleSetup_WhenSetupModeBecomesInactive_DeniesMutation()
     {
-        _setupSecretProvider.IsSetupModeActive.Returns(isSetupModeActive);
-        _setupSecretProvider.IsTimedOut.Returns(isTimedOut);
+        _setupSecretProvider.IsSetupModeActive.Returns(false);
         var command = new UpdateAuthProviderConfigurationDuringSetupCommand
         {
             Patch = CreateCommand(CreateValidConfiguration()).Patch

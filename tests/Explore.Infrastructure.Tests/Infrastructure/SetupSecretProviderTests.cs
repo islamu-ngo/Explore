@@ -171,11 +171,19 @@ public class SetupSecretProviderTests
     }
 
     [Test]
-    public async Task IsTimedOut_FreshInstance_ReturnsFalse()
+    public async Task InitializeAsync_WhenBootstrapStateCannotBeRead_FailsClosed()
     {
-        var provider = CreateProvider();
+        var repository = Substitute.For<IInstanceBootstrapStateRepository>();
+        repository.GetCurrent(Arg.Any<CancellationToken>())
+            .Returns<Task<InstanceBootstrapState?>>(_ => throw new InvalidOperationException("database unavailable"));
+        var scope = Substitute.For<IServiceScope>();
+        scope.ServiceProvider.GetService(typeof(IInstanceBootstrapStateRepository)).Returns(repository);
+        var scopeFactory = Substitute.For<IServiceScopeFactory>();
+        scopeFactory.CreateScope().Returns(scope);
+        var provider = new SetupSecretProvider(new ConfigurationBuilder().Build(), scopeFactory);
 
-        await Assert.That(provider.IsTimedOut).IsEqualTo(false);
+        await Assert.That(async () => await provider.InitializeAsync()).Throws<InvalidOperationException>();
+        await Assert.That(provider.IsSetupModeActive).IsFalse();
     }
 
     [Test]

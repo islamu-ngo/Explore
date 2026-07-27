@@ -56,8 +56,6 @@ public class SetupSecretStartupOutputTests
         public bool IsSetupModeActive => true;
         public bool IsSetupSecretRequired => true;
         public bool IsFromEnvironmentVariable => false;
-        public bool IsTimedOut => false;
-        public DateTime InstanceStartedAt { get; } = DateTime.UtcNow;
 
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public bool ValidateSecret(string? candidate) => candidate == secret;

@@ -28,7 +28,6 @@ public class GetInstanceOnboardingStatusQueryHandlerTests
         _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.SingleTenant);
         _setupSecretProvider.IsSetupModeActive.Returns(true);
         _setupSecretProvider.IsFromEnvironmentVariable.Returns(false);
-        _setupSecretProvider.IsTimedOut.Returns(false);
 
         using var cancellationSource = new CancellationTokenSource();
         var result = await CreateHandler().Handle(new GetInstanceOnboardingStatusQuery(), cancellationSource.Token);
@@ -45,7 +44,6 @@ public class GetInstanceOnboardingStatusQueryHandlerTests
         _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.SingleTenant);
         _setupSecretProvider.IsSetupModeActive.Returns(true);
         _setupSecretProvider.IsFromEnvironmentVariable.Returns(true);
-        _setupSecretProvider.IsTimedOut.Returns(false);
 
         var result = await CreateHandler().Handle(new GetInstanceOnboardingStatusQuery(), CancellationToken.None);
 
@@ -54,17 +52,16 @@ public class GetInstanceOnboardingStatusQueryHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenGeneratedSetupSecretExpired_ReturnsSafeRestartGuidance()
+    public async Task Handle_WhenSetupModeInactive_ReturnsSafeRestartGuidance()
     {
         _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.SingleTenant);
         _setupSecretProvider.IsSetupModeActive.Returns(false);
         _setupSecretProvider.IsFromEnvironmentVariable.Returns(false);
-        _setupSecretProvider.IsTimedOut.Returns(true);
 
         var result = await CreateHandler().Handle(new GetInstanceOnboardingStatusQuery(), CancellationToken.None);
 
-        await Assert.That(result.SetupSecretState).IsEqualTo("Expired");
-        await Assert.That(result.SetupSecretGuidance).Contains("Configure SETUP_SECRET");
+        await Assert.That(result.SetupSecretState).IsEqualTo("Unavailable");
+        await Assert.That(result.SetupSecretGuidance).Contains("configure SETUP_SECRET");
         await Assert.That(result.SetupSecretGuidance).DoesNotContain("logged setup secret");
     }
 

@@ -87,15 +87,10 @@ public class SetupSecretAuthorizationMatrixTests
     }
 
     [Test]
-    [Arguments(false, false, 410)]
-    [Arguments(true, true, 401)]
-    public async Task ExactProviderPatch_InactiveOrExpiredSetupCredential_IsDenied(
-        bool isSetupModeActive,
-        bool isTimedOut,
-        int expectedStatusCode)
+    public async Task ExactProviderPatch_InactiveSetupCredential_IsDenied()
     {
         await using var factory = CreateFactory(
-            new MatrixSetupSecretProvider(isSetupModeActive, isTimedOut));
+            new MatrixSetupSecretProvider(isSetupModeActive: false));
         using var client = factory.CreateClient();
         using var request = SetupSecretPatch(
             "/api/instance/settings/auth-provider",
@@ -103,8 +98,8 @@ public class SetupSecretAuthorizationMatrixTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be((HttpStatusCode)expectedStatusCode,
-            "inactive setup mode should preserve Gone while expired credentials return a safe Unauthorized response");
+        response.StatusCode.Should().Be(HttpStatusCode.Gone,
+            "inactive setup mode should preserve Gone");
     }
 
     [Test]
@@ -203,23 +198,18 @@ public class SetupSecretAuthorizationMatrixTests
         await dbContext.SaveChangesAsync();
     }
 
-    private sealed class MatrixSetupSecretProvider(
-        bool isSetupModeActive = true,
-        bool isTimedOut = false) : ISetupSecretProvider
+    private sealed class MatrixSetupSecretProvider(bool isSetupModeActive = true) : ISetupSecretProvider
     {
         private bool _isLocked;
 
         public bool IsSetupModeActive => isSetupModeActive && !_isLocked;
         public bool IsSetupSecretRequired => true;
         public bool IsFromEnvironmentVariable => false;
-        public bool IsTimedOut => isTimedOut;
-        public DateTime InstanceStartedAt { get; } = DateTime.UtcNow;
 
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public bool ValidateSecret(string? secret)
             => IsSetupModeActive
-               && !IsTimedOut
                && string.Equals(secret, ValidSetupSecret, StringComparison.Ordinal);
 
         public void Lock() => _isLocked = true;

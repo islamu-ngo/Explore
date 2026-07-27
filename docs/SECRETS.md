@@ -213,7 +213,7 @@ The following values must never be persisted in browser storage, returned in bro
 - temporary provider administrator usernames/passwords or service-account credentials;
 - raw provider request or response bodies.
 
-Configure `SETUP_SECRET` in deployment configuration and restart the API before interactive setup. If it is absent, the API uses an internal random fail-closed fallback that is never written to logs or terminal output and has no readback path.
+Configure `SETUP_SECRET` in deployment configuration and restart the API before interactive setup. The configured value remains authoritative until onboarding completes and locks setup mode; it has no process-startup timeout. If it is absent, the API uses an internal random fail-closed fallback that is never written to logs or terminal output and has no readback path. After validation, the BFF keeps the secret in a protected, HttpOnly 30-minute rolling session and requires re-entry after 30 minutes without setup activity.
 
 Rerunning verification or completion does not grant permission to read a stored secret back. Application-managed credentials remain write-only and are rotated through the owning server operation. Deployment-managed credentials remain authoritative in their configured environment/secret provider; rotate them there, refresh or restart as required, and confirm only through configured/readiness metadata. Do not overwrite a deployment-managed value from onboarding to repair drift.
 

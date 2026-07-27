@@ -13,10 +13,6 @@ internal sealed class BenchmarkSetupSecretProvider : ISetupSecretProvider
 
     public bool IsFromEnvironmentVariable => false;
 
-    public bool IsTimedOut => false;
-
-    public DateTime InstanceStartedAt { get; } = DateTime.UtcNow;
-
     public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     public bool ValidateSecret(string? secret) => false;

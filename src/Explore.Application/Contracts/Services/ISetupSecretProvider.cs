@@ -34,19 +34,8 @@ public interface ISetupSecretProvider
     bool IsFromEnvironmentVariable { get; }
 
     /// <summary>
-    /// True when the 60-minute setup window has expired since instance boot.
-    /// </summary>
-    bool IsTimedOut { get; }
-
-    /// <summary>
-    /// The UTC timestamp captured at singleton construction time (instance boot).
-    /// Used for 60-minute proximity timer — NOT from database (InstanceBootstrapState.CreatedAt is set at completion, not boot).
-    /// </summary>
-    DateTime InstanceStartedAt { get; }
-
-    /// <summary>
     /// Validates the provided secret against the stored secret using timing-safe comparison.
-    /// Returns false if the secret is wrong, null, or the 60-minute setup window has expired.
+    /// Returns false if the secret is wrong, null, or setup has been locked.
     /// </summary>
     bool ValidateSecret(string? secret);
 

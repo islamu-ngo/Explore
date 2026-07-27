@@ -274,6 +274,8 @@ public class InstanceOnboardingTests : IDisposable
         await _instanceOnboardingService.Received(2).RefreshAuthSessionAsync();
         await _instanceOnboardingService.Received(1)
             .CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>());
+        await Assert.That(_ctx.JSInterop.Invocations.Count(invocation => invocation.Identifier == "syncSetupSecret"))
+            .IsEqualTo(2);
     }
 
     [Test]
@@ -300,12 +302,22 @@ public class InstanceOnboardingTests : IDisposable
     }
 
     [Test]
-    public async Task InvalidSetupSecret_DeletesBffStateAndShowsRecoverableError()
+    [Arguments(400)]
+    [Arguments(403)]
+    [Arguments(410)]
+    public async Task InvalidSetupSecret_DeletesBffStateAndRedirectsForReauthentication(int statusCode)
     {
-        var cut = RenderForDeploymentMode("SingleTenant", syncOk: false);
+        var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>();
+        nav.NavigateTo("/onboarding/instance?section=launch");
+        var cut = RenderForDeploymentMode(
+            "SingleTenant",
+            syncOk: false,
+            syncFailureStatus: statusCode);
 
         cut.WaitForAssertion(() =>
-            RequireContains(cut.Find("[role='alert']").TextContent, "setup secret expired or is invalid"));
+            Require(
+                nav.Uri.EndsWith("/setup?returnUrl=%2Fonboarding%2Finstance%3Fsection%3Dlaunch", StringComparison.Ordinal),
+                $"Unexpected setup re-authentication URL: '{nav.Uri}'."));
 
         await _bffAuthApi.Received(1).DeleteSetupSecretAsync(Arg.Any<CancellationToken>());
     }
@@ -406,7 +418,8 @@ public class InstanceOnboardingTests : IDisposable
         bool syncOk = true,
         bool statusAvailable = true,
         bool systemStatusAvailable = true,
-        bool preflightAvailable = true)
+        bool preflightAvailable = true,
+        int syncFailureStatus = 400)
     {
         _currentDeploymentMode = deploymentMode;
         _instanceOnboardingService.GetStatusAsync().Returns(statusAvailable
@@ -429,7 +442,7 @@ public class InstanceOnboardingTests : IDisposable
             ? Task.FromResult<OnboardingPreflightDto?>(preflight ?? CreatePreflight(deploymentMode))
             : Task.FromResult<OnboardingPreflightDto?>(null));
 
-        SetupBffJsModule(syncOk);
+        SetupBffJsModule(syncOk, syncFailureStatus);
 
         var cut = _ctx.RenderMudComponent<InstanceOnboarding>();
         cut.WaitForAssertion(() =>
@@ -441,14 +454,14 @@ public class InstanceOnboardingTests : IDisposable
         return cut;
     }
 
-    private void SetupBffJsModule(bool syncOk)
+    private void SetupBffJsModule(bool syncOk, int syncFailureStatus = 400)
     {
         var module = _ctx.JSInterop.SetupModule("/js/bff.js");
         module.Setup<BffMutationResult>("syncSetupSecret", _ => true)
             .SetResult(new BffMutationResult
             {
                 Ok = syncOk,
-                Status = syncOk ? 200 : 400,
+                Status = syncOk ? 200 : syncFailureStatus,
                 Error = syncOk ? null : "Sync failed."
             });
     }

@@ -5,7 +5,6 @@
 @page "/setup"
 @rendermode InteractiveServer
 @layout SetupLayout
-@implements IDisposable
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
@@ -76,35 +75,9 @@
                     </MudStack>
                 </MudStack>
             }
-            else if (_setupTimedOut)
-            {
-                <div class="setup-form-width">
-                    <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
-                        @_setupSecretGuidance
-                    </MudAlert>
-                    @if (_instanceStartedAt.HasValue)
-                    {
-                        <MudText Typo="Typo.caption" Class="mt-2">
-                            Instance started at: @_instanceStartedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC
-                        </MudText>
-                    }
-                </div>
-            }
             else
             {
                 <div class="setup-form-width">
-                    @if (_instanceStartedAt.HasValue)
-                    {
-                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-4" NoIcon="true">
-                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                                <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" />
-                                <MudText Typo="Typo.body2">
-                                    Setup window: @_remainingTime remaining
-                                </MudText>
-                            </MudStack>
-                        </MudAlert>
-                    }
-
                     @if (!string.IsNullOrWhiteSpace(_setupSecretGuidance))
                     {
                         <MudAlert Severity="@GetSetupSecretGuidanceSeverity()" Dense="true" Class="mb-4">
@@ -200,21 +173,20 @@
     private bool _isLoading = true;
     private bool _isValidating;
     private bool _isAuthenticated;
-    private bool _setupTimedOut;
     private bool _validationSucceeded;
     private bool _hasStoredSecret;
     private string _secret = string.Empty;
     private string? _errorMessage;
-    private DateTimeOffset? _instanceStartedAt;
-    private string _remainingTime = string.Empty;
     private string _setupSecretState = "Unavailable";
     private string _setupSecretGuidance = string.Empty;
-    private Timer? _countdownTimer;
     private bool _isSyncingSecret;
     private bool _isSecretSyncedForAuthenticatedSession;
     private bool _hasAttemptedAuthenticatedSecretSync;
     private bool _isDetectingProviders;
     private List<AuthProviderQuickAction> _detectedProviders = [];
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -251,12 +223,8 @@
         }
 
         _isAuthenticated = status.IsAuthenticated == true;
-        _setupTimedOut = status.SetupTimedOut == true;
-        _instanceStartedAt = status.InstanceStartedAt;
         _setupSecretState = string.IsNullOrWhiteSpace(status.SetupSecretState) ? "Unavailable" : status.SetupSecretState;
         _setupSecretGuidance = status.SetupSecretGuidance ?? string.Empty;
-        UpdateRemainingTime();
-        StartCountdownTimer();
         _isLoading = false;
     }
 
@@ -291,6 +259,11 @@
         _isSecretSyncedForAuthenticatedSession = false;
         _hasAttemptedAuthenticatedSecretSync = false;
         await LoadDetectedProvidersAsync();
+
+        if (_isAuthenticated && GetSafeReturnUrl() is { } returnUrl)
+        {
+            Navigation.NavigateTo(returnUrl, forceLoad: true);
+        }
     }
 
     private void ContinueToAuthConfig()
@@ -309,9 +282,9 @@
             _ => provider.Name.ToLowerInvariant()
         };
 
-        var returnUrl = await GetAuthorizationProviderDestinationAsync();
+        var returnUrl = GetSafeReturnUrl() ?? await GetAuthorizationProviderDestinationAsync();
         Navigation.NavigateTo(
-            $"/login?provider={Uri.EscapeDataString(providerQuery)}&returnUrl={returnUrl}",
+            $"/login?provider={Uri.EscapeDataString(providerQuery)}&returnUrl={Uri.EscapeDataString(returnUrl)}",
             forceLoad: true);
     }
 
@@ -420,7 +393,10 @@
             _hasAttemptedAuthenticatedSecretSync = true;
         }
 
-        Navigation.NavigateTo(await GetAuthorizationProviderDestinationAsync());
+        var returnUrl = GetSafeReturnUrl();
+        Navigation.NavigateTo(
+            returnUrl ?? await GetAuthorizationProviderDestinationAsync(),
+            forceLoad: returnUrl is not null);
     }
 
     private async Task<string> GetAuthorizationProviderDestinationAsync() =>
@@ -456,41 +432,16 @@
         }
     }
 
-    private void UpdateRemainingTime()
+    private string? GetSafeReturnUrl()
     {
-        if (!_instanceStartedAt.HasValue)
-        {
-            _remainingTime = "unknown";
-            return;
-        }
-
-        var elapsed = DateTimeOffset.UtcNow - _instanceStartedAt.Value;
-        var remaining = TimeSpan.FromMinutes(60) - elapsed;
-
-        if (remaining <= TimeSpan.Zero)
-        {
-            _remainingTime = "expired";
-            _setupTimedOut = true;
-            _countdownTimer?.Dispose();
-            _countdownTimer = null;
-            return;
-        }
-
-        _remainingTime = $"{(int)remaining.TotalMinutes}m {remaining.Seconds}s";
-    }
-
-    private void StartCountdownTimer()
-    {
-        _countdownTimer?.Dispose();
-
-        if (_setupTimedOut || !_instanceStartedAt.HasValue)
-            return;
-
-        _countdownTimer = new Timer(_ =>
-        {
-            UpdateRemainingTime();
-            InvokeAsync(StateHasChanged);
-        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        var returnUrl = ReturnUrl?.Trim();
+        return !string.IsNullOrWhiteSpace(returnUrl)
+               && returnUrl.StartsWith("/", StringComparison.Ordinal)
+               && !returnUrl.StartsWith("//", StringComparison.Ordinal)
+               && !returnUrl.StartsWith("/\\", StringComparison.Ordinal)
+               && Uri.TryCreate(returnUrl, UriKind.Relative, out _)
+            ? returnUrl
+            : null;
     }
 
     private Severity GetSetupSecretGuidanceSeverity() => _setupSecretState switch
@@ -503,14 +454,9 @@
     private string GetSetupSecretHint() => _setupSecretState switch
     {
         "Environment" => "Check the SETUP_SECRET environment variable configured for this deployment.",
-        "Generated" => "Check the API server startup logs for the generated setup secret.",
-        _ => "Check the SETUP_SECRET environment variable or API server logs."
+        "Generated" => "Configure SETUP_SECRET and restart the API to use interactive setup.",
+        _ => "Check the SETUP_SECRET environment variable."
     };
-
-    public void Dispose()
-    {
-        _countdownTimer?.Dispose();
-    }
 
     // ── JS interop ────────────────────────────────────────────────────
     // All BFF calls go through browser fetch (via bff.js) so cookies

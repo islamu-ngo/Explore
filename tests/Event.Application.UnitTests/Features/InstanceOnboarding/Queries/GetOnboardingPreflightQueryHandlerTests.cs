@@ -35,7 +35,6 @@ public sealed class GetOnboardingPreflightQueryHandlerTests
         _bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns((InstanceBootstrapState?)null);
         _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.SingleTenant);
         _setupSecretProvider.IsSetupModeActive.Returns(true);
-        _setupSecretProvider.IsTimedOut.Returns(false);
         _setupSecretProvider.IsFromEnvironmentVariable.Returns(true);
         _tenantRepository.GetById(PlatformDefaults.DefaultTenantId).Returns((Tenant?)null);
         _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
@@ -69,7 +68,6 @@ public sealed class GetOnboardingPreflightQueryHandlerTests
         _bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns((InstanceBootstrapState?)null);
         _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.MultiTenant);
         _setupSecretProvider.IsSetupModeActive.Returns(true);
-        _setupSecretProvider.IsTimedOut.Returns(false);
         _setupSecretProvider.IsFromEnvironmentVariable.Returns(true);
         _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
         _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.AllowTenantCustomDomain).Returns(new SystemSetting
@@ -88,14 +86,13 @@ public sealed class GetOnboardingPreflightQueryHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenSetupSecretTimedOutAndAuthMissing_ReturnsBlockingFailures()
+    public async Task Handle_WhenSetupModeInactiveAndAuthMissing_ReturnsBlockingFailures()
     {
         var handler = CreateHandler();
 
         _bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns((InstanceBootstrapState?)null);
         _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.SingleTenant);
         _setupSecretProvider.IsSetupModeActive.Returns(false);
-        _setupSecretProvider.IsTimedOut.Returns(true);
         _tenantRepository.GetById(PlatformDefaults.DefaultTenantId).Returns((Tenant?)null);
         _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
 
@@ -107,7 +104,55 @@ public sealed class GetOnboardingPreflightQueryHandlerTests
         await Assert.That(result.BlockingChecks).Contains(check => check.Code == "canonical_host" && check.Status == OnboardingPreflightCheckStatus.Fail);
     }
 
-    private GetOnboardingPreflightQueryHandler CreateHandler(Dictionary<string, string?>? values = null)
+    [Test]
+    public async Task Handle_WhenObjectStorageConfiguredInConfiguration_OmitsObjectStorageWarning()
+    {
+        var handler = CreateHandler(new Dictionary<string, string?>
+        {
+            ["Keycloak:Authority"] = "https://auth.example.org/realms/islamu",
+            ["Keycloak:ClientId"] = "islamu-event-blazor",
+            ["PublicBaseUrl"] = "https://events.example.org",
+            ["STORAGE_S3_BUCKET_NAME"] = "my-cloud-bucket"
+        });
+
+        _bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns((InstanceBootstrapState?)null);
+        _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.SingleTenant);
+        _setupSecretProvider.IsSetupModeActive.Returns(true);
+        _setupSecretProvider.IsFromEnvironmentVariable.Returns(true);
+        _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
+
+        var result = await handler.Handle(new GetOnboardingPreflightQuery(), CancellationToken.None);
+
+        await Assert.That(result.WarningChecks.Any(check => check.Code == "object_storage")).IsFalse();
+    }
+
+    [Test]
+    public async Task Handle_WhenObjectStorageConfiguredInS3ConfigResolver_OmitsObjectStorageWarning()
+    {
+        var s3ConfigResolver = Substitute.For<Explore.Application.Contracts.Infrastructure.IS3ConfigResolver>();
+        s3ConfigResolver.IsConfiguredAsync(Arg.Any<CancellationToken>()).Returns(true);
+
+        var handler = CreateHandler(new Dictionary<string, string?>
+        {
+            ["Keycloak:Authority"] = "https://auth.example.org/realms/islamu",
+            ["Keycloak:ClientId"] = "islamu-event-blazor",
+            ["PublicBaseUrl"] = "https://events.example.org"
+        }, s3ConfigResolver);
+
+        _bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns((InstanceBootstrapState?)null);
+        _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.SingleTenant);
+        _setupSecretProvider.IsSetupModeActive.Returns(true);
+        _setupSecretProvider.IsFromEnvironmentVariable.Returns(true);
+        _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
+
+        var result = await handler.Handle(new GetOnboardingPreflightQuery(), CancellationToken.None);
+
+        await Assert.That(result.WarningChecks.Any(check => check.Code == "object_storage")).IsFalse();
+    }
+
+    private GetOnboardingPreflightQueryHandler CreateHandler(
+        Dictionary<string, string?>? values = null,
+        Explore.Application.Contracts.Infrastructure.IS3ConfigResolver? s3ConfigResolver = null)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(values ?? [])
@@ -119,6 +164,7 @@ public sealed class GetOnboardingPreflightQueryHandlerTests
             _setupSecretProvider,
             _tenantRepository,
             _systemSettingRepository,
-            configuration);
+            configuration,
+            s3ConfigResolver);
     }
 }

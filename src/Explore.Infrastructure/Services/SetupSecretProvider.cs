@@ -21,9 +21,6 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
     public bool IsSetupSecretRequired { get; }
     public bool IsTrustedManagedProvisioningConfigured { get; }
     public bool IsFromEnvironmentVariable { get; }
-    public DateTime InstanceStartedAt { get; }
-
-    public bool IsTimedOut => DateTime.UtcNow - InstanceStartedAt > TimeSpan.FromMinutes(60);
 
     public bool IsSetupModeActive
     {
@@ -43,7 +40,6 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
     public SetupSecretProvider(IConfiguration configuration, IServiceScopeFactory scopeFactory)
     {
         _scopeFactory = scopeFactory;
-        InstanceStartedAt = DateTime.UtcNow;
         IsTrustedManagedProvisioningConfigured = HasTrustedManagedProvisioningConfiguration(configuration);
 
         var requestedSetupSecretRequired = ReadBoolean(configuration["SETUP_SECRET_REQUIRED"], defaultValue: true);
@@ -77,9 +73,6 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
         if (_isLocked)
             return false;
 
-        if (IsTimedOut)
-            return false;
-
         if (string.IsNullOrEmpty(secret))
             return false;
 
@@ -106,17 +99,10 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
             if (_isBootstrapComplete.HasValue)
                 return;
 
-            try
-            {
-                using var scope = _scopeFactory.CreateScope();
-                var repository = scope.ServiceProvider.GetRequiredService<IInstanceBootstrapStateRepository>();
-                var bootstrapState = await repository.GetCurrent(cancellationToken);
-                _isBootstrapComplete = bootstrapState?.IsCompleted == true;
-            }
-            catch
-            {
-                _isBootstrapComplete = false;
-            }
+            using var scope = _scopeFactory.CreateScope();
+            var repository = scope.ServiceProvider.GetRequiredService<IInstanceBootstrapStateRepository>();
+            var bootstrapState = await repository.GetCurrent(cancellationToken);
+            _isBootstrapComplete = bootstrapState?.IsCompleted == true;
         }
         finally
         {

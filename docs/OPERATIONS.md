@@ -816,9 +816,9 @@ Instance bootstrap uses `ISetupSecretProvider`:
 
 - if setup mode is active and no env secret exists, API keeps validation fail-closed with an internal random fallback and logs only safe configuration guidance;
 - onboarding endpoints in BFF (`/bff/setup-secret*`) validate and synchronize secret state;
-- setup status returns client-safe state labels (`Environment`, `Generated`, `Expired`, `Locked`, `Unavailable`) and operator guidance without exposing raw secrets;
-- setup-secret windows expire 60 minutes after API startup, and recovery is to configure `SETUP_SECRET` and restart the API;
-- environment-provided setup secrets remain authoritative, but a timed-out setup window still requires an API restart to reopen setup mode.
+- setup status returns client-safe state labels (`Environment`, `Generated`, `Locked`, `Unavailable`) and operator guidance without exposing raw secrets;
+- API setup authority remains active until onboarding completes and calls `Lock()`; it does not expire relative to process startup;
+- BFF setup sessions and protected cookies use a 30-minute rolling inactivity timeout. Successful status and synchronization calls refresh the session; expiry returns the operator to `/setup` with a local return URL and does not require an API restart.
 
 Setup-secret-gated API onboarding endpoints use the dedicated `SetupSecret` rate-limit policy. Invalid setup secrets return RFC 7807 `403 Forbidden` with code `forbidden`; setup-secret endpoints called after bootstrap completion return RFC 7807 `410 Gone` with code `setup_already_completed`; rate-limit rejection returns RFC 7807 `429 Too Many Requests`.
 

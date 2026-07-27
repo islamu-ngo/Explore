@@ -215,42 +215,15 @@ public class SetupTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            if (!nav.Uri.EndsWith($"/login?provider=keycloak&returnUrl={returnUrl}", StringComparison.Ordinal))
+            if (!nav.Uri.EndsWith(
+                    $"/login?provider=keycloak&returnUrl={Uri.EscapeDataString(returnUrl)}",
+                    StringComparison.Ordinal))
             {
                 throw new InvalidOperationException($"Unexpected login return URL: '{nav.Uri}'.");
             }
         });
 
         await _instanceOnboardingService.Received(1).ShouldSkipAuthorizationProviderStepAsync();
-    }
-
-    [Test]
-    public async Task Setup_WhenTimedOut_ShowsExpiredMessage()
-    {
-        // Arrange
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
-        {
-            IsCompleted = false,
-            IsAuthenticated = false,
-            SetupTimedOut = true,
-            InstanceStartedAt = DateTime.UtcNow.AddMinutes(-70),
-            SetupSecretState = "Expired",
-            SetupSecretGuidance = "The generated setup secret has expired. Restart the application and use the newly logged setup secret."
-        });
-        SetupBffJsModule();
-
-        // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
-
-        // Assert
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("generated setup secret has expired", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Expected setup timeout message was not rendered.");
-            }
-        });
     }
 
     [Test]
@@ -279,6 +252,11 @@ public class SetupTests : IDisposable
             {
                 throw new InvalidOperationException("Expected environment setup-secret guidance was not rendered.");
             }
+
+            if (cut.Markup.Contains("Setup window", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Boot-relative setup countdown must not be rendered.");
+            }
         });
     }
 
@@ -292,7 +270,7 @@ public class SetupTests : IDisposable
             IsAuthenticated = false,
             IsSetupModeActive = true,
             SetupSecretState = "Generated",
-            SetupSecretGuidance = "Use the generated setup secret from the API startup logs. Generated secrets expire 60 minutes after startup."
+            SetupSecretGuidance = "Configure SETUP_SECRET and restart the API to use interactive setup."
         });
         SetupBffJsModule();
 
@@ -303,9 +281,108 @@ public class SetupTests : IDisposable
         // Assert
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("generated setup secret from the API startup logs", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("Configure SETUP_SECRET", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Expected generated setup-secret guidance was not rendered.");
+                throw new InvalidOperationException("Expected generated setup-secret recovery guidance was not rendered.");
+            }
+        });
+    }
+
+    [Test]
+    public void Setup_WithReturnUrl_ContinuesToSafeOnboardingLocation()
+    {
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
+        {
+            IsCompleted = false,
+            IsAuthenticated = true
+        });
+        SetupBffJsModule(hasPersistedSecret: true, isValid: true);
+        var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>();
+        nav.NavigateTo("/setup?returnUrl=%2Fonboarding%2Finstance%3Fsection%3Dlaunch");
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Continue Setup", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected setup continuation action was not rendered.");
+            }
+        });
+
+        cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Continue Setup", StringComparison.OrdinalIgnoreCase))
+            .Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!nav.Uri.EndsWith("/onboarding/instance?section=launch", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"Unexpected setup resume URL: '{nav.Uri}'.");
+            }
+        });
+
+    }
+
+    [Test]
+    public void Setup_AfterValidation_ResumesSafeReturnUrl()
+    {
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
+        {
+            IsCompleted = false,
+            IsAuthenticated = true
+        });
+        _instanceOnboardingService.ValidateSecretAsync("candidate-secret")
+            .Returns(new SetupSecretValidationResultDto { Valid = true });
+        SetupBffJsModule();
+        var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>();
+        nav.NavigateTo("/setup?returnUrl=%2Fonboarding%2Finstance%3Fsection%3Dlaunch");
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        cut.WaitForAssertion(() => cut.Find("form"));
+
+        cut.Find("input").Change("candidate-secret");
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!nav.Uri.EndsWith("/onboarding/instance?section=launch", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"Unexpected setup resume URL: '{nav.Uri}'.");
+            }
+        });
+    }
+
+    [Test]
+    public void Setup_WithExternalReturnUrl_UsesAuthoritativeOnboardingDestination()
+    {
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
+        {
+            IsCompleted = false,
+            IsAuthenticated = true
+        });
+        _instanceOnboardingService.ShouldSkipAuthorizationProviderStepAsync().Returns(true);
+        SetupBffJsModule(hasPersistedSecret: true, isValid: true);
+        var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>();
+        nav.NavigateTo("/setup?returnUrl=https%3A%2F%2Fevil.example");
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Continue Setup", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected setup continuation action was not rendered.");
+            }
+        });
+
+        cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Continue Setup", StringComparison.OrdinalIgnoreCase))
+            .Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!nav.Uri.EndsWith("/onboarding/instance", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"Unexpected fallback URL: '{nav.Uri}'.");
             }
         });
     }

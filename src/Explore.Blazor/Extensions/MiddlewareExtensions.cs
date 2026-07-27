@@ -280,7 +280,10 @@ public static class MiddlewareExtensions
 
     private static bool HasTrustedSetupSecret(HttpContext ctx)
     {
-        return !string.IsNullOrWhiteSpace(ctx.Request.Cookies["setup-secret"]);
+        var protectedSetupSecret = ctx.Request.Cookies["setup-secret"];
+        var cookieProtector = ctx.RequestServices.GetService<ISetupSecretCookieProtector>();
+        return cookieProtector?.TryUnprotect(protectedSetupSecret, out var setupSecret) == true
+            && !string.IsNullOrWhiteSpace(setupSecret);
     }
 
     private static async Task<BffOnboardingStatus> ResolveOnboardingStatusAsync(

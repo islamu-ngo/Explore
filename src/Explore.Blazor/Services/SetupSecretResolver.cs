@@ -42,10 +42,12 @@ public interface ISetupSecretCookieProtector
 public sealed class SetupSecretCookieProtector(IDataProtectionProvider dataProtectionProvider)
     : ISetupSecretCookieProtector
 {
-    private readonly IDataProtector _protector = dataProtectionProvider.CreateProtector(
-        "Explore.Blazor.SetupSecretCookie.v1");
+    private static readonly TimeSpan CookieLifetime = TimeSpan.FromMinutes(30);
+    private readonly ITimeLimitedDataProtector _protector = dataProtectionProvider
+        .CreateProtector("Explore.Blazor.SetupSecretCookie.v1")
+        .ToTimeLimitedDataProtector();
 
-    public string Protect(string secret) => _protector.Protect(secret.Trim());
+    public string Protect(string secret) => _protector.Protect(secret.Trim(), CookieLifetime);
 
     public bool TryUnprotect(string? protectedValue, out string? secret)
     {

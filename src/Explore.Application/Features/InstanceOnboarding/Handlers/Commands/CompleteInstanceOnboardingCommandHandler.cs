@@ -176,10 +176,10 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         }, cancellationToken);
 
         // Post-commit side effects
+        _setupSecretProvider.Lock();
         _adminCacheInvalidator.InvalidateUser(request.UserId);
         await _deploymentModeProvider.InvalidateCacheAsync();
         await _jwtAuthorityRefreshNotifier.ReloadAsync(cancellationToken);
-        _setupSecretProvider.Lock();
         _bootstrapAuditLogger.Log(new InstanceBootstrapAuditEvent(
             InstanceBootstrapAuditEventType.SetupModeDisabled,
             Operation: "instance_onboarding_complete",

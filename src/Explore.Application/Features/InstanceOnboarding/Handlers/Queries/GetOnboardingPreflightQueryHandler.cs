@@ -1,10 +1,12 @@
 // ABOUTME: Builds onboarding preflight checks from existing setup, tenancy, auth, and settings state.
 // ABOUTME: Keeps launch blockers distinct from operational warnings without introducing new persistence.
 
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
+using Explore.Application.Models.Storage;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
@@ -18,7 +20,10 @@ public sealed class GetOnboardingPreflightQueryHandler(
     ISetupSecretProvider setupSecretProvider,
     ITenantRepository tenantRepository,
     ISystemSettingRepository systemSettingRepository,
-    IConfiguration configuration)
+    IConfiguration configuration,
+    IS3ConfigResolver? s3ConfigResolver = null,
+    ISmtpConfigResolver? smtpConfigResolver = null,
+    IS3PreflightVerifier? s3PreflightVerifier = null)
     : IRequestHandler<GetOnboardingPreflightQuery, OnboardingPreflightDto>
 {
     public async Task<OnboardingPreflightDto> Handle(GetOnboardingPreflightQuery request, CancellationToken cancellationToken)
@@ -40,7 +45,7 @@ public sealed class GetOnboardingPreflightQueryHandler(
         await AddAuthConfigurationCheckAsync(result);
         await AddCanonicalHostCheckAsync(result);
         await AddDnsChecklistWarningsAsync(result, deploymentMode);
-        await AddOperationalWarningsAsync(result);
+        await AddOperationalWarningsAsync(result, cancellationToken);
 
         return result;
     }
@@ -50,12 +55,6 @@ public sealed class GetOnboardingPreflightQueryHandler(
         if (onboardingCompleted)
         {
             AddBlocking(result, "setup_secret", "Setup secret", OnboardingPreflightCheckStatus.Pass, "Onboarding is already completed and setup mode is locked.");
-            return;
-        }
-
-        if (setupSecretProvider.IsTimedOut)
-        {
-            AddBlocking(result, "setup_secret", "Setup secret", OnboardingPreflightCheckStatus.Fail, "The generated setup secret window has expired.", "Set SETUP_SECRET and restart the application.");
             return;
         }
 
@@ -223,21 +222,88 @@ public sealed class GetOnboardingPreflightQueryHandler(
                 : $"Tenants should CNAME their hostnames to {publicHost} or the documented edge target.");
     }
 
-    private async Task AddOperationalWarningsAsync(OnboardingPreflightDto result)
+    private async Task AddOperationalWarningsAsync(OnboardingPreflightDto result, CancellationToken cancellationToken)
     {
-        if (!await HasSettingValueAsync(GovernanceSettingKeys.Email.SmtpHost))
+        if (!await IsSmtpConfiguredAsync(cancellationToken))
         {
             AddWarning(result, "smtp", "SMTP", "SMTP is not configured; email delivery features may be unavailable after launch.");
         }
 
-        if (!await HasSettingValueAsync(GovernanceSettingKeys.Storage.BucketName))
-        {
-            AddWarning(result, "object_storage", "Object storage", "Object storage is not configured; media uploads may be limited after launch.");
-        }
+        await AddObjectStorageWarningAsync(result, cancellationToken);
 
         AddWarning(result, "backups", "Backups", "Backup verification is not configured in application settings; confirm database backups operationally.");
         AddWarning(result, "observability", "Logs, metrics, and health", "Confirm logs, metrics, and health endpoint monitoring in the hosting environment.");
         AddWarning(result, "public_exposure", "Public exposure", "Review public URL, search visibility, and signup/submission policies before announcing the site.");
+    }
+
+    private async Task AddObjectStorageWarningAsync(
+        OnboardingPreflightDto result,
+        CancellationToken cancellationToken)
+    {
+        var config = s3ConfigResolver is null
+            ? null
+            : await s3ConfigResolver.ResolveAsync(cancellationToken);
+        if (config is not null && s3PreflightVerifier is not null)
+        {
+            var preflight = await s3PreflightVerifier.VerifyAsync(
+                new S3PreflightRequest { Configuration = config },
+                cancellationToken);
+            if (!preflight.IsSuccess)
+            {
+                var failure = preflight.Steps.FirstOrDefault(step =>
+                    step.Status is S3PreflightStepStatus.Failed or S3PreflightStepStatus.Warning);
+                AddWarning(
+                    result,
+                    "object_storage",
+                    "Object storage",
+                    failure?.Message ?? "S3-compatible object storage preflight did not pass.",
+                    failure?.Detail ?? "Verify the endpoint, bucket, region, and credentials, then run Test Provider.");
+            }
+
+            return;
+        }
+
+        if (!await IsObjectStorageConfiguredAsync(cancellationToken))
+        {
+            AddWarning(result, "object_storage", "Object storage", "Object storage is not configured; media uploads may be limited after launch.");
+        }
+    }
+
+    private async Task<bool> IsObjectStorageConfiguredAsync(CancellationToken cancellationToken)
+    {
+        if (s3ConfigResolver is not null && await s3ConfigResolver.IsConfiguredAsync(cancellationToken))
+        {
+            return true;
+        }
+
+        if (await HasSettingValueAsync(GovernanceSettingKeys.Storage.BucketName))
+        {
+            return true;
+        }
+
+        return HasConfigurationValue("STORAGE_S3_BUCKET_NAME")
+            || HasConfigurationValue("S3Settings:BucketName")
+            || HasConfigurationValue("Storage:S3BucketName")
+            || HasConfigurationValue("Storage:S3:BucketName")
+            || HasConfigurationValue("ISLAMU_EVENT_PRIVATE_BUCKET_NAME");
+    }
+
+    private async Task<bool> IsSmtpConfiguredAsync(CancellationToken cancellationToken)
+    {
+        if (smtpConfigResolver is not null && await smtpConfigResolver.ResolveAsync(cancellationToken) is not null)
+        {
+            return true;
+        }
+
+        if (await HasSettingValueAsync(GovernanceSettingKeys.Email.SmtpHost))
+        {
+            return true;
+        }
+
+        return HasConfigurationValue("Smtp:Host")
+            || HasConfigurationValue("MAIL_SMTP_HOST")
+            || HasConfigurationValue("SMTP_HOST")
+            || HasConfigurationValue("Email:SmtpHost");
     }
 
     private bool HasConfigurationValue(string key) => !string.IsNullOrWhiteSpace(configuration[key]);

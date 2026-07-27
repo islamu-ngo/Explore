@@ -51,9 +51,7 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
             IsCurrentUserInstanceAdmin = false,
             SelectedDeploymentMode = selectedDeploymentMode,
             IsSetupModeActive = _setupSecretProvider.IsSetupModeActive,
-            SetupSecretFromEnvironment = _setupSecretProvider.IsFromEnvironmentVariable,
-            SetupTimedOut = _setupSecretProvider.IsTimedOut,
-            InstanceStartedAt = _setupSecretProvider.InstanceStartedAt
+            SetupSecretFromEnvironment = _setupSecretProvider.IsFromEnvironmentVariable
         };
         ApplySetupSecretStatus(response);
 
@@ -72,15 +70,6 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
         {
             response.SetupSecretState = "Locked";
             response.SetupSecretGuidance = "Setup is complete. The setup secret is locked and can no longer be used.";
-            return;
-        }
-
-        if (response.SetupTimedOut)
-        {
-            response.SetupSecretState = "Expired";
-            response.SetupSecretGuidance = response.SetupSecretFromEnvironment
-                ? "The configured SETUP_SECRET is still authoritative, but this setup session has timed out. Restart the application to reopen setup mode."
-                : "The generated setup-secret window has expired. Configure SETUP_SECRET and restart the application to continue.";
             return;
         }
 

@@ -261,6 +261,31 @@ public class CompleteInstanceOnboardingCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenPostCommitRefreshFails_StillLocksSetupMode()
+    {
+        _jwtAuthorityRefreshNotifier.ReloadAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("refresh failed")));
+        var command = new CompleteInstanceOnboardingCommand
+        {
+            UserId = TestUserId,
+            Settings = new CompleteInstanceOnboardingRequest
+            {
+                SiteProfile = new SelfHostOnboardingProfileDto
+                {
+                    SiteName = "Community Events",
+                    Locale = "en",
+                    TimeZone = "UTC"
+                }
+            }
+        };
+
+        await Assert.That(async () => await _handler.Handle(command, CancellationToken.None))
+            .Throws<InvalidOperationException>();
+
+        _setupSecretProvider.Received(1).Lock();
+    }
+
+    [Test]
     public async Task Handle_MultiTenantDedicatedAdminHost_PersistsNormalizedAdminHost()
     {
         _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.MultiTenant);

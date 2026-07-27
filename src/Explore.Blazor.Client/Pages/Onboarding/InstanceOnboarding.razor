@@ -635,6 +635,13 @@
 
         try
         {
+            _setupSecretSynced = false;
+            await SynchronizeSetupSecretAsync();
+            if (_disposed || !_setupSecretSynced)
+            {
+                return;
+            }
+
             var completion = new CompleteInstanceOnboardingRequest
             {
                 DeploymentMode = IsSingleTenantMode ? DeploymentMode.SingleTenant : DeploymentMode.MultiTenant,
@@ -752,12 +759,12 @@
                     return;
                 }
 
-                if (syncResult?.Status is 400 or 410)
+                if (syncResult?.Status is 400 or 403 or 410)
                 {
                     await BffAuthApi.DeleteSetupSecretAsync(CancellationToken.None);
-                    _setupSecretError = T("errors.setup_secret_invalid", "The setup secret expired or is invalid. Enter the current setup secret again.");
-                    await Announcer.AnnounceAssertiveAsync(_setupSecretError);
-                    await InvokeAsync(StateHasChanged);
+                    var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+                    var returnUrl = string.IsNullOrWhiteSpace(relativePath) ? "/" : $"/{relativePath}";
+                    Navigation.NavigateTo($"/setup?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
                     return;
                 }
             }
