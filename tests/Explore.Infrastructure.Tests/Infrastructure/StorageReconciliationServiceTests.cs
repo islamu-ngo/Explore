@@ -205,7 +205,9 @@ public sealed class StorageReconciliationServiceTests
         public Task<FileStorageDeleteResult> DeleteAsync(FileStorageDeleteInput input, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
-        public Task<FileStorageProviderStatus> TestAsync(CancellationToken cancellationToken)
+        public Task<FileStorageProviderStatus> TestAsync(
+            CancellationToken cancellationToken,
+            bool testWritePermissions = false)
             => throw new NotSupportedException();
 
         public async IAsyncEnumerable<FileStorageInventoryObject> ListObjectsAsync(

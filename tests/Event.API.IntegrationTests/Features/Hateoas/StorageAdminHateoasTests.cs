@@ -145,7 +145,13 @@ public sealed class StorageAdminHateoasTests
         await Assert.That(GetAttribute<bool>(edit, "isLockedByInstance")).IsFalse();
         await Assert.That(edit.PermissionScope!.TenantId).IsEqualTo(tenantId.ToString());
 
+        var providerTest = editableLinks.Single(link => link.Rel == "provider-test");
+        await Assert.That(providerTest.RouteName).IsEqualTo(RouteNames.TestTenantStorageConnection);
+        await Assert.That(providerTest.Method).IsEqualTo("POST");
+        await Assert.That(providerTest.PermissionAction).IsEqualTo(AuthorizationActions.TenantSettings.Update);
+
         await Assert.That(lockedLinks.Any(link => link.Rel == LinkRelations.Edit)).IsFalse();
+        await Assert.That(lockedLinks.Any(link => link.Rel == "provider-test")).IsFalse();
         await Assert.That(lockedLinks.Single(link => link.Rel == LinkRelations.Self).PermissionAction)
             .IsEqualTo(AuthorizationActions.TenantSettings.View);
     }
@@ -164,6 +170,7 @@ public sealed class StorageAdminHateoasTests
         await Assert.That(resource.Links.ContainsKey(LinkRelations.Self)).IsTrue();
         await Assert.That(resource.Links.ContainsKey(LinkRelations.Edit)).IsTrue();
         await Assert.That(resource.Links.ContainsKey("provider-test")).IsTrue();
+        await Assert.That(resource.Links.ContainsKey("provider-test")).IsTrue();
         await Assert.That(resource.Links.ContainsKey("recalculate-usage")).IsTrue();
     }
 
@@ -179,6 +186,7 @@ public sealed class StorageAdminHateoasTests
 
         await Assert.That(resource.Links.ContainsKey(LinkRelations.Self)).IsTrue();
         await Assert.That(resource.Links.ContainsKey(LinkRelations.Edit)).IsFalse();
+        await Assert.That(resource.Links.ContainsKey("provider-test")).IsFalse();
         await Assert.That(resource.Links.ContainsKey("provider-test")).IsFalse();
         await Assert.That(resource.Links.ContainsKey("recalculate-usage")).IsFalse();
     }

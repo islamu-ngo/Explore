@@ -752,7 +752,7 @@ Refresh behavior binds from `SecretRefresh` and runs via hosted `SecretRefreshSe
 
 | Key | Default | Purpose |
 |---|---|---|
-| `SETUP_SECRET` | internal random fallback | Env-only startup secret for interactive first-run onboarding. It cannot be configured from instance administration because setup needs it before the app is initialized. When omitted, the API keeps validation fail-closed with an internal random value that is never written to logs or terminal output; configure `SETUP_SECRET` and restart to use interactive setup. |
+| `SETUP_SECRET` | internal random fallback | Env-only startup secret for interactive first-run onboarding. It cannot be configured from instance administration because setup needs it before the app is initialized. A configured value remains valid until onboarding completes and locks setup mode. When omitted, the API keeps validation fail-closed with an internal random value that is never written to logs or terminal output; configure `SETUP_SECRET` and restart to use interactive setup. |
 | `SETUP_SECRET_REQUIRED` | `true` | Controls whether interactive setup endpoints can validate a setup secret. `false` is effective only when trusted managed provisioning is explicitly configured; otherwise the provider fails closed and still requires a setup secret. |
 | `PROVISIONING_TRUSTED` | `false` | Must be `true` before managed-provider provisioning can disable interactive setup-secret validation. |
 | `PROVISIONING_MODE` | unset | Trusted values are managed-provider modes such as `managed-provider`, `managed_provider`, `managed-hosting`, or `managed`. Other values do not disable setup-secret validation. |
@@ -771,6 +771,7 @@ Important safety behavior:
 - `SETUP_SECRET_REQUIRED=false` without all trusted managed-provisioning keys is ignored and the API still requires a setup secret.
 - `SETUP_SECRET_REQUIRED=false` with trusted managed provisioning does **not** make setup-secret-protected endpoints public. `ValidateSecret` returns false and those endpoints reject anonymous/no-secret calls; managed provider automation must use the authorized provisioning endpoint instead.
 - Raw setup secrets are never written to logs or terminal output.
+- The API does not expire setup authority relative to process startup. The BFF instead issues a 30-minute rolling setup session; successful status and synchronization calls refresh it, while 30 minutes without setup activity requires the operator to enter `SETUP_SECRET` again.
 
 `/setup` is a separate pre-authentication operator gateway. Browser-provided privileged headers are always removed; the BFF and API accept setup authority only from their trusted server-owned setup-secret sources. Access tokens, setup secrets, provider administrator credentials, and raw provider responses must not enter browser storage, browser-facing DTOs, logs, traces, screenshots, or support artifacts.
 
@@ -880,6 +881,14 @@ Sensitive runtime credentials use a separate secret-setting key space. Do not ex
 | Support access | `support_access.*` | none |
 
 `SecretDefinitionRegistry` recognizes provider folders for `/api`, `/storage`, `/keycloak`, `/cerbos`, `/postgresql`, `/smtp`, `/analytics`, and `/ai`. The `/smtp` folder uses `MAIL_SMTP_HOST`, `MAIL_SMTP_PORT`, `MAIL_SMTP_USERNAME`, `MAIL_SMTP_PASSWORD`, `MAIL_SMTP_FROM_ADDRESS`, and `MAIL_SMTP_FROM_NAME`. Blazor maps Google client values from `/blazor`; do not claim Google is part of the current secret-catalog folder list unless the registry changes.
+
+### External Link Transport Policy
+
+| Key | Scope | Type | Default | Description |
+|---|---|---|---|---|
+| `security.require_https_external_urls` | Instance only, non-lockable | bool | `true` | Requires tenant navigation and footer external links to use HTTPS. Relative paths remain valid. Set to `false` only for an explicitly trusted HTTP-only private network. |
+
+The hosted ISLAMU deployment keeps this setting enabled. Disabling it is an operator decision for private-network self-hosting and does not weaken the application's own HTTPS redirection or HSTS configuration.
 
 ### Workspace Shell Settings
 

@@ -225,6 +225,18 @@
                     Update S3 credentials
                 </MudButton>
 
+                @if (Model.HasLink("provider-test"))
+                {
+                    <MudButton Elevation="0"
+                               Variant="Variant.Outlined"
+                               Color="Color.Info"
+                               StartIcon="@(_isTesting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.NetworkCheck)"
+                               OnClick="TestProviderAsync"
+                               Disabled="@(!CanTestProvider)">
+                        @(_isTesting ? "Testing..." : "Test Provider")
+                    </MudButton>
+                }
+
                 <MudSwitch T="bool"
                            Value="@S3ForcePathStyle"
                            ValueChanged="OnS3ForcePathStyleChangedAsync"
@@ -243,6 +255,30 @@
                                  Min="1"
                                  Max="1440"
                                  Disabled="@ControlsDisabled" />
+
+                @if (_testedProviderStatus is not null)
+                {
+                    <MudAlert Severity="@(_testedProviderStatus.IsAvailable == true ? Severity.Success : Severity.Warning)"
+                              Variant="Variant.Outlined"
+                              role="status">
+                        Provider status: @(_testedProviderStatus.IsAvailable == true ? "available" : "unavailable").
+                        @if (!string.IsNullOrWhiteSpace(_testedProviderStatus.Message))
+                        {
+                            <span>@_testedProviderStatus.Message</span>
+                        }
+                        @if (_testedProviderStatus.Preflight?.Steps is { Count: > 0 })
+                        {
+                            <MudStack Spacing="1" Class="mt-2">
+                                @foreach (var step in _testedProviderStatus.Preflight.Steps)
+                                {
+                                    <MudText Typo="Typo.body2">
+                                        <strong>@step.StepName:</strong> @step.Status. @step.Message
+                                    </MudText>
+                                }
+                            </MudStack>
+                        }
+                    </MudAlert>
+                }
             </div>
         }
         else
@@ -273,10 +309,13 @@
     private string? _saveStatusMessage;
     private string? _saveErrorMessage;
     private bool _credentialSavePending;
+    private bool _isTesting;
+    private InstanceStorageProviderStatusDto? _testedProviderStatus;
     private bool _disposed;
 
     private bool ControlsDisabled => !Model.IsEditable();
     private bool SavePending => _credentialSavePending
+        || _isTesting
         || _saveLock.CurrentCount == 0
         || _policyDebounceCts is not null
         || _s3DebounceCts is not null;
@@ -284,6 +323,10 @@
         && !SavePending
         && !string.IsNullOrWhiteSpace(Model.S3AccessKeyId)
         && !string.IsNullOrWhiteSpace(Model.S3SecretAccessKey);
+    private bool CanTestProvider => Model.HasLink("provider-test")
+        && !SavePending
+        && string.IsNullOrWhiteSpace(Model.S3AccessKeyId)
+        && string.IsNullOrWhiteSpace(Model.S3SecretAccessKey);
 
     private string Provider
     {
@@ -466,6 +509,35 @@
             if (lockTaken) _saveLock.Release();
             _credentialSavePending = false;
             if (!_disposed) await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task TestProviderAsync()
+    {
+        if (!CanTestProvider) return;
+
+        _isTesting = true;
+        _saveStatusMessage = "Testing storage provider...";
+        _saveErrorMessage = null;
+        try
+        {
+            _testedProviderStatus = await StorageSettingsService.TestProviderAsync(Model, _lifetimeCts.Token);
+            if (_testedProviderStatus.IsAvailable == true)
+            {
+                _saveStatusMessage = _testedProviderStatus.Message ?? "Storage provider test passed.";
+            }
+            else
+            {
+                _saveStatusMessage = null;
+                _saveErrorMessage = _testedProviderStatus.Message ?? "Storage provider test failed.";
+            }
+        }
+        catch (OperationCanceledException) when (_lifetimeCts.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            _isTesting = false;
         }
     }
 

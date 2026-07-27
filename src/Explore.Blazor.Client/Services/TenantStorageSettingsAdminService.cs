@@ -11,6 +11,7 @@ public interface ITenantStorageSettingsAdminService
     Task<BaseCommandResponseOfGuid> PatchPolicyAsync(HalResourceOfTenantStorageSettingsDto settings, CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> PatchS3Async(HalResourceOfTenantStorageSettingsDto settings, CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> PatchS3CredentialsAsync(HalResourceOfTenantStorageSettingsDto settings, CancellationToken cancellationToken = default);
+    Task<InstanceStorageProviderStatusDto> TestProviderAsync(HalResourceOfTenantStorageSettingsDto settings, CancellationToken cancellationToken = default);
 }
 
 public sealed class TenantStorageSettingsAdminService(
@@ -56,6 +57,40 @@ public sealed class TenantStorageSettingsAdminService(
         }
 
         return PatchAsync(settings, settings.ToS3CredentialsPatchRequest(), "S3 credentials", cancellationToken);
+    }
+
+    public async Task<InstanceStorageProviderStatusDto> TestProviderAsync(
+        HalResourceOfTenantStorageSettingsDto settings,
+        CancellationToken cancellationToken = default)
+    {
+        if (!settings.HasLink("provider-test"))
+        {
+            return new InstanceStorageProviderStatusDto
+            {
+                Provider = settings.Provider,
+                IsAvailable = false,
+                FailureCode = "provider_test_not_allowed",
+                Message = "The API did not expose a tenant storage test affordance."
+            };
+        }
+
+        try
+        {
+            return await api.TestTenantStorageConnectionAsync(cancellationToken: cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(
+                "Tenant storage provider test failed. FailureType={FailureType}",
+                exception.GetType().Name);
+            return new InstanceStorageProviderStatusDto
+            {
+                Provider = settings.Provider,
+                IsAvailable = false,
+                FailureCode = "provider_test_failed",
+                Message = "Tenant storage provider test failed."
+            };
+        }
     }
 
     private async Task<BaseCommandResponseOfGuid> PatchAsync(

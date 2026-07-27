@@ -3,10 +3,13 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Models.Common;
+using Explore.Application.Models.Storage;
 using Explore.Application.Services;
 using Explore.Application.Settings;
+using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Settings;
 using NSubstitute;
@@ -22,6 +25,8 @@ public sealed class TenantStorageSettingServiceTests
         Substitute.For<IHierarchicalSettingsResolver>();
     private readonly ITenantSettingRepository _tenantSettingRepository =
         Substitute.For<ITenantSettingRepository>();
+    private readonly IStoragePolicyResolver _storagePolicyResolver =
+        Substitute.For<IStoragePolicyResolver>();
 
     [Test]
     public async Task ApplyPatchAsync_WhenOnlyPolicyLeafIsPresent_WritesOnlyThatPolicyKey()
@@ -65,6 +70,28 @@ public sealed class TenantStorageSettingServiceTests
         _settingsResolver.DidNotReceive().InvalidateCache(Arg.Any<SettingScope?>(), Arg.Any<Guid?>());
     }
 
+    [Test]
+    public async Task TestProviderAsync_RequestsWriteProbeAndMapsPreflight()
+    {
+        var preflight = new S3PreflightResult { IsSuccess = true, CanRead = true, CanWrite = true };
+        var provider = Substitute.For<IFileStorageProvider>();
+        provider.TestAsync(Arg.Any<CancellationToken>(), true)
+            .Returns(new FileStorageProviderStatus(
+                StorageProviders.S3Compatible,
+                true,
+                false,
+                true,
+                Preflight: preflight));
+        _storagePolicyResolver.ResolveProviderAsync(TenantId, Arg.Any<CancellationToken>())
+            .Returns(provider);
+
+        var result = await CreateService().TestProviderAsync(TenantId);
+
+        await Assert.That(result.Preflight).IsSameReferenceAs(preflight);
+        await Assert.That(result.IsAvailable).IsTrue();
+        await provider.Received(1).TestAsync(Arg.Any<CancellationToken>(), true);
+    }
+
     private List<(string Key, string Value)> CaptureWrites()
     {
         var writes = new List<(string Key, string Value)>();
@@ -82,6 +109,6 @@ public sealed class TenantStorageSettingServiceTests
         => new(
             _settingsResolver,
             _tenantSettingRepository,
-            Substitute.For<IStoragePolicyResolver>(),
+            _storagePolicyResolver,
             Substitute.For<IStorageUsageCounterRepository>());
 }

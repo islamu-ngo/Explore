@@ -2,6 +2,7 @@
 // ABOUTME: Redacts secrets while exposing provider policy, quotas, usage, and health for admin UI.
 
 using Explore.Application.DTOs.Storage;
+using Explore.Application.Models.Storage;
 using Explore.Domain;
 
 namespace Explore.Application.DTOs.Onboarding;
@@ -73,4 +74,5 @@ public class InstanceStorageProviderStatusDto
     public bool SupportsBrowserDirectUpload { get; set; }
     public string? FailureCode { get; set; }
     public string? Message { get; set; }
+    public S3PreflightResult? Preflight { get; set; }
 }

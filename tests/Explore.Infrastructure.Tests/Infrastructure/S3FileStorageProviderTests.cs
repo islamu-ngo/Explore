@@ -178,10 +178,14 @@ public sealed class S3FileStorageProviderTests
     {
         var configResolver = Substitute.For<IS3ConfigResolver>();
         var clientFactory = Substitute.For<IS3ClientFactory>();
+        var preflightVerifier = new S3PreflightVerifier(
+            configResolver,
+            clientFactory,
+            NullLogger<S3PreflightVerifier>.Instance);
         var provider = new S3FileStorageProvider(
             configResolver,
             clientFactory,
-            NullLogger<S3FileStorageProvider>.Instance);
+            preflightVerifier);
 
         var status = await provider.TestAsync(CancellationToken.None);
 
@@ -215,7 +219,7 @@ public sealed class S3FileStorageProviderTests
     {
         var config = CreateConfig();
         var s3Client = Substitute.For<IAmazonS3>();
-        var logger = new TestListLogger<S3FileStorageProvider>();
+        var logger = new TestListLogger<S3PreflightVerifier>();
         var provider = CreateProvider(config, s3Client, logger);
         s3Client
             .HeadBucketAsync(Arg.Any<HeadBucketRequest>(), Arg.Any<CancellationToken>())
@@ -225,11 +229,11 @@ public sealed class S3FileStorageProviderTests
         var status = await provider.TestAsync(CancellationToken.None);
 
         await Assert.That(status.IsAvailable).IsFalse();
-        await Assert.That(status.FailureCode).IsEqualTo("s3_unavailable");
+        await Assert.That(status.FailureCode).IsEqualTo("s3_endpoint_unreachable");
 
         var log = logger.Entries.Single(entry => entry.Level == LogLevel.Warning);
         await Assert.That(log.Exception).IsNull();
-        await Assert.That(log.Message).Contains("FailureType=provider_unavailable");
+        await Assert.That(log.Message).Contains("FailureType=configuration");
         await Assert.That(log.Message).DoesNotContain("provider leaked endpoint");
         await Assert.That(log.Message).DoesNotContain(config.Endpoint);
         await Assert.That(log.Message).DoesNotContain(config.BucketName);
@@ -239,17 +243,18 @@ public sealed class S3FileStorageProviderTests
     private static S3FileStorageProvider CreateProvider(
         S3Configuration config,
         IAmazonS3 s3Client,
-        ILogger<S3FileStorageProvider>? logger = null)
+        ILogger<S3PreflightVerifier>? logger = null)
     {
         var configResolver = Substitute.For<IS3ConfigResolver>();
         var clientFactory = Substitute.For<IS3ClientFactory>();
         configResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(config);
         clientFactory.CreateDataClient(config).Returns(s3Client);
 
-        return new S3FileStorageProvider(
+        var preflightVerifier = new S3PreflightVerifier(
             configResolver,
             clientFactory,
-            logger ?? NullLogger<S3FileStorageProvider>.Instance);
+            logger ?? NullLogger<S3PreflightVerifier>.Instance);
+        return new S3FileStorageProvider(configResolver, clientFactory, preflightVerifier);
     }
 
     private static S3Configuration CreateConfig()

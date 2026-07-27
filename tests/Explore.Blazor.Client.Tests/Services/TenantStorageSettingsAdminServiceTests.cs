@@ -169,6 +169,38 @@ public sealed class TenantStorageSettingsAdminServiceTests
             Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task TestProviderAsync_WhenAffordanceExists_ReturnsApiPreflight()
+    {
+        var expected = new InstanceStorageProviderStatusDto
+        {
+            IsAvailable = true,
+            Preflight = new S3PreflightResult { IsSuccess = true, CanWrite = true }
+        };
+        _api.TestTenantStorageConnectionAsync(
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        var result = await _service.TestProviderAsync(CreateEditableModel());
+
+        await Assert.That(result).IsSameReferenceAs(expected);
+        await Assert.That(result.Preflight?.CanWrite).IsTrue();
+    }
+
+    [Test]
+    public async Task TestProviderAsync_WhenAffordanceMissing_DoesNotCallApi()
+    {
+        var result = await _service.TestProviderAsync(new HalResourceOfTenantStorageSettingsDto());
+
+        await Assert.That(result.FailureCode).IsEqualTo("provider_test_not_allowed");
+        await _api.DidNotReceive().TestTenantStorageConnectionAsync(
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     private static HalResourceOfTenantStorageSettingsDto CreateEditableModel() => new()
     {
         TenantOverridesAllowed = true,
@@ -179,7 +211,8 @@ public sealed class TenantStorageSettingsAdminServiceTests
         TenantQuotaBytes = 1024L * 1024 * 1024,
         _links = new Dictionary<string, HalLink>
         {
-            ["edit"] = new() { Href = "/api/tenant/settings/storage", Method = "PATCH" }
+            ["edit"] = new() { Href = "/api/tenant/settings/storage", Method = "PATCH" },
+            ["provider-test"] = new() { Href = "/api/tenant/settings/storage/test", Method = "POST" }
         }
     };
 

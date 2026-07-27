@@ -2,6 +2,7 @@
 // ABOUTME: Reads effective policy and applies tenant overrides under instance delegation constraints.
 
 using Explore.Application.DTOs.Tenant;
+using Explore.Application.DTOs.Onboarding;
 
 namespace Explore.Application.Contracts.Services;
 
@@ -15,5 +16,9 @@ public interface ITenantStorageSettingService
         Guid tenantId,
         Guid actorUserId,
         PatchTenantStorageSettingsDto settings,
+        CancellationToken cancellationToken = default);
+
+    Task<InstanceStorageProviderStatusDto> TestProviderAsync(
+        Guid tenantId,
         CancellationToken cancellationToken = default);
 }

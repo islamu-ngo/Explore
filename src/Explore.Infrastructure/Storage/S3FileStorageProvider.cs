@@ -3,13 +3,11 @@
 
 using System.Globalization;
 using System.Security.Cryptography;
-using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models.Storage;
 using Explore.Domain;
-using Microsoft.Extensions.Logging;
 
 namespace Explore.Infrastructure.Storage;
 
@@ -17,16 +15,16 @@ public sealed class S3FileStorageProvider : IFileStorageProvider
 {
     private readonly IS3ConfigResolver _configResolver;
     private readonly IS3ClientFactory _clientFactory;
-    private readonly ILogger<S3FileStorageProvider> _logger;
+    private readonly IS3PreflightVerifier _preflightVerifier;
 
     public S3FileStorageProvider(
         IS3ConfigResolver configResolver,
         IS3ClientFactory clientFactory,
-        ILogger<S3FileStorageProvider> logger)
+        IS3PreflightVerifier preflightVerifier)
     {
         _configResolver = configResolver;
         _clientFactory = clientFactory;
-        _logger = logger;
+        _preflightVerifier = preflightVerifier;
     }
 
     public string Provider => StorageProviders.S3Compatible;
@@ -182,50 +180,26 @@ public sealed class S3FileStorageProvider : IFileStorageProvider
         return new FileStorageDeleteResult(Provider, input.ObjectKey, Deleted: true);
     }
 
-    public async Task<FileStorageProviderStatus> TestAsync(CancellationToken cancellationToken)
+    public async Task<FileStorageProviderStatus> TestAsync(
+        CancellationToken cancellationToken,
+        bool testWritePermissions = false)
     {
-        var config = await _configResolver.ResolveAsync(cancellationToken);
-        if (config is null)
-        {
-            return new FileStorageProviderStatus(
-                Provider,
-                IsAvailable: false,
-                SupportsServerSideStreaming: true,
-                SupportsBrowserDirectUpload: true,
-                FailureCode: "s3_not_configured",
-                Message: "S3-compatible storage is not configured.");
-        }
+        var preflight = await _preflightVerifier.VerifyAsync(
+            new S3PreflightRequest { TestWritePermissions = testWritePermissions },
+            cancellationToken);
+        var failure = preflight.Steps.FirstOrDefault(step =>
+            step.Status is S3PreflightStepStatus.Failed or S3PreflightStepStatus.Warning);
 
-        try
-        {
-            var client = _clientFactory.CreateDataClient(config);
-            await client.HeadBucketAsync(
-                new HeadBucketRequest
-                {
-                    BucketName = config.BucketName
-                },
-                cancellationToken);
-
-            return new FileStorageProviderStatus(
-                Provider,
-                IsAvailable: true,
-                SupportsServerSideStreaming: true,
-                SupportsBrowserDirectUpload: true,
-                Message: "S3-compatible storage bucket is reachable.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                "S3-compatible storage health check failed. FailureType={FailureType}",
-                CategorizeHealthFailure(ex));
-            return new FileStorageProviderStatus(
-                Provider,
-                IsAvailable: false,
-                SupportsServerSideStreaming: true,
-                SupportsBrowserDirectUpload: true,
-                FailureCode: "s3_unavailable",
-                Message: "S3-compatible storage bucket is not reachable.");
-        }
+        return new FileStorageProviderStatus(
+            Provider,
+            IsAvailable: preflight.IsSuccess,
+            SupportsServerSideStreaming: true,
+            SupportsBrowserDirectUpload: true,
+            FailureCode: failure?.ErrorCode,
+            Message: failure?.Message ?? (preflight.CanWrite
+                ? "S3-compatible storage bucket is reachable and writable."
+                : "S3-compatible storage bucket is reachable."),
+            Preflight: preflight);
     }
 
     private async Task<Explore.Application.Models.S3Configuration> ResolveRequiredConfigAsync(CancellationToken cancellationToken)
@@ -233,17 +207,6 @@ public sealed class S3FileStorageProvider : IFileStorageProvider
         var config = await _configResolver.ResolveAsync(cancellationToken);
         return config ?? throw new InvalidOperationException("S3-compatible storage is not configured.");
     }
-
-    private static string CategorizeHealthFailure(Exception exception) =>
-        exception switch
-        {
-            AmazonServiceException => "provider_service_error",
-            TimeoutException => "timeout",
-            OperationCanceledException => "operation_canceled",
-            IOException => "provider_io",
-            InvalidOperationException => "provider_unavailable",
-            _ => "unknown"
-        };
 
     private static string BuildObjectKey(Guid tenantId, string? extension)
     {

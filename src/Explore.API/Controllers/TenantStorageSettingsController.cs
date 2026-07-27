@@ -6,6 +6,7 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Hateoas;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Features.TenantStorageSettings.Requests.Commands;
 using Explore.Application.Features.TenantStorageSettings.Requests.Queries;
@@ -86,5 +87,18 @@ public sealed class TenantStorageSettingsController(
         }
 
         return Ok(response);
+    }
+
+    [HttpPost("test", Name = RouteNames.TestTenantStorageConnection)]
+    [EndpointSummary("Test Tenant Storage Connection")]
+    [EndpointDescription("Tests the current tenant's effective storage provider, including an S3 write/delete probe when applicable.")]
+    [ProducesResponseType(typeof(InstanceStorageProviderStatusDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<InstanceStorageProviderStatusDto>> TestStorageConnection(
+        CancellationToken cancellationToken = default)
+    {
+        var status = await mediator.Send(new TestTenantStorageProviderQuery(), cancellationToken);
+        return Ok(status);
     }
 }

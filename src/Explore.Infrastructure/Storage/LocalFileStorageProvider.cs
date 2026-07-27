@@ -187,7 +187,9 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
         return Task.FromResult(new FileStorageDeleteResult(Provider, request.ObjectKey, deleted));
     }
 
-    public async Task<FileStorageProviderStatus> TestAsync(CancellationToken cancellationToken)
+    public async Task<FileStorageProviderStatus> TestAsync(
+        CancellationToken cancellationToken,
+        bool testWritePermissions = false)
     {
         try
         {

@@ -119,6 +119,19 @@ public sealed class TenantStorageSettingsLinkPolicy : ILinkPolicy<TenantStorageS
                 TenantStorageResourceId(dto),
                 TenantStorageAttributes(dto),
                 TenantStorageScope(dto));
+
+        yield return new LinkDefinition(
+            "provider-test",
+            RouteNames.TestTenantStorageConnection,
+            null,
+            "POST",
+            "Test tenant storage provider",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.TenantSettings.Update,
+                ResourceKinds.TenantSetting,
+                TenantStorageResourceId(dto),
+                TenantStorageAttributes(dto),
+                TenantStorageScope(dto));
     }
 
     private static bool CanUpdate(TenantStorageSettingsDto dto) =>

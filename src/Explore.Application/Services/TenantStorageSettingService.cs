@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Storage;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Models.Storage;
 using Explore.Application.Settings;
@@ -216,6 +217,25 @@ public sealed class TenantStorageSettingService : ITenantStorageSettingService
                 actorUserId,
                 cancellationToken);
         }
+    }
+
+    public async Task<InstanceStorageProviderStatusDto> TestProviderAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken = default)
+    {
+        var provider = await _storagePolicyResolver.ResolveProviderAsync(tenantId, cancellationToken);
+        var status = await provider.TestAsync(cancellationToken, testWritePermissions: true);
+
+        return new InstanceStorageProviderStatusDto
+        {
+            Provider = status.Provider,
+            IsAvailable = status.IsAvailable,
+            SupportsServerSideStreaming = status.SupportsServerSideStreaming,
+            SupportsBrowserDirectUpload = status.SupportsBrowserDirectUpload,
+            FailureCode = status.FailureCode,
+            Message = status.Message,
+            Preflight = status.Preflight
+        };
     }
 
     private async Task<Dictionary<string, ResolvedSetting>> ResolveSettingsAsync(

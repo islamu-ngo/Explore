@@ -9,4 +9,5 @@ public sealed record FileStorageProviderStatus(
     bool SupportsServerSideStreaming,
     bool SupportsBrowserDirectUpload,
     string? FailureCode = null,
-    string? Message = null);
+    string? Message = null,
+    S3PreflightResult? Preflight = null);

@@ -7,11 +7,13 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Controllers;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Identity;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Features.TenantStorageSettings.Requests.Commands;
 using Explore.Application.Features.TenantStorageSettings.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Models.Common;
+using Explore.Application.Models.Storage;
 using Explore.Application.Responses;
 using Explore.Domain;
 using MediatR;
@@ -133,6 +135,27 @@ public sealed class TenantStorageSettingsControllerTests
         var objectResult = result.Result as ObjectResult;
         await Assert.That(objectResult).IsNotNull();
         await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status403Forbidden);
+    }
+
+    [Test]
+    public async Task TestStorageConnection_ReturnsMediatorProviderStatus()
+    {
+        var mediator = Substitute.For<IMediator>();
+        var expected = new InstanceStorageProviderStatusDto
+        {
+            IsAvailable = true,
+            Preflight = new S3PreflightResult { IsSuccess = true }
+        };
+        mediator.Send(Arg.Any<TestTenantStorageProviderQuery>(), Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        var result = await CreateController(mediator).TestStorageConnection(CancellationToken.None);
+
+        var ok = result.Result as OkObjectResult;
+        await Assert.That(ok?.Value).IsSameReferenceAs(expected);
+        await mediator.Received(1).Send(
+            Arg.Any<TestTenantStorageProviderQuery>(),
+            Arg.Any<CancellationToken>());
     }
 
     private static TenantStorageSettingsController CreateController(

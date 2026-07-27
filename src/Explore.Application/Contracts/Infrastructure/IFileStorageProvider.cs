@@ -17,5 +17,7 @@ public interface IFileStorageProvider
 
     Task<FileStorageDeleteResult> DeleteAsync(FileStorageDeleteInput input, CancellationToken cancellationToken);
 
-    Task<FileStorageProviderStatus> TestAsync(CancellationToken cancellationToken);
+    Task<FileStorageProviderStatus> TestAsync(
+        CancellationToken cancellationToken,
+        bool testWritePermissions = false);
 }

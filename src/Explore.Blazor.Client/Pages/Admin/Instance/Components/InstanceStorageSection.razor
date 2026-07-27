@@ -259,6 +259,17 @@
                 {
                     <span>@ProviderStatusMessage</span>
                 }
+                @if (ProviderPreflightSteps.Any())
+                {
+                    <MudStack Spacing="1" Class="mt-2">
+                        @foreach (var step in ProviderPreflightSteps)
+                        {
+                            <MudText Typo="Typo.body2">
+                                <strong>@step.StepName:</strong> @step.Status. @step.Message
+                            </MudText>
+                        }
+                    </MudStack>
+                }
             </MudAlert>
         }
 
@@ -344,6 +355,10 @@
     private bool HasProviderStatus => _testedProviderStatus is not null || Model.ProviderStatus is not null;
     private bool ProviderIsAvailable => _testedProviderStatus?.IsAvailable ?? Model.ProviderStatus?.IsAvailable ?? false;
     private string? ProviderStatusMessage => _testedProviderStatus?.Message ?? Model.ProviderStatus?.Message;
+    private IEnumerable<(string? StepName, string? Status, string? Message)> ProviderPreflightSteps =>
+        _testedProviderStatus?.Preflight?.Steps?.Select(step => (step.StepName, step.Status, step.Message))
+        ?? Model.ProviderStatus?.Preflight?.Steps?.Select(step => (step.StepName, step.Status, step.Message))
+        ?? [];
 
     private Color ProviderChipColor =>
         Provider == StorageProviderOptions.S3Compatible ? Color.Info : Color.Success;
