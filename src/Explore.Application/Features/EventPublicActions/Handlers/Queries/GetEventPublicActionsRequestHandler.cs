@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.EventPublicActions.Requests.Queries;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
 using MediatR;
 
 namespace Explore.Application.Features.EventPublicActions.Handlers.Queries;
@@ -23,7 +24,8 @@ public sealed class GetEventPublicActionsRequestHandler(
         var @event = await eventRepository.GetById(request.EventId);
         if (@event is null
             || @event.EventStatusId != (int)EventStatusEnum.Published
-            || @event.VisibilityTypeId != (int)VisibilityTypeEnum.Public)
+            || @event.VisibilityTypeId != (int)VisibilityTypeEnum.Public
+            || @event.ParticipationConfiguration is null)
         {
             return [];
         }
@@ -33,6 +35,10 @@ public sealed class GetEventPublicActionsRequestHandler(
             trackChanges: false,
             cancellationToken);
         return mapper.Map<List<EventPublicActionDto>>(
-            actions.Where(action => action.HealthStateId == (int)EventPublicActionHealthStateEnum.Active));
+            actions.Where(action =>
+                action.HealthStateId == (int)EventPublicActionHealthStateEnum.Active
+                && EventAuthorityRules.IsPublicActionAllowed(
+                    @event.ParticipationConfiguration.ParticipationHandlingModeId,
+                    action.EventPublicActionKindId)));
     }
 }

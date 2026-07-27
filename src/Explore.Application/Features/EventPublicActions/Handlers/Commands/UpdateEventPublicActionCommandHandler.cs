@@ -7,12 +7,14 @@ using Explore.Application.DTOs.EventPublicAction.Validators;
 using Explore.Application.Features.EventPublicActions.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
 using Explore.Domain.ValueObjects;
 using MediatR;
 
 namespace Explore.Application.Features.EventPublicActions.Handlers.Commands;
 
 public sealed class UpdateEventPublicActionCommandHandler(
+    IEventRepository eventRepository,
     IEventPublicActionRepository actionRepository,
     ITenantContext tenantContext,
     ICurrentUserService currentUserService)
@@ -38,6 +40,23 @@ public sealed class UpdateEventPublicActionCommandHandler(
         if (action is null || action.EventId != request.EventId || action.TenantId != tenantContext.TenantId)
         {
             return Failure(request.ActionId, "Public action could not be updated.", ["Public action was not found for this event."]);
+        }
+
+        var @event = await eventRepository.GetAuthorizationTargetByIdAsync(request.EventId, cancellationToken);
+        if (@event is null || @event.TenantId != tenantContext.TenantId)
+        {
+            return Failure(request.ActionId, "Public action could not be updated.", ["Event was not found in the current tenant."]);
+        }
+
+        if (@event.ParticipationConfiguration is null
+            || !EventAuthorityRules.IsPublicActionAllowed(
+                @event.ParticipationConfiguration.ParticipationHandlingModeId,
+                request.Action.KindId))
+        {
+            return Failure(
+                request.ActionId,
+                "Public action could not be updated.",
+                ["Public action kind is not available for this event's participation mode."]);
         }
 
         if (action.ConcurrencyStamp != request.Action.ExpectedConcurrencyStamp)

@@ -8,6 +8,7 @@ using Explore.Application.Features.EventPublicActions.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
 using Explore.Domain.ValueObjects;
 using MediatR;
 
@@ -40,6 +41,16 @@ public sealed class CreateEventPublicActionCommandHandler(
         if (@event is null || @event.TenantId != tenantContext.TenantId)
         {
             return Failure("Public action could not be created.", ["Event was not found in the current tenant."]);
+        }
+
+        if (@event.ParticipationConfiguration is null
+            || !EventAuthorityRules.IsPublicActionAllowed(
+                @event.ParticipationConfiguration.ParticipationHandlingModeId,
+                request.Action.KindId))
+        {
+            return Failure(
+                "Public action could not be created.",
+                ["Public action kind is not available for this event's participation mode."]);
         }
 
         if (request.Action.IsPrimary
