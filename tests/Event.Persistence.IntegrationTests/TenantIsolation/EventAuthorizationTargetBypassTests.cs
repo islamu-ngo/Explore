@@ -120,7 +120,6 @@ public class EventAuthorizationTargetBypassTests(PostgreSqlContainerFixture fixt
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,
             TotalViews = 0,
-            IsRegistrationRequired = false,
             CreatedAt = DateTime.UtcNow,
             ConcurrencyStamp = Guid.CreateVersion7(),
         };

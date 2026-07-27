@@ -112,7 +112,6 @@ public class TenantQueryFilterFailClosedTests(PostgreSqlContainerFixture fixture
             EventFormatId = 1,
             EventFormat = null!,
             TotalViews = 0,
-            IsRegistrationRequired = false,
             ConcurrencyStamp = Guid.CreateVersion7(),
         };
         context.Events.Add(@event);

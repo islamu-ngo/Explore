@@ -97,7 +97,6 @@ public sealed class EventAuthorityTenantIsolationTests(PostgreSqlContainerFixtur
             EventFormatId = 1,
             EventFormat = null!,
             TotalViews = 0,
-            IsRegistrationRequired = false,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
         context.Events.Add(@event);
