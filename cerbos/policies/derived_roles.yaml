@@ -110,9 +110,8 @@ derivedRoles:
             request.resource.attr.eventId in request.principal.attr.eventAssignments &&
             has(request.principal.attr.eventAssignments[request.resource.attr.eventId].tenantId) &&
             request.principal.attr.eventAssignments[request.resource.attr.eventId].tenantId == request.resource.attr.tenantId &&
-            ("event.owner" in request.principal.attr.eventAssignments[request.resource.attr.eventId].roles ||
-             "event.manager" in request.principal.attr.eventAssignments[request.resource.attr.eventId].roles ||
-             "event.registration_manager" in request.principal.attr.eventAssignments[request.resource.attr.eventId].roles)
+            "event.registration_manager" in request.principal.attr.eventAssignments[request.resource.attr.eventId].roles &&
+            "event_registration:manage" in request.principal.attr.eventAssignments[request.resource.attr.eventId].permissions
 
     - name: islamuevent_check_in_staff
       parentRoles: ["islamuevent_authenticated_user"]

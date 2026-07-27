@@ -373,6 +373,8 @@ public class AuthorizationBehaviorTests
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
+        var organizerActorId = Guid.NewGuid();
+        var organizerUserId = Guid.NewGuid();
         var organizationId = Guid.NewGuid();
         var command = new UpdateEventCommand
         {
@@ -391,6 +393,15 @@ public class AuthorizationBehaviorTests
             TenantId = tenantId,
             Title = "Community Program",
             ActorId = actorId,
+            OrganizerActorId = organizerActorId,
+            OrganizerActor = new Actor
+            {
+                Id = organizerActorId,
+                UserId = organizerUserId,
+                ActorTypeId = 1,
+                ActorType = null!,
+                Pii = new ActorPii { DisplayName = "Verified organizer" }
+            },
             Actor = new Actor
             {
                 Id = actorId,
@@ -413,6 +424,8 @@ public class AuthorizationBehaviorTests
                     && attributes["eventId"].Equals(eventId.ToString())
                     && attributes["tenantId"].Equals(tenantId.ToString())
                     && attributes["actorId"].Equals(actorId.ToString())
+                    && attributes["organizerActorId"].Equals(organizerActorId.ToString())
+                    && attributes["organizerUserId"].Equals(organizerUserId.ToString())
                     && attributes["organizationId"].Equals(organizationId.ToString())),
                 Arg.Any<CancellationToken>())
             .Returns(true);

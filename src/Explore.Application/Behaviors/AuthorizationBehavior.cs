@@ -529,6 +529,10 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         AddIfMissing(enriched, "userId", eventEntity.Actor?.UserId);
         AddIfMissing(enriched, "organizationId", eventEntity.Actor?.OrganizationId);
         AddIfMissing(enriched, "groupId", eventEntity.Actor?.GroupId);
+        AddIfMissing(enriched, "organizerActorId", eventEntity.OrganizerActorId);
+        AddIfMissing(enriched, "organizerUserId", eventEntity.OrganizerActor?.UserId);
+        AddIfMissing(enriched, "organizerOrganizationId", eventEntity.OrganizerActor?.OrganizationId);
+        AddIfMissing(enriched, "organizerGroupId", eventEntity.OrganizerActor?.GroupId);
 
         return enriched;
     }

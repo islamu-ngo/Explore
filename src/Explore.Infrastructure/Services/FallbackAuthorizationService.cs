@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Settings;
+using Explore.Domain.Constants;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Infrastructure.Services;
@@ -91,6 +92,14 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         }
 
         var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(cancellationToken);
+        if (isInstanceAdmin
+            && resourceKind == ResourceKinds.Event
+            && action == AuthorizationActions.Events.ManageRegistrations)
+        {
+            LogDecision("deny", "registration_management_requires_event_authority", resourceKind, resourceId, action);
+            return false;
+        }
+
         if (isInstanceAdmin && !RequiresDirectEventAuthority(resourceKind, action))
         {
             LogDecision("allow", "is_instance_admin", resourceKind, resourceId, action);
@@ -313,6 +322,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Events.TransferOwnership
             or AuthorizationActions.Events.ManageFinance
             or AuthorizationActions.Events.ManagePublicActions
+            or AuthorizationActions.Events.ManageRegistrations
             or AuthorizationActions.Events.ClaimOrganizer
             or AuthorizationActions.Events.WithdrawOrganizerClaim
             or AuthorizationActions.Events.ViewOrganizerClaims
@@ -345,7 +355,8 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Events.ManageOwner
             or AuthorizationActions.Events.TransferOwnership
             or AuthorizationActions.Events.ManageFinance
-            or AuthorizationActions.Events.ManagePublicActions;
+            or AuthorizationActions.Events.ManagePublicActions
+            or AuthorizationActions.Events.ManageRegistrations;
 
     private static bool IsTenantAdminEventAction(string action) =>
         action is AuthorizationActions.View
@@ -371,6 +382,9 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             : resourceKind.StartsWith(productNamespacePrefix, StringComparison.Ordinal)
                 ? resourceKind[productNamespacePrefix.Length..]
                 : resourceKind;
+        if (resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ManageRegistrations)
+            return PermissionCodes.EventRegistrationManage;
+
         var permissionAction = resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ViewManagement
             ? AuthorizationActions.View
             : action;

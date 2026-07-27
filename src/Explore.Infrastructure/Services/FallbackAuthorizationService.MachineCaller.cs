@@ -15,6 +15,12 @@ public partial class FallbackAuthorizationService
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
+        if (resourceKind == ResourceKinds.Event
+            && action == AuthorizationActions.Events.ManageRegistrations)
+        {
+            return false;
+        }
+
         var context = _machinePrincipalAccessor.Current;
         if (context is null)
         {

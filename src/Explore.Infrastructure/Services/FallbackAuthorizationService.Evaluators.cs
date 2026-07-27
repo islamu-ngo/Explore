@@ -419,6 +419,18 @@ public partial class FallbackAuthorizationService
             return false;
         }
 
+        if (resourceKind == ResourceKinds.Event
+            && action == AuthorizationActions.Events.ManageRegistrations)
+        {
+            return await EvaluateManageRegistrationsAccessAsync(
+                resourceKind,
+                resourceId,
+                resourceAttributes,
+                tenantId,
+                eventId,
+                cancellationToken);
+        }
+
         if (resourceKind == ResourceKinds.EventOrganizerClaim && !IsOrganizerClaimAction(action))
         {
             LogDecision("deny", "unknown_organizer_claim_action", resourceKind, resourceId, action);
@@ -480,6 +492,64 @@ public partial class FallbackAuthorizationService
 
         LogDecision("deny", "no_event_authority", resourceKind, resourceId, action);
         return false;
+    }
+
+    private async Task<bool> EvaluateManageRegistrationsAccessAsync(
+        string resourceKind,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes,
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        if (_machinePrincipalAccessor.IsMachineCaller
+            || await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
+        {
+            return false;
+        }
+
+        if (await IsVerifiedOrganizerControllerAsync(resourceAttributes, cancellationToken))
+        {
+            return true;
+        }
+
+        return await EvaluateEventRolePermissionAsync(
+            resourceKind,
+            resourceId,
+            AuthorizationActions.Events.ManageRegistrations,
+            tenantId,
+            eventId,
+            cancellationToken);
+    }
+
+    private async Task<bool> IsVerifiedOrganizerControllerAsync(
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        var currentUserId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
+        if (!currentUserId.HasValue)
+        {
+            return false;
+        }
+
+        if (TryResolveGuidAttribute(resourceAttributes, "organizerUserId", out var organizerUserId))
+        {
+            return organizerUserId == currentUserId.Value;
+        }
+
+        if (TryResolveGuidAttribute(resourceAttributes, "organizerOrganizationId", out var organizerOrganizationId))
+        {
+            return await _organizationMemberRepository.HasPermissionInOrganization(
+                organizerOrganizationId,
+                currentUserId.Value,
+                PermissionCodes.EventCreate);
+        }
+
+        return TryResolveGuidAttribute(resourceAttributes, "organizerGroupId", out var organizerGroupId)
+            && await _groupMemberRepository.HasPermissionInGroup(
+                organizerGroupId,
+                currentUserId.Value,
+                PermissionCodes.EventCreate);
     }
 
     private async Task<bool> EvaluateEventCreateAccessAsync(

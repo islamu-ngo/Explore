@@ -601,6 +601,9 @@ public static class ResourceDescriptors
         AddIfPresent(attributes, "groupId", dto.ActorGroupId);
         attributes["provenanceType"] = dto.ProvenanceTypeCode ?? dto.ProvenanceTypeId.ToString();
         AddIfPresent(attributes, "organizerActorId", dto.OrganizerActorId);
+        AddIfPresent(attributes, "organizerUserId", dto.OrganizerActorUserId);
+        AddIfPresent(attributes, "organizerOrganizationId", dto.OrganizerActorOrganizationId);
+        AddIfPresent(attributes, "organizerGroupId", dto.OrganizerActorGroupId);
         AddIfPresent(attributes, "submittedByUserId", dto.SubmittedByUserId);
         return attributes;
     }
@@ -787,6 +790,9 @@ public static class ResourceDescriptors
         attributes["provenanceType"] = eventEntity.EventProvenanceType?.MasterCode
             ?? eventEntity.EventProvenanceTypeId.ToString();
         AddIfPresent(attributes, "organizerActorId", eventEntity.OrganizerActorId);
+        AddIfPresent(attributes, "organizerUserId", eventEntity.OrganizerActor?.UserId);
+        AddIfPresent(attributes, "organizerOrganizationId", eventEntity.OrganizerActor?.OrganizationId);
+        AddIfPresent(attributes, "organizerGroupId", eventEntity.OrganizerActor?.GroupId);
         AddIfPresent(attributes, "submittedByUserId", eventEntity.SubmittedByUserId);
         return attributes;
     }

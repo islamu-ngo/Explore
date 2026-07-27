@@ -39,6 +39,18 @@
       "type": "string",
       "description": "Verified organizer authority actor when one has been established."
     },
+    "organizerUserId": {
+      "type": "string",
+      "description": "Verified organizer's user identifier, supplied only by server-side event loading."
+    },
+    "organizerOrganizationId": {
+      "type": "string",
+      "description": "Verified organizer's organization identifier, supplied only by server-side event loading."
+    },
+    "organizerGroupId": {
+      "type": "string",
+      "description": "Verified organizer's group identifier, supplied only by server-side event loading."
+    },
     "submittedByUserId": {
       "type": "string",
       "description": "User that originally submitted a community-reported event when retained."

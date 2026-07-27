@@ -2012,6 +2012,145 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
+    public async Task IsAllowed_ManageRegistrations_AllowsVerifiedOrganizerControllersAndAssignedRole()
+    {
+        var userId = Guid.NewGuid();
+        var personalEventId = Guid.NewGuid();
+        var organizationEventId = Guid.NewGuid();
+        var assignedEventId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+        _organizationMemberRepository.HasPermissionInOrganization(TestOrgId, userId, PermissionCodes.EventCreate)
+            .Returns(true);
+        ConfigureEventAuthority(userId, assignedEventId, PermissionCodes.EventRegistrationManage);
+
+        var personalAttributes = CreateVerifiedOrganizerAttributes(personalEventId, userId: userId);
+        var organizationAttributes = CreateVerifiedOrganizerAttributes(organizationEventId, organizationId: TestOrgId);
+        var assignedAttributes = CreateEventContextAttributes(assignedEventId);
+
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            personalEventId.ToString(),
+            AuthorizationActions.Events.ManageRegistrations,
+            personalAttributes)).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            organizationEventId.ToString(),
+            AuthorizationActions.Events.ManageRegistrations,
+            organizationAttributes)).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            assignedEventId.ToString(),
+            AuthorizationActions.Events.ManageRegistrations,
+            assignedAttributes)).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_ManageRegistrations_DeniesContributorUnrelatedControllerAndAdminBypasses()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var communityContributor = CreateEventContextAttributes(eventId);
+        communityContributor["actorId"] = Guid.NewGuid();
+        communityContributor["userId"] = userId;
+        var unrelatedController = CreateVerifiedOrganizerAttributes(eventId, userId: userId);
+        unrelatedController["organizerUserId"] = Guid.NewGuid();
+
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            eventId.ToString(),
+            AuthorizationActions.Events.ManageRegistrations,
+            communityContributor)).IsFalse();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            eventId.ToString(),
+            AuthorizationActions.Events.ManageRegistrations,
+            unrelatedController)).IsFalse();
+
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            eventId.ToString(),
+            AuthorizationActions.Events.ManageRegistrations,
+            CreateEventContextAttributes(eventId))).IsFalse();
+
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            eventId.ToString(),
+            AuthorizationActions.Events.ManageRegistrations,
+            CreateEventContextAttributes(eventId))).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_ManageRegistrations_MatchesSingleDecisionBoundaries()
+    {
+        var userId = Guid.NewGuid();
+        var organizerEventId = Guid.NewGuid();
+        var assignedEventId = Guid.NewGuid();
+        var communityEventId = Guid.NewGuid();
+        var unrelatedEventId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminGroupIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+        ConfigureEventAuthority(userId, assignedEventId, PermissionCodes.EventRegistrationManage);
+
+        var communityAttributes = CreateEventContextAttributes(communityEventId);
+        communityAttributes["actorId"] = Guid.NewGuid();
+        communityAttributes["userId"] = userId;
+        var unrelatedAttributes = CreateVerifiedOrganizerAttributes(unrelatedEventId, userId: userId);
+        unrelatedAttributes["organizerUserId"] = Guid.NewGuid();
+
+        var results = await _service.IsAllowedBatchAsync(
+        [
+            new(ResourceKinds.Event, organizerEventId.ToString(), AuthorizationActions.Events.ManageRegistrations, CreateVerifiedOrganizerAttributes(organizerEventId, userId: userId)),
+            new(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageRegistrations, CreateEventContextAttributes(assignedEventId)),
+            new(ResourceKinds.Event, communityEventId.ToString(), AuthorizationActions.Events.ManageRegistrations, communityAttributes),
+            new(ResourceKinds.Event, unrelatedEventId.ToString(), AuthorizationActions.Events.ManageRegistrations, unrelatedAttributes)
+        ]);
+
+        await Assert.That(results[0]).IsTrue();
+        await Assert.That(results[1]).IsTrue();
+        await Assert.That(results[2]).IsFalse();
+        await Assert.That(results[3]).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_ManageRegistrations_DeniesMachineCaller()
+    {
+        var eventId = Guid.NewGuid();
+        _machinePrincipalAccessor.IsMachineCaller.Returns(true);
+
+        var results = await _service.IsAllowedBatchAsync(
+        [
+            new(ResourceKinds.Event, eventId.ToString(), AuthorizationActions.Events.ManageRegistrations, CreateVerifiedOrganizerAttributes(eventId, userId: TestUserId)),
+            new(ResourceKinds.Event, Guid.NewGuid().ToString(), AuthorizationActions.Events.ManageRegistrations, CreateEventContextAttributes()),
+            new(ResourceKinds.Event, Guid.NewGuid().ToString(), AuthorizationActions.Events.ManageRegistrations, CreateEventContextAttributes())
+        ]);
+
+        await Assert.That(results).IsEquivalentTo([false, false, false]);
+    }
+
+    [Test]
     public async Task IsAllowed_EventUnknownAction_DeniedBeforeInstanceAdminWildcard()
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
@@ -2389,6 +2528,26 @@ public class FallbackAuthorizationServiceTests
         ["tenantId"] = TestTenantId,
         ["eventId"] = eventId
     };
+
+    private static Dictionary<string, object> CreateVerifiedOrganizerAttributes(
+        Guid eventId,
+        Guid? userId = null,
+        Guid? organizationId = null,
+        Guid? groupId = null)
+    {
+        var attributes = CreateEventContextAttributes(eventId);
+        attributes["actorId"] = Guid.NewGuid();
+        attributes["organizerActorId"] = Guid.NewGuid();
+
+        if (userId.HasValue)
+            attributes["organizerUserId"] = userId.Value;
+        if (organizationId.HasValue)
+            attributes["organizerOrganizationId"] = organizationId.Value;
+        if (groupId.HasValue)
+            attributes["organizerGroupId"] = groupId.Value;
+
+        return attributes;
+    }
 
     private void ConfigureEventAuthority(Guid userId, Guid eventId, params string[] permissionCodes)
     {

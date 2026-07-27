@@ -146,6 +146,8 @@ public partial class FallbackAuthorizationService
             "islamuevent_group" => action is "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "islamuevent_group_member" => action is "view" or "create" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "islamuevent_event" when action is "create" => IsEventCreateAllowedForProfile(profile, resourceAttributes),
+            "islamuevent_event" when action == AuthorizationActions.Events.ManageRegistrations
+                => EvaluateManageRegistrationsWithProfile(profile, eventAuthority, resourceId, resourceAttributes),
             "islamuevent_event" or "islamuevent_event_session" or "islamuevent_event_session_group" or "islamuevent_event_session_agenda_item" or "islamuevent_event_day" or "islamuevent_event_agenda_item"
                 => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
                     && (resourceKind == ResourceKinds.Event && IsEventModerationAction(action)
@@ -196,6 +198,41 @@ public partial class FallbackAuthorizationService
         }
 
         return profile.IsTenantAdmin;
+    }
+
+    private static bool EvaluateManageRegistrationsWithProfile(
+        AuthorityProfile profile,
+        EventAuthoritySnapshot? eventAuthority,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        if (profile.IsInstanceAdmin
+            || profile.IsTenantAdmin
+            || !HasEventContextForProfile(profile, ResourceKinds.Event, resourceId, resourceAttributes))
+        {
+            return false;
+        }
+
+        return IsVerifiedOrganizerControllerFromProfile(profile, resourceAttributes)
+            || HasEventRolePermission(
+                eventAuthority,
+                ResourceKinds.Event,
+                resourceId,
+                AuthorizationActions.Events.ManageRegistrations,
+                resourceAttributes);
+    }
+
+    private static bool IsVerifiedOrganizerControllerFromProfile(
+        AuthorityProfile profile,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        return profile.UserId.HasValue
+                && TryResolveGuidAttribute(resourceAttributes, "organizerUserId", out var organizerUserId)
+                && organizerUserId == profile.UserId.Value
+            || TryResolveGuidAttribute(resourceAttributes, "organizerOrganizationId", out var organizerOrganizationId)
+                && profile.EventCreateOrgIds.Contains(organizerOrganizationId)
+            || TryResolveGuidAttribute(resourceAttributes, "organizerGroupId", out var organizerGroupId)
+                && profile.EventCreateGroupIds.Contains(organizerGroupId);
     }
 
     private static bool EvaluateEventOrganizerClaimWithProfile(
