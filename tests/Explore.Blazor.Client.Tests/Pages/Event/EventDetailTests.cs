@@ -134,9 +134,21 @@ public sealed class EventDetailTests : IDisposable
     }
 
     [Test]
+    public async Task Render_WhenSignInToRegisterLinkExists_ShowsNativeRegistrationAction()
+    {
+        RegisterEventDetailServices(CreateEventDto("PUBLISHED", "Published", "sign-in-to-register"));
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => cut.Markup.Contains("Register now", StringComparison.Ordinal), TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).Contains("Register now");
+        await Assert.That(cut.Markup).DoesNotContain("Continue on external site");
+    }
+
+    [Test]
     public async Task Render_WhenExternalRegistrationLinkExists_UsesHalTitleAndStoredRedirectHref()
     {
-        const string href = "/api/events/public-actions/456/redirect";
+        const string href = "/api/events/public-actions/456/redirect?surface=event_detail";
         const string title = "Continue with the organizer";
         var eventDto = CreateEventDto("PUBLISHED", "Published");
         eventDto.AdditionalProperties = CreateHalLink("external-registration", href, title);
@@ -584,8 +596,8 @@ public sealed class EventDetailTests : IDisposable
             VisibilityTypeId = 1,
             VisibilityTypeFullName = "Public",
             VisibilityTypeMasterCode = "PUBLIC",
-            FirstSessionDate = DateTimeOffset.UtcNow.Date,
-            LastSessionDate = DateTimeOffset.UtcNow.Date,
+            FirstSessionDate = DateTimeOffset.UtcNow.Date.AddDays(7),
+            LastSessionDate = DateTimeOffset.UtcNow.Date.AddDays(7),
             AdditionalProperties = CreateHalLinks(linkRels)
         };
     }

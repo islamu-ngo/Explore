@@ -2206,7 +2206,9 @@ public partial class EventDetail : ComponentBase, IDisposable
             ?? "Participation details not specified";
     }
 
-    private bool CanStartRegistration => _eventDetails?.HasHalLink("start-registration") == true;
+    private bool CanStartRegistration =>
+        _eventDetails?.HasHalLink("start-registration") == true ||
+        _eventDetails?.HasHalLink("sign-in-to-register") == true;
 
     private string? ExternalParticipationHref => _eventDetails?.GetHalHref("external-registration");
 

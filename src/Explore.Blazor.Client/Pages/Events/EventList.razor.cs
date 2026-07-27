@@ -1524,7 +1524,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     {
         if (_selectedEvent?.Id == null || _selectedEventDetail == null) return;
 
-        if (_selectedEventDetail.HasHalLink("start-registration") != true)
+        if (_selectedEventDetail.HasHalLink("start-registration") != true &&
+            _selectedEventDetail.HasHalLink("sign-in-to-register") != true)
         {
             Snackbar.Add("Registration is unavailable for this event.", Severity.Warning);
             return;

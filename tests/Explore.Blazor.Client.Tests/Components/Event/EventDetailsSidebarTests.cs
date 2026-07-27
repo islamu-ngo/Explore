@@ -30,6 +30,18 @@ public sealed class EventDetailsSidebarTests : IDisposable
     }
 
     [Test]
+    public async Task Render_WhenSignInToRegisterHalLinkExists_ShowsNativeRegistrationAction()
+    {
+        var eventId = Guid.NewGuid();
+
+        var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
+            .Add(component => component.SelectedEvent, CreateEventListItem(eventId))
+            .Add(component => component.EventDetail, CreateEventDetail(eventId, "sign-in-to-register")));
+
+        await Assert.That(cut.Markup).Contains("Register for this Event");
+    }
+
+    [Test]
     public async Task Render_WhenParticipationLinksAreMissing_HidesParticipationActions()
     {
         var eventId = Guid.NewGuid();
@@ -61,6 +73,30 @@ public sealed class EventDetailsSidebarTests : IDisposable
         await Assert.That(link.GetAttribute("rel")).IsEqualTo("noopener noreferrer");
         await Assert.That(link.TextContent).Contains(title);
         await Assert.That(cut.Markup).DoesNotContain("Register for this Event");
+    }
+
+    [Test]
+    [Arguments("event_list")]
+    [Arguments("event_preview")]
+    public async Task Render_WhenExternalSurfaceIsBounded_ReplacesOnlySurfaceQuery(string surface)
+    {
+        var eventId = Guid.NewGuid();
+        const string href = "/api/events/public-actions/123/redirect?campaign=summer&surface=event_detail#registration";
+        var detail = CreateEventDetail(eventId, includeStartRegistrationLink: false);
+        detail.AdditionalProperties = CreateHalLink("external-registration", href, "Reserve with the organizer");
+
+        var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
+            .Add(component => component.SelectedEvent, CreateEventListItem(eventId))
+            .Add(component => component.EventDetail, detail)
+            .Add(component => component.ExternalParticipationSurface, surface));
+
+        var renderedHref = cut.Find("[data-testid='external-participation-action']").GetAttribute("href")!;
+        var renderedUri = _ctx.Services.GetRequiredService<NavigationManager>().ToAbsoluteUri(renderedHref);
+        await Assert.That(renderedUri.AbsolutePath).IsEqualTo("/api/events/public-actions/123/redirect");
+        await Assert.That(renderedUri.Query).Contains("campaign=summer");
+        await Assert.That(renderedUri.Query).Contains($"surface={surface}");
+        await Assert.That(renderedUri.Query.Split("surface=", StringSplitOptions.None).Length).IsEqualTo(2);
+        await Assert.That(renderedUri.Fragment).IsEqualTo("#registration");
     }
 
     [Test]
@@ -186,14 +222,17 @@ public sealed class EventDetailsSidebarTests : IDisposable
         FirstSessionDate = DateTimeOffset.UtcNow.AddDays(7)
     };
 
-    private static EventDto CreateEventDetail(Guid eventId, bool includeStartRegistrationLink) => new()
+    private static EventDto CreateEventDetail(Guid eventId, bool includeStartRegistrationLink) =>
+        CreateEventDetail(eventId, includeStartRegistrationLink ? "start-registration" : null);
+
+    private static EventDto CreateEventDetail(Guid eventId, string? participationRelation) => new()
     {
         Id = eventId,
         Title = "Registration Affordance Event",
         Description = "An event used to verify HAL-gated registration affordances.",
         EventStatusMasterCode = "PUBLISHED",
-        AdditionalProperties = includeStartRegistrationLink
-            ? CreateHalLinks("start-registration")
+        AdditionalProperties = participationRelation is not null
+            ? CreateHalLinks(participationRelation)
             : []
     };
 

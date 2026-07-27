@@ -2,9 +2,11 @@
 // ABOUTME: Verifies stable UX state transitions with Virtualize-backed API paging.
 
 using System.Reflection;
+using System.Text.Json;
 using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Services.Docking;
+using Explore.Blazor.Client.Shared;
 using Microsoft.AspNetCore.Components.Web.Virtualization;
 using MudBlazor;
 
@@ -329,6 +331,18 @@ public class EventListTests : IDisposable
         });
 
         _eventService.GetSessionsByEventAsync(eventId, Arg.Any<bool>()).Returns(new List<EventSessionListDto>());
+    }
+
+    private static Dictionary<string, object> CreateHalLinks(params string[] relations)
+    {
+        var links = string.Join(
+            ',',
+            relations.Select(relation => $"\"{relation}\":{{\"href\":\"/api/eventregistration\",\"method\":\"POST\"}}"));
+        using var document = JsonDocument.Parse($"{{\"_links\":{{{links}}}}}");
+        return new Dictionary<string, object>
+        {
+            ["_links"] = document.RootElement.GetProperty("_links").Clone()
+        };
     }
 
     [Test]
@@ -878,6 +892,37 @@ public class EventListTests : IDisposable
         await Assert.That(cut.Markup).Contains("Share this Event");
         await Assert.That(cut.Markup).Contains("View Registrations");
         await Assert.That(cut.Markup).Contains("href=\"/my/profile\"");
+    }
+
+    [Test]
+    public async Task OpenInlineRegistration_WhenSignInRelationExists_ShowsExistingLoginPrompt()
+    {
+        var eventId = Guid.NewGuid();
+        _ctx.SetAnonymousUser();
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+        var dialogService = _ctx.Services.GetRequiredService<IDialogService>();
+        var cut = _ctx.RenderMudComponent<EventList>();
+        SetPrivateField(cut.Instance, "_selectedEvent", new EventListDto
+        {
+            Id = eventId,
+            Title = "Anonymous Registration Event"
+        });
+        SetPrivateField(cut.Instance, "_selectedEventDetail", new EventDto
+        {
+            Id = eventId,
+            Title = "Anonymous Registration Event",
+            AdditionalProperties = CreateHalLinks("sign-in-to-register")
+        });
+
+        await InvokePrivateTaskAsync(cut, "OpenInlineRegistration");
+
+        await dialogService.Received(1).ShowAsync<LoginPromptDialog>(
+            "Sign in",
+            Arg.Is<DialogParameters>(parameters =>
+                parameters.Get<string>("ReturnUrl") == $"/events/{eventId}" &&
+                parameters.Get<string>("Message").StartsWith("Sign in to register", StringComparison.Ordinal)),
+            Arg.Any<DialogOptions>());
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_showInlineRegistration")).IsFalse();
     }
 
     [Test]

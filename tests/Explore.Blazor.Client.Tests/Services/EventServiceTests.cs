@@ -80,8 +80,8 @@ public class EventServiceTests
         };
         _apiClient.ConfigureEventParticipationAsync(
                 eventId,
+                $"\"{concurrencyStamp:D}\"",
                 configuration,
-                concurrencyStamp,
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
@@ -95,8 +95,8 @@ public class EventServiceTests
         await Assert.That(result.Success).IsTrue();
         await _apiClient.Received(1).ConfigureEventParticipationAsync(
             eventId,
+            $"\"{concurrencyStamp:D}\"",
             configuration,
-            concurrencyStamp,
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
@@ -109,8 +109,8 @@ public class EventServiceTests
         var configuration = new ConfigureEventParticipationDto();
         _apiClient.ConfigureEventParticipationAsync(
                 eventId,
+                Arg.Any<string>(),
                 configuration,
-                Arg.Any<Guid?>(),
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())

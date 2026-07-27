@@ -75,7 +75,6 @@ public sealed class ProgramSectionsDialogTests : IDisposable
 
         await InvokePrivateAsync(cut.Instance, "EditSectionAsync", section);
         SetField(cut.Instance, "_name", "Main stage");
-        SetField(cut.Instance, "_description", "Primary talks");
         SetField(cut.Instance, "_color", "#123456");
         SetField(cut.Instance, "_locationId", locationId);
         SetField(cut.Instance, "_roomId", roomId);
@@ -92,7 +91,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
                 request.Metadata.Name == "Main stage" &&
                 request.Metadata.Description != null &&
                 request.Metadata.Description.HasValue &&
-                request.Metadata.Description.Value == "Primary talks" &&
+                request.Metadata.Description.Value == "Existing description" &&
                 request.Metadata.Color != null &&
                 request.Metadata.Color.Value == "#123456" &&
                 request.Placement != null &&
@@ -314,6 +313,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
             Id = sectionId,
             EventId = eventId,
             Name = "Main stage",
+            Description = "Existing description",
             SortOrder = 10,
             IsPublished = true,
             ConcurrencyStamp = concurrencyStamp ?? Guid.NewGuid(),

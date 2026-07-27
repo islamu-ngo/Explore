@@ -18,6 +18,7 @@ public partial class EventDetailsSidebar : ComponentBase
 
     [Parameter] public EventListDto? SelectedEvent { get; set; }
     [Parameter] public EventDto? EventDetail { get; set; }
+    [Parameter] public string? ExternalParticipationSurface { get; set; }
     [Parameter] public ICollection<EventSessionListDto>? EventSessions { get; set; }
     [Parameter] public bool IsLoadingDetail { get; set; }
     [Parameter] public bool DetailImageLoadFailed { get; set; }
@@ -92,9 +93,44 @@ public partial class EventDetailsSidebar : ComponentBase
         $"Open {SelectedEvent?.Title} on its external platform in a new tab";
 
     private bool CanRegisterSelectedEvent =>
-        EventDetail?.HasHalLink("start-registration") == true;
+        EventDetail?.HasHalLink("start-registration") == true ||
+        EventDetail?.HasHalLink("sign-in-to-register") == true;
 
-    private string? ExternalParticipationUrl => EventDetail?.GetHalHref("external-registration");
+    private string? ExternalParticipationUrl
+    {
+        get
+        {
+            var href = EventDetail?.GetHalHref("external-registration");
+            return (href, ExternalParticipationSurface) switch
+            {
+                (not null, "event_list") => AddOrReplaceSurface(href, "event_list"),
+                (not null, "event_preview") => AddOrReplaceSurface(href, "event_preview"),
+                _ => href
+            };
+        }
+    }
+
+    private static string AddOrReplaceSurface(string href, string surface)
+    {
+        var isAbsolute = Uri.TryCreate(href, UriKind.Absolute, out var absoluteUri) &&
+            (string.Equals(absoluteUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(absoluteUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase));
+        var uri = isAbsolute ? absoluteUri! : new Uri(new Uri("https://hal.invalid"), href);
+        var builder = new UriBuilder(uri);
+        var query = builder.Query
+            .TrimStart('?')
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Where(parameter => !string.Equals(
+                Uri.UnescapeDataString(parameter.Split('=', 2)[0]),
+                "surface",
+                StringComparison.OrdinalIgnoreCase))
+            .Append($"surface={Uri.EscapeDataString(surface)}");
+
+        builder.Query = string.Join('&', query);
+        return isAbsolute
+            ? builder.Uri.AbsoluteUri
+            : builder.Uri.PathAndQuery + builder.Uri.Fragment;
+    }
 
     private string ExternalParticipationLabel =>
         EventDetail?.GetHalTitle("external-registration") ?? "Continue on external site";

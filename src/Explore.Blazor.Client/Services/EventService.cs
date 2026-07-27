@@ -1321,7 +1321,7 @@ public partial class EventService : IEventService
                 IdentityAccessModeId = configuration.IdentityAccessModeId,
                 IdentityAccessModeCode = configuration.IdentityAccessModeCode,
                 IdentityAccessModeName = configuration.IdentityAccessModeName,
-                GuestRecoveryPolicy = configuration.GuestRecoveryPolicy
+                GuestRecoveryPolicy = (GuestRecoveryPolicyEnum?)configuration.GuestRecoveryPolicy
             };
 
     public Task<BaseCommandResponseOfGuid> UpdateRegistrationAsync(
@@ -1435,8 +1435,8 @@ public partial class EventService : IEventService
         {
             return await _apiClient.ConfigureEventParticipationAsync(
                 eventId,
+                $"\"{expectedConcurrencyStamp:D}\"",
                 configuration,
-                expectedConcurrencyStamp,
                 cancellationToken: cancellationToken);
         }
         catch (ApiException<ValidationProblemDetails> ex) when (ex.StatusCode == 400)
