@@ -6,6 +6,7 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.Features.Tags.Requests.Commands;
 using Explore.Application.Features.Tags.Requests.Queries;
@@ -46,15 +47,18 @@ public class TagController : ControllerBase
     private readonly IMediator _mediator;
     private readonly ILogger<TagController> _logger;
     private readonly IResourceAssembler<TagDto, TagListDto> _resourceAssembler;
+    private readonly ITenantContext _tenantContext;
 
     public TagController(
         IMediator mediator,
         ILogger<TagController> logger,
-        IResourceAssembler<TagDto, TagListDto> resourceAssembler)
+        IResourceAssembler<TagDto, TagListDto> resourceAssembler,
+        ITenantContext tenantContext)
     {
         _mediator = mediator;
         _logger = logger;
         _resourceAssembler = resourceAssembler;
+        _tenantContext = tenantContext;
     }
 
     /// <summary>
@@ -143,13 +147,13 @@ public class TagController : ControllerBase
     }
 
     /// <summary>
-    /// Update an existing tag.
+    /// Partially update an existing tag.
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateTag)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateTag)]
     [EndpointSummary("Update Tag")]
-    [EndpointDescription("Update an existing tag's information.")]
+    [EndpointDescription("Partially update an existing tag. The route ID and resolved tenant are authoritative.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
@@ -157,17 +161,19 @@ public class TagController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateTagDto tag, CancellationToken cancellationToken = default)
     {
-        if (id != tag.Id)
+        var command = new UpdateTagCommand
         {
-            return this.ToValidationProblem(UpdateValidationProblem, "Tag ID mismatch.");
-        }
-
-        var command = new UpdateTagCommand { TagDto = tag };
+            TagId = id,
+            TenantId = _tenantContext.TenantId,
+            Update = tag
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
-            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
+            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+                ? this.ToNotFoundProblem(TagNotFoundProblem)
+                : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);

@@ -182,7 +182,11 @@ public class TagServiceCrudErrorHandlingTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        var dto = new UpdateTagDto { Id = id, FullName = "Updated", MasterCode = "UPD" };
+        var dto = new UpdateTagDto
+        {
+            FullName = new() { Value = "Updated" },
+            MasterCode = new() { Value = "UPD" }
+        };
         var ex = new ApiException("Bad Request", 400, "validation error", null, null);
         _apiClient.UpdateTagAsync(Arg.Any<Guid>(), Arg.Any<UpdateTagDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).ThrowsAsync(ex);
         _apiClient.UpdateTagAsync(Arg.Any<Guid>(), Arg.Any<UpdateTagDto>()).ThrowsAsync(ex);

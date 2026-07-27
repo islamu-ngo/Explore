@@ -1,3 +1,6 @@
+// ABOUTME: FluentValidation rules for grouped Tag PATCH payloads.
+// ABOUTME: Rejects empty wrappers while validating only groups the caller supplied.
+
 using FluentValidation;
 
 namespace Explore.Application.DTOs.Tag.Validators;
@@ -6,20 +9,36 @@ public class UpdateTagDtoValidator : AbstractValidator<UpdateTagDto>
 {
     public UpdateTagDtoValidator()
     {
-        RuleFor(p => p.Id)
-            .NotEmpty().WithMessage("{PropertyName} is required.");
+        RuleFor(dto => dto.MasterCode!)
+            .SetValidator(new UpdateTagMasterCodeDtoValidator())
+            .When(dto => dto.MasterCode is not null);
 
-        RuleFor(p => p.MasterCode)
-            .NotEmpty().WithMessage("{PropertyName} is required.")
-            .NotNull()
-            .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
+        RuleFor(dto => dto.FullName!)
+            .SetValidator(new UpdateTagFullNameDtoValidator())
+            .When(dto => dto.FullName is not null);
 
-        RuleFor(p => p.FullName)
-            .NotEmpty().WithMessage("{PropertyName} is required.")
-            .NotNull()
-            .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
+        RuleFor(dto => dto)
+            .Must(dto => dto.MasterCode is not null || dto.FullName is not null)
+            .WithMessage("At least one tag update group must be provided.");
+    }
+}
 
-        // TenantId is set by the handler from context, not by the client
-        // No validation needed here
+public class UpdateTagMasterCodeDtoValidator : AbstractValidator<UpdateTagMasterCodeDto>
+{
+    public UpdateTagMasterCodeDtoValidator()
+    {
+        RuleFor(dto => dto.Value)
+            .NotEmpty().WithMessage("Master code is required.")
+            .MaximumLength(500).WithMessage("Master code must not exceed 500 characters.");
+    }
+}
+
+public class UpdateTagFullNameDtoValidator : AbstractValidator<UpdateTagFullNameDto>
+{
+    public UpdateTagFullNameDtoValidator()
+    {
+        RuleFor(dto => dto.Value)
+            .NotEmpty().WithMessage("Full name is required.")
+            .MaximumLength(500).WithMessage("Full name must not exceed 500 characters.");
     }
 }

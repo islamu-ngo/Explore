@@ -11,11 +11,13 @@ namespace Explore.Application.Features.Tags.Requests.Commands;
 [AuthorizeResource(ResourceKinds.Tag, AuthorizationActions.Update)]
 public class UpdateTagCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required UpdateTagDto TagDto { get; set; }
+    public Guid TagId { get; set; }
+    public Guid TenantId { get; set; }
+    public required UpdateTagDto Update { get; set; }
 
-    string? ISecureRequest.ResourceId => TagDto.Id.ToString();
+    string? ISecureRequest.ResourceId => TagId.ToString();
     IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        TagDto.TenantId != Guid.Empty
-            ? new Dictionary<string, object> { ["tenantId"] = TagDto.TenantId.ToString() }
+        TenantId != Guid.Empty
+            ? new Dictionary<string, object> { ["tenantId"] = TenantId.ToString() }
             : null;
 }

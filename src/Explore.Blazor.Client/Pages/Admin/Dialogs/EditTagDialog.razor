@@ -13,8 +13,8 @@
     <DialogContent>
         <EditForm EditContext="_editContext">
             <FluentValidationValidator />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="tagDto.FullName" Label="Name" For="@(() => tagDto.FullName)" Required="true" RequiredError="Name is required." />
-            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="tagDto.MasterCode" Label="Master Code" For="@(() => tagDto.MasterCode)" Required="true" RequiredError="Master Code is required." />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="tagDto.FullName!.Value" Label="Name" For="@(() => tagDto.FullName!.Value)" Required="true" RequiredError="Name is required." />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="tagDto.MasterCode!.Value" Label="Master Code" For="@(() => tagDto.MasterCode!.Value)" Required="true" RequiredError="Master Code is required." />
         </EditForm>
     </DialogContent>
     <DialogActions>
@@ -34,10 +34,8 @@
 
     protected override void OnInitialized()
     {
-        tagDto.Id = ExistingTag.Id;
-        tagDto.FullName = ExistingTag.FullName;
-        tagDto.MasterCode = ExistingTag.MasterCode;
-        tagDto.TenantId = ExistingTag.TenantId;
+        tagDto.FullName = new UpdateTagFullNameDto { Value = ExistingTag.FullName ?? string.Empty };
+        tagDto.MasterCode = new UpdateTagMasterCodeDto { Value = ExistingTag.MasterCode ?? string.Empty };
         _editContext = new EditContext(tagDto);
     }
 

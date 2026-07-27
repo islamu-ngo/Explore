@@ -93,7 +93,7 @@ public class TagControllerTests
 
     #endregion
 
-    #region PUT Endpoints
+    #region PATCH Endpoints
 
     [Test]
     public async Task Update_WithoutAuth_ShouldReturnUnauthorized()
@@ -102,13 +102,12 @@ public class TagControllerTests
         var id = Guid.NewGuid();
         var updateDto = new UpdateTagDto
         {
-            Id = id,
-            MasterCode = string.Empty,
-            FullName = "Updated Tag"
+            MasterCode = new() { Value = string.Empty },
+            FullName = new() { Value = "Updated Tag" }
         };
 
         // Act
-        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", updateDto);
+        var response = await _fixture.Client.PatchAsJsonAsync($"{BaseUrl}/{id}", updateDto);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);

@@ -39,7 +39,7 @@ public sealed class TagDetailLinkPolicy : ILinkPolicy<TagDto>
             LinkRelations.Edit,
             RouteNames.UpdateTag,
             new { id = dto.Id },
-            "PUT",
+            "PATCH",
             "Update tag",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Tag, dto);

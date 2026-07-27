@@ -4,7 +4,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Tag.Validators;
 using Explore.Application.Features.Tags.Requests.Commands;
@@ -16,14 +16,14 @@ namespace Explore.Application.Features.Tags.Handlers.Commands;
 public class UpdateTagCommandHandler : IRequestHandler<UpdateTagCommand, BaseCommandResponse<Guid>>
 {
     private readonly ITagRepository _tagRepository;
-    private readonly IMapper _mapper;
+    private readonly ITenantContext _tenantContext;
 
     public UpdateTagCommandHandler(
         ITagRepository tagRepository,
-        IMapper mapper)
+        ITenantContext tenantContext)
     {
         _tagRepository = tagRepository;
-        _mapper = mapper;
+        _tenantContext = tenantContext;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateTagCommand request, CancellationToken cancellationToken)
@@ -31,7 +31,7 @@ public class UpdateTagCommandHandler : IRequestHandler<UpdateTagCommand, BaseCom
         var response = new BaseCommandResponse<Guid>();
 
         var validator = new UpdateTagDtoValidator();
-        var validationResult = await validator.ValidateAsync(request.TagDto, cancellationToken);
+        var validationResult = await validator.ValidateAsync(request.Update, cancellationToken);
 
         if (!validationResult.IsValid)
         {
@@ -41,16 +41,27 @@ public class UpdateTagCommandHandler : IRequestHandler<UpdateTagCommand, BaseCom
             return response;
         }
 
-        var tag = await _tagRepository.GetById(request.TagDto.Id);
-
-        if (tag == null)
+        if (request.TenantId != _tenantContext.TenantId)
         {
             response.Success = false;
             response.Message = "Tag not found.";
             return response;
         }
 
-        _mapper.Map(request.TagDto, tag);
+        var tag = await _tagRepository.GetById(request.TagId);
+
+        if (tag == null || tag.TenantId != _tenantContext.TenantId)
+        {
+            response.Success = false;
+            response.Message = "Tag not found.";
+            return response;
+        }
+
+        if (request.Update.MasterCode is not null)
+            tag.MasterCode = request.Update.MasterCode.Value.Trim();
+
+        if (request.Update.FullName is not null)
+            tag.FullName = request.Update.FullName.Value.Trim();
 
         await _tagRepository.Update(tag);
 

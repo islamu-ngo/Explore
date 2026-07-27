@@ -216,7 +216,7 @@ public class TagServiceTests
     {
         // Arrange
         var tagId = Guid.NewGuid();
-        var dto = new UpdateTagDto { Id = tagId };
+        var dto = new UpdateTagDto { FullName = new() { Value = "Updated" } };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(tagId);
 
         _apiClient.UpdateTagAsync(Arg.Any<Guid>(), Arg.Any<UpdateTagDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -237,7 +237,7 @@ public class TagServiceTests
     {
         // Arrange
         var tagId = Guid.NewGuid();
-        var dto = new UpdateTagDto { Id = tagId };
+        var dto = new UpdateTagDto { FullName = new() { Value = "Updated" } };
 
         _apiClient.UpdateTagAsync(Arg.Any<Guid>(), Arg.Any<UpdateTagDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Bad Request", 400, "validation error", null, null));
