@@ -180,9 +180,9 @@ public class GroupController : ExploreControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}/notification-preferences", Name = RouteNames.UpdateGroupNotificationPreferences)]
+    [HttpPatch("{id:guid}/notification-preferences", Name = RouteNames.UpdateGroupNotificationPreferences)]
     [EndpointSummary("Update Group Notification Preferences")]
-    [EndpointDescription("Save editable group-scoped notification preference cells.")]
+    [EndpointDescription("Patch supplied group-scoped notification preference cells while preserving omitted cells.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]

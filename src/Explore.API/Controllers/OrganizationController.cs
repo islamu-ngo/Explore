@@ -186,9 +186,9 @@ public class OrganizationController : ExploreControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}/notification-preferences", Name = RouteNames.UpdateOrganizationNotificationPreferences)]
+    [HttpPatch("{id:guid}/notification-preferences", Name = RouteNames.UpdateOrganizationNotificationPreferences)]
     [EndpointSummary("Update Organization Notification Preferences")]
-    [EndpointDescription("Save editable organization-scoped notification preference cells.")]
+    [EndpointDescription("Patch supplied organization-scoped notification preference cells while preserving omitted cells.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
