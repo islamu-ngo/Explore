@@ -421,7 +421,6 @@ public class EventCustomPropertyProjectionUpdaterTests
             VisibilityTypeId = 1,
             VisibilityType = null!,
             TotalViews = 0,
-            IsRegistrationRequired = false,
             ConcurrencyStamp = Guid.NewGuid(),
         };
         context.Events.Add(@event);
