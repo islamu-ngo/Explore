@@ -218,7 +218,7 @@ Runtime configuration currently uses the .NET sections below:
 
 `keycloak.smtp_mode` is an operational policy label, not an ISLAMU SMTP provider switch. Use `managed` when Keycloak/provider SMTP is managed outside this deployment. Use a self-hosted/shared-SMTP mode only to configure the Keycloak realm SMTP server with deployment-owned credentials. In both modes, Keycloak remains the sender and owner of identity lifecycle emails; shared SMTP credentials do not transfer email decision ownership to ISLAMU Event.
 
-`keycloak.theme_sync_enabled` is a future automation policy for applying ISLAMU-managed Keycloak theme assets. Keycloak email themes live under the Keycloak theme `email` type and customize templates such as password-reset or execute-actions messages. Theme sync changes Keycloak-owned templates only; it does not route identity lifecycle mail through `EmailDispatchOutbox`, `IEmailService`, RabbitMQ, or TickerQ.
+`keycloak.theme_sync_enabled` is a future automation policy for applying platform-managed Keycloak theme assets. Keycloak email themes live under the Keycloak theme `email` type and customize templates such as password-reset or execute-actions messages. Theme sync changes Keycloak-owned templates only; it does not route identity lifecycle mail through `EmailDispatchOutbox`, `IEmailService`, RabbitMQ, or TickerQ.
 
 Local development may point a self-hosted Keycloak realm SMTP configuration at Mailpit for inspection. That is still Keycloak realm SMTP plumbing. Product Basic Dispatch Mailpit settings under `email.*` remain separate and should not be treated as production defaults for Keycloak.
 

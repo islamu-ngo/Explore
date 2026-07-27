@@ -13,7 +13,7 @@
 
 ## Context
 
-The existing event model conflates listing provenance, publishing authority, organizer authority, participation management, data access, and commercial authority. `IsRegistrationRequired`, `IsUserReported`, `EventUrl`, and `ExternalRegistrationUrl` cannot accurately express information-only, walk-in, externally managed, or ISLAMU-managed participation. Treating the listing submitter as the organizer would also expose provider configuration and attendee data to community contributors.
+The existing event model conflates listing provenance, publishing authority, organizer authority, participation management, data access, and commercial authority. `IsRegistrationRequired`, `IsUserReported`, `EventUrl`, and `ExternalRegistrationUrl` cannot accurately express information-only, walk-in, externally managed, or platform-managed participation. Treating the listing submitter as the organizer would also expose provider configuration and attendee data to community contributors.
 
 Guest checkout requires narrowly scoped anonymous writes. The existing `Public` endpoint class promises no tenant mutation, while `Authenticated` excludes legitimate guest flows. Weakening either class would remove a useful security boundary.
 
@@ -30,7 +30,7 @@ Guest checkout requires narrowly scoped anonymous writes. The existing `Public` 
 ### Participation configuration and public actions
 
 1. Every event owns an explicit `EventParticipationConfiguration`. No implicit business default is persisted or inferred.
-2. Participation handling is one of `INFORMATION_ONLY`, `WALK_IN`, `EXTERNAL_MANAGED`, or `ISLAMU_MANAGED`.
+2. Participation handling is one of `INFORMATION_ONLY`, `WALK_IN`, `EXTERNAL_MANAGED`, or `PLATFORM_MANAGED`.
 3. Advance-registration obligation is independently `NOT_APPLICABLE`, `OPTIONAL`, or `REQUIRED`. Identity access is independently `ACCOUNT_REQUIRED`, `GUEST_ALLOWED`, or `CAPABILITY_TOKEN_ALLOWED`. Admission decisions continue to use `RegistrationMode`.
 4. `IsRegistrationRequired` is deleted. Event and session price fields are deleted after the versioned ticket catalog becomes authoritative.
 5. Public participation actions are typed, ordered resources. Zero actions is valid, and at most one is primary. Labels describe the real destination; an external action never claims that registration occurs on ISLAMU.

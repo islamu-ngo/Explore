@@ -837,6 +837,18 @@ The removed raw `/api/atprotorecord`, `/api/indexeddid`, and `/api/userexternall
 
 ---
 
+## Event Participation Contract
+
+Every event has a typed `EventParticipationConfiguration` read projection with normalized handling-mode, advance-registration-obligation, and optional identity-access lookup facts plus guest-recovery policy and its own concurrency stamp. The former `isRegistrationRequired` and `externalRegistrationUrl` fields do not exist.
+
+Organizers update this isolated resource through authenticated `PATCH /api/events/{eventId}/participation` with the configuration concurrency stamp as one required strong quoted GUID entity tag in `If-Match`. Authorization uses the organizer/assignment-only `manage-registrations` event action; listing contributors, tenant administrators, and instance administrators receive no automatic authority. Clients discover the capability through `configure-participation` rather than inspecting roles or claims.
+
+Public participation is HAL-authored and fail-closed for published public events only. `INFORMATION_ONLY` and `WALK_IN` emit no participation CTA. `EXTERNAL_MANAGED` emits at most one `external-registration` relation selected from reviewed active stored public actions and routed through the stored-ID redirect. `PLATFORM_MANAGED` emits permission-bound `start-registration` for authenticated callers and `sign-in-to-register` for anonymous callers; both target the existing protected native registration operation. Clients must not render a CTA from mode fields or raw URLs. External labels distinguish an unverified source (`View original event page`) from organizer authority (`Register on organizer website`).
+
+The anonymous redirect records only the bounded `explore.event_public_actions.engagements` metric dimensions `action_kind`, `surface`, and `outcome=redirect_issued`. It creates no engagement row, captures no identity or event/action identifier in labels, and never claims that a registration completed.
+
+---
+
 ## Event Registration Read Contract
 
 Generic event-registration reads are authenticated self-service contracts. `/api/eventregistration`, `/api/eventregistration/by-session/{eventSessionId}`, `/api/eventregistration/by-user/{userId}`, and `/api/eventregistration/{id}` return only registrations owned by the authenticated user; cross-user route IDs fail with `403 Forbidden`. `EventRegistrationDto` and `EventRegistrationListDto` intentionally omit serialized user identity fields (`userId`, `userFullName`, `userEmail`). Organizer attendee-management views require a separate resource-authorized projection instead of these generic routes.
@@ -852,6 +864,7 @@ Meter name: `Explore.Business`. Tags vary by counter and include dimensions such
 | `explore.events.created` | Events created |
 | `explore.events.published` | Events published |
 | `explore.registrations.created` | Event registrations |
+| `explore.event_public_actions.engagements` | Stored public-action redirects issued, using only bounded `action_kind`, `surface`, and `outcome` tags |
 | `explore.organizations.created` | Organizations created |
 | `explore.authorization.decisions` | Authorization check outcomes |
 | `explore.external_api_keys.created` | External API keys created |

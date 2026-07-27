@@ -12,7 +12,7 @@ This project stores most entities directly under `Explore.Domain/` (not in an `E
 2. Identity and actor model:
    `User`, `Actor`, `ActorSubscription`, `Group`, `Organization`, `Role`, `Permission`, `RolePermission`, `PlatformUserRole`
 3. Events:
-   `Event`, `EventSession`, `EventRegistration`, `EventSessionSpeaker`, `EventSessionLanguage`, `EventSessionAgendaItem`, `Notification`, `NotificationFanoutRun`
+   `Event`, `EventParticipationConfiguration`, `EventPublicAction`, `EventSession`, `EventRegistration`, `EventSessionSpeaker`, `EventSessionLanguage`, `EventSessionAgendaItem`, `Notification`, `NotificationFanoutRun`
 4. Event reporting and moderation review:
    `EventReport`, `EventReportTarget`, `EventReportEvidence`, `EventReportCase`, `EventReportSignal`, `EventReportDecision`, `EventReportDecisionExecution`, `EventReportExternalLink`
 5. Classification/lookups:
@@ -46,6 +46,9 @@ Several previously enum-shaped persistence fields are now modeled as lookup/refe
 | `ActorSubscription.Status` | `StatusId` | `ActorSubscriptionStatus` / `actor_subscription_statuses` |
 | `ActorSubscription.NotificationLevel` | `NotificationLevelId` | `ActorSubscriptionNotificationLevel` / `actor_subscription_notification_levels` |
 | `Event.SessionStatus` | `EventSessionStatusId` | `EventSessionStatus` / `event_session_statuses` |
+| `EventParticipationConfiguration.HandlingMode` | `ParticipationHandlingModeId` | `ParticipationHandlingMode` / `participation_handling_modes` |
+| `EventParticipationConfiguration.AdvanceObligation` | `AdvanceRegistrationObligationId` | `AdvanceRegistrationObligation` / `advance_registration_obligations` |
+| `EventParticipationConfiguration.IdentityAccess` | `IdentityAccessModeId` | `IdentityAccessMode` / `identity_access_modes` |
 
 API DTOs expose lookup primitives (`*Id`, `*Code`, `*Name`) rather than domain enum values. Repositories query on the normalized FK IDs. Handlers may convert IDs to internal enums only for business-rule switches while keeping persistence and public contracts normalized.
 
@@ -106,7 +109,15 @@ Session moderation is event-scoped, not independently session-scoped. Light even
 | 9 | `COMPLETED` | Completed and not actionable for public publishing. |
 | 10 | `MODERATED` | Hidden through event-level moderation. |
 
-### 4) Event Reporting And Moderation Review
+### 4) Typed Event Participation
+
+`EventParticipationConfiguration` is a required tenant-scoped one-to-one extension of `Event` with a shared event primary key and independent optimistic-concurrency stamp. It replaces the former registration-required boolean and external-registration URL. Three normalized lookup families define handling mode (`INFORMATION_ONLY`, `WALK_IN`, `EXTERNAL_MANAGED`, `PLATFORM_MANAGED`), advance-registration obligation (`NOT_APPLICABLE`, `OPTIONAL`, `REQUIRED`), and optional identity access (`ACCOUNT_REQUIRED`, `GUEST_ALLOWED`, `CAPABILITY_TOKEN_ALLOWED`). Guest recovery remains a typed scalar policy.
+
+Domain rules reject illegal combinations. Information-only and walk-in require a not-applicable obligation and no identity/recovery values. External-managed requires optional or required advance registration and no platform identity/recovery values. Platform-managed requires optional or required advance registration plus a valid identity mode; recovery is absent for account-required and constrained to the recovery policies allowed by guest or capability-token access.
+
+External participation destinations are reviewed `EventPublicAction` records, not fields on the event. Public HAL synthesis may emit one stored-ID redirect only when the participation mode permits that action. Native workflow authorization is permitted only for `PLATFORM_MANAGED`; a click or redirect is engagement, never proof of registration.
+
+### 5) Event Reporting And Moderation Review
 
 `EventReport` is the tenant-scoped aggregate for user-facing event reports. It references the reported event, optional reporter user/actor identity, reason code, report status, priority, severity hint, duplicate grouping, reporter contact consent, and hashed reporter fingerprints. Reporter IP/User-Agent fingerprints are hashed at the API boundary before the command leaves the controller.
 
@@ -128,7 +139,7 @@ Decision completion and recipient materialization share one application-owned se
 
 Provider integrations remain metadata-only. Osprey signals and Coop review-queue/callback state are stored as bounded codes and external IDs with idempotency indexes. Signed, authenticated Coop callbacks are retained with one unique `IncomingWebhookEffectOutbox` pointer. The pointer's fenced worker loads and revalidates the retained callback, invokes canonical decision execution outside intake, and commits the applied-effect receipt with pointer completion only after command success. Retryable failures reschedule; poison callbacks dead-letter for authenticated, generation-checked operator redrive. Osprey remains signal-only.
 
-### 5) Event Schedule Source Of Truth
+### 6) Event Schedule Source Of Truth
 
 Event scheduling uses UTC instants as the authoritative write model when a session or agenda item is scheduled. `EventSession.StartTime/EndTime` are nullable for draft-capable sessions; `EventAgendaItem.StartTime/EndTime` remain required because agenda items represent concrete schedule blocks. Local dates, local times, and minute-of-day values are generated by the domain scheduling services and persisted only as query/display projections.
 
@@ -151,7 +162,7 @@ Database constraints provide defense in depth:
 
 PostgreSQL generated columns were not selected for timezone projection ownership because timezone conversion depends on system timezone data and is a poor fit for immutable generated expressions. Keeping projection ownership in the domain/application layer preserves deterministic tests, explicit validation, and Clean Architecture boundaries.
 
-### 6) Layer 3 Governed Custom-Property Extension Model
+### 7) Layer 3 Governed Custom-Property Extension Model
 
 The platform provides a flexible EAV-based extension system across multiple scopes:
 
@@ -166,7 +177,7 @@ The platform provides a flexible EAV-based extension system across multiple scop
 
 Explicit admin purge is the only hard-delete path for dependency-free custom-property definitions. Normal delete remains retire + soft delete so historical values, projections, and audit evidence stay recoverable.
 
-### 7) Polymorphic Reference Registry
+### 8) Polymorphic Reference Registry
 
 Polymorphic references that cannot use a direct FK are governed by `Explore.Domain.References.ReferenceTypeRegistry`. The registry is the domain source of truth for target kind, ID shape, ownership, tenant-scope rule, cleanup behavior, and validation wording. Current registries cover:
 
@@ -176,7 +187,7 @@ Polymorphic references that cannot use a direct FK are governed by `Explore.Doma
 
 Write-time enforcement happens at the repository/application boundary: external-binding, notification, and shared custom-property definition writes validate against the registry before saving. EF model metadata also declares check constraints for registered external-binding pair/scope combinations, shared custom-property target types, and notification entity reference shape. Migration regeneration is intentionally separate in the development workflow, so the registry and repository guards remain the immediate runtime enforcement until generated migrations are refreshed.
 
-### 8) Tenant and Soft-Delete Interfaces
+### 9) Tenant and Soft-Delete Interfaces
 
 Isolation and lifecycle are enforced via marker interfaces:
 
@@ -184,7 +195,7 @@ Isolation and lifecycle are enforced via marker interfaces:
 - `IAuditableEntity` -> `CreatedAt/By`, `UpdatedAt/By` (Auto-populated in SaveChanges)
 - `ISoftDeletable` -> `IsDeleted`, `DeletedAt/By` (Converted from Delete state in SaveChanges)
 
-### 9) Tenant-Local User Authority
+### 10) Tenant-Local User Authority
 
 `TenantUser` is the tenant-local user root. It owns tenant participation status, moderation lifecycle, actor/profile links, and soft-delete state for a global `User` inside one tenant.
 
@@ -197,7 +208,7 @@ Tenant role authority is represented by `TenantUserRoleGrant`, not by a direct `
 
 Revocation is explicit (`RevokedAt`, `RevokedBy`, `RevocationReason`) so historical authority evidence remains auditable while active checks ignore revoked grants.
 
-### 10) Actor Subscriptions And Notification Fanout
+### 11) Actor Subscriptions And Notification Fanout
 
 `ActorSubscription` is the canonical durable relationship for user subscriptions to subscribable actors. V1 supports organization and group target actors only. The subscription stores the active tenant-local subscriber (`SubscriberTenantUserId`), denormalized global `SubscriberUserId` for notification delivery, target actor, target actor type, subscription status, notification level, audit fields, soft-delete fields, and a concurrency stamp.
 

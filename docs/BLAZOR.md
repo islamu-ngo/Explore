@@ -229,7 +229,11 @@ Blazor registration flows must classify that command response through `EventList
 3. `AlreadyRegistered` when an idempotent repeat submit returns the existing registration.
 4. `Failed` for safe service-layer failures.
 
-`EventRegistrationService` converts generated-client `ApiException` values into bounded `FailureCode`, `Message`, and `Errors` values. Components should display those safe messages and log exceptions with structured context; they must not show raw exception text, provider response bodies, database details, bearer-token errors, or generated-client stack details. Event detail registration buttons remain HAL-gated: render the registration action only when the event detail resource contains the `register` link relation.
+`EventRegistrationService` converts generated-client `ApiException` values into bounded `FailureCode`, `Message`, and `Errors` values. Components should display those safe messages and log exceptions with structured context; they must not show raw exception text, provider response bodies, database details, bearer-token errors, or generated-client stack details. Public event detail, list, preview, and sidebar surfaces render native participation only from `start-registration` or `sign-in-to-register`, and external participation only from `external-registration`. The sign-in relation reuses the existing login interception; it does not add an API login route. They never infer an action from participation mode, roles, claims, or a raw DTO URL.
+
+Studio participation configuration lives at `/studio/events/{eventId}/registration`. Both the sidebar entry and direct route fail closed unless the event resource contains `configure-participation`. The editor preserves the participation resource's own concurrency stamp, submits through `IEventService`, and keeps dependent mode, obligation, identity-access, and recovery choices within the Domain-valid combinations. Attendee-facing participation links never authorize the Studio route.
+
+Create Event collects participation handling explicitly and defaults only to `INFORMATION_ONLY + NOT_APPLICABLE`. Registration policy remains an independent scope/admission choice and never implies platform-managed, guest, or recovery behavior.
 
 ### Community Event Provenance And Claims
 

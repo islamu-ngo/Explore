@@ -196,8 +196,8 @@ Validators are instantiated inside the Application path, following the repositor
 | `timezone` | Complete value remains in `RecordJson` | A valid IANA zone is normalized into `Event.EventTimeZoneId`, `Event.Timezone`, and session local-time projections; absent or invalid values fall back to UTC |
 | `mode` | Normalized projection token | `#virtual` -> Digital, `#hybrid` -> Hybrid, `#inperson` or absent -> Local |
 | `status` | Normalized projection token | `#scheduled`, `#rescheduled`, or absent -> Published; `#cancelled` -> Cancelled; `#planned` / `#postponed` -> Draft, for both event and session |
-| `rsvpExpected` | Typed nullable boolean | `Event.IsRegistrationRequired`, defaulting to `false` |
-| `uris[]` | All entries remain in `RecordJson`; first hardened external URI becomes `AtprotoEventProjection.SourceUrl` | `Event.EventUrl` receives that first safe source URL |
+| `rsvpExpected` | Typed nullable boolean | `true` maps to `EXTERNAL_MANAGED + REQUIRED`; false or absent maps to `INFORMATION_ONLY + NOT_APPLICABLE` |
+| `uris[]` | All entries remain in `RecordJson`; first hardened external URI becomes `AtprotoEventProjection.SourceUrl` | A safe source URI becomes a reviewed typed stored public action; no URL field is written on `Event` |
 | `locations[]` | Bounded human-readable `AtprotoEventProjection.LocationSummary`; complete structures remain in `RecordJson` | No synthetic local venue is created because location variants do not necessarily satisfy the local location/privacy model |
 | `media[]` thumbnail | Blob metadata remains in `RecordJson`; a validated candidate carries DID, CID, MIME type, and declared size | Verified bytes become a public event-image `StorageObject`, linked through `Event.FeaturedImageId` |
 | `theme`, `preferences`, `createdWith`, `bskyPostRef`, additional URIs/media, aspect ratios, and future producer extensions | Complete accepted values remain in `AtprotoRecord.RecordJson` | No unrelated relational field is invented; future mappings can be added without losing the original record |
