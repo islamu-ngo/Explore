@@ -34,7 +34,7 @@ public sealed class WithdrawEventOrganizerClaimCommandHandler(
             return Failure(request.ClaimId, "Organizer claim could not be withdrawn.", "Organizer claim was not found for this event.");
         }
 
-        if (!await ClaimantActorAccessEvaluator.CanControlAsync(
+        if (!await ClaimantActorAccessEvaluator.CanControlOwnershipAsync(
                 claim.ClaimantActorId,
                 userId,
                 actorRepository,

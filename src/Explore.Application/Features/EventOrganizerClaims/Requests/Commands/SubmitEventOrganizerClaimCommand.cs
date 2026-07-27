@@ -1,5 +1,5 @@
 // ABOUTME: Authorized CQRS request for an actor to claim organizer authority over an event.
-// ABOUTME: Uses the event authorization resource while the handler verifies claimant-actor ownership.
+// ABOUTME: Uses the organizer-claim resource while the handler verifies claimant-actor ownership.
 
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventOrganizerClaim;
@@ -8,10 +8,15 @@ using MediatR;
 
 namespace Explore.Application.Features.EventOrganizerClaims.Requests.Commands;
 
-[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ClaimOrganizer)]
+[AuthorizeResource(ResourceKinds.EventOrganizerClaim, AuthorizationActions.Events.ClaimOrganizer)]
 public sealed class SubmitEventOrganizerClaimCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventId { get; init; }
     public required SubmitEventOrganizerClaimDto Claim { get; init; }
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString();
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["eventId"] = EventId.ToString(),
+        ["claimantActorId"] = Claim.ClaimantActorId.ToString()
+    };
 }

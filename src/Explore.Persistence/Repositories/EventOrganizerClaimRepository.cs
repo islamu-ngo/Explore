@@ -73,7 +73,10 @@ public sealed class EventOrganizerClaimRepository(ExploreDbContext dbContext)
             .Include(claim => claim.Status)
             .Include(claim => claim.ClaimantActor)
                 .ThenInclude(actor => actor!.Pii)
-            .Include(claim => claim.Event);
+            .Include(claim => claim.Event)
+                .ThenInclude(@event => @event!.Actor)
+            .Include(claim => claim.Event)
+                .ThenInclude(@event => @event!.EventProvenanceType);
 
         return trackChanges ? query : query.AsNoTracking();
     }

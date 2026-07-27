@@ -15,6 +15,10 @@ namespace Explore.Application.Features.EventOrganizerClaims.Handlers.Commands;
 public sealed class ReviewEventOrganizerClaimCommandHandler(
     IEventRepository eventRepository,
     IEventOrganizerClaimRepository claimRepository,
+    IActorRepository actorRepository,
+    ITenantUserRepository tenantUserRepository,
+    IOrganizationTenantRepository organizationTenantRepository,
+    IGroupTenantRepository groupTenantRepository,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
     ICurrentUserService currentUserService)
@@ -62,6 +66,18 @@ public sealed class ReviewEventOrganizerClaimCommandHandler(
             {
                 if (request.Review.Decision == EventOrganizerClaimReviewDecision.Approve)
                 {
+                    if (!await ClaimantActorAccessEvaluator.IsEligibleAsync(
+                            claim.ClaimantActorId,
+                            tenantContext.TenantId,
+                            actorRepository,
+                            tenantUserRepository,
+                            organizationTenantRepository,
+                            groupTenantRepository,
+                            token))
+                    {
+                        return Failure(request.ClaimId, "Organizer claim could not be reviewed.", ["The claimant actor is not eligible to organize events in the current tenant."]);
+                    }
+
                     var @event = await eventRepository.GetById(request.EventId);
                     if (@event is null || @event.TenantId != tenantContext.TenantId)
                     {

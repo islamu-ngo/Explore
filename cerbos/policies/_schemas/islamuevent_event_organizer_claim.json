@@ -15,6 +15,15 @@
     "claimantActorId": {
       "type": "string"
     },
+    "claimantUserId": {
+      "type": "string"
+    },
+    "claimantOrganizationId": {
+      "type": "string"
+    },
+    "claimantGroupId": {
+      "type": "string"
+    },
     "organizationId": {
       "type": "string"
     },

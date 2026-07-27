@@ -18,18 +18,18 @@ resourcePolicy:
       derivedRoles:
         - islamuevent_instance_admin
 
-    - actions: ["view", "view-management", "moderate-light", "moderate-heavy", "unmoderate", "manage-public-actions", "view-organizer-claims", "review-organizer-claim"]
+    - actions: ["view", "view-management", "moderate-light", "moderate-heavy", "unmoderate", "manage-public-actions"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
 
     # Org admins can manage events for their organization
-    - actions: ["view", "view-management", "create", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-public-actions", "view-organizer-claims"]
+    - actions: ["view", "view-management", "create", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-public-actions"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_org_admin
 
-    - actions: ["view", "view-management", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-public-actions", "view-organizer-claims"]
+    - actions: ["view", "view-management", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-public-actions"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_actor_user_owner
@@ -49,25 +49,14 @@ resourcePolicy:
             (!has(request.principal.attr.is_machine) ||
              request.principal.attr.is_machine != true)
 
-    - actions: ["claim-organizer"]
-      effect: EFFECT_ALLOW
-      roles:
-        - islamuevent_authenticated_user
-      condition:
-        match:
-          expr: >
-            request.principal.attr.isInstanceAdmin != true &&
-            (!has(request.principal.attr.is_machine) ||
-            request.principal.attr.is_machine != true)
-
     # Event owners have full control over their event
-    - actions: ["view", "view-management", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-public-actions", "view-organizer-claims"]
+    - actions: ["view", "view-management", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-public-actions"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_event_owner
 
     # Event managers can edit and publish their event
-    - actions: ["view", "view-management", "update", "publish", "manage-public-actions", "view-organizer-claims"]
+    - actions: ["view", "view-management", "update", "publish", "manage-public-actions"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_event_manager

@@ -13,17 +13,27 @@ resourcePolicy:
     resourceSchema:
       ref: cerbos:///islamuevent_event_organizer_claim.json
   rules:
-    - actions: ["manage-public-actions", "view-organizer-claims", "review-organizer-claim"]
+    - actions: ["view-organizer-claims", "review-organizer-claim"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
+      condition:
+        match:
+          expr: >
+            !has(request.principal.attr.is_machine) ||
+            request.principal.attr.is_machine != true
 
-    - actions: ["manage-public-actions", "view-organizer-claims"]
+    - actions: ["view-organizer-claims"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_org_admin
         - islamuevent_event_owner
         - islamuevent_event_manager
+      condition:
+        match:
+          expr: >
+            !has(request.principal.attr.is_machine) ||
+            request.principal.attr.is_machine != true
 
     - actions: ["claim-organizer"]
       effect: EFFECT_ALLOW
@@ -34,4 +44,24 @@ resourcePolicy:
           expr: >
             request.principal.attr.isInstanceAdmin != true &&
             (!has(request.principal.attr.is_machine) ||
-            request.principal.attr.is_machine != true)
+             request.principal.attr.is_machine != true)
+
+    - actions: ["withdraw-organizer-claim"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user
+      condition:
+        match:
+          expr: >
+            request.principal.attr.isInstanceAdmin != true &&
+            (!has(request.principal.attr.is_machine) ||
+             request.principal.attr.is_machine != true) &&
+            ((has(request.resource.attr.claimantUserId) &&
+              has(request.principal.attr.userId) &&
+              request.resource.attr.claimantUserId == request.principal.attr.userId) ||
+             (has(request.resource.attr.claimantOrganizationId) &&
+               has(request.principal.attr.eventCreateOrganizations) &&
+               request.resource.attr.claimantOrganizationId in request.principal.attr.eventCreateOrganizations) ||
+             (has(request.resource.attr.claimantGroupId) &&
+               has(request.principal.attr.eventCreateGroups) &&
+               request.resource.attr.claimantGroupId in request.principal.attr.eventCreateGroups))

@@ -14,8 +14,12 @@ namespace Explore.Application.Features.EventOrganizerClaims.Handlers.Queries;
 public sealed class GetClaimantOrganizerClaimsRequestHandler(
     IEventOrganizerClaimRepository claimRepository,
     IActorRepository actorRepository,
+    ITenantUserRepository tenantUserRepository,
+    IOrganizationTenantRepository organizationTenantRepository,
+    IGroupTenantRepository groupTenantRepository,
     IOrganizationMemberRepository organizationMemberRepository,
     IGroupMemberRepository groupMemberRepository,
+    ITenantContext tenantContext,
     ICurrentUserService currentUserService,
     IMapper mapper)
     : IRequestHandler<GetClaimantOrganizerClaimsRequest, IReadOnlyList<EventOrganizerClaimDto>>
@@ -28,7 +32,11 @@ public sealed class GetClaimantOrganizerClaimsRequestHandler(
             || !await ClaimantActorAccessEvaluator.CanControlAsync(
                 request.ClaimantActorId,
                 userId,
+                tenantContext.TenantId,
                 actorRepository,
+                tenantUserRepository,
+                organizationTenantRepository,
+                groupTenantRepository,
                 organizationMemberRepository,
                 groupMemberRepository,
                 cancellationToken))

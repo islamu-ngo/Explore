@@ -15,6 +15,9 @@ public sealed class SubmitEventOrganizerClaimCommandHandler(
     IEventRepository eventRepository,
     IEventOrganizerClaimRepository claimRepository,
     IActorRepository actorRepository,
+    ITenantUserRepository tenantUserRepository,
+    IOrganizationTenantRepository organizationTenantRepository,
+    IGroupTenantRepository groupTenantRepository,
     IOrganizationMemberRepository organizationMemberRepository,
     IGroupMemberRepository groupMemberRepository,
     IUnitOfWork unitOfWork,
@@ -47,7 +50,11 @@ public sealed class SubmitEventOrganizerClaimCommandHandler(
         if (!await ClaimantActorAccessEvaluator.CanControlAsync(
                 request.Claim.ClaimantActorId,
                 userId,
+                tenantContext.TenantId,
                 actorRepository,
+                tenantUserRepository,
+                organizationTenantRepository,
+                groupTenantRepository,
                 organizationMemberRepository,
                 groupMemberRepository,
                 cancellationToken))

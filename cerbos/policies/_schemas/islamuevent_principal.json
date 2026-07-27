@@ -30,6 +30,18 @@
       "description": "Map of groupId to role string for group administration checks.",
       "additionalProperties": { "type": "string" }
     },
+    "eventCreateOrganizations": {
+      "type": "array",
+      "description": "Organization IDs where the human principal has event:create permission.",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "eventCreateGroups": {
+      "type": "array",
+      "description": "Group IDs where the human principal has event:create permission.",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
     "eventAssignments": {
       "type": "object",
       "description": "Map of eventId to effective assignment data. Only active, non-expired assignments for the request tenant are hydrated by CerbosPrincipalBuilder.EnrichWithEventAssignmentsAsync.",

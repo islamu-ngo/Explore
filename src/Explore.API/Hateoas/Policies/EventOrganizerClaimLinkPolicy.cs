@@ -1,11 +1,12 @@
 // ABOUTME: HAL policies for organizer-claim detail and collection resources.
-// ABOUTME: Filters claimant withdrawal and curator review affordances through event authorization.
+// ABOUTME: Filters claimant withdrawal and curator review affordances through organizer-claim authorization.
 
 using System.Security.Claims;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.EventOrganizerClaim;
 using Explore.Application.Hateoas;
+using Explore.Domain.Enums;
 
 namespace Explore.API.Hateoas.Policies;
 
@@ -20,30 +21,37 @@ public sealed class EventOrganizerClaimDetailLinkPolicy : ILinkPolicy<EventOrgan
             HttpMethods.Get,
             "Organizer claim",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Events.ViewOrganizerClaims, ResourceKinds.Event, dto.EventId.ToString());
+            .RequirePermission(AuthorizationActions.Events.ViewOrganizerClaims, ResourceDescriptors.EventOrganizerClaim, dto);
         yield return new LinkDefinition(
             LinkRelations.Event,
             RouteNames.GetEventById,
             new { id = dto.EventId },
             HttpMethods.Get,
             "Event");
-        yield return new LinkDefinition(
-            LinkRelations.WithdrawClaim,
-            RouteNames.WithdrawEventOrganizerClaim,
-            new { eventId = dto.EventId, claimId = dto.Id },
-            HttpMethods.Post,
-            "Withdraw organizer claim",
-            RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Events.ClaimOrganizer, ResourceKinds.Event, dto.EventId.ToString());
-        yield return new LinkDefinition(
-            LinkRelations.ReviewClaim,
-            RouteNames.ReviewEventOrganizerClaim,
-            new { eventId = dto.EventId, claimId = dto.Id },
-            HttpMethods.Post,
-            "Review organizer claim",
-            RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Events.ReviewOrganizerClaim, ResourceKinds.Event, dto.EventId.ToString());
+        if (IsReviewable(dto.StatusId))
+        {
+            yield return new LinkDefinition(
+                LinkRelations.WithdrawClaim,
+                RouteNames.WithdrawEventOrganizerClaim,
+                new { eventId = dto.EventId, claimId = dto.Id },
+                HttpMethods.Post,
+                "Withdraw organizer claim",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Events.WithdrawOrganizerClaim, ResourceDescriptors.EventOrganizerClaim, dto);
+            yield return new LinkDefinition(
+                LinkRelations.ReviewClaim,
+                RouteNames.ReviewEventOrganizerClaim,
+                new { eventId = dto.EventId, claimId = dto.Id },
+                HttpMethods.Post,
+                "Review organizer claim",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Events.ReviewOrganizerClaim, ResourceDescriptors.EventOrganizerClaim, dto);
+        }
     }
+
+    private static bool IsReviewable(int statusId) => statusId is
+        (int)EventOrganizerClaimStatusEnum.Pending or
+        (int)EventOrganizerClaimStatusEnum.EvidenceRequired;
 }
 
 public sealed class EventOrganizerClaimCollectionLinkPolicy : ICollectionLinkPolicy<EventOrganizerClaimDto>
@@ -57,33 +65,40 @@ public sealed class EventOrganizerClaimCollectionLinkPolicy : ICollectionLinkPol
             HttpMethods.Get,
             "Organizer claim",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Events.ViewOrganizerClaims, ResourceKinds.Event, dto.EventId.ToString());
+            .RequirePermission(AuthorizationActions.Events.ViewOrganizerClaims, ResourceDescriptors.EventOrganizerClaim, dto);
         yield return new LinkDefinition(
             LinkRelations.Event,
             RouteNames.GetEventById,
             new { id = dto.EventId },
             HttpMethods.Get,
             "Event");
-        yield return new LinkDefinition(
-            LinkRelations.WithdrawClaim,
-            RouteNames.WithdrawEventOrganizerClaim,
-            new { eventId = dto.EventId, claimId = dto.Id },
-            HttpMethods.Post,
-            "Withdraw organizer claim",
-            RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Events.ClaimOrganizer, ResourceKinds.Event, dto.EventId.ToString());
-        yield return new LinkDefinition(
-            LinkRelations.ReviewClaim,
-            RouteNames.ReviewEventOrganizerClaim,
-            new { eventId = dto.EventId, claimId = dto.Id },
-            HttpMethods.Post,
-            "Review organizer claim",
-            RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Events.ReviewOrganizerClaim, ResourceKinds.Event, dto.EventId.ToString());
+        if (IsReviewable(dto.StatusId))
+        {
+            yield return new LinkDefinition(
+                LinkRelations.WithdrawClaim,
+                RouteNames.WithdrawEventOrganizerClaim,
+                new { eventId = dto.EventId, claimId = dto.Id },
+                HttpMethods.Post,
+                "Withdraw organizer claim",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Events.WithdrawOrganizerClaim, ResourceDescriptors.EventOrganizerClaim, dto);
+            yield return new LinkDefinition(
+                LinkRelations.ReviewClaim,
+                RouteNames.ReviewEventOrganizerClaim,
+                new { eventId = dto.EventId, claimId = dto.Id },
+                HttpMethods.Post,
+                "Review organizer claim",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Events.ReviewOrganizerClaim, ResourceDescriptors.EventOrganizerClaim, dto);
+        }
     }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {
         yield break;
     }
+
+    private static bool IsReviewable(int statusId) => statusId is
+        (int)EventOrganizerClaimStatusEnum.Pending or
+        (int)EventOrganizerClaimStatusEnum.EvidenceRequired;
 }

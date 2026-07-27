@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos policy tests for organizer-claim evidence and review authority.
-# ABOUTME: Proves tenant-curator review and default denial for unrelated principals and actions.
+# ABOUTME: Proves review authority and claimant-controlled withdrawal boundaries.
 
 name: EventOrganizerClaimPolicyTests
 description: "Validates organizer-claim policy boundaries"
@@ -19,16 +19,66 @@ principals:
     roles: ["islamuevent_authenticated_user"]
     attr:
       isInstanceAdmin: false
+      userId: "regular-user"
       tenantMemberships: {}
       orgMemberships: {}
+      groupMemberships: {}
+
+  organization_event_creator:
+    id: "organization-event-creator"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      userId: "organization-event-creator"
+      tenantMemberships: {}
+      orgMemberships: {}
+      groupMemberships: {}
+      eventCreateOrganizations: ["org-1"]
+      eventCreateGroups: []
+
+  group_event_creator:
+    id: "group-event-creator"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      userId: "group-event-creator"
+      tenantMemberships: {}
+      orgMemberships: {}
+      groupMemberships: {}
+      eventCreateOrganizations: []
+      eventCreateGroups: ["group-1"]
+
+  unrelated_event_creator:
+    id: "unrelated-event-creator"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      userId: "unrelated-event-creator"
+      tenantMemberships: {}
+      orgMemberships: {}
+      groupMemberships: {}
+      eventCreateOrganizations: ["org-other"]
+      eventCreateGroups: ["group-other"]
 
   instance_admin:
     id: "instance-admin"
     roles: ["islamuevent_authenticated_user"]
     attr:
       isInstanceAdmin: true
+      userId: "instance-admin"
       tenantMemberships: {}
       orgMemberships: {}
+      groupMemberships: {}
+
+  machine_user:
+    id: "machine-user"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      is_machine: true
+      tenantMemberships: {}
+      orgMemberships: {}
+      groupMemberships: {}
 
 resources:
   organizer_claim:
@@ -41,19 +91,52 @@ resources:
       claimantActorId: "actor-1"
       status: "PENDING"
 
+  personal_organizer_claim:
+    kind: "islamuevent_event_organizer_claim"
+    id: "claim-personal"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      claimId: "claim-personal"
+      claimantActorId: "actor-personal"
+      claimantUserId: "regular-user"
+      status: "PENDING"
+
+  organization_organizer_claim:
+    kind: "islamuevent_event_organizer_claim"
+    id: "claim-organization"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      claimId: "claim-organization"
+      claimantActorId: "actor-organization"
+      claimantOrganizationId: "org-1"
+      status: "PENDING"
+
+  group_organizer_claim:
+    kind: "islamuevent_event_organizer_claim"
+    id: "claim-group"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      claimId: "claim-group"
+      claimantActorId: "actor-group"
+      claimantGroupId: "group-1"
+      status: "PENDING"
+
 tests:
   - name: "Tenant curator can manage and review organizer claims"
     input:
       principals: ["tenant_admin"]
       resources: ["organizer_claim"]
-      actions: ["manage-public-actions", "view-organizer-claims", "review-organizer-claim"]
+      actions: ["view-organizer-claims", "review-organizer-claim", "manage-public-actions"]
     expected:
       - principal: "tenant_admin"
         resource: "organizer_claim"
         actions:
-          manage-public-actions: EFFECT_ALLOW
           view-organizer-claims: EFFECT_ALLOW
           review-organizer-claim: EFFECT_ALLOW
+          manage-public-actions: EFFECT_DENY
 
   - name: "Regular user can submit but cannot review claims or invoke unknown actions"
     input:
@@ -81,3 +164,89 @@ tests:
           claim-organizer: EFFECT_DENY
           view-organizer-claims: EFFECT_DENY
           review-organizer-claim: EFFECT_DENY
+
+  - name: "Machine callers cannot perform organizer claim lifecycle actions"
+    input:
+      principals: ["machine_user"]
+      resources: ["organizer_claim"]
+      actions: ["claim-organizer", "withdraw-organizer-claim", "manage-public-actions", "view-organizer-claims", "review-organizer-claim"]
+    expected:
+      - principal: "machine_user"
+        resource: "organizer_claim"
+        actions:
+          claim-organizer: EFFECT_DENY
+          withdraw-organizer-claim: EFFECT_DENY
+          manage-public-actions: EFFECT_DENY
+          view-organizer-claims: EFFECT_DENY
+          review-organizer-claim: EFFECT_DENY
+
+  - name: "Personal claimant can withdraw their organizer claim"
+    input:
+      principals: ["regular_user"]
+      resources: ["personal_organizer_claim"]
+      actions: ["withdraw-organizer-claim"]
+    expected:
+      - principal: "regular_user"
+        resource: "personal_organizer_claim"
+        actions:
+          withdraw-organizer-claim: EFFECT_ALLOW
+
+  - name: "Organization member with event create permission can withdraw their organizer claim"
+    input:
+      principals: ["organization_event_creator"]
+      resources: ["organization_organizer_claim"]
+      actions: ["withdraw-organizer-claim"]
+    expected:
+      - principal: "organization_event_creator"
+        resource: "organization_organizer_claim"
+        actions:
+          withdraw-organizer-claim: EFFECT_ALLOW
+
+  - name: "Group member with event create permission can withdraw their organizer claim"
+    input:
+      principals: ["group_event_creator"]
+      resources: ["group_organizer_claim"]
+      actions: ["withdraw-organizer-claim"]
+    expected:
+      - principal: "group_event_creator"
+        resource: "group_organizer_claim"
+        actions:
+          withdraw-organizer-claim: EFFECT_ALLOW
+
+  - name: "Privileged and unrelated principals cannot withdraw another actor claim"
+    input:
+      principals: ["tenant_admin", "instance_admin", "regular_user", "machine_user"]
+      resources: ["organization_organizer_claim"]
+      actions: ["withdraw-organizer-claim"]
+    expected:
+      - principal: "tenant_admin"
+        resource: "organization_organizer_claim"
+        actions:
+          withdraw-organizer-claim: EFFECT_DENY
+      - principal: "instance_admin"
+        resource: "organization_organizer_claim"
+        actions:
+          withdraw-organizer-claim: EFFECT_DENY
+      - principal: "regular_user"
+        resource: "organization_organizer_claim"
+        actions:
+          withdraw-organizer-claim: EFFECT_DENY
+      - principal: "machine_user"
+        resource: "organization_organizer_claim"
+        actions:
+          withdraw-organizer-claim: EFFECT_DENY
+
+  - name: "Event creator for unrelated organization and group cannot withdraw claimant claims"
+    input:
+      principals: ["unrelated_event_creator"]
+      resources: ["organization_organizer_claim", "group_organizer_claim"]
+      actions: ["withdraw-organizer-claim"]
+    expected:
+      - principal: "unrelated_event_creator"
+        resource: "organization_organizer_claim"
+        actions:
+          withdraw-organizer-claim: EFFECT_DENY
+      - principal: "unrelated_event_creator"
+        resource: "group_organizer_claim"
+        actions:
+          withdraw-organizer-claim: EFFECT_DENY
