@@ -3,7 +3,7 @@
 
 # Full Property Update Sub-DTO Pattern - Exhaustive Inventory
 
-Last Updated: 2026-07-23 Europe/Brussels
+Last Updated: 2026-07-27 Europe/Brussels
 
 ## Purpose And Coverage Gate
 
@@ -68,16 +68,16 @@ No row may finish as `investigate`, `other`, or an unbounded family wildcard.
 | D-024 | `Category/UpdateCategoryDto.cs` | Category | C | 2.1 |
 | D-025 | `User/UpdateUserProfileImageDto.cs` | User profile-image nested group | N | 2.1 |
 | D-026 | `User/UpdateUserNamesDto.cs` | User names nested group | N | 2.1 |
-| D-027 | `Appearance/UpdateAppearanceProfileRequestDto.cs` | AppearanceProfile | M | 3.3 |
-| D-028 | `ActorSubscription/UpdateActorSubscriptionNotificationLevelDto.cs` | ActorSubscription notification level | M | 3.2 |
+| D-027 | `Appearance/UpdateAppearanceProfileRequestDto.cs` | AppearanceProfile | C | 3.3 |
+| D-028 | `ActorSubscription/UpdateActorSubscriptionNotificationLevelDto.cs` | ActorSubscription notification level | C | 3.2 |
 | D-029 | `StorageObject/UpdateStorageObjectDto.cs` | StorageObject editable metadata | M | 4.1 |
 | D-030 | `Event/UpdateEventDraftRequestDto.cs` | Internal/local Event draft workflow | N | 2.3 |
 | D-031 | `UserExternalLogin/UpdateUserExternalLoginDto.cs` | UserExternalLogin generic identity mapping | R | 5.1 |
 | D-032 | `Tenant/UpdateTenantNavigationLinkOrderDto.cs` | Tenant navigation reorder action | A | 3.2 |
-| D-033 | `Tenant/UpdateTenantNavigationLinkDto.cs` | TenantNavigationLink | M | 3.1 |
-| D-034 | `Tenant/UpdateTenantDto.cs` | Tenant | M | 3.1 |
+| D-033 | `Tenant/UpdateTenantNavigationLinkDto.cs` | TenantNavigationLink | C | 3.1 |
+| D-034 | `Tenant/UpdateTenantDto.cs` | Tenant | C | 3.1 |
 | D-035 | `TagTypeTags/UpdateTagTypeTagsDto.cs` | TagTypeTags relationship | M | 3.4 |
-| D-036 | `Tag/UpdateTagDto.cs` | Tag | M | 3.1 |
+| D-036 | `Tag/UpdateTagDto.cs` | Tag | C | 3.1 |
 | D-037 | `SyncState/UpdateSyncStateDto.cs` | ATProto SyncState internal cursor | R | 5.1 |
 | D-038 | `Settings/UpdateSettingValueDto.cs` | Exact setting-key replacement | S | 1.1 |
 | D-039 | `Settings/UpdateSettingBatchDto.cs` | Exact category batch replacement | S | 1.1 |
@@ -98,8 +98,8 @@ No row may finish as `investigate`, `other`, or an unbounded family wildcard.
 | D-054 | `EventCustomProperty/UpdateEventCustomPropertyDefinitionDto.cs` | Event custom-property definition | M | 3.5 |
 | D-055 | `CustomPropertyDefinition/UpdateCustomPropertyDefinitionDto.cs` | CustomPropertyDefinition | M | 3.5 |
 | D-056 | `CategoryTypeCategories/UpdateCategoryTypeCategoriesDto.cs` | CategoryTypeCategories relationship | M | 3.4 |
-| D-057 | `Appearance/UpdateUserAppearancePreferencesDto.cs` | Current user appearance preferences | M | 3.3 |
-| D-058 | `Appearance/UpdateUiThemeDto.cs` | UiTheme | M | 3.3 |
+| D-057 | `Appearance/UpdateUserAppearancePreferencesDto.cs` | Current user appearance preferences | C | 3.3 |
+| D-058 | `Appearance/UpdateUiThemeDto.cs` | UiTheme | C | 3.3 |
 | D-059 | `ActorKeyStore/UpdateActorKeyStoreDto.cs` | ActorKeyStore generic key material | R | 5.1 |
 
 ## Register 2: All 71 Update Command-Handler Files
@@ -129,10 +129,10 @@ Paths are relative to `src/Explore.Application/Features/`.
 | H-019 | `TenantOnboarding/Handlers/Commands/UpdateTenantPolicySettingsCommandHandler.cs` | Broad tenant policy settings write | R | 5.3 |
 | H-020 | `Integrations/Listmonk/Handlers/Commands/UpdateListmonkIntegrationSettingsCommandHandler.cs` | Listmonk settings | M | 4.2 |
 | H-021 | `Users/Handlers/Commands/UpdateUserLastActiveTenantCommandHandler.cs` | Last-active-tenant selection action | A | 6.1 |
-| H-022 | `Notifications/Handlers/Commands/UpdateGroupNotificationPreferenceMatrixCommandHandler.cs` | Group notification matrix | M | 3.2 |
-| H-023 | `Notifications/Handlers/Commands/UpdateOrganizationNotificationPreferenceMatrixCommandHandler.cs` | Organization notification matrix | M | 3.2 |
-| H-024 | `Notifications/Handlers/Commands/UpdateCurrentUserNotificationPreferenceMatrixCommandHandler.cs` | User notification matrix | M | 3.2 |
-| H-025 | `ControlPlane/Handlers/Commands/UpdateControlPlaneTenantPlanVersionDraftCommandHandler.cs` | Tenant plan version draft | M | 3.1 |
+| H-022 | `Notifications/Handlers/Commands/UpdateGroupNotificationPreferenceMatrixCommandHandler.cs` | Group notification matrix | C | 3.2 |
+| H-023 | `Notifications/Handlers/Commands/UpdateOrganizationNotificationPreferenceMatrixCommandHandler.cs` | Organization notification matrix | C | 3.2 |
+| H-024 | `Notifications/Handlers/Commands/UpdateCurrentUserNotificationPreferenceMatrixCommandHandler.cs` | User notification matrix | C | 3.2 |
+| H-025 | `ControlPlane/Handlers/Commands/UpdateControlPlaneTenantPlanVersionDraftCommandHandler.cs` | Tenant plan version draft | C | 3.1 |
 | H-026 | `EventReporting/Handlers/Commands/UpdateReportingProviderLocksCommandHandler.cs` | Reporting provider locks | M | 4.3 |
 | H-027 | `EventReporting/Handlers/Commands/UpdateReportingRoutingSettingsCommandHandler.cs` | Reporting routing settings | M | 4.3 |
 | H-028 | `EventSessionSpeakers/Handlers/Commands/UpdateEventSessionSpeakerCommandHandler.cs` | EventSessionSpeaker | M | 3.4 |
@@ -153,11 +153,11 @@ Paths are relative to `src/Explore.Application/Features/`.
 | H-043 | `EventRoleAssignments/Handlers/Commands/UpdateEventRoleAssignmentWindowCommandHandler.cs` | Event role-assignment window action | A | 6.1 |
 | H-044 | `TenantStorageSettings/Handlers/Commands/UpdateTenantStorageSettingsCommandHandler.cs` | Tenant storage settings | M | 1.2 |
 | H-045 | `InstanceOnboarding/Handlers/Commands/UpdateInstanceStorageSettingsCommandHandler.cs` | Instance storage settings | M | 1.3 |
-| H-046 | `ActorSubscriptions/Handlers/Commands/UpdateActorSubscriptionNotificationLevelCommandHandler.cs` | ActorSubscription notification property | M | 3.2 |
+| H-046 | `ActorSubscriptions/Handlers/Commands/UpdateActorSubscriptionNotificationLevelCommandHandler.cs` | ActorSubscription notification property | C | 3.2 |
 | H-047 | `EventSessionTemplates/Handlers/Commands/UpdateEventSessionTemplateCommandHandler.cs` | EventSessionTemplate | M | 3.6 |
 | H-048 | `EventTemplates/Handlers/Commands/UpdateEventTemplateCommandHandler.cs` | EventTemplate | M | 3.6 |
 | H-049 | `UserExternalLogins/Handlers/Commands/UpdateUserExternalLoginCommandHandler.cs` | UserExternalLogin generic mapping | R | 5.1 |
-| H-050 | `Tags/Handlers/Commands/UpdateTagCommandHandler.cs` | Tag | M | 3.1 |
+| H-050 | `Tags/Handlers/Commands/UpdateTagCommandHandler.cs` | Tag | C | 3.1 |
 | H-051 | `TagTypeTags/Handlers/Commands/UpdateTagTypeTagsCommandHandler.cs` | TagTypeTags relationship | M | 3.4 |
 | H-052 | `SyncStates/Handlers/Commands/UpdateSyncStateCommandHandler.cs` | SyncState cursor | R | 5.1 |
 | H-053 | `Roles/Handlers/Commands/UpdateRolePermissionsCommandHandler.cs` | Role permission assignment action | A | 6.1 |
@@ -169,15 +169,15 @@ Paths are relative to `src/Explore.Application/Features/`.
 | H-059 | `Groups/Handlers/Commands/UpdateGroupApprovalStatusCommandHandler.cs` | Group approval action | A | 6.1 |
 | H-060 | `GroupMembers/Handlers/Commands/UpdateGroupMemberRoleCommandHandler.cs` | Group member role action | A | 6.1 |
 | H-061 | `Footer/Handlers/Commands/UpdateTenantFooterSettingsCommandHandler.cs` | Tenant footer settings | M | 1.2 |
-| H-062 | `Footer/Handlers/Commands/UpdateFooterLinkGroupCommandHandler.cs` | FooterLinkGroup | M | 3.1 |
-| H-063 | `Footer/Handlers/Commands/UpdateFooterLinkCommandHandler.cs` | FooterLink | M | 3.1 |
+| H-062 | `Footer/Handlers/Commands/UpdateFooterLinkGroupCommandHandler.cs` | FooterLinkGroup | C | 3.1 |
+| H-063 | `Footer/Handlers/Commands/UpdateFooterLinkCommandHandler.cs` | FooterLink | C | 3.1 |
 | H-064 | `Footer/Handlers/Commands/UpdateFooterGovernanceSettingsCommandHandler.cs` | Footer governance | M | 1.3 |
 | H-065 | `EventSessionCustomProperties/Handlers/Commands/UpdateEventSessionCustomPropertyDefinitionCommandHandler.cs` | EventSession custom-property definition | M | 3.5 |
 | H-066 | `EventCustomProperties/Handlers/Commands/UpdateEventCustomPropertyDefinitionCommandHandler.cs` | Event custom-property definition | M | 3.5 |
 | H-067 | `CustomPropertyDefinitions/Handlers/Commands/UpdateCustomPropertyDefinitionCommandHandler.cs` | CustomPropertyDefinition | M | 3.5 |
 | H-068 | `CategoryTypeCategories/Handlers/Commands/UpdateCategoryTypeCategoriesCommandHandler.cs` | CategoryTypeCategories relationship | M | 3.4 |
-| H-069 | `Appearance/Handlers/Commands/UpdateUiThemeCommandHandler.cs` | UiTheme | M | 3.3 |
-| H-070 | `Appearance/Handlers/Commands/UpdateCurrentUserAppearancePreferencesCommandHandler.cs` | User appearance preferences | M | 3.3 |
+| H-069 | `Appearance/Handlers/Commands/UpdateUiThemeCommandHandler.cs` | UiTheme | C | 3.3 |
+| H-070 | `Appearance/Handlers/Commands/UpdateCurrentUserAppearancePreferencesCommandHandler.cs` | User appearance preferences | C | 3.3 |
 | H-071 | `ActorKeyStores/Handlers/Commands/UpdateActorKeyStoreCommandHandler.cs` | ActorKeyStore generic key update | R | 5.1 |
 
 `UpdateInstanceSubResourceHandlers.cs` contains additional update-handler classes but does not match the handler-file glob. Those public operations are still individually covered by API rows A-026 through A-042.
@@ -198,7 +198,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-008 | `InstanceModerationReportingSettingsController.UpdateInstanceModerationReportingProviderLocks` | `PUT locks` | M: grouped settings PATCH | 4.3 |
 | A-009 | `ModerationReportingRoutingController.UpdateModerationReportingRoutingSettings` | `PUT` | M: grouped settings PATCH; secrets explicit | 4.3 |
 | A-010 | `EventSessionSpeakerController.UpdateEventSessionSpeaker` | `PATCH management/by-session/{eventSessionId}/{id}` | M: canonical route-ID grouped PATCH | 3.4 |
-| A-011 | `ControlPlaneController.UpdateControlPlaneTenantPlanVersionDraft` | `PUT plans/versions/{versionId}` | M: grouped entity PATCH | 3.1 |
+| A-011 | `ControlPlaneController.UpdateControlPlaneTenantPlanVersionDraft` | `PATCH plans/versions/{versionId}` | C: grouped entity PATCH | 3.1 |
 | A-012 | `ControlPlaneController.SetControlPlaneTenantSetting` | `PUT tenants/{tenantId}/settings/{key}` | S: retain exact-key PUT | 6.1 |
 | A-013 | `EventAspectController.UpsertEventIslamicAspect` | `PUT {id}/aspects/islamic` | M: POST create plus grouped PATCH update | 3.4 |
 | A-014 | `EventAspectController.UpsertEventTechAspect` | `PUT {id}/aspects/tech` | M: POST create plus grouped PATCH update | 3.4 |
@@ -207,7 +207,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-017 | `EventReportsController.UpdateMyEventReportCommunicationConsent` | `PUT my/{reportId}/communication-consent` | M: grouped PATCH | 4.3 |
 | A-018 | `OrganizationMemberController.UpdateOrganizationMemberRole` | `PUT role` | A: retain role action | 6.1 |
 | A-019 | `UserController.UpdateCurrentUser` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
-| A-020 | `OrganizationController.UpdateOrganizationNotificationPreferences` | `PUT {id}/notification-preferences` | M: grouped PATCH | 3.2 |
+| A-020 | `OrganizationController.UpdateOrganizationNotificationPreferences` | `PATCH {id}/notification-preferences` | C: grouped PATCH | 3.2 |
 | A-021 | `OrganizationController.SetOrganizationNotificationPreferenceMute` | `PUT {id}/notification-preferences/mute` | A: retain single-value action PUT | 6.1 |
 | A-022 | `OrganizationController.UpdateOrganization` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-023 | `OrganizationController.UpdateOrganizationApprovalStatus` | `PUT {id}/approval-status` | A: retain approval action | 6.1 |
@@ -232,20 +232,20 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-042 | `InstanceSettingsController.UpdateInstanceAuthorizationProviderConfiguration` | `PUT authz-provider` | M: grouped settings PATCH; explicit validation | 1.3 |
 | A-043 | `LocationController.UpdateLocation` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-044 | `IndexedDidController.UpdateIndexedDid` | `PUT {did}` | R: remove generic public provider-row update | 5.1 |
-| A-045 | `UserAppearanceController.UpdateCurrentUserAppearancePreferences` | `PUT` | M: grouped settings PATCH | 3.3 |
-| A-046 | `UserAppearanceController.UpdateAppearanceProfile` | `PUT profiles/{profileId}` | M: grouped entity PATCH | 3.3 |
+| A-045 | `UserAppearanceController.UpdateCurrentUserAppearancePreferences` | `PATCH` | C: grouped settings PATCH | 3.3 |
+| A-046 | `UserAppearanceController.UpdateAppearanceProfile` | `PATCH profiles/{profileId}` | C: grouped entity PATCH | 3.3 |
 | A-047 | `UserAppearanceController.SetActiveAppearanceProfile` | `PUT active-profile` | A: retain selection action | 6.1 |
 | A-048 | `UserAppearanceController.SetAppearanceThemeMode` | `PUT mode` | S: retain exact single preference write | 6.1 |
 | A-049 | `UserAppearanceController.ArchiveAppearanceProfile` | `PUT profiles/{profileId}/archive` | A: retain archive action | 6.1 |
-| A-050 | `GroupController.UpdateGroupNotificationPreferences` | `PUT {id}/notification-preferences` | M: grouped PATCH | 3.2 |
+| A-050 | `GroupController.UpdateGroupNotificationPreferences` | `PATCH {id}/notification-preferences` | C: grouped PATCH | 3.2 |
 | A-051 | `GroupController.SetGroupNotificationPreferenceMute` | `PUT {id}/notification-preferences/mute` | A: retain single-value action PUT | 6.1 |
 | A-052 | `GroupController.UpdateGroup` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-053 | `GroupController.UpdateGroupApprovalStatus` | `PUT {id}/approval-status` | A: retain approval action | 6.1 |
 | A-054 | `TenantStorageSettingsController.UpdateTenantStorageSettings` | `PUT` | M: grouped settings PATCH | 1.2 |
-| A-055 | `UiThemeAdminController.UpdateUiTheme` | `PUT {id}` | M: grouped entity PATCH | 3.3 |
+| A-055 | `UiThemeAdminController.UpdateUiTheme` | `PATCH {id}` | C: grouped entity PATCH | 3.3 |
 | A-056 | `EventSessionController.UpdateEventSession` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-057 | `ExternalApiKeyController.UpdateExternalApiKey` | `PUT {id}` | M: grouped policy PATCH; key material excluded | 4.2 |
-| A-058 | `ActorSubscriptionController.UpdateActorSubscriptionNotificationLevel` | `PATCH actors/{targetActorId}/notification-level` | M: grouped preference PATCH | 3.2 |
+| A-058 | `ActorSubscriptionController.UpdateActorSubscriptionNotificationLevel` | `PATCH actors/{targetActorId}/notification-level` | C: grouped preference PATCH | 3.2 |
 | A-059 | `LocalizationAdminController.UpdateLocalizationGovernance` | `PUT governance` | M: grouped settings PATCH | 4.2 |
 | A-060 | `EventSeriesController.UpdateEventSeries` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-061 | `EventSessionAgendaItemController.UpdateEventSessionAgendaItem` | `PUT {id}` | M: grouped entity PATCH | 3.4 |
@@ -260,23 +260,23 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-070 | `CategoryController.UpdateCategory` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-071 | `ActorKeyStoreController.UpdateActorKeyStore` | `PUT {id}` | R: remove generic public key-material update | 5.1 |
 | A-072 | `EventSessionLanguageController.UpdateEventSessionLanguage` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
-| A-073 | `FooterController.UpdateFooterLinkGroup` | `PUT link-groups/{id}` | M: grouped entity PATCH | 3.1 |
-| A-074 | `FooterController.UpdateFooterLink` | `PUT links/{id}` | M: grouped entity PATCH | 3.1 |
+| A-073 | `FooterController.UpdateFooterLinkGroup` | `PATCH link-groups/{id}` | C: grouped entity PATCH | 3.1 |
+| A-074 | `FooterController.UpdateFooterLink` | `PATCH links/{id}` | C: grouped entity PATCH | 3.1 |
 | A-075 | `FooterController.UpdateTenantFooterSettings` | `PUT settings` | M: grouped settings PATCH/autosave | 1.2 |
 | A-076 | `ActorController.UpdateActor` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-077 | `UserExternalLoginController.UpdateUserExternalLogin` | `PUT {id}` | R: remove generic provider-mapping update | 5.1 |
 | A-078 | `EventSessionGroupController.UpdateEventSessionGroup` | `PUT {id}` | M: grouped relationship PATCH | 3.4 |
-| A-079 | `NotificationController.UpdateCurrentUserNotificationPreferences` | `PUT preferences/me` | M: grouped PATCH | 3.2 |
+| A-079 | `NotificationController.UpdateCurrentUserNotificationPreferences` | `PATCH preferences/me` | C: grouped PATCH | 3.2 |
 | A-080 | `NotificationController.SetCurrentUserNotificationPreferenceMute` | `PUT preferences/me/mute` | A: retain single-value action PUT | 6.1 |
 | A-081 | `NotificationController.MarkNotificationAsRead` | `PATCH {id}/read` | A: retain state-transition PATCH | 6.1 |
 | A-082 | `NotificationController.ArchiveNotification` | `PATCH {id}/archive` | A: retain state-transition PATCH | 6.1 |
 | A-083 | `NotificationController.SnoozeNotification` | `PATCH {id}/snooze` | A: retain state-transition PATCH | 6.1 |
 | A-084 | `EventSessionTemplateController.UpdateEventSessionTemplate` | `PUT {id}` | M: grouped entity PATCH | 3.6 |
-| A-085 | `TenantController.UpdateTenant` | `PUT {id}` | M: grouped entity PATCH | 3.1 |
-| A-086 | `TenantController.UpdateTenantNavigationLink` | `PUT navigation/{id}` | M: grouped entity PATCH | 3.1 |
+| A-085 | `TenantController.UpdateTenant` | `PATCH {id}` | C: grouped entity PATCH | 3.1 |
+| A-086 | `TenantController.UpdateTenantNavigationLink` | `PATCH navigation/{id}` | C: grouped entity PATCH | 3.1 |
 | A-087 | `TenantController.ReorderTenantNavigationLinks` | `PUT navigation/reorder` | A: retain reorder action | 6.1 |
 | A-088 | `EventTemplateController.UpdateEventTemplate` | `PUT {id}` | M: grouped entity PATCH | 3.6 |
-| A-089 | `TagController.UpdateTag` | `PUT {id}` | M: grouped entity PATCH | 3.1 |
+| A-089 | `TagController.UpdateTag` | `PATCH {id}` | C: grouped entity PATCH | 3.1 |
 | A-090 | `EventSessionCustomPropertyController.UpdateEventSessionCustomPropertyDefinition` | `PUT {id}` | M: grouped entity PATCH | 3.5 |
 | A-091 | `EventSessionCustomPropertyController.SetEventSessionCustomPropertyValue` | `PUT value` | S: retain complete single-value replacement | 6.1 |
 | A-092 | `EventSessionCustomPropertyController.SetEventSessionCustomPropertyMultiValues` | `PUT values` | S: retain complete value-set replacement | 6.1 |

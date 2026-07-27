@@ -3,9 +3,9 @@
 
 # Full Property Update Sub-DTO Pattern - Context
 
-Last Updated: 2026-07-26 Europe/Brussels
+Last Updated: 2026-07-27 Europe/Brussels
 
-## SESSION PROGRESS (2026-07-26 Europe/Brussels)
+## SESSION PROGRESS (2026-07-27 Europe/Brussels)
 
 ### COMPLETED
 
@@ -57,18 +57,34 @@ Last Updated: 2026-07-26 Europe/Brussels
 - Completed Task 2.2 for the Application-only EventCategories and EventTags relationship updates. Both flows already had grouped intent validation, concurrency, same-tenant target checks, duplicate checks, repository-mediated one-save mutation, cache invalidation, and tenant-scoped composite FK/unique-index protection.
 - Corrected the shared authorization gap: `AuthorizationBehavior` now loads each persisted link by route/link ID, binds its authoritative parent Event/Tenant into the command, and authorizes that parent event. Both handlers recheck the bound context before mutation, preventing caller-selected authorization context from targeting another assignment.
 - Added focused behavior and handler coverage for persisted-parent binding and fail-closed context mismatch. `Explore.Application` and `Event.Application.UnitTests` compile with zero errors; indexed diagnostics and `git diff --check` are clean. GPT Oracle returned PASS. Tests were compiled but not executed per user direction.
+- Completed Task 2.3. `UpdateEventDraftRequestDto`, its validator, command, and handler are a local/internal draft workflow with no API route, OpenAPI operation, generated client, or production command construction. The canonical public Event update remains the grouped route-ID PATCH verified in Task 2.1.
+- The local workflow preserves event authorization, full-draft validation, optimistic concurrency, schedule timezone reprojection, one repository update, and event cache invalidation. Only misleading mandatory header wording was corrected. `Explore.Application` and `Event.Application.UnitTests` compile with zero errors; indexed diagnostics and `git diff --check` are clean. GPT Oracle returned PASS; execution tests remain deferred.
+- Task 3.1 implementation is complete across Tag, Tenant, TenantNavigationLink, FooterLinkGroup, FooterLink, and ControlPlaneTenantPlanVersionDraft. All six public operations now use grouped route-ID PATCH bodies; body-owned resource/tenant/user IDs and Tenant lifecycle state are excluded, while lifecycle, navigation/footer reorder, and tenant-plan publish/archive/clone remain dedicated actions.
+- The shared external-link transport policy accepts relative paths and HTTPS by default. Registered instance-only setting `security.require_https_external_urls` defaults to `true`; explicit `false` permits HTTP for trusted HTTP-only private networks. Create/update navigation and footer handlers resolve the setting before validation.
+- Tenant-plan draft updates validate the merged effective draft and mutate only supplied groups through a tracked repository read. Footer link updates use tenant-bound repository lookup. Tenant metadata now has a concrete update handler, and HAL advertises PATCH where applicable.
+- OpenAPI and the generated NSwag client were regenerated. Application, API, Blazor Client, Application unit-test, API integration-test, and Blazor Client test projects compile with zero errors. Focused fixtures cover HTTPS enforcement/opt-out and omitted tenant-plan group preservation; execution tests remain deferred.
+- Final GPT Oracle review returned PASS after six remediations: Tenant slug changes refresh the authoritative resolver cache after persistence; footer-link `IsActive` now flows through DTO/OpenAPI/generated client and the edit dialog; Tenant and navigation-link absence return typed 404 responses; plan name is read-only during version editing; stale footer PUT test/docs were corrected; and the obsolete control-plane HAL PUT branch was removed.
+- Post-review compilation confirms Application source, Blazor Client, and Blazor Client tests with zero errors. API and Application-test recompilation are currently blocked only by unrelated concurrent ATProto constructor drift; neither command reports a Task 3.1 error. Standard OpenAPI and NSwag generation completed, scoped diagnostics are clean, and diff/conflict checks pass.
+- Task 3.2 implementation is complete across current-user, Organization, Group, and ActorSubscription notification preferences. Matrix writes now use PATCH with a presence-aware optional `cells` collection; handlers reject absent/empty updates and validate every supplied required/locked cell before one transaction writes any cell. The three mute endpoints remain focused PUT actions.
+- ActorSubscription notification-level PATCH now takes actor identity only from the route and accepts a nullable `notificationLevel` group plus `expectedConcurrencyStamp`. Missing subscriptions map to typed 404 ProblemDetails. HAL `save` advertises PATCH, OpenAPI/NSwag and the contract inventory were regenerated, and the Application, API, Blazor Client, plus all three affected test projects compile with zero errors. One inventory-generator test passed; broader execution tests remain deferred.
+- Final GPT Oracle review returned PASS after two remediations: Organization/Group `save` and `set-mute` HAL links now carry exact resource update permission metadata, and actor PATCH OpenAPI marks `expectedConcurrencyStamp` plus nested notification-level `id` required while retaining the nullable group. Focused regression execution passed 2/2 HAL permission cases and 1/1 actor schema case.
+- Task 3.3 implementation is complete across current-user appearance localization, AppearanceProfile, and UiTheme. The three broad writes are now PATCH operations. Current-user PATCH accepts only a nullable localization group so it cannot replace omitted direction/language or duplicate focused active-profile/current-mode ownership. AppearanceProfile splits metadata and palettes; UiTheme uses route-owned identity, required row version, and nullable metadata/state/palette groups.
+- Appearance handlers reject empty wrappers/groups before mutation. Profile and UI-theme updates apply only supplied leaves; UI-theme default/active invariants are checked against merged persisted state and one transaction performs any default clearing plus one entity update. The BFF sends one localization leaf at a time and uses the focused mode operation for theme changes.
+- OpenAPI and NSwag were regenerated. Application, API, BFF, Blazor Client, and affected test projects compile. Focused evidence passes 5 current-user handler tests, 17 profile service tests, 3 UiTheme handler tests, 5 BFF forwarding/validation tests, 8 BFF route/antiforgery tests, 8 appearance architecture tests, 15 client appearance tests, and 1 contract-inventory generator test. API, Blazor Client, and BFF Release builds pass with zero errors; scoped diagnostics, whitespace, and conflict checks are clean.
+- Final GPT Oracle review returned PASS after confirming the remediated BFF profile PATCH route, obsolete PUT rejection, and typed HTTP 400 profile-update contract. Task 3.3 has no remaining scoped blocker.
 
 ### IN PROGRESS
 
-- Task 2.3 is next: verify that the local Event draft update remains a bounded internal workflow and does not hide a missing public entity migration.
+- Task 3.4 is the next implementation slice; no Task 3.3 work remains.
 
 ### NEXT
 
-1. Verify the Task 2.3 local Event draft update contract.
-2. Continue through the approved implementation tasks without treating deferred Phase 2 or Docker test execution as a pass.
-3. Run the Docker-backed stress/race verification and deferred phase tests before final workstream completion.
-4. Keep H-019/A-003 until Task 5.3, then remove them after their remaining callers have explicit save boundaries.
-5. Keep unrelated dirty worktree changes untouched.
+1. Begin Task 3.4 program/aspect/relationship resources from its assigned inventory rows.
+2. Preserve Task 3.3 grouped PATCH, focused-action, and route-owned identity contracts while adjacent surfaces change.
+3. Preserve the Task 3.1 grouped PATCH, route-owned identity, HTTPS, slug-cache, and footer active-state contracts while later phases evolve adjacent files.
+4. Run the Docker-backed stress/race verification and deferred phase tests before final workstream completion.
+5. Keep H-019/A-003 until Task 5.3, then remove them after their remaining callers have explicit save boundaries.
+6. Keep unrelated dirty worktree changes untouched.
 
 ### BLOCKERS
 
@@ -156,13 +172,13 @@ Latest Task 1.3 evidence: exact setup authority/limiter combined tests passed 13
 
 ## Handoff Notes
 
-### Handoff - 2026-07-26 Europe/Brussels
+### Handoff - 2026-07-27 Europe/Brussels
 
-- **Current state:** Tasks 1.1-2.2 implementation is complete. Task 2.2 has final GPT Oracle PASS: EventCategories/EventTags authorize through persisted parent events, handlers recheck authority before mutation, and the existing tenancy/duplicate/concurrency/cache boundaries remain intact. Execution tests remain explicitly deferred rather than reported as passed. H-019/A-003 deletion remains assigned to Task 5.3.
-- **Next action:** Start Task 2.3 by verifying the local Event draft update contract, then continue the approved sequence while retaining deferred verification debt.
-- **Blockers:** No Task 2.1 implementation blocker. Docker runtime tests and Task 2.1 test execution are deferred, not passed. API integration-test compilation currently has 29 unrelated concurrent Actor/User/Organization fixture errors; the canonical solution build reports 84 errors across affected test projects. Runtime visual QA remains explicitly waived.
-- **Modified files:** Task 2.1 touched the scoped Actor, EventSeries, EventSessionLanguage, User, controller response-mapping, HAL registration/policy/assembler, OpenAPI/generated-client, Blazor adapter, compile-fixture, and active workstream files. Do not alter or revert unrelated worktree changes.
-- **Validation:** Task 2.2 `Explore.Application` and `Event.Application.UnitTests` Release builds pass with zero errors; indexed diagnostics and `git diff --check` are clean. Final GPT Oracle review passed with no scoped remediation. No Phase 2 execution test or canonical solution-build pass is claimed.
-- **Documentation impact:** Tasks and context now record Task 2.2 implementation completion, Oracle PASS, compile evidence, deferred execution tests, and Task 2.3 as the next slice.
-- **Risks:** Concurrent domain-model work has left test fixtures stale and prevents a clean canonical build; distinguish those external errors from Task 2.1 while keeping the full build gate open.
+- **Current state:** Tasks 1.1-3.3 are complete, representing 9/20 implementation tasks. Task 3.3 compile/generated-contract gates, focused execution, integrity checks, and final GPT Oracle review pass. Broader phase execution tests remain explicitly deferred rather than reported as passed. H-019/A-003 deletion remains assigned to Task 5.3.
+- **Next action:** Begin Task 3.4 program/aspect/relationship resources.
+- **Blockers:** No Task 3.3 implementation blocker. Docker runtime and phase test execution remain deferred, not passed. Runtime visual QA remains explicitly waived.
+- **Modified files:** Task 3.3 touches appearance request DTOs/validators/handlers, AppearanceProfile resolution, API controllers, BFF routes/forwarding, the UiTheme editor, focused tests, OpenAPI/generated client, contract inventory, API docs, and active workstream files. Preserve unrelated worktree changes.
+- **Validation:** Focused current-user, profile, UiTheme, BFF, architecture, client, and inventory tests pass. API, Blazor Client, and BFF Release builds pass with zero errors. Scoped diagnostics, whitespace, and conflict checks are clean. Final GPT Oracle review passed; broader suites remain deferred.
+- **Documentation impact:** API changelog/reference, API contract inventory, exhaustive workstream inventory, tasks, and context describe the appearance grouped PATCH migration and retained focused actions.
+- **Risks:** The worktree contains broad concurrent changes; final review must stay scoped to Task 3.3 and must not infer that deferred tests passed.
 - **Notes for next contributor/agent:** Never revert unrelated changes. Re-read a file immediately before editing if it is already dirty.

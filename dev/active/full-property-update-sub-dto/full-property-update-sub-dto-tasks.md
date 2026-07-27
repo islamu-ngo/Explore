@@ -3,14 +3,14 @@
 
 # Full Property Update Sub-DTO Pattern - Task Checklist
 
-Last Updated: 2026-07-26 Europe/Brussels
+Last Updated: 2026-07-27 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Implementation in progress; Phase 2 active.
-- **Completed:** 5/20 implementation tasks; phase verification is tracked separately.
-- **Current priority:** Task 2.3 local Event draft update contract. Tasks 2.1 and 2.2 have GPT Oracle PASS; execution tests remain deferred by user direction rather than reported as passed.
-- **Next recommended slice:** Verify the local Event draft workflow under Task 2.3 while preserving the recorded Docker and Phase 2 execution-test debt.
+- **Overall status:** Implementation in progress; Phase 2 implementation complete and Phase 3 underway.
+- **Completed:** 9/20 implementation tasks; Task 3.3 implementation, focused verification, and final GPT Oracle review pass.
+- **Current priority:** Begin Task 3.4 program/aspect/relationship resources. Broader phase execution tests remain deferred by user direction rather than reported as passed.
+- **Next recommended slice:** Execute Task 3.4 while preserving recorded Docker and phase verification debt.
 - **Coverage contract:** 59 DTO files, 71 update-handler files, and 104 public PUT/PATCH endpoints are individually registered.
 
 ## Implementation Maintenance Rules
@@ -54,7 +54,7 @@ Last Updated: 2026-07-26 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet` - passed with 0 errors and 82 dependency-advisory warnings.
 - [x] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` - passed 2,115/2,116 with one governed skip.
 
-## Phase 2: Verify Every Existing Canonical Or Focused Surface - IN PROGRESS
+## Phase 2: Verify Every Existing Canonical Or Focused Surface - IMPLEMENTATION COMPLETE; VERIFICATION DEFERRED
 
 - [x] **2.1 Verify all public canonical grouped entity PATCH endpoints**
   - **Rows:** D-002/D-008/D-012-D-022/D-024; H-002-H-004/H-009/H-012/H-013/H-031/H-034-H-040; A-002/A-019/A-022/A-024/A-025/A-043/A-052/A-056/A-060/A-066/A-067/A-070/A-072/A-076.
@@ -72,9 +72,12 @@ Last Updated: 2026-07-26 Europe/Brussels
   - **Verification:** `Explore.Application` and `Event.Application.UnitTests` Release builds pass with zero errors; indexed diagnostics and `git diff --check` are clean. Focused tests compile but were not executed per user direction and remain deferred.
   - **Effort:** M
   - **Dependencies:** 2.1.
-- [ ] **2.3 Verify the local Event draft update contract**
+- [x] **2.3 Verify the local Event draft update contract**
   - **Rows:** D-030; H-042.
   - **Acceptance:** Event draft remains a local workflow and does not hide an omitted public entity migration.
+  - **Implementation:** Repository, controller, OpenAPI, and generated-client scans confirm no public draft-update operation or production command construction. The public Event entity update remains the canonical grouped `PATCH /api/event/{id}`. The local draft command retains narrow scalar-shell validation, event authorization, optimistic concurrency, schedule reprojection, one repository update, and cache invalidation; only misleading `public` wording in mandatory source headers was corrected.
+  - **Oracle review:** PASS after aligning the handler header with the DTO/validator/command local-workflow classification.
+  - **Verification:** `Explore.Application` and `Event.Application.UnitTests` Release builds pass with zero errors; indexed diagnostics and `git diff --check` are clean. Focused tests compile but were not executed per user direction and remain deferred.
   - **Effort:** S
   - **Dependencies:** 2.2.
 
@@ -83,21 +86,30 @@ Last Updated: 2026-07-26 Europe/Brussels
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 3: Migrate Every Remaining Domain Entity And Definition - NOT STARTED
+## Phase 3: Migrate Every Remaining Domain Entity And Definition - IN PROGRESS
 
-- [ ] **3.1 Migrate simple tenant/catalog/control-plane entities**
+- [x] **3.1 Migrate simple tenant/catalog/control-plane entities**
   - **Rows:** D-033/D-034/D-036; H-025/H-050/H-062/H-063; A-011/A-073/A-074/A-085/A-086/A-089.
   - **Acceptance:** Tag, Tenant, TenantNavigationLink, FooterLinkGroup, FooterLink, and ControlPlaneTenantPlanVersionDraft use grouped route-ID PATCH; reorder remains separate.
+  - **Implementation:** All six surfaces now use nullable logical groups and route/context-owned identity. Tenant lifecycle, navigation/footer reorder, and tenant-plan publish/archive/clone remain dedicated operations. Relative external links and HTTPS are accepted by default; instance-only `security.require_https_external_urls=false` permits HTTP for an explicitly trusted private network. Oracle remediation refreshes the tenant slug cache after persisted slug changes, preserves footer-link active state through read/edit contracts, maps Tenant/navigation absence to 404, and keeps the immutable plan name read-only during version editing.
+  - **Oracle review:** PASS after slug-cache convergence, footer `IsActive` read/client propagation, typed Tenant/navigation 404 responses, plan-name read-only behavior, stale PUT documentation/test cleanup, and HAL method correction.
+  - **Verification:** Before concurrent ATProto drift, `Explore.Application`, `Explore.API`, `Explore.Blazor.Client`, `Event.Application.UnitTests`, `Event.API.IntegrationTests`, and `Explore.Blazor.Client.Tests` compiled with zero errors. After Oracle remediation, Application source, Blazor Client, and Blazor Client tests compile with zero errors; API and Application-test recompilation reach only unrelated concurrent ATProto constructor errors and report no Task 3.1 errors. OpenAPI and NSwag were regenerated through their standard tools, scoped diagnostics are clean, and `git diff --check` plus conflict scanning pass. Focused fixtures cover HTTPS-required rejection, explicit HTTP opt-out, omitted tenant-plan groups, and slug-cache refresh. Test execution remains deferred.
   - **Effort:** L
   - **Dependencies:** Phase 2.
-- [ ] **3.2 Migrate all notification preference resources**
+- [x] **3.2 Migrate all notification preference resources**
   - **Rows:** D-028; H-022-H-024/H-046; A-020/A-050/A-058/A-079.
   - **Acceptance:** User, Organization, Group, and ActorSubscription notification preferences patch independently; required/locked cells fail atomically; mute actions remain separate.
+  - **Implementation:** Current-user, Organization, and Group matrices now use presence-aware `cells` PATCH bodies; validation completes before one transaction writes supplied cells. ActorSubscription uses route-owned actor identity plus a nullable notification-level group and concurrency stamp. HAL advertises PATCH, missing actor subscriptions return 404, and all three mute routes remain PUT actions.
+  - **Oracle review:** PASS after Organization/Group HAL mutation links were bound to exact update permissions and actor PATCH schema requiredness was aligned with runtime validation.
+  - **Verification:** Application, API, Blazor Client, Application unit-test, API integration-test, and Blazor Client test projects compile with zero errors. OpenAPI, NSwag, and the API contract inventory were regenerated through standard commands. Focused HAL permission tests passed 2/2, actor schema coverage passed 1/1, and the inventory generator passed 1/1. Broader execution tests remain deferred.
   - **Effort:** L
   - **Dependencies:** 3.1.
-- [ ] **3.3 Migrate every appearance entity/settings surface**
+- [x] **3.3 Migrate every appearance entity/settings surface**
   - **Rows:** D-027/D-057/D-058; H-069/H-070; A-045/A-046/A-055.
   - **Acceptance:** User appearance preferences, AppearanceProfile, and UiTheme use grouped PATCH; active-profile, mode, and archive remain focused operations.
+  - **Implementation:** Current-user PATCH owns only a nullable localization group, while active-profile and current-mode PUT actions remain authoritative. AppearanceProfile uses nullable metadata/palette groups. UiTheme uses route-owned identity, required row version, and nullable metadata/state/palette groups with merged-state validation and one transactional update. OpenAPI/NSwag and existing Blazor/BFF callers are updated without compatibility methods.
+  - **Oracle review:** PASS after changing the BFF profile route to PATCH, adding obsolete-PUT regression coverage, and documenting the profile update's typed HTTP 400 response.
+  - **Verification:** Application, API, BFF, Blazor Client, and affected test projects compile. Focused current-user preference tests pass 5/5, profile service tests 17/17, UiTheme handler tests 3/3, BFF forwarding/validation tests 5/5, BFF route/antiforgery tests 8/8, appearance architecture tests 8/8, client appearance tests 15/15, and the API contract inventory generator passes 1/1. API, Blazor Client, and BFF Release builds pass with zero errors; scoped diagnostics, whitespace, and conflict checks are clean.
   - **Effort:** L
   - **Dependencies:** 3.2.
 - [ ] **3.4 Migrate all remaining program/aspect/relationship entities**
