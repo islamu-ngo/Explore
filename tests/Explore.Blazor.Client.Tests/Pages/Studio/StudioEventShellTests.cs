@@ -28,7 +28,8 @@ public sealed class StudioEventShellTests : IDisposable
     {
         var resource = CreateEvent();
         _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
-        _ctx.NavigationManager.NavigateTo($"/studio/events/{resource.Id}/registration");
+        _ctx.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo($"/studio/events/{resource.Id}/registration");
 
         var cut = _ctx.RenderMudComponent<StudioEventShell>(parameters => parameters
             .Add(component => component.EventId, resource.Id.Value));
@@ -44,7 +45,8 @@ public sealed class StudioEventShellTests : IDisposable
     {
         var resource = CreateEvent("configure-participation");
         _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
-        _ctx.NavigationManager.NavigateTo($"/studio/events/{resource.Id}/registration");
+        _ctx.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo($"/studio/events/{resource.Id}/registration");
 
         var cut = _ctx.RenderMudComponent<StudioEventShell>(parameters => parameters
             .Add(component => component.EventId, resource.Id.Value));

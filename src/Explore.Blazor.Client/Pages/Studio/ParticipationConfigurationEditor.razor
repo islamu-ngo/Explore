@@ -66,7 +66,7 @@
         {
             <MudSelect T="int?"
                        Label="Guest recovery"
-                       Value="_guestRecoveryPolicy"
+                        Value="@((int?)_guestRecoveryPolicy)"
                        ValueChanged="OnGuestRecoveryPolicyChanged"
                        Variant="Variant.Outlined"
                        Required="true"
@@ -81,7 +81,7 @@
         {
             <MudSelect T="int?"
                        Label="Guest recovery"
-                       Value="_guestRecoveryPolicy"
+                        Value="@((int?)_guestRecoveryPolicy)"
                        ValueChanged="OnGuestRecoveryPolicyChanged"
                        Variant="Variant.Outlined"
                        Required="true"
@@ -156,7 +156,7 @@
     private int? _handlingModeId;
     private int? _advanceObligationId;
     private int? _identityAccessModeId;
-    private int? _guestRecoveryPolicy;
+        private int? _guestRecoveryPolicy;
     private bool _isSaving;
     private string? _errorMessage;
     private string? _statusMessage;
@@ -180,7 +180,7 @@
         _handlingModeId = Configuration.ParticipationHandlingModeId;
         _advanceObligationId = Configuration.AdvanceRegistrationObligationId;
         _identityAccessModeId = Configuration.IdentityAccessModeId;
-        _guestRecoveryPolicy = Configuration.GuestRecoveryPolicy;
+        _guestRecoveryPolicy = (int?)Configuration.GuestRecoveryPolicy;
     }
 
     private Task OnHandlingModeChanged(int? value)
@@ -238,7 +238,10 @@
 
     private async Task SaveAsync()
     {
-        if (!CanSave || Configuration.ConcurrencyStamp is not Guid concurrencyStamp)
+        if (!CanSave
+            || Configuration.ConcurrencyStamp is not Guid concurrencyStamp
+            || _handlingModeId is not int handlingModeId
+            || _advanceObligationId is not int advanceObligationId)
         {
             return;
         }
@@ -251,10 +254,10 @@
                 EventId,
                 new ConfigureEventParticipationDto
                 {
-                    ParticipationHandlingModeId = _handlingModeId,
-                    AdvanceRegistrationObligationId = _advanceObligationId,
+                    ParticipationHandlingModeId = handlingModeId,
+                    AdvanceRegistrationObligationId = advanceObligationId,
                     IdentityAccessModeId = _identityAccessModeId,
-                    GuestRecoveryPolicy = _guestRecoveryPolicy
+                    GuestRecoveryPolicy = (GuestRecoveryPolicyEnum?)_guestRecoveryPolicy
                 },
                 concurrencyStamp);
 
