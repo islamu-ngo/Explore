@@ -1,4 +1,4 @@
-// ABOUTME: Applies public draft-event updates explicitly without AutoMapper broad-field ownership leaks.
+// ABOUTME: Applies local draft-event workflow updates without AutoMapper broad-field ownership leaks.
 // ABOUTME: Preserves status, actor, tenant, and session-derived projection fields as server-owned state.
 
 using System;
@@ -11,6 +11,7 @@ using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Domain;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -22,6 +23,7 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
     public const string ConcurrencyConflictCode = "event_draft_concurrency_conflict";
 
     private readonly IEventRepository _eventRepository;
+    private readonly IEventParticipationConfigurationRepository _participationConfigurationRepository;
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
@@ -35,6 +37,7 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
 
     public UpdateEventDraftCommandHandler(
         IEventRepository eventRepository,
+        IEventParticipationConfigurationRepository participationConfigurationRepository,
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
@@ -47,6 +50,7 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
         HybridCache cache)
     {
         _eventRepository = eventRepository;
+        _participationConfigurationRepository = participationConfigurationRepository;
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
@@ -98,6 +102,35 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
                 eventEntity.Id.ToString());
         }
 
+        EventParticipationConfiguration? participationConfiguration =
+            await _participationConfigurationRepository.GetByEventAndTenantAsync(
+                eventEntity.Id,
+                eventEntity.TenantId,
+                cancellationToken);
+        if (participationConfiguration is null)
+        {
+            response.Success = false;
+            response.Message = "Event participation configuration not found.";
+            response.FailureCode = "event_participation_configuration_not_found";
+            return response;
+        }
+
+        if (participationConfiguration.ConcurrencyStamp
+            != request.Draft.ExpectedParticipationConfigurationConcurrencyStamp)
+        {
+            throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The event participation configuration changed since it was loaded. Refresh the event and try again.",
+                "event_participation_configuration",
+                eventEntity.Id.ToString());
+        }
+
+        participationConfiguration.Reconfigure(
+            request.Draft.ParticipationConfiguration.ParticipationHandlingModeId,
+            request.Draft.ParticipationConfiguration.AdvanceRegistrationObligationId,
+            request.Draft.ParticipationConfiguration.IdentityAccessModeId,
+            request.Draft.ParticipationConfiguration.GuestRecoveryPolicy);
+
         var draft = request.Draft;
         eventEntity.Title = draft.Title;
         eventEntity.Subtitle = draft.Subtitle;
@@ -110,8 +143,6 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
         eventEntity.Price = draft.Price;
         eventEntity.CurrencyCode = draft.CurrencyCode;
         eventEntity.FeaturedImageId = draft.FeaturedImageId;
-        eventEntity.IsRegistrationRequired = draft.IsRegistrationRequired;
-        eventEntity.ExternalRegistrationUrl = draft.ExternalRegistrationUrl;
         eventEntity.VisibilityTypeId = draft.VisibilityTypeId;
         eventEntity.EventFormatId = draft.EventFormatId;
         eventEntity.MadhabId = draft.MadhabId;
@@ -127,6 +158,7 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
         eventEntity.RegistrationPolicyId = draft.RegistrationPolicyId;
         eventEntity.ApplyScheduleTimeZone(timezoneId, _scheduleProjectionCalculator);
 
+        await _participationConfigurationRepository.UpdateAsync(participationConfiguration, cancellationToken);
         await _eventRepository.Update(eventEntity);
 
         response.Success = true;

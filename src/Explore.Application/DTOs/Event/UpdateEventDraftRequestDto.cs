@@ -8,6 +8,7 @@ namespace Explore.Application.DTOs.Event;
 public sealed class UpdateEventDraftRequestDto
 {
     public Guid ExpectedConcurrencyStamp { get; set; }
+    public Guid ExpectedParticipationConfigurationConcurrencyStamp { get; set; }
 
     public required string Title { get; set; }
     public string? Subtitle { get; set; }
@@ -26,8 +27,7 @@ public sealed class UpdateEventDraftRequestDto
     public string? CurrencyCode { get; set; }
     public Guid? FeaturedImageId { get; set; }
 
-    public bool IsRegistrationRequired { get; set; }
-    public string? ExternalRegistrationUrl { get; set; }
+    public required ConfigureEventParticipationDto ParticipationConfiguration { get; set; }
 
     public int VisibilityTypeId { get; set; } = 1;
     public int EventFormatId { get; set; } = 1;

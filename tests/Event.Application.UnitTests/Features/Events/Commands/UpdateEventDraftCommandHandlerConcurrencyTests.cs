@@ -19,10 +19,12 @@ public class UpdateEventDraftCommandHandlerConcurrencyTests
     public async Task Handle_WhenExpectedConcurrencyStampIsStale_ThrowsConcurrencyConflict()
     {
         var eventRepository = Substitute.For<IEventRepository>();
+        var participationConfigurations = Substitute.For<IEventParticipationConfigurationRepository>();
         var visibilityTypeRepository = Substitute.For<IVisibilityTypeRepository>();
         var eventFormatRepository = Substitute.For<IEventFormatRepository>();
         var handler = new UpdateEventDraftCommandHandler(
             eventRepository,
+            participationConfigurations,
             Substitute.For<IAudienceAgeRepository>(),
             Substitute.For<IAudienceGenderRepository>(),
             Substitute.For<IEventTypeRepository>(),
@@ -49,6 +51,8 @@ public class UpdateEventDraftCommandHandlerConcurrencyTests
             Draft = new UpdateEventDraftRequestDto
             {
                 ExpectedConcurrencyStamp = staleStamp,
+                ExpectedParticipationConfigurationConcurrencyStamp = Guid.NewGuid(),
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 Title = "Updated title",
                 VisibilityTypeId = 1,
                 EventFormatId = 1
@@ -76,5 +80,11 @@ public class UpdateEventDraftCommandHandlerConcurrencyTests
         EventStatusId = 1,
         EventFormatId = 1,
         ConcurrencyStamp = concurrencyStamp
+    };
+
+    private static ConfigureEventParticipationDto CreateParticipationConfiguration() => new()
+    {
+        ParticipationHandlingModeId = (int)Explore.Domain.Enums.ParticipationHandlingModeEnum.InformationOnly,
+        AdvanceRegistrationObligationId = (int)Explore.Domain.Enums.AdvanceRegistrationObligationEnum.NotApplicable
     };
 }

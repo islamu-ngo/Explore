@@ -18,6 +18,12 @@ namespace Explore.Blazor.Client.Pages.Events;
 public partial class CreateEvent : IDisposable
 {
     private const string MainContentAppearanceOwner = nameof(CreateEvent);
+    private const int InformationOnlyParticipationModeId = 1;
+    private const int PlatformManagedParticipationModeId = 4;
+    private const int NotApplicableAdvanceRegistrationId = 1;
+    private const int RequiredAdvanceRegistrationId = 3;
+    private const int GuestAllowedIdentityAccessId = 2;
+    private const int VerifiedEmailRequiredRecoveryPolicy = 1;
 
     [Inject] protected IEventService EventService { get; set; } = null!;
     [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
@@ -58,7 +64,10 @@ public partial class CreateEvent : IDisposable
 
     // Form state
     private Guid? _currentUserId;
-    private CreateEventDraftRequestDto createDto = new();
+    private CreateEventDraftRequestDto createDto = new()
+    {
+        ParticipationConfiguration = BuildParticipationConfiguration(platformManaged: false)
+    };
     private EditContext _editContext = default!;
     private FormSubmitState _submitState = new();
     private ServerValidationErrorStore _errorStore = new();
@@ -957,10 +966,6 @@ public partial class CreateEvent : IDisposable
         {
             createDto.VisibilityTypeId = visibilityTypes.First().Id;
         }
-        if (!createDto.IsRegistrationRequired.HasValue)
-        {
-            createDto.IsRegistrationRequired = true;
-        }
         _inlineSessionDate ??= TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, _selectedTimezone).Date.AddDays(1);
     }
 
@@ -1182,7 +1187,8 @@ public partial class CreateEvent : IDisposable
             createDto.GroupId = _publisherMode == "group" ? _selectedGroupId : null;
             createDto.FeaturedImageId = featuredImageId;
             createDto.MadhabId = selectedMadhabId;
-            createDto.IsRegistrationRequired = createDto.RegistrationPolicyId.HasValue;
+            createDto.ParticipationConfiguration = BuildParticipationConfiguration(
+                createDto.RegistrationPolicyId.HasValue);
             createDto.VisibilityTypeId ??= 1;
             createDto.EventFormatId ??= 1;
             createDto.EventStatusId = (intent == CreateEventSubmitIntent.ReviewAndPublish) ? 2 : 1;
@@ -1251,6 +1257,21 @@ public partial class CreateEvent : IDisposable
             _submitState.Fail("Event could not be submitted. Please try again.");
         }
     }
+
+    private static ConfigureEventParticipationDto BuildParticipationConfiguration(bool platformManaged) =>
+        platformManaged
+            ? new ConfigureEventParticipationDto
+            {
+                ParticipationHandlingModeId = PlatformManagedParticipationModeId,
+                AdvanceRegistrationObligationId = RequiredAdvanceRegistrationId,
+                IdentityAccessModeId = GuestAllowedIdentityAccessId,
+                GuestRecoveryPolicy = VerifiedEmailRequiredRecoveryPolicy
+            }
+            : new ConfigureEventParticipationDto
+            {
+                ParticipationHandlingModeId = InformationOnlyParticipationModeId,
+                AdvanceRegistrationObligationId = NotApplicableAdvanceRegistrationId
+            };
 
     private bool ApplyInlineSessionForIntent(CreateEventSubmitIntent intent)
     {

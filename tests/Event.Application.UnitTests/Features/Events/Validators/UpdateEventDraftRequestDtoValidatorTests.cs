@@ -76,6 +76,12 @@ public sealed class UpdateEventDraftRequestDtoValidatorTests
         var request = new UpdateEventDraftRequestDto
         {
             ExpectedConcurrencyStamp = Guid.NewGuid(),
+            ExpectedParticipationConfigurationConcurrencyStamp = Guid.NewGuid(),
+            ParticipationConfiguration = new ConfigureEventParticipationDto
+            {
+                ParticipationHandlingModeId = 1,
+                AdvanceRegistrationObligationId = 1
+            },
             Title = "Draft event",
             VisibilityTypeId = 1,
             EventFormatId = 1

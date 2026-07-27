@@ -22,6 +22,9 @@ public sealed class UpdateEventDraftRequestDtoValidator : AbstractValidator<Upda
         RuleFor(request => request.ExpectedConcurrencyStamp)
             .NotEmpty().WithMessage("{PropertyName} is required.");
 
+        RuleFor(request => request.ExpectedParticipationConfigurationConcurrencyStamp)
+            .NotEmpty().WithMessage("{PropertyName} is required.");
+
         RuleFor(request => request.Title)
             .NotEmpty().WithMessage("{PropertyName} is required.")
             .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
@@ -76,9 +79,9 @@ public sealed class UpdateEventDraftRequestDtoValidator : AbstractValidator<Upda
             .MustAsync(async (id, _) => !id.HasValue || await storageObjectRepository.Exists(id.Value))
             .WithMessage("{PropertyName} does not exist.");
 
-        RuleFor(request => request.ExternalRegistrationUrl)
-            .MaximumLength(500).When(request => !string.IsNullOrEmpty(request.ExternalRegistrationUrl))
-            .WithMessage("{PropertyName} must not exceed 500 characters.");
+        RuleFor(request => request.ParticipationConfiguration)
+            .NotNull().WithMessage("ParticipationConfiguration is required.")
+            .SetValidator(new ConfigureEventParticipationDtoValidator());
 
         RuleFor(request => request.Timezone)
             .MaximumLength(500).When(request => !string.IsNullOrEmpty(request.Timezone))

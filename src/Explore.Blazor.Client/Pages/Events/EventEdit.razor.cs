@@ -471,9 +471,8 @@ public partial class EventEdit : IDisposable
             Price = currentEvent.Price,
             CurrencyCode = currentEvent.CurrencyCode,
             FeaturedImageId = currentEvent.FeaturedImageId,
-            IsRegistrationRequired = currentEvent.IsRegistrationRequired,
+            ParticipationConfiguration = currentEvent.ParticipationConfiguration,
             RegistrationPolicyId = currentEvent.RegistrationPolicyId,
-            ExternalRegistrationUrl = currentEvent.ExternalRegistrationUrl,
             EventTypeId = currentEvent.EventTypeId,
             EventFormatId = currentEvent.EventFormatId,
             VisibilityTypeId = currentEvent.VisibilityTypeId,
@@ -888,7 +887,6 @@ public partial class EventEdit : IDisposable
                 updateDto.FeaturedImageId = _uploadedImageStorageObjectId.Value;
             }
 
-            updateDto.IsRegistrationRequired = sessions.Any(s => s.RegistrationModeId is > 0);
             updateDto.BackgroundColor = string.IsNullOrWhiteSpace(_appearance.BackgroundColor) ? null : _appearance.BackgroundColor;
             updateDto.BackgroundEffect = string.IsNullOrWhiteSpace(_appearance.BackgroundEffect) || _appearance.BackgroundEffect == "None" ? null : _appearance.BackgroundEffect;
             updateDto.Timezone = _selectedTimezone.Id;

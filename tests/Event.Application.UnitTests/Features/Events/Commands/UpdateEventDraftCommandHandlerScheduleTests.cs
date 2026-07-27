@@ -23,7 +23,8 @@ public class UpdateEventDraftCommandHandlerScheduleTests
         var visibilityTypeRepository = Substitute.For<IVisibilityTypeRepository>();
         var eventFormatRepository = Substitute.For<IEventFormatRepository>();
         var cache = Substitute.For<HybridCache>();
-        var handler = CreateHandler(eventRepository, visibilityTypeRepository, eventFormatRepository, cache);
+        var participationConfigurations = Substitute.For<IEventParticipationConfigurationRepository>();
+        var handler = CreateHandler(eventRepository, participationConfigurations, visibilityTypeRepository, eventFormatRepository, cache);
         var eventId = Guid.NewGuid();
         var tenant = CreateTenant();
         var concurrencyStamp = Guid.NewGuid();
@@ -46,12 +47,23 @@ public class UpdateEventDraftCommandHandlerScheduleTests
             EndTime = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero)
         };
         var eventEntity = CreateEvent(eventId, tenant, concurrencyStamp);
+        var participationConfiguration = EventParticipationConfiguration.Create(
+            eventId,
+            tenant.Id,
+            (int)ParticipationHandlingModeEnum.InformationOnly,
+            (int)AdvanceRegistrationObligationEnum.NotApplicable,
+            identityAccessModeId: null,
+            guestRecoveryPolicy: null,
+            DateTime.UtcNow);
+        participationConfiguration.ConcurrencyStamp = Guid.NewGuid();
         eventEntity.Days.Add(day);
         eventEntity.Sessions.Add(session);
 
         visibilityTypeRepository.Exists(1).Returns(true);
         eventFormatRepository.Exists(1).Returns(true);
         eventRepository.GetScheduleGraphForUpdateAsync(eventId, Arg.Any<CancellationToken>()).Returns(eventEntity);
+        participationConfigurations.GetByEventAndTenantAsync(eventId, tenant.Id, Arg.Any<CancellationToken>())
+            .Returns(participationConfiguration);
 
         var result = await handler.Handle(new UpdateEventDraftCommand
         {
@@ -59,6 +71,8 @@ public class UpdateEventDraftCommandHandlerScheduleTests
             Draft = new UpdateEventDraftRequestDto
             {
                 ExpectedConcurrencyStamp = concurrencyStamp,
+                ExpectedParticipationConfigurationConcurrencyStamp = participationConfiguration.ConcurrencyStamp,
+                ParticipationConfiguration = CreateParticipationConfiguration(),
                 Title = "Updated",
                 VisibilityTypeId = 1,
                 EventFormatId = 1,
@@ -75,15 +89,18 @@ public class UpdateEventDraftCommandHandlerScheduleTests
         await Assert.That(eventEntity.FirstSessionStartUtc).IsEqualTo(session.StartTime);
         await Assert.That(eventEntity.FirstSessionDate).IsEqualTo(day.LocalDate);
         await eventRepository.Received(1).Update(eventEntity);
+        await participationConfigurations.Received(1).UpdateAsync(participationConfiguration, Arg.Any<CancellationToken>());
         await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenant.Id), Arg.Any<CancellationToken>());
     }
 
     private static UpdateEventDraftCommandHandler CreateHandler(
         IEventRepository eventRepository,
+        IEventParticipationConfigurationRepository participationConfigurations,
         IVisibilityTypeRepository visibilityTypeRepository,
         IEventFormatRepository eventFormatRepository,
         HybridCache cache) => new(
             eventRepository,
+            participationConfigurations,
             Substitute.For<IAudienceAgeRepository>(),
             Substitute.For<IAudienceGenderRepository>(),
             Substitute.For<IEventTypeRepository>(),
@@ -94,6 +111,12 @@ public class UpdateEventDraftCommandHandlerScheduleTests
             Substitute.For<IEventRegistrationPolicyRepository>(),
             new EventScheduleProjectionCalculator(),
             cache);
+
+    private static ConfigureEventParticipationDto CreateParticipationConfiguration() => new()
+    {
+        ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly,
+        AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable
+    };
 
     private static Explore.Domain.Event CreateEvent(Guid eventId, Tenant tenant, Guid concurrencyStamp) => new()
     {

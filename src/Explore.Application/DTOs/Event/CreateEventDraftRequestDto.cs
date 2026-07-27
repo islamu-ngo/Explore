@@ -20,8 +20,7 @@ public sealed class CreateEventDraftRequestDto
     public decimal? Price { get; set; }
     public string? CurrencyCode { get; set; }
     public Guid? FeaturedImageId { get; set; }
-    public bool IsRegistrationRequired { get; set; }
-    public string? ExternalRegistrationUrl { get; set; }
+    public required ConfigureEventParticipationDto ParticipationConfiguration { get; set; }
     public int VisibilityTypeId { get; set; } = 1;
     public int EventFormatId { get; set; } = 1;
     public int EventStatusId { get; set; } = 1;
@@ -59,8 +58,7 @@ public sealed class CreateEventDraftRequestDto
         Price = Price,
         CurrencyCode = CurrencyCode,
         FeaturedImageId = FeaturedImageId,
-        IsRegistrationRequired = IsRegistrationRequired,
-        ExternalRegistrationUrl = ExternalRegistrationUrl,
+        ParticipationConfiguration = ParticipationConfiguration,
         EventStatusId = EventStatusId == 0 ? 1 : EventStatusId,
         VisibilityTypeId = VisibilityTypeId,
         EventFormatId = EventFormatId,
