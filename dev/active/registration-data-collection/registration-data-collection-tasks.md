@@ -3,13 +3,13 @@
 
 # Registration Data Collection & Participation Platform — Task Checklist
 
-Last Updated: 2026-07-26 Europe/Brussels
+Last Updated: 2026-07-27 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Implementation in progress — Phase 0 implemented; Phase 1 Domain and Task 1.6 source/contracts implemented with shared verification blockers
-- **Completed:** 7/88 implementation tasks (phase verification tracked separately)
-- **Current priority:** Close Task 1.6 verification once shared API tests and the Cerbos CLI are available; do not scaffold the registration migration before actor-lifecycle Task 2.1
-- **Next recommended slice:** Resolve or wait for the actor-owned API test fixture compilation, run Task 1.6 contracts and Cerbos policy tests, regenerate the governed contract inventory, then proceed to Task 1.7
+- **Overall status:** Implementation in progress — Phase 1 source through Blazor is implemented; persistence migration ordering and native Cerbos verification remain externally blocked
+- **Completed:** 9/88 implementation tasks (phase verification tracked separately)
+- **Current priority:** Preserve actor-lifecycle migration ordering, run native Cerbos verification when the pinned CLI is available, then start migration-independent Phase 2 source work
+- **Next recommended slice:** Begin Task 2.1 domain modeling without scaffolding a migration; keep Phase 1 persistence and Cerbos gates explicit
 
 ## Implementation Maintenance Rules
 - Read the full workstream once at initial implementation start; on resume, read context/tasks first and only relevant plan sections.
@@ -66,29 +66,32 @@ Last Updated: 2026-07-26 Europe/Brussels
   - **Acceptance:** seeder parity; tenant-filter test; one-primary filtered unique index; migration only after Task 0.4, Task 1.1 required provenance writers, and the actor-lifecycle Task 2.1 shared-model migration/snapshot
   - **Effort:** L — **Dependencies:** 1.1–1.3; migration substep also depends on `atproto-federation-actor-lifecycle` Task 2.1
   - **Progress:** model/configuration/seeder/tests/DBML implemented; scoped diagnostics and `git diff --check` are clean; dependency-inclusive Persistence Release build now passes. Migration remains ordered after actor-lifecycle Task 2.1, and executable tests remain blocked by actor-owned test-fixture compilation.
-- [ ] **1.5 Application features — actions, claims, provenance exposure**
+- [x] **1.5 Application features — actions, claims, provenance exposure**
   - **Files:** `Features/EventPublicActions/**`, `Features/EventOrganizerClaims/**` (new); `Features/Events/**` DTOs (existing)
   - **Acceptance:** contributor forbidden from registration/ticket/attendee ops; claim approval transactional + retry-idempotent; no capability booleans in DTOs
   - **Effort:** L — **Dependencies:** 1.4
-  - **Progress:** source implemented: normalized provenance/active-action Event DTO exposure; concrete action/claim repositories; action CRUD/query; claimant-authorized claim submit/withdraw/query; transactional retry-idempotent review; existing report intake reused for correction/unsafe-link submissions. Application `--no-dependencies` build is clean; focused tests are blocked from execution by actor-owned test compilation errors.
+  - **Progress:** normalized provenance/active-action Event DTO exposure; concrete action/claim repositories; action CRUD/query; claimant-authorized claim submit/withdraw/query; transactional retry-idempotent review; existing report intake reused for correction/unsafe-link submissions. Focused Application tests pass 26/26.
 - [ ] **1.6 API + Cerbos + HAL (claims/actions/provenance)**
   - **Files:** 2 new controllers, 2 new link policies, `RouteNames`/`LinkRelations` (existing), `islamuevent_event.yaml` (existing), `islamuevent_event_organizer_claim.yaml` (new); contract regeneration
   - **Acceptance:** classification/contract tests green; no open-redirect endpoint; Cerbos parity deny-by-default; changelog updated
   - **Effort:** L — **Dependencies:** 1.5
-  - **Progress:** two controllers, stored-ID redirect, independent HAL policies/assemblers, route/relation constants, fallback authorization, Cerbos event/claim policies and schemas, OpenAPI schemas, generated client methods, API/HAL contract tests, and API/AUTHORIZATION/changelog docs are implemented. API Release build is clean. Focused architecture run: 23/24 passed; the sole failure names five pre-existing policies outside this task. API contract execution/inventory regeneration is blocked by actor-owned test fixture compilation; Cerbos CLI execution is blocked because the binary is absent.
-- [ ] **1.7 Blazor — badge, provenance panel, claim/correction flows**
+  - **Progress:** controllers, stored-ID redirect, independent HAL policies/assemblers, route/relation constants, fallback authorization, Cerbos event/claim policies and schemas, checked-in OpenAPI/client contracts, and API/AUTHORIZATION/changelog docs are implemented. Final repair routes every event-bound claim check through `EventOrganizerClaim`, preserves server-only event/claim metadata, separates Event/claim action allowlists, denies claim machines before admin scope, enforces current tenant claimant eligibility for submission/listing and approval-time transactional revalidation, state-gates withdraw/review candidates, suppresses public/claim/report affordances for non-public events, and exposes fixed external-link safety guidance. Withdrawal now uses `withdraw-organizer-claim`; authorization loads the persisted claim and claimant actor, keeps personal-user control unchanged, and grants organization/group control through exact `PermissionCodes.EventCreate` repository permission sets carried separately into fallback batches and Cerbos principals. Unrelated permission scopes, curators without control, instance admins, and machines are denied. As a revocation path, the withdrawal handler repeats ownership/controller authorization without current organizer-eligibility gating, so a controller can withdraw after eligibility loss. The full Infrastructure suite previously passed 1,104/1,104; the final focused authorization rerun passes 115/115 and the exact architecture guard passes 1/1. The latest API Release rerun is now blocked by five unrelated concurrent `AtprotoJwtService` errors; focused Application/API HAL execution and native Cerbos execution remain externally blocked.
+- [x] **1.7 Blazor — badge, provenance panel, claim/correction flows**
   - **Files:** event card/detail components (existing), `EventProvenancePanel.razor` + claim dialogs (new)
   - **Acceptance:** badge non-removable, provenance-derived; affordances `_links`-gated (bUnit); RTL/accessible
   - **Effort:** M — **Dependencies:** 1.6
+  - **Progress:** every event-card layout renders immutable `COMMUNITY_REPORTED` disclosure from typed `EventListDto.provenanceTypeCode`; detail and preview surfaces reuse an RTL-safe provenance panel. Correction, unsafe-link, claim, claimant withdrawal, source, and public-action affordances are HAL-gated. Public actions display destination domains but open only sanitized item redirect links. Full Blazor Client tests pass 2,129/2,130 with one pre-existing skip; focused Blazor architecture guards pass 17/17.
 
 ### Phase 1 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` — 0 errors; pre-existing warnings remain
+- [x] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet` — 473/473 passed during Phase 1 domain verification
 
-## Phase 2: Typed Participation Configuration And HAL Actions ⏳ NOT STARTED
+## Phase 2: Typed Participation Configuration And HAL Actions 🟡 IN PROGRESS
 - [ ] **2.1 `EventParticipationConfiguration` + three mode lookups** — new domain files; delete `IsRegistrationRequired` — **Acceptance:** §5 scenario table constructible; illegal combos typed-rejected — **Effort:** M — **Dependencies:** Phase 1
+  - **Progress:** normalized Domain configuration, stable enums, typed validation failures, and legacy Event property deletion are implemented; final Phase 2 verification remains pending.
 - [ ] **2.2 Persistence + seeding for participation lookups** — configurations/seeder; migration per gate — **Acceptance:** stable IDs documented; parity green — **Effort:** M — **Dependencies:** 2.1
 - [ ] **2.3 Application + API — configure-participation + action synthesis** — `Features/EventParticipation/**` (new); `EventLinkPolicy` (existing); contract regen — **Acceptance:** per-mode link emission matrix tested; accurate external labels — **Effort:** L — **Dependencies:** 2.2
+  - **Progress:** explicit participation write/read DTOs, tenant-bound reconfiguration CQRS, writer/import propagation, and ATProto RSVP/stored-action derivation are implemented. Application Release builds clean; focused participation/federation/AI tests pass 11/11. API/HAL synthesis, generated contracts, and integration matrix remain.
 - [ ] **2.4 Blazor — Studio participation configuration + public CTA rendering** — `/studio/events/{eventId}/registration`, `StudioEventNavigation.razor`, Studio-owned `ParticipationConfigurationEditor.razor` (new); public detail CTA refactor — **Acceptance:** Studio route/link absent without `configure-participation`; attendee CTA relations never authorize Studio; no public CTA without its link; external CTA never claims ISLAMU registration — **Effort:** M — **Dependencies:** 2.3
 - [ ] **2.5 Aggregate outbound-engagement counter** — engagement command + bounded metrics in `BusinessMetrics.cs` — **Acceptance:** no identity captured; bounded labels; click never named registration — **Effort:** S — **Dependencies:** 2.3
 
