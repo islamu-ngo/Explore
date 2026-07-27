@@ -75,6 +75,27 @@ public sealed class EventSessionSpeakerControllerTests
     }
 
     [Test]
+    public async Task CollectionEditLink_UsesOnlyRelationshipIdForCanonicalPatchRoute()
+    {
+        var assignmentId = Guid.NewGuid();
+        var edit = new EventSessionSpeakerCollectionLinkPolicy()
+            .GetItemLinks(new EventSessionSpeakerListDto
+            {
+                Id = assignmentId,
+                EventSessionId = Guid.NewGuid(),
+                EventId = Guid.NewGuid(),
+                TenantId = Guid.NewGuid(),
+                ActorId = Guid.NewGuid()
+            }, null)
+            .Single(link => link.Rel == LinkRelations.Edit);
+
+        await Assert.That(edit.Method).IsEqualTo(HttpMethods.Patch);
+        await Assert.That(edit.RouteValues!.GetType().GetProperty("id")?.GetValue(edit.RouteValues))
+            .IsEqualTo(assignmentId);
+        await Assert.That(edit.RouteValues.GetType().GetProperty("eventSessionId")).IsNull();
+    }
+
+    [Test]
     public async Task Create_StampsSessionAndTenantContextFromRouteAuthorizationContext()
     {
         var eventSessionId = Guid.NewGuid();
@@ -139,6 +160,30 @@ public sealed class EventSessionSpeakerControllerTests
             {
                 Actor = new UpdateEventSessionSpeakerActorDto { ActorId = Guid.NewGuid() }
             });
+
+        var response = await client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
+            response,
+            System.Net.HttpStatusCode.BadRequest,
+            "Event session speaker validation failed");
+        await Assert.That(mediator.LastRequest).IsNull();
+    }
+
+    [Test]
+    public async Task Update_WhenIfMatchIsUnquoted_ReturnsValidationProblemDetails()
+    {
+        using var mediator = new EventSessionSpeakerMediatorStub(_ => throw new InvalidOperationException("Mediator should not run when If-Match is unquoted."));
+        await using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedJsonRequest(
+            HttpMethod.Patch,
+            $"/api/eventsessionspeaker/management/{Guid.NewGuid():D}",
+            new UpdateEventSessionSpeakerDto
+            {
+                Actor = new UpdateEventSessionSpeakerActorDto { ActorId = Guid.NewGuid() }
+            });
+        request.Headers.TryAddWithoutValidation("If-Match", Guid.NewGuid().ToString("D"));
 
         var response = await client.SendAsync(request);
 

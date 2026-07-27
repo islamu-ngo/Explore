@@ -10,6 +10,9 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.API.Controllers;
 using Explore.API.Hateoas;
+using Explore.API.Hateoas.Policies;
+using Explore.Application.Hateoas;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 using TUnit.Assertions;
@@ -44,6 +47,24 @@ public class EventSessionGroupControllerTests
         await Assert.That(agendaRoute.Name).IsEqualTo(RouteNames.UpdateEventSessionAgendaItem);
         await Assert.That(groupRoute.Template).IsEqualTo("{id:guid}");
         await Assert.That(groupRoute.Name).IsEqualTo(RouteNames.UpdateEventSessionGroup);
+    }
+
+    [Test]
+    public async Task CollectionEditLink_UsesPatchAndRouteOwnedId()
+    {
+        var id = Guid.NewGuid();
+        var edit = new EventSessionGroupCollectionLinkPolicy()
+            .GetItemLinks(new EventSessionGroupListDto
+            {
+                Id = id,
+                EventId = Guid.NewGuid(),
+                Name = "Main stage"
+            }, null)
+            .Single(link => link.Rel == LinkRelations.Edit);
+
+        await Assert.That(edit.Method).IsEqualTo(HttpMethods.Patch);
+        await Assert.That(edit.RouteValues!.GetType().GetProperty("id")?.GetValue(edit.RouteValues))
+            .IsEqualTo(id);
     }
 
     [Test]

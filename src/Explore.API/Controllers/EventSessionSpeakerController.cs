@@ -150,7 +150,7 @@ public sealed class EventSessionSpeakerController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
         [FromBody] UpdateEventSessionSpeakerDto speaker,
-        [FromHeader(Name = "If-Match")] string? ifMatch,
+        [FromHeader(Name = "If-Match")] string ifMatch,
         CancellationToken cancellationToken = default)
     {
         if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
@@ -232,17 +232,15 @@ public sealed class EventSessionSpeakerController : ControllerBase
     {
         concurrencyStamp = default;
 
-        if (string.IsNullOrWhiteSpace(ifMatch) || ifMatch.StartsWith("W/", StringComparison.Ordinal))
+        if (string.IsNullOrWhiteSpace(ifMatch))
         {
             return false;
         }
 
         var trimmed = ifMatch.Trim();
-        if (trimmed.Length >= 2 && trimmed[0] == '"' && trimmed[^1] == '"')
-        {
-            trimmed = trimmed[1..^1];
-        }
+        if (trimmed.Length != 38 || trimmed[0] != '"' || trimmed[^1] != '"')
+            return false;
 
-        return Guid.TryParse(trimmed, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
+        return Guid.TryParse(trimmed[1..^1], out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 }

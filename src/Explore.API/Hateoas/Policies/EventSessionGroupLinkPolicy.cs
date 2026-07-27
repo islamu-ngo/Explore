@@ -108,7 +108,7 @@ public sealed class EventSessionGroupCollectionLinkPolicy : ICollectionLinkPolic
             LinkRelations.Edit,
             RouteNames.UpdateEventSessionGroup,
             new { id = dto.Id },
-            "PUT",
+            HttpMethods.Patch,
             "Update program section",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSessionGroupList, dto);

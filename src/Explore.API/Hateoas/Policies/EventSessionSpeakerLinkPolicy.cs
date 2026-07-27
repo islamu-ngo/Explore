@@ -40,7 +40,7 @@ public sealed class EventSessionSpeakerDetailLinkPolicy : ILinkPolicy<EventSessi
         yield return new LinkDefinition(
             "delete",
             RouteNames.DeleteEventSessionSpeaker,
-            new { eventSessionId = dto.EventSessionId, id = dto.Id },
+            new { id = dto.Id },
             "DELETE",
             "Remove speaker assignment",
             RequiresAuth: true)

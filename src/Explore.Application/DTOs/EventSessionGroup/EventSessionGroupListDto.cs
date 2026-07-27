@@ -11,6 +11,7 @@ public class EventSessionGroupListDto
     public Guid EventId { get; set; }
     public required string Name { get; set; }
     public string? Slug { get; set; }
+    public string? Description { get; set; }
     public Guid? LocationId { get; set; }
     public string? LocationName { get; set; }
     public Guid? RoomId { get; set; }

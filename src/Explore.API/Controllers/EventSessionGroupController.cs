@@ -260,7 +260,7 @@ public class EventSessionGroupController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
         [FromBody] UpdateEventSessionGroupRequestDto group,
-        [FromHeader(Name = "If-Match")] string? ifMatch,
+        [FromHeader(Name = "If-Match")] string ifMatch,
         CancellationToken cancellationToken = default)
     {
         if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
@@ -295,11 +295,10 @@ public class EventSessionGroupController : ControllerBase
             return false;
 
         var value = ifMatch.Trim();
-        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        if (value.Length != 38 || value[0] != '"' || value[^1] != '"')
             return false;
 
-        value = value.Trim('"');
-        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
+        return Guid.TryParse(value[1..^1], out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 
     /// <summary>
