@@ -215,11 +215,11 @@ public sealed class FooterAuthorizationTests
         await AssertRoute<Microsoft.AspNetCore.Mvc.HttpGetAttribute>(nameof(FooterController.GetLinkGroups), "link-groups", RouteNames.GetFooterLinkGroups);
         await AssertRoute<Microsoft.AspNetCore.Mvc.HttpGetAttribute>(nameof(FooterController.GetLinkGroupById), "link-groups/{id:guid}", RouteNames.GetFooterLinkGroupById);
         await AssertRoute<Microsoft.AspNetCore.Mvc.HttpPostAttribute>(nameof(FooterController.CreateLinkGroup), "link-groups", RouteNames.CreateFooterLinkGroup);
-        await AssertRoute<Microsoft.AspNetCore.Mvc.HttpPutAttribute>(nameof(FooterController.UpdateLinkGroup), "link-groups/{id:guid}", RouteNames.UpdateFooterLinkGroup);
+        await AssertRoute<Microsoft.AspNetCore.Mvc.HttpPatchAttribute>(nameof(FooterController.UpdateLinkGroup), "link-groups/{id:guid}", RouteNames.UpdateFooterLinkGroup);
         await AssertRoute<Microsoft.AspNetCore.Mvc.HttpDeleteAttribute>(nameof(FooterController.DeleteLinkGroup), "link-groups/{id:guid}", RouteNames.DeleteFooterLinkGroup);
         await AssertRoute<Microsoft.AspNetCore.Mvc.HttpPostAttribute>(nameof(FooterController.ReorderLinkGroups), "link-groups/reorder", RouteNames.ReorderFooterLinkGroups);
         await AssertRoute<Microsoft.AspNetCore.Mvc.HttpPostAttribute>(nameof(FooterController.CreateLink), "link-groups/{groupId:guid}/links", RouteNames.CreateFooterLink);
-        await AssertRoute<Microsoft.AspNetCore.Mvc.HttpPutAttribute>(nameof(FooterController.UpdateLink), "links/{id:guid}", RouteNames.UpdateFooterLink);
+        await AssertRoute<Microsoft.AspNetCore.Mvc.HttpPatchAttribute>(nameof(FooterController.UpdateLink), "links/{id:guid}", RouteNames.UpdateFooterLink);
         await AssertRoute<Microsoft.AspNetCore.Mvc.HttpDeleteAttribute>(nameof(FooterController.DeleteLink), "links/{id:guid}", RouteNames.DeleteFooterLink);
     }
 

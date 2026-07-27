@@ -105,14 +105,19 @@ public sealed class FooterAdminServiceTests
         };
         _apiClient.UpdateFooterLinkAsync(
                 Arg.Any<Guid>(),
-                Arg.Any<UpdateFooterLinkRequest>(),
+                Arg.Any<PatchFooterLinkDto>(),
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(expected);
         var service = CreateService();
         var linkId = Guid.NewGuid();
-        var request = new UpdateFooterLinkRequest { Label = "Docs", Url = "/docs", IsActive = true };
+        var request = new PatchFooterLinkDto
+        {
+            Label = new() { Value = "Docs" },
+            Url = new() { Value = "/docs" },
+            IsActive = new() { Value = true }
+        };
 
         var result = await service.UpdateLinkAsync(linkId, request);
 
@@ -190,7 +195,7 @@ public sealed class FooterAdminServiceTests
                 Arg.Any<CreateFooterLinkGroupRequest>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(success);
         _apiClient.UpdateFooterLinkGroupAsync(
-                Arg.Any<Guid>(), Arg.Any<UpdateFooterLinkGroupRequest>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                Arg.Any<Guid>(), Arg.Any<PatchFooterLinkGroupDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(success);
         _apiClient.DeleteFooterLinkGroupAsync(
                 Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -202,7 +207,7 @@ public sealed class FooterAdminServiceTests
                 Arg.Any<Guid>(), Arg.Any<CreateFooterLinkRequest>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(success);
         _apiClient.UpdateFooterLinkAsync(
-                Arg.Any<Guid>(), Arg.Any<UpdateFooterLinkRequest>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                Arg.Any<Guid>(), Arg.Any<PatchFooterLinkDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(success);
         _apiClient.DeleteFooterLinkAsync(
                 Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -211,11 +216,15 @@ public sealed class FooterAdminServiceTests
         var id = Guid.NewGuid();
 
         await service.CreateLinkGroupAsync(new CreateFooterLinkGroupRequest { Title = "Group" });
-        await service.UpdateLinkGroupAsync(id, new UpdateFooterLinkGroupRequest { Title = "Updated" });
+        await service.UpdateLinkGroupAsync(id, new PatchFooterLinkGroupDto { Title = new() { Value = "Updated" } });
         await service.DeleteLinkGroupAsync(id);
         await service.ReorderLinkGroupsAsync([id]);
         await service.CreateLinkAsync(id, new CreateFooterLinkRequest { Label = "Docs", Url = "/docs" });
-        await service.UpdateLinkAsync(id, new UpdateFooterLinkRequest { Label = "Help", Url = "/help" });
+        await service.UpdateLinkAsync(id, new PatchFooterLinkDto
+        {
+            Label = new() { Value = "Help" },
+            Url = new() { Value = "/help" }
+        });
         await service.DeleteLinkAsync(id);
 
         await _apiClient.DidNotReceive().PatchTenantFooterSettingsAsync(

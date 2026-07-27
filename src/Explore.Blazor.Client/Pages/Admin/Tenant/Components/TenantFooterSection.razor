@@ -822,7 +822,7 @@
         var dialog = await FooterLinkGroupDialog.ShowAsync(DialogService, "Edit Link Group", parameters);
         var result = await dialog.Result;
 
-        if (!_disposed && CanManageLinkGroups && !result.Canceled && result.Data is UpdateFooterLinkGroupRequest updateModel)
+        if (!_disposed && CanManageLinkGroups && !result.Canceled && result.Data is PatchFooterLinkGroupDto updateModel)
         {
             await UpdateGroupAsync(groupId, updateModel);
         }
@@ -858,7 +858,7 @@
         }
     }
 
-    private async Task UpdateGroupAsync(Guid id, UpdateFooterLinkGroupRequest model)
+    private async Task UpdateGroupAsync(Guid id, PatchFooterLinkGroupDto model)
     {
         if (!CanManageLinkGroups || _disposed) return;
         var cancellationToken = _lifetimeCts.Token;
@@ -1111,7 +1111,7 @@
         var dialog = await FooterLinkDialog.ShowAsync(DialogService, "Edit Link", parameters);
         var result = await dialog.Result;
 
-        if (!_disposed && CanManageLinkGroups && !result.Canceled && result.Data is UpdateFooterLinkRequest updateModel)
+        if (!_disposed && CanManageLinkGroups && !result.Canceled && result.Data is PatchFooterLinkDto updateModel)
         {
             await UpdateLinkAsync(linkId, updateModel);
         }
@@ -1149,7 +1149,7 @@
         }
     }
 
-    private async Task UpdateLinkAsync(Guid id, UpdateFooterLinkRequest model)
+    private async Task UpdateLinkAsync(Guid id, PatchFooterLinkDto model)
     {
         if (!CanManageLinkGroups || _disposed) return;
         var cancellationToken = _lifetimeCts.Token;

@@ -120,24 +120,18 @@ public class FooterController : ExploreControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("link-groups/{id:guid}", Name = RouteNames.UpdateFooterLinkGroup)]
+    [HttpPatch("link-groups/{id:guid}", Name = RouteNames.UpdateFooterLinkGroup)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateLinkGroup(
-        Guid id, [FromBody] UpdateFooterLinkGroupRequest request, CancellationToken cancellationToken)
+        Guid id, [FromBody] PatchFooterLinkGroupDto request, CancellationToken cancellationToken)
     {
-        if (TryGetCurrentUserId(out var userId) is { } unauthorized)
-        {
-            return unauthorized;
-        }
         var result = await _mediator.Send(new UpdateFooterLinkGroupCommand
         {
-            UserId = userId,
             TenantId = _tenantContext.TenantId,
             GroupId = id,
-            Title = request.Title,
-            IsActive = request.IsActive,
+            Update = request
         }, cancellationToken);
 
         if (!result.Success)
@@ -223,26 +217,18 @@ public class FooterController : ExploreControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("links/{id:guid}", Name = RouteNames.UpdateFooterLink)]
+    [HttpPatch("links/{id:guid}", Name = RouteNames.UpdateFooterLink)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateLink(
-        Guid id, [FromBody] UpdateFooterLinkRequest request, CancellationToken cancellationToken)
+        Guid id, [FromBody] PatchFooterLinkDto request, CancellationToken cancellationToken)
     {
-        if (TryGetCurrentUserId(out var userId) is { } unauthorized)
-        {
-            return unauthorized;
-        }
         var result = await _mediator.Send(new UpdateFooterLinkCommand
         {
-            UserId = userId,
             TenantId = _tenantContext.TenantId,
             LinkId = id,
-            Label = request.Label,
-            Url = request.Url,
-            OpenInNewTab = request.OpenInNewTab,
-            IsActive = request.IsActive,
+            Update = request
         }, cancellationToken);
 
         if (!result.Success)
@@ -336,7 +322,5 @@ public class FooterController : ExploreControllerBase
     // ── Request body types ───────────────────────────────────────────────────
 
     public sealed record CreateFooterLinkGroupRequest(string Title);
-    public sealed record UpdateFooterLinkGroupRequest(string Title, bool IsActive);
     public sealed record CreateFooterLinkRequest(string Label, string Url, bool OpenInNewTab);
-    public sealed record UpdateFooterLinkRequest(string Label, string Url, bool OpenInNewTab, bool IsActive);
 }

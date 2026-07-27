@@ -36,11 +36,31 @@ public class FooterCommandAuthorizationMetadataTests
     public static IEnumerable<(ISecureRequest Command, string? ExpectedContextKey)> TenantScopedFooterCommands()
     {
         yield return (new CreateFooterLinkGroupCommand { UserId = UserId, TenantId = TenantId, Title = "Main" }, null);
-        yield return (new UpdateFooterLinkGroupCommand { UserId = UserId, TenantId = TenantId, GroupId = GroupId, Title = "Main", IsActive = true }, "groupId");
+        yield return (new UpdateFooterLinkGroupCommand
+        {
+            TenantId = TenantId,
+            GroupId = GroupId,
+            Update = new()
+            {
+                Title = new() { Value = "Main" },
+                IsActive = new() { Value = true }
+            }
+        }, "groupId");
         yield return (new DeleteFooterLinkGroupCommand { UserId = UserId, TenantId = TenantId, GroupId = GroupId }, "groupId");
         yield return (new ReorderFooterLinkGroupsCommand { UserId = UserId, TenantId = TenantId, OrderedGroupIds = [GroupId] }, null);
         yield return (new CreateFooterLinkCommand { UserId = UserId, TenantId = TenantId, GroupId = GroupId, Label = "Home", Url = "https://example.test", OpenInNewTab = false }, "groupId");
-        yield return (new UpdateFooterLinkCommand { UserId = UserId, TenantId = TenantId, LinkId = LinkId, Label = "Home", Url = "https://example.test", OpenInNewTab = false, IsActive = true }, "linkId");
+        yield return (new UpdateFooterLinkCommand
+        {
+            TenantId = TenantId,
+            LinkId = LinkId,
+            Update = new()
+            {
+                Label = new() { Value = "Home" },
+                Url = new() { Value = "https://example.test" },
+                OpenInNewTab = new() { Value = false },
+                IsActive = new() { Value = true }
+            }
+        }, "linkId");
         yield return (new DeleteFooterLinkCommand { UserId = UserId, TenantId = TenantId, LinkId = LinkId }, "linkId");
         yield return (new PatchTenantFooterSettingsCommand
         {

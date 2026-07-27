@@ -11,11 +11,11 @@ public interface IFooterAdminService
     Task<IReadOnlyList<FooterLinkGroupListDto>> GetLinkGroupsAsync(CancellationToken cancellationToken = default);
     Task<FooterLinkGroupDetailsDto?> GetLinkGroupAsync(Guid id, CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> CreateLinkGroupAsync(CreateFooterLinkGroupRequest request, CancellationToken cancellationToken = default);
-    Task<BaseCommandResponseOfGuid> UpdateLinkGroupAsync(Guid id, UpdateFooterLinkGroupRequest request, CancellationToken cancellationToken = default);
+    Task<BaseCommandResponseOfGuid> UpdateLinkGroupAsync(Guid id, PatchFooterLinkGroupDto request, CancellationToken cancellationToken = default);
     Task<bool> DeleteLinkGroupAsync(Guid id, CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> ReorderLinkGroupsAsync(IEnumerable<Guid> orderedIds, CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> CreateLinkAsync(Guid groupId, CreateFooterLinkRequest request, CancellationToken cancellationToken = default);
-    Task<BaseCommandResponseOfGuid> UpdateLinkAsync(Guid id, UpdateFooterLinkRequest request, CancellationToken cancellationToken = default);
+    Task<BaseCommandResponseOfGuid> UpdateLinkAsync(Guid id, PatchFooterLinkDto request, CancellationToken cancellationToken = default);
     Task<bool> DeleteLinkAsync(Guid id, CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> PatchTenantFooterSettingsAsync(PatchTenantFooterSettingsDto request, CancellationToken cancellationToken = default);
 }

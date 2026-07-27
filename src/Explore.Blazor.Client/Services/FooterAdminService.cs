@@ -80,7 +80,7 @@ public sealed class FooterAdminService(
 
     public Task<BaseCommandResponseOfGuid> UpdateLinkGroupAsync(
         Guid id,
-        UpdateFooterLinkGroupRequest request,
+        PatchFooterLinkGroupDto request,
         CancellationToken cancellationToken = default) =>
         ExecuteCommandAsync(
             ct => apiClient.UpdateFooterLinkGroupAsync(id, request, cancellationToken: ct),
@@ -112,7 +112,7 @@ public sealed class FooterAdminService(
 
     public Task<BaseCommandResponseOfGuid> UpdateLinkAsync(
         Guid id,
-        UpdateFooterLinkRequest request,
+        PatchFooterLinkDto request,
         CancellationToken cancellationToken = default) =>
         ExecuteCommandAsync(
             ct => apiClient.UpdateFooterLinkAsync(id, request, cancellationToken: ct),

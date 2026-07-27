@@ -66,10 +66,10 @@
         {
             if (_isEdit && ExistingGroup != null)
             {
-                var updateModel = new UpdateFooterLinkGroupRequest
+                var updateModel = new PatchFooterLinkGroupDto
                 {
-                    Title = _model.Title,
-                    IsActive = _isActive
+                    Title = new PatchFooterLinkGroupTitleDto { Value = _model.Title },
+                    IsActive = new PatchFooterLinkGroupIsActiveDto { Value = _isActive }
                 };
                 DialogReference?.Dismiss(DialogResult.Ok(updateModel));
             }

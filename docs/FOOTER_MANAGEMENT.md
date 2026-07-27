@@ -112,16 +112,16 @@ Link management has a separate boundary. The tenant settings resource includes `
 | GET | `/api/footer/link-groups` | Authorize | List all link groups |
 | GET | `/api/footer/link-groups/{id}` | Authorize | Get link group details |
 | POST | `/api/footer/link-groups` | Authorize | Create link group |
-| PUT | `/api/footer/link-groups/{id}` | Authorize | Update link group |
+| PATCH | `/api/footer/link-groups/{id}` | Authorize | Update supplied link-group fields |
 | DELETE | `/api/footer/link-groups/{id}` | Authorize | Delete link group |
 | POST | `/api/footer/link-groups/reorder` | Authorize | Reorder link groups |
 | POST | `/api/footer/link-groups/{groupId}/links` | Authorize | Create link in group |
-| PUT | `/api/footer/links/{id}` | Authorize | Update link |
+| PATCH | `/api/footer/links/{id}` | Authorize | Update supplied link fields |
 | DELETE | `/api/footer/links/{id}` | Authorize | Delete link |
 | GET | `/api/footer/settings` | Authorize | Read scalar settings, lock state, and HAL capabilities |
 | PATCH | `/api/footer/settings` | Authorize | Patch supplied scalar setting groups and leaves |
 
-`GET /api/footer/config` remains the anonymous public rendering contract. The authenticated settings GET and PATCH are admin contracts. Link group and link create/update/delete operations plus `POST /api/footer/link-groups/reorder` remain explicit and unchanged; they are not folded into the scalar settings patch.
+`GET /api/footer/config` remains the anonymous public rendering contract. The authenticated settings GET and PATCH are admin contracts. Link group and link create/delete operations, grouped link/link-group PATCH operations, and `POST /api/footer/link-groups/reorder` remain explicit; they are not folded into the scalar settings patch.
 
 ## CQRS Structure
 

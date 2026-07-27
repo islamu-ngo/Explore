@@ -7,6 +7,11 @@ namespace Explore.Application.Contracts.Persistence;
 
 public interface IFooterLinkRepository : IGenericRepository<TenantFooterLink, Guid>
 {
+    Task<TenantFooterLink?> GetByIdForTenantAsync(
+        Guid id,
+        Guid tenantId,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Gets all active links for a group, ordered by Order.
     /// </summary>

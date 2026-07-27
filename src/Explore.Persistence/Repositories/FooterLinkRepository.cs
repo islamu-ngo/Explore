@@ -16,6 +16,16 @@ public class FooterLinkRepository : GenericRepository<TenantFooterLink, Guid>, I
         _dbContext = dbContext;
     }
 
+    public Task<TenantFooterLink?> GetByIdForTenantAsync(
+        Guid id,
+        Guid tenantId,
+        CancellationToken ct = default) =>
+        _dbContext.TenantFooterLinks
+            .Include(link => link.Group)
+            .FirstOrDefaultAsync(
+                link => link.Id == id && link.Group != null && link.Group.TenantId == tenantId,
+                ct);
+
     public async Task<List<TenantFooterLink>> GetByGroupIdAsync(
         Guid groupId, CancellationToken ct = default)
     {

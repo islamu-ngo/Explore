@@ -67,7 +67,7 @@
             _model.Label = ExistingLink.Label ?? string.Empty;
             _model.Url = ExistingLink.Url ?? string.Empty;
             _model.OpenInNewTab = ExistingLink.OpenInNewTab == true;
-            _isActive = true;
+            _isActive = ExistingLink.IsActive == true;
         }
 
         _editContext = new EditContext(_model);
@@ -79,12 +79,12 @@
         {
             if (_isEdit && ExistingLink != null)
             {
-                var updateModel = new UpdateFooterLinkRequest
+                var updateModel = new PatchFooterLinkDto
                 {
-                    Label = _model.Label,
-                    Url = _model.Url,
-                    OpenInNewTab = _model.OpenInNewTab,
-                    IsActive = _isActive
+                    Label = new PatchFooterLinkLabelDto { Value = _model.Label },
+                    Url = new PatchFooterLinkUrlDto { Value = _model.Url },
+                    OpenInNewTab = new PatchFooterLinkOpenInNewTabDto { Value = _model.OpenInNewTab },
+                    IsActive = new PatchFooterLinkIsActiveDto { Value = _isActive }
                 };
                 DialogReference?.Dismiss(DialogResult.Ok(updateModel));
             }

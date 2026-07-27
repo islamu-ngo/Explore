@@ -317,7 +317,7 @@ public sealed class TenantFooterSectionTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "OpenCreateGroupDialog");
         await InvokePrivateAsync(cut.Instance, "OpenEditGroupDialog", first);
         await InvokePrivateAsync(cut.Instance, "CreateGroupAsync", new CreateFooterLinkGroupRequest { Title = "Blocked" });
-        await InvokePrivateAsync(cut.Instance, "UpdateGroupAsync", firstId, new UpdateFooterLinkGroupRequest { Title = "Blocked" });
+        await InvokePrivateAsync(cut.Instance, "UpdateGroupAsync", firstId, new PatchFooterLinkGroupDto { Title = new() { Value = "Blocked" } });
         await InvokePrivateAsync(cut.Instance, "DeleteGroup", first);
         await InvokePrivateAsync(cut.Instance, "MoveGroupUp", second);
         await InvokePrivateAsync(cut.Instance, "MoveGroupDown", first);
@@ -325,15 +325,19 @@ public sealed class TenantFooterSectionTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "OpenCreateLinkDialog");
         await InvokePrivateAsync(cut.Instance, "OpenEditLinkDialog", link);
         await InvokePrivateAsync(cut.Instance, "CreateLinkAsync", new CreateFooterLinkRequest { Label = "Blocked", Url = "/blocked" });
-        await InvokePrivateAsync(cut.Instance, "UpdateLinkAsync", link.Id!.Value, new UpdateFooterLinkRequest { Label = "Blocked", Url = "/blocked" });
+        await InvokePrivateAsync(cut.Instance, "UpdateLinkAsync", link.Id!.Value, new PatchFooterLinkDto
+        {
+            Label = new() { Value = "Blocked" },
+            Url = new() { Value = "/blocked" }
+        });
         await InvokePrivateAsync(cut.Instance, "DeleteLink", link);
 
         await _footerService.DidNotReceive().CreateLinkGroupAsync(Arg.Any<CreateFooterLinkGroupRequest>(), Arg.Any<CancellationToken>());
-        await _footerService.DidNotReceive().UpdateLinkGroupAsync(Arg.Any<Guid>(), Arg.Any<UpdateFooterLinkGroupRequest>(), Arg.Any<CancellationToken>());
+        await _footerService.DidNotReceive().UpdateLinkGroupAsync(Arg.Any<Guid>(), Arg.Any<PatchFooterLinkGroupDto>(), Arg.Any<CancellationToken>());
         await _footerService.DidNotReceive().DeleteLinkGroupAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _footerService.DidNotReceive().ReorderLinkGroupsAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
         await _footerService.DidNotReceive().CreateLinkAsync(Arg.Any<Guid>(), Arg.Any<CreateFooterLinkRequest>(), Arg.Any<CancellationToken>());
-        await _footerService.DidNotReceive().UpdateLinkAsync(Arg.Any<Guid>(), Arg.Any<UpdateFooterLinkRequest>(), Arg.Any<CancellationToken>());
+        await _footerService.DidNotReceive().UpdateLinkAsync(Arg.Any<Guid>(), Arg.Any<PatchFooterLinkDto>(), Arg.Any<CancellationToken>());
         await _footerService.DidNotReceive().DeleteLinkAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 

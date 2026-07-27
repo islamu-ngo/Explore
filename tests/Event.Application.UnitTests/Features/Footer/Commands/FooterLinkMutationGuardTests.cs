@@ -38,7 +38,16 @@ public sealed class FooterLinkMutationGuardTests
                 new CreateFooterLinkGroupCommand { TenantId = tenantId, UserId = Guid.NewGuid(), Title = "Main" },
                 CancellationToken.None),
             async () => await new UpdateFooterLinkGroupCommandHandler(groupRepository, tenantContext, guard).Handle(
-                new UpdateFooterLinkGroupCommand { TenantId = tenantId, UserId = Guid.NewGuid(), GroupId = groupId, Title = "Main", IsActive = true },
+                new UpdateFooterLinkGroupCommand
+                {
+                    TenantId = tenantId,
+                    GroupId = groupId,
+                    Update = new()
+                    {
+                        Title = new() { Value = "Main" },
+                        IsActive = new() { Value = true }
+                    }
+                },
                 CancellationToken.None),
             async () => await new DeleteFooterLinkGroupCommandHandler(groupRepository, linkRepository, unitOfWork, tenantContext, guard).Handle(
                 new DeleteFooterLinkGroupCommand { TenantId = tenantId, UserId = Guid.NewGuid(), GroupId = groupId },
@@ -46,11 +55,21 @@ public sealed class FooterLinkMutationGuardTests
             async () => await new ReorderFooterLinkGroupsCommandHandler(groupRepository, unitOfWork, tenantContext, guard).Handle(
                 new ReorderFooterLinkGroupsCommand { TenantId = tenantId, UserId = Guid.NewGuid(), OrderedGroupIds = [groupId] },
                 CancellationToken.None),
-            async () => await new CreateFooterLinkCommandHandler(groupRepository, linkRepository, tenantContext, guard).Handle(
+            async () => await new CreateFooterLinkCommandHandler(groupRepository, linkRepository, tenantContext, settingsResolver, guard).Handle(
                 new CreateFooterLinkCommand { TenantId = tenantId, UserId = Guid.NewGuid(), GroupId = groupId, Label = "Home", Url = "/" },
                 CancellationToken.None),
-            async () => await new UpdateFooterLinkCommandHandler(groupRepository, linkRepository, tenantContext, guard).Handle(
-                new UpdateFooterLinkCommand { TenantId = tenantId, UserId = Guid.NewGuid(), LinkId = linkId, Label = "Home", Url = "/", IsActive = true },
+            async () => await new UpdateFooterLinkCommandHandler(linkRepository, tenantContext, settingsResolver, guard).Handle(
+                new UpdateFooterLinkCommand
+                {
+                    TenantId = tenantId,
+                    LinkId = linkId,
+                    Update = new()
+                    {
+                        Label = new() { Value = "Home" },
+                        Url = new() { Value = "/" },
+                        IsActive = new() { Value = true }
+                    }
+                },
                 CancellationToken.None),
             async () => await new DeleteFooterLinkCommandHandler(groupRepository, linkRepository, tenantContext, guard).Handle(
                 new DeleteFooterLinkCommand { TenantId = tenantId, UserId = Guid.NewGuid(), LinkId = linkId },
