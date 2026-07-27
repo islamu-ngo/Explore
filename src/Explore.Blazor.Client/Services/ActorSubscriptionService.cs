@@ -98,13 +98,15 @@ public sealed class ActorSubscriptionService(
         try
         {
             var response = await apiClient.UpdateActorSubscriptionNotificationLevelAsync(
-                targetActorId,
-                new UpdateActorSubscriptionNotificationLevelDto
+            targetActorId,
+            new UpdateActorSubscriptionNotificationLevelDto
+            {
+                NotificationLevel = new UpdateActorSubscriptionNotificationLevelValueDto
                 {
-                    TargetActorId = targetActorId,
-                    NotificationLevelId = notificationLevelId,
-                    ExpectedConcurrencyStamp = expectedConcurrencyStamp
+                    Id = notificationLevelId
                 },
+                ExpectedConcurrencyStamp = expectedConcurrencyStamp
+            },
                 cancellationToken: cancellationToken);
 
             return ToResult(response, "Notification preference update failed.");

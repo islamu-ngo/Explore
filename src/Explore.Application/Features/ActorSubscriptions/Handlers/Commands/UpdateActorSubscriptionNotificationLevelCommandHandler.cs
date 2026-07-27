@@ -35,7 +35,7 @@ public class UpdateActorSubscriptionNotificationLevelCommandHandler : IRequestHa
     {
         var response = new BaseCommandResponse<Guid>();
         var validator = new UpdateActorSubscriptionNotificationLevelDtoValidator();
-        var validationResult = await validator.ValidateAsync(request.Subscription, cancellationToken);
+        var validationResult = await validator.ValidateAsync(request.Patch, cancellationToken);
         if (!validationResult.IsValid)
         {
             return Failure(response, "Actor subscription update failed.", validationResult.Errors.Select(error => error.ErrorMessage).ToList());
@@ -50,13 +50,17 @@ public class UpdateActorSubscriptionNotificationLevelCommandHandler : IRequestHa
         var subscription = await _actorSubscriptionRepository.GetBySubscriberAndTargetAsync(
             _tenantContext.TenantId,
             tenantUser.Id,
-            request.Subscription.TargetActorId,
+            request.TargetActorId,
             trackChanges: true,
             cancellationToken);
 
         if (subscription is null)
         {
-            return Failure(response, "Actor subscription update failed.", ["Subscription was not found."]);
+            return Failure(
+                response,
+                "Actor subscription update failed.",
+                ["Subscription was not found."],
+                "actor_subscription_not_found");
         }
 
         if (subscription.StatusId != (int)ActorSubscriptionStatusEnum.Active)
@@ -64,12 +68,12 @@ public class UpdateActorSubscriptionNotificationLevelCommandHandler : IRequestHa
             return Failure(response, "Actor subscription update failed.", ["Only active subscriptions can change notification level."]);
         }
 
-        if (subscription.ConcurrencyStamp != request.Subscription.ExpectedConcurrencyStamp)
+        if (subscription.ConcurrencyStamp != request.Patch.ExpectedConcurrencyStamp)
         {
             return Failure(response, "Actor subscription update failed.", ["Subscription changed since it was loaded."]);
         }
 
-        subscription.NotificationLevelId = request.Subscription.NotificationLevelId;
+        subscription.NotificationLevelId = request.Patch.NotificationLevel!.Id;
         await _actorSubscriptionRepository.Update(subscription);
 
         response.Success = true;
@@ -93,11 +97,16 @@ public class UpdateActorSubscriptionNotificationLevelCommandHandler : IRequestHa
                 : null;
     }
 
-    private static BaseCommandResponse<Guid> Failure(BaseCommandResponse<Guid> response, string message, List<string> errors)
+    private static BaseCommandResponse<Guid> Failure(
+        BaseCommandResponse<Guid> response,
+        string message,
+        List<string> errors,
+        string? failureCode = null)
     {
         response.Success = false;
         response.Message = message;
         response.Errors = errors;
+        response.FailureCode = failureCode;
         return response;
     }
 }

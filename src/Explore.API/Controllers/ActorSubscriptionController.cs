@@ -137,13 +137,17 @@ public sealed class ActorSubscriptionController : ExploreControllerBase
         [FromBody] UpdateActorSubscriptionNotificationLevelDto dto,
         CancellationToken cancellationToken = default)
     {
-        dto.TargetActorId = targetActorId;
-
-        var response = await _mediator.Send(new UpdateActorSubscriptionNotificationLevelCommand { Subscription = dto }, cancellationToken);
+        var response = await _mediator.Send(new UpdateActorSubscriptionNotificationLevelCommand
+        {
+            TargetActorId = targetActorId,
+            Patch = dto
+        }, cancellationToken);
 
         if (!response.Success)
         {
-            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
+            return response.FailureCode == "actor_subscription_not_found"
+                ? this.ToNotFoundProblem(ActorSubscriptionNotFoundProblem, response.Message)
+                : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);

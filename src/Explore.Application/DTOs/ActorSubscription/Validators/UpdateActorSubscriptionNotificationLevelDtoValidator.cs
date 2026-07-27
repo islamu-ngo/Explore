@@ -17,12 +17,13 @@ public class UpdateActorSubscriptionNotificationLevelDtoValidator : AbstractVali
 
     public UpdateActorSubscriptionNotificationLevelDtoValidator()
     {
-        RuleFor(dto => dto.TargetActorId)
-            .NotEmpty().WithMessage("Target actor ID is required.");
+        RuleFor(dto => dto.NotificationLevel)
+            .NotNull().WithMessage("Notification level is required.");
 
-        RuleFor(dto => dto.NotificationLevelId)
+        RuleFor(dto => dto.NotificationLevel!.Id)
             .Must(id => AllowedNotificationLevelIds.Contains(id))
-            .WithMessage("Notification level is not supported.");
+            .WithMessage("Notification level is not supported.")
+            .When(dto => dto.NotificationLevel is not null);
 
         RuleFor(dto => dto.ExpectedConcurrencyStamp)
             .NotEmpty().WithMessage("Expected concurrency stamp is required.");

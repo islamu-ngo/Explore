@@ -137,8 +137,10 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
             scenario.UserId);
         patchRequest.Content = JsonContent.Create(new UpdateActorSubscriptionNotificationLevelDto
         {
-            TargetActorId = Guid.NewGuid(),
-            NotificationLevelId = (int)ActorSubscriptionNotificationLevelEnum.None,
+            NotificationLevel = new UpdateActorSubscriptionNotificationLevelValueDto
+            {
+                Id = (int)ActorSubscriptionNotificationLevelEnum.None
+            },
             ExpectedConcurrencyStamp = concurrencyStamp
         });
 

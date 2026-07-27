@@ -11,14 +11,15 @@ namespace Explore.Application.Features.ActorSubscriptions.Requests.Commands;
 [AuthorizeResource(ResourceKinds.ActorSubscription, AuthorizationActions.ActorSubscriptions.Update)]
 public class UpdateActorSubscriptionNotificationLevelCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required UpdateActorSubscriptionNotificationLevelDto Subscription { get; set; }
+    public Guid TargetActorId { get; set; }
+    public required UpdateActorSubscriptionNotificationLevelDto Patch { get; set; }
 
-    public string? ResourceId => Subscription.TargetActorId == Guid.Empty ? null : Subscription.TargetActorId.ToString();
+    public string? ResourceId => TargetActorId == Guid.Empty ? null : TargetActorId.ToString();
 
-    public IDictionary<string, object>? ResourceAttributes => Subscription.TargetActorId == Guid.Empty
+    public IDictionary<string, object>? ResourceAttributes => TargetActorId == Guid.Empty
         ? null
         : new Dictionary<string, object>
         {
-            ["targetActorId"] = Subscription.TargetActorId.ToString()
+            ["targetActorId"] = TargetActorId.ToString()
         };
 }

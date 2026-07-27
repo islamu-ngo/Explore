@@ -114,8 +114,8 @@ public sealed class ActorSubscriptionServiceTests
         await _apiClient.Received(1).UpdateActorSubscriptionNotificationLevelAsync(
             targetActorId,
             Arg.Is<UpdateActorSubscriptionNotificationLevelDto>(dto =>
-                dto.TargetActorId == targetActorId &&
-                dto.NotificationLevelId == 1 &&
+                dto.NotificationLevel != null &&
+                dto.NotificationLevel.Id == 1 &&
                 dto.ExpectedConcurrencyStamp == concurrencyStamp),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
