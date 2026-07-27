@@ -607,6 +607,7 @@ public class ContractInvariantsTests
         using var document = await GetOpenApiDocumentAsync();
 
         var roleEnum = GetSchema(document, "RoleEnum");
+        var guestRecoveryPolicyEnum = GetSchema(document, "GuestRecoveryPolicyEnum");
         var deploymentMode = GetSchema(document, "DeploymentMode");
 
         await Assert.That(GetStringProperty(roleEnum, "type"))
@@ -615,6 +616,13 @@ public class ContractInvariantsTests
         await Assert.That(GetEnumValues(roleEnum))
             .IsEquivalentTo(["Admin", "Moderator", "Member", "TenantAdmin", "TenantModerator", "TenantMember", "OrgAdmin", "OrgModerator", "OrgMember", "GroupAdmin", "GroupModerator", "GroupMember", "EventOwner", "EventManager", "RegistrationManager", "CheckInStaff"])
             .Because("RoleEnum must expose the public string literals clients receive over JSON.");
+
+        await Assert.That(GetStringProperty(guestRecoveryPolicyEnum, "type"))
+            .IsEqualTo("string")
+            .Because("GuestRecoveryPolicyEnum must remain documented as a string enum so the generated client does not fall back to integers.");
+        await Assert.That(GetEnumValues(guestRecoveryPolicyEnum))
+            .IsEquivalentTo(["VerifiedEmailRequired", "UnverifiedEmailAccepted", "EmailOptional", "CapabilityLinkOnly", "NoRecovery"])
+            .Because("GuestRecoveryPolicyEnum must expose the exact public literals used by the API JSON contract.");
 
         await Assert.That(GetStringProperty(deploymentMode, "type"))
             .IsEqualTo("string")

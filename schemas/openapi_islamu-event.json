@@ -19625,9 +19625,9 @@
           {
             "name": "If-Match",
             "in": "header",
+            "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             }
           },
           {
@@ -66001,6 +66001,10 @@
         }
       },
       "ConfigureEventParticipationDto": {
+        "required": [
+          "participationHandlingModeId",
+          "advanceRegistrationObligationId"
+        ],
         "type": "object",
         "properties": {
           "participationHandlingModeId": {
@@ -76824,6 +76828,12 @@
               "string"
             ]
           },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "locationId": {
             "type": [
               "null",
@@ -79799,7 +79809,14 @@
         }
       },
       "GuestRecoveryPolicyEnum": {
-        "type": "integer"
+        "enum": [
+          "VerifiedEmailRequired",
+          "UnverifiedEmailAccepted",
+          "EmailOptional",
+          "CapabilityLinkOnly",
+          "NoRecovery"
+        ],
+        "type": "string"
       },
       "HalCollectionEmbeddedOfActorListDto": {
         "type": "object",
@@ -89011,6 +89028,12 @@
             "type": "string"
           },
           "slug": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
             "type": [
               "null",
               "string"

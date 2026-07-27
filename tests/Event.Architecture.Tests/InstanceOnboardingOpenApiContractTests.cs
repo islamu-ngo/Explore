@@ -146,6 +146,24 @@ public sealed class InstanceOnboardingOpenApiContractTests
     }
 
     [Test]
+    public async Task GeneratedClient_MustUse_GuestRecoveryPolicyEnum_Contract()
+    {
+        var repositoryRoot = ResolveRepositoryRoot();
+        var generatedClientPath = Path.Combine(
+            repositoryRoot,
+            "src",
+            "Explore.Blazor.Client",
+            "Clients",
+            "EventApiClient.g.cs");
+        var generatedClient = await File.ReadAllTextAsync(generatedClientPath);
+
+        await Assert.That(generatedClient).Contains("public GuestRecoveryPolicyEnum? GuestRecoveryPolicy", StringComparison.Ordinal)
+            .Because("the generated NSwag client must preserve the OpenAPI string-enum contract for guest recovery policy.");
+        await Assert.That(generatedClient).DoesNotContain("public int? GuestRecoveryPolicy", StringComparison.Ordinal)
+            .Because("GuestRecoveryPolicy must not regress to integer transport in any generated DTO.");
+    }
+
+    [Test]
     public async Task SensitiveInstanceReadContracts_MustExposeConfiguredFlagsInsteadOfSecrets()
     {
         string smtpJson = JsonSerializer.Serialize(new InstanceSmtpSettingsDto

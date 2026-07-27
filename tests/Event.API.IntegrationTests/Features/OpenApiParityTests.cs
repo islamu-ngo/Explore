@@ -280,6 +280,7 @@ public sealed class OpenApiParityTests
 
         var differences = new List<string>();
         CompareEnumSchema("RoleEnum", nativeDocument, swashbuckleDocument, differences);
+        CompareEnumSchema("GuestRecoveryPolicyEnum", nativeDocument, swashbuckleDocument, differences);
         CompareEnumSchema("DeploymentMode", nativeDocument, swashbuckleDocument, differences);
 
         await Assert.That(differences)

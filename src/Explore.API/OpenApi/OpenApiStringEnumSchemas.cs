@@ -49,6 +49,7 @@ internal static class OpenApiStringEnumSchemaCatalog
         typeof(EventLocationDisclosureState),
         typeof(EventRoleAssignmentStatus),
         typeof(ExposureLevel),
+        typeof(GuestRecoveryPolicyEnum),
         typeof(GenderSegregationMode),
         typeof(HomeDiscoveryMode),
         typeof(HomeDiscoverySectionStatus),

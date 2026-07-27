@@ -1877,7 +1877,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ConfigureEventParticipationAsync(System.Guid eventId, ConfigureEventParticipationDto body, System.Guid? if_Match = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ConfigureEventParticipationAsync(System.Guid eventId, string if_Match, ConfigureEventParticipationDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -27969,7 +27969,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ConfigureEventParticipationAsync(System.Guid eventId, ConfigureEventParticipationDto body, System.Guid? if_Match = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ConfigureEventParticipationAsync(System.Guid eventId, string if_Match, ConfigureEventParticipationDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (eventId == null)
                 throw new System.ArgumentNullException("eventId");
@@ -27984,8 +27984,9 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
 
-                    if (if_Match != null)
-                        request_.Headers.TryAddWithoutValidation("If-Match", ConvertToString(if_Match, System.Globalization.CultureInfo.InvariantCulture));
+                    if (if_Match == null)
+                        throw new System.ArgumentNullException("if_Match");
+                    request_.Headers.TryAddWithoutValidation("If-Match", ConvertToString(if_Match, System.Globalization.CultureInfo.InvariantCulture));
 
                     if (x_Api_Version != null)
                         request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
@@ -80683,19 +80684,22 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("participationHandlingModeId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? ParticipationHandlingModeId { get; set; } = default!;
+        public int ParticipationHandlingModeId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("advanceRegistrationObligationId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? AdvanceRegistrationObligationId { get; set; } = default!;
+        public int AdvanceRegistrationObligationId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("identityAccessModeId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? IdentityAccessModeId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("guestRecoveryPolicy")]
-        public int? GuestRecoveryPolicy { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<GuestRecoveryPolicyEnum>))]
+        public GuestRecoveryPolicyEnum? GuestRecoveryPolicy { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -86920,7 +86924,8 @@ namespace Explore.Blazor.Client.Clients
         public string? IdentityAccessModeName { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("guestRecoveryPolicy")]
-        public int? GuestRecoveryPolicy { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<GuestRecoveryPolicyEnum>))]
+        public GuestRecoveryPolicyEnum? GuestRecoveryPolicy { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -88576,6 +88581,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("slug")]
         public string? Slug { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("locationId")]
         public System.Guid? LocationId { get; set; } = default!;
@@ -90540,6 +90548,27 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum GuestRecoveryPolicyEnum
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"VerifiedEmailRequired")]
+        VerifiedEmailRequired = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"UnverifiedEmailAccepted")]
+        UnverifiedEmailAccepted = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"EmailOptional")]
+        EmailOptional = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"CapabilityLinkOnly")]
+        CapabilityLinkOnly = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"NoRecovery")]
+        NoRecovery = 4,
 
     }
 
@@ -97022,6 +97051,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("slug")]
         public string? Slug { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("locationId")]
         public System.Guid? LocationId { get; set; } = default!;
