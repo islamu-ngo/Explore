@@ -18,12 +18,21 @@ namespace Explore.Blazor.Client.Pages.Events;
 public partial class CreateEvent : IDisposable
 {
     private const string MainContentAppearanceOwner = nameof(CreateEvent);
-    private const int InformationOnlyParticipationModeId = 1;
-    private const int PlatformManagedParticipationModeId = 4;
-    private const int NotApplicableAdvanceRegistrationId = 1;
-    private const int RequiredAdvanceRegistrationId = 3;
-    private const int GuestAllowedIdentityAccessId = 2;
-    private const int VerifiedEmailRequiredRecoveryPolicy = 1;
+    private const int InformationOnly = 1;
+    private const int WalkIn = 2;
+    private const int ExternalManaged = 3;
+    private const int PlatformManaged = 4;
+    private const int NotApplicable = 1;
+    private const int Optional = 2;
+    private const int Required = 3;
+    private const int AccountRequired = 1;
+    private const int GuestAllowed = 2;
+    private const int CapabilityTokenAllowed = 3;
+    private const int VerifiedEmailRequired = 1;
+    private const int UnverifiedEmailAccepted = 2;
+    private const int EmailOptional = 3;
+    private const int CapabilityLinkOnly = 4;
+    private const int NoRecovery = 5;
 
     [Inject] protected IEventService EventService { get; set; } = null!;
     [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
@@ -66,7 +75,11 @@ public partial class CreateEvent : IDisposable
     private Guid? _currentUserId;
     private CreateEventDraftRequestDto createDto = new()
     {
-        ParticipationConfiguration = BuildParticipationConfiguration(platformManaged: false)
+        ParticipationConfiguration = new ConfigureEventParticipationDto
+        {
+            ParticipationHandlingModeId = InformationOnly,
+            AdvanceRegistrationObligationId = NotApplicable
+        }
     };
     private EditContext _editContext = default!;
     private FormSubmitState _submitState = new();
@@ -150,6 +163,14 @@ public partial class CreateEvent : IDisposable
     private List<string> SelectedTagNames => GetSelectedNames(allTags, selectedTagIds);
     private string CategoriesSummary => SelectedCategoryNames.Count == 0 ? "No categories selected" : string.Join(", ", SelectedCategoryNames);
     private string TagsSummary => SelectedTagNames.Count == 0 ? "No tags selected" : string.Join(", ", SelectedTagNames);
+    private bool IsNoAdvanceParticipationMode =>
+        createDto.ParticipationConfiguration.ParticipationHandlingModeId is InformationOnly or WalkIn;
+    private bool IsPlatformManagedParticipation =>
+        createDto.ParticipationConfiguration.ParticipationHandlingModeId == PlatformManaged;
+    private bool UsesEmailParticipationRecovery =>
+        IsPlatformManagedParticipation && createDto.ParticipationConfiguration.IdentityAccessModeId == GuestAllowed;
+    private bool UsesCapabilityParticipationRecovery =>
+        IsPlatformManagedParticipation && createDto.ParticipationConfiguration.IdentityAccessModeId == CapabilityTokenAllowed;
     // Timezone
     private TimeZoneInfo _selectedTimezone = TimeZoneInfo.Utc;
     private string _selectedTimezoneDisplay => FormatTimezoneShort(_selectedTimezone);
@@ -234,8 +255,128 @@ public partial class CreateEvent : IDisposable
 
     private string BuildRegistrationSummary()
     {
+        var configuration = createDto.ParticipationConfiguration;
+        var handling = configuration.ParticipationHandlingModeId switch
+        {
+            InformationOnly => "Information only",
+            WalkIn => "Walk-in",
+            ExternalManaged => "Externally managed",
+            PlatformManaged => "Platform managed",
+            _ => "Select participation handling"
+        };
+        var advance = configuration.AdvanceRegistrationObligationId switch
+        {
+            NotApplicable => "Not applicable",
+            Optional => "Optional advance registration",
+            Required => "Required advance registration",
+            _ => "Select advance registration"
+        };
+        var identity = configuration.IdentityAccessModeId switch
+        {
+            AccountRequired => "Account required",
+            GuestAllowed => "Guests allowed",
+            CapabilityTokenAllowed => "Capability-token access",
+            _ => null
+        };
+        var recovery = ((int?)configuration.GuestRecoveryPolicy) switch
+        {
+            VerifiedEmailRequired => "Verified email recovery",
+            UnverifiedEmailAccepted => "Unverified email recovery",
+            EmailOptional => "Optional email recovery",
+            CapabilityLinkOnly => "Capability-link recovery",
+            NoRecovery => "No recovery",
+            _ => null
+        };
         var policy = GetLookupName(registrationPolicies, createDto.RegistrationPolicyId) ?? "Default open registration";
-        return $"{policy} · Capacity set per session";
+        return string.Join(" · ", new[] { handling, advance, identity, recovery, policy, "Capacity set per session" }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    private Task OnParticipationHandlingModeChanged(int? value)
+    {
+        if (!value.HasValue)
+        {
+            return Task.CompletedTask;
+        }
+
+        var configuration = createDto.ParticipationConfiguration;
+        configuration.ParticipationHandlingModeId = value.Value;
+        switch (value.Value)
+        {
+            case InformationOnly:
+            case WalkIn:
+                configuration.AdvanceRegistrationObligationId = NotApplicable;
+                configuration.IdentityAccessModeId = null;
+                configuration.GuestRecoveryPolicy = null;
+                break;
+            case ExternalManaged:
+                configuration.AdvanceRegistrationObligationId = configuration.AdvanceRegistrationObligationId is Optional or Required
+                    ? configuration.AdvanceRegistrationObligationId
+                    : Optional;
+                configuration.IdentityAccessModeId = null;
+                configuration.GuestRecoveryPolicy = null;
+                break;
+            case PlatformManaged:
+                configuration.AdvanceRegistrationObligationId = configuration.AdvanceRegistrationObligationId is Optional or Required
+                    ? configuration.AdvanceRegistrationObligationId
+                    : Optional;
+                break;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnParticipationAdvanceObligationChanged(int? value)
+    {
+        if (value.HasValue)
+        {
+            createDto.ParticipationConfiguration.AdvanceRegistrationObligationId = value.Value;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnParticipationIdentityAccessModeChanged(int? value)
+    {
+        var configuration = createDto.ParticipationConfiguration;
+        configuration.IdentityAccessModeId = value;
+        configuration.GuestRecoveryPolicy = value switch
+        {
+            AccountRequired => null,
+            GuestAllowed when ((int?)configuration.GuestRecoveryPolicy) is VerifiedEmailRequired or UnverifiedEmailAccepted or EmailOptional => configuration.GuestRecoveryPolicy,
+            CapabilityTokenAllowed when ((int?)configuration.GuestRecoveryPolicy) is CapabilityLinkOnly or NoRecovery => configuration.GuestRecoveryPolicy,
+            _ => null
+        };
+        return Task.CompletedTask;
+    }
+
+    private Task OnParticipationGuestRecoveryPolicyChanged(int? value)
+    {
+        createDto.ParticipationConfiguration.GuestRecoveryPolicy = (GuestRecoveryPolicyEnum?)value;
+        return Task.CompletedTask;
+    }
+
+    private bool IsLegalParticipationConfiguration()
+    {
+        var configuration = createDto.ParticipationConfiguration;
+        return configuration.ParticipationHandlingModeId switch
+        {
+            InformationOnly or WalkIn => configuration.AdvanceRegistrationObligationId == NotApplicable
+                && configuration.IdentityAccessModeId is null
+                && configuration.GuestRecoveryPolicy is null,
+            ExternalManaged => configuration.AdvanceRegistrationObligationId is Optional or Required
+                && configuration.IdentityAccessModeId is null
+                && configuration.GuestRecoveryPolicy is null,
+            PlatformManaged => configuration.AdvanceRegistrationObligationId is Optional or Required
+                && configuration.IdentityAccessModeId switch
+                {
+                    AccountRequired => configuration.GuestRecoveryPolicy is null,
+                    GuestAllowed => ((int?)configuration.GuestRecoveryPolicy) is VerifiedEmailRequired or UnverifiedEmailAccepted or EmailOptional,
+                    CapabilityTokenAllowed => ((int?)configuration.GuestRecoveryPolicy) is CapabilityLinkOnly or NoRecovery,
+                    _ => false
+                },
+            _ => false
+        };
     }
 
     private string BuildPricingSummary()
@@ -1031,6 +1172,12 @@ public partial class CreateEvent : IDisposable
             }
         }
 
+        if (!IsLegalParticipationConfiguration())
+        {
+            _submitState.Fail("Choose a valid participation configuration before creating the event.");
+            return false;
+        }
+
         return true;
     }
 
@@ -1187,8 +1334,6 @@ public partial class CreateEvent : IDisposable
             createDto.GroupId = _publisherMode == "group" ? _selectedGroupId : null;
             createDto.FeaturedImageId = featuredImageId;
             createDto.MadhabId = selectedMadhabId;
-            createDto.ParticipationConfiguration = BuildParticipationConfiguration(
-                createDto.RegistrationPolicyId.HasValue);
             createDto.VisibilityTypeId ??= 1;
             createDto.EventFormatId ??= 1;
             createDto.EventStatusId = (intent == CreateEventSubmitIntent.ReviewAndPublish) ? 2 : 1;
@@ -1257,21 +1402,6 @@ public partial class CreateEvent : IDisposable
             _submitState.Fail("Event could not be submitted. Please try again.");
         }
     }
-
-    private static ConfigureEventParticipationDto BuildParticipationConfiguration(bool platformManaged) =>
-        platformManaged
-            ? new ConfigureEventParticipationDto
-            {
-                ParticipationHandlingModeId = PlatformManagedParticipationModeId,
-                AdvanceRegistrationObligationId = RequiredAdvanceRegistrationId,
-                IdentityAccessModeId = GuestAllowedIdentityAccessId,
-                GuestRecoveryPolicy = VerifiedEmailRequiredRecoveryPolicy
-            }
-            : new ConfigureEventParticipationDto
-            {
-                ParticipationHandlingModeId = InformationOnlyParticipationModeId,
-                AdvanceRegistrationObligationId = NotApplicableAdvanceRegistrationId
-            };
 
     private bool ApplyInlineSessionForIntent(CreateEventSubmitIntent intent)
     {

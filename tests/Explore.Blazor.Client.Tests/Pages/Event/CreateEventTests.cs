@@ -242,16 +242,57 @@ public class CreateEventTests : IDisposable
     }
 
     [Test]
-    public async Task SaveDraft_WithRegistrationPolicy_MapsPlatformManagedParticipationIds()
+    public async Task CreateEvent_RendersExplicitParticipationControlsWithDefaultState()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForElement("[data-testid='participation-handling-select']");
+
+        await Assert.That(ParticipationSelect(cut, "Participation handling").Instance.Value).IsEqualTo(1);
+        await Assert.That(ParticipationSelect(cut, "Advance registration").Instance.Value).IsEqualTo(1);
+        await Assert.That(ParticipationSelect(cut, "Advance registration").Instance.Disabled).IsTrue();
+        await Assert.That(cut.FindComponents<MudSelect<int?>>().Any(item => item.Instance.Label == "Identity access")).IsFalse();
+        await Assert.That(cut.FindComponents<MudSelect<int?>>().Any(item => item.Instance.Label == "Guest recovery")).IsFalse();
+    }
+
+    [Test]
+    public async Task SaveDraft_WithExplicitExternalParticipation_UsesSelectedTypedValues()
     {
         CreateEventDraftRequestDto? capturedRequest = null;
         _eventService.CreateEventAsync(Arg.Do<CreateEventDraftRequestDto>(dto => capturedRequest = dto))
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
         var cut = _ctx.RenderMudComponent<CreateEvent>();
-        cut.WaitForState(() => cut.Markup.Length > 0, TimeSpan.FromSeconds(3));
+        cut.WaitForElement("[data-testid='participation-handling-select']");
         PrepareValidSubmitState(cut.Instance);
-        GetPrivateField<CreateEventDraftRequestDto>(cut.Instance, "createDto").RegistrationPolicyId = 3;
+
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Participation handling").Instance.ValueChanged.InvokeAsync(3));
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Advance registration").Instance.ValueChanged.InvokeAsync(3));
+
+        await InvokePrivateAsync(cut.Instance, "SaveAsDraftAsync");
+
+        await Assert.That(capturedRequest).IsNotNull();
+        var configuration = capturedRequest!.ParticipationConfiguration;
+        await Assert.That(configuration.ParticipationHandlingModeId).IsEqualTo(3);
+        await Assert.That(configuration.AdvanceRegistrationObligationId).IsEqualTo(3);
+        await Assert.That(configuration.IdentityAccessModeId).IsNull();
+        await Assert.That(configuration.GuestRecoveryPolicy).IsNull();
+    }
+
+    [Test]
+    public async Task SaveDraft_WithPlatformAccountParticipation_UsesSelectedTypedValues()
+    {
+        CreateEventDraftRequestDto? capturedRequest = null;
+        _eventService.CreateEventAsync(Arg.Do<CreateEventDraftRequestDto>(dto => capturedRequest = dto))
+            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForElement("[data-testid='participation-handling-select']");
+        PrepareValidSubmitState(cut.Instance);
+
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Participation handling").Instance.ValueChanged.InvokeAsync(4));
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Advance registration").Instance.ValueChanged.InvokeAsync(3));
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Identity access").Instance.ValueChanged.InvokeAsync(1));
 
         await InvokePrivateAsync(cut.Instance, "SaveAsDraftAsync");
 
@@ -259,8 +300,82 @@ public class CreateEventTests : IDisposable
         var configuration = capturedRequest!.ParticipationConfiguration;
         await Assert.That(configuration.ParticipationHandlingModeId).IsEqualTo(4);
         await Assert.That(configuration.AdvanceRegistrationObligationId).IsEqualTo(3);
+        await Assert.That(configuration.IdentityAccessModeId).IsEqualTo(1);
+        await Assert.That(configuration.GuestRecoveryPolicy).IsNull();
+    }
+
+    [Test]
+    public async Task SaveDraft_WithPlatformGuestParticipation_UsesSelectedTypedValues()
+    {
+        CreateEventDraftRequestDto? capturedRequest = null;
+        _eventService.CreateEventAsync(Arg.Do<CreateEventDraftRequestDto>(dto => capturedRequest = dto))
+            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForElement("[data-testid='participation-handling-select']");
+        PrepareValidSubmitState(cut.Instance);
+
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Participation handling").Instance.ValueChanged.InvokeAsync(4));
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Identity access").Instance.ValueChanged.InvokeAsync(2));
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Guest recovery").Instance.ValueChanged.InvokeAsync(1));
+
+        await InvokePrivateAsync(cut.Instance, "SaveAsDraftAsync");
+
+        await Assert.That(capturedRequest).IsNotNull();
+        var configuration = capturedRequest!.ParticipationConfiguration;
+        await Assert.That(configuration.ParticipationHandlingModeId).IsEqualTo(4);
+        await Assert.That(configuration.AdvanceRegistrationObligationId).IsEqualTo(2);
         await Assert.That(configuration.IdentityAccessModeId).IsEqualTo(2);
         await Assert.That(configuration.GuestRecoveryPolicy).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task ParticipationChanges_ClearValuesThatAreIllegalForTheSelectedMode()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForElement("[data-testid='participation-handling-select']");
+
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Participation handling").Instance.ValueChanged.InvokeAsync(4));
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Identity access").Instance.ValueChanged.InvokeAsync(2));
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Guest recovery").Instance.ValueChanged.InvokeAsync(3));
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Participation handling").Instance.ValueChanged.InvokeAsync(3));
+
+        await Assert.That(ParticipationSelect(cut, "Advance registration").Instance.Value).IsEqualTo(2);
+        await Assert.That(cut.FindComponents<MudSelect<int?>>().Any(item => item.Instance.Label == "Identity access")).IsFalse();
+        await Assert.That(cut.FindComponents<MudSelect<int?>>().Any(item => item.Instance.Label == "Guest recovery")).IsFalse();
+
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Participation handling").Instance.ValueChanged.InvokeAsync(4));
+
+        await Assert.That(ParticipationSelect(cut, "Identity access").Instance.Value).IsNull();
+        await Assert.That(cut.FindComponents<MudSelect<int?>>().Any(item => item.Instance.Label == "Guest recovery")).IsFalse();
+
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Participation handling").Instance.ValueChanged.InvokeAsync(2));
+
+        await Assert.That(ParticipationSelect(cut, "Advance registration").Instance.Value).IsEqualTo(1);
+        await Assert.That(ParticipationSelect(cut, "Advance registration").Instance.Disabled).IsTrue();
+    }
+
+    [Test]
+    public async Task SaveDraft_WithRegistrationPolicy_KeepsParticipationIndependent()
+    {
+        CreateEventDraftRequestDto? capturedRequest = null;
+        _eventService.CreateEventAsync(Arg.Do<CreateEventDraftRequestDto>(dto => capturedRequest = dto))
+            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForElement("[data-testid='participation-handling-select']");
+        PrepareValidSubmitState(cut.Instance);
+        await cut.InvokeAsync(() => ParticipationSelect(cut, "Registration scope policy").Instance.ValueChanged.InvokeAsync(3));
+
+        await InvokePrivateAsync(cut.Instance, "SaveAsDraftAsync");
+
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.RegistrationPolicyId).IsEqualTo(3);
+        await Assert.That(capturedRequest.ParticipationConfiguration.ParticipationHandlingModeId).IsEqualTo(1);
+        await Assert.That(capturedRequest.ParticipationConfiguration.AdvanceRegistrationObligationId).IsEqualTo(1);
+        await Assert.That(capturedRequest.ParticipationConfiguration.IdentityAccessModeId).IsNull();
+        await Assert.That(capturedRequest.ParticipationConfiguration.GuestRecoveryPolicy).IsNull();
     }
 
     [Test]
@@ -1063,7 +1178,7 @@ public class CreateEventTests : IDisposable
                 throw new InvalidOperationException("Rejected Event Appearance accordion copy was rendered.");
             }
 
-            if (!cut.Markup.Contains("Visibility, audience, registration, classification, categories, and tags.", StringComparison.OrdinalIgnoreCase)
+            if (!cut.Markup.Contains("Visibility, audience, participation, registration, classification, categories, and tags.", StringComparison.OrdinalIgnoreCase)
                 || !cut.Markup.Contains("Template and custom fields.", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Revised Event settings and narrow More options copy was not rendered.");
@@ -1289,6 +1404,10 @@ public class CreateEventTests : IDisposable
 
         return (T)field.GetValue(component)!;
     }
+
+    private static IRenderedComponent<MudSelect<int?>> ParticipationSelect(
+        IRenderedComponent<CreateEvent> cut,
+        string label) => cut.FindComponents<MudSelect<int?>>().Single(item => item.Instance.Label == label);
 
     private static string GetSubmitError(CreateEvent component)
     {

@@ -401,7 +401,7 @@
                     @* --- Event Settings (normal behavior controls stay visible) --- *@
                     <EventOptionsSection Title="Event settings"
                                          TitleId="event-settings-title"
-                                         Summary="Visibility, audience, registration, classification, categories, and tags."
+                                         Summary="Visibility, audience, participation, registration, classification, categories, and tags."
                                          PolicyNote="@EventOptionsPolicyNote">
                         <EventOptionRow Title="Visibility"
                                         Icon="@Icons.Material.Filled.Visibility"
@@ -469,24 +469,120 @@
                         <EventOptionRow Title="Registration and capacity"
                                         Icon="@Icons.Material.Filled.Policy"
                                         Summary="@RegistrationSummary"
-                                        Description="Use this for RSVP flow and first-session capacity defaults."
+                                        Description="Choose how participation works independently from registration scope and admission policy."
                                         Disabled="@AreEventOptionsDisabled">
-                            <MudSelect T="int?" @bind-Value="createDto.RegistrationPolicyId"
-                                       Variant="Variant.Text" Margin="Margin.Dense"
-                                       AnchorOrigin="Origin.BottomCenter"
-                                       Class="create-event__option-select"
-                                       Placeholder="Default (Open)"
-                                       Disabled="@AreEventOptionsDisabled"
-                                       aria-label="Registration policy">
-                                <MudSelectItem T="int?" Value="@((int?)null)">Default (Open)</MudSelectItem>
-                                @if (registrationPolicies != null)
-                                {
-                                    @foreach (var policy in registrationPolicies)
+                            <div class="create-event__option-editor-group">
+                                <MudSelect T="int?"
+                                           Label="Participation handling"
+                                           Value="@((int?)createDto.ParticipationConfiguration.ParticipationHandlingModeId)"
+                                           ValueChanged="OnParticipationHandlingModeChanged"
+                                           Variant="Variant.Text"
+                                           Margin="Margin.Dense"
+                                           AnchorOrigin="Origin.BottomCenter"
+                                           Required="true"
+                                           Disabled="@AreEventOptionsDisabled"
+                                           Class="create-event__option-select"
+                                           data-testid="participation-handling-select">
+                                    <MudSelectItem T="int?" Value="@((int?)InformationOnly)">Information only</MudSelectItem>
+                                    <MudSelectItem T="int?" Value="@((int?)WalkIn)">Walk-in</MudSelectItem>
+                                    <MudSelectItem T="int?" Value="@((int?)ExternalManaged)">Externally managed</MudSelectItem>
+                                    <MudSelectItem T="int?" Value="@((int?)PlatformManaged)">Platform managed</MudSelectItem>
+                                </MudSelect>
+
+                                <MudSelect T="int?"
+                                           Label="Advance registration"
+                                           Value="@((int?)createDto.ParticipationConfiguration.AdvanceRegistrationObligationId)"
+                                           ValueChanged="OnParticipationAdvanceObligationChanged"
+                                           Variant="Variant.Text"
+                                           Margin="Margin.Dense"
+                                           AnchorOrigin="Origin.BottomCenter"
+                                           Required="true"
+                                           Disabled="@(AreEventOptionsDisabled || IsNoAdvanceParticipationMode)"
+                                           Class="create-event__option-select"
+                                           data-testid="advance-registration-select">
+                                    @if (IsNoAdvanceParticipationMode)
                                     {
-                                        <MudSelectItem T="int?" Value="@((int?)policy.Id)">@policy.FullName</MudSelectItem>
+                                        <MudSelectItem T="int?" Value="@((int?)NotApplicable)">Not applicable</MudSelectItem>
                                     }
+                                    else
+                                    {
+                                        <MudSelectItem T="int?" Value="@((int?)Optional)">Optional</MudSelectItem>
+                                        <MudSelectItem T="int?" Value="@((int?)Required)">Required</MudSelectItem>
+                                    }
+                                </MudSelect>
+
+                                @if (IsPlatformManagedParticipation)
+                                {
+                                    <MudSelect T="int?"
+                                               Label="Identity access"
+                                               Value="createDto.ParticipationConfiguration.IdentityAccessModeId"
+                                               ValueChanged="OnParticipationIdentityAccessModeChanged"
+                                               Variant="Variant.Text"
+                                               Margin="Margin.Dense"
+                                               AnchorOrigin="Origin.BottomCenter"
+                                               Required="true"
+                                               Disabled="@AreEventOptionsDisabled"
+                                               Class="create-event__option-select"
+                                               data-testid="identity-access-select">
+                                        <MudSelectItem T="int?" Value="@((int?)AccountRequired)">Account required</MudSelectItem>
+                                        <MudSelectItem T="int?" Value="@((int?)GuestAllowed)">Guests allowed</MudSelectItem>
+                                        <MudSelectItem T="int?" Value="@((int?)CapabilityTokenAllowed)">Capability-token access</MudSelectItem>
+                                    </MudSelect>
                                 }
-                            </MudSelect>
+
+                                @if (UsesEmailParticipationRecovery)
+                                {
+                                    <MudSelect T="int?"
+                                               Label="Guest recovery"
+                                                Value="@((int?)createDto.ParticipationConfiguration.GuestRecoveryPolicy)"
+                                               ValueChanged="OnParticipationGuestRecoveryPolicyChanged"
+                                               Variant="Variant.Text"
+                                               Margin="Margin.Dense"
+                                               AnchorOrigin="Origin.BottomCenter"
+                                               Required="true"
+                                               Disabled="@AreEventOptionsDisabled"
+                                               Class="create-event__option-select"
+                                               data-testid="guest-recovery-select">
+                                        <MudSelectItem T="int?" Value="@((int?)VerifiedEmailRequired)">Verified email required</MudSelectItem>
+                                        <MudSelectItem T="int?" Value="@((int?)UnverifiedEmailAccepted)">Unverified email accepted</MudSelectItem>
+                                        <MudSelectItem T="int?" Value="@((int?)EmailOptional)">Email optional</MudSelectItem>
+                                    </MudSelect>
+                                }
+                                else if (UsesCapabilityParticipationRecovery)
+                                {
+                                    <MudSelect T="int?"
+                                               Label="Guest recovery"
+                                                Value="@((int?)createDto.ParticipationConfiguration.GuestRecoveryPolicy)"
+                                               ValueChanged="OnParticipationGuestRecoveryPolicyChanged"
+                                               Variant="Variant.Text"
+                                               Margin="Margin.Dense"
+                                               AnchorOrigin="Origin.BottomCenter"
+                                               Required="true"
+                                               Disabled="@AreEventOptionsDisabled"
+                                               Class="create-event__option-select"
+                                               data-testid="guest-recovery-select">
+                                        <MudSelectItem T="int?" Value="@((int?)CapabilityLinkOnly)">Capability link only</MudSelectItem>
+                                        <MudSelectItem T="int?" Value="@((int?)NoRecovery)">No recovery</MudSelectItem>
+                                    </MudSelect>
+                                }
+
+                                <MudSelect T="int?" @bind-Value="createDto.RegistrationPolicyId"
+                                           Label="Registration scope policy"
+                                           Variant="Variant.Text" Margin="Margin.Dense"
+                                           AnchorOrigin="Origin.BottomCenter"
+                                           Class="create-event__option-select"
+                                           Placeholder="Default (Open)"
+                                           Disabled="@AreEventOptionsDisabled">
+                                    <MudSelectItem T="int?" Value="@((int?)null)">Default (Open)</MudSelectItem>
+                                    @if (registrationPolicies != null)
+                                    {
+                                        @foreach (var policy in registrationPolicies)
+                                        {
+                                            <MudSelectItem T="int?" Value="@((int?)policy.Id)">@policy.FullName</MudSelectItem>
+                                        }
+                                    }
+                                </MudSelect>
+                            </div>
                         </EventOptionRow>
 
                         <EventOptionRow Title="Pricing"
