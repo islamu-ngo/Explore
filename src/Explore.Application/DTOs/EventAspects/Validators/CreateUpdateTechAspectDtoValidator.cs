@@ -62,3 +62,36 @@ public class CreateUpdateTechAspectDtoValidator : AbstractValidator<CreateUpdate
             .WithMessage("Currency code must be a 3-letter ISO code (e.g., USD, EUR).");
     }
 }
+
+public sealed class UpdateEventTechAspectDtoValidator : AbstractValidator<UpdateEventTechAspectDto>
+{
+    public UpdateEventTechAspectDtoValidator()
+    {
+        RuleFor(dto => dto)
+            .Must(dto => dto.Repository is not null ||
+                dto.Classification is not null ||
+                dto.Participation is not null ||
+                dto.Prize is not null)
+            .WithMessage("At least one Tech aspect update group must be provided.");
+        RuleFor(dto => dto.Repository)
+            .Must(group => group is null || group.GithubRepoUrl.HasValue)
+            .WithMessage("The repository group must contain GithubRepoUrl.");
+        RuleFor(dto => dto.Classification)
+            .Must(group => group is null ||
+                group.HackathonTrack.HasValue ||
+                group.SkillLevel.HasValue ||
+                group.TechStackTags.HasValue)
+            .WithMessage("The classification group must contain at least one supplied field.");
+        RuleFor(dto => dto.Participation)
+            .Must(group => group is null ||
+                group.RequiresLaptop.HasValue ||
+                group.IsCodingCompetition.HasValue)
+            .WithMessage("The participation group must contain at least one supplied field.");
+        RuleFor(dto => dto.Prize)
+            .Must(group => group is null ||
+                group.MaxTeamSize.HasValue ||
+                group.PrizePool.HasValue ||
+                group.PrizeCurrencyCode.HasValue)
+            .WithMessage("The prize group must contain at least one supplied field.");
+    }
+}

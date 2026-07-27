@@ -67,38 +67,73 @@ public sealed class EventAspectController : ExploreControllerBase
     }
 
     /// <summary>
-    /// Create or update the Islamic aspect for an event.
+    /// Create the Islamic aspect for an event.
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}/aspects/islamic", Name = RouteNames.UpsertEventIslamicAspect)]
-    [EndpointSummary("Create/Update Event Islamic Aspect")]
-    [EndpointDescription("Creates or updates the Islamic-specific characteristics of an event. " +
+    [HttpPost("{id:guid}/aspects/islamic", Name = RouteNames.CreateEventIslamicAspect)]
+    [EndpointSummary("Create Event Islamic Aspect")]
+    [EndpointDescription("Creates the Islamic-specific characteristics of an event. " +
         "Includes Madhab, prayer-based scheduling, gender segregation mode, and language settings.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateIslamicAspect(
+        Guid id,
+        [FromBody] CreateUpdateIslamicAspectDto aspectDto,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new CreateEventIslamicAspectCommand
+        {
+            EventId = id,
+            AspectDto = aspectDto
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            if (response.FailureCode == "event_not_found")
+                return this.ToNotFoundProblem(EventNotFoundProblem);
+
+            if (response.FailureCode == "event_islamic_aspect_exists")
+                return this.ToCommandConflictProblem(
+                    response,
+                    "Event Islamic aspect conflict",
+                    "Islamic aspect already exists.");
+
+            return this.ToCommandValidationProblem(response, IslamicAspectValidationProblem);
+        }
+
+        return CreatedAtRoute(RouteNames.GetEventIslamicAspect, new { id }, response);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPatch("{id:guid}/aspects/islamic", Name = RouteNames.UpdateEventIslamicAspect)]
+    [EndpointSummary("Update Event Islamic Aspect")]
+    [EndpointDescription("Partially updates grouped Islamic-specific characteristics for an existing event aspect.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpsertIslamicAspect(
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateIslamicAspect(
         Guid id,
-        [FromBody] CreateUpdateIslamicAspectDto aspectDto,
+        [FromBody] UpdateEventIslamicAspectDto aspectDto,
         CancellationToken cancellationToken = default)
     {
-        var command = new UpsertEventIslamicAspectCommand
+        var response = await _mediator.Send(new UpdateEventIslamicAspectCommand
         {
             EventId = id,
             AspectDto = aspectDto
-        };
-
-        var response = await _mediator.Send(command, cancellationToken);
+        }, cancellationToken);
 
         if (!response.Success)
         {
-            if (response.Message == "Event not found.")
-            {
-                return this.ToNotFoundProblem(EventNotFoundProblem);
-            }
+            if (response.FailureCode is "event_not_found" or "event_islamic_aspect_not_found")
+                return this.ToNotFoundProblem(EventNotFoundProblem, response.Message);
 
             return this.ToCommandValidationProblem(response, IslamicAspectValidationProblem);
         }
@@ -147,38 +182,73 @@ public sealed class EventAspectController : ExploreControllerBase
     }
 
     /// <summary>
-    /// Create or update the Tech aspect for an event.
+    /// Create the Tech aspect for an event.
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}/aspects/tech", Name = RouteNames.UpsertEventTechAspect)]
-    [EndpointSummary("Create/Update Event Tech Aspect")]
-    [EndpointDescription("Creates or updates the tech/developer-specific characteristics of an event. " +
+    [HttpPost("{id:guid}/aspects/tech", Name = RouteNames.CreateEventTechAspect)]
+    [EndpointSummary("Create Event Tech Aspect")]
+    [EndpointDescription("Creates the tech/developer-specific characteristics of an event. " +
         "Includes skill level requirements, hackathon track, tech stack tags, and competition details.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateTechAspect(
+        Guid id,
+        [FromBody] CreateUpdateTechAspectDto aspectDto,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new CreateEventTechAspectCommand
+        {
+            EventId = id,
+            AspectDto = aspectDto
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            if (response.FailureCode == "event_not_found")
+                return this.ToNotFoundProblem(EventNotFoundProblem);
+
+            if (response.FailureCode == "event_tech_aspect_exists")
+                return this.ToCommandConflictProblem(
+                    response,
+                    "Event Tech aspect conflict",
+                    "Tech aspect already exists.");
+
+            return this.ToCommandValidationProblem(response, TechAspectValidationProblem);
+        }
+
+        return CreatedAtRoute(RouteNames.GetEventTechAspect, new { id }, response);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPatch("{id:guid}/aspects/tech", Name = RouteNames.UpdateEventTechAspect)]
+    [EndpointSummary("Update Event Tech Aspect")]
+    [EndpointDescription("Partially updates grouped tech-specific characteristics for an existing event aspect.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpsertTechAspect(
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateTechAspect(
         Guid id,
-        [FromBody] CreateUpdateTechAspectDto aspectDto,
+        [FromBody] UpdateEventTechAspectDto aspectDto,
         CancellationToken cancellationToken = default)
     {
-        var command = new UpsertEventTechAspectCommand
+        var response = await _mediator.Send(new UpdateEventTechAspectCommand
         {
             EventId = id,
             AspectDto = aspectDto
-        };
-
-        var response = await _mediator.Send(command, cancellationToken);
+        }, cancellationToken);
 
         if (!response.Success)
         {
-            if (response.Message == "Event not found.")
-            {
-                return this.ToNotFoundProblem(EventNotFoundProblem);
-            }
+            if (response.FailureCode is "event_not_found" or "event_tech_aspect_not_found")
+                return this.ToNotFoundProblem(EventNotFoundProblem, response.Message);
 
             return this.ToCommandValidationProblem(response, TechAspectValidationProblem);
         }

@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for EventAspectService Islamic and Tech aspect operations.
-// Verifies Get/Upsert/Delete success and expected error-handling contracts.
+// Verifies Get/Create/Update/Delete success and expected error-handling contracts.
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -86,10 +86,10 @@ public class EventAspectServiceTests
 
     #endregion
 
-    #region Upsert Aspect Tests
+    #region Create and Update Aspect Tests
 
     [Test]
-    public async Task UpsertIslamicAspectAsync_ReturnsResponse_WhenApiSucceeds()
+    public async Task CreateIslamicAspectAsync_ReturnsResponse_WhenApiSucceeds()
     {
         // Arrange
         var eventId = Guid.NewGuid();
@@ -101,10 +101,10 @@ public class EventAspectServiceTests
         };
         var expected = new BaseCommandResponseOfGuid { Success = true, Id = eventId, Message = "Saved" };
 
-        _apiClient.UpsertEventIslamicAspectAsync(eventId, dto).Returns(expected);
+        _apiClient.CreateEventIslamicAspectAsync(eventId, dto).Returns(expected);
 
         // Act
-        var result = await _service.UpsertIslamicAspectAsync(eventId, dto);
+        var result = await _service.CreateIslamicAspectAsync(eventId, dto);
 
         // Assert
         await Assert.That(result).IsNotNull();
@@ -112,23 +112,29 @@ public class EventAspectServiceTests
     }
 
     [Test]
-    public async Task UpsertIslamicAspectAsync_ReturnsNull_WhenApiErrorOccurs()
+    public async Task UpdateIslamicAspectAsync_ReturnsNull_WhenApiErrorOccurs()
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var dto = new CreateUpdateIslamicAspectDto { MadhabId = 1 };
+        var dto = new UpdateEventIslamicAspectDto
+        {
+            Jurisprudence = new UpdateEventIslamicJurisprudenceDto
+            {
+                MadhabId = new OptionalUpdateOfint { HasValue = true, Value = 1 }
+            }
+        };
 
-        _apiClient.UpsertEventIslamicAspectAsync(eventId, dto).ThrowsAsync(new ApiException("Error", 500, null, null, null));
+        _apiClient.UpdateEventIslamicAspectAsync(eventId, dto).ThrowsAsync(new ApiException("Error", 500, null, null, null));
 
         // Act
-        var result = await _service.UpsertIslamicAspectAsync(eventId, dto);
+        var result = await _service.UpdateIslamicAspectAsync(eventId, dto);
 
         // Assert
         await Assert.That(result).IsNull();
     }
 
     [Test]
-    public async Task UpsertTechAspectAsync_ReturnsResponse_WhenApiSucceeds()
+    public async Task CreateTechAspectAsync_ReturnsResponse_WhenApiSucceeds()
     {
         // Arrange
         var eventId = Guid.NewGuid();
@@ -141,10 +147,10 @@ public class EventAspectServiceTests
         };
         var expected = new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid(), Message = "Saved" };
 
-        _apiClient.UpsertEventTechAspectAsync(eventId, dto).Returns(expected);
+        _apiClient.CreateEventTechAspectAsync(eventId, dto).Returns(expected);
 
         // Act
-        var result = await _service.UpsertTechAspectAsync(eventId, dto);
+        var result = await _service.CreateTechAspectAsync(eventId, dto);
 
         // Assert
         await Assert.That(result).IsNotNull();
@@ -152,16 +158,19 @@ public class EventAspectServiceTests
     }
 
     [Test]
-    public async Task UpsertTechAspectAsync_ReturnsNull_WhenGeneralExceptionOccurs()
+    public async Task UpdateTechAspectAsync_ReturnsNull_WhenGeneralExceptionOccurs()
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var dto = new CreateUpdateTechAspectDto { RequiresLaptop = false };
+        var dto = new UpdateEventTechAspectDto
+        {
+            Participation = new UpdateEventTechParticipationDto { RequiresLaptop = false }
+        };
 
-        _apiClient.UpsertEventTechAspectAsync(eventId, dto).ThrowsAsync(new InvalidOperationException("Unexpected"));
+        _apiClient.UpdateEventTechAspectAsync(eventId, dto).ThrowsAsync(new InvalidOperationException("Unexpected"));
 
         // Act
-        var result = await _service.UpsertTechAspectAsync(eventId, dto);
+        var result = await _service.UpdateTechAspectAsync(eventId, dto);
 
         // Assert
         await Assert.That(result).IsNull();

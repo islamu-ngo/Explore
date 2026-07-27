@@ -70,6 +70,7 @@ public static class RouteNames
     public const string CreateEventPublicAction = "CreateEventPublicAction";
     public const string UpdateEventPublicAction = "UpdateEventPublicAction";
     public const string DeleteEventPublicAction = "DeleteEventPublicAction";
+    public const string ConfigureEventParticipation = "ConfigureEventParticipation";
     public const string GetEventOrganizerClaims = "GetEventOrganizerClaims";
     public const string GetEventOrganizerClaim = "GetEventOrganizerClaim";
     public const string GetClaimantOrganizerClaims = "GetClaimantOrganizerClaims";
@@ -437,6 +438,7 @@ public static class RouteNames
     public const string PatchTenantBrandingSettingsDocument = "PatchTenantBrandingSettingsDocument";
     public const string GetTenantStorageSettings = "GetTenantStorageSettings";
     public const string PatchTenantStorageSettings = "PatchTenantStorageSettings";
+    public const string TestTenantStorageConnection = "TestTenantStorageConnection";
 
     #endregion
 
@@ -694,10 +696,12 @@ public static class RouteNames
     #region Event Aspect Routes
 
     public const string GetEventIslamicAspect = "GetEventIslamicAspect";
-    public const string UpsertEventIslamicAspect = "UpsertEventIslamicAspect";
+    public const string CreateEventIslamicAspect = "CreateEventIslamicAspect";
+    public const string UpdateEventIslamicAspect = "UpdateEventIslamicAspect";
     public const string DeleteEventIslamicAspect = "DeleteEventIslamicAspect";
     public const string GetEventTechAspect = "GetEventTechAspect";
-    public const string UpsertEventTechAspect = "UpsertEventTechAspect";
+    public const string CreateEventTechAspect = "CreateEventTechAspect";
+    public const string UpdateEventTechAspect = "UpdateEventTechAspect";
     public const string DeleteEventTechAspect = "DeleteEventTechAspect";
 
     #endregion

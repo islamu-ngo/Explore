@@ -60,3 +60,32 @@ public class CreateUpdateIslamicAspectDtoValidator : AbstractValidator<CreateUpd
             .WithMessage("Primary language not found.");
     }
 }
+
+public sealed class UpdateEventIslamicAspectDtoValidator : AbstractValidator<UpdateEventIslamicAspectDto>
+{
+    public UpdateEventIslamicAspectDtoValidator()
+    {
+        RuleFor(dto => dto)
+            .Must(dto => dto.Jurisprudence is not null ||
+                dto.PrayerSchedule is not null ||
+                dto.Participation is not null ||
+                dto.Language is not null)
+            .WithMessage("At least one Islamic aspect update group must be provided.");
+        RuleFor(dto => dto.Jurisprudence)
+            .Must(group => group is null || group.MadhabId.HasValue)
+            .WithMessage("The jurisprudence group must contain MadhabId.");
+        RuleFor(dto => dto.PrayerSchedule)
+            .Must(group => group is null ||
+                group.ReferencePrayer.HasValue ||
+                group.PrayerTimeOffset.HasValue)
+            .WithMessage("The prayer schedule group must contain at least one supplied field.");
+        RuleFor(dto => dto.Participation)
+            .Must(group => group is null ||
+                group.GenderMode.HasValue ||
+                group.IncludesQuranRecitation.HasValue)
+            .WithMessage("The participation group must contain at least one supplied field.");
+        RuleFor(dto => dto.Language)
+            .Must(group => group is null || group.PrimaryLanguageId.HasValue)
+            .WithMessage("The language group must contain PrimaryLanguageId.");
+    }
+}

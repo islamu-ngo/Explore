@@ -202,7 +202,29 @@
 
         try
         {
-            var response = await EventAspectService.UpsertIslamicAspectAsync(EventId, _model);
+            var response = IsNew
+                ? await EventAspectService.CreateIslamicAspectAsync(EventId, _model)
+                : await EventAspectService.UpdateIslamicAspectAsync(EventId, new UpdateEventIslamicAspectDto
+                {
+                    Jurisprudence = new UpdateEventIslamicJurisprudenceDto
+                    {
+                        MadhabId = new OptionalUpdateOfint { HasValue = true, Value = _model.MadhabId }
+                    },
+                    PrayerSchedule = new UpdateEventIslamicPrayerScheduleDto
+                    {
+                        ReferencePrayer = new OptionalUpdateOfPrayerTime { HasValue = true, Value = _model.ReferencePrayer },
+                        PrayerTimeOffset = new OptionalUpdateOfint { HasValue = true, Value = _model.PrayerTimeOffset }
+                    },
+                    Participation = new UpdateEventIslamicParticipationDto
+                    {
+                        GenderMode = _model.GenderMode,
+                        IncludesQuranRecitation = _model.IncludesQuranRecitation
+                    },
+                    Language = new UpdateEventIslamicLanguageDto
+                    {
+                        PrimaryLanguageId = new OptionalUpdateOfint { HasValue = true, Value = _model.PrimaryLanguageId }
+                    }
+                });
 
             if (response?.Success == true)
             {

@@ -3,14 +3,17 @@
 
 namespace Explore.Application.Features.EventAspects.Handlers.Commands;
 
+using Microsoft.Extensions.Caching.Hybrid;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.EventAspects;
 using Explore.Application.DTOs.EventAspects.Validators;
 using Explore.Application.Features.EventAspects.Requests.Commands;
 using Explore.Application.Responses;
@@ -28,6 +31,7 @@ public class UpsertEventIslamicAspectCommandHandler : IRequestHandler<UpsertEven
     private readonly ILanguageRepository _languageRepository;
     private readonly IMapper _mapper;
     private readonly ICurrentUserService _currentUserService;
+    private readonly HybridCache _cache;
 
     public UpsertEventIslamicAspectCommandHandler(
         IEventRepository eventRepository,
@@ -35,7 +39,8 @@ public class UpsertEventIslamicAspectCommandHandler : IRequestHandler<UpsertEven
         IMadhabRepository madhabRepository,
         ILanguageRepository languageRepository,
         IMapper mapper,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        HybridCache cache)
     {
         _eventRepository = eventRepository;
         _islamicAspectRepository = islamicAspectRepository;
@@ -43,15 +48,15 @@ public class UpsertEventIslamicAspectCommandHandler : IRequestHandler<UpsertEven
         _languageRepository = languageRepository;
         _mapper = mapper;
         _currentUserService = currentUserService;
+        _cache = cache;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpsertEventIslamicAspectCommand request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
 
-        // Verify event exists
-        var eventExists = await _eventRepository.Exists(request.EventId);
-        if (!eventExists)
+        var parentEvent = await _eventRepository.GetById(request.EventId);
+        if (parentEvent is null)
         {
             response.Success = false;
             response.Message = "Event not found.";
@@ -79,6 +84,10 @@ public class UpsertEventIslamicAspectCommandHandler : IRequestHandler<UpsertEven
 
         // Upsert through repository
         aspect = await _islamicAspectRepository.Upsert(aspect);
+        await _cache.RemoveAsync($"event:detail:{request.EventId}", cancellationToken);
+        await _cache.RemoveByTagAsync(
+            CacheTags.EventListByTenant(parentEvent.TenantId),
+            cancellationToken);
 
         response.Success = true;
         response.Id = aspect.Id;

@@ -74,41 +74,81 @@ public class EventAspectService : IEventAspectService
     }
 
     /// <inheritdoc />
-    public async Task<BaseCommandResponseOfGuid?> UpsertIslamicAspectAsync(Guid eventId, CreateUpdateIslamicAspectDto dto)
+    public async Task<BaseCommandResponseOfGuid?> CreateIslamicAspectAsync(Guid eventId, CreateUpdateIslamicAspectDto dto)
     {
         try
         {
-            return await _apiClient.UpsertEventIslamicAspectAsync(eventId, dto);
+            return await _apiClient.CreateEventIslamicAspectAsync(eventId, dto);
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "API error upserting Islamic aspect for event {EventId}. Status: {StatusCode}",
+            _logger.LogError(ex, "API error creating Islamic aspect for event {EventId}. Status: {StatusCode}",
                 eventId, ex.StatusCode);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error upserting Islamic aspect for event {EventId}", eventId);
+            _logger.LogError(ex, "Error creating Islamic aspect for event {EventId}", eventId);
             return null;
         }
     }
 
     /// <inheritdoc />
-    public async Task<BaseCommandResponseOfGuid?> UpsertTechAspectAsync(Guid eventId, CreateUpdateTechAspectDto dto)
+    public async Task<BaseCommandResponseOfGuid?> UpdateIslamicAspectAsync(Guid eventId, UpdateEventIslamicAspectDto dto)
     {
         try
         {
-            return await _apiClient.UpsertEventTechAspectAsync(eventId, dto);
+            return await _apiClient.UpdateEventIslamicAspectAsync(eventId, dto);
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "API error upserting Tech aspect for event {EventId}. Status: {StatusCode}",
+            _logger.LogError(ex, "API error updating Islamic aspect for event {EventId}. Status: {StatusCode}",
                 eventId, ex.StatusCode);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error upserting Tech aspect for event {EventId}", eventId);
+            _logger.LogError(ex, "Error updating Islamic aspect for event {EventId}", eventId);
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<BaseCommandResponseOfGuid?> CreateTechAspectAsync(Guid eventId, CreateUpdateTechAspectDto dto)
+    {
+        try
+        {
+            return await _apiClient.CreateEventTechAspectAsync(eventId, dto);
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "API error creating Tech aspect for event {EventId}. Status: {StatusCode}",
+                eventId, ex.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating Tech aspect for event {EventId}", eventId);
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<BaseCommandResponseOfGuid?> UpdateTechAspectAsync(Guid eventId, UpdateEventTechAspectDto dto)
+    {
+        try
+        {
+            return await _apiClient.UpdateEventTechAspectAsync(eventId, dto);
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "API error updating Tech aspect for event {EventId}. Status: {StatusCode}",
+                eventId, ex.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating Tech aspect for event {EventId}", eventId);
             return null;
         }
     }

@@ -8,6 +8,7 @@ using Explore.API.Hateoas;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.OutputCaching;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -39,17 +40,27 @@ public class EventAspectControllerTests
     }
 
     [Test]
-    public async Task UpsertRoutes_PreserveAuthenticatedAspectContracts()
+    public async Task CreateAndUpdateRoutes_UseAuthenticatedAspectContracts()
     {
-        await AssertUpsertRoute(
-            nameof(EventAspectController.UpsertIslamicAspect),
+        await AssertWriteRoute<HttpPostAttribute>(
+            nameof(EventAspectController.CreateIslamicAspect),
             "{id:guid}/aspects/islamic",
-            RouteNames.UpsertEventIslamicAspect);
+            RouteNames.CreateEventIslamicAspect);
 
-        await AssertUpsertRoute(
-            nameof(EventAspectController.UpsertTechAspect),
+        await AssertWriteRoute<HttpPatchAttribute>(
+            nameof(EventAspectController.UpdateIslamicAspect),
+            "{id:guid}/aspects/islamic",
+            RouteNames.UpdateEventIslamicAspect);
+
+        await AssertWriteRoute<HttpPostAttribute>(
+            nameof(EventAspectController.CreateTechAspect),
             "{id:guid}/aspects/tech",
-            RouteNames.UpsertEventTechAspect);
+            RouteNames.CreateEventTechAspect);
+
+        await AssertWriteRoute<HttpPatchAttribute>(
+            nameof(EventAspectController.UpdateTechAspect),
+            "{id:guid}/aspects/tech",
+            RouteNames.UpdateEventTechAspect);
     }
 
     [Test]
@@ -70,10 +81,12 @@ public class EventAspectControllerTests
     public async Task EventController_NoLongerOwnsAspectActions()
     {
         await Assert.That(typeof(EventController).GetMethod("GetIslamicAspect")).IsNull();
-        await Assert.That(typeof(EventController).GetMethod("UpsertIslamicAspect")).IsNull();
+        await Assert.That(typeof(EventController).GetMethod("CreateIslamicAspect")).IsNull();
+        await Assert.That(typeof(EventController).GetMethod("UpdateIslamicAspect")).IsNull();
         await Assert.That(typeof(EventController).GetMethod("DeleteIslamicAspect")).IsNull();
         await Assert.That(typeof(EventController).GetMethod("GetTechAspect")).IsNull();
-        await Assert.That(typeof(EventController).GetMethod("UpsertTechAspect")).IsNull();
+        await Assert.That(typeof(EventController).GetMethod("CreateTechAspect")).IsNull();
+        await Assert.That(typeof(EventController).GetMethod("UpdateTechAspect")).IsNull();
         await Assert.That(typeof(EventController).GetMethod("DeleteTechAspect")).IsNull();
     }
 
@@ -92,10 +105,11 @@ public class EventAspectControllerTests
         await AssertProducesProblem(action, StatusCodes.Status404NotFound);
     }
 
-    private static async Task AssertUpsertRoute(string actionName, string template, string routeName)
+    private static async Task AssertWriteRoute<TAttribute>(string actionName, string template, string routeName)
+        where TAttribute : HttpMethodAttribute
     {
         var action = typeof(EventAspectController).GetMethod(actionName)!;
-        var route = action.GetCustomAttribute<HttpPutAttribute>()!;
+        var route = action.GetCustomAttribute<TAttribute>()!;
         var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
 
         await Assert.That(route.Template).IsEqualTo(template);

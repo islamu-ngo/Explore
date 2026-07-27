@@ -189,7 +189,32 @@
                 _model.PrizeCurrencyCode = null;
             }
 
-            var response = await EventAspectService.UpsertTechAspectAsync(EventId, _model);
+            var response = IsNew
+                ? await EventAspectService.CreateTechAspectAsync(EventId, _model)
+                : await EventAspectService.UpdateTechAspectAsync(EventId, new UpdateEventTechAspectDto
+                {
+                    Repository = new UpdateEventTechRepositoryDto
+                    {
+                        GithubRepoUrl = new OptionalUpdateOfstring { HasValue = true, Value = _model.GithubRepoUrl }
+                    },
+                    Classification = new UpdateEventTechClassificationDto
+                    {
+                        HackathonTrack = new OptionalUpdateOfstring { HasValue = true, Value = _model.HackathonTrack },
+                        SkillLevel = _model.SkillLevel,
+                        TechStackTags = new OptionalUpdateOfstring { HasValue = true, Value = _model.TechStackTags }
+                    },
+                    Participation = new UpdateEventTechParticipationDto
+                    {
+                        RequiresLaptop = _model.RequiresLaptop,
+                        IsCodingCompetition = _model.IsCodingCompetition
+                    },
+                    Prize = new UpdateEventTechPrizeDto
+                    {
+                        MaxTeamSize = new OptionalUpdateOfint { HasValue = true, Value = _model.MaxTeamSize },
+                        PrizePool = new OptionalUpdateOfdecimal { HasValue = true, Value = _model.PrizePool },
+                        PrizeCurrencyCode = new OptionalUpdateOfstring { HasValue = true, Value = _model.PrizeCurrencyCode }
+                    }
+                });
 
             if (response?.Success == true)
             {

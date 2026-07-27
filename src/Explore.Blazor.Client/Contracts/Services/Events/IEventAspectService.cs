@@ -22,14 +22,24 @@ public interface IEventAspectService
     Task<EventTechAspectDto?> GetTechAspectAsync(Guid eventId);
 
     /// <summary>
-    /// Creates or updates the Islamic aspect for an event.
+    /// Creates the Islamic aspect for an event.
     /// </summary>
-    Task<BaseCommandResponseOfGuid?> UpsertIslamicAspectAsync(Guid eventId, CreateUpdateIslamicAspectDto dto);
+    Task<BaseCommandResponseOfGuid?> CreateIslamicAspectAsync(Guid eventId, CreateUpdateIslamicAspectDto dto);
 
     /// <summary>
-    /// Creates or updates the Tech aspect for an event.
+    /// Updates the Islamic aspect for an event.
     /// </summary>
-    Task<BaseCommandResponseOfGuid?> UpsertTechAspectAsync(Guid eventId, CreateUpdateTechAspectDto dto);
+    Task<BaseCommandResponseOfGuid?> UpdateIslamicAspectAsync(Guid eventId, UpdateEventIslamicAspectDto dto);
+
+    /// <summary>
+    /// Creates the Tech aspect for an event.
+    /// </summary>
+    Task<BaseCommandResponseOfGuid?> CreateTechAspectAsync(Guid eventId, CreateUpdateTechAspectDto dto);
+
+    /// <summary>
+    /// Updates the Tech aspect for an event.
+    /// </summary>
+    Task<BaseCommandResponseOfGuid?> UpdateTechAspectAsync(Guid eventId, UpdateEventTechAspectDto dto);
 
     /// <summary>
     /// Deletes the Islamic aspect from an event.

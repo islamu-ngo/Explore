@@ -3,6 +3,7 @@
 
 namespace Explore.Application.DTOs.EventAspects;
 
+using Explore.Application.Models.Common;
 using Explore.Domain;
 
 /// <summary>
@@ -36,4 +37,37 @@ public class CreateUpdateTechAspectDto
     public int? MaxTeamSize { get; set; }
     public decimal? PrizePool { get; set; }
     public string? PrizeCurrencyCode { get; set; }
+}
+
+public sealed class UpdateEventTechAspectDto
+{
+    public UpdateEventTechRepositoryDto? Repository { get; set; }
+    public UpdateEventTechClassificationDto? Classification { get; set; }
+    public UpdateEventTechParticipationDto? Participation { get; set; }
+    public UpdateEventTechPrizeDto? Prize { get; set; }
+}
+
+public sealed class UpdateEventTechRepositoryDto
+{
+    public OptionalUpdate<string?> GithubRepoUrl { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
+
+public sealed class UpdateEventTechClassificationDto
+{
+    public OptionalUpdate<string?> HackathonTrack { get; set; } = OptionalUpdate<string?>.Unspecified();
+    public SkillLevel? SkillLevel { get; set; }
+    public OptionalUpdate<string?> TechStackTags { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
+
+public sealed class UpdateEventTechParticipationDto
+{
+    public bool? RequiresLaptop { get; set; }
+    public bool? IsCodingCompetition { get; set; }
+}
+
+public sealed class UpdateEventTechPrizeDto
+{
+    public OptionalUpdate<int?> MaxTeamSize { get; set; } = OptionalUpdate<int?>.Unspecified();
+    public OptionalUpdate<decimal?> PrizePool { get; set; } = OptionalUpdate<decimal?>.Unspecified();
+    public OptionalUpdate<string?> PrizeCurrencyCode { get; set; } = OptionalUpdate<string?>.Unspecified();
 }

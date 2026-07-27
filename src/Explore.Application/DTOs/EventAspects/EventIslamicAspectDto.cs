@@ -3,6 +3,7 @@
 
 namespace Explore.Application.DTOs.EventAspects;
 
+using Explore.Application.Models.Common;
 using Explore.Domain;
 
 /// <summary>
@@ -32,4 +33,34 @@ public class CreateUpdateIslamicAspectDto
     public GenderSegregationMode GenderMode { get; set; } = GenderSegregationMode.Mixed;
     public bool IncludesQuranRecitation { get; set; }
     public int? PrimaryLanguageId { get; set; }
+}
+
+public sealed class UpdateEventIslamicAspectDto
+{
+    public UpdateEventIslamicJurisprudenceDto? Jurisprudence { get; set; }
+    public UpdateEventIslamicPrayerScheduleDto? PrayerSchedule { get; set; }
+    public UpdateEventIslamicParticipationDto? Participation { get; set; }
+    public UpdateEventIslamicLanguageDto? Language { get; set; }
+}
+
+public sealed class UpdateEventIslamicJurisprudenceDto
+{
+    public OptionalUpdate<int?> MadhabId { get; set; } = OptionalUpdate<int?>.Unspecified();
+}
+
+public sealed class UpdateEventIslamicPrayerScheduleDto
+{
+    public OptionalUpdate<PrayerTime?> ReferencePrayer { get; set; } = OptionalUpdate<PrayerTime?>.Unspecified();
+    public OptionalUpdate<int?> PrayerTimeOffset { get; set; } = OptionalUpdate<int?>.Unspecified();
+}
+
+public sealed class UpdateEventIslamicParticipationDto
+{
+    public GenderSegregationMode? GenderMode { get; set; }
+    public bool? IncludesQuranRecitation { get; set; }
+}
+
+public sealed class UpdateEventIslamicLanguageDto
+{
+    public OptionalUpdate<int?> PrimaryLanguageId { get; set; } = OptionalUpdate<int?>.Unspecified();
 }

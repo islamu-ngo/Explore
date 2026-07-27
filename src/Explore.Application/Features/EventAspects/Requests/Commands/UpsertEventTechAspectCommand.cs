@@ -27,3 +27,19 @@ public class UpsertEventTechAspectCommand : IRequest<BaseCommandResponse<Guid>>,
 
     string? ISecureRequest.ResourceId => EventId.ToString();
 }
+
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
+public sealed class CreateEventTechAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+{
+    public Guid EventId { get; init; }
+    public required CreateUpdateTechAspectDto AspectDto { get; init; }
+    string? ISecureRequest.ResourceId => EventId.ToString();
+}
+
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
+public sealed class UpdateEventTechAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+{
+    public Guid EventId { get; init; }
+    public required UpdateEventTechAspectDto AspectDto { get; init; }
+    string? ISecureRequest.ResourceId => EventId.ToString();
+}
