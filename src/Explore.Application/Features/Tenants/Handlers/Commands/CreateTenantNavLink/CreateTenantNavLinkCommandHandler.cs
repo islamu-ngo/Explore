@@ -10,7 +10,9 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Tenant.Validators;
 using Explore.Application.Features.Tenants.Requests.Commands.CreateTenantNavLink;
 using Explore.Application.Responses;
+using Explore.Application.Settings;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using MediatR;
 
 namespace Explore.Application.Features.Tenants.Handlers.Commands.CreateTenantNavLink;
@@ -24,15 +26,18 @@ public class CreateTenantNavLinkCommandHandler : IRequestHandler<CreateTenantNav
 {
     private readonly ITenantNavigationLinkRepository _navigationLinkRepository;
     private readonly ITenantContext _tenantContext;
+    private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly IMapper _mapper;
 
     public CreateTenantNavLinkCommandHandler(
         ITenantNavigationLinkRepository navigationLinkRepository,
         ITenantContext tenantContext,
+        IHierarchicalSettingsResolver settingsResolver,
         IMapper mapper)
     {
         _navigationLinkRepository = navigationLinkRepository;
         _tenantContext = tenantContext;
+        _settingsResolver = settingsResolver;
         _mapper = mapper;
     }
 
@@ -41,7 +46,11 @@ public class CreateTenantNavLinkCommandHandler : IRequestHandler<CreateTenantNav
         var response = new BaseCommandResponse<Guid>();
 
         // Validate the DTO
-        var validator = new CreateTenantNavigationLinkDtoValidator();
+        bool requireHttps = await _settingsResolver.ResolveAsync<bool>(
+            GovernanceSettingKeys.Security.RequireHttpsExternalUrls,
+            new SettingContext(),
+            cancellationToken);
+        var validator = new CreateTenantNavigationLinkDtoValidator(requireHttps);
         var validationResult = await validator.ValidateAsync(request.NavigationLinkDto, cancellationToken);
 
         if (!validationResult.IsValid)

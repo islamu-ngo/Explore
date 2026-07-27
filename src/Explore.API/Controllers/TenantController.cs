@@ -8,6 +8,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 using Explore.Application.Features.Tenants.Requests.Commands;
@@ -55,15 +56,21 @@ public class TenantController : ExploreControllerBase
         "Tenant navigation link validation failed",
         "Tenant navigation link reorder failed.");
 
-    private static readonly ApiNotFoundProblemDescriptor DeleteNavigationNotFoundProblem = new(
+    private static readonly ApiNotFoundProblemDescriptor TenantNotFoundProblem = new(
+        "Tenant not found",
+        "Tenant not found.");
+
+    private static readonly ApiNotFoundProblemDescriptor NavigationNotFoundProblem = new(
         "Tenant navigation link not found",
         "Tenant navigation link not found.");
 
     private readonly IMediator _mediator;
+    private readonly ITenantContext _tenantContext;
 
-    public TenantController(IMediator mediator)
+    public TenantController(IMediator mediator, ITenantContext tenantContext)
     {
         _mediator = mediator;
+        _tenantContext = tenantContext;
     }
 
     // GET: api/tenant
@@ -135,28 +142,25 @@ public class TenantController : ExploreControllerBase
     }
 
 
-    // PUT: api/tenant/{id}
+    // PATCH: api/tenant/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateTenant)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateTenant)]
     [EndpointSummary("Update Tenant")]
-    [EndpointDescription("Update an existing tenant")]
+    [EndpointDescription("Partially update tenant metadata. Lifecycle transitions use dedicated control-plane actions.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateTenantDto dto, CancellationToken cancellationToken = default)
     {
-        if (id != dto.Id)
-        {
-            return this.ToValidationProblem(UpdateValidationProblem, "Tenant ID mismatch.");
-        }
-
-        var command = new UpdateTenantCommand { TenantDto = dto };
+        var command = new UpdateTenantCommand { TenantId = id, Update = dto };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
-            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
+            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+                ? this.ToNotFoundProblem(TenantNotFoundProblem)
+                : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -219,12 +223,12 @@ public class TenantController : ExploreControllerBase
         return Ok(response);
     }
 
-    // PUT: api/tenant/navigation/{id}
+    // PATCH: api/tenant/navigation/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("navigation/{id:guid}", Name = RouteNames.UpdateTenantNavigationLink)]
+    [HttpPatch("navigation/{id:guid}", Name = RouteNames.UpdateTenantNavigationLink)]
     [EndpointSummary("Update Tenant Navigation Link")]
-    [EndpointDescription("Update an existing navigation link")]
+    [EndpointDescription("Partially update an existing navigation link; reorder remains a separate action.")]
     [ProducesResponseType(typeof(BaseCommandResponse<bool>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -234,17 +238,19 @@ public class TenantController : ExploreControllerBase
         [FromServices] IOutputCacheStore cacheStore,
         CancellationToken cancellationToken = default)
     {
-        if (id != dto.Id)
+        var command = new UpdateTenantNavLinkCommand
         {
-            return this.ToValidationProblem(UpdateNavigationValidationProblem, "Navigation link ID mismatch.");
-        }
-
-        var command = new UpdateTenantNavLinkCommand { NavigationLinkDto = dto };
+            NavigationLinkId = id,
+            TenantId = _tenantContext.TenantId,
+            Update = dto
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
-            return this.ToCommandValidationProblem(response, UpdateNavigationValidationProblem);
+            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+                ? this.ToNotFoundProblem(NavigationNotFoundProblem)
+                : this.ToCommandValidationProblem(response, UpdateNavigationValidationProblem);
         }
 
         // Invalidate cache
@@ -271,7 +277,7 @@ public class TenantController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return this.ToNotFoundProblem(DeleteNavigationNotFoundProblem);
+            return this.ToNotFoundProblem(NavigationNotFoundProblem);
         }
 
         // Invalidate cache

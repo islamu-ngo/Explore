@@ -18,7 +18,12 @@ public class UpdateTenantCommand : IRequest<BaseCommandResponse<Guid>>, ISecureR
     /// <summary>
     /// DTO containing the tenant data to update.
     /// </summary>
-    public UpdateTenantDto TenantDto { get; set; } = null!;
+    public Guid TenantId { get; set; }
+    public UpdateTenantDto Update { get; set; } = null!;
 
-    string? ISecureRequest.ResourceId => TenantDto.Id.ToString();
+    string? ISecureRequest.ResourceId => TenantId.ToString();
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["tenantId"] = TenantId.ToString("D")
+    };
 }

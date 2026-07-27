@@ -1,38 +1,39 @@
 using System;
 
+// ABOUTME: Wrapper DTO for partial tenant navigation-link updates using nullable property groups.
+// ABOUTME: Route and tenant context own identity; reorder remains a separate action.
+
+using Explore.Application.Models.Common;
+
 namespace Explore.Application.DTOs.Tenant;
 
 /// <summary>
-/// DTO for updating an existing tenant navigation link.
-/// Used in PUT endpoints to accept navigation link update requests.
+/// DTO for partially updating an existing tenant navigation link.
 /// </summary>
 public class UpdateTenantNavigationLinkDto
 {
-    /// <summary>
-    /// Unique identifier for the navigation link to update.
-    /// </summary>
-    public Guid Id { get; set; }
+    public UpdateTenantNavigationLinkLabelDto? Label { get; set; }
+    public UpdateTenantNavigationLinkUrlDto? Url { get; set; }
+    public UpdateTenantNavigationLinkIconDto? Icon { get; set; }
+    public UpdateTenantNavigationLinkOpenInNewTabDto? OpenInNewTab { get; set; }
+}
 
-    /// <summary>
-    /// Display label for the navigation link.
-    /// Required. Maximum 50 characters.
-    /// </summary>
-    public string Label { get; set; } = string.Empty;
+public class UpdateTenantNavigationLinkLabelDto
+{
+    public required string Value { get; set; }
+}
 
-    /// <summary>
-    /// URL or route that the navigation link points to.
-    /// Required. Maximum 500 characters.
-    /// </summary>
-    public string Url { get; set; } = string.Empty;
+public class UpdateTenantNavigationLinkUrlDto
+{
+    public required string Value { get; set; }
+}
 
-    /// <summary>
-    /// Optional icon identifier or CSS class for the navigation link.
-    /// Can be null if no icon is desired.
-    /// </summary>
-    public string? Icon { get; set; }
+public class UpdateTenantNavigationLinkIconDto
+{
+    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
+}
 
-    /// <summary>
-    /// Indicates whether the link should open in a new tab/window.
-    /// </summary>
-    public bool OpenInNewTab { get; set; }
+public class UpdateTenantNavigationLinkOpenInNewTabDto
+{
+    public bool? Value { get; set; }
 }

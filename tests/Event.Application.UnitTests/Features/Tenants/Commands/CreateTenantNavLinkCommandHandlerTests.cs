@@ -18,6 +18,7 @@ public class CreateTenantNavLinkCommandHandlerTests
 {
     private readonly ITenantNavigationLinkRepository _repository;
     private readonly ITenantContext _tenantContext;
+    private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly IMapper _mapper;
     private readonly CreateTenantNavLinkCommandHandler _handler;
     private readonly Guid _tenantId = Guid.NewGuid();
@@ -26,9 +27,15 @@ public class CreateTenantNavLinkCommandHandlerTests
     {
         _repository = Substitute.For<ITenantNavigationLinkRepository>();
         _tenantContext = Substitute.For<ITenantContext>();
+        _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _mapper = Substitute.For<IMapper>();
         _tenantContext.TenantId.Returns(_tenantId);
-        _handler = new CreateTenantNavLinkCommandHandler(_repository, _tenantContext, _mapper);
+        _settingsResolver.ResolveAsync<bool>(
+                Arg.Any<string>(),
+                Arg.Any<Explore.Application.Settings.SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        _handler = new CreateTenantNavLinkCommandHandler(_repository, _tenantContext, _settingsResolver, _mapper);
     }
 
     [Test]
@@ -203,5 +210,44 @@ public class CreateTenantNavLinkCommandHandlerTests
 
         // Assert
         await Assert.That(result.Success).IsTrue();
+    }
+
+    [Test]
+    public async Task Handle_RejectsHttpUrl_WhenHttpsIsRequired()
+    {
+        var dto = new CreateTenantNavigationLinkDto { Label = "Internal", Url = "http://internal.example" };
+
+        var result = await _handler.Handle(
+            new CreateTenantNavLinkCommand { NavigationLinkDto = dto },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _repository.DidNotReceive().Create(Arg.Any<TenantNavigationLink>());
+    }
+
+    [Test]
+    public async Task Handle_AllowsHttpUrl_WhenHttpsRequirementIsDisabled()
+    {
+        _settingsResolver.ResolveAsync<bool>(
+                Arg.Any<string>(),
+                Arg.Any<Explore.Application.Settings.SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+        var dto = new CreateTenantNavigationLinkDto { Label = "Internal", Url = "http://internal.example" };
+        var entity = new TenantNavigationLink
+        {
+            Id = Guid.NewGuid(),
+            Label = dto.Label,
+            Url = dto.Url
+        };
+        _mapper.Map<TenantNavigationLink>(dto).Returns(entity);
+        _repository.Create(Arg.Any<TenantNavigationLink>()).Returns(call => call.Arg<TenantNavigationLink>());
+
+        var result = await _handler.Handle(
+            new CreateTenantNavLinkCommand { NavigationLinkDto = dto },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _repository.Received(1).Create(Arg.Is<TenantNavigationLink>(link => link.Url == dto.Url));
     }
 }

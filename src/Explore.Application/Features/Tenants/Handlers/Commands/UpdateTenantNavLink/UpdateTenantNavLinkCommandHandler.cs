@@ -4,12 +4,13 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Tenant.Validators;
 using Explore.Application.Features.Tenants.Requests.Commands.UpdateTenantNavLink;
 using Explore.Application.Responses;
+using Explore.Application.Settings;
+using Explore.Domain.Constants;
 using MediatR;
 
 namespace Explore.Application.Features.Tenants.Handlers.Commands.UpdateTenantNavLink;
@@ -23,16 +24,16 @@ public class UpdateTenantNavLinkCommandHandler : IRequestHandler<UpdateTenantNav
 {
     private readonly ITenantNavigationLinkRepository _navigationLinkRepository;
     private readonly ITenantContext _tenantContext;
-    private readonly IMapper _mapper;
+    private readonly IHierarchicalSettingsResolver _settingsResolver;
 
     public UpdateTenantNavLinkCommandHandler(
         ITenantNavigationLinkRepository navigationLinkRepository,
         ITenantContext tenantContext,
-        IMapper mapper)
+        IHierarchicalSettingsResolver settingsResolver)
     {
         _navigationLinkRepository = navigationLinkRepository;
         _tenantContext = tenantContext;
-        _mapper = mapper;
+        _settingsResolver = settingsResolver;
     }
 
     public async Task<BaseCommandResponse<bool>> Handle(UpdateTenantNavLinkCommand request, CancellationToken cancellationToken)
@@ -40,8 +41,12 @@ public class UpdateTenantNavLinkCommandHandler : IRequestHandler<UpdateTenantNav
         var response = new BaseCommandResponse<bool>();
 
         // Validate the DTO
-        var validator = new UpdateTenantNavigationLinkDtoValidator();
-        var validationResult = await validator.ValidateAsync(request.NavigationLinkDto, cancellationToken);
+        bool requireHttps = await _settingsResolver.ResolveAsync<bool>(
+            GovernanceSettingKeys.Security.RequireHttpsExternalUrls,
+            new SettingContext(),
+            cancellationToken);
+        var validator = new UpdateTenantNavigationLinkDtoValidator(requireHttps);
+        var validationResult = await validator.ValidateAsync(request.Update, cancellationToken);
 
         if (!validationResult.IsValid)
         {
@@ -51,9 +56,16 @@ public class UpdateTenantNavLinkCommandHandler : IRequestHandler<UpdateTenantNav
             return response;
         }
 
-        // Verify the navigation link exists and belongs to the current tenant
+        if (request.TenantId != _tenantContext.TenantId)
+        {
+            response.Success = false;
+            response.Message = "Navigation link not found or does not belong to your tenant.";
+            response.Errors = ["Navigation link not found."];
+            return response;
+        }
+
         var existingLink = await _navigationLinkRepository.GetByIdAndTenantAsync(
-            request.NavigationLinkDto.Id,
+            request.NavigationLinkId,
             _tenantContext.TenantId,
             cancellationToken);
 
@@ -65,11 +77,19 @@ public class UpdateTenantNavLinkCommandHandler : IRequestHandler<UpdateTenantNav
             return response;
         }
 
-        // Update with normalized values: trim, blank icon → null
-        existingLink.Label = request.NavigationLinkDto.Label.Trim();
-        existingLink.Url = request.NavigationLinkDto.Url.Trim();
-        existingLink.Icon = string.IsNullOrWhiteSpace(request.NavigationLinkDto.Icon) ? null : request.NavigationLinkDto.Icon.Trim();
-        existingLink.OpenInNewTab = request.NavigationLinkDto.OpenInNewTab;
+        if (request.Update.Label is not null)
+            existingLink.Label = request.Update.Label.Value.Trim();
+
+        if (request.Update.Url is not null)
+            existingLink.Url = request.Update.Url.Value.Trim();
+
+        if (request.Update.Icon is { Value.HasValue: true })
+            existingLink.Icon = string.IsNullOrWhiteSpace(request.Update.Icon.Value.Value)
+                ? null
+                : request.Update.Icon.Value.Value.Trim();
+
+        if (request.Update.OpenInNewTab?.Value is bool openInNewTab)
+            existingLink.OpenInNewTab = openInNewTab;
 
         // Update the entity
         await _navigationLinkRepository.Update(existingLink);

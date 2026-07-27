@@ -26,7 +26,7 @@ public sealed class StudioEventNavigationTests : IDisposable
     [Arguments("edit", "Details")]
     [Arguments("publish-readiness", "Publication")]
     [Arguments("sessions", "Schedule")]
-    [Arguments("registration", "Registration")]
+    [Arguments("configure-participation", "Registration")]
     [Arguments("team", "Team")]
     [Arguments("delete", "Danger zone")]
     public async Task Render_ShowsSectionOnlyWhenMappedHalRelationExists(string relation, string expectedLabel)
@@ -44,16 +44,17 @@ public sealed class StudioEventNavigationTests : IDisposable
     }
 
     [Test]
-    public async Task Render_WithRegistrationPluralRelation_ShowsRegistrationSection()
+    public async Task Render_WithLegacyRegistrationRelation_OmitsRegistrationSection()
     {
-        var resource = CreateEvent("registrations");
+        var resource = CreateEvent("registration");
         _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
 
         var cut = _ctx.RenderMudComponent<StudioEventNavigation>(parameters => parameters
             .Add(component => component.EventId, resource.Id.Value));
 
-        cut.WaitForAssertion(() => cut.Find("[data-event-section='registration']"));
-        await Assert.That(cut.Markup).Contains("Registration");
+        cut.WaitForAssertion(() => cut.Find("[data-testid='studio-event-navigation']"));
+        await Assert.That(cut.FindAll("[data-event-section='registration']")).IsEmpty();
+        await Assert.That(cut.Markup).DoesNotContain("Registration");
     }
 
     [Test]

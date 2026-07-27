@@ -76,11 +76,13 @@
             {
                 var updateDto = new UpdateTenantNavigationLinkDto
                 {
-                    Id = ExistingLink.Id,
-                    Label = linkDto.Label,
-                    Url = linkDto.Url,
-                    Icon = linkDto.Icon,
-                    OpenInNewTab = linkDto.OpenInNewTab
+                    Label = new UpdateTenantNavigationLinkLabelDto { Value = linkDto.Label },
+                    Url = new UpdateTenantNavigationLinkUrlDto { Value = linkDto.Url },
+                    Icon = new UpdateTenantNavigationLinkIconDto
+                    {
+                        Value = new OptionalUpdateOfstring { HasValue = true, Value = linkDto.Icon }
+                    },
+                    OpenInNewTab = new UpdateTenantNavigationLinkOpenInNewTabDto { Value = linkDto.OpenInNewTab }
                 };
                 DialogReference?.Dismiss(DialogResult.Ok(updateDto));
             }

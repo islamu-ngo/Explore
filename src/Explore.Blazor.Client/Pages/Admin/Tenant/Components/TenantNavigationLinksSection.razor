@@ -162,7 +162,7 @@
 
         if (!result.Canceled && result.Data is UpdateTenantNavigationLinkDto updateDto)
         {
-            await UpdateLink(updateDto);
+            await UpdateLink(link.Id!.Value, updateDto);
         }
     }
 
@@ -188,11 +188,11 @@
         }
     }
 
-    private async Task UpdateLink(UpdateTenantNavigationLinkDto dto)
+    private async Task UpdateLink(Guid id, UpdateTenantNavigationLinkDto dto)
     {
         try
         {
-            var response = await NavigationService.UpdateNavigationLinkAsync(dto.Id.Value, dto);
+            var response = await NavigationService.UpdateNavigationLinkAsync(id, dto);
             if (response?.Success == true)
             {
                 Snackbar.Add("Navigation link updated successfully.", Severity.Success);

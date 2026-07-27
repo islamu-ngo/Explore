@@ -1,5 +1,6 @@
 // ABOUTME: MediatR command for updating a tenant navigation link.
 // ABOUTME: Carries the UpdateTenantNavLinkDto payload.
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Responses;
 using MediatR;
@@ -10,10 +11,22 @@ namespace Explore.Application.Features.Tenants.Requests.Commands.UpdateTenantNav
 /// Command to update an existing tenant navigation link.
 /// Returns a boolean indicating success or failure.
 /// </summary>
-public class UpdateTenantNavLinkCommand : IRequest<BaseCommandResponse<bool>>
+[AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
+public class UpdateTenantNavLinkCommand : IRequest<BaseCommandResponse<bool>>, ISecureRequest
 {
     /// <summary>
     /// DTO containing the updated navigation link data.
     /// </summary>
-    public UpdateTenantNavigationLinkDto NavigationLinkDto { get; set; } = null!;
+    public Guid NavigationLinkId { get; set; }
+    public Guid TenantId { get; set; }
+    public UpdateTenantNavigationLinkDto Update { get; set; } = null!;
+
+    string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty
+        ? null
+        : new Dictionary<string, object>
+        {
+            ["tenantId"] = TenantId.ToString("D"),
+            ["navigationLinkId"] = NavigationLinkId.ToString("D")
+        };
 }

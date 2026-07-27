@@ -1,6 +1,10 @@
 // ABOUTME: FluentValidation validator for UpdateTenantNavigationLinkDto.
 // ABOUTME: Same URL safety rules as Create, plus requires a valid Id.
+// ABOUTME: FluentValidation rules for grouped tenant navigation-link PATCH payloads.
+// ABOUTME: Retains the URL allowlist and rejects empty wrappers or no-op groups.
+
 using FluentValidation;
+using Explore.Application.Validation;
 
 namespace Explore.Application.DTOs.Tenant.Validators;
 
@@ -9,58 +13,41 @@ public class UpdateTenantNavigationLinkDtoValidator : AbstractValidator<UpdateTe
     /// <summary>
     /// Dangerous URL schemes that must be rejected to prevent XSS and injection attacks.
     /// </summary>
-    private static readonly string[] ForbiddenSchemes =
-        ["javascript:", "data:", "file:", "vbscript:", "mailto:"];
-
-    public UpdateTenantNavigationLinkDtoValidator()
+    public UpdateTenantNavigationLinkDtoValidator(bool requireHttps = true)
     {
-        RuleFor(p => p.Id)
-            .NotEmpty().WithMessage("{PropertyName} is required.");
-
-        RuleFor(p => p.Label)
-            .NotEmpty().WithMessage("{PropertyName} is required.")
+        RuleFor(dto => dto.Label!.Value)
+            .NotEmpty().WithMessage("Label is required.")
             .MaximumLength(50).WithMessage("{PropertyName} must not exceed 50 characters.")
-            .Must(label => !ContainsControlChars(label)).WithMessage("{PropertyName} contains invalid characters.");
+            .Must(label => !ContainsControlChars(label)).WithMessage("{PropertyName} contains invalid characters.")
+            .When(dto => dto.Label is not null);
 
-        RuleFor(p => p.Url)
-            .NotEmpty().WithMessage("{PropertyName} is required.")
+        RuleFor(dto => dto.Url!.Value)
+            .NotEmpty().WithMessage("Url is required.")
             .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.")
             .Must(url => !ContainsControlChars(url)).WithMessage("{PropertyName} contains invalid characters.")
-            .Must(BeASafeUrl).WithMessage("{PropertyName} must be a relative path starting with '/' or an http/https URL.");
+            .Must(url => UrlSchemePolicy.IsAllowed(url, requireHttps))
+            .WithMessage(requireHttps
+                ? "{PropertyName} must be a relative path starting with '/' or an HTTPS URL."
+                : "{PropertyName} must be a relative path starting with '/' or an HTTP/HTTPS URL.")
+            .When(dto => dto.Url is not null);
 
-        RuleFor(p => p.Icon)
-            .MaximumLength(100).WithMessage("{PropertyName} must not exceed 100 characters.")
-            .Must(icon => icon == null || !ContainsControlChars(icon)).WithMessage("{PropertyName} contains invalid characters.");
-    }
+        RuleFor(dto => dto.Icon!)
+            .Must(icon => icon.Value.HasValue)
+            .When(dto => dto.Icon is not null)
+            .WithMessage("Icon group must include Value.");
 
-    private static bool BeASafeUrl(string url)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-            return false;
+        RuleFor(dto => dto.Icon!.Value.Value)
+            .MaximumLength(100).WithMessage("Icon must not exceed 100 characters.")
+            .Must(icon => icon == null || !ContainsControlChars(icon)).WithMessage("Icon contains invalid characters.")
+            .When(dto => dto.Icon is not null && dto.Icon.Value.HasValue);
 
-        var trimmed = url.Trim();
+        RuleFor(dto => dto.OpenInNewTab!.Value)
+            .NotNull().WithMessage("OpenInNewTab group must include Value.")
+            .When(dto => dto.OpenInNewTab is not null);
 
-        // Reject protocol-relative URLs (//example.com)
-        if (trimmed.StartsWith("//"))
-            return false;
-
-        // Reject forbidden schemes
-        foreach (var scheme in ForbiddenSchemes)
-        {
-            if (trimmed.StartsWith(scheme, StringComparison.OrdinalIgnoreCase))
-                return false;
-        }
-
-        // Allow single "/" relative paths
-        if (trimmed.StartsWith('/'))
-            return true;
-
-        // Allow http:// and https://
-        if (trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        return false;
+        RuleFor(dto => dto)
+            .Must(dto => dto.Label is not null || dto.Url is not null || dto.Icon is not null || dto.OpenInNewTab is not null)
+            .WithMessage("At least one navigation link update group must be provided.");
     }
 
     private static bool ContainsControlChars(string value)

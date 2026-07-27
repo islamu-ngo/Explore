@@ -48,7 +48,7 @@ public sealed class TenantDetailLinkPolicy : ILinkPolicy<TenantDto>
             LinkRelations.Edit,
             RouteNames.UpdateTenant,
             new { id = dto.Id },
-            "PUT",
+            "PATCH",
             "Update tenant",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Tenant, dto);

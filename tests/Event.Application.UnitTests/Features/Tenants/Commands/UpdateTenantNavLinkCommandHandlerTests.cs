@@ -3,13 +3,13 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Features.Tenants.Handlers.Commands.UpdateTenantNavLink;
 using Explore.Application.Features.Tenants.Requests.Commands.UpdateTenantNavLink;
 using Explore.Domain;
+using Explore.Application.Models.Common;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.Tenants.Commands;
@@ -18,7 +18,7 @@ public class UpdateTenantNavLinkCommandHandlerTests
 {
     private readonly ITenantNavigationLinkRepository _repository;
     private readonly ITenantContext _tenantContext;
-    private readonly IMapper _mapper;
+    private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly UpdateTenantNavLinkCommandHandler _handler;
     private readonly Guid _tenantId = Guid.NewGuid();
 
@@ -26,9 +26,14 @@ public class UpdateTenantNavLinkCommandHandlerTests
     {
         _repository = Substitute.For<ITenantNavigationLinkRepository>();
         _tenantContext = Substitute.For<ITenantContext>();
-        _mapper = Substitute.For<IMapper>();
+        _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _tenantContext.TenantId.Returns(_tenantId);
-        _handler = new UpdateTenantNavLinkCommandHandler(_repository, _tenantContext, _mapper);
+        _settingsResolver.ResolveAsync<bool>(
+                Arg.Any<string>(),
+                Arg.Any<Explore.Application.Settings.SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        _handler = new UpdateTenantNavLinkCommandHandler(_repository, _tenantContext, _settingsResolver);
     }
 
     [Test]
@@ -38,11 +43,10 @@ public class UpdateTenantNavLinkCommandHandlerTests
         var linkId = Guid.NewGuid();
         var dto = new UpdateTenantNavigationLinkDto
         {
-            Id = linkId,
-            Label = "Updated",
-            Url = "https://updated.com",
-            Icon = "star",
-            OpenInNewTab = true
+            Label = new() { Value = "Updated" },
+            Url = new() { Value = "https://updated.com" },
+            Icon = new() { Value = OptionalUpdate<string?>.Set("star") },
+            OpenInNewTab = new() { Value = true }
         };
         var existingLink = new TenantNavigationLink
         {
@@ -56,7 +60,12 @@ public class UpdateTenantNavLinkCommandHandlerTests
         _repository.GetByIdAndTenantAsync(linkId, _tenantId, Arg.Any<CancellationToken>())
             .Returns(existingLink);
 
-        var command = new UpdateTenantNavLinkCommand { NavigationLinkDto = dto };
+        var command = new UpdateTenantNavLinkCommand
+        {
+            NavigationLinkId = linkId,
+            TenantId = _tenantId,
+            Update = dto
+        };
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -76,11 +85,15 @@ public class UpdateTenantNavLinkCommandHandlerTests
         // Arrange
         var dto = new UpdateTenantNavigationLinkDto
         {
-            Id = Guid.NewGuid(),
-            Label = "",
-            Url = "https://example.com"
+            Label = new() { Value = "" },
+            Url = new() { Value = "https://example.com" }
         };
-        var command = new UpdateTenantNavLinkCommand { NavigationLinkDto = dto };
+        var command = new UpdateTenantNavLinkCommand
+        {
+            NavigationLinkId = Guid.NewGuid(),
+            TenantId = _tenantId,
+            Update = dto
+        };
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -98,14 +111,18 @@ public class UpdateTenantNavLinkCommandHandlerTests
         var linkId = Guid.NewGuid();
         var dto = new UpdateTenantNavigationLinkDto
         {
-            Id = linkId,
-            Label = "Label",
-            Url = "https://example.com"
+            Label = new() { Value = "Label" },
+            Url = new() { Value = "https://example.com" }
         };
         _repository.GetByIdAndTenantAsync(linkId, _tenantId, Arg.Any<CancellationToken>())
             .Returns((TenantNavigationLink?)null);
 
-        var command = new UpdateTenantNavLinkCommand { NavigationLinkDto = dto };
+        var command = new UpdateTenantNavLinkCommand
+        {
+            NavigationLinkId = linkId,
+            TenantId = _tenantId,
+            Update = dto
+        };
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -123,9 +140,8 @@ public class UpdateTenantNavLinkCommandHandlerTests
         var linkId = Guid.NewGuid();
         var dto = new UpdateTenantNavigationLinkDto
         {
-            Id = linkId,
-            Label = "  Trimmed  ",
-            Url = "  https://trimmed.com  "
+            Label = new() { Value = "  Trimmed  " },
+            Url = new() { Value = "  https://trimmed.com  " }
         };
         var existingLink = new TenantNavigationLink
         {
@@ -139,7 +155,12 @@ public class UpdateTenantNavLinkCommandHandlerTests
         _repository.GetByIdAndTenantAsync(linkId, _tenantId, Arg.Any<CancellationToken>())
             .Returns(existingLink);
 
-        var command = new UpdateTenantNavLinkCommand { NavigationLinkDto = dto };
+        var command = new UpdateTenantNavLinkCommand
+        {
+            NavigationLinkId = linkId,
+            TenantId = _tenantId,
+            Update = dto
+        };
 
         // Act
         await _handler.Handle(command, CancellationToken.None);
@@ -157,10 +178,9 @@ public class UpdateTenantNavLinkCommandHandlerTests
         var linkId = Guid.NewGuid();
         var dto = new UpdateTenantNavigationLinkDto
         {
-            Id = linkId,
-            Label = "Link",
-            Url = "https://example.com",
-            Icon = "   "
+            Label = new() { Value = "Link" },
+            Url = new() { Value = "https://example.com" },
+            Icon = new() { Value = OptionalUpdate<string?>.Set("   ") }
         };
         var existingLink = new TenantNavigationLink
         {
@@ -175,7 +195,12 @@ public class UpdateTenantNavLinkCommandHandlerTests
         _repository.GetByIdAndTenantAsync(linkId, _tenantId, Arg.Any<CancellationToken>())
             .Returns(existingLink);
 
-        var command = new UpdateTenantNavLinkCommand { NavigationLinkDto = dto };
+        var command = new UpdateTenantNavLinkCommand
+        {
+            NavigationLinkId = linkId,
+            TenantId = _tenantId,
+            Update = dto
+        };
 
         // Act
         await _handler.Handle(command, CancellationToken.None);
@@ -190,11 +215,15 @@ public class UpdateTenantNavLinkCommandHandlerTests
         // Arrange
         var dto = new UpdateTenantNavigationLinkDto
         {
-            Id = Guid.NewGuid(),
-            Label = "Evil",
-            Url = "javascript:alert(1)"
+            Label = new() { Value = "Evil" },
+            Url = new() { Value = "javascript:alert(1)" }
         };
-        var command = new UpdateTenantNavLinkCommand { NavigationLinkDto = dto };
+        var command = new UpdateTenantNavLinkCommand
+        {
+            NavigationLinkId = Guid.NewGuid(),
+            TenantId = _tenantId,
+            Update = dto
+        };
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

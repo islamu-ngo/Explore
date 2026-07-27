@@ -16,11 +16,9 @@ public class TenantMappingProfile : Profile
         CreateMap<Tenant, TenantDto>().ReverseMap();
         CreateMap<Tenant, TenantListDto>().ReverseMap();
         CreateMap<CreateTenantDto, Tenant>();
-        CreateMap<UpdateTenantDto, Tenant>();
 
         CreateMap<TenantNavigationLink, TenantNavigationLinkDto>();
         CreateMap<CreateTenantNavigationLinkDto, TenantNavigationLink>();
-        CreateMap<UpdateTenantNavigationLinkDto, TenantNavigationLink>();
 
         CreateMap<TenantUserRoleGrant, TenantUserRoleGrantDto>()
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.TenantUser.UserId))
