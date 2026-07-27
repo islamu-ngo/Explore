@@ -107,9 +107,9 @@ public class UiThemeAdminController : ControllerBase
         return this.ToForbiddenProblem(detail: response.Message ?? "UI theme creation is not authorized for the current principal.");
     }
 
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateUiTheme)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateUiTheme)]
     [EndpointSummary("Update UI Theme")]
-    [EndpointDescription("Updates an existing UI theme. The caller must match the theme's scope (platform or tenant) authorization.")]
+    [EndpointDescription("Updates supplied metadata, state, or palette groups on an existing UI theme. The caller must match the theme's scope authorization.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -119,12 +119,7 @@ public class UiThemeAdminController : ControllerBase
         [FromBody] UpdateUiThemeDto dto,
         CancellationToken cancellationToken = default)
     {
-        if (id != dto.Id)
-        {
-            return this.ToValidationProblem(UpdateValidationProblem, "The theme id in the URL must match the id in the request body.");
-        }
-
-        var response = await _mediator.Send(new UpdateUiThemeCommand { UiThemeDto = dto }, cancellationToken);
+        var response = await _mediator.Send(new UpdateUiThemeCommand { Id = id, UiThemeDto = dto }, cancellationToken);
 
         if (response.Success)
         {
@@ -134,6 +129,11 @@ public class UiThemeAdminController : ControllerBase
         if (response.Errors?.Count > 0)
         {
             return this.ToCommandValidationProblem(response, UpdateValidationProblem);
+        }
+
+        if (response.Message == "UI theme not found.")
+        {
+            return this.ToNotFoundProblem(UiThemeNotFoundProblem);
         }
 
         return this.ToForbiddenProblem(detail: response.Message ?? "UI theme update is not authorized for the current principal.");

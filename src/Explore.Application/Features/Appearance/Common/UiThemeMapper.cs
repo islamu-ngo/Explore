@@ -24,14 +24,38 @@ internal static class UiThemeMapper
 
     internal static void Apply(UpdateUiThemeDto dto, UiTheme entity)
     {
-        entity.ThemeKey = UiThemeInputRules.NormalizeThemeKey(dto.ThemeKey);
-        entity.DisplayName = dto.DisplayName.Trim();
-        entity.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim();
-        entity.IsActive = dto.IsActive;
-        entity.IsDefault = dto.IsDefault;
-        entity.SortOrder = dto.SortOrder;
-        entity.LightPalette = ToPalette(dto.LightPalette);
-        entity.DarkPalette = ToPalette(dto.DarkPalette);
+        if (dto.Metadata is { } metadata)
+        {
+            if (metadata.ThemeKey is not null)
+            {
+                entity.ThemeKey = UiThemeInputRules.NormalizeThemeKey(metadata.ThemeKey);
+            }
+
+            if (metadata.DisplayName is not null)
+            {
+                entity.DisplayName = metadata.DisplayName.Trim();
+            }
+
+            if (metadata.Description.HasValue)
+            {
+                entity.Description = string.IsNullOrWhiteSpace(metadata.Description.Value)
+                    ? null
+                    : metadata.Description.Value.Trim();
+            }
+        }
+
+        if (dto.State is { } state)
+        {
+            entity.IsActive = state.IsActive ?? entity.IsActive;
+            entity.IsDefault = state.IsDefault ?? entity.IsDefault;
+            entity.SortOrder = state.SortOrder ?? entity.SortOrder;
+        }
+
+        if (dto.Palettes is { } palettes)
+        {
+            entity.LightPalette = palettes.Light is null ? entity.LightPalette : ToPalette(palettes.Light);
+            entity.DarkPalette = palettes.Dark is null ? entity.DarkPalette : ToPalette(palettes.Dark);
+        }
     }
 
     internal static UiThemeListItemDto ToListItem(UiTheme theme) => new()

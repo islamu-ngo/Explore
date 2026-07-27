@@ -1,12 +1,22 @@
-// ABOUTME: Input DTO for updating a user-owned appearance profile's palette colors or metadata.
-// ABOUTME: Only palettes and name are editable; lineage fields are read-only.
+// ABOUTME: Grouped PATCH contract for a user-owned appearance profile's editable metadata and palettes.
+// ABOUTME: Route identity is authoritative and omitted groups preserve persisted profile values.
 
 namespace Explore.Application.DTOs.Appearance;
 
 public sealed class UpdateAppearanceProfileRequestDto
 {
+    public UpdateAppearanceProfileMetadataDto? Metadata { get; set; }
+    public UpdateAppearanceProfilePalettesDto? Palettes { get; set; }
+}
+
+public sealed class UpdateAppearanceProfileMetadataDto
+{
     public string? Name { get; set; }
-    public UiThemePaletteDto? LightPaletteSnapshot { get; set; }
-    public UiThemePaletteDto? DarkPaletteSnapshot { get; set; }
     public string? ThemeMode { get; set; }
+}
+
+public sealed class UpdateAppearanceProfilePalettesDto
+{
+    public UiThemePaletteDto? Light { get; set; }
+    public UiThemePaletteDto? Dark { get; set; }
 }

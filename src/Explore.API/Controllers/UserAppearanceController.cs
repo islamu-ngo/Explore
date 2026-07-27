@@ -48,9 +48,9 @@ public class UserAppearanceController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPut(Name = RouteNames.UpdateCurrentUserAppearancePreferences)]
+    [HttpPatch(Name = RouteNames.UpdateCurrentUserAppearancePreferences)]
     [EndpointSummary("Update Appearance Preferences")]
-    [EndpointDescription("Updates sparse user-scoped appearance preferences such as theme mode, text direction, language, and default theme/profile reference.")]
+    [EndpointDescription("Updates supplied current-user language or text-direction preferences without changing theme mode or active profile.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -119,10 +119,11 @@ public class UserAppearanceController : ControllerBase
         return Ok(profile);
     }
 
-    [HttpPut("profiles/{profileId:guid}", Name = RouteNames.UpdateAppearanceProfile)]
+    [HttpPatch("profiles/{profileId:guid}", Name = RouteNames.UpdateAppearanceProfile)]
     [EndpointSummary("Update User Appearance Profile")]
-    [EndpointDescription("Updates a user-owned appearance profile's palette or metadata.")]
+    [EndpointDescription("Updates supplied metadata or palette groups on a user-owned appearance profile.")]
     [ProducesResponseType(typeof(UserAppearanceProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserAppearanceProfileDto>> UpdateProfile(

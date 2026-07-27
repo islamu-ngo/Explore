@@ -31,7 +31,7 @@ public class UpdateUiThemeCommandHandler : IRequestHandler<UpdateUiThemeCommand,
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateUiThemeCommand request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
-        var theme = await _uiThemeRepository.GetById(request.UiThemeDto.Id);
+        var theme = await _uiThemeRepository.GetById(request.Id);
 
         if (theme is null)
         {
@@ -49,7 +49,7 @@ public class UpdateUiThemeCommandHandler : IRequestHandler<UpdateUiThemeCommand,
             return response;
         }
 
-        var validator = new UpdateUiThemeDtoValidator(_uiThemeRepository, theme.TenantId);
+        var validator = new UpdateUiThemeDtoValidator(_uiThemeRepository, theme);
         var validationResult = await validator.ValidateAsync(request.UiThemeDto, cancellationToken);
         if (!validationResult.IsValid)
         {
@@ -67,7 +67,8 @@ public class UpdateUiThemeCommandHandler : IRequestHandler<UpdateUiThemeCommand,
             return response;
         }
 
-        if (theme.IsDefault && !request.UiThemeDto.IsDefault)
+        var willBeDefault = request.UiThemeDto.State?.IsDefault ?? theme.IsDefault;
+        if (theme.IsDefault && !willBeDefault)
         {
             response.Success = false;
             response.Message = "A default theme cannot be unset directly.";
@@ -77,7 +78,7 @@ public class UpdateUiThemeCommandHandler : IRequestHandler<UpdateUiThemeCommand,
 
         await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            if (request.UiThemeDto.IsDefault)
+            if (request.UiThemeDto.State?.IsDefault == true)
             {
                 await _uiThemeRepository.ClearDefaultAsync(theme.TenantId, theme.Id);
             }

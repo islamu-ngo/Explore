@@ -7,10 +7,12 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Appearance;
+using Explore.Application.DTOs.Appearance.Validators;
 using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using FluentValidation;
 
 public class AppearanceResolutionService : IAppearanceResolutionService
 {
@@ -264,6 +266,9 @@ public class AppearanceResolutionService : IAppearanceResolutionService
     {
         var userId = _currentUserService.UserId ?? throw new UnauthorizedAccessException("User not authenticated.");
 
+        var validator = new UpdateAppearanceProfileRequestDtoValidator();
+        await validator.ValidateAndThrowAsync(request, cancellationToken);
+
         var profile = await _profileRepository.GetById(profileId)
             ?? throw new KeyNotFoundException($"Profile with ID {profileId} not found.");
 
@@ -277,24 +282,24 @@ public class AppearanceResolutionService : IAppearanceResolutionService
             throw new InvalidOperationException("This profile is not editable.");
         }
 
-        if (request.Name is not null)
+        if (request.Metadata?.Name is not null)
         {
-            profile.Name = request.Name;
+            profile.Name = request.Metadata.Name.Trim();
         }
 
-        if (request.LightPaletteSnapshot is not null)
+        if (request.Metadata?.ThemeMode is not null)
         {
-            profile.LightPaletteSnapshot = MapDtoToPalette(request.LightPaletteSnapshot);
+            profile.ThemeMode = Enum.Parse<AppearanceThemeMode>(request.Metadata.ThemeMode, true);
         }
 
-        if (request.DarkPaletteSnapshot is not null)
+        if (request.Palettes?.Light is not null)
         {
-            profile.DarkPaletteSnapshot = MapDtoToPalette(request.DarkPaletteSnapshot);
+            profile.LightPaletteSnapshot = MapDtoToPalette(request.Palettes.Light);
         }
 
-        if (request.ThemeMode is not null)
+        if (request.Palettes?.Dark is not null)
         {
-            profile.ThemeMode = Enum.Parse<AppearanceThemeMode>(request.ThemeMode, true);
+            profile.DarkPaletteSnapshot = MapDtoToPalette(request.Palettes.Dark);
         }
 
         profile.UpdatedAt = DateTime.UtcNow;

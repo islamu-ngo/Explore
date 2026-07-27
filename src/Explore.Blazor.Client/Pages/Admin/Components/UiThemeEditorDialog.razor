@@ -184,15 +184,27 @@
             {
                 var updateDto = new UpdateUiThemeDto
                 {
-                    Id = _form.Id,
-                    DisplayName = _form.DisplayName,
-                    Description = _form.Description,
-                    IsActive = _form.IsActive,
-                    IsDefault = _form.IsDefault,
-                    SortOrder = _form.SortOrder,
-                    LightPalette = _form.LightPalette,
-                    DarkPalette = _form.DarkPalette,
-                    RowVersion = _form.RowVersion
+                    RowVersion = _form.RowVersion,
+                    Metadata = new UpdateUiThemeMetadataDto
+                    {
+                        DisplayName = _form.DisplayName,
+                        Description = new OptionalUpdateOfstring
+                        {
+                            HasValue = true,
+                            Value = _form.Description
+                        }
+                    },
+                    State = new UpdateUiThemeStateDto
+                    {
+                        IsActive = _form.IsActive,
+                        IsDefault = _form.IsDefault,
+                        SortOrder = _form.SortOrder
+                    },
+                    Palettes = new UpdateUiThemePalettesDto
+                    {
+                        Light = _form.LightPalette,
+                        Dark = _form.DarkPalette
+                    }
                 };
 
                 response = await AppearanceThemeService.UpdateThemeAsync(_form.Id, updateDto);

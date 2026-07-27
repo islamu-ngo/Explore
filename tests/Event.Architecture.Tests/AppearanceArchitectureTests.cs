@@ -8,6 +8,7 @@ using Explore.API.Hateoas;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Appearance;
 using Explore.Domain.Enums;
+using Microsoft.AspNetCore.Mvc;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -110,5 +111,19 @@ public class AppearanceArchitectureTests
         await Assert.That(fieldNames).Contains("DuplicateAppearanceProfile");
         await Assert.That(fieldNames).Contains("SetAppearanceThemeMode");
         await Assert.That(fieldNames).Contains("GenerateAppearancePalette");
+    }
+
+    [Test]
+    public async Task AppearanceEntityUpdatesUsePatchWhileFocusedActionsRetainPut()
+    {
+        var userController = typeof(UserAppearanceController);
+        var themeController = typeof(UiThemeAdminController);
+
+        await Assert.That(userController.GetMethod("UpdatePreferences")!.GetCustomAttributes(typeof(HttpPatchAttribute), false)).IsNotEmpty();
+        await Assert.That(userController.GetMethod("UpdateProfile")!.GetCustomAttributes(typeof(HttpPatchAttribute), false)).IsNotEmpty();
+        await Assert.That(themeController.GetMethod("Update")!.GetCustomAttributes(typeof(HttpPatchAttribute), false)).IsNotEmpty();
+        await Assert.That(userController.GetMethod("SetActiveProfile")!.GetCustomAttributes(typeof(HttpPutAttribute), false)).IsNotEmpty();
+        await Assert.That(userController.GetMethod("SetThemeMode")!.GetCustomAttributes(typeof(HttpPutAttribute), false)).IsNotEmpty();
+        await Assert.That(userController.GetMethod("ArchiveProfile")!.GetCustomAttributes(typeof(HttpPutAttribute), false)).IsNotEmpty();
     }
 }

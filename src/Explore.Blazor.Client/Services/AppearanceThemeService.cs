@@ -252,7 +252,10 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
             Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
 
             await _api.UpdateCurrentUserAppearancePreferencesAsync(
-                new UpdateUserAppearancePreferencesDto { Direction = direction },
+                new UpdateUserAppearancePreferencesDto
+                {
+                    Localization = new UpdateAppearanceLocalizationDto { Direction = direction }
+                },
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)

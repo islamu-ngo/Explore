@@ -18,7 +18,6 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandler : IRequestHand
 {
     private readonly IUserPreferenceRepository _userPreferenceRepository;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
-    private readonly IUiThemeRepository _uiThemeRepository;
     private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
@@ -27,7 +26,6 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandler : IRequestHand
     public UpdateCurrentUserAppearancePreferencesCommandHandler(
         IUserPreferenceRepository userPreferenceRepository,
         IHierarchicalSettingsResolver hierarchicalSettingsResolver,
-        IUiThemeRepository uiThemeRepository,
         IPrivacyErasureStateRepository privacyErasureStateRepository,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
@@ -35,7 +33,6 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandler : IRequestHand
     {
         _userPreferenceRepository = userPreferenceRepository;
         _hierarchicalSettingsResolver = hierarchicalSettingsResolver;
-        _uiThemeRepository = uiThemeRepository;
         _privacyErasureStateRepository = privacyErasureStateRepository;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
@@ -71,21 +68,6 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandler : IRequestHand
 
         var tenantId = _tenantContext.TenantId;
 
-        if (request.Preferences.DefaultThemeId is { } requestedThemeId)
-        {
-            var themeVisible = await IsThemeVisibleToTenantAsync(requestedThemeId, tenantId, cancellationToken);
-            if (!themeVisible)
-            {
-                response.Success = false;
-                response.Message = "Appearance preference update failed.";
-                response.Errors = new List<string>
-                {
-                    "DefaultThemeId references a theme that is not visible to the current tenant."
-                };
-                return await MaskIfFencedAsync(userId.Value, response, cancellationToken);
-            }
-        }
-
         DateTime utcNow = DateTime.UtcNow;
         response = await _unitOfWork.ExecuteSerializableAsync(
             async ct => await PersistPreferencesAsync(request, tenantId, userId.Value, utcNow, ct),
@@ -115,36 +97,28 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandler : IRequestHand
             new SettingContext(TenantId: tenantId),
             cancellationToken);
 
-        await UpsertOrRemoveOverrideAsync(
-            tenantId,
-            userId,
-            GovernanceSettingKeys.Appearance.ThemeMode,
-            request.Preferences.ThemeMode.Trim().ToLowerInvariant(),
-            parentAppearance.ThemeMode,
-            utcNow);
-        await UpsertOrRemoveOverrideAsync(
-            tenantId,
-            userId,
-            GovernanceSettingKeys.Appearance.Language,
-            request.Preferences.Language.Trim().ToLowerInvariant(),
-            parentAppearance.Language,
-            utcNow);
-        await UpsertOrRemoveOverrideAsync(
-            tenantId,
-            userId,
-            GovernanceSettingKeys.Appearance.Direction,
-            request.Preferences.Direction.Trim().ToLowerInvariant(),
-            parentAppearance.Direction,
-            utcNow);
-#pragma warning disable CS0618
-        await UpsertOrRemoveOverrideAsync(
-            tenantId,
-            userId,
-            GovernanceSettingKeys.Appearance.LegacyDefaultThemeId,
-            request.Preferences.DefaultThemeId?.ToString() ?? string.Empty,
-            parentAppearance.ActiveProfileId?.ToString() ?? string.Empty,
-            utcNow);
-#pragma warning restore CS0618
+        var localization = request.Preferences.Localization!;
+        if (localization.Language is not null)
+        {
+            await UpsertOrRemoveOverrideAsync(
+                tenantId,
+                userId,
+                GovernanceSettingKeys.Appearance.Language,
+                localization.Language.Trim().ToLowerInvariant(),
+                parentAppearance.Language,
+                utcNow);
+        }
+
+        if (localization.Direction is not null)
+        {
+            await UpsertOrRemoveOverrideAsync(
+                tenantId,
+                userId,
+                GovernanceSettingKeys.Appearance.Direction,
+                localization.Direction.Trim().ToLowerInvariant(),
+                parentAppearance.Direction,
+                utcNow);
+        }
 
         return new BaseCommandResponse<Guid>
         {
@@ -168,20 +142,6 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandler : IRequestHand
         Success = false,
         Message = "Appearance preference update failed."
     };
-
-    private async Task<bool> IsThemeVisibleToTenantAsync(
-        Guid themeId,
-        Guid tenantId,
-        CancellationToken cancellationToken)
-    {
-        var theme = await _uiThemeRepository.GetByIdAsync(themeId, cancellationToken);
-        if (theme is null || !theme.IsActive)
-        {
-            return false;
-        }
-
-        return theme.TenantId is null || theme.TenantId == tenantId;
-    }
 
     private async Task UpsertOrRemoveOverrideAsync(
         Guid tenantId,

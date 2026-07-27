@@ -1,5 +1,5 @@
-// ABOUTME: Validates authenticated user appearance preference updates.
-// ABOUTME: Restricts theme mode, direction, and language to codebase-supported values; defers DefaultThemeId existence check to the handler.
+// ABOUTME: Validates grouped current-user appearance localization PATCH requests.
+// ABOUTME: Rejects empty wrappers and validates only supplied language or direction values.
 
 namespace Explore.Application.DTOs.Appearance.Validators;
 
@@ -8,27 +8,32 @@ using FluentValidation;
 
 public class UpdateUserAppearancePreferencesDtoValidator : AbstractValidator<UpdateUserAppearancePreferencesDto>
 {
-    private static readonly string[] ValidThemeModes = ["system", "light", "dark", "lighthighcontrast", "darkhighcontrast", "custom"];
-
     public UpdateUserAppearancePreferencesDtoValidator()
     {
-        RuleFor(preferences => preferences.ThemeMode)
-            .NotEmpty().WithMessage("Theme mode is required.")
-            .Must(mode => ValidThemeModes.Contains(mode.ToLowerInvariant()))
-            .WithMessage("Theme mode must be one of: system, light, dark, lighthighcontrast, darkhighcontrast, custom.");
+        RuleFor(preferences => preferences.Localization)
+            .NotNull().WithMessage("A localization update is required.")
+            .SetValidator(new UpdateAppearanceLocalizationDtoValidator()!);
+    }
+}
 
-        RuleFor(preferences => preferences.Direction)
-            .NotEmpty().WithMessage("Direction is required.")
-            .Must(dir => dir is "auto" or "ltr" or "rtl")
-            .WithMessage("Direction must be one of: auto, ltr, rtl.");
+public sealed class UpdateAppearanceLocalizationDtoValidator : AbstractValidator<UpdateAppearanceLocalizationDto>
+{
+    public UpdateAppearanceLocalizationDtoValidator()
+    {
+        RuleFor(localization => localization)
+            .Must(localization => localization.Direction is not null || localization.Language is not null)
+            .WithMessage("Localization must include direction or language.");
 
-        RuleFor(preferences => preferences.Language)
-            .NotEmpty().WithMessage("Language is required.")
-            .Must(code => CultureRegistry.Contains(code))
-            .WithMessage("Language must be a supported culture code registered in CultureRegistry.");
+        RuleFor(localization => localization.Direction)
+            .NotEmpty()
+            .Must(direction => direction is "auto" or "ltr" or "rtl")
+            .WithMessage("Direction must be one of: auto, ltr, rtl.")
+            .When(localization => localization.Direction is not null);
 
-        RuleFor(preferences => preferences.DefaultThemeId)
-            .Must(themeId => themeId is null || themeId != Guid.Empty)
-            .WithMessage("DefaultThemeId must be either null (inherit) or a non-empty Guid.");
+        RuleFor(localization => localization.Language)
+            .NotEmpty()
+            .Must(code => code is not null && CultureRegistry.Contains(code))
+            .WithMessage("Language must be a supported culture code registered in CultureRegistry.")
+            .When(localization => localization.Language is not null);
     }
 }

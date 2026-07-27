@@ -286,6 +286,41 @@ public class AppearanceResolutionServiceTests
     }
 
     [Test]
+    public async Task UpdateProfile_WithMetadataOnly_PreservesPalettesAndUpdatesOnce()
+    {
+        var userId = Guid.NewGuid();
+        _currentUserService.UserId.Returns((Guid?)userId);
+        var profile = CreateTestProfile(userId, null, "Original");
+        var originalLight = profile.LightPaletteSnapshot;
+        var originalDark = profile.DarkPaletteSnapshot;
+        _profileRepo.GetById(profile.Id).Returns(profile);
+        var sut = CreateSut();
+
+        var result = await sut.UpdateProfileAsync(profile.Id, new UpdateAppearanceProfileRequestDto
+        {
+            Metadata = new UpdateAppearanceProfileMetadataDto { Name = " Updated " }
+        });
+
+        await Assert.That(result.Name).IsEqualTo("Updated");
+        await Assert.That(profile.LightPaletteSnapshot).IsSameReferenceAs(originalLight);
+        await Assert.That(profile.DarkPaletteSnapshot).IsSameReferenceAs(originalDark);
+        await _profileRepo.Received(1).Update(profile);
+    }
+
+    [Test]
+    public async Task UpdateProfile_WithEmptyWrapper_RejectsBeforeLoadingProfile()
+    {
+        var userId = Guid.NewGuid();
+        _currentUserService.UserId.Returns((Guid?)userId);
+        var sut = CreateSut();
+
+        await Assert.ThrowsAsync<FluentValidation.ValidationException>(async () =>
+            await sut.UpdateProfileAsync(Guid.NewGuid(), new UpdateAppearanceProfileRequestDto()));
+
+        await _profileRepo.DidNotReceive().GetById(Arg.Any<Guid>());
+    }
+
+    [Test]
     public async Task GeneratePalette_Returns_Light_Palette_When_IsDark_False()
     {
         var sut = CreateSut();

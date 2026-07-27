@@ -1,18 +1,34 @@
-// ABOUTME: Input model for updating an existing UI theme with optimistic concurrency.
-// ABOUTME: Carries the row-version observed by the client so stale edits can be rejected deterministically.
+// ABOUTME: Grouped PATCH contract for updating an existing UI theme with optimistic concurrency.
+// ABOUTME: Route identity is authoritative and omitted metadata, state, or palette groups preserve persisted values.
 
 namespace Explore.Application.DTOs.Appearance;
 
+using Explore.Application.Models.Common;
+
 public class UpdateUiThemeDto
 {
-    public Guid Id { get; set; }
-    public string ThemeKey { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public bool IsActive { get; set; } = true;
-    public bool IsDefault { get; set; }
-    public int SortOrder { get; set; }
-    public uint RowVersion { get; set; }
-    public UiThemePaletteDto LightPalette { get; set; } = new();
-    public UiThemePaletteDto DarkPalette { get; set; } = new();
+    public required uint RowVersion { get; set; }
+    public UpdateUiThemeMetadataDto? Metadata { get; set; }
+    public UpdateUiThemeStateDto? State { get; set; }
+    public UpdateUiThemePalettesDto? Palettes { get; set; }
+}
+
+public sealed class UpdateUiThemeMetadataDto
+{
+    public string? ThemeKey { get; set; }
+    public string? DisplayName { get; set; }
+    public OptionalUpdate<string> Description { get; set; } = OptionalUpdate<string>.Unspecified();
+}
+
+public sealed class UpdateUiThemeStateDto
+{
+    public bool? IsActive { get; set; }
+    public bool? IsDefault { get; set; }
+    public int? SortOrder { get; set; }
+}
+
+public sealed class UpdateUiThemePalettesDto
+{
+    public UiThemePaletteDto? Light { get; set; }
+    public UiThemePaletteDto? Dark { get; set; }
 }

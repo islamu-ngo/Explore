@@ -1,5 +1,5 @@
-// ABOUTME: Command for updating an existing UI theme with optimistic concurrency.
-// ABOUTME: Carries the full edit DTO so the handler can validate scope ownership and stale edits.
+// ABOUTME: Route-identified command for patching an existing UI theme with optimistic concurrency.
+// ABOUTME: Carries nullable logical groups so omitted theme properties remain unchanged.
 
 namespace Explore.Application.Features.Appearance.Requests.Commands;
 
@@ -9,5 +9,6 @@ using MediatR;
 
 public class UpdateUiThemeCommand : IRequest<BaseCommandResponse<Guid>>
 {
+    public Guid Id { get; set; }
     public required UpdateUiThemeDto UiThemeDto { get; set; }
 }

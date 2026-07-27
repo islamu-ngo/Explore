@@ -1,12 +1,15 @@
-// ABOUTME: Input DTO for updating user-scoped appearance preferences (theme, direction, language, default theme id).
-// ABOUTME: Language is persisted here for v1 delivery speed — see plan D3 for the follow-up UserPreferences split.
+// ABOUTME: Grouped PATCH contract for current-user appearance localization preferences.
+// ABOUTME: Theme mode and active profile remain owned by their focused operations.
 
 namespace Explore.Application.DTOs.Appearance;
 
 public class UpdateUserAppearancePreferencesDto
 {
-    public string ThemeMode { get; set; } = "system";
-    public string Direction { get; set; } = "auto";
-    public string Language { get; set; } = "en";
-    public Guid? DefaultThemeId { get; set; }
+    public UpdateAppearanceLocalizationDto? Localization { get; set; }
+}
+
+public sealed class UpdateAppearanceLocalizationDto
+{
+    public string? Direction { get; set; }
+    public string? Language { get; set; }
 }
