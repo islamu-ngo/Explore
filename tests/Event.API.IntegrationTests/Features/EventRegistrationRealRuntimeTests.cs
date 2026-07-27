@@ -428,7 +428,14 @@ public sealed class EventRegistrationRealRuntimeTests(RealRuntimeApiFixture fixt
             .WithSessionDates(localDate, localDate)
             .Build();
 
-        @event.IsRegistrationRequired = true;
+        @event.ParticipationConfiguration = EventParticipationConfiguration.Create(
+            @event.Id,
+            tenant.TenantId,
+            (int)ParticipationHandlingModeEnum.PlatformManaged,
+            (int)AdvanceRegistrationObligationEnum.Required,
+            (int)IdentityAccessModeEnum.AccountRequired,
+            guestRecoveryPolicy: null,
+            DateTime.UtcNow);
         @event.RegistrationPolicyId = (int)EventRegistrationPolicyEnum.SessionSelectionOnly;
 
         var day = new EventDay

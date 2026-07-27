@@ -9,6 +9,7 @@ using Event.Api.IntegrationTests.Seeds;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -107,6 +108,7 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
         {
             Title = "Draft Submit Integration Event",
             Description = "Created by the draft API integration test.",
+            ParticipationConfiguration = CreateParticipationConfiguration(),
             VisibilityTypeId = 1,
             EventFormatId = 1,
             Timezone = "UTC"
@@ -144,6 +146,7 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
         {
             Title = "Draft Without Sessions Integration Event",
             Description = "Created before any program items exist.",
+            ParticipationConfiguration = CreateParticipationConfiguration(),
             VisibilityTypeId = 1,
             EventFormatId = 1,
             Timezone = "UTC"
@@ -185,6 +188,7 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
         var createRequest = new CreateEventDraftRequestDto
         {
             Title = string.Empty,
+            ParticipationConfiguration = CreateParticipationConfiguration(),
             VisibilityTypeId = 1,
             EventFormatId = 1,
             Timezone = "UTC"
@@ -224,6 +228,7 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
         {
             Title = "Draft Contract Integration Event",
             Description = "Creates only the event draft; program rows are added through dedicated endpoints.",
+            ParticipationConfiguration = CreateParticipationConfiguration(),
             VisibilityTypeId = 1,
             EventFormatId = 1,
             Timezone = "UTC"
@@ -265,6 +270,12 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.Created);
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.OK);
     }
+
+    private static ConfigureEventParticipationDto CreateParticipationConfiguration() => new()
+    {
+        ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly,
+        AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable
+    };
 
     [Test]
     public async Task Update_WithoutIfMatch_ReturnsBadRequest()

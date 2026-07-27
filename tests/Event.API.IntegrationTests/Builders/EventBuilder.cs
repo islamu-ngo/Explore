@@ -1,6 +1,7 @@
 // ABOUTME: Fluent builder for Event domain entities in integration tests.
 // ABOUTME: Produces EF-compatible Event instances while keeping optional lookup FKs opt-in.
 
+using Explore.Domain;
 using Explore.Domain.Enums;
 
 namespace Event.Api.IntegrationTests.Builders;
@@ -69,8 +70,15 @@ public sealed class EventBuilder
         AudienceAgeId = _audienceAgeId,
         FirstSessionDate = _firstSessionDate,
         LastSessionDate = _lastSessionDate,
+        ParticipationConfiguration = EventParticipationConfiguration.Create(
+            _id,
+            _tenantId,
+            (int)ParticipationHandlingModeEnum.InformationOnly,
+            (int)AdvanceRegistrationObligationEnum.NotApplicable,
+            identityAccessModeId: null,
+            guestRecoveryPolicy: null,
+            DateTime.UtcNow),
         TotalViews = 0,
-        IsRegistrationRequired = false,
         ConcurrencyStamp = Guid.NewGuid()
     };
 }

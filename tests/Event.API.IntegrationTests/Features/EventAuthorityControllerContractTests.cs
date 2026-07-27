@@ -23,7 +23,7 @@ public sealed class EventAuthorityControllerContractTests
         await Assert.That(route.Template).IsEqualTo("{actionId:guid}/redirect");
         await Assert.That(route.Name).IsEqualTo(RouteNames.RedirectEventPublicAction);
         await Assert.That(parameters.Select(parameter => parameter.Name))
-            .IsEquivalentTo(["eventId", "actionId", "cancellationToken"]);
+            .IsEquivalentTo(["eventId", "actionId", "surface", "cancellationToken"]);
         await Assert.That(parameters.Any(parameter =>
             parameter.Name?.Contains("url", StringComparison.OrdinalIgnoreCase) == true
             || parameter.Name?.Contains("return", StringComparison.OrdinalIgnoreCase) == true)).IsFalse();

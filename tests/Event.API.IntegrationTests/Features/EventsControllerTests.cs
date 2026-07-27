@@ -11,6 +11,7 @@ using Explore.Application.Authorization;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Queries;
+using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -184,7 +185,12 @@ public class EventsControllerTests
                 TenantId = tenantId,
                 OwnerActorId = Guid.NewGuid(),
                 ProvenanceSource = "test",
-                ProvenanceExternalId = "external-1"
+                ProvenanceExternalId = "external-1",
+                ParticipationConfiguration = new ConfigureEventParticipationDto
+                {
+                    ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly,
+                    AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable
+                }
             }
         };
         await Assert.That(secureRequest.ResourceId).IsEqualTo(tenantId.ToString());

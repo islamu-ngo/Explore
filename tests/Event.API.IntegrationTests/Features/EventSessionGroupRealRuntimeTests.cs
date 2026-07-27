@@ -76,10 +76,10 @@ public class EventSessionGroupRealRuntimeTests(RealRuntimeApiFixture fixture)
         var scenario = await SeedEventAsync("Session Group Update Event");
         var sectionId = await SeedProgramSectionAsync(scenario.EventId, scenario.TenantId, "Workshop rooms");
         Guid concurrencyStamp;
-        await using (var scope = _fixture.Factory.Services.CreateAsyncScope())
+        await using (var concurrencyScope = _fixture.Factory.Services.CreateAsyncScope())
         {
-            var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-            concurrencyStamp = await context.EventSessionGroups
+            var concurrencyContext = concurrencyScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            concurrencyStamp = await concurrencyContext.EventSessionGroups
                 .IgnoreQueryFilters()
                 .Where(group => group.Id == sectionId)
                 .Select(group => group.ConcurrencyStamp)
@@ -109,17 +109,17 @@ public class EventSessionGroupRealRuntimeTests(RealRuntimeApiFixture fixture)
         await Assert.That(body!.Success).IsTrue();
         await Assert.That(body.Id).IsEqualTo(sectionId);
 
-        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
-        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        var persisted = await context.EventSessionGroups
+        await using var persistenceScope = _fixture.Factory.Services.CreateAsyncScope();
+        var persistenceContext = persistenceScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var persisted = await persistenceContext.EventSessionGroups
             .IgnoreQueryFilters()
             .SingleAsync(group => group.Id == sectionId);
 
-        await Assert.That(persisted.Name).IsEqualTo(updateDto.Name);
-        await Assert.That(persisted.Slug).IsEqualTo(updateDto.Slug);
-        await Assert.That(persisted.Description).IsEqualTo(updateDto.Description);
-        await Assert.That(persisted.Color).IsEqualTo(updateDto.Color);
-        await Assert.That(persisted.SortOrder).IsEqualTo(updateDto.SortOrder);
+        await Assert.That(persisted.Name).IsEqualTo(updateDto.Metadata.Name);
+        await Assert.That(persisted.Slug).IsEqualTo(updateDto.Metadata.Slug.Value);
+        await Assert.That(persisted.Description).IsEqualTo(updateDto.Metadata.Description.Value);
+        await Assert.That(persisted.Color).IsEqualTo(updateDto.Metadata.Color.Value);
+        await Assert.That(persisted.SortOrder).IsEqualTo(updateDto.Ordering.SortOrder.GetValueOrDefault());
         await Assert.That(persisted.IsPublished).IsTrue();
     }
 

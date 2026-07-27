@@ -730,6 +730,58 @@ public class ContractInvariantsTests
             .Because("Normalized lookup identifiers use the platform's int lookup-key convention.");
     }
 
+    [Test]
+    public async Task OpenApiDocument_ActorSubscriptionPatchMarksMandatoryLeavesRequired()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var patchSchema = GetSchema(document, "UpdateActorSubscriptionNotificationLevelDto");
+        var levelSchema = GetSchema(document, "UpdateActorSubscriptionNotificationLevelValueDto");
+        var patchProperties = patchSchema.GetProperty("properties");
+
+        await Assert.That(GetRequiredPropertyNames(patchSchema)).Contains("expectedConcurrencyStamp");
+        await Assert.That(GetRequiredPropertyNames(levelSchema)).Contains("id");
+        await Assert.That(SchemaAllowsNull(patchProperties.GetProperty("notificationLevel"))).IsTrue();
+        await Assert.That(patchProperties.TryGetProperty("targetActorId", out _)).IsFalse();
+    }
+
+    [Test]
+    public async Task OpenApiDocument_PublicActionExposesSafetyGuidanceButNoAuthorizationMetadata()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var actionProperties = GetSchemaProperties(document, "EventPublicActionDto");
+        var claimProperties = GetSchemaProperties(document, "EventOrganizerClaimDto");
+
+        await Assert.That(actionProperties.TryGetProperty("openInNewTab", out _)).IsTrue();
+        await Assert.That(actionProperties.TryGetProperty("rel", out _)).IsTrue();
+
+        foreach (var internalProperty in new[]
+        {
+            "tenantId",
+            "eventActorId",
+            "eventActorUserId",
+            "eventActorOrganizationId",
+            "eventActorGroupId",
+            "eventProvenanceTypeId",
+            "eventProvenanceTypeCode",
+            "eventOrganizerActorId",
+            "eventSubmittedByUserId"
+        })
+        {
+            await Assert.That(actionProperties.TryGetProperty(internalProperty, out _)).IsFalse();
+            await Assert.That(claimProperties.TryGetProperty(internalProperty, out _)).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task OpenApiDocument_EventListExposesTypedProvenanceCode()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var eventListProperties = GetSchemaProperties(document, "EventListDto");
+
+        await Assert.That(eventListProperties.TryGetProperty("provenanceTypeCode", out var provenanceTypeCode)).IsTrue();
+        await Assert.That(SchemaAllowsNull(provenanceTypeCode)).IsTrue();
+    }
+
     private async Task<JsonDocument> GetOpenApiDocumentAsync()
     {
         var response = await _fixture.Client.GetAsync(OpenApiEndpoint);
