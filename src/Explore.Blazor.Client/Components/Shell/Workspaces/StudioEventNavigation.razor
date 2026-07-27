@@ -38,7 +38,7 @@
                     Schedule
                 </MudNavLink>
             }
-            @if (HasRegistrationRelation(Resource))
+            @if (Resource.HasHalLink("configure-participation"))
             {
                 <MudNavLink Href="@($"{StudioRoute}/registration")" Icon="@Icons.Material.Outlined.HowToReg" Match="NavLinkMatch.All" data-event-section="registration">
                     Registration
@@ -91,9 +91,6 @@
         || resource.HasHalLink("session-groups")
         || resource.HasHalLink("add-session")
         || resource.HasHalLink("create-session-draft");
-
-    private static bool HasRegistrationRelation(EventDto resource) =>
-        resource.HasHalLink("registration") || resource.HasHalLink("registrations");
 
     private void OnContextChanged() => _ = InvokeAsync(StateHasChanged);
 

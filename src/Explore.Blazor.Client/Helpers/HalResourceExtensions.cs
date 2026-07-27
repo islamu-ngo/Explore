@@ -728,8 +728,25 @@ public static class HalResourceExtensions
         string.Equals(source as string, "atproto", StringComparison.OrdinalIgnoreCase);
 
     public static string? GetHalHref(this EventListDto dto, string linkRel)
+        => GetSafeHalHref(dto.AdditionalProperties, linkRel);
+
+    public static string? GetHalHref(this EventDto dto, string linkRel)
+        => GetSafeHalHref(dto.AdditionalProperties, linkRel);
+
+    public static string? GetHalTitle(this EventListDto dto, string linkRel)
+        => GetHalTitle(dto.AdditionalProperties, linkRel);
+
+    public static string? GetHalTitle(this EventDto dto, string linkRel)
+        => GetHalTitle(dto.AdditionalProperties, linkRel);
+
+    public static string? GetHalHref(this HalResourceOfEventPublicActionDto dto, string linkRel)
+        => dto._links?.TryGetValue(linkRel, out var link) == true
+            ? GetSafeHalHref(link.Href)
+            : null;
+
+    private static string? GetSafeHalHref(IDictionary<string, object> additionalProperties, string linkRel)
     {
-        if (!dto.AdditionalProperties.TryGetValue("_links", out var links) ||
+        if (!additionalProperties.TryGetValue("_links", out var links) ||
             links is not JsonElement { ValueKind: JsonValueKind.Object } linksElement ||
             !linksElement.TryGetProperty(linkRel, out var link) ||
             link.ValueKind != JsonValueKind.Object ||
@@ -739,7 +756,26 @@ public static class HalResourceExtensions
             return null;
         }
 
-        var value = href.GetString();
+        return GetSafeHalHref(href.GetString());
+    }
+
+    private static string? GetHalTitle(IDictionary<string, object> additionalProperties, string linkRel)
+    {
+        if (!additionalProperties.TryGetValue("_links", out var links) ||
+            links is not JsonElement { ValueKind: JsonValueKind.Object } linksElement ||
+            !linksElement.TryGetProperty(linkRel, out var link) ||
+            link.ValueKind != JsonValueKind.Object ||
+            !link.TryGetProperty("title", out var title) ||
+            title.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        return string.IsNullOrWhiteSpace(title.GetString()) ? null : title.GetString();
+    }
+
+    private static string? GetSafeHalHref(string? value)
+    {
         if (value is not { Length: > 0 } ||
             value[0] != '/' ||
             (value.Length > 1 && value[1] == '/') ||
@@ -938,7 +974,11 @@ public static class HalResourceExtensions
                 LastSessionDate = federatedEvent.EndsAtUtc ?? federatedEvent.StartsAtUtc,
                 CreatedAtUtc = federatedEvent.CreatedAtUtc,
                 AtprotoRecordId = federation?.AtprotoRecordId ?? federatedEvent.Id,
-                IsRegistrationRequired = federatedEvent.RsvpExpected
+                ParticipationConfiguration = new EventParticipationConfigurationDto
+                {
+                    ParticipationHandlingModeId = federatedEvent.RsvpExpected == true ? 3 : 1,
+                    AdvanceRegistrationObligationId = federatedEvent.RsvpExpected == true ? 3 : 1
+                }
             };
         }
 

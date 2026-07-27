@@ -253,6 +253,7 @@
 
     private List<HalResourceOfEventSessionGroupListDto> _sections = [];
     private Guid? _editingSectionId;
+    private Guid? _editingConcurrencyStamp;
     private string _name = string.Empty;
     private string? _description;
     private string? _color;
@@ -289,6 +290,7 @@
         }
 
         _editingSectionId = section.Id;
+        _editingConcurrencyStamp = section.ConcurrencyStamp;
         _name = section.Name;
         _description = null;
         _color = section.Color;
@@ -358,18 +360,39 @@
                     SortOrder = _sortOrder ?? 0,
                     IsPublished = _isPublished
                 })
-                : await EventService.UpdateSessionGroupAsync(new UpdateEventSessionGroupRequestDto
-                {
-                    Id = _editingSectionId,
-                    EventId = EventId,
-                    Name = trimmedName,
-                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
-                    LocationId = _locationId,
-                    RoomId = _roomId,
-                    Color = string.IsNullOrWhiteSpace(_color) ? null : _color.Trim(),
-                    SortOrder = _sortOrder ?? 0,
-                    IsPublished = _isPublished
-                });
+                : _editingConcurrencyStamp is not Guid concurrencyStamp || concurrencyStamp == Guid.Empty
+                    ? new BaseCommandResponseOfGuid
+                    {
+                        Success = false,
+                        Message = "Program section must be reloaded before saving."
+                    }
+                    : await EventService.UpdateSessionGroupAsync(
+                        _editingSectionId.Value,
+                        concurrencyStamp,
+                        new UpdateEventSessionGroupRequestDto
+                        {
+                            Metadata = new UpdateEventSessionGroupMetadataDto
+                            {
+                                Name = trimmedName,
+                                Description = new OptionalUpdateOfstring
+                                {
+                                    HasValue = true,
+                                    Value = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim()
+                                },
+                                Color = new OptionalUpdateOfstring
+                                {
+                                    HasValue = true,
+                                    Value = string.IsNullOrWhiteSpace(_color) ? null : _color.Trim()
+                                }
+                            },
+                            Placement = new UpdateEventSessionGroupPlacementDto
+                            {
+                                LocationId = new OptionalUpdateOfGuid { HasValue = true, Value = _locationId },
+                                RoomId = new OptionalUpdateOfGuid { HasValue = true, Value = _roomId }
+                            },
+                            Ordering = new UpdateEventSessionGroupOrderingDto { SortOrder = _sortOrder ?? 0 },
+                            Publication = new UpdateEventSessionGroupPublicationDto { IsPublished = _isPublished }
+                        });
 
             if (response.Success != true)
             {
@@ -600,6 +623,7 @@
     private void ResetForm()
     {
         _editingSectionId = null;
+        _editingConcurrencyStamp = null;
         _name = string.Empty;
         _description = null;
         _color = null;

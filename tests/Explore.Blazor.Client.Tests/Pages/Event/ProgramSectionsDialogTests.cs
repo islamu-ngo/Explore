@@ -50,6 +50,63 @@ public sealed class ProgramSectionsDialogTests : IDisposable
     }
 
     [Test]
+    public async Task SaveAsync_WhenUpdatingSection_MapsGroupedRequestAndConcurrencyStamp()
+    {
+        var eventId = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        var locationId = Guid.NewGuid();
+        var roomId = Guid.NewGuid();
+        var eventService = Substitute.For<IEventService>();
+        eventService.UpdateSessionGroupAsync(
+                sectionId,
+                concurrencyStamp,
+                Arg.Any<UpdateEventSessionGroupRequestDto>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = sectionId });
+        eventService.GetManagedSessionGroupsByEventAsync(eventId)
+            .Returns(new List<HalResourceOfEventSessionGroupListDto>());
+        var section = CreateSection(sectionId, eventId, hasDelete: false, concurrencyStamp: concurrencyStamp);
+
+        RegisterServices(eventService);
+
+        var cut = _ctx.RenderMudComponent<ProgramSectionsDialog>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.InitialSections, new List<HalResourceOfEventSessionGroupListDto> { section }));
+
+        await InvokePrivateAsync(cut.Instance, "EditSectionAsync", section);
+        SetField(cut.Instance, "_name", "Main stage");
+        SetField(cut.Instance, "_description", "Primary talks");
+        SetField(cut.Instance, "_color", "#123456");
+        SetField(cut.Instance, "_locationId", locationId);
+        SetField(cut.Instance, "_roomId", roomId);
+        SetField(cut.Instance, "_sortOrder", 20);
+        SetField(cut.Instance, "_isPublished", false);
+
+        await InvokePrivateAsync(cut.Instance, "SaveAsync");
+
+        await eventService.Received(1).UpdateSessionGroupAsync(
+            sectionId,
+            concurrencyStamp,
+            Arg.Is<UpdateEventSessionGroupRequestDto>(request =>
+                request.Metadata != null &&
+                request.Metadata.Name == "Main stage" &&
+                request.Metadata.Description != null &&
+                request.Metadata.Description.HasValue &&
+                request.Metadata.Description.Value == "Primary talks" &&
+                request.Metadata.Color != null &&
+                request.Metadata.Color.Value == "#123456" &&
+                request.Placement != null &&
+                request.Placement.LocationId != null &&
+                request.Placement.LocationId.Value == locationId &&
+                request.Placement.RoomId != null &&
+                request.Placement.RoomId.Value == roomId &&
+                request.Ordering != null &&
+                request.Ordering.SortOrder == 20 &&
+                request.Publication != null &&
+                request.Publication.IsPublished == false));
+    }
+
+    [Test]
     public async Task OnLocationChangedAsync_ClearsStaleRoomAndLoadsRoomsForLocation()
     {
         var eventId = Guid.NewGuid();
@@ -245,7 +302,12 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         _ctx.Services.AddSingleton(dialogService ?? Substitute.For<IDialogService>());
     }
 
-    private static HalResourceOfEventSessionGroupListDto CreateSection(Guid sectionId, Guid eventId, bool hasDelete, bool hasAssign = false)
+    private static HalResourceOfEventSessionGroupListDto CreateSection(
+        Guid sectionId,
+        Guid eventId,
+        bool hasDelete,
+        bool hasAssign = false,
+        Guid? concurrencyStamp = null)
     {
         var section = new HalResourceOfEventSessionGroupListDto
         {
@@ -254,10 +316,11 @@ public sealed class ProgramSectionsDialogTests : IDisposable
             Name = "Main stage",
             SortOrder = 10,
             IsPublished = true,
+            ConcurrencyStamp = concurrencyStamp ?? Guid.NewGuid(),
             _links = new Dictionary<string, HalLink>
             {
                 ["self"] = new() { Href = $"/api/event-session-group/{sectionId}", Method = "GET" },
-                ["edit"] = new() { Href = $"/api/event-session-group/{sectionId}", Method = "PUT" }
+                ["edit"] = new() { Href = $"/api/event-session-group/{sectionId}", Method = "PATCH" }
             }
         };
 

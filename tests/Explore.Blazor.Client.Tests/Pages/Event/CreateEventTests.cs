@@ -229,6 +229,41 @@ public class CreateEventTests : IDisposable
     #region Rendering Tests
 
     [Test]
+    public async Task CreateEvent_DefaultsToExplicitInformationOnlyParticipation()
+    {
+        var component = new CreateEvent();
+        var configuration = GetPrivateField<CreateEventDraftRequestDto>(component, "createDto").ParticipationConfiguration;
+
+        await Assert.That(configuration).IsNotNull();
+        await Assert.That(configuration.ParticipationHandlingModeId).IsEqualTo(1);
+        await Assert.That(configuration.AdvanceRegistrationObligationId).IsEqualTo(1);
+        await Assert.That(configuration.IdentityAccessModeId).IsNull();
+        await Assert.That(configuration.GuestRecoveryPolicy).IsNull();
+    }
+
+    [Test]
+    public async Task SaveDraft_WithRegistrationPolicy_MapsPlatformManagedParticipationIds()
+    {
+        CreateEventDraftRequestDto? capturedRequest = null;
+        _eventService.CreateEventAsync(Arg.Do<CreateEventDraftRequestDto>(dto => capturedRequest = dto))
+            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForState(() => cut.Markup.Length > 0, TimeSpan.FromSeconds(3));
+        PrepareValidSubmitState(cut.Instance);
+        GetPrivateField<CreateEventDraftRequestDto>(cut.Instance, "createDto").RegistrationPolicyId = 3;
+
+        await InvokePrivateAsync(cut.Instance, "SaveAsDraftAsync");
+
+        await Assert.That(capturedRequest).IsNotNull();
+        var configuration = capturedRequest!.ParticipationConfiguration;
+        await Assert.That(configuration.ParticipationHandlingModeId).IsEqualTo(4);
+        await Assert.That(configuration.AdvanceRegistrationObligationId).IsEqualTo(3);
+        await Assert.That(configuration.IdentityAccessModeId).IsEqualTo(2);
+        await Assert.That(configuration.GuestRecoveryPolicy).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task CreateEvent_RendersWithoutCrash()
     {
         // Arrange

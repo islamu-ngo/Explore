@@ -113,9 +113,11 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
         ? _selectedEventDetail.RegistrationPolicyFullName
         : !string.IsNullOrWhiteSpace(_selectedEvent?.RegistrationPolicyFullName)
             ? _selectedEvent.RegistrationPolicyFullName!
-            : _selectedEventDetail?.IsRegistrationRequired == true || _selectedEvent?.IsRegistrationRequired == true
-                ? "Registration required"
-                : "Registration optional";
+            : _selectedEventDetail?.ParticipationConfiguration?.AdvanceRegistrationObligationName
+                ?? _selectedEventDetail?.ParticipationConfiguration?.ParticipationHandlingModeName
+                ?? _selectedEvent?.ParticipationConfiguration?.AdvanceRegistrationObligationName
+                ?? _selectedEvent?.ParticipationConfiguration?.ParticipationHandlingModeName
+                ?? "Participation details not specified";
 
     private IEnumerable<string> DetailTags => _selectedEventDetail?.Tags?
         .Where(tag => !string.IsNullOrWhiteSpace(tag.FullName))
@@ -477,7 +479,7 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
             return;
         }
 
-        if (IsModeratedEvent(_selectedEvent) || _selectedEventDetail.HasHalLink("register") != true)
+        if (_selectedEventDetail.HasHalLink("start-registration") != true)
         {
             Snackbar.Add("Registration is unavailable for this event.", Severity.Warning);
             return;

@@ -1320,9 +1320,9 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             return detail.RegistrationPolicyFullName;
         }
 
-        return detail.IsRegistrationRequired == true
-            ? "Registration required"
-            : "Registration optional";
+        return detail.ParticipationConfiguration?.AdvanceRegistrationObligationName
+            ?? detail.ParticipationConfiguration?.ParticipationHandlingModeName
+            ?? "Participation details not specified";
     }
 
     private static Color GetFormatColor(EventDto detail)
@@ -1523,6 +1523,12 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private async Task OpenInlineRegistration()
     {
         if (_selectedEvent?.Id == null || _selectedEventDetail == null) return;
+
+        if (_selectedEventDetail.HasHalLink("start-registration") != true)
+        {
+            Snackbar.Add("Registration is unavailable for this event.", Severity.Warning);
+            return;
+        }
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         if (authState.User.Identity?.IsAuthenticated != true)

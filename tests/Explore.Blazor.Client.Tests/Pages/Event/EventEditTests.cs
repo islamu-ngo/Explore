@@ -92,6 +92,31 @@ public sealed class EventEditTests : IDisposable
     }
 
     [Test]
+    public async Task PopulateFormFromEvent_PreservesTypedParticipationConfiguration()
+    {
+        var eventId = Guid.NewGuid();
+        var configuration = new ParticipationConfiguration
+        {
+            EventId = eventId,
+            ConcurrencyStamp = Guid.NewGuid(),
+            ParticipationHandlingModeId = 4,
+            AdvanceRegistrationObligationId = 3,
+            IdentityAccessModeId = 2,
+            GuestRecoveryPolicy = 1
+        };
+        var component = CreateComponent(eventId, canAddSession: true);
+        SetField(component, "currentEvent", CreateEvent(
+            eventId,
+            canAddSession: true,
+            participationConfiguration: configuration));
+
+        InvokePrivate(component, "PopulateFormFromEvent");
+
+        var update = GetPrivateField<EventDraftEditModel>(component, "updateDto");
+        await Assert.That(update.ParticipationConfiguration).IsSameReferenceAs(configuration);
+    }
+
+    [Test]
     public async Task EditSession_WhenSessionHasId_NavigatesToDedicatedSessionEditor()
     {
         var eventId = Guid.NewGuid();
@@ -411,7 +436,8 @@ public sealed class EventEditTests : IDisposable
         Guid eventId,
         bool canAddSession,
         int? registrationPolicyId = null,
-        bool canManageProgramSections = false)
+        bool canManageProgramSections = false,
+        ParticipationConfiguration? participationConfiguration = null)
     {
         var dto = new EventDto
         {
@@ -428,6 +454,7 @@ public sealed class EventEditTests : IDisposable
             EventFormatFullName = "In person",
             EventFormatMasterCode = "IN_PERSON",
             RegistrationPolicyId = registrationPolicyId,
+            ParticipationConfiguration = participationConfiguration,
             AdditionalProperties = new Dictionary<string, object>()
         };
 

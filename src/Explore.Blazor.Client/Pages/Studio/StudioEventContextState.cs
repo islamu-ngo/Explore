@@ -18,20 +18,28 @@ public sealed class StudioEventContextState(IEventService eventService)
     public bool IsLoading { get; private set; }
     public string? ErrorMessage { get; private set; }
 
-    public Task<EventDto?> LoadAsync(Guid eventId)
+    public Task<EventDto?> LoadAsync(Guid eventId) => StartLoadAsync(eventId, force: false);
+
+    public Task<EventDto?> ReloadAsync(Guid eventId) => StartLoadAsync(eventId, force: true);
+
+    private Task<EventDto?> StartLoadAsync(Guid eventId, bool force)
     {
         ArgumentOutOfRangeException.ThrowIfEqual(eventId, Guid.Empty);
 
         Task<EventDto?> loadTask;
         lock (_sync)
         {
-            if (EventId == eventId && _loadTask is not null)
+            if (!force && EventId == eventId && _loadTask is not null)
             {
                 return _loadTask;
             }
 
+            if (EventId != eventId)
+            {
+                Event = null;
+            }
+
             EventId = eventId;
-            Event = null;
             ErrorMessage = null;
             IsLoading = true;
             loadTask = LoadCoreAsync(eventId);

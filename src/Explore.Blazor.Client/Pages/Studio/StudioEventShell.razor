@@ -45,20 +45,40 @@
         <section class="studio-event-shell__section" aria-labelledby="studio-event-section-title">
             <MudText Id="studio-event-section-title" Typo="Typo.h5" HtmlTag="h2">@SectionTitle</MudText>
             <MudText Typo="Typo.body1" Color="Color.Secondary">@SectionDescription</MudText>
-            <div class="studio-event-shell__actions">
-                @if (Section == "schedule" && CanAddSession)
+            @if (Section == "registration")
+            {
+                @if (!CanConfigureParticipation)
                 {
-                    <AppButton Href="@($"/events/{EventId}/sessions/create")" StartIcon="@Icons.Material.Filled.Add">Add session</AppButton>
+                    <div class="studio-event-shell__state" role="alert" data-testid="participation-route-unavailable">
+                        Participation configuration is not available for this event.
+                    </div>
                 }
-                @if (Section is "details" or "schedule" or "publication" && Resource.HasHalLink("edit"))
+                else if (Resource.ParticipationConfiguration is null)
                 {
-                    <AppButton Href="@($"/events/{EventId}/edit")" Variant="Variant.Outlined">Open event editor</AppButton>
+                    <div class="studio-event-shell__state" role="alert" data-testid="participation-configuration-missing">
+                        The current participation configuration could not be loaded. Refresh and try again.
+                    </div>
                 }
-                @if (Section == "registration" && HasRegistrationRelation)
+                else
                 {
-                    <AppButton Href="@EventManagementRoute" Variant="Variant.Outlined">Open event management</AppButton>
+                    <ParticipationConfigurationEditor EventId="EventId"
+                                                      Configuration="Resource.ParticipationConfiguration"
+                                                      OnSaved="ReloadEventAsync" />
                 }
-            </div>
+            }
+            else
+            {
+                <div class="studio-event-shell__actions">
+                    @if (Section == "schedule" && CanAddSession)
+                    {
+                        <AppButton Href="@($"/events/{EventId}/sessions/create")" StartIcon="@Icons.Material.Filled.Add">Add session</AppButton>
+                    }
+                    @if (Resource.HasHalLink("edit"))
+                    {
+                        <AppButton Href="@($"/events/{EventId}/edit")" Variant="Variant.Outlined">Open event editor</AppButton>
+                    }
+                </div>
+            }
         </section>
     }
 </MudContainer>
@@ -78,16 +98,13 @@
     private string SectionDescription => Section switch
     {
         "schedule" => "Manage this event's sessions in the existing event editor.",
-        "registration" => "Open the existing event management surface for registration operations.",
+        "registration" => "Define how people participate, whether advance registration applies, and which identity options are available.",
         "publication" => "Review and edit publication details in the existing event editor.",
         _ => "Edit this event using the existing event editor."
     };
     private bool CanAddSession => Resource?.HasHalLink("add-session") == true
         || Resource?.HasHalLink("create-session-draft") == true;
-    private bool HasRegistrationRelation => Resource?.HasHalLink("registration") == true
-        || Resource?.HasHalLink("registrations") == true;
-    private string EventManagementRoute => EventUrlHelper.BuildPublicPath(Resource?.Slug, Resource?.PublicCode)
-        ?? $"/events/{EventId}/edit";
+    private bool CanConfigureParticipation => Resource?.HasHalLink("configure-participation") == true;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -110,5 +127,10 @@
             : path.EndsWith("/registration", StringComparison.OrdinalIgnoreCase) ? "registration"
             : path.EndsWith("/publication", StringComparison.OrdinalIgnoreCase) ? "publication"
             : "details";
+    }
+
+    private async Task ReloadEventAsync()
+    {
+        await EventContext.ReloadAsync(EventId);
     }
 }
