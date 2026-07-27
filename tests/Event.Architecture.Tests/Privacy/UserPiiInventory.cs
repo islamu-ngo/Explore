@@ -272,7 +272,7 @@ internal static class UserPiiInventory
             "Preserve shared published content after identity removal", "Shared-content retention horizon"),
         Local("Event.EventTimeZoneId", "Event.ActorId -> Actor.UserId", "Event handlers", UserPiiDisposition.Anonymize,
             "Preserve shared published content after identity removal", "Shared-content retention horizon"),
-        Local("Event.EventUrl", "Event.ActorId -> Actor.UserId", "Event handlers", UserPiiDisposition.Anonymize,
+        Local("EventPublicAction.Url", "EventPublicAction.EventId -> Event.ActorId -> Actor.UserId", "Event public-action handlers", UserPiiDisposition.Anonymize,
             "Preserve shared published content after identity removal", "Shared-content retention horizon"),
         Local("Event.ExternalRegistrationUrl", "Event.ActorId -> Actor.UserId", "Event handlers", UserPiiDisposition.Anonymize,
             "Preserve shared published content after identity removal", "Shared-content retention horizon"),

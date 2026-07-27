@@ -9,6 +9,7 @@ using Explore.Application.DTOs.Ai;
 using Explore.Application.DTOs.AudienceAge;
 using Explore.Application.DTOs.AudienceGender;
 using Explore.Application.DTOs.Category;
+using Explore.Application.DTOs.CategoryTypeCategories;
 using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.DTOs.DidCustodyType;
 using Explore.Application.DTOs.EmailDispatch;
@@ -249,6 +250,8 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(EventCategoriesDto))]
 [JsonSerializable(typeof(EventCategoriesListDto))]
 [JsonSerializable(typeof(EventDto))]
+[JsonSerializable(typeof(EventParticipationConfigurationDto))]
+[JsonSerializable(typeof(ConfigureEventParticipationDto))]
 [JsonSerializable(typeof(EventFormatDto))]
 [JsonSerializable(typeof(EventFormatListDto))]
 [JsonSerializable(typeof(EventHeavyRedactedNotificationFanoutRequested))]
@@ -314,6 +317,8 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(InstanceStorageUsageDto))]
 [JsonSerializable(typeof(InstanceStorageProviderUsageDto))]
 [JsonSerializable(typeof(InstanceStorageProviderStatusDto))]
+[JsonSerializable(typeof(S3PreflightResult))]
+[JsonSerializable(typeof(S3PreflightStepResult))]
 [JsonSerializable(typeof(SystemOnboardingStatusDto))]
 [JsonSerializable(typeof(LanguageDto))]
 [JsonSerializable(typeof(LanguageListDto))]
@@ -408,6 +413,7 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(UpdateActorDto))]
 [JsonSerializable(typeof(UpdateActorKeyStoreDto))]
 [JsonSerializable(typeof(UpdateCategoryDto))]
+[JsonSerializable(typeof(UpdateCategoryTypeCategoriesDto))]
 [JsonSerializable(typeof(UpdateEventCategoriesDto))]
 [JsonSerializable(typeof(UpdateEventDto))]
 [JsonSerializable(typeof(UpdateEventDraftRequestDto))]

@@ -1,4 +1,4 @@
-// ABOUTME: AutoMapper profile for Actor, ActorKeyStore, StorageObject, IndexedDid, and SyncState entities.
+// ABOUTME: AutoMapper profile for Actor, ActorKeyStore, StorageObject, and SyncState entities.
 // ABOUTME: Split from monolithic MappingProfile.cs for domain-cohesion.
 
 using AutoMapper;

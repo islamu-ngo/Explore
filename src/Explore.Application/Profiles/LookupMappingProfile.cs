@@ -40,7 +40,6 @@ public class LookupMappingProfile : Profile
         CreateMap<Tag, TagDto>().ReverseMap();
         CreateMap<Tag, TagListDto>();
         CreateMap<CreateTagDto, Tag>();
-        CreateMap<UpdateTagDto, Tag>();
 
         CreateMap<Language, LanguageDto>().ReverseMap();
         CreateMap<Language, LanguageListDto>().ReverseMap();
