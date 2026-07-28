@@ -5,7 +5,9 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
-using Explore.Application.Features.EventTicketing;
+using Explore.Application.DTOs.EventTicketing;
+using Explore.Application.Features.EventTicketing.Requests.Commands;
+using Explore.Application.Features.EventTicketing.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -43,11 +45,11 @@ public sealed class EventTicketingController(IMediator mediator) : ControllerBas
 
     [HttpPost("ticket-types", Name = RouteNames.CreateEventTicketType)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public Task<ActionResult<BaseCommandResponse<Guid>>> CreateType(Guid eventId, [FromBody] EventTicketTypeDto ticketType, CancellationToken ct) => SendCreated(new CreateEventTicketTypeCommand { EventId = eventId, TicketType = ticketType }, RouteNames.GetEventTicketCatalogManagement, new { eventId }, ct);
+    public Task<ActionResult<BaseCommandResponse<Guid>>> CreateType(Guid eventId, [FromBody] ManageEventTicketTypeDto ticketType, CancellationToken ct) => SendCreated(new CreateEventTicketTypeCommand { EventId = eventId, TicketType = ticketType }, RouteNames.GetEventTicketCatalogManagement, new { eventId }, ct);
 
     [HttpPut("ticket-types/{ticketTypeId:guid}", Name = RouteNames.UpdateEventTicketType)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public Task<ActionResult<BaseCommandResponse<Guid>>> UpdateType(Guid eventId, Guid ticketTypeId, [FromBody] EventTicketTypeDto ticketType, CancellationToken ct) => SendOk(new UpdateEventTicketTypeCommand { EventId = eventId, TicketTypeId = ticketTypeId, TicketType = ticketType }, ct);
+    public Task<ActionResult<BaseCommandResponse<Guid>>> UpdateType(Guid eventId, Guid ticketTypeId, [FromBody] ManageEventTicketTypeDto ticketType, CancellationToken ct) => SendOk(new UpdateEventTicketTypeCommand { EventId = eventId, TicketTypeId = ticketTypeId, TicketType = ticketType }, ct);
 
     [HttpDelete("ticket-types/{ticketTypeId:guid}", Name = RouteNames.DeleteEventTicketType)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -55,11 +57,11 @@ public sealed class EventTicketingController(IMediator mediator) : ControllerBas
 
     [HttpPost("capacity-pools", Name = RouteNames.CreateEventCapacityPool)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public Task<ActionResult<BaseCommandResponse<Guid>>> CreatePool(Guid eventId, [FromBody] EventCapacityPoolDto capacityPool, CancellationToken ct) => SendCreated(new CreateEventCapacityPoolCommand { EventId = eventId, CapacityPool = capacityPool }, RouteNames.GetEventTicketCatalogManagement, new { eventId }, ct);
+    public Task<ActionResult<BaseCommandResponse<Guid>>> CreatePool(Guid eventId, [FromBody] ManageEventCapacityPoolDto capacityPool, CancellationToken ct) => SendCreated(new CreateEventCapacityPoolCommand { EventId = eventId, CapacityPool = capacityPool }, RouteNames.GetEventTicketCatalogManagement, new { eventId }, ct);
 
     [HttpPut("capacity-pools/{capacityPoolId:guid}", Name = RouteNames.UpdateEventCapacityPool)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public Task<ActionResult<BaseCommandResponse<Guid>>> UpdatePool(Guid eventId, Guid capacityPoolId, [FromBody] EventCapacityPoolDto capacityPool, CancellationToken ct) => SendOk(new UpdateEventCapacityPoolCommand { EventId = eventId, CapacityPoolId = capacityPoolId, CapacityPool = capacityPool }, ct);
+    public Task<ActionResult<BaseCommandResponse<Guid>>> UpdatePool(Guid eventId, Guid capacityPoolId, [FromBody] ManageEventCapacityPoolDto capacityPool, CancellationToken ct) => SendOk(new UpdateEventCapacityPoolCommand { EventId = eventId, CapacityPoolId = capacityPoolId, CapacityPool = capacityPool }, ct);
 
     [HttpDelete("capacity-pools/{capacityPoolId:guid}", Name = RouteNames.DeleteEventCapacityPool)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
