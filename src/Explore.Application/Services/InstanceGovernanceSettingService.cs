@@ -169,10 +169,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         var deferredNotifications = new List<SettingChangedNotification>();
         var isMultiTenant = settings.DeploymentMode.Mode == DeploymentMode.MultiTenant;
 
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Deployment.Mode,
-            SettingValueSerializer.Serialize(settings.DeploymentMode.Mode.ToString()),
-            isLocked: true, actorUserId);
+        await _upsertService.UpsertValueAsync(GovernanceSettingKeys.Deployment.Mode, SettingValueSerializer.Serialize(settings.DeploymentMode.Mode.ToString()), isLocked: true, actorUserId, cancellationToken: cancellationToken);
 
         settings.TenantDelegation.LockTenantAiAssistant = settings.AiAssistant.LockTenantAiAssistant;
 

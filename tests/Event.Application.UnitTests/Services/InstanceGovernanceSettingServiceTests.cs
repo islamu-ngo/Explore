@@ -1,8 +1,8 @@
 // ABOUTME: Unit tests for InstanceGovernanceSettingService runtime render-policy defaults and persistence behavior.
 // ABOUTME: Verifies batch resolution via IHierarchicalSettingsResolver, safe defaults, and normalization.
 
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
