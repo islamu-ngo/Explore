@@ -69,15 +69,19 @@ public class CustomPropertyDefinitionControllerTests
         var id = Guid.NewGuid();
         var dto = new UpdateCustomPropertyDefinitionDto
         {
-            EntityTypeName = EntityTypeName.Organization,
-            Namespace = "tenant.community",
-            Key = "prayer_notes",
-            DisplayName = "Prayer Notes",
-            PropertyType = PropertyType.Text,
-            ExposureLevel = ExposureLevel.Internal,
+            Metadata = new UpdateCustomPropertyDefinitionMetadataDto
+            {
+                DisplayName = "Prayer Notes",
+                ExposureLevel = ExposureLevel.Internal
+            }
         };
 
-        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", dto);
+        using var request = new HttpRequestMessage(HttpMethod.Patch, $"{BaseUrl}/{id}")
+        {
+            Content = JsonContent.Create(dto)
+        };
+        request.Headers.TryAddWithoutValidation("If-Match", $"\"{Guid.NewGuid():D}\"");
+        var response = await _fixture.Client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
@@ -104,6 +108,14 @@ public class CustomPropertyDefinitionControllerTests
         AssertNoProperty<UpdateCustomPropertyDefinitionDto>("Id", "ExpectedConcurrencyStamp", "TenantId", "EventId", "EventSessionId");
         AssertNoProperty<Explore.Application.DTOs.EventCustomProperty.UpdateEventCustomPropertyDefinitionDto>("Id", "ExpectedConcurrencyStamp", "TenantId", "EventId", "EventSessionId");
         AssertNoProperty<Explore.Application.DTOs.EventSessionCustomProperty.UpdateEventSessionCustomPropertyDefinitionDto>("Id", "ExpectedConcurrencyStamp", "TenantId", "EventId", "EventSessionId");
+    }
+
+    [Test]
+    public async Task UpdateDtos_ShouldExposeOnlyGroupedPatchContracts()
+    {
+        AssertGroupedDto<UpdateCustomPropertyDefinitionDto>("Relations", "Metadata", "Validation", "Options");
+        AssertGroupedDto<Explore.Application.DTOs.EventCustomProperty.UpdateEventCustomPropertyDefinitionDto>("Metadata", "Validation", "Options");
+        AssertGroupedDto<Explore.Application.DTOs.EventSessionCustomProperty.UpdateEventSessionCustomPropertyDefinitionDto>("Metadata", "Validation", "Options");
     }
 
     [Test]
@@ -142,6 +154,12 @@ public class CustomPropertyDefinitionControllerTests
         {
             Assert.That(type.GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public)).IsNull();
         }
+    }
+
+    private static void AssertGroupedDto<T>(params string[] expectedProperties)
+    {
+        var properties = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public).Select(property => property.Name).ToArray();
+        Assert.That(properties).IsEquivalentTo(expectedProperties);
     }
 
     private static void AssertHttpMethod<TController>(string methodName, string expectedMethod)

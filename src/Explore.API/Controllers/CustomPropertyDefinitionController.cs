@@ -158,12 +158,13 @@ public class CustomPropertyDefinitionController : ControllerBase
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPatch("{id:guid}", Name = RouteNames.UpdateCustomPropertyDefinition)]
     [EndpointSummary("Update CustomPropertyDefinition")]
-    [EndpointDescription("Update an existing shared custom-property definition and replace its option set.")]
+    [EndpointDescription("Update supplied groups on a shared custom-property definition; options are replaced only when supplied.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
@@ -188,7 +189,9 @@ public class CustomPropertyDefinitionController : ControllerBase
 
         if (!result.Success)
         {
-            return this.ToQuotaProblemOrBadRequest(result);
+            return string.Equals(result.Message, "Custom-property definition not found.", StringComparison.Ordinal)
+                ? this.ToNotFoundProblem(PurgeNotFoundProblem)
+                : this.ToQuotaProblemOrBadRequest(result);
         }
 
         return Ok(result);

@@ -192,32 +192,41 @@
         {
             var updateDto = new UpdateCustomPropertyDefinitionDto
             {
-                Namespace = model.Namespace,
-                Key = model.Key,
-                DisplayName = model.DisplayName,
-                Description = model.Description,
-                IsRequired = model.IsRequired,
-                IsMulti = model.IsMulti,
-                IsActive = model.IsActive,
-                SortOrder = model.SortOrder,
-                ExposureLevel = (ExposureLevel?)model.ExposureLevel,
-                MinLength = model.MinLength,
-                MaxLength = model.MaxLength,
-                RegexPattern = model.RegexPattern,
-                MinNumber = (double?)model.MinNumber,
-                MaxNumber = (double?)model.MaxNumber,
-                AllowedUrlSchemes = model.AllowedUrlSchemes,
-                Options = model.Options?.Select(o => new CreateCustomPropertyOptionDto
+                Metadata = new UpdateCustomPropertyDefinitionMetadataDto
                 {
                     Namespace = model.Namespace,
-                    Key = o.Key,
-                    DisplayName = o.DisplayName,
-                    Description = o.Description,
-                    Value = o.Value,
-                    IsDefault = o.IsDefault,
-                    IsActive = o.IsActive,
-                    SortOrder = o.SortOrder
-                }).ToList()
+                    Key = model.Key,
+                    DisplayName = model.DisplayName,
+                    Description = new OptionalUpdateOfstring { HasValue = true, Value = model.Description },
+                    IsActive = model.IsActive,
+                    SortOrder = model.SortOrder,
+                    ExposureLevel = (ExposureLevel?)model.ExposureLevel
+                },
+                Validation = new UpdateCustomPropertyDefinitionValidationDto
+                {
+                    IsRequired = model.IsRequired,
+                    IsMulti = model.IsMulti,
+                    MinLength = new OptionalUpdateOfint { HasValue = true, Value = model.MinLength },
+                    MaxLength = new OptionalUpdateOfint { HasValue = true, Value = model.MaxLength },
+                    RegexPattern = new OptionalUpdateOfstring { HasValue = true, Value = model.RegexPattern },
+                    MinNumber = new OptionalUpdateOfdecimal { HasValue = true, Value = (double?)model.MinNumber },
+                    MaxNumber = new OptionalUpdateOfdecimal { HasValue = true, Value = (double?)model.MaxNumber },
+                    AllowedUrlSchemes = new OptionalUpdateOfstring { HasValue = true, Value = model.AllowedUrlSchemes }
+                },
+                Options = new UpdateCustomPropertyDefinitionOptionsDto
+                {
+                    Items = model.Options?.Select(o => new CreateCustomPropertyOptionDto
+                    {
+                        Namespace = model.Namespace,
+                        Key = o.Key,
+                        DisplayName = o.DisplayName,
+                        Description = o.Description,
+                        Value = o.Value,
+                        IsDefault = o.IsDefault,
+                        IsActive = o.IsActive,
+                        SortOrder = o.SortOrder
+                    }).ToList() ?? []
+                }
             };
 
             var response = await CustomPropertyService.UpdateDefinitionAsync(Id, _definition.ConcurrencyStamp.GetValueOrDefault(), updateDto);

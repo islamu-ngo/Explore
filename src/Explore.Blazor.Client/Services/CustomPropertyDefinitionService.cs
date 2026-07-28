@@ -153,7 +153,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
 
         try
         {
-            var response = await _apiClient.UpdateCustomPropertyDefinitionAsync(id, body, $"\"{expectedConcurrencyStamp:D}\"", cancellationToken: cancellationToken);
+            var response = await _apiClient.UpdateCustomPropertyDefinitionAsync(id, $"\"{expectedConcurrencyStamp:D}\"", body, cancellationToken: cancellationToken);
             return response;
         }
         catch (ApiException<ProblemDetails> ex)

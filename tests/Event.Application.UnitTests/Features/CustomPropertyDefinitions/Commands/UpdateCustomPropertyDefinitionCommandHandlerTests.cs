@@ -49,6 +49,9 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
                 var op = callInfo.Arg<Func<CancellationToken, Task<CustomPropertyDefinition>>>();
                 return op(CancellationToken.None);
             });
+        _unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<Func<CancellationToken, Task>>()(CancellationToken.None));
 
         _handler = new UpdateCustomPropertyDefinitionCommandHandler(
             _customPropertyDefinitionRepository,
@@ -69,7 +72,8 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         {
             DefinitionId = Guid.NewGuid(),
             DefinitionDto = CreateDto(),
-            ExpectedConcurrencyStamp = ConcurrencyStamp
+            ExpectedConcurrencyStamp = ConcurrencyStamp,
+            TenantId = Guid.NewGuid()
         };
 
         _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(command.DefinitionId, Arg.Any<CancellationToken>())
@@ -90,7 +94,8 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         {
             DefinitionId = existing.Id,
             DefinitionDto = CreateDto(),
-            ExpectedConcurrencyStamp = ConcurrencyStamp
+            ExpectedConcurrencyStamp = ConcurrencyStamp,
+            TenantId = tenantId
         };
 
         _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
@@ -118,7 +123,8 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         {
             DefinitionId = existing.Id,
             DefinitionDto = CreateDto(),
-            ExpectedConcurrencyStamp = Guid.NewGuid()
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            TenantId = tenantId
         };
 
         _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
@@ -163,7 +169,9 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         var command = new UpdateCustomPropertyDefinitionCommand
         {
             DefinitionId = existing.Id,
-            DefinitionDto = CreateDto("Renamed Prayer Notes")
+            DefinitionDto = CreateDto("Renamed Prayer Notes"),
+            ExpectedConcurrencyStamp = ConcurrencyStamp,
+            TenantId = tenantId
         };
 
         _currentUserService.UserId.Returns(userId);
@@ -176,9 +184,9 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
             });
         _customPropertyDefinitionRepository.ExistsScopedMachineKey(tenantId, EntityTypeName.Organization, "tenant.community", "prayer_notes", existing.Id)
             .Returns(false);
-        _mapper.Map(command.DefinitionDto, existing).Returns(callInfo =>
+        _mapper.Map(Arg.Any<CreateCustomPropertyDefinitionDto>(), existing).Returns(callInfo =>
         {
-            existing.DisplayName = command.DefinitionDto.Metadata!.DisplayName!;
+            existing.DisplayName = callInfo.ArgAt<CreateCustomPropertyDefinitionDto>(0).DisplayName;
             return callInfo.ArgAt<CustomPropertyDefinition>(1);
         });
         _customPropertyDefinitionRepository.UpdateWithOptions(Arg.Any<CustomPropertyDefinition>(), Arg.Any<IReadOnlyCollection<CustomPropertyOption>>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
@@ -215,7 +223,8 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         {
             DefinitionId = existing.Id,
             DefinitionDto = CreateDto(),
-            ExpectedConcurrencyStamp = ConcurrencyStamp
+            ExpectedConcurrencyStamp = ConcurrencyStamp,
+            TenantId = tenantId
         };
 
         _currentUserService.UserId.Returns(userId);
@@ -249,6 +258,66 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenOptionsAreOmitted_UpdatesDefinitionWithoutReplacingOptions()
+    {
+        var tenantId = Guid.NewGuid();
+        var existing = CreateExistingDefinition(tenantId);
+        existing.PropertyType = PropertyType.Text;
+        var command = new UpdateCustomPropertyDefinitionCommand
+        {
+            DefinitionId = existing.Id,
+            DefinitionDto = new UpdateCustomPropertyDefinitionDto
+            {
+                Relations = new UpdateCustomPropertyDefinitionRelationsDto { EntityTypeName = EntityTypeName.Group },
+                Metadata = new UpdateCustomPropertyDefinitionMetadataDto { DisplayName = "Renamed" }
+            },
+            ExpectedConcurrencyStamp = ConcurrencyStamp,
+            TenantId = tenantId
+        };
+
+        _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        _customPropertyGovernancePolicy.EvaluateDefinition(existing.Namespace, existing.Key)
+            .Returns(new CustomPropertyGovernanceEvaluation
+            {
+                NormalizedNamespace = existing.Namespace,
+                NormalizedKey = existing.Key
+            });
+        _customPropertyDefinitionRepository.ExistsScopedMachineKey(
+                tenantId,
+                EntityTypeName.Group,
+                existing.Namespace,
+                existing.Key,
+                existing.Id)
+            .Returns(false);
+        _mapper.Map(Arg.Any<CreateCustomPropertyDefinitionDto>(), existing).Returns(callInfo =>
+        {
+            existing.EntityTypeName = callInfo.ArgAt<CreateCustomPropertyDefinitionDto>(0).EntityTypeName;
+            return existing;
+        });
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(existing.EntityTypeName).IsEqualTo(EntityTypeName.Group);
+        await _customPropertyDefinitionRepository.Received(1).Update(existing);
+        await _customPropertyDefinitionRepository.DidNotReceive().UpdateWithOptions(
+            Arg.Any<CustomPropertyDefinition>(),
+            Arg.Any<IReadOnlyCollection<CustomPropertyOption>>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<CancellationToken>());
+        await _quotaResolver.DidNotReceive().GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+            tenantId,
+            Arg.Any<CancellationToken>());
+        await _cache.Received(1).RemoveAsync(
+            $"custom-property-definitions:list:{EntityTypeName.Organization}:1:{PaginatedResult<CustomPropertyDefinitionListDto>.DefaultPageSize}",
+            Arg.Any<CancellationToken>());
+        await _cache.Received(1).RemoveAsync(
+            $"custom-property-definitions:list:{EntityTypeName.Group}:1:{PaginatedResult<CustomPropertyDefinitionListDto>.DefaultPageSize}",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Handle_WhenOptionQuotaExceeded_ReturnsQuotaFailure()
     {
         var tenantId = Guid.NewGuid();
@@ -257,7 +326,8 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         {
             DefinitionId = existing.Id,
             DefinitionDto = CreateDto(),
-            ExpectedConcurrencyStamp = ConcurrencyStamp
+            ExpectedConcurrencyStamp = ConcurrencyStamp,
+            TenantId = tenantId
         };
 
         _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
@@ -299,8 +369,9 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
             Metadata = new UpdateCustomPropertyDefinitionMetadataDto
             {
                 Namespace = "Tenant Community", Key = "Prayer Notes", DisplayName = displayName,
-                PropertyType = PropertyType.Option, ExposureLevel = ExposureLevel.OrganizerOnly, IsActive = true
+                ExposureLevel = ExposureLevel.OrganizerOnly, IsActive = true
             },
+            Validation = new UpdateCustomPropertyDefinitionValidationDto { PropertyType = PropertyType.Option },
             Options = new UpdateCustomPropertyDefinitionOptionsDto { Items =
             [
                 new CreateCustomPropertyOptionDto

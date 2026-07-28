@@ -1,5 +1,5 @@
 // ABOUTME: Grouped PATCH DTO for shared Layer 3 custom-property definition updates.
-// ABOUTME: Route identity, tenant, and scope remain server-owned while omitted fields are preserved.
+// ABOUTME: Route identity and tenant remain server-owned while relation and field groups preserve omitted state.
 
 using Explore.Application.Models.Common;
 using Explore.Domain.Enums;
@@ -8,9 +8,15 @@ namespace Explore.Application.DTOs.CustomPropertyDefinition;
 
 public sealed class UpdateCustomPropertyDefinitionDto
 {
+    public UpdateCustomPropertyDefinitionRelationsDto? Relations { get; set; }
     public UpdateCustomPropertyDefinitionMetadataDto? Metadata { get; set; }
     public UpdateCustomPropertyDefinitionValidationDto? Validation { get; set; }
     public UpdateCustomPropertyDefinitionOptionsDto? Options { get; set; }
+}
+
+public sealed class UpdateCustomPropertyDefinitionRelationsDto
+{
+    public EntityTypeName? EntityTypeName { get; set; }
 }
 
 public sealed class UpdateCustomPropertyDefinitionMetadataDto
@@ -19,9 +25,6 @@ public sealed class UpdateCustomPropertyDefinitionMetadataDto
     public string? Key { get; set; }
     public string? DisplayName { get; set; }
     public OptionalUpdate<string?> Description { get; set; } = OptionalUpdate<string?>.Unspecified();
-    public PropertyType? PropertyType { get; set; }
-    public bool? IsRequired { get; set; }
-    public bool? IsMulti { get; set; }
     public bool? IsActive { get; set; }
     public int? SortOrder { get; set; }
     public ExposureLevel? ExposureLevel { get; set; }
@@ -35,6 +38,9 @@ public sealed class UpdateCustomPropertyDefinitionMetadataDto
 
 public sealed class UpdateCustomPropertyDefinitionValidationDto
 {
+    public PropertyType? PropertyType { get; set; }
+    public bool? IsRequired { get; set; }
+    public bool? IsMulti { get; set; }
     public OptionalUpdate<string?> DefaultTextValue { get; set; } = OptionalUpdate<string?>.Unspecified();
     public OptionalUpdate<decimal?> DefaultNumberValue { get; set; } = OptionalUpdate<decimal?>.Unspecified();
     public OptionalUpdate<bool?> DefaultBooleanValue { get; set; } = OptionalUpdate<bool?>.Unspecified();

@@ -26,9 +26,12 @@ public sealed class CustomPropertyDefinitionDetailLinkPolicy : ILinkPolicy<Custo
             new { entityTypeName = dto.EntityTypeName });
 
         // Edit link - requires admin role
-        yield return LinkDefinition.Edit(
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
             RouteNames.UpdateCustomPropertyDefinition,
-            new { id = dto.Id })
+            new { id = dto.Id },
+            HttpMethods.Patch,
+            RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.CustomPropertyDefinition, dto);
 
         // Delete link - requires admin role

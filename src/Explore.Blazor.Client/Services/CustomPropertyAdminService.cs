@@ -84,8 +84,8 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
                 };
             }
 
-            var dto = BuildUpdateDto(detail, update);
-            var response = await _apiClient.UpdateCustomPropertyDefinitionAsync(update.DefinitionId, dto, $"\"{detail.ConcurrencyStamp:D}\"", cancellationToken: cancellationToken);
+            var dto = BuildUpdateDto(update);
+            var response = await _apiClient.UpdateCustomPropertyDefinitionAsync(update.DefinitionId, $"\"{detail.ConcurrencyStamp:D}\"", dto, cancellationToken: cancellationToken);
             return response;
         }
         catch (ApiException ex)
@@ -326,54 +326,19 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         }
     }
 
-    private static UpdateCustomPropertyDefinitionDto BuildUpdateDto(
-        CustomPropertyDefinitionDto detail,
-        DefinitionFlagUpdateModel update)
+    private static UpdateCustomPropertyDefinitionDto BuildUpdateDto(DefinitionFlagUpdateModel update)
     {
         return new UpdateCustomPropertyDefinitionDto
         {
-            Id = detail.Id,
-            ExpectedConcurrencyStamp = detail.ConcurrencyStamp,
-            EntityTypeName = (EntityTypeName?)detail.EntityTypeName,
-            Namespace = detail.Namespace,
-            Key = detail.Key,
-            DisplayName = detail.DisplayName,
-            Description = detail.Description,
-            PropertyType = (PropertyType?)detail.PropertyType,
-            IsRequired = detail.IsRequired,
-            IsMulti = detail.IsMulti,
-            IsActive = detail.IsActive,
-            SortOrder = detail.SortOrder,
-            ExposureLevel = update.ExposureLevel,
-            IsSearchable = update.IsSearchable,
-            IsFilterable = update.IsFilterable,
-            IsExportable = update.IsExportable,
-            IsModerationRelevant = update.IsModerationRelevant,
-            IsAnalyticsRelevant = update.IsAnalyticsRelevant,
-            IsSystemOwned = detail.IsSystemOwned,
-            DefaultTextValue = detail.DefaultTextValue,
-            DefaultNumberValue = detail.DefaultNumberValue.HasValue ? (double)detail.DefaultNumberValue.Value : null,
-            DefaultBooleanValue = detail.DefaultBooleanValue,
-            DefaultDateTimeValue = detail.DefaultDateTimeValue,
-            MinLength = detail.MinLength,
-            MaxLength = detail.MaxLength,
-            RegexPattern = detail.RegexPattern,
-            MinNumber = detail.MinNumber.HasValue ? (double)detail.MinNumber.Value : null,
-            MaxNumber = detail.MaxNumber.HasValue ? (double)detail.MaxNumber.Value : null,
-            MinDateTime = detail.MinDateTime,
-            MaxDateTime = detail.MaxDateTime,
-            AllowedUrlSchemes = detail.AllowedUrlSchemes,
-            Options = detail.Options?.Select(o => new CreateCustomPropertyOptionDto
+            Metadata = new UpdateCustomPropertyDefinitionMetadataDto
             {
-                Namespace = o.Namespace,
-                Key = o.Key,
-                DisplayName = o.DisplayName,
-                Description = o.Description,
-                Value = o.Value,
-                IsDefault = o.IsDefault == true,
-                IsActive = o.IsActive == true,
-                SortOrder = o.SortOrder
-            }).ToList() ?? []
+                ExposureLevel = update.ExposureLevel,
+                IsSearchable = update.IsSearchable,
+                IsFilterable = update.IsFilterable,
+                IsExportable = update.IsExportable,
+                IsModerationRelevant = update.IsModerationRelevant,
+                IsAnalyticsRelevant = update.IsAnalyticsRelevant
+            }
         };
     }
 
