@@ -179,6 +179,7 @@ public static class ApplicationServicesRegistration
         services.AddScoped<ICustomPropertyGovernancePolicy, CustomPropertyGovernancePolicy>();
         services.AddScoped<ICustomPropertyAutomationConditionPolicy, CustomPropertyAutomationConditionPolicy>();
         services.AddScoped<IEventActorResolver, EventActorResolver>();
+        services.AddScoped<TicketTypeEntitlementResolver>();
         services.AddScoped<IEventTemplateInstantiationService, EventTemplateInstantiationService>();
         services.AddScoped<IEventSessionTemplateInstantiationService, EventSessionTemplateInstantiationService>();
         services.AddScoped<IEventTemplateDiffService, EventTemplateDiffService>();
