@@ -31,7 +31,7 @@ public class EventAgendaItemRepository : GenericRepository<EventAgendaItem, Guid
     {
         return await _dbContext.EventAgendaItems
             .AsNoTracking()
-            .WherePubliclyEligible()
+            .WherePubliclyEligible(_dbContext)
             .FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
     }
 
@@ -39,7 +39,7 @@ public class EventAgendaItemRepository : GenericRepository<EventAgendaItem, Guid
     {
         return await _dbContext.EventAgendaItems
             .AsNoTracking()
-            .WherePubliclyEligible()
+            .WherePubliclyEligible(_dbContext)
             .Where(item => item.EventId == eventId)
             .OrderBy(item => item.SortOrder)
             .ThenBy(item => item.StartTime)

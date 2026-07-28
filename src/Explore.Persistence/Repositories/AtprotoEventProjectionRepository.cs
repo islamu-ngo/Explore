@@ -88,15 +88,35 @@ public sealed class AtprotoEventProjectionRepository(ExploreDbContext dbContext)
     {
         IQueryable<AtprotoEventProjection> query = dbContext.AtprotoEventProjections
             .AsNoTracking()
-            .Where(projection => dbContext.AtprotoRecordTenantPresentations.Any(presentation =>
-                presentation.AtprotoRecordId == projection.AtprotoRecordId && presentation.IsVisible))
             .Where(projection => dbContext.AtprotoRecords.Any(record =>
-                record.Id == projection.AtprotoRecordId && record.TombstonedAt == null));
+                record.Id == projection.AtprotoRecordId
+                && record.TombstonedAt == null
+                && dbContext.Events.Any(@event =>
+                    @event.AtprotoRecordId == record.Id
+                    && !@event.IsDeleted
+                    && @event.VisibilityTypeId == (int)VisibilityTypeEnum.Public
+                    && @event.EventStatusId != (int)EventStatusEnum.Moderated
+                    && @event.EventStatusId != (int)EventStatusEnum.Archived
+                    && @event.Actor != null
+                    && !@event.Actor.IsDeleted
+                    && !@event.Actor.IsSuspended
+                    && dbContext.AtprotoRecordTenantPresentations.Any(presentation =>
+                        presentation.TenantId == @event.TenantId
+                        && presentation.AtprotoRecordId == record.Id
+                        && presentation.IsVisible
+                        && presentation.SourceVersion == record.SourceVersion)
+                    && dbContext.AtprotoIdentities.Any(identity =>
+                        identity.ActorId == @event.ActorId
+                        && identity.Did == record.Did
+                        && identity.IsActive
+                        && !identity.IsSuspended
+                        && !identity.IsDeleted))));
 
         return includeLocalEchoes
             ? query
             : query.Where(projection => !dbContext.Events.Any(@event =>
                 @event.AtprotoRecordId == projection.AtprotoRecordId
+                && !@event.IsDeleted
                 && @event.EventStatusId == (int)EventStatusEnum.Published
                 && @event.VisibilityTypeId == (int)VisibilityTypeEnum.Public));
     }

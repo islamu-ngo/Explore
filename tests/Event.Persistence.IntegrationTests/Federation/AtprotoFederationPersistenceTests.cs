@@ -214,6 +214,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         {
             AtprotoRecord record = IncomingRecord(1, Utc(10));
             record.Id = recordId;
+            Actor actor = CreateActor(tenantA.UserId, "Projection owner", Utc(10));
             seedContext.AtprotoRecords.Add(record);
             seedContext.AtprotoEventProjections.Add(Projection(recordId, 1, "Visible event"));
             seedContext.AtprotoRecordTenantPresentations.Add(new AtprotoRecordTenantPresentation
@@ -223,6 +224,38 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
                 IsVisible = true,
                 SourceVersion = 1,
                 EvaluatedAt = Utc(10)
+            });
+            seedContext.AtprotoIdentities.Add(new AtprotoIdentity
+            {
+                Id = Guid.CreateVersion7(),
+                Did = record.Did,
+                ActorId = actor.Id,
+                Actor = actor,
+                PdsHost = "https://pds.example.test",
+                IsActive = true,
+                LastResolvedAt = Utc(10),
+                LastSeenAt = Utc(10),
+                CreatedAt = Utc(10)
+            });
+            seedContext.Events.Add(new Explore.Domain.Event
+            {
+                Id = Guid.CreateVersion7(),
+                Title = "Visible event",
+                PublicCode = "ATPROTO",
+                ActorId = actor.Id,
+                Actor = actor,
+                TenantId = tenantA.TenantId,
+                Tenant = null!,
+                VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+                VisibilityType = null!,
+                EventStatusId = (int)EventStatusEnum.Draft,
+                EventStatus = null!,
+                EventFormatId = (int)EventFormatEnum.Digital,
+                EventFormat = null!,
+                AtprotoRecordId = recordId,
+                AtprotoRecord = record,
+                CreatedAt = Utc(10),
+                ConcurrencyStamp = Guid.CreateVersion7()
             });
             await seedContext.SaveChangesAsync();
         }

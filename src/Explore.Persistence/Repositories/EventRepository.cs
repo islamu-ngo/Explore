@@ -54,6 +54,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .AsSplitQuery()
             .IncludeStandardDetails()
             .Include(e => e.AtprotoRecord)
+            .WherePubliclyEligible(_dbContext)
             .FirstOrDefaultAsync(e => e.PublicCode == publicCode, cancellationToken);
     }
 
@@ -61,11 +62,16 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
     {
         return await _dbContext.Events
             .AsNoTracking()
+            .WherePubliclyEligible(_dbContext)
             .Where(e => e.PublicCode == publicCode)
-            .Where(e => e.EventStatusId == (int)EventStatusEnum.Published)
-            .Where(e => e.VisibilityTypeId == (int)VisibilityTypeEnum.Public)
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public Task<bool> IsPubliclyEligibleAsync(Guid tenantId, Guid eventId, CancellationToken cancellationToken) =>
+        _dbContext.Events
+            .AsNoTracking()
+            .WherePubliclyEligible(_dbContext)
+            .AnyAsync(@event => @event.TenantId == tenantId && @event.Id == eventId, cancellationToken);
 
     public async Task<Event?> GetAuthorizationTargetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
@@ -385,6 +391,12 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         query = ApplySubqueryFilters(query, specification, now);
         query = ApplyProjectionFilters(query, specification);
 
+        if (specification.Filters.OfType<EventFilter>().Any(filter =>
+                filter.FilterType == EventFilterType.PubliclyDiscoverable))
+        {
+            query = query.WherePubliclyEligible(_dbContext);
+        }
+
         // Apply direct filters and sorting via specification
         query = specification.Apply(query, now);
 
@@ -416,8 +428,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
     {
         return await _dbContext.Events
             .AsNoTracking()
-            .Where(e => e.EventStatusId == (int)EventStatusEnum.Published)
-            .Where(e => e.VisibilityTypeId == (int)VisibilityTypeEnum.Public)
+            .WherePubliclyEligible(_dbContext)
             .OrderByDescending(e => e.UpdatedAt ?? e.CreatedAt)
             .ThenBy(e => e.Id)
             .Take(maxCount)
@@ -445,7 +456,8 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .AsNoTracking()
             .Include(e => e.EventStatus)
             .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat);
+            .Include(e => e.EventFormat)
+            .WherePubliclyEligible(_dbContext);
 
         query = specification.Apply(query, DateTimeOffset.UtcNow);
 

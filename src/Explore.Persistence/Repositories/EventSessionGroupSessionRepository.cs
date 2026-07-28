@@ -72,7 +72,7 @@ public class EventSessionGroupSessionRepository : GenericRepository<EventSession
                 .ThenInclude(session => session.IslamicAspect)
             .Include(assignment => assignment.EventSessionGroup)
                 .ThenInclude(group => group.Event)
-            .WherePubliclyEligible()
+            .WherePubliclyEligible(_dbContext)
             .Where(assignment => assignment.EventSessionGroupId == eventSessionGroupId)
             .OrderBy(assignment => assignment.SortOrder)
             .ThenBy(assignment => assignment.EventSessionId)

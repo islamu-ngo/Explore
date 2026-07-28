@@ -151,6 +151,18 @@ public sealed class AtprotoEventProjectionDiscoveryDeduplicationTests(PostgreSql
                 SourceVersion = 1,
                 EvaluatedAt = now
             },
+            new AtprotoIdentity
+            {
+                Id = Guid.CreateVersion7(),
+                Did = record.Did,
+                ActorId = actorId,
+                Actor = actor,
+                PdsHost = "https://pds.example.test",
+                IsActive = true,
+                LastResolvedAt = now,
+                LastSeenAt = now,
+                CreatedAt = now
+            },
             importedEvent);
         await context.SaveChangesAsync();
         return (tenantId, importedEvent.Id, recordId);

@@ -43,7 +43,7 @@ public class EventSessionGroupRepository : GenericRepository<EventSessionGroup, 
             .Include(group => group.Event)
             .Include(group => group.Location)
             .Include(group => group.Room)
-            .WherePubliclyEligible()
+            .WherePubliclyEligible(_dbContext)
             .FirstOrDefaultAsync(group => group.Id == id, cancellationToken);
     }
 
@@ -66,7 +66,7 @@ public class EventSessionGroupRepository : GenericRepository<EventSessionGroup, 
             .Include(group => group.Event)
             .Include(group => group.Location)
             .Include(group => group.Room)
-            .WherePubliclyEligible()
+            .WherePubliclyEligible(_dbContext)
             .Where(group => group.EventId == eventId)
             .OrderBy(group => group.SortOrder)
             .ThenBy(group => group.Name)

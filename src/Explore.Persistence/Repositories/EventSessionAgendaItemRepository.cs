@@ -52,7 +52,7 @@ public class EventSessionAgendaItemRepository : GenericRepository<EventSessionAg
                 .ThenInclude(session => session.Event)
             .Include(item => item.Location)
                 .ThenInclude(location => location!.Pii)
-            .WherePubliclyEligible()
+            .WherePubliclyEligible(_dbContext)
             .FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
     }
 
@@ -66,7 +66,7 @@ public class EventSessionAgendaItemRepository : GenericRepository<EventSessionAg
                 .ThenInclude(session => session.Event)
             .Include(item => item.Location)
                 .ThenInclude(location => location!.Pii)
-            .WherePubliclyEligible()
+            .WherePubliclyEligible(_dbContext)
             .Where(item => item.EventSessionId == eventSessionId)
             .OrderBy(item => item.StartTime)
             .ToListAsync(cancellationToken);
@@ -105,7 +105,7 @@ public class EventSessionAgendaItemRepository : GenericRepository<EventSessionAg
                 .ThenInclude(session => session.Event)
             .Include(item => item.Location)
                 .ThenInclude(location => location!.Pii)
-            .WherePubliclyEligible()
+            .WherePubliclyEligible(_dbContext)
             .OrderByDescending(item => item.StartTime);
 
         var totalCount = await query.CountAsync(cancellationToken);
