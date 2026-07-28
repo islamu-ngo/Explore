@@ -14,13 +14,17 @@ using Explore.API.Filters;
 using Explore.API.Models;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.DTOs.Location;
 using Explore.Application.Features.EventLocations.Requests.Commands;
+using Explore.Application.Models.Common;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Infrastructure.Services;
 using Explore.Persistence;
 using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -65,6 +69,52 @@ public sealed class EventLocationControllerTests
         await Assert.That(updateAuthorization?.Action).IsEqualTo(AuthorizationActions.Update);
         await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(UpdateEventLocationPolicyCommand)))
             .IsTrue();
+    }
+
+    [Test]
+    public async Task DisclosureUpdate_ForwardsRouteIdsTokensAndOptionalGroupsIndependently()
+    {
+        var eventId = Guid.CreateVersion7();
+        var eventLocationId = Guid.CreateVersion7();
+        var fieldsStamp = Guid.CreateVersion7();
+        var audienceStamp = Guid.CreateVersion7();
+        var fields = new UpdateEventLocationDisclosureFieldsDto { ShowVenueName = true };
+        var audience = new UpdateEventLocationDisclosureAudienceDto
+        {
+            FullDetailsAudienceId = (int)LocationDisclosureAudienceEnum.ConfirmedParticipant,
+            RevealFullDetailsFromUtc = OptionalUpdate<DateTime?>.Set(DateTime.UtcNow)
+        };
+        var mediator = new EventLocationMediatorStub();
+        var controller = new EventLocationController(mediator, null!);
+
+        await controller.UpdateDisclosure(eventId, eventLocationId, new UpdateEventLocationDisclosureDto
+        {
+            ExpectedPolicyVersion = 4,
+            ExpectedConcurrencyStamp = fieldsStamp,
+            Fields = fields
+        });
+        await controller.UpdateDisclosure(eventId, eventLocationId, new UpdateEventLocationDisclosureDto
+        {
+            ExpectedPolicyVersion = 5,
+            ExpectedConcurrencyStamp = audienceStamp,
+            Audience = audience
+        });
+
+        UpdateEventLocationPolicyCommand fieldsCommand = mediator.Requests[0];
+        await Assert.That(fieldsCommand.EventId).IsEqualTo(eventId);
+        await Assert.That(fieldsCommand.EventLocationId).IsEqualTo(eventLocationId);
+        await Assert.That(fieldsCommand.ExpectedPolicyVersion).IsEqualTo(4);
+        await Assert.That(fieldsCommand.ExpectedConcurrencyStamp).IsEqualTo(fieldsStamp);
+        await Assert.That(fieldsCommand.Fields).IsSameReferenceAs(fields);
+        await Assert.That(fieldsCommand.Audience).IsNull();
+
+        UpdateEventLocationPolicyCommand audienceCommand = mediator.Requests[1];
+        await Assert.That(audienceCommand.EventId).IsEqualTo(eventId);
+        await Assert.That(audienceCommand.EventLocationId).IsEqualTo(eventLocationId);
+        await Assert.That(audienceCommand.ExpectedPolicyVersion).IsEqualTo(5);
+        await Assert.That(audienceCommand.ExpectedConcurrencyStamp).IsEqualTo(audienceStamp);
+        await Assert.That(audienceCommand.Fields).IsNull();
+        await Assert.That(audienceCommand.Audience).IsSameReferenceAs(audience);
     }
 
     private static void AssertPublic(
@@ -126,6 +176,47 @@ public sealed class EventLocationControllerTests
         where TAttribute : Attribute =>
         action.GetCustomAttribute<TAttribute>(inherit: true)
         ?? action.DeclaringType?.GetCustomAttribute<TAttribute>(inherit: true);
+
+    private sealed class EventLocationMediatorStub : IMediator
+    {
+        public List<UpdateEventLocationPolicyCommand> Requests { get; } = [];
+
+        public Task<TResponse> Send<TResponse>(
+            IRequest<TResponse> request,
+            CancellationToken cancellationToken = default)
+        {
+            Requests.Add((UpdateEventLocationPolicyCommand)(object)request);
+            object response = new BaseCommandResponse<Guid>
+            {
+                Success = true,
+                Id = Guid.CreateVersion7(),
+                Message = "Disclosure updated."
+            };
+            return Task.FromResult((TResponse)response);
+        }
+
+        public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default)
+            where TRequest : IRequest => Task.CompletedTask;
+
+        public Task<object?> Send(object request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task Publish(object notification, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task Publish<TNotification>(
+            TNotification notification,
+            CancellationToken cancellationToken = default)
+            where TNotification : INotification => Task.CompletedTask;
+
+        public IAsyncEnumerable<TResponse> CreateStream<TResponse>(
+            IStreamRequest<TResponse> request,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public IAsyncEnumerable<object?> CreateStream(
+            object request,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
 }
 
 [Category("EventLocationPrivacy")]
@@ -242,30 +333,36 @@ public sealed class EventLocationControllerRuntimeTests(EventLocationRouteRuntim
     {
         EventLocationRouteScenario scenario = await SeedScenarioAsync();
         string route = $"/api/events/{scenario.EventId}/locations/{scenario.EventLocationId}/disclosure";
-        var body = new
+        var body = new UpdateEventLocationDisclosureDto
         {
-            showVenueName = true,
-            showCity = true,
-            showCountry = true,
-            showRoomName = false,
-            showStreetAddress = false,
-            showPostcode = false,
-            showCoordinates = false,
-            fullDetailsAudienceId = (int)LocationDisclosureAudienceEnum.ConfirmedParticipant,
-            revealFullDetailsFromUtc = DateTime.UtcNow.AddMinutes(-1),
-            expectedPolicyVersion = scenario.PolicyVersion,
-            expectedConcurrencyStamp = scenario.ConcurrencyStamp
+            ExpectedPolicyVersion = scenario.PolicyVersion,
+            ExpectedConcurrencyStamp = scenario.ConcurrencyStamp,
+            Fields = new UpdateEventLocationDisclosureFieldsDto
+            {
+                ShowVenueName = true,
+                ShowCity = true,
+                ShowCountry = true,
+                ShowRoomName = false,
+                ShowStreetAddress = false,
+                ShowPostcode = false,
+                ShowCoordinates = false
+            },
+            Audience = new UpdateEventLocationDisclosureAudienceDto
+            {
+                FullDetailsAudienceId = (int)LocationDisclosureAudienceEnum.ConfirmedParticipant,
+                RevealFullDetailsFromUtc = OptionalUpdate<DateTime?>.Set(DateTime.UtcNow.AddMinutes(-1))
+            }
         };
 
         using HttpRequestMessage updateRequest = fixture.CreateAuthenticatedRequest(
-            HttpMethod.Put,
+            HttpMethod.Patch,
             route,
             scenario.UserId);
         updateRequest.Content = JsonContent.Create(body);
         using HttpResponseMessage update = await fixture.Client.SendAsync(updateRequest);
 
         using HttpRequestMessage staleRequest = fixture.CreateAuthenticatedRequest(
-            HttpMethod.Put,
+            HttpMethod.Patch,
             route,
             scenario.UserId);
         staleRequest.Content = JsonContent.Create(body);
@@ -302,22 +399,28 @@ public sealed class EventLocationControllerRuntimeTests(EventLocationRouteRuntim
         string updateRoute =
             $"/api/events/{scenario.EventId}/locations/{scenario.EventLocationId}/disclosure";
         using HttpRequestMessage malformedRequest = fixture.CreateAuthenticatedRequest(
-            HttpMethod.Put,
+            HttpMethod.Patch,
             updateRoute,
             scenario.UserId);
-        malformedRequest.Content = JsonContent.Create(new
+        malformedRequest.Content = JsonContent.Create(new UpdateEventLocationDisclosureDto
         {
-            showVenueName = true,
-            showCity = true,
-            showCountry = true,
-            showRoomName = false,
-            showStreetAddress = false,
-            showPostcode = false,
-            showCoordinates = false,
-            fullDetailsAudienceId = int.MaxValue,
-            revealFullDetailsFromUtc = DateTime.UtcNow,
-            expectedPolicyVersion = scenario.PolicyVersion,
-            expectedConcurrencyStamp = scenario.ConcurrencyStamp
+            ExpectedPolicyVersion = scenario.PolicyVersion,
+            ExpectedConcurrencyStamp = scenario.ConcurrencyStamp,
+            Fields = new UpdateEventLocationDisclosureFieldsDto
+            {
+                ShowVenueName = true,
+                ShowCity = true,
+                ShowCountry = true,
+                ShowRoomName = false,
+                ShowStreetAddress = false,
+                ShowPostcode = false,
+                ShowCoordinates = false
+            },
+            Audience = new UpdateEventLocationDisclosureAudienceDto
+            {
+                FullDetailsAudienceId = int.MaxValue,
+                RevealFullDetailsFromUtc = OptionalUpdate<DateTime?>.Set(DateTime.UtcNow)
+            }
         });
         using HttpResponseMessage malformed = await fixture.Client.SendAsync(malformedRequest);
 
