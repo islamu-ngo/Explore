@@ -331,8 +331,11 @@ Every controller action must carry exactly one of the following classifications,
 | **Public** | Safe for unauthenticated read. No tenant mutation. | `[AllowAnonymous]` | `global` |
 | **Authenticated** | Any logged-in user. Tenant-scoped or user-scoped write, or privileged read. | `[Authorize]` (no roles required) | `authenticated` or `write` |
 | **Admin** | Operator / setup / diagnostics. Not exposed to the generated client. | `[Authorize(Roles=...)]` or `[SetupSecretRequired]` | `setup_secret` or `authenticated` |
+| **PublicTransactional** | Anonymous tenant mutation for narrowly scoped guest flows. Unsafe verbs only. | `[AllowAnonymous]`; browser traffic is protected at the BFF boundary, not with API antiforgery metadata. | `public_transactional` |
 
 The classification lives in controller action metadata via the `[EndpointClassification(EndpointClass.X)]` attribute (`Explore.API.Attributes`) and is the single source of truth for OpenAPI tagging (injected as `x-endpoint-class` operation extension by `EndpointClassificationTransformer`), client-generation filters, and Cerbos policy scaffolding. Every controller action must carry exactly one classification (class-level attribute is inherited by actions; action-level attribute overrides). Enforced by `EndpointClassificationArchitectureTests` in `Event.Architecture.Tests`.
+
+`PublicTransactional` endpoints must explicitly use `[EnableRateLimiting("public_transactional")]`. The policy is a fixed window of 10 requests per 60 seconds per effective remote IP, with queue limit 0. `POST` actions also require `[RequireIdempotencyKey]`; the API receives no antiforgery metadata because only browser traffic that crosses the BFF is subject to BFF antiforgery validation.
 
 ### Operation IDs
 

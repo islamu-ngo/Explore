@@ -103,7 +103,7 @@ Three-reader non-URL versioning — clients may use any of the following; all th
 
 ### Grouped Entity PATCH Contracts
 
-Tag, Tenant metadata, tenant navigation links, footer link groups, footer links, control-plane tenant-plan drafts, current-user appearance localization, user appearance profiles, UI themes, EventLocation disclosure, EventSession agenda items, EventSession groups, and EventSession speaker assignments use route-ID or current-resource `PATCH`. Their bodies contain only nullable logical groups; omitted groups preserve persisted values, and identity comes from the route plus trusted tenant context rather than body-owned IDs. Session-group and speaker updates require the observed concurrency stamp through strong `If-Match`; group list/detail reads expose that stamp. Islamic and Tech aspects use explicit `POST` create operations and grouped `PATCH` updates instead of upsert. Appearance active-profile selection, current theme mode, profile archive, Tenant lifecycle, navigation reorder, footer reorder, and tenant-plan publish/archive/clone remain dedicated actions rather than generic property groups. UI-theme PATCH keeps the observed row version at the wrapper level and validates the merged metadata/state/palette candidate before one transactional update.
+Tag, Tenant metadata, tenant navigation links, footer link groups, footer links, control-plane tenant-plan drafts, current-user appearance localization, user appearance profiles, UI themes, EventLocation disclosure, EventSession agenda items, EventSession groups, and EventSession speaker assignments use route-ID or current-resource `PATCH`. Their bodies contain only nullable logical groups; omitted groups preserve persisted values, and identity comes from the route plus trusted tenant context rather than body-owned IDs. Session-group and speaker updates require the observed concurrency stamp through strong `If-Match`; group list/detail reads expose that stamp. Islamic and Tech aspects use separate `POST` create operations and grouped `PATCH` update operations. Appearance active-profile selection, current theme mode, profile archive, Tenant lifecycle, navigation reorder, footer reorder, and tenant-plan publish/archive/clone remain dedicated actions rather than generic property groups. UI-theme PATCH keeps the observed row version at the wrapper level and validates the merged metadata/state/palette candidate before one transactional update.
 
 Tenant navigation and footer-link URLs accept relative paths or HTTPS URLs by default. The instance-only `security.require_https_external_urls` setting defaults to `true`; setting it to `false` permits HTTP only for deployments that explicitly trust an HTTP-only private network.
 
@@ -993,8 +993,8 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `POST /api/eventsession/{id}/archive` — archive a draft, cancelled, or completed session after concurrency and parent-event lifecycle validation
    - `EventSessionDto` and `EventSessionListDto` expose nullable `startTime`, `endTime`, and local projection fields. Use `isScheduled`, `eventSessionStatusId`, `eventSessionStatusMasterCode`, `concurrencyStamp`, and HAL `_links` to drive lifecycle UI.
 3. Aspect endpoints:
-   - `.../aspects/islamic` (`GET/PUT/DELETE`)
-   - `.../aspects/tech` (`GET/PUT/DELETE`)
+   - Islamic: `GET /api/event/{id}/aspects/islamic` (`GetEventIslamicAspect`), `POST` (`CreateEventIslamicAspect`), grouped `PATCH` (`UpdateEventIslamicAspect`), and `DELETE` (`DeleteEventIslamicAspect`).
+   - Tech: `GET /api/event/{id}/aspects/tech` (`GetEventTechAspect`), `POST` (`CreateEventTechAspect`), grouped `PATCH` (`UpdateEventTechAspect`), and `DELETE` (`DeleteEventTechAspect`).
 4. Module governance:
    - `/api/module/*` (`available`, `enabled`, `enable`, `disable`, `schema`)
 5. Public experience:

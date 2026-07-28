@@ -231,18 +231,23 @@ Event registration reads are self-service by default. Attendee identity is not a
 
 ## BFF Antiforgery Contract
 
-Cookie-authenticated unsafe BFF endpoints must validate antiforgery tokens because browsers automatically include BFF cookies on same-site requests.
+Unsafe browser requests proxied through the BFF at `/api/*`, including anonymous requests, must validate antiforgery tokens. Direct `Explore.API` bearer-token and API-key callers do not cross the browser BFF boundary and are not subject to BFF antiforgery validation.
 
 - Token issuance: `UseAntiforgeryTokenMiddleware` calls `IAntiforgery.GetAndStoreTokens` on non-static `GET` requests and writes the request token to the readable `XSRF-TOKEN` cookie. Static assets bypass issuance so the antiforgery service does not disable browser caching for immutable UI resources.
 - Header contract: clients send the token back in the `X-CSRF-TOKEN` header. This matches the BFF `AddAntiforgery` configuration.
 - Browser client path: `BrowserCredentialsMessageHandler` attaches browser credentials and adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests.
 - Server self-call path: `BffCookieForwardingHandler` forwards captured cookies and mirrors `XSRF-TOKEN` into `X-CSRF-TOKEN` when InteractiveServer code calls BFF endpoints.
 - Endpoint validation: unsafe minimal BFF endpoints call `.ValidateAntiforgery()`, which returns `400 Antiforgery validation failed` for missing or invalid tokens.
+- Proxy validation: unsafe `/api/*` requests validate through `EventApiProxyExtensions` before YARP forwards them. Existing setup-secret and anonymous onboarding/bootstrap decisions remain outside this browser-antiforgery check.
 - Protected endpoint families include auth refresh, support-access start/stop, storage upload session/proxy, preference mutations, and appearance profile mutations.
 - InteractiveServer storage upload self-calls use a short-lived Data Protection protected `X-ISLAMU-BFF-SELF-CALL` token bound to method, path, host, and authenticated user. That token lets same-process server calls satisfy the same endpoint filter without turning browser-originated storage uploads into an antiforgery exception.
 - Documented exceptions are setup-secret bootstrap endpoints and `/bff/auth/refresh-session/internal`; these remain constrained by setup credentials, server-owned setup/session state, authorization where applicable, and rate limiting because they run before or outside normal browser antiforgery semantics.
 
 Do not add new unsafe `/bff/*` endpoints without either `.ValidateAntiforgery()` or a documented bootstrap/internal exception with equivalent compensating controls.
+
+### Public Transactional Capability Foundation
+
+Future public transactional capabilities are opaque, scoped, single-purpose, expiring bearer values and never prove user identity. A future implementation must persist only hashes, use constant-time comparison, support expiry and rotation, and reveal plaintext exactly once; plaintext values must never be persisted, logged, returned after issuance, or turned into browser-visible authority claims. This traffic-controls phase adds no capability endpoint or capability claim.
 
 ## Storage Upload Session Binding
 

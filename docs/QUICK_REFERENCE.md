@@ -64,7 +64,7 @@ Every new controller action MUST have:
 
 1. **Explicit route template** — `[HttpGet("resource/{id:guid}", ...)]` not bare `[HttpGet]`
 2. **Explicit route name** — `Name = RouteNames.Xxx` on every `[Http*]` attribute
-3. **Explicit endpoint class** — `[EndpointClassification(EndpointClass.Public|Authenticated)]` on controller or action
+3. **Explicit endpoint class** — one of `[EndpointClassification(EndpointClass.Public)]`, `Authenticated`, `Admin`, or `PublicTransactional` on controller or action
 4. **Explicit response typing** — `[ProducesResponseType<T>]` for success + error responses
 5. **No overloaded semantics** — one action per HTTP verb + route template combination
 
@@ -78,6 +78,7 @@ Enforced by: `ApiContractArchitectureTests`, `EndpointClassificationArchitecture
 | `authenticated` | User ID | 200 requests | 60s sliding |
 | `write` | User ID | 30 requests | 60s fixed |
 | `setup_secret` | IP | 5 requests | 60s fixed |
+| `public_transactional` | Effective remote IP | 10 requests | 60s fixed, queue 0 |
 
 All disabled in `Testing` environment.
 
