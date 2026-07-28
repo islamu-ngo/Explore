@@ -1,11 +1,9 @@
-// ABOUTME: AutoMapper profile for Actor, ActorKeyStore, StorageObject, and SyncState entities.
+// ABOUTME: AutoMapper profile for Actor and StorageObject entities.
 // ABOUTME: Split from monolithic MappingProfile.cs for domain-cohesion.
 
 using AutoMapper;
 using Explore.Application.DTOs.Actor;
-using Explore.Application.DTOs.ActorKeyStore;
 using Explore.Application.DTOs.StorageObject;
-using Explore.Application.DTOs.SyncState;
 using Explore.Domain;
 
 namespace Explore.Application.Profiles;
@@ -44,14 +42,6 @@ public class ActorFederationMappingProfile : Profile
             .ForMember(dest => dest.BackgroundImageUri, opt => opt.Ignore());
         CreateMap<CreateActorDto, Domain.Actor>();
 
-        CreateMap<Domain.ActorKeyStore, ActorKeyStoreDto>()
-            .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null))
-            .ForMember(dest => dest.ActorDid, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.AtprotoIdentities.Select(identity => identity.Did).FirstOrDefault() : null))
-            .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null));
-        CreateMap<Domain.ActorKeyStore, ActorKeyStoreListDto>();
-        CreateMap<CreateActorKeyStoreDto, Domain.ActorKeyStore>();
-        CreateMap<UpdateActorKeyStoreDto, Domain.ActorKeyStore>();
-
         CreateMap<Domain.StorageObject, StorageObjectDto>()
             .ForMember(dest => dest.FileTypeFullName, opt => opt.MapFrom(src => src.FileType != null ? src.FileType.FullName : null))
             .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null))
@@ -60,12 +50,5 @@ public class ActorFederationMappingProfile : Profile
             .ForMember(dest => dest.FileTypeFullName, opt => opt.MapFrom(src => src.FileType != null ? src.FileType.FullName : null));
         CreateMap<CreateStorageObjectDto, Domain.StorageObject>()
             .ForMember(dest => dest.SafeDisplayName, opt => opt.MapFrom(src => string.IsNullOrWhiteSpace(src.SafeDisplayName) ? src.FullName : src.SafeDisplayName));
-        CreateMap<UpdateStorageObjectDto, Domain.StorageObject>()
-            .ForMember(dest => dest.SafeDisplayName, opt => opt.MapFrom(src => string.IsNullOrWhiteSpace(src.SafeDisplayName) ? src.FullName : src.SafeDisplayName));
-
-        CreateMap<Domain.SyncState, SyncStateDto>().ReverseMap();
-        CreateMap<Domain.SyncState, SyncStateListDto>().ReverseMap();
-        CreateMap<CreateSyncStateDto, Domain.SyncState>();
-        CreateMap<UpdateSyncStateDto, Domain.SyncState>();
     }
 }
