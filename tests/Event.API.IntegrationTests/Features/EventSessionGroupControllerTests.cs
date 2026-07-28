@@ -4,17 +4,14 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Reflection;
-
 using Event.Api.IntegrationTests.Fixtures;
-
-using Explore.Application.DTOs.EventSessionGroup;
 using Explore.API.Controllers;
 using Explore.API.Hateoas;
 using Explore.API.Hateoas.Policies;
+using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.Hateoas;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-
 using TUnit.Assertions;
 using TUnit.Core;
 

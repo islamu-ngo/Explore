@@ -2,9 +2,9 @@
 // ABOUTME: Verifies the write route metadata and command forwarding without touching a database.
 
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Net;
 using System.Net.Http.Json;
-using System.Linq;
 using System.Reflection;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;

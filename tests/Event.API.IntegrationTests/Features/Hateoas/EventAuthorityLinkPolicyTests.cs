@@ -3,13 +3,13 @@
 
 using System.Reflection;
 using System.Text.Json;
-using Microsoft.AspNetCore.Routing;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventOrganizerClaim;
 using Explore.Application.Hateoas;
 using Explore.Domain.Enums;
+using Microsoft.AspNetCore.Routing;
 
 namespace Event.Api.IntegrationTests.Features.Hateoas;
 

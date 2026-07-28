@@ -1,12 +1,10 @@
 // ABOUTME: Integration coverage for internal event-published notification fanout dispatch.
 // ABOUTME: Verifies real DI routing creates durable notifications once per eligible subscription.
 
-using System.Text.Json;
 using System.Security.Cryptography;
-
+using System.Text.Json;
 using Event.Api.IntegrationTests.Builders;
 using Event.Api.IntegrationTests.Fixtures;
-
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Models.InternalEvents;
@@ -15,7 +13,6 @@ using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
