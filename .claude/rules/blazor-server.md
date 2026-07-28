@@ -20,7 +20,8 @@ related_intents: [bff-auth-bug]
 - **Concern Separation**: Use dedicated forwarding handlers/transforms for tokens, tenants, and setup-secrets.
 - **Pooled Clients**: Keep `UseCookies = false` on outbound server-side API clients.
 - **SSR Safety**: Avoid component logic that assumes `HttpContext` presence (crucial for InteractiveAuto components).
-- **Endpoint Modularization**: Organize auth, setup, and preference endpoints into dedicated extension files.
+- **Endpoint Modularization**: Organize auth, setup, preference, storage, support-access, and ATProto endpoints into dedicated extension files.
+- **Dynamic Schemes & OAuth**: Manage OIDC/OAuth schemes via `IDynamicAuthSchemeManager`. Expose AT Protocol client metadata (`/oauth/client-metadata.json`) and JWKS (`/oauth/jwks.json`) via `AtprotoOAuthEndpointExtensions`.
 
 ## Must Read
 - [docs/QUICK_REFERENCE.md#multi-tenancy-reminder](../../docs/QUICK_REFERENCE.md#multi-tenancy-reminder)
