@@ -3,6 +3,7 @@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Services
+@inject ITenantOnboardingService TenantOnboardingService
 
 <div class="settings-section">
     <div class="settings-section-header">
@@ -24,8 +25,10 @@
             @* ── Preset Selector ──────────────────────────────────────────── *@
             <MudSelect T="string"
                        Label="Render Policy Preset"
-                       @bind-Value="Model.RenderPolicyPreset"
+                       Value="Model.RenderPolicyPreset"
+                       ValueChanged="SetPresetAsync"
                        Variant="Variant.Outlined"
+                       Disabled="@IsSaving"
                        HelperText="Choose a preset to apply default render modes for all route groups.">
                 @foreach (var preset in PresetOptions)
                 {
@@ -49,7 +52,9 @@
                             <MudItem xs="12" md="6">
                                 <MudSelect T="string"
                                            Label="Render Mode"
-                                           @bind-Value="Model.PublicSeoRenderMode"
+                                           Value="Model.PublicSeoRenderMode"
+                                           ValueChanged="SetPublicSeoRenderModeAsync"
+                                           Disabled="@IsSaving"
                                            Variant="Variant.Outlined">
                                     @foreach (var mode in RenderModeOptions)
                                     {
@@ -58,7 +63,11 @@
                                 </MudSelect>
                             </MudItem>
                             <MudItem xs="12" md="6">
-                                <MudSwitch T="bool?" @bind-Value="Model.PublicSeoPrerenderEnabled" Color="Color.Primary">
+                                <MudSwitch T="bool?"
+                                           Value="Model.PublicSeoPrerenderEnabled"
+                                           ValueChanged="SetPublicSeoPrerenderAsync"
+                                           Disabled="@IsSaving"
+                                           Color="Color.Primary">
                                     Prerender Enabled
                                 </MudSwitch>
                             </MudItem>
@@ -83,7 +92,9 @@
                             <MudItem xs="12" md="6">
                                 <MudSelect T="string"
                                            Label="Render Mode"
-                                           @bind-Value="Model.OperationalRenderMode"
+                                           Value="Model.OperationalRenderMode"
+                                           ValueChanged="SetOperationalRenderModeAsync"
+                                           Disabled="@IsSaving"
                                            Variant="Variant.Outlined">
                                     @foreach (var mode in RenderModeOptions)
                                     {
@@ -92,7 +103,11 @@
                                 </MudSelect>
                             </MudItem>
                             <MudItem xs="12" md="6">
-                                <MudSwitch T="bool?" @bind-Value="Model.OperationalPrerenderEnabled" Color="Color.Primary">
+                                <MudSwitch T="bool?"
+                                           Value="Model.OperationalPrerenderEnabled"
+                                           ValueChanged="SetOperationalPrerenderAsync"
+                                           Disabled="@IsSaving"
+                                           Color="Color.Primary">
                                     Prerender Enabled
                                 </MudSwitch>
                             </MudItem>
@@ -117,7 +132,9 @@
                             <MudItem xs="12" md="6">
                                 <MudSelect T="string"
                                            Label="Render Mode"
-                                           @bind-Value="Model.AdminRenderMode"
+                                           Value="Model.AdminRenderMode"
+                                           ValueChanged="SetAdminRenderModeAsync"
+                                           Disabled="@IsSaving"
                                            Variant="Variant.Outlined">
                                     @foreach (var mode in RenderModeOptions)
                                     {
@@ -126,7 +143,11 @@
                                 </MudSelect>
                             </MudItem>
                             <MudItem xs="12" md="6">
-                                <MudSwitch T="bool?" @bind-Value="Model.AdminPrerenderEnabled" Color="Color.Primary">
+                                <MudSwitch T="bool?"
+                                           Value="Model.AdminPrerenderEnabled"
+                                           ValueChanged="SetAdminPrerenderAsync"
+                                           Disabled="@IsSaving"
+                                           Color="Color.Primary">
                                     Prerender Enabled
                                 </MudSwitch>
                             </MudItem>
@@ -138,6 +159,14 @@
             <MudAlert Severity="Severity.Info" Dense="true">
                 Onboarding render policy is always controlled at the instance level and cannot be overridden.
             </MudAlert>
+            @if (!string.IsNullOrWhiteSpace(_saveMessage))
+            {
+                <MudAlert Severity="@(_saveSucceeded ? Severity.Success : Severity.Error)"
+                          Dense="true"
+                          role="@(_saveSucceeded ? "status" : "alert")">
+                    @_saveMessage
+                </MudAlert>
+            }
         </MudStack>
     }
 </div>
@@ -161,4 +190,108 @@
 
     [Parameter, EditorRequired]
     public TenantPolicySettingsDto Model { get; set; } = null!;
+
+    private const string PresetKey = "routing.render_policy.preset";
+    private const string PublicSeoRenderModeKey = "routing.render_policy.public_seo.render_mode";
+    private const string PublicSeoPrerenderKey = "routing.render_policy.public_seo.prerender_enabled";
+    private const string OperationalRenderModeKey = "routing.render_policy.operational.render_mode";
+    private const string OperationalPrerenderKey = "routing.render_policy.operational.prerender_enabled";
+    private const string AdminRenderModeKey = "routing.render_policy.admin.render_mode";
+    private const string AdminPrerenderKey = "routing.render_policy.admin.prerender_enabled";
+
+    private string? _pendingKey;
+    private string? _saveMessage;
+    private bool _saveSucceeded;
+
+    private bool IsSaving => _pendingKey is not null;
+
+    private Task SetPresetAsync(string value) => SaveAsync(
+        PresetKey,
+        value,
+        "Render policy preset",
+        () => Model.RenderPolicyPreset = value);
+
+    private Task SetPublicSeoRenderModeAsync(string value) => SaveAsync(
+        PublicSeoRenderModeKey,
+        value,
+        "Public render mode",
+        () => Model.PublicSeoRenderMode = value);
+
+    private Task SetPublicSeoPrerenderAsync(bool? value) => SaveAsync(
+        PublicSeoPrerenderKey,
+        value == true ? "true" : "false",
+        "Public prerender setting",
+        () => Model.PublicSeoPrerenderEnabled = value);
+
+    private Task SetOperationalRenderModeAsync(string value) => SaveAsync(
+        OperationalRenderModeKey,
+        value,
+        "Operational render mode",
+        () => Model.OperationalRenderMode = value);
+
+    private Task SetOperationalPrerenderAsync(bool? value) => SaveAsync(
+        OperationalPrerenderKey,
+        value == true ? "true" : "false",
+        "Operational prerender setting",
+        () => Model.OperationalPrerenderEnabled = value);
+
+    private Task SetAdminRenderModeAsync(string value) => SaveAsync(
+        AdminRenderModeKey,
+        value,
+        "Admin render mode",
+        () => Model.AdminRenderMode = value);
+
+    private Task SetAdminPrerenderAsync(bool? value) => SaveAsync(
+        AdminPrerenderKey,
+        value == true ? "true" : "false",
+        "Admin prerender setting",
+        () => Model.AdminPrerenderEnabled = value);
+
+    private async Task SaveAsync(string key, string value, string label, Action apply)
+    {
+        if (IsSaving || string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        _pendingKey = key;
+        _saveMessage = null;
+        BaseCommandResponseOfGuid response = await TenantOnboardingService.UpdateTenantSettingAsync(key, value);
+
+        if (response.Success == true)
+        {
+            apply();
+            _saveSucceeded = true;
+            _saveMessage = $"{label} saved.";
+        }
+        else
+        {
+            await RestoreAuthoritativeValuesAsync();
+            _saveSucceeded = false;
+            _saveMessage = $"{label} could not be saved. The latest values were restored.";
+        }
+
+        _pendingKey = null;
+    }
+
+    private async Task RestoreAuthoritativeValuesAsync()
+    {
+        TenantPolicySettingsDto? latest = await TenantOnboardingService.GetManagementSettingsAsync();
+        if (latest is null)
+        {
+            return;
+        }
+
+        Model.RenderPolicyPreset = latest.RenderPolicyPreset;
+        Model.PublicSeoRenderMode = latest.PublicSeoRenderMode;
+        Model.PublicSeoPrerenderEnabled = latest.PublicSeoPrerenderEnabled;
+        Model.OperationalRenderMode = latest.OperationalRenderMode;
+        Model.OperationalPrerenderEnabled = latest.OperationalPrerenderEnabled;
+        Model.AdminRenderMode = latest.AdminRenderMode;
+        Model.AdminPrerenderEnabled = latest.AdminPrerenderEnabled;
+        Model.CanOverrideRenderPolicy = latest.CanOverrideRenderPolicy;
+        Model.CanOverridePublicSeoRenderPolicy = latest.CanOverridePublicSeoRenderPolicy;
+        Model.CanOverrideOperationalRenderPolicy = latest.CanOverrideOperationalRenderPolicy;
+        Model.CanOverrideAdminRenderPolicy = latest.CanOverrideAdminRenderPolicy;
+    }
 }

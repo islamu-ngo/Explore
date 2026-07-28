@@ -3,6 +3,7 @@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Services
+@inject ITenantOnboardingService TenantOnboardingService
 
 <div class="settings-section">
     <div class="settings-section-header">
@@ -14,28 +15,148 @@
     <MudStack Spacing="3">
         <MudSelect T="string"
                    Label="Preferred Home Page"
-                   @bind-Value="Model.PreferredHomePage"
+                   Value="Model.PreferredHomePage"
+                   ValueChanged="SetPreferredHomePageAsync"
                    Variant="Variant.Outlined"
-                   Disabled="@(Model.CanOverrideHomePagePreference != true)">
+                   Disabled="@(_isSaving || Model.CanOverrideHomePagePreference != true)">
             <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
             <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
         </MudSelect>
 
         <MudTextField T="string" Label="Subdomain"
                       Variant="Variant.Outlined"
-                      @bind-Value="Model.Subdomain"
-                      Disabled="@(Model.CanOverrideSubdomain != true)"
+                      Value="Model.Subdomain"
+                      ValueChanged="@(value => Model.Subdomain = value)"
+                      OnBlur="@(_ => SaveSubdomainAsync())"
+                      Immediate="true"
+                      Disabled="@(_isSaving || Model.CanOverrideSubdomain != true)"
                       HelperText="@($"{Model.Subdomain}.{Model.InstanceBaseDomain}")" />
 
         <MudTextField T="string" Label="Custom Domain"
                       Variant="Variant.Outlined"
-                      @bind-Value="Model.CustomDomain"
-                      Disabled="@(Model.CanOverrideCustomDomain != true)"
+                      Value="Model.CustomDomain"
+                      ValueChanged="@(value => Model.CustomDomain = value)"
+                      OnBlur="@(_ => SaveCustomDomainAsync())"
+                      Immediate="true"
+                      Disabled="@(_isSaving || Model.CanOverrideCustomDomain != true)"
                       Placeholder="custom.yourdomain.com" />
+
+        @if (!string.IsNullOrWhiteSpace(_saveMessage))
+        {
+            <MudAlert Severity="@(_saveSucceeded ? Severity.Success : Severity.Error)"
+                      Dense="true"
+                      role="@(_saveSucceeded ? "status" : "alert")">
+                @_saveMessage
+            </MudAlert>
+        }
     </MudStack>
 </div>
 
 @code {
     [Parameter, EditorRequired]
     public TenantPolicySettingsDto Model { get; set; } = null!;
+
+    private const string PreferredHomePageKey = "routing.default_public_home_page";
+    private const string SubdomainKey = "domains.tenant_subdomain";
+    private const string CustomDomainKey = "domains.tenant_custom_domain";
+
+    private TenantPolicySettingsDto? _observedModel;
+    private string _confirmedSubdomain = string.Empty;
+    private string _confirmedCustomDomain = string.Empty;
+    private bool _isSaving;
+    private bool _saveSucceeded;
+    private string? _saveMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_observedModel, Model))
+        {
+            return;
+        }
+
+        _observedModel = Model;
+        _confirmedSubdomain = Model.Subdomain ?? string.Empty;
+        _confirmedCustomDomain = Model.CustomDomain ?? string.Empty;
+    }
+
+    private Task SetPreferredHomePageAsync(string value) => SaveAsync(
+        PreferredHomePageKey,
+        value,
+        "Preferred home page",
+        () => Model.PreferredHomePage = value);
+
+    private Task SaveSubdomainAsync() => SaveTextAsync(
+        SubdomainKey,
+        Model.Subdomain ?? string.Empty,
+        "Subdomain",
+        value => _confirmedSubdomain = value,
+        () => Model.Subdomain = _confirmedSubdomain);
+
+    private Task SaveCustomDomainAsync() => SaveTextAsync(
+        CustomDomainKey,
+        Model.CustomDomain ?? string.Empty,
+        "Custom domain",
+        value => _confirmedCustomDomain = value,
+        () => Model.CustomDomain = _confirmedCustomDomain);
+
+    private async Task SaveTextAsync(
+        string key,
+        string value,
+        string label,
+        Action<string> confirm,
+        Action restore)
+    {
+        if (await SaveAsync(key, value, label, () => confirm(value)))
+        {
+            return;
+        }
+
+        restore();
+    }
+
+    private async Task<bool> SaveAsync(string key, string value, string label, Action apply)
+    {
+        if (_isSaving)
+        {
+            return false;
+        }
+
+        _isSaving = true;
+        _saveMessage = null;
+        BaseCommandResponseOfGuid response = await TenantOnboardingService.UpdateTenantSettingAsync(key, value);
+
+        if (response.Success == true)
+        {
+            apply();
+            _saveSucceeded = true;
+            _saveMessage = $"{label} saved.";
+            _isSaving = false;
+            return true;
+        }
+
+        await RestoreAuthoritativeValuesAsync();
+        _saveSucceeded = false;
+        _saveMessage = $"{label} could not be saved. The latest value was restored.";
+        _isSaving = false;
+        return false;
+    }
+
+    private async Task RestoreAuthoritativeValuesAsync()
+    {
+        TenantPolicySettingsDto? latest = await TenantOnboardingService.GetManagementSettingsAsync();
+        if (latest is null)
+        {
+            return;
+        }
+
+        Model.PreferredHomePage = latest.PreferredHomePage;
+        Model.Subdomain = latest.Subdomain;
+        Model.CustomDomain = latest.CustomDomain;
+        Model.InstanceBaseDomain = latest.InstanceBaseDomain;
+        Model.CanOverrideHomePagePreference = latest.CanOverrideHomePagePreference;
+        Model.CanOverrideSubdomain = latest.CanOverrideSubdomain;
+        Model.CanOverrideCustomDomain = latest.CanOverrideCustomDomain;
+        _confirmedSubdomain = latest.Subdomain ?? string.Empty;
+        _confirmedCustomDomain = latest.CustomDomain ?? string.Empty;
+    }
 }
