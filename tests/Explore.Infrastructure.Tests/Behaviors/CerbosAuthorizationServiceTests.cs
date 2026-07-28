@@ -166,7 +166,7 @@ public class CerbosAuthorizationServiceTests
     }
 
     [Test]
-    public async Task IsAllowedBatchAsync_EventResourceAttributes_EnrichesPrincipalWithEventAssignments()
+    public async Task IsAllowedBatchAsync_EventTicketManagement_EnrichesPrincipalWithExactEventPermission()
     {
         var userId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
@@ -207,7 +207,8 @@ public class CerbosAuthorizationServiceTests
                         new HashSet<string>(StringComparer.Ordinal)
                         {
                             PermissionCodes.EventUpdate,
-                            PermissionCodes.EventPublish
+                            PermissionCodes.EventPublish,
+                            PermissionCodes.EventManageTickets
                         },
                         IsOwner: true,
                         IsManager: false)
@@ -215,7 +216,11 @@ public class CerbosAuthorizationServiceTests
 
         Cerbos.Api.V1.Request.CheckResourcesRequest? capturedRequest = null;
         var protoResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
-        protoResponse.Results.Add(CreateResultEntry(eventId.ToString(), "islamuevent_event", "update", Effect.Allow));
+        protoResponse.Results.Add(CreateResultEntry(
+            eventId.ToString(),
+            ResourceKinds.Event,
+            AuthorizationActions.Events.ManageTickets,
+            Effect.Allow));
 
         _cerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
             .Returns(call =>
@@ -226,9 +231,9 @@ public class CerbosAuthorizationServiceTests
 
         var service = CreateService(eventAuthoritySnapshotService: eventAuthoritySnapshotService);
         var allowed = await service.IsAllowedAsync(
-            "islamuevent_event",
+            ResourceKinds.Event,
             eventId.ToString(),
-            "update",
+            AuthorizationActions.Events.ManageTickets,
             new Dictionary<string, object> { ["eventId"] = eventId });
 
         await Assert.That(allowed).IsTrue();
@@ -252,6 +257,7 @@ public class CerbosAuthorizationServiceTests
         await Assert.That(roles).Contains("event.owner");
         await Assert.That(permissions).Contains(PermissionCodes.EventUpdate);
         await Assert.That(permissions).Contains(PermissionCodes.EventPublish);
+        await Assert.That(permissions).Contains(PermissionCodes.EventManageTickets);
     }
 
     [Test]

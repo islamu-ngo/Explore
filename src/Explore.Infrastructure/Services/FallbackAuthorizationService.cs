@@ -94,9 +94,9 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(cancellationToken);
         if (isInstanceAdmin
             && resourceKind == ResourceKinds.Event
-            && action == AuthorizationActions.Events.ManageRegistrations)
+            && action is AuthorizationActions.Events.ManageRegistrations or AuthorizationActions.Events.ManageTickets)
         {
-            LogDecision("deny", "registration_management_requires_event_authority", resourceKind, resourceId, action);
+            LogDecision("deny", "event_management_requires_event_authority", resourceKind, resourceId, action);
             return false;
         }
 
@@ -166,7 +166,6 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
 
             // Event registration: all authenticated can create/view only when the parent event context is present.
             "islamuevent_event_registration" => await EvaluateEventRegistrationAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
-            "islamuevent_event_ticket_type" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
 
             // Contact share consent: tenant/org admin can view and export shared contacts
             "islamuevent_event_contact_share_consent" => await EvaluateContactShareConsentAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
@@ -311,11 +310,10 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or "islamuevent_event_day"
             or "islamuevent_event_agenda_item"
             or "islamuevent_event_organizer_claim"
-            or "islamuevent_event_registration"
-            or "islamuevent_event_ticket_type";
+            or "islamuevent_event_registration";
 
     private static bool RequiresDirectEventAuthority(string resourceKind, string action) =>
-        resourceKind is ResourceKinds.Event or ResourceKinds.EventOrganizerClaim or ResourceKinds.EventTicketType &&
+        resourceKind is ResourceKinds.Event or ResourceKinds.EventOrganizerClaim &&
         action is AuthorizationActions.Update
             or AuthorizationActions.Delete
             or AuthorizationActions.Events.Publish
@@ -341,7 +339,6 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
     {
         ResourceKinds.Event => IsEventAction(action),
         ResourceKinds.EventOrganizerClaim => IsOrganizerClaimAction(action),
-        ResourceKinds.EventTicketType => action == AuthorizationActions.Events.ManageTickets,
         _ => true
     };
 
@@ -389,8 +386,8 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
                 : resourceKind;
         if (resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ManageRegistrations)
             return PermissionCodes.EventRegistrationManage;
-        if (resourceKind == ResourceKinds.EventTicketType && action == AuthorizationActions.Events.ManageTickets)
-            return PermissionCodes.EventUpdate;
+        if (resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ManageTickets)
+            return PermissionCodes.EventManageTickets;
 
         var permissionAction = resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ViewManagement
             ? AuthorizationActions.View

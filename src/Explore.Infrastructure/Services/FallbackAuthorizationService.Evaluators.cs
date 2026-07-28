@@ -431,7 +431,7 @@ public partial class FallbackAuthorizationService
                 cancellationToken);
         }
 
-        if (resourceKind == ResourceKinds.EventTicketType
+        if (resourceKind == ResourceKinds.Event
             && action == AuthorizationActions.Events.ManageTickets)
         {
             return await EvaluateManageTicketsAccessAsync(resourceKind, resourceId, resourceAttributes, tenantId, eventId, cancellationToken);
@@ -528,7 +528,13 @@ public partial class FallbackAuthorizationService
             cancellationToken);
     }
 
-    private async Task<bool> EvaluateManageTicketsAccessAsync(string resourceKind, string resourceId, IDictionary<string, object>? resourceAttributes, Guid tenantId, Guid eventId, CancellationToken cancellationToken)
+    private async Task<bool> EvaluateManageTicketsAccessAsync(
+        string resourceKind,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes,
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken)
     {
         if (_machinePrincipalAccessor.IsMachineCaller || await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken)) return false;
         if (await IsVerifiedOrganizerControllerAsync(resourceAttributes, cancellationToken)) return true;
@@ -660,10 +666,7 @@ public partial class FallbackAuthorizationService
 
         var permissionCode = PermissionCodeFor(resourceKind, action);
         var allowed = snapshot.Events.TryGetValue(eventId, out var authority)
-            && (authority.PermissionCodes.Contains(permissionCode)
-                || (resourceKind == ResourceKinds.EventTicketType
-                    && action == AuthorizationActions.Events.ManageTickets
-                    && authority.IsManager));
+            && authority.PermissionCodes.Contains(permissionCode);
 
         LogDecision(
             allowed ? "allow" : "deny",

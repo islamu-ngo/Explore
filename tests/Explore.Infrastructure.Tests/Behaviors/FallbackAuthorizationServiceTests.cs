@@ -2521,8 +2521,8 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
-[Category("Phase43Ticketing")]
-    public async Task IsAllowed_ManageTickets_AllowsVerifiedOrganizerAndEventManager_DeniesContributorAndTenantAdmin()
+    [Category("Phase43Ticketing")]
+    public async Task IsAllowed_ManageTickets_RequiresVerifiedOrganizerOrExactEventPermission()
     {
         var eventId = Guid.NewGuid();
         var organizerUserId = Guid.NewGuid();
@@ -2532,19 +2532,28 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
 
         await Assert.That(await _service.IsAllowedAsync(
-            ResourceKinds.EventTicketType,
+            ResourceKinds.Event,
             eventId.ToString(),
             AuthorizationActions.Events.ManageTickets,
             CreateVerifiedOrganizerAttributes(eventId, userId: organizerUserId))).IsTrue();
 
         var managerUserId = Guid.NewGuid();
         _adminContext.UserId.Returns(managerUserId);
-        ConfigureEventAuthority(managerUserId, eventId, PermissionCodes.EventManageTeam);
+        ConfigureEventAuthority(managerUserId, eventId, PermissionCodes.EventManageTickets);
         await Assert.That(await _service.IsAllowedAsync(
-            ResourceKinds.EventTicketType,
+            ResourceKinds.Event,
             eventId.ToString(),
             AuthorizationActions.Events.ManageTickets,
             CreateEventContextAttributes(eventId))).IsTrue();
+
+        var updateOnlyUserId = Guid.NewGuid();
+        _adminContext.UserId.Returns(updateOnlyUserId);
+        ConfigureEventAuthority(updateOnlyUserId, eventId, PermissionCodes.EventUpdate);
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            eventId.ToString(),
+            AuthorizationActions.Events.ManageTickets,
+            CreateEventContextAttributes(eventId))).IsFalse();
 
         var contributorUserId = Guid.NewGuid();
         _adminContext.UserId.Returns(contributorUserId);
@@ -2553,17 +2562,89 @@ public class FallbackAuthorizationServiceTests
         contributor["actorId"] = Guid.NewGuid();
         contributor["userId"] = contributorUserId;
         await Assert.That(await _service.IsAllowedAsync(
-            ResourceKinds.EventTicketType,
+            ResourceKinds.Event,
             eventId.ToString(),
             AuthorizationActions.Events.ManageTickets,
             contributor)).IsFalse();
 
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
         await Assert.That(await _service.IsAllowedAsync(
-            ResourceKinds.EventTicketType,
+            ResourceKinds.Event,
             eventId.ToString(),
             AuthorizationActions.Events.ManageTickets,
             CreateEventContextAttributes(eventId))).IsFalse();
+
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            eventId.ToString(),
+            AuthorizationActions.Events.ManageTickets,
+            CreateEventContextAttributes(eventId))).IsFalse();
+    }
+
+    [Test]
+    [Category("Phase43Ticketing")]
+    public async Task IsAllowed_ManageTickets_DeniesMissingAndCrossEventContext()
+    {
+        var userId = Guid.NewGuid();
+        var authorizedEventId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        ConfigureEventAuthority(userId, authorizedEventId, PermissionCodes.EventManageTickets);
+
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            authorizedEventId.ToString(),
+            AuthorizationActions.Events.ManageTickets,
+            new Dictionary<string, object> { ["eventId"] = authorizedEventId })).IsFalse();
+
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            authorizedEventId.ToString(),
+            AuthorizationActions.Events.ManageTickets,
+            CreateEventContextAttributes(Guid.NewGuid()))).IsFalse();
+    }
+
+    [Test]
+    [Category("Phase43Ticketing")]
+    public async Task IsAllowedBatch_ManageTickets_MatchesParentEventAuthorityBoundaries()
+    {
+        var userId = Guid.NewGuid();
+        var organizerEventId = Guid.NewGuid();
+        var assignedEventId = Guid.NewGuid();
+        var contributorEventId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminGroupIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+        ConfigureEventAuthority(userId, assignedEventId, PermissionCodes.EventManageTickets);
+
+        var contributorAttributes = CreateEventContextAttributes(contributorEventId);
+        contributorAttributes["actorId"] = Guid.NewGuid();
+        contributorAttributes["userId"] = userId;
+
+        var results = await _service.IsAllowedBatchAsync(
+        [
+            new(ResourceKinds.Event, organizerEventId.ToString(), AuthorizationActions.Events.ManageTickets, CreateVerifiedOrganizerAttributes(organizerEventId, userId: userId)),
+            new(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageTickets, CreateEventContextAttributes(assignedEventId)),
+            new(ResourceKinds.Event, contributorEventId.ToString(), AuthorizationActions.Events.ManageTickets, contributorAttributes),
+            new(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageTickets, new Dictionary<string, object> { ["eventId"] = assignedEventId }),
+            new(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageTickets, CreateEventContextAttributes(Guid.NewGuid()))
+        ]);
+
+        await Assert.That(results).IsEquivalentTo([true, true, false, false, false]);
     }
 
     private static Dictionary<string, object> CreateEventContextAttributes() =>

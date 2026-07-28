@@ -148,7 +148,7 @@ public partial class FallbackAuthorizationService
             "islamuevent_event" when action is "create" => IsEventCreateAllowedForProfile(profile, resourceAttributes),
             "islamuevent_event" when action == AuthorizationActions.Events.ManageRegistrations
                 => EvaluateManageRegistrationsWithProfile(profile, eventAuthority, resourceId, resourceAttributes),
-            "islamuevent_event_ticket_type" when action == AuthorizationActions.Events.ManageTickets
+            "islamuevent_event" when action == AuthorizationActions.Events.ManageTickets
                 => EvaluateManageTicketsWithProfile(profile, eventAuthority, resourceId, resourceAttributes),
             "islamuevent_event" or "islamuevent_event_session" or "islamuevent_event_session_group" or "islamuevent_event_session_agenda_item" or "islamuevent_event_day" or "islamuevent_event_agenda_item"
                 => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
@@ -224,9 +224,16 @@ public partial class FallbackAuthorizationService
                 resourceAttributes);
     }
 
-    private static bool EvaluateManageTicketsWithProfile(AuthorityProfile profile, EventAuthoritySnapshot? eventAuthority, string resourceId, IDictionary<string, object>? resourceAttributes) =>
-        !profile.IsInstanceAdmin && !profile.IsTenantAdmin && HasEventContextForProfile(profile, ResourceKinds.EventTicketType, resourceId, resourceAttributes)
-        && (IsVerifiedOrganizerControllerFromProfile(profile, resourceAttributes) || HasEventRolePermission(eventAuthority, ResourceKinds.EventTicketType, resourceId, AuthorizationActions.Events.ManageTickets, resourceAttributes));
+    private static bool EvaluateManageTicketsWithProfile(
+        AuthorityProfile profile,
+        EventAuthoritySnapshot? eventAuthority,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes) =>
+        !profile.IsInstanceAdmin
+        && !profile.IsTenantAdmin
+        && HasEventContextForProfile(profile, ResourceKinds.Event, resourceId, resourceAttributes)
+        && (IsVerifiedOrganizerControllerFromProfile(profile, resourceAttributes)
+            || HasEventRolePermission(eventAuthority, ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageTickets, resourceAttributes));
 
     private static bool IsVerifiedOrganizerControllerFromProfile(
         AuthorityProfile profile,
@@ -509,9 +516,6 @@ public partial class FallbackAuthorizationService
 
         return TryResolveEventContext(resourceKind, resourceId, resourceAttributes, out _, out var eventId)
             && eventAuthority.Events.TryGetValue(eventId, out var authority)
-            && (authority.PermissionCodes.Contains(PermissionCodeFor(resourceKind, action))
-                || (resourceKind == ResourceKinds.EventTicketType
-                    && action == AuthorizationActions.Events.ManageTickets
-                    && authority.IsManager));
+            && authority.PermissionCodes.Contains(PermissionCodeFor(resourceKind, action));
     }
 }

@@ -47,8 +47,8 @@ public class FallbackAuthorizationMachineCallerTests
     }
 
     [Test]
-[Category("Phase43Ticketing")]
-    public async Task EventTicketTypeManageTickets_MachineCaller_Denied()
+    [Category("Phase43Ticketing")]
+    public async Task EventManageTickets_MachineCaller_Denied()
     {
         var tenantId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
@@ -60,7 +60,7 @@ public class FallbackAuthorizationMachineCallerTests
             ExternalApiKeyScopes.AdminInstance);
 
         await Assert.That(await _sut.IsAllowedAsync(
-            ResourceKinds.EventTicketType,
+            ResourceKinds.Event,
             eventId.ToString(),
             AuthorizationActions.Events.ManageTickets,
             new Dictionary<string, object>
