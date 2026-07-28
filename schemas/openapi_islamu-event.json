@@ -8796,7 +8796,7 @@
         "x-endpoint-class": "Authenticated",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "CustomPropertyDefinition"
         ],
@@ -8811,6 +8811,14 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -12711,6 +12719,23 @@
               "application/hal+json": { }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -12832,6 +12857,23 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -13116,6 +13158,23 @@
               "application/hal+json": { }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -13237,6 +13296,23 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -16829,7 +16905,7 @@
         "x-endpoint-class": "Authenticated",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "EventCustomProperty"
         ],
@@ -16844,6 +16920,14 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -25007,7 +25091,7 @@
         "x-endpoint-class": "Authenticated",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "EventSessionCustomProperty"
         ],
@@ -25022,6 +25106,14 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -101396,7 +101488,10 @@
             "type": "boolean"
           },
           "value": {
-            "type": "boolean"
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },
@@ -109035,175 +109130,201 @@
         }
       },
       "UpdateCustomPropertyDefinitionDto": {
-        "required": [
-          "namespace",
-          "key",
-          "displayName"
-        ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateCustomPropertyDefinitionMetadataDto"
+              }
+            ]
           },
-          "expectedConcurrencyStamp": {
-            "type": "string",
-            "format": "uuid"
+          "validation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateCustomPropertyDefinitionValidationDto"
+              }
+            ]
           },
-          "entityTypeName": {
-            "$ref": "#/components/schemas/EntityTypeName"
-          },
+          "options": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateCustomPropertyDefinitionOptionsDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateCustomPropertyDefinitionMetadataDto": {
+        "type": "object",
+        "properties": {
           "namespace": {
-            "type": "string"
-          },
-          "key": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "description": {
             "type": [
               "null",
               "string"
             ]
           },
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
           "propertyType": {
-            "$ref": "#/components/schemas/PropertyType"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PropertyType"
+              }
+            ]
           },
           "isRequired": {
-            "type": "boolean"
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
           "isMulti": {
-            "type": "boolean"
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
           "isActive": {
-            "type": "boolean"
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
           "sortOrder": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int32"
           },
           "exposureLevel": {
-            "$ref": "#/components/schemas/ExposureLevel"
-          },
-          "isSearchable": {
-            "type": "boolean"
-          },
-          "isFilterable": {
-            "type": "boolean"
-          },
-          "isExportable": {
-            "type": "boolean"
-          },
-          "isModerationRelevant": {
-            "type": "boolean"
-          },
-          "isAnalyticsRelevant": {
-            "type": "boolean"
-          },
-          "isSystemOwned": {
-            "type": "boolean"
-          },
-          "defaultTextValue": {
-            "type": [
-              "null",
-              "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExposureLevel"
+              }
             ]
           },
-          "defaultNumberValue": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "defaultBooleanValue": {
+          "isSearchable": {
             "type": [
               "null",
               "boolean"
             ]
           },
-          "defaultDateTimeValue": {
+          "isFilterable": {
             "type": [
               "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "minLength": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "maxLength": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "regexPattern": {
-            "type": [
-              "null",
-              "string"
+              "boolean"
             ]
           },
-          "minNumber": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "isExportable": {
             "type": [
               "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "maxNumber": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "minDateTime": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "maxDateTime": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "allowedUrlSchemes": {
-            "type": [
-              "null",
-              "string"
+              "boolean"
             ]
           },
-          "options": {
-            "type": "array",
+          "isModerationRelevant": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "isAnalyticsRelevant": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "isSystemOwned": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "UpdateCustomPropertyDefinitionOptionsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "$ref": "#/components/schemas/CreateCustomPropertyOptionDto"
             }
+          }
+        }
+      },
+      "UpdateCustomPropertyDefinitionValidationDto": {
+        "type": "object",
+        "properties": {
+          "defaultTextValue": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "defaultNumberValue": {
+            "$ref": "#/components/schemas/OptionalUpdateOfdecimal"
+          },
+          "defaultBooleanValue": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "defaultDateTimeValue": {
+            "$ref": "#/components/schemas/OptionalUpdateOfDateTimeOffset"
+          },
+          "minLength": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          },
+          "maxLength": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          },
+          "regexPattern": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "minNumber": {
+            "$ref": "#/components/schemas/OptionalUpdateOfdecimal"
+          },
+          "maxNumber": {
+            "$ref": "#/components/schemas/OptionalUpdateOfdecimal"
+          },
+          "minDateTime": {
+            "$ref": "#/components/schemas/OptionalUpdateOfDateTimeOffset"
+          },
+          "maxDateTime": {
+            "$ref": "#/components/schemas/OptionalUpdateOfDateTimeOffset"
+          },
+          "allowedUrlSchemes": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           }
         }
       },
@@ -109440,14 +109561,6 @@
       "UpdateEventCustomPropertyDefinitionDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "expectedConcurrencyStamp": {
-            "type": "string",
-            "format": "uuid"
-          },
           "eventId": {
             "type": "string",
             "format": "uuid"
@@ -110584,14 +110697,6 @@
       "UpdateEventSessionCustomPropertyDefinitionDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "expectedConcurrencyStamp": {
-            "type": "string",
-            "format": "uuid"
-          },
           "eventSessionId": {
             "type": "string",
             "format": "uuid"
