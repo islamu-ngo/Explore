@@ -158,6 +158,8 @@ public sealed class AtprotoEventDiscoveryApiTests
 
         await store.Received(1).EvictByTagAsync("event-discovery", Arg.Any<CancellationToken>());
         await store.Received(1).EvictByTagAsync("public-home-discovery", Arg.Any<CancellationToken>());
+        await store.Received(1).EvictByTagAsync("detail-data", Arg.Any<CancellationToken>());
+        await store.Received(1).EvictByTagAsync("seo-sitemap", Arg.Any<CancellationToken>());
     }
 
     [Test]
