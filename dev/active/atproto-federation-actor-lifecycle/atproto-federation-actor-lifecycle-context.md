@@ -33,17 +33,18 @@ Last Updated: 2026-07-28 Europe/Brussels
 - Restored the atomic bootstrap order: OAuth session encryption prepares once before retries; one serializable transaction applies onboarding and persists the prepared session per attempt; cache invalidation and JWT issuance are post-commit.
 - Corrected EF retry tracking: each serializable attempt reloads the current User and tracked personal Actor after failed-attempt tracking is cleared; a real-EF regression proves missing TenantUser creation does not reinsert either owner.
 - Added `20260728143000_ClassifyExternalUnclassifiedActors`, lookup seeder parity for ID 6, DBML/domain/federation/security documentation, and an owner/type check constraint.
+- Implemented Task 6.1 runtime behavior across global Actor moderation, exact identity moderation, creation eligibility, public Event and anonymous child eligibility, federated projection lifecycle, management detail/HAL behavior, HybridCache and output-cache invalidation, and fenced outbound publication compensation. Four reason-only POST routes select the action server-side. The slice has no schema, migration, Cerbos policy, generated-client, OpenAPI, or UI change.
 
 ### IN PROGRESS
 
-- Task 6.1: four-level moderation and participation-aware Event authorization.
+- Task 6.1 verification and canonical documentation convergence. Runtime implementation is complete; final Phase 6 verification remains for the parent.
 
 ### NEXT
 
-1. Add Actor instance-global and AtprotoIdentity credential-global moderation commands/policies; only instance authority may mutate Actor-wide state.
-2. Add tenant-scoped moderation over TenantUser/OrganizationTenant/GroupTenant or tenant identity-import policy, then compose all four levels into EventActorResolver, public specifications, authorization, and HAL.
-3. Add global/contextual Actor reads and tenant-local subscription discoverability, then OrganizationTenant legitimacy evidence.
-4. Finish OpenAPI/client/UI/localization/doc regeneration and architecture guardrails only after runtime contracts stabilize.
+1. Parent runs the remaining Task 6.1 and Phase 6 verification, including the final Release build and selected API project command.
+2. Start Task 6.2 global/contextual Actor reads and tenant-local subscription discoverability only after Task 6.1 verification closes.
+3. Add OrganizationTenant legitimacy evidence in Task 7.1.
+4. Finish OpenAPI/client/UI/localization/doc regeneration and architecture guardrails only in the owning later task.
 
 ### BLOCKERS
 
@@ -67,10 +68,10 @@ Last Updated: 2026-07-28 Europe/Brussels
 | Field | Value |
 |---|---|
 | Overall status | Implementation in progress |
-| Completed implementation tasks | 10/14 |
-| Current priority | Task 6.1 |
-| Runtime implementation | Phases 0-5 complete |
-| Verification | Task 5.2 boundary Release build 0 errors; Application 17/17, EF retry tracking 1/1, BFF 20/20, Infrastructure 13/13, lifecycle architecture 4/4; Oracle PASS; idempotent migration SQL reviewed; PostgreSQL execution Docker-blocked |
+| Completed implementation tasks | 11/14 |
+| Current priority | Task 6.1 verification |
+| Runtime implementation | Phases 0-5 and Task 6.1 complete |
+| Verification | Task 6.1 focused evidence passes; final Phase 6 build/API verification remains parent-owned; PostgreSQL projection and eligibility execution is Docker-blocked |
 
 ## Core Model
 
@@ -131,6 +132,7 @@ Last Updated: 2026-07-28 Europe/Brussels
 - Task 5.1 validation: repository-wide Release build passed with 0 errors; focused Application classification tests 9/9, BFF binding/bridge tests 18/18, API JWT tests 6/6, Infrastructure OAuth gateway tests 12/12, Clean Architecture tests 15/15, and PostgreSQL baseline guards 4/4 passed.
 - Task 5.1 migration validation: `dotnet ef migrations has-pending-model-changes` reported no changes; the idempotent SQL widens provider keys, checks duplicates, creates the filtered unique index, and writes migration history in one transaction. The PostgreSQL test accepts a 2,048-character key and rejects the same provider/key in another tenant.
 - Task 5.2 validation: Application 17/17, EF retry tracking 1/1, BFF 20/20, Infrastructure 13/13, lifecycle architecture 4/4, diagnostics and diff checks clean, boundary API/Persistence/canonical Release builds 0 errors, migration discovered, idempotent SQL reviewed, and final Oracle review passed. The focused PostgreSQL suite compiled but its two tests could not start without Docker; a later concurrent `MinorUnitMath` edit now blocks a fresh repository build before Task 5.2.
+- Task 6.1 focused evidence: Domain Actor 17/17 and identity 5/5; moderation handlers 13/13; moderation API 15/15; creation eligibility 33/33; deterministic public eligibility matrix and child tests 3/3; projection persistence 2/2 in-memory; discovery/source Application 18/18 and API discovery 12/12; detail handlers 11/11; Event HAL 22/22; planner 49/49; PDS 5/5; RSVP 10/10. PostgreSQL projection and eligibility matrices compile but cannot execute without Docker. Recent slice Release builds passed, but later concurrent ticketing drift has intermittently blocked broad builds, so final canonical verification is not claimed.
 
 ## Risks
 
@@ -145,10 +147,10 @@ Last Updated: 2026-07-28 Europe/Brussels
 
 ### Handoff - 2026-07-28 Europe/Brussels
 
-- **Current state:** Phases 0-5 are implemented; 10/14 tasks complete.
-- **Next action:** Task 6.1 moderation write boundaries, followed by composed Event authorization/public filtering.
-- **Blockers:** Docker-blocked PostgreSQL execution, 198 stale Persistence fixtures, concurrent registration-model snapshot drift, a concurrent Jetstream DTO architecture dependency, and a concurrent `MinorUnitMath` compile error.
+- **Current state:** Phases 0-5 and Task 6.1 runtime are implemented; 11/14 tasks complete. Phase 6 verification remains open.
+- **Next action:** Parent runs final Task 6.1 verification, then Task 6.2 is next. Do not mark Phase 6 complete before that verification.
+- **Blockers:** Docker-blocked PostgreSQL projection/eligibility execution, 198 stale Persistence fixtures, concurrent registration/ticketing model drift, and intermittent broad-build drift owned by other workstreams.
 - **Modified files:** Runtime, persistence, migrations, tests, schema, and this active workstream; preserve unrelated dirty changes.
 - **Validation:** Task 5.2 boundary Release build 0 errors; Application 17/17, EF retry tracking 1/1, BFF 20/20, Infrastructure 13/13, lifecycle architecture 4/4; final Oracle PASS; idempotent migration SQL reviewed.
-- **Documentation impact:** Domain, Federation, Security Model, DBML, and active workstream now match promotion/consolidation behavior.
+- **Documentation impact:** Domain, Authorization, Security Model, Federation, API, API Changelog, Multi-Tenancy, Admin Hierarchy, and this active workstream describe Task 6.1. No generated inventory, schema, OpenAPI, client, or UI artifact changed.
 - **Notes:** Never reintroduce tenant Actor or ActorTenantPresence. Do not merge Organizations/Groups by name. Preserve predecessor federation infrastructure.

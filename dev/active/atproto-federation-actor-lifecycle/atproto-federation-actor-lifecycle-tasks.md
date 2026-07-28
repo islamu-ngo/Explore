@@ -3,14 +3,14 @@
 
 # ATProto Federation Actor Lifecycle - Task Checklist
 
-Last Updated: 2026-07-27 Europe/Brussels
+Last Updated: 2026-07-28 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Implementation in progress; Phases 0-5 are implemented, while moderation, contextual reads, evidence, and final contract convergence remain.
-- **Completed:** 10/14 implementation tasks. Phase verification is tracked separately.
-- **Current priority:** Task 6.1 four-level moderation and participation-aware Event authorization.
-- **Next recommended slice:** Implement Actor/identity/participation moderation write boundaries first, then compose them into Event authorization and public-read filtering before adding contextual Actor APIs.
+- **Overall status:** Implementation in progress; Phases 0-5 and Task 6.1 runtime are implemented. Phase 6 verification, contextual reads, evidence, and final contract convergence remain.
+- **Completed:** 11/14 implementation tasks. Phase verification is tracked separately.
+- **Current priority:** Complete parent-owned Task 6.1 and Phase 6 verification without overstating current build status.
+- **Next recommended slice:** Run the final Phase 6 verification, then start Task 6.2 global/contextual Actor reads and tenant-local subscription discoverability.
 
 ## Maintenance Rules
 
@@ -134,11 +134,15 @@ Last Updated: 2026-07-27 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet` — 0 errors.
 - [x] `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet` — focused ATProto flow 20/20.
 
-## Phase 6: Moderation, Profiles, Authorization, Subscriptions - NOT STARTED
+## Phase 6: Moderation, Profiles, Authorization, Subscriptions - IN PROGRESS
 
-- [ ] **6.1 Implement four-level moderation and participation-aware Event authorization**
+- [x] **6.1 Implement four-level moderation and participation-aware Event authorization**
   - **Files:** Actor/identity/tenant moderation entities and commands, EventActorResolver, federation policy, public specifications, authorization/HAL/API tests/docs.
   - **Acceptance:** Actor is instance-global; identity is credential-global; tenant admin affects only participation/federation policy; Event remains content-local; public reads compose every applicable level.
+  - **Implementation evidence:** Instance-admin-only Actor and exact identity moderation use `global-actor-moderation`, append immutable records only on real transitions, preserve identity `IsActive`, and invalidate HybridCache/output-cache public data. Creation and public eligibility are separate. Anonymous child reads inherit parent eligibility. Inbound projection lifecycle, management `view-management`/HAL behavior, and outbound grounded compensation are implemented. RSVP is unchanged.
+  - **Contract evidence:** Four reason-only POST routes select Suspend or Reinstate server-side. No schema, migration, Cerbos policy, OpenAPI, generated-client, or Blazor change is part of Task 6.1.
+  - **Focused runnable evidence:** Domain Actor 17/17 and identity 5/5; moderation handlers 13/13; moderation API 15/15; creation eligibility 33/33; deterministic public eligibility matrix/child tests 3/3; projection persistence 2/2 in-memory; discovery/source Application 18/18 and API discovery 12/12; detail handlers 11/11; Event HAL 22/22; planner 49/49; PDS 5/5; RSVP 10/10.
+  - **Blocked evidence:** PostgreSQL projection and eligibility matrices compile but cannot execute while Docker is unavailable.
   - **Effort:** XL.
   - **Dependencies:** 5.2.
 
@@ -149,8 +153,8 @@ Last Updated: 2026-07-27 Europe/Brussels
   - **Dependencies:** 6.1.
 
 ### Phase 6 Verification - RUN ONCE
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [ ] `dotnet build --configuration Release --verbosity quiet` - parent final run pending. Recent slices passed, but later concurrent ticketing drift has intermittently blocked broad builds.
+- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` - parent final run pending; Docker-backed PostgreSQL matrices remain environment-blocked.
 
 ## Phase 7: Evidence, UI, Contracts, Canonical Docs - NOT STARTED
 

@@ -358,6 +358,9 @@ Actor-wide action requires instance authority. Tenant admins mutate concrete par
 - **Type/Layer:** create/modify; Domain/Application/Persistence/API/HAL.
 - **Files:** moderation entities/commands/policies, Event actor resolver, federation policy, public specifications, audit/tests/docs.
 - **Acceptance:** Actor decision is platform-wide/instance-only; identity decision blocks that credential; tenant admins affect only participation or tenant identity import policy; Event decisions remain content-local; public reads apply all relevant levels.
+- **Implemented:** Actor and exact identity suspend/reinstate transitions are instance-admin-only, idempotent on same-state retries, and append immutable records only on real transitions. Commands reuse `InstanceSetting` update authorization for `global-actor-moderation` and handlers recheck instance-admin status. Public eligibility, anonymous child reads, inbound projection lifecycle, management visibility/HAL, cache invalidation, and outbound publication compensation now compose current Actor, identity, participation, Event, presentation, ownership, tombstone, session, source-version, and CID state. Creation eligibility remains separately stricter for Organization and Group organizer eligibility. RSVP behavior is unchanged.
+- **Contract impact:** Four reason-only POST routes use server-selected actions. No schema, migration, Cerbos policy, generated client, OpenAPI, or Blazor change belongs to this slice. `API_CONTRACT_INVENTORY.md` remains untouched because it is generated from OpenAPI.
+- **Verification status:** Implementation-focused evidence is recorded in the active tasks and context. Phase 6 verification remains open for the parent-run Release build and API project command. PostgreSQL projection and eligibility matrices compile but cannot execute without Docker.
 - **Dependencies/Effort:** 5.2; XL.
 
 #### Task 6.2: Add global/contextual Actor reads and preserve local subscription semantics
