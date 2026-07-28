@@ -794,6 +794,18 @@ public class ContractInvariantsTests
         await Assert.That(SchemaAllowsNull(provenanceTypeCode)).IsTrue();
     }
 
+    [Test]
+    public async Task OpenApiDocument_TenantOnboardingSettingsDoesNotExposeBroadWrite()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        JsonElement path = document.RootElement
+            .GetProperty("paths")
+            .GetProperty("/api/tenantonboarding/settings");
+
+        await Assert.That(path.TryGetProperty("get", out _)).IsTrue();
+        await Assert.That(path.TryGetProperty("put", out _)).IsFalse();
+    }
+
     private async Task<JsonDocument> GetOpenApiDocumentAsync()
     {
         var response = await _fixture.Client.GetAsync(OpenApiEndpoint);
