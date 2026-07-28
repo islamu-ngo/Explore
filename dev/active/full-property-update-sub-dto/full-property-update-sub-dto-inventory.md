@@ -1,5 +1,5 @@
-<!-- ABOUTME: Exhaustive registry of every update DTO, handler file, and public PUT/PATCH endpoint. -->
-<!-- ABOUTME: Assigns each surface a mandatory grouped-PATCH, semantic-retention, or removal disposition. -->
+<!-- ABOUTME: Baseline registry of every update DTO, handler file, and public PUT/PATCH endpoint. -->
+<!-- ABOUTME: Tracks each baseline surface through grouped-PATCH, semantic-retention, or removal disposition. -->
 
 # Full Property Update Sub-DTO Pattern - Exhaustive Inventory
 
@@ -7,11 +7,11 @@ Last Updated: 2026-07-28 Europe/Brussels
 
 ## Purpose And Coverage Gate
 
-This file is the exhaustive scope contract for the workstream. Family summaries are not sufficient. Completion requires every row in all three registers below to reach its assigned final state:
+This file is the exhaustive baseline scope contract for the workstream. Family summaries are not sufficient. Completion requires every row in all three registers below to reach its assigned final state, including rows whose required state is deletion:
 
-- all 59 files matching `src/Explore.Application/DTOs/**/Update*Dto.cs`;
-- all 71 files matching `src/Explore.Application/Features/**/Handlers/Commands/Update*CommandHandler.cs`;
-- all 104 `[HttpPut]` or `[HttpPatch]` endpoints across 53 API controllers.
+- the 59 files matching `src/Explore.Application/DTOs/**/Update*Dto.cs` at re-baseline;
+- the 71 files matching `src/Explore.Application/Features/**/Handlers/Commands/Update*CommandHandler.cs` at re-baseline;
+- the 104 `[HttpPut]` or `[HttpPatch]` endpoints across 53 API controllers at re-baseline.
 
 The registers intentionally overlap. That overlap catches top-level DTOs without handlers, handlers without matching `Update*Dto.cs` files, nested DTO files, Application-only commands, and controller-local request records. A new update surface discovered during implementation must be added before the owning phase can pass.
 
@@ -28,15 +28,17 @@ The registers intentionally overlap. That overlap catches top-level DTOs without
 
 No row may finish as `investigate`, `other`, or an unbounded family wildcard.
 
-## Verified Counts
+## Verified Baseline Counts
 
-| Register | Count | Evidence command/pattern |
+| Register | Baseline count | Evidence command/pattern |
 |---|---:|---|
 | Update DTO files | 59 | `src/Explore.Application/DTOs/**/Update*Dto.cs` |
 | Update command-handler files | 71 | `src/Explore.Application/Features/**/Handlers/Commands/Update*CommandHandler.cs` |
 | Public PUT/PATCH endpoints | 104 | `\[Http(?:Put|Patch)` under `src/Explore.API/Controllers` |
 | Controllers containing PUT/PATCH | 53 | Same controller scan. |
 | Update-named tests | 46 | `tests/**/*Update*Tests.cs` |
+
+Task 5.1 acceptance removes D-031/D-037/D-044/D-059, H-049/H-052/H-058/H-071, and A-044/A-071/A-077/A-098 from current repository reality. Their retained baseline rows prove that every `R` disposition reached deliberate removal rather than disappearing from scope. Any newly discovered update surface must still be added and classified before completion.
 
 ## Register 1: All 59 Update DTO Files
 
@@ -271,11 +273,11 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-081 | `NotificationController.MarkNotificationAsRead` | `PATCH {id}/read` | A: retain state-transition PATCH | 6.1 |
 | A-082 | `NotificationController.ArchiveNotification` | `PATCH {id}/archive` | A: retain state-transition PATCH | 6.1 |
 | A-083 | `NotificationController.SnoozeNotification` | `PATCH {id}/snooze` | A: retain state-transition PATCH | 6.1 |
-| A-084 | `EventSessionTemplateController.UpdateEventSessionTemplate` | `PUT {id}` | M: grouped entity PATCH | 3.6 |
+| A-084 | `EventSessionTemplateController.UpdateEventSessionTemplate` | `PATCH {id}` | M: grouped entity PATCH | 3.6 |
 | A-085 | `TenantController.UpdateTenant` | `PATCH {id}` | C: grouped entity PATCH | 3.1 |
 | A-086 | `TenantController.UpdateTenantNavigationLink` | `PATCH navigation/{id}` | C: grouped entity PATCH | 3.1 |
 | A-087 | `TenantController.ReorderTenantNavigationLinks` | `PUT navigation/reorder` | A: retain reorder action | 6.1 |
-| A-088 | `EventTemplateController.UpdateEventTemplate` | `PUT {id}` | M: grouped entity PATCH | 3.6 |
+| A-088 | `EventTemplateController.UpdateEventTemplate` | `PATCH {id}` | M: grouped entity PATCH | 3.6 |
 | A-089 | `TagController.UpdateTag` | `PATCH {id}` | C: grouped entity PATCH | 3.1 |
 | A-090 | `EventSessionCustomPropertyController.UpdateEventSessionCustomPropertyDefinition` | `PUT {id}` | M: grouped entity PATCH | 3.5 |
 | A-091 | `EventSessionCustomPropertyController.SetEventSessionCustomPropertyValue` | `PUT value` | S: retain complete single-value replacement | 6.1 |
@@ -320,9 +322,9 @@ Paths are relative to `src/Explore.Application/Features/`.
 
 Task 6.2 must add or extend architecture/contract tests that compare repository reality to this register:
 
-1. Every current `Update*Dto.cs` file is listed once as D-001 through D-059.
-2. Every matching update-handler file is listed once as H-001 through H-071.
-3. Every API `[HttpPut]`/`[HttpPatch]` endpoint is listed once as A-001 through A-104.
+1. Every baseline `Update*Dto.cs` file is listed once as D-001 through D-059, and each current file is either represented by a retained row or added explicitly.
+2. Every baseline matching update-handler file is listed once as H-001 through H-071, and each current file is either represented by a retained row or added explicitly.
+3. Every baseline API `[HttpPut]`/`[HttpPatch]` endpoint is listed once as A-001 through A-104, and each current endpoint is either represented by a retained row or added explicitly.
 4. Every `M` row is implemented and no longer exposes the old broad operation.
 5. Every `C` row still satisfies the canonical grouped PATCH checklist.
 6. Every `S` or `A` exception has an exact semantic rationale, not a wildcard exemption.

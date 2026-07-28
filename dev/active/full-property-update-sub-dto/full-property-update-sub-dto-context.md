@@ -78,15 +78,33 @@ Last Updated: 2026-07-28 Europe/Brussels
 - TagTypeTags and CategoryTypeCategories remain Application-only relationship commands. Their tenant-scoped composite unique indexes are enforced by `20260727174857_EnforceLookupRelationshipUniqueness`, which performs duplicate preflight checks before replacing only the two prior indexes and restores them in `Down`.
 - Focused verification passed 33 Application tests, 30 API/HAL tests, 2 migration tests, and 28 Blazor client tests. The canonical Release build passed with zero errors. Forward/reverse migration scripts contain only the guarded index transition; OpenAPI, NSwag, and inventory generation completed without generated-artifact drift.
 - Fresh Task 3.4 review passed after correcting the review's invalid actor-tenant assumption, adding the missing second ABOUTME lines on touched aspect/HAL files, and documenting typed 403 responses for all four authorized Event aspect create/update routes. OpenAPI and NSwag were regenerated, affected API/client builds pass, and the focused metadata suite passes 5/5.
+- Task 3.5 is complete across shared, Event, and EventSession custom-property definitions. All three update operations use route-ID PATCH and a required strong quoted-GUID `If-Match`; the inherited full-create update bodies are removed. Shared definitions expose relations, metadata, validation, and options groups. Event/EventSession definitions expose metadata, validation, and options while their persisted parent IDs and template provenance remain read-only.
+- `AuthorizationBehavior` resolves each definition from persistence, binds its authoritative tenant into the command, and authorizes that tenant instead of treating the definition ID as a tenant ID. Handlers fail closed when the authorized tenant snapshot is absent or mismatched, validate the merged candidate with the existing create validator, and retain governance, duplicate, quota, concurrency, audit, and cache behavior.
+- Option replacement is presence-aware and atomic: omitted options call the ordinary repository update without touching the option set or quota, while supplied options are rebuilt and replaced inside `IUnitOfWork`. Event and EventSession projection refresh remains in the same transaction. Shared entity-type relation changes invalidate both old and new list caches after commit.
+- HAL edit links explicitly advertise PATCH without changing the global PUT default. Exact Event/EventSession single-value and multi-value replacement endpoints remain PUT. API/OpenAPI/NSwag, admin flag updates, detail editing, API reference/changelog, and security mapping are synchronized without compatibility contracts.
+- Task 3.5 verification passes: 8 definition-handler tests, all 32 AuthorizationBehavior tests, 1 AutoMapper security test, 10 API contract/HAL tests, and 2 focused Blazor custom-property tests. The canonical Release build passes with zero errors. Scoped diagnostics, `git diff --check`, and merge-conflict scanning are clean; existing package/analyzer warnings remain outside Task 3.5.
+- Task 3.6 is complete across EventTemplate and EventSessionTemplate. Their broad body-ID PUT operations are now grouped route-ID PATCH contracts with required strong quoted-GUID `If-Match`, persisted tenant authorization, immutable session-template parent ownership, merged validation, and presence-aware definition replacement.
+- Metadata-only patches preserve definitions and use the ordinary aggregate update; supplied definitions and nested options replace atomically through the existing `IUnitOfWork` transaction. EventTemplate invalidates unfiltered plus previous/current event-type list caches after commit. Detail DTOs expose concurrency, HAL advertises PATCH, the Blazor editor forwards its observed stamp, and sync diff/apply/history remain separate.
+- Task 3.6 focused verification passes: EventTemplate handlers 5/5, EventSessionTemplate handlers 5/5, AuthorizationBehavior 34/34, and HAL 5/5. API, generated client, Blazor Client, Blazor tests, and Application tests compile; OpenAPI and API contract inventory are regenerated; the canonical Release build passes with zero errors.
+- The Phase 3 full Application suite executed 3,167 tests with 3,164 passing and three unrelated failures in `WithdrawEventOrganizerClaimCommandHandlerTests`, `UpdateOrganizationCommandHandlerTests`, and `EventLocationDisclosureContractTests`. These files and behaviors are outside Task 3.6 and were not modified.
+- Task 4.1 is accepted. StorageObject uses route-owned grouped metadata/access/ownership PATCH and no longer accepts provider location/key, provider, checksum, size, lifecycle, tenant, or body identity. WebhookEndpoint uses destination/subscriptions/delivery-policy groups plus required governance and merges omitted groups from the locked aggregate before existing validation and transactional persistence. Provider-mode transition is one governed group. HAL, OpenAPI, NSwag, and the Blazor webhook editor use PATCH; dedicated upload, quarantine/delete, signing/rotation, and delivery actions remain separate.
+- Task 4.1 verification passed: `Explore.Application` 0 warnings/errors, API build with current Application and project-reference rebuilding disabled 0 errors, Blazor Client/NSwag build 0 errors, focused Application tests 5/5 including endpoint omitted-group preservation, webhook/storage API contracts 78/78, and webhook Blazor component tests 11/11. The latest canonical full solution build reaches one unrelated concurrent `AtprotoOAuthSecurityGatewayTests` constructor-arity error and was not claimed green.
+- Task 4.2 is accepted. Listmonk uses connection and behavior PATCH groups, validates their merged effective state, and writes only supplied settings. Localization uses TMS, language-policy, and runtime groups with group-scoped upserts. External API-key updates use route-owned identity plus metadata/access-policy groups and cannot carry key material or ownership/status/usage state. Credential rotation, provider tests, bundle/secret operations, issuance, revoke, and delete remain dedicated workflows.
+- Task 4.2 verification passed: Application/API/Blazor Client and all three focused test projects compile; focused Application tests passed 16/16, grouped route metadata 3/3, external-key database integration 5/5, and localization generated-client forwarding 1/1. OpenAPI/NSwag regenerated. The latest canonical full solution build is separately blocked only by the unrelated concurrent `AtprotoOAuthSecurityGatewayTests` constructor-arity error.
+- Task 4.3 is accepted. Reporter communication consent requires one grouped payload and retains ownership authorization, privacy-erasure fencing, audit-neutral unchanged handling, transactional persistence, and cache invalidation. Instance general/Osprey/Coop locks write only supplied groups. Tenant policy/Osprey/Coop routing groups preserve omitted settings and write-only credentials; the general lock blocks all routing patches and provider-specific locks block only matching supplied groups. HAL, OpenAPI, the contract inventory, NSwag, and the Blazor consent service use PATCH without compatibility properties or routes.
+- Task 4.3 verification passed: focused Application handlers 9/9, reporting API route/HAL tests 7/7, and Blazor client service tests 13/13. Application, API, Blazor Client, and all three affected test projects compile with no scoped errors through no-dependency builds. The canonical dependency build is currently blocked by unrelated concurrent registration-domain errors in `PlatformContributionOption` and `MinorUnitMath`.
+- Task 5.1 is accepted. The generic IndexedDid and UserExternalLogin identity CRUD surfaces were already removed by the concurrent identity-authority work; this slice removed the remaining ActorKeyStore and SyncState controllers plus their API-only read/write DTOs and CQRS handlers. Route constants, mappings, source-generated JSON registrations, OpenAPI, and NSwag are synchronized without compatibility aliases.
+- Provider-owned state remains behind dedicated internal authority boundaries: verified ATProto bootstrap owns linked identity, the private fenced `AtprotoJetstreamConsumerState` workflow owns ingestion cursor advancement, and ActorKeyStore/legacy SyncState entities and repositories remain internal persistence rather than public contracts. Runtime absence coverage now exercises every CRUD verb for all four retired routes, while architecture coverage guards source and OpenAPI absence.
+- Task 5.1 verification passes: federation API absence tests 26/26, runtime OpenAPI absence 1/1, architecture authority-boundary guard 1/1, and API contract inventory generation 1/1. Application, API, Blazor Client, API test, and architecture test projects compile with zero errors; the canonical Release build passes with zero errors. Contract scans find no retired route, CQRS mutation, generated-client method, or merge conflict, and `git diff --check` is clean. Existing package-advisory and analyzer warnings remain unrelated debt.
 
 ### IN PROGRESS
 
-- Task 3.5 custom-property definition entities are the active slice; Task 3.4 is accepted and the workstream is at 10/20.
+- Task 5.2 settings-control autosave is the next slice; Task 5.1 is accepted and the workstream is at 16/20.
 
 ### NEXT
 
-1. Implement Task 3.5 across the shared, Event, and EventSession custom-property definition contracts.
-2. Preserve exact custom-property value replacement PUT rows A-091/A-092/A-102/A-103.
+1. Implement Task 5.2 across every remaining tenant and instance settings control.
+2. Preserve HAL/lock gating, accessible pending/error/saved state, and explicit save boundaries for secrets, coupled invariants, and external side effects.
 3. Run the Docker-backed stress/race verification and deferred phase tests before final workstream completion.
 4. Keep H-019/A-003 until Task 5.3, then remove them after their remaining callers have explicit save boundaries.
 5. Keep unrelated dirty worktree changes untouched.
@@ -94,14 +112,14 @@ Last Updated: 2026-07-28 Europe/Brussels
 ### BLOCKERS
 
 - Deferred verification: Docker-backed stress/race execution is unavailable because `unix:///home/amir/.docker/desktop/docker.sock` does not exist; the user explicitly allowed implementation to continue.
-- Non-blocking external status: the full Architecture suite has 11 unrelated concurrent failures and one governed skip; do not attribute them to Task 3.4 or claim a green full suite.
+- Non-blocking external status: the full Architecture suite has known unrelated concurrent failures and the canonical build is currently blocked by registration-domain compile errors in `PlatformContributionOption` and `MinorUnitMath`; do not attribute them to Task 4.3 or claim a green full suite.
 - Runtime visual QA is intentionally skipped by explicit user direction; do not report a browser visual pass for Tasks 1.1 or 1.2.
 
 ## Quick Resume
 
 1. Read this file and `full-property-update-sub-dto-tasks.md`.
 2. Read only the current phase, decisions, and affected rows in the plan/inventory.
-3. Continue with Task 3.5 rows D-052/D-054/D-055, H-065-H-067, and A-090/A-101/A-104.
+3. Continue with Task 5.2 across all remaining UI callers of Phase 1/3/4 settings contracts.
 4. Update tasks immediately after substantial completion; update context only at a meaningful boundary.
 
 ## Key Files And Responsibilities
@@ -193,3 +211,12 @@ Latest Task 3.4 evidence: focused Application tests passed 33/33, API/HAL tests 
 - **Documentation impact:** API reference/changelog describe the canonical Task 3.4 routes; this refresh synchronizes plan, context, and tasks with accepted implementation reality.
 - **Risks:** The graph snapshot predates current HEAD and the worktree contains broad concurrent changes. Review must remain scoped and must not infer that unrelated architecture failures or Docker lanes passed.
 - **Notes for next contributor/agent:** Read this context and the Task 3.4 ledger first. Never revert unrelated changes; reread any dirty file immediately before editing.
+
+### Handoff - Task 3.5 Complete, 2026-07-28 Europe/Brussels
+
+- **Current state:** Tasks 1.1-3.5 are accepted, representing 11/20 tasks. The three definition update surfaces are grouped PATCH contracts with strong `If-Match`, persisted tenant authorization, merged validation, and presence-aware transactional option replacement.
+- **Next action:** Implement Task 3.6 EventTemplate and EventSessionTemplate grouped PATCH contracts while preserving dedicated sync/apply actions.
+- **Blockers:** No Task 3.5 blocker remains. Docker runtime and deferred broader phase execution debt remain unchanged.
+- **Validation:** Definition handlers 8/8, AuthorizationBehavior 32/32, AutoMapper security 1/1, API/HAL 10/10, Blazor custom-property 2/2, and canonical Release build with zero errors.
+- **Documentation impact:** API reference, changelog, security endpoint mapping, OpenAPI, NSwag, tasks, and context are synchronized.
+- **Risks:** `AuthorizationBehavior` remains a high-blast-radius shared pipeline, but its full 32-test class is green. Existing unrelated registration and guest-capability worktree changes must not be modified.

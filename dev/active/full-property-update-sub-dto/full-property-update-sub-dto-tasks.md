@@ -7,10 +7,10 @@ Last Updated: 2026-07-28 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Implementation in progress; Phase 2 implementation complete and Phase 3 underway.
-- **Completed:** 10/20 implementation tasks; Tasks 1.1-3.4 are accepted.
-- **Current priority:** Implement Task 3.5 custom-property definition entities. Broader phase execution tests remain deferred by user direction rather than reported as passed.
-- **Next recommended slice:** Migrate the three Task 3.5 definition surfaces while preserving recorded Docker and phase verification debt.
+- **Overall status:** Implementation in progress; Phases 1-4 and Task 5.1 are complete.
+- **Completed:** 16/20 implementation tasks; Tasks 1.1-5.1 are accepted.
+- **Current priority:** Begin Task 5.2 settings-control autosave while preserving recorded Docker and phase verification debt.
+- **Next recommended slice:** Classify and wire every remaining tenant and instance settings control to its established save boundary.
 - **Coverage contract:** 59 DTO files, 71 update-handler files, and 104 public PUT/PATCH endpoints are individually registered.
 
 ## Implementation Maintenance Rules
@@ -86,7 +86,7 @@ Last Updated: 2026-07-28 Europe/Brussels
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 3: Migrate Every Remaining Domain Entity And Definition - IN PROGRESS
+## Phase 3: Migrate Every Remaining Domain Entity And Definition - IMPLEMENTATION COMPLETE; APPLICATION SUITE HAS UNRELATED FAILURES
 
 - [x] **3.1 Migrate simple tenant/catalog/control-plane entities**
   - **Rows:** D-033/D-034/D-036; H-025/H-050/H-062/H-063; A-011/A-073/A-074/A-085/A-086/A-089.
@@ -120,37 +120,44 @@ Last Updated: 2026-07-28 Europe/Brussels
   - **Verification:** Focused Application tests passed 33/33, API/HAL tests 30/30, migration tests 2/2, and Blazor client tests 28/28. The post-review Event aspect metadata suite passed 5/5. `dotnet build --configuration Release --verbosity quiet -maxcpucount:1` passed with 0 errors; affected API and generated-client builds also pass. Forward/reverse EF migration scripts contain only the guarded two-index transition. Canonical OpenAPI, NSwag, and inventory generation completed without artifact drift; scoped diagnostics, JSON/NUL validation, whitespace, and conflict checks pass. The full Architecture suite has 11 unrelated concurrent failures and one governed skip; Docker-backed runtime lanes remain unavailable.
   - **Effort:** XL
   - **Dependencies:** 3.3.
-- [ ] **3.5 Migrate all custom-property definition entities**
+- [x] **3.5 Migrate all custom-property definition entities**
   - **Rows:** D-052/D-054/D-055; H-065-H-067; A-090/A-101/A-104.
   - **Acceptance:** General/Event/EventSession definitions have grouped metadata/validation/options/relations; exact value replacements A-091/A-092/A-102/A-103 remain PUT.
+  - **Implementation:** Shared, Event, and EventSession definitions now use route-ID PATCH with strong quoted-GUID `If-Match`. Shared updates expose relations/metadata/validation/options; runtime definitions expose metadata/validation/options while persisted parent and provenance remain immutable. Authorization binds each persisted definition to its tenant before policy evaluation and handlers recheck that snapshot. Merged candidates receive full create validation; omitted options use ordinary entity update, while supplied options replace atomically. Event/EventSession projection refresh stays inside the transaction, cache invalidation follows commit, and shared relation moves invalidate both previous and current scope lists.
+  - **Verification:** Definition handler tests pass 8/8, all AuthorizationBehavior tests pass 32/32, AutoMapper security configuration passes 1/1, API contract/HAL tests pass 10/10, and focused Blazor custom-property tests pass 2/2. The canonical Release build passes with zero errors. API/OpenAPI/NSwag regeneration, scoped diagnostics, whitespace, and conflict checks pass.
   - **Effort:** XL
   - **Dependencies:** 3.4.
-- [ ] **3.6 Migrate both template entities**
+- [x] **3.6 Migrate both template entities**
   - **Rows:** D-047-D-050; H-047/H-048; A-084/A-088.
   - **Acceptance:** EventTemplate and EventSessionTemplate use grouped PATCH; definition/options remain atomic; sync/apply actions remain separate.
+  - **Implementation:** Both update routes use route-ID PATCH with required strong quoted-GUID `If-Match`, persisted tenant binding, nullable metadata/definitions groups, merged create-contract validation, and immutable EventSessionTemplate parent ownership. Omitted definitions use the ordinary aggregate update; supplied definitions and nested options replace through the existing `IUnitOfWork` transaction. Detail reads expose concurrency, HAL advertises PATCH, EventTemplate invalidates old/new event-type list caches, and sync diff/apply/history remain unchanged.
+  - **Verification:** EventTemplate handlers pass 5/5, EventSessionTemplate handlers pass 5/5, AuthorizationBehavior passes 34/34, and template HAL passes 5/5. API, generated NSwag client, Blazor Client, Blazor Client tests, and Application tests compile. OpenAPI and API contract inventory were regenerated; the canonical Release build passes with zero errors.
   - **Effort:** XL
   - **Dependencies:** 3.5.
 
 ### Phase 3 Verification - RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` - passed with 0 errors and existing advisory/analyzer warnings.
+- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` - executed 3,167 tests: 3,164 passed and 3 unrelated concurrent failures remain in organizer-claim withdrawal, Organization authorization expectations, and EventLocation disclosure contract tests.
 
-## Phase 4: Migrate Every Operational Editable Resource - NOT STARTED
+## Phase 4: Migrate Every Operational Editable Resource - IN PROGRESS
 
-- [ ] **4.1 Migrate StorageObject and both webhook resources**
+- [x] **4.1 Migrate StorageObject and both webhook resources**
   - **Rows:** D-003/D-004/D-029; H-014/H-015/H-029; A-015/A-016/A-100.
   - **Acceptance:** StorageObject metadata, WebhookEndpoint, and webhook provider mode use grouped PATCH; upload/signing/rotation/delivery actions and secrets stay separate.
+  - **Evidence:** StorageObject exposes only metadata/access/ownership groups with route-owned identity and preserves provider-owned fields; WebhookEndpoint merges omitted destination/subscription/delivery-policy groups from the locked aggregate while retaining configuration-version, pending-work, capability, audit, and transaction safeguards; provider mode remains one governed group. OpenAPI/NSwag regenerated; focused Application tests passed 5/5, webhook/storage API contracts passed 78/78, and webhook Blazor component tests passed 11/11.
   - **Effort:** L
   - **Dependencies:** Phase 3.
-- [ ] **4.2 Migrate Listmonk, localization, and external API-key policy**
+- [x] **4.2 Migrate Listmonk, localization, and external API-key policy**
   - **Rows:** D-005/D-042/D-046; H-018/H-020/H-030; A-007/A-057/A-059.
   - **Acceptance:** All three use partial policy/config contracts; provider tests, credential issuance/revoke/rotate, and key material remain outside generic PATCH.
+  - **Evidence:** Listmonk connection/behavior groups validate against effective persisted settings and write only supplied keys; localization TMS/languages/runtime groups upsert only supplied families; external API-key metadata/access-policy groups use route-owned identity and exclude key/owner/tenant/status/usage fields. OpenAPI/NSwag and production callers regenerated. Focused Application tests passed 16/16, route metadata 3/3, external-key database integration 5/5, and generated-client forwarding 1/1.
   - **Effort:** L
   - **Dependencies:** 4.1.
-- [ ] **4.3 Migrate every reporting policy/consent resource**
+- [x] **4.3 Migrate every reporting policy/consent resource**
   - **Rows:** D-001/D-006/D-007; H-005/H-026/H-027; A-008/A-009/A-017.
   - **Acceptance:** Communication consent, provider locks, and routing groups update independently; privacy/audit/concurrency remain; secrets are explicit and never exposed.
+  - **Evidence:** Reporter consent requires one explicit group and retains ownership, privacy-erasure fencing, audit-neutral no-op behavior, one transaction, and cache invalidation. Instance general/Osprey/Coop locks update independently. Tenant policy/Osprey/Coop routing groups preserve omitted settings and credentials; the general lock blocks all routing writes while provider locks block only supplied matching groups. HAL/OpenAPI/NSwag advertise PATCH with no flat compatibility surface. Application handlers passed 9/9, API route/HAL tests passed 7/7, and the client service passed 13/13; all affected source and test projects compile through no-dependency builds. The canonical build remains blocked by unrelated concurrent registration-domain errors in `MinorUnitMath` and `PlatformContributionOption`.
   - **Effort:** L
   - **Dependencies:** 4.2.
 
@@ -159,11 +166,13 @@ Last Updated: 2026-07-28 Europe/Brussels
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 5: Remove Unsafe Generic Writes And Complete UI Autosave - NOT STARTED
+## Phase 5: Remove Unsafe Generic Writes And Complete UI Autosave - IN PROGRESS
 
-- [ ] **5.1 Remove generic IndexedDid, SyncState, ActorKeyStore, and UserExternalLogin writes**
+- [x] **5.1 Remove generic IndexedDid, SyncState, ActorKeyStore, and UserExternalLogin writes**
   - **Rows:** D-031/D-037/D-044/D-059; H-049/H-052/H-058/H-071; A-044/A-071/A-077/A-098.
   - **Acceptance:** Generic public provider/index/cursor/key/identity updates are absent; safe sync/rotation/link/unlink workflows own mutation; bodies cannot set provider-owned IDs/timestamps/key material/cursors.
+  - **Evidence:** All four public CRUD surfaces and their API-only DTO/CQRS slices are absent. OpenAPI, NSwag, route constants, mappings, and source-generated JSON registrations no longer expose them. Runtime tests require 404 for every CRUD verb; architecture coverage guards source/OpenAPI absence while retaining verified ATProto bootstrap and private fenced Jetstream cursor authority. Internal entities, repositories, and persistence registrations remain available to dedicated workflows.
+  - **Verification:** Federation API absence tests passed 26/26, the runtime OpenAPI absence invariant passed 1/1, the architecture authority-boundary guard passed 1/1, and the API contract inventory generator passed 1/1. Application, API, Blazor Client, API test, and architecture test projects compile with zero errors; the canonical Release build passes with zero errors. Existing package-advisory and analyzer warnings remain unrelated debt.
   - **Effort:** L
   - **Dependencies:** Phase 4.
 - [ ] **5.2 Apply autosave to every remaining tenant and instance settings control**

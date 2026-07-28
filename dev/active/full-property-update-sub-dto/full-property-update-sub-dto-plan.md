@@ -9,7 +9,7 @@ Last Updated: 2026-07-28 Europe/Brussels
 
 - **Request:** Standardize every update-eligible API entity on the existing Event/EventSession grouped partial-update convention and make settings, especially policy toggles, save at the point of change.
 - **Task directory:** `dev/active/full-property-update-sub-dto/`
-- **Planning status:** Approved and in implementation; Tasks 1.1-3.4 are accepted, and Task 3.5 is next.
+- **Planning status:** Approved and in implementation; Tasks 1.1-5.1 are accepted, and Task 5.2 is next.
 - **Compatibility:** Breaking changes are intentional. Do not retain old DTOs, routes, overloads, client methods, or tests.
 - **Matched intents:** `add-write-endpoint`, `add-cqrs-handler`, `openapi-contract-change`, `add-hal-link`, `blazor-component-affordance`; `add-ef-migration` only when an update-eligible aggregate lacks required concurrency state.
 - **Relevant skills:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `auth-patterns`, `blazor-ui-conventions`, `blazor-bff-patterns`, `dotnet-efcore-guidelines`.
@@ -19,10 +19,10 @@ Last Updated: 2026-07-28 Europe/Brussels
 
 ## Re-baseline - 2026-07-28 Europe/Brussels
 
-- **Reason:** Task 3.4 implementation and verification moved ahead of the active records during a context compaction.
-- **What changed:** The seven program/aspect/relationship surfaces now use canonical grouped partial-update semantics. Event aspects split create (`POST`) from update (`PATCH`), EventSessionSpeaker uses only its assignment ID, and the two Application-only lookup relationships gained database-enforced tenant-scoped uniqueness with duplicate-safe migration preflight.
-- **Plan impact:** Scope and sequencing are unchanged. Task 3.4 passed fresh review after scoped contract-metadata/header remediation; the completed count is 10/20.
-- **Remaining work:** Begin Task 3.5 and continue the existing phase sequence.
+- **Reason:** Tasks 3.4 and 3.5 implementation and verification moved ahead of the active records during context compaction and recovery.
+- **What changed:** Task 3.4 completed the seven program/aspect/relationship surfaces. Task 3.5 migrated shared, Event, and EventSession custom-property definitions to grouped PATCH with persisted tenant binding, strong concurrency, presence-aware atomic option replacement, and transactional runtime projection refresh.
+- **Plan impact:** Scope and sequencing are unchanged. Tasks 3.4 and 3.5 passed their focused gates; the completed count is 11/20.
+- **Remaining work:** Begin Task 5.2 and continue the existing phase sequence; Phase 3's full Application suite retains three unrelated failures recorded in the task ledger.
 
 ## 1. Executive Summary
 
