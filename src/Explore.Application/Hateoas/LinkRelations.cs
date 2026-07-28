@@ -305,6 +305,8 @@ public static class LinkRelations
     public const string PublicActions = "public-actions";
     public const string ManagePublicActions = "manage-public-actions";
     public const string ConfigureParticipation = "configure-participation";
+    public const string ManageTicketTypes = "manage-ticket-types";
+    public const string ManageCapacityPools = "manage-capacity-pools";
     public const string StartRegistration = "start-registration";
     public const string SignInToRegister = "sign-in-to-register";
     public const string ViewOriginalSource = "view-original-source";
