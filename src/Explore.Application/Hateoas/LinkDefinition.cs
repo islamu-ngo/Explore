@@ -53,7 +53,7 @@ public sealed record LinkDefinition(
     /// Creates an edit/update link definition (requires authentication).
     /// </summary>
     public static LinkDefinition Edit(string routeName, object? routeValues = null, string[]? roles = null) =>
-        new(LinkRelations.Edit, routeName, routeValues, "PATCH", RequiresAuth: true, RequiredRoles: roles);
+        new(LinkRelations.Edit, routeName, routeValues, "PUT", RequiresAuth: true, RequiredRoles: roles);
 
     /// <summary>
     /// Creates a delete link definition (requires authentication).
