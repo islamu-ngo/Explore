@@ -161,7 +161,7 @@ Cookie-authenticated BFF mutations use a double-submit-style antiforgery contrac
 
 1. `UseAntiforgeryTokenMiddleware` issues a JavaScript-readable `XSRF-TOKEN` cookie on non-static `GET` requests by calling `IAntiforgery.GetAndStoreTokens`. Static assets bypass token issuance so ASP.NET antiforgery does not mark images, scripts, and styles `no-store`.
 2. `Program.cs` configures ASP.NET Core antiforgery to validate the `X-CSRF-TOKEN` request header.
-3. `BrowserCredentialsMessageHandler` sends browser credentials and adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests when the token cookie is present.
+3. `BrowserCredentialsMessageHandler` sends browser credentials, and `BffAntiforgeryMessageHandler` adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests when the token cookie is present.
 4. `BffCookieForwardingHandler` preserves cookie/XSRF context for InteractiveServer self-calls that legitimately call BFF endpoints from the server.
 5. Unsafe preference and appearance BFF endpoints must call `.ValidateAntiforgery()`. Missing or invalid tokens return `400` with `Antiforgery validation failed`.
 6. Positive protected examples include `/bff/auth/refresh-schemes`, `/bff/auth/refresh-session`, `/bff/support-access/sessions`, `/bff/support-access/sessions/current/stop`, `/bff/support-access/sessions/{sessionId}/force-stop`, `/bff/storage/upload-session`, `/bff/storage/upload-proxy`, and the preference/appearance mutation endpoints.
