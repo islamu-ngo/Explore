@@ -92,17 +92,17 @@ public sealed class UpdateEventPublicActionCommandHandlerTests
     private static UpdateEventPublicActionCommand CreateCommand(
         EventPublicAction action,
         EventPublicActionKindEnum kind) => new()
-    {
-        EventId = action.EventId,
-        ActionId = action.Id,
-        Action = new ManageEventPublicActionDto
         {
-            KindId = (int)kind,
-            Url = "https://tickets.example.org/register",
-            IsPrimary = true,
-            ExpectedConcurrencyStamp = action.ConcurrencyStamp
-        }
-    };
+            EventId = action.EventId,
+            ActionId = action.Id,
+            Action = new ManageEventPublicActionDto
+            {
+                KindId = (int)kind,
+                Url = "https://tickets.example.org/register",
+                IsPrimary = true,
+                ExpectedConcurrencyStamp = action.ConcurrencyStamp
+            }
+        };
 
     private static EventPublicAction CreateAction(Guid tenantId, Guid eventId)
     {
@@ -123,20 +123,20 @@ public sealed class UpdateEventPublicActionCommandHandlerTests
         Guid tenantId,
         Guid eventId,
         int? participationHandlingModeId) => new()
-    {
-        Id = eventId,
-        TenantId = tenantId,
-        Title = "Event",
-        EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
-        Actor = null!,
-        Tenant = null!,
-        VisibilityType = null!,
-        EventStatus = null!,
-        EventFormat = null!,
-        ParticipationConfiguration = participationHandlingModeId.HasValue
+        {
+            Id = eventId,
+            TenantId = tenantId,
+            Title = "Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
+            Actor = null!,
+            Tenant = null!,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!,
+            ParticipationConfiguration = participationHandlingModeId.HasValue
             ? CreateParticipationConfiguration(eventId, tenantId, participationHandlingModeId.Value)
             : null
-    };
+        };
 
     private static EventParticipationConfiguration CreateParticipationConfiguration(
         Guid eventId,

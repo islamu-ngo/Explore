@@ -213,7 +213,7 @@ public class CreateEventRequestValidatorTests
         EventTypeId = 1,
         AudienceGenderId = 1,
         AudienceAgeId = 1,
-            ParticipationConfiguration = new ConfigureEventParticipationDto
+        ParticipationConfiguration = new ConfigureEventParticipationDto
         {
             ParticipationHandlingModeId = 1,
             AdvanceRegistrationObligationId = 1

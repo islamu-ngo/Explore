@@ -136,20 +136,20 @@ public sealed class CreateEventPublicActionCommandHandlerTests
         Guid tenantId,
         Guid eventId,
         int? participationHandlingModeId = (int)ParticipationHandlingModeEnum.ExternalManaged) => new()
-    {
-        Id = eventId,
-        TenantId = tenantId,
-        Title = "Event",
-        EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
-        Actor = null!,
-        Tenant = null!,
-        VisibilityType = null!,
-        EventStatus = null!,
-        EventFormat = null!,
-        ParticipationConfiguration = participationHandlingModeId.HasValue
+        {
+            Id = eventId,
+            TenantId = tenantId,
+            Title = "Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
+            Actor = null!,
+            Tenant = null!,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!,
+            ParticipationConfiguration = participationHandlingModeId.HasValue
             ? CreateParticipationConfiguration(eventId, tenantId, participationHandlingModeId.Value)
             : null
-    };
+        };
 
     private static EventParticipationConfiguration CreateParticipationConfiguration(
         Guid eventId,

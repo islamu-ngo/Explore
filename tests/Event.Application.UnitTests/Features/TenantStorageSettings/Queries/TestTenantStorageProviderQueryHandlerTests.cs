@@ -4,11 +4,11 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.TenantStorageSettings.Handlers.Queries;
 using Explore.Application.Features.TenantStorageSettings.Requests.Queries;
 using Explore.Application.Models.Storage;
-using Explore.Application.DTOs.Onboarding;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.TenantStorageSettings.Queries;

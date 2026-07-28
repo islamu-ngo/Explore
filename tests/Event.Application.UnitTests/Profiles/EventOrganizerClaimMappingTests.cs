@@ -1,8 +1,8 @@
 // ABOUTME: Verifies event provenance and organizer-claim projections from trusted domain state.
 // ABOUTME: Keeps public disclosure and authorization-only ownership metadata mapped independently.
 
-using AutoMapper;
 using System.Text.Json;
+using AutoMapper;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventOrganizerClaim;
 using Explore.Application.Profiles;

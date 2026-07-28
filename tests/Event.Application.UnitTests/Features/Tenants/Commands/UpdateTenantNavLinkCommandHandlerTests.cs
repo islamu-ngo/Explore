@@ -8,8 +8,8 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Features.Tenants.Handlers.Commands.UpdateTenantNavLink;
 using Explore.Application.Features.Tenants.Requests.Commands.UpdateTenantNavLink;
-using Explore.Domain;
 using Explore.Application.Models.Common;
+using Explore.Domain;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.Tenants.Commands;

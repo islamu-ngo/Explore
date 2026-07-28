@@ -1,8 +1,8 @@
 // ABOUTME: Unit tests for grouped event-category link command handling.
 // ABOUTME: Covers validation, concurrency, duplicate checks, one-save updates, and cache invalidation.
 
-using Explore.Application.Caching;
 using Explore.Application.Authorization;
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventCategories;
 using Explore.Application.Exceptions;

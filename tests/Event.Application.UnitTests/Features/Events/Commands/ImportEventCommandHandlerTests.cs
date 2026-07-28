@@ -117,7 +117,7 @@ public sealed class ImportEventCommandHandlerTests
         OwnerActorId = Guid.NewGuid(),
         ProvenanceSource = "legacy-system",
         ProvenanceExternalId = "legacy-123",
-            ParticipationConfiguration = new ConfigureEventParticipationDto
+        ParticipationConfiguration = new ConfigureEventParticipationDto
         {
             ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly,
             AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable

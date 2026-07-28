@@ -9,8 +9,8 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventCategories;
-using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventOrganizerClaim;
+using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionSpeaker;
@@ -18,15 +18,15 @@ using Explore.Application.DTOs.EventTags;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Exceptions;
-using Explore.Application.Features.EventCustomPropertyProjections.Requests.Queries;
 using Explore.Application.Features.EventCategories.Requests.Commands;
-using Explore.Application.Features.EventRegistrations.Requests.Commands;
+using Explore.Application.Features.EventCustomPropertyProjections.Requests.Queries;
 using Explore.Application.Features.EventOrganizerClaims.Requests.Commands;
+using Explore.Application.Features.EventRegistrations.Requests.Commands;
+using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
+using Explore.Application.Features.EventSessionCustomPropertyProjections.Requests.Queries;
 using Explore.Application.Features.EventSessionGroups.Requests.Commands;
 using Explore.Application.Features.EventSessionSpeakers.Requests.Commands;
-using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Features.EventSessionCustomPropertyProjections.Requests.Queries;
 using Explore.Application.Features.EventTags.Requests.Commands;
 using Explore.Application.Features.OrganizationMembers.Requests.Queries;
 using Explore.Application.Features.Organizations.Requests.Commands;
@@ -245,7 +245,7 @@ public class AuthorizationBehaviorTests
             Request = new CreateEventRequest
             {
                 Title = "Community Dinner",
-            ParticipationConfiguration = new ConfigureEventParticipationDto
+                ParticipationConfiguration = new ConfigureEventParticipationDto
                 {
                     ParticipationHandlingModeId = 1,
                     AdvanceRegistrationObligationId = 1
