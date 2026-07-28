@@ -276,13 +276,13 @@ public sealed class S3PreflightVerifier(
         string errorCode,
         string message,
         string detail) => new()
-    {
-        StepName = stepName,
-        Status = S3PreflightStepStatus.Failed,
-        ErrorCode = errorCode,
-        Message = message,
-        Detail = detail
-    };
+        {
+            StepName = stepName,
+            Status = S3PreflightStepStatus.Failed,
+            ErrorCode = errorCode,
+            Message = message,
+            Detail = detail
+        };
 
     private static S3PreflightStepResult Skipped(string stepName, string message) => new()
     {
