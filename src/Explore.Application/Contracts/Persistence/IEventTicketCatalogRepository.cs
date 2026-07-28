@@ -1,0 +1,29 @@
+// ABOUTME: Persistence contract for event-owned ticket catalog graphs and capacity child lookups.
+// ABOUTME: Returns Domain entities with exact tenant and event predicates for handler-owned validation.
+
+using Explore.Domain;
+
+namespace Explore.Application.Contracts.Persistence;
+
+public interface IEventTicketCatalogRepository
+{
+    Task<EventTicketCatalogVersion?> GetManagementCatalogAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken);
+
+    Task<EventTicketCatalogVersion?> GetPublishedCatalogAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken);
+
+    Task<EventTicketCatalogVersion?> GetByEventVersionAndTenantAsync(Guid eventId, int versionNumber, Guid tenantId, CancellationToken cancellationToken);
+
+    Task<EventTicketType?> GetTicketTypeByIdEventAndTenantAsync(Guid ticketTypeId, Guid eventId, Guid tenantId, CancellationToken cancellationToken);
+
+    Task<EventCapacityPool?> GetCapacityPoolByIdEventAndTenantAsync(Guid capacityPoolId, Guid eventId, Guid tenantId, CancellationToken cancellationToken);
+
+    Task AddAsync(EventTicketCatalogVersion catalog, CancellationToken cancellationToken);
+
+    Task UpdateAsync(EventTicketCatalogVersion catalog, CancellationToken cancellationToken);
+
+    Task AddCapacityPoolAsync(EventCapacityPool pool, CancellationToken cancellationToken);
+
+    Task UpdateCapacityPoolAsync(EventCapacityPool pool, CancellationToken cancellationToken);
+
+    Task PublishDraftReplacingCurrentAsync(EventTicketCatalogVersion draft, Guid eventId, Guid tenantId, CancellationToken cancellationToken);
+}

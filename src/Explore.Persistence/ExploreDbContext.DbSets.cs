@@ -152,6 +152,10 @@ public partial class ExploreDbContext
     public DbSet<EventSessionCategory> EventSessionCategories { get; set; }
     public DbSet<EventSessionTag> EventSessionTags { get; set; }
     public DbSet<EventRegistrationIntent> EventRegistrationIntents { get; set; }
+    public DbSet<EventTicketCatalogVersion> EventTicketCatalogVersions { get; set; }
+    public DbSet<EventTicketType> EventTicketTypes { get; set; }
+    public DbSet<TicketTypeEntitlement> TicketTypeEntitlements { get; set; }
+    public DbSet<EventCapacityPool> EventCapacityPools { get; set; }
 
     // ===== Event Lookup Tables =====
     public DbSet<EventType> EventTypes { get; set; }
@@ -171,6 +175,18 @@ public partial class ExploreDbContext
     public DbSet<ScheduleItemKind> ScheduleItemKinds { get; set; }
     public DbSet<EventRegistrationPolicy> EventRegistrationPolicies { get; set; }
     public DbSet<RegistrationScope> RegistrationScopes { get; set; }
+    public DbSet<TicketCatalogStatus> TicketCatalogStatuses { get; set; }
+    public DbSet<TicketPricingMode> TicketPricingModes { get; set; }
+    public DbSet<ParticipantDataCollectionMode> ParticipantDataCollectionModes { get; set; }
+    public DbSet<EntitlementScopeType> EntitlementScopeTypes { get; set; }
+    public DbSet<EntitlementSelectionRule> EntitlementSelectionRules { get; set; }
+    public DbSet<CapacityOversellPolicy> CapacityOversellPolicies { get; set; }
+
+    // ===== Instance Monetization =====
+    public DbSet<PlatformFeePolicy> PlatformFeePolicies { get; set; }
+    public DbSet<PlatformFeeFixedCharge> PlatformFeeFixedCharges { get; set; }
+    public DbSet<PlatformContributionSetting> PlatformContributionSettings { get; set; }
+    public DbSet<PlatformContributionOption> PlatformContributionOptions { get; set; }
 
     // ===== Event Metadata =====
     public DbSet<AudienceAge> AudienceAges { get; set; }

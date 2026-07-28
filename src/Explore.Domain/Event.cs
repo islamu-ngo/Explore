@@ -74,6 +74,8 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public ICollection<EventPublicAction> PublicActions { get; set; } = new List<EventPublicAction>();
     public ICollection<EventOrganizerClaim> OrganizerClaims { get; set; } = new List<EventOrganizerClaim>();
     public EventParticipationConfiguration? ParticipationConfiguration { get; set; }
+    public ICollection<EventTicketCatalogVersion> TicketCatalogVersions { get; set; } = new List<EventTicketCatalogVersion>();
+    public ICollection<EventCapacityPool> CapacityPools { get; set; } = new List<EventCapacityPool>();
 
     public string? Slug { get; set; }
     public string PublicCode { get; set; } = string.Empty;

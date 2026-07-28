@@ -135,6 +135,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IGenericRepository<EventReportCase, Guid>, GenericRepository<EventReportCase, Guid>>();
         services.AddScoped<IGenericRepository<UserPii, Guid>, GenericRepository<UserPii, Guid>>();
         services.AddScoped<IGenericRepository<ActorPii, Guid>, GenericRepository<ActorPii, Guid>>();
+        services.AddScoped<IGenericRepository<ActorMerge, Guid>, GenericRepository<ActorMerge, Guid>>();
 
         // Lookup cache
         services.AddSingleton<ILookupDataCache, LookupDataCache>();
@@ -197,6 +198,7 @@ public static class PersistenceServicesRegistration
         // Actor Repositories
         services.AddScoped<IActorRepository, ActorRepository>();
         services.AddScoped<IAtprotoIdentityRepository, AtprotoIdentityRepository>();
+        services.AddScoped<IActorReferenceConsolidationRepository, ActorReferenceConsolidationRepository>();
         services.AddScoped<IActorKeyStoreRepository, ActorKeyStoreRepository>();
         services.AddScoped<IActorSubscriptionRepository, ActorSubscriptionRepository>();
         services.AddScoped<INotificationFanoutRunRepository, NotificationFanoutRunRepository>();
@@ -218,6 +220,9 @@ public static class PersistenceServicesRegistration
         // Event Repositories
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IEventParticipationConfigurationRepository, EventParticipationConfigurationRepository>();
+        services.AddScoped<IEventTicketCatalogRepository, EventTicketCatalogRepository>();
+        services.AddScoped<IPlatformFeePolicyRepository, PlatformFeePolicyRepository>();
+        services.AddScoped<IPlatformContributionSettingRepository, PlatformContributionSettingRepository>();
         services.AddScoped<IEventPublicActionRepository, EventPublicActionRepository>();
         services.AddScoped<IEventOrganizerClaimRepository, EventOrganizerClaimRepository>();
         services.AddScoped<IEventHeavyRedactionRepository, EventHeavyRedactionRepository>();

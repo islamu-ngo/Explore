@@ -70,6 +70,8 @@ public static class LookupTableSeeder
         await SeedEventFormatsAsync(context, cancellationToken);
         await SeedEventAuthorityLookupsAsync(context, cancellationToken);
         await SeedEventParticipationLookupsAsync(context, cancellationToken);
+        await SeedTicketingLookupsAsync(context, cancellationToken);
+        await SeedPlatformMonetizationDefaultsAsync(context, cancellationToken);
         await SeedEventStatusesAsync(context, cancellationToken);
         await SeedEventSessionStatusesAsync(context, cancellationToken);
         await SeedEventTypesAsync(context, cancellationToken);
@@ -682,7 +684,8 @@ public static class LookupTableSeeder
             new ActorType { Id = (int)ActorTypeEnum.Organization, MasterCode = "ORGANIZATION", FullName = "Organization", Description = "Organization actor" },
             new ActorType { Id = (int)ActorTypeEnum.Bot, MasterCode = "BOT", FullName = "Bot", Description = "Automated bot actor" },
             new ActorType { Id = (int)ActorTypeEnum.Group, MasterCode = "GROUP", FullName = "Group", Description = "Group actor" },
-            new ActorType { Id = (int)ActorTypeEnum.System, MasterCode = "SYSTEM", FullName = "System", Description = "System actor" }
+            new ActorType { Id = (int)ActorTypeEnum.System, MasterCode = "SYSTEM", FullName = "System", Description = "System actor" },
+            new ActorType { Id = (int)ActorTypeEnum.ExternalUnclassified, MasterCode = "EXTERNAL_UNCLASSIFIED", FullName = "External unclassified", Description = "Verified external subject awaiting explicit classification" }
         ];
 
         var existingIds = await context.Set<ActorType>()
@@ -1514,6 +1517,75 @@ public static class LookupTableSeeder
             },
             row => row.Id,
             ct);
+    }
+
+    internal static async Task SeedTicketingLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new TicketCatalogStatus { Id = (int)TicketCatalogStatusEnum.Draft, MasterCode = "DRAFT", FullName = "Draft", Description = "Catalog is editable and not available for checkout" },
+            new TicketCatalogStatus { Id = (int)TicketCatalogStatusEnum.Published, MasterCode = "PUBLISHED", FullName = "Published", Description = "Catalog is immutable and available for checkout" },
+            new TicketCatalogStatus { Id = (int)TicketCatalogStatusEnum.Retired, MasterCode = "RETIRED", FullName = "Retired", Description = "Catalog is retained as immutable history" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new TicketPricingMode { Id = (int)TicketPricingModeEnum.Fixed, MasterCode = "FIXED", FullName = "Fixed" },
+            new TicketPricingMode { Id = (int)TicketPricingModeEnum.Free, MasterCode = "FREE", FullName = "Free" },
+            new TicketPricingMode { Id = (int)TicketPricingModeEnum.Donation, MasterCode = "DONATION", FullName = "Donation" },
+            new TicketPricingMode { Id = (int)TicketPricingModeEnum.PayWhatYouCan, MasterCode = "PAY_WHAT_YOU_CAN", FullName = "Pay what you can" },
+            new TicketPricingMode { Id = (int)TicketPricingModeEnum.SlidingScale, MasterCode = "SLIDING_SCALE", FullName = "Sliding scale" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new ParticipantDataCollectionMode { Id = (int)ParticipantDataCollectionModeEnum.None, MasterCode = "NONE", FullName = "None" },
+            new ParticipantDataCollectionMode { Id = (int)ParticipantDataCollectionModeEnum.LeadBookerOnly, MasterCode = "LEAD_BOOKER_ONLY", FullName = "Lead booker only" },
+            new ParticipantDataCollectionMode { Id = (int)ParticipantDataCollectionModeEnum.PerTicketOptional, MasterCode = "PER_TICKET_OPTIONAL", FullName = "Per ticket optional" },
+            new ParticipantDataCollectionMode { Id = (int)ParticipantDataCollectionModeEnum.PerTicketRequired, MasterCode = "PER_TICKET_REQUIRED", FullName = "Per ticket required" },
+            new ParticipantDataCollectionMode { Id = (int)ParticipantDataCollectionModeEnum.DeferredAssignment, MasterCode = "DEFERRED_ASSIGNMENT", FullName = "Deferred assignment" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new EntitlementScopeType { Id = (int)EntitlementScopeTypeEnum.Event, MasterCode = "EVENT", FullName = "Event" },
+            new EntitlementScopeType { Id = (int)EntitlementScopeTypeEnum.EventDay, MasterCode = "EVENT_DAY", FullName = "Event day" },
+            new EntitlementScopeType { Id = (int)EntitlementScopeTypeEnum.EventSession, MasterCode = "EVENT_SESSION", FullName = "Event session" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new EntitlementSelectionRule { Id = (int)EntitlementSelectionRuleEnum.AllIncluded, MasterCode = "ALL_INCLUDED", FullName = "All included" },
+            new EntitlementSelectionRule { Id = (int)EntitlementSelectionRuleEnum.FixedSelection, MasterCode = "FIXED_SELECTION", FullName = "Fixed selection" },
+            new EntitlementSelectionRule { Id = (int)EntitlementSelectionRuleEnum.ChooseOne, MasterCode = "CHOOSE_ONE", FullName = "Choose one" },
+            new EntitlementSelectionRule { Id = (int)EntitlementSelectionRuleEnum.ChooseUpToN, MasterCode = "CHOOSE_UP_TO_N", FullName = "Choose up to N" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new CapacityOversellPolicy { Id = (int)CapacityOversellPolicyEnum.Disallow, MasterCode = "DISALLOW", FullName = "Disallow" },
+            new CapacityOversellPolicy { Id = (int)CapacityOversellPolicyEnum.Allow, MasterCode = "ALLOW", FullName = "Allow" }
+        ], row => row.Id, ct);
+    }
+
+    internal static async Task SeedPlatformMonetizationDefaultsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (!await context.PlatformFeePolicies.AnyAsync(ct))
+        {
+            context.PlatformFeePolicies.Add(PlatformFeePolicy.CreateDefault());
+        }
+
+        if (!await context.PlatformContributionSettings.AnyAsync(ct))
+        {
+            context.PlatformContributionSettings.Add(PlatformContributionSetting.CreateInitial(false, string.Empty, string.Empty,
+            [
+                PlatformContributionOption.Create(0, 0, true),
+                PlatformContributionOption.Create(500, 1, false),
+                PlatformContributionOption.Create(1_000, 2, false),
+                PlatformContributionOption.Create(1_500, 3, false),
+                PlatformContributionOption.Create(2_000, 4, false)
+            ]));
+        }
+
+        if (context.ChangeTracker.HasChanges())
+        {
+            await context.SaveChangesAsync(ct);
+        }
     }
 
     private static async Task SeedSystemSettingsAsync(ExploreDbContext context, CancellationToken ct)
