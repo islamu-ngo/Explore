@@ -1,0 +1,272 @@
+// ABOUTME: Defines a versioned catalog ticket type with pricing, eligibility, limits, and entitlements.
+// ABOUTME: Keeps all mutable commercial configuration inside its draft catalog version.
+
+using Explore.Domain.Enums;
+using Explore.Domain.Interfaces;
+using Explore.Domain.Services.Registration;
+using Explore.Domain.ValueObjects;
+
+namespace Explore.Domain;
+
+public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
+{
+    private readonly List<TicketTypeEntitlement> _entitlements = [];
+
+    private EventTicketType()
+    {
+    }
+
+    private EventTicketType(
+        Guid tenantId,
+        Guid catalogId,
+        string name,
+        string currencyCode,
+        TicketPricingModeEnum pricingMode,
+        long? fixedPriceMinor,
+        long? minimumPriceMinor,
+        long? suggestedPriceMinor,
+        ParticipantDataCollectionModeEnum participantDataCollectionMode,
+        Guid? capacityPoolId,
+        int? minimumAge,
+        int? maximumAge,
+        bool requiresGuardian,
+        bool requiresApproval,
+        int? perOrderLimit,
+        int? perAccountLimit,
+        int? perVerifiedContactLimit,
+        int? perBookingPartyLimit)
+    {
+        Id = Guid.CreateVersion7();
+        TenantId = tenantId;
+        CatalogId = catalogId;
+        Name = name;
+        CurrencyCode = currencyCode;
+        TicketPricingModeId = (int)pricingMode;
+        FixedPriceMinor = fixedPriceMinor;
+        MinimumPriceMinor = minimumPriceMinor;
+        SuggestedPriceMinor = suggestedPriceMinor;
+        ParticipantDataCollectionModeId = (int)participantDataCollectionMode;
+        CapacityPoolId = capacityPoolId;
+        MinimumAge = minimumAge;
+        MaximumAge = maximumAge;
+        RequiresGuardian = requiresGuardian;
+        RequiresApproval = requiresApproval;
+        PerOrderLimit = perOrderLimit;
+        PerAccountLimit = perAccountLimit;
+        PerVerifiedContactLimit = perVerifiedContactLimit;
+        PerBookingPartyLimit = perBookingPartyLimit;
+    }
+
+    public Guid Id { get; private set; }
+
+    public Guid TenantId { get; set; }
+
+    public Guid CatalogId { get; private set; }
+
+    public string Name { get; private set; } = string.Empty;
+
+    public string CurrencyCode { get; private set; } = string.Empty;
+
+    public int TicketPricingModeId { get; private set; }
+
+    public long? FixedPriceMinor { get; private set; }
+
+    public long? MinimumPriceMinor { get; private set; }
+
+    public long? SuggestedPriceMinor { get; private set; }
+
+    public int ParticipantDataCollectionModeId { get; private set; }
+
+    public Guid? CapacityPoolId { get; private set; }
+
+    public int? MinimumAge { get; private set; }
+
+    public int? MaximumAge { get; private set; }
+
+    public bool RequiresGuardian { get; private set; }
+
+    public bool RequiresApproval { get; private set; }
+
+    public int? PerOrderLimit { get; private set; }
+
+    public int? PerAccountLimit { get; private set; }
+
+    public int? PerVerifiedContactLimit { get; private set; }
+
+    public int? PerBookingPartyLimit { get; private set; }
+
+    public Guid ConcurrencyStamp { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    public Guid? CreatedBy { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public Guid? UpdatedBy { get; set; }
+
+    public bool IsDeleted { get; set; }
+
+    public DateTime? DeletedAt { get; set; }
+
+    public Guid? DeletedBy { get; set; }
+
+    public IReadOnlyCollection<TicketTypeEntitlement> Entitlements => _entitlements.AsReadOnly();
+
+    public static EventTicketType Create(
+        Guid tenantId,
+        Guid catalogId,
+        string name,
+        string currencyCode,
+        TicketPricingModeEnum pricingMode,
+        long? fixedPriceMinor,
+        long? minimumPriceMinor,
+        long? suggestedPriceMinor,
+        ParticipantDataCollectionModeEnum participantDataCollectionMode,
+        Guid? capacityPoolId,
+        int? minimumAge,
+        int? maximumAge,
+        bool requiresGuardian,
+        bool requiresApproval,
+        int? perOrderLimit,
+        int? perAccountLimit,
+        int? perVerifiedContactLimit,
+        int? perBookingPartyLimit)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            throw new ArgumentException("Tenant is required.", nameof(tenantId));
+        }
+
+        if (catalogId == Guid.Empty)
+        {
+            throw new ArgumentException("Catalog is required.", nameof(catalogId));
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Ticket type name is required.", nameof(name));
+        }
+
+        ValidateEligibility(minimumAge, maximumAge);
+        ValidateLimits(perOrderLimit, perAccountLimit, perVerifiedContactLimit, perBookingPartyLimit);
+
+        TicketPricingRules.ValidateConfiguration(pricingMode, currencyCode, fixedPriceMinor, minimumPriceMinor, suggestedPriceMinor);
+
+        return new EventTicketType(
+            tenantId,
+            catalogId,
+            name.Trim(),
+            CurrencyMetadata.Get(currencyCode).Code,
+            pricingMode,
+            fixedPriceMinor,
+            minimumPriceMinor,
+            suggestedPriceMinor,
+            ValidateParticipantDataCollectionMode(participantDataCollectionMode),
+            capacityPoolId,
+            minimumAge,
+            maximumAge,
+            requiresGuardian,
+            requiresApproval,
+            perOrderLimit,
+            perAccountLimit,
+            perVerifiedContactLimit,
+            perBookingPartyLimit);
+    }
+
+    internal void UpdatePricing(
+        TicketPricingModeEnum pricingMode,
+        long? fixedPriceMinor,
+        long? minimumPriceMinor,
+        long? suggestedPriceMinor)
+    {
+        TicketPricingRules.ValidateConfiguration(pricingMode, CurrencyCode, fixedPriceMinor, minimumPriceMinor, suggestedPriceMinor);
+        TicketPricingModeId = (int)pricingMode;
+        FixedPriceMinor = fixedPriceMinor;
+        MinimumPriceMinor = minimumPriceMinor;
+        SuggestedPriceMinor = suggestedPriceMinor;
+    }
+
+    public void Update(string name, TicketPricingModeEnum pricingMode, long? fixedPriceMinor, long? minimumPriceMinor, long? suggestedPriceMinor, ParticipantDataCollectionModeEnum participantDataCollectionMode, int? minimumAge, int? maximumAge, bool requiresGuardian, bool requiresApproval, int? perOrderLimit, int? perAccountLimit, int? perVerifiedContactLimit, int? perBookingPartyLimit)
+    {
+        if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Ticket type name is required.", nameof(name));
+        ValidateEligibility(minimumAge, maximumAge);
+        ValidateLimits(perOrderLimit, perAccountLimit, perVerifiedContactLimit, perBookingPartyLimit);
+        UpdatePricing(pricingMode, fixedPriceMinor, minimumPriceMinor, suggestedPriceMinor);
+        Name = name.Trim(); ParticipantDataCollectionModeId = (int)ValidateParticipantDataCollectionMode(participantDataCollectionMode);
+        MinimumAge = minimumAge; MaximumAge = maximumAge; RequiresGuardian = requiresGuardian; RequiresApproval = requiresApproval;
+        PerOrderLimit = perOrderLimit; PerAccountLimit = perAccountLimit; PerVerifiedContactLimit = perVerifiedContactLimit; PerBookingPartyLimit = perBookingPartyLimit;
+    }
+
+    internal void SetCapacityPool(EventCapacityPool? capacityPool)
+    {
+        CapacityPoolId = capacityPool?.Id;
+    }
+
+    internal void AddEntitlement(TicketTypeEntitlement entitlement)
+    {
+        _entitlements.Add(entitlement);
+    }
+
+    internal void ReplaceEntitlements(IEnumerable<TicketTypeEntitlement> entitlements)
+    {
+        TicketTypeEntitlement[] replacements = entitlements.ToArray();
+        _entitlements.Clear(); _entitlements.AddRange(replacements);
+    }
+
+    internal EventTicketType CloneTo(Guid catalogId)
+    {
+        var clone = new EventTicketType(
+            TenantId,
+            catalogId,
+            Name,
+            CurrencyCode,
+            (TicketPricingModeEnum)TicketPricingModeId,
+            FixedPriceMinor,
+            MinimumPriceMinor,
+            SuggestedPriceMinor,
+            (ParticipantDataCollectionModeEnum)ParticipantDataCollectionModeId,
+            CapacityPoolId,
+            MinimumAge,
+            MaximumAge,
+            RequiresGuardian,
+            RequiresApproval,
+            PerOrderLimit,
+            PerAccountLimit,
+            PerVerifiedContactLimit,
+            PerBookingPartyLimit);
+
+        foreach (TicketTypeEntitlement entitlement in _entitlements)
+        {
+            clone._entitlements.Add(entitlement.CloneTo(clone.Id));
+        }
+
+        return clone;
+    }
+
+    private static ParticipantDataCollectionModeEnum ValidateParticipantDataCollectionMode(ParticipantDataCollectionModeEnum mode)
+    {
+        if (!Enum.IsDefined(mode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(mode));
+        }
+
+        return mode;
+    }
+
+    private static void ValidateEligibility(int? minimumAge, int? maximumAge)
+    {
+        if (minimumAge is < 0 || maximumAge is < 0 || (minimumAge is not null && maximumAge is not null && minimumAge > maximumAge))
+        {
+            throw new ArgumentOutOfRangeException(nameof(minimumAge), "Age bounds must be non-negative and ordered.");
+        }
+    }
+
+    private static void ValidateLimits(params int?[] limits)
+    {
+        if (limits.Any(static limit => limit is <= 0))
+        {
+            throw new ArgumentOutOfRangeException(nameof(limits), "Ticket quantity limits must be positive when provided.");
+        }
+    }
+}
