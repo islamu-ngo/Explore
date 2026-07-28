@@ -86,11 +86,11 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         await eventService.Received(1).UpdateSessionGroupAsync(
             sectionId,
             concurrencyStamp,
-            Arg.Is<UpdateEventSessionGroupRequestDto>(request =>
+            Arg.Is<UpdateEventSessionGroupRequestDto>((UpdateEventSessionGroupRequestDto request) =>
                 request.Metadata != null &&
                 request.Metadata.Name == "Main stage" &&
                 request.Metadata.Description != null &&
-                request.Metadata.Description.HasValue &&
+                request.Metadata.Description.HasValue == true &&
                 request.Metadata.Description.Value == "Existing description" &&
                 request.Metadata.Color != null &&
                 request.Metadata.Color.Value == "#123456" &&

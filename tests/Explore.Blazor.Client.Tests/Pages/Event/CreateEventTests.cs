@@ -3,6 +3,7 @@
 
 using System.Reflection;
 using Blazouter.Services;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Pages.Events.Models;
@@ -326,7 +327,7 @@ public class CreateEventTests : IDisposable
         await Assert.That(configuration.ParticipationHandlingModeId).IsEqualTo(4);
         await Assert.That(configuration.AdvanceRegistrationObligationId).IsEqualTo(2);
         await Assert.That(configuration.IdentityAccessModeId).IsEqualTo(2);
-        await Assert.That(configuration.GuestRecoveryPolicy).IsEqualTo(1);
+        await Assert.That(configuration.GuestRecoveryPolicy).IsEqualTo(GuestRecoveryPolicyEnum.UnverifiedEmailAccepted);
     }
 
     [Test]

@@ -142,7 +142,7 @@ public sealed class EventProvenancePanelTests : IDisposable
         ProvenanceTypeCode = "COMMUNITY_REPORTED",
         ProvenanceTypeName = "Community reported",
         SourcePublisherName = "Community Calendar",
-        AdditionalProperties = CreateHalLinks(links.Select(link => (link, $"/api/events/{link}" )).ToArray())
+        AdditionalProperties = CreateHalLinks(links.Select(link => (link, $"/api/events/{link}")).ToArray())
     };
 
     private static Dictionary<string, object> CreateHalLinks(params (string Rel, string Href)[] links)

@@ -76,7 +76,7 @@ public class EventServiceTests
             ParticipationHandlingModeId = 4,
             AdvanceRegistrationObligationId = 3,
             IdentityAccessModeId = 2,
-            GuestRecoveryPolicy = 1
+            GuestRecoveryPolicy = GuestRecoveryPolicyEnum.UnverifiedEmailAccepted
         };
         _apiClient.ConfigureEventParticipationAsync(
                 eventId,

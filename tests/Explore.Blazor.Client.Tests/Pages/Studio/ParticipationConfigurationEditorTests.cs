@@ -87,7 +87,7 @@ public sealed class ParticipationConfigurationEditorTests : IDisposable
                 body.ParticipationHandlingModeId == 4
                 && body.AdvanceRegistrationObligationId == 3
                 && body.IdentityAccessModeId == 2
-                && body.GuestRecoveryPolicy == 1),
+                && body.GuestRecoveryPolicy == GuestRecoveryPolicyEnum.UnverifiedEmailAccepted),
             configuration.ConcurrencyStamp.Value,
             Arg.Any<CancellationToken>());
         await Assert.That(saved).IsTrue();

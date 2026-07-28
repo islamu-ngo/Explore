@@ -96,18 +96,18 @@ public class EventSessionLanguageServiceTests
 
     private static HalCollectionResourceOfEventSessionLanguageListDto ToHalCollection(
         IEnumerable<EventSessionLanguageListDto> languages) => new()
-    {
-        _embedded = new HalCollectionEmbeddedOfEventSessionLanguageListDto
         {
-            Items = languages.Select(language => new HalResourceOfEventSessionLanguageListDto
+            _embedded = new HalCollectionEmbeddedOfEventSessionLanguageListDto
             {
-                Id = language.Id,
-                EventSessionId = language.EventSessionId,
-                EventId = language.EventId,
-                TenantId = language.TenantId,
-                LanguageId = language.LanguageId,
-                LanguageFullName = language.LanguageFullName
-            }).ToList()
-        }
-    };
+                Items = languages.Select(language => new HalResourceOfEventSessionLanguageListDto
+                {
+                    Id = language.Id,
+                    EventSessionId = language.EventSessionId,
+                    EventId = language.EventId,
+                    TenantId = language.TenantId,
+                    LanguageId = language.LanguageId,
+                    LanguageFullName = language.LanguageFullName
+                }).ToList()
+            }
+        };
 }
