@@ -1,5 +1,5 @@
 // ABOUTME: Registers tiered rate limiting policies for the API.
-// ABOUTME: Provides global, authenticated, write, and control-plane rate/concurrency tiers.
+// ABOUTME: Provides global, authenticated, public transactional, write, and control-plane rate/concurrency tiers.
 
 using System.Globalization;
 using System.Net;
@@ -33,6 +33,7 @@ public static class RateLimitingExtensions
     public const string AuthenticatedPolicy = "Authenticated";
     public const string WritePolicy = "Write";
     public const string PublicIngestionPolicy = "PublicIngestion";
+    public const string PublicTransactionalPolicy = "public_transactional";
     public const string SetupSecretPolicy = "SetupSecret";
     public const string AnalyticsRelayPolicy = "AnalyticsRelay";
     public const string AiAssistantPolicy = "AiAssistant";
@@ -62,6 +63,9 @@ public static class RateLimitingExtensions
 
         var publicIngestionPermitLimit = section.GetValue("PublicIngestion:PermitLimit", 60);
         var publicIngestionWindowSeconds = section.GetValue("PublicIngestion:WindowSeconds", 60);
+
+        var publicTransactionalPermitLimit = section.GetValue("PublicTransactional:PermitLimit", 10);
+        var publicTransactionalWindowSeconds = section.GetValue("PublicTransactional:WindowSeconds", 60);
 
         // Analytics relay limits
         var analyticsRelayPermitLimit = section.GetValue("AnalyticsRelay:PermitLimit", 120);
@@ -100,6 +104,8 @@ public static class RateLimitingExtensions
                 options.AddPolicy(WritePolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(PublicIngestionPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(PublicTransactionalPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(SetupSecretPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
@@ -232,6 +238,20 @@ public static class RateLimitingExtensions
                     {
                         PermitLimit = publicIngestionPermitLimit,
                         Window = TimeSpan.FromSeconds(publicIngestionWindowSeconds),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    });
+            });
+
+            options.AddPolicy(PublicTransactionalPolicy, httpContext =>
+            {
+                var ip = ResolveClientIp(httpContext)?.ToString() ?? "unknown";
+                return RateLimitPartition.GetFixedWindowLimiter($"{PublicTransactionalPolicy}:{ip}", _ =>
+                    new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = publicTransactionalPermitLimit,
+                        Window = TimeSpan.FromSeconds(publicTransactionalWindowSeconds),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0,
                         AutoReplenishment = true
@@ -394,6 +414,7 @@ public static class RateLimitingExtensions
             AuthenticatedPolicy => authPermitLimit,
             WritePolicy => writePermitLimit,
             PublicIngestionPolicy => publicIngestionPermitLimit,
+            PublicTransactionalPolicy => publicTransactionalPermitLimit,
             SetupSecretPolicy => setupSecretPermitLimit,
             AnalyticsRelayPolicy => analyticsRelayPermitLimit,
             AiAssistantPolicy => aiAssistantPermitLimit,
@@ -455,6 +476,12 @@ public static class RateLimitingExtensions
                     StringComparison.Ordinal)))
         {
             return SetupSecretPolicy;
+        }
+
+        if (context.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName
+            == PublicTransactionalPolicy)
+        {
+            return PublicTransactionalPolicy;
         }
 
         if (context.Request.Path.StartsWithSegments("/api/analytics", StringComparison.OrdinalIgnoreCase))

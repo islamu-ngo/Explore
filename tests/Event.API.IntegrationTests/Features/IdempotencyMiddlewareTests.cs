@@ -25,7 +25,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// </summary>
 [ClassDataSource<RealRuntimeApiFixture>(Shared = SharedType.PerAssembly)]
 [NotInParallel("RealRuntimeDb")]
-public class IdempotencyMiddlewareTests(RealRuntimeApiFixture fixture)
+public class IdempotencyMiddlewareRealRuntimeTests(RealRuntimeApiFixture fixture)
 {
     private readonly RealRuntimeApiFixture _fixture = fixture;
 
@@ -518,7 +518,7 @@ public class IdempotencyMiddlewareTests(RealRuntimeApiFixture fixture)
         }
     }
 
-    private sealed class JsonProblemDetailsService : IProblemDetailsService
+    internal sealed class JsonProblemDetailsService : IProblemDetailsService
     {
         public async ValueTask WriteAsync(ProblemDetailsContext context)
         {

@@ -1,5 +1,5 @@
-// ABOUTME: Regression tests for antiforgery enforcement on cookie-authenticated BFF API proxy mutations.
-// ABOUTME: Proves WebPush generated-client routes reject missing CSRF tokens while safe reads still proxy.
+// ABOUTME: Regression tests for antiforgery enforcement on authenticated and anonymous unsafe BFF API proxy mutations.
+// ABOUTME: Proves missing tokens fail, valid tokens proxy, and safe reads remain unblocked.
 
 using System.Net;
 using Explore.Blazor.IntegrationTests.Fixtures;
@@ -100,6 +100,32 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
     }
 
     [Test]
+    public async Task AnonymousProxyPost_WithoutAntiforgeryHeader_ReturnsBadRequest()
+    {
+        var antiforgery = await IssueAntiforgeryCookieAsync(authenticated: false);
+        using var request = CreateAnonymousProxyRequest(HttpMethod.Post, "/api/public-transactional-test");
+        request.Headers.Add("Cookie", antiforgery.CookieHeader);
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Antiforgery validation failed");
+    }
+
+    [Test]
+    public async Task AnonymousProxyPost_WithValidAntiforgeryHeader_ProxiesToApi()
+    {
+        var antiforgery = await IssueAntiforgeryCookieAsync(authenticated: false);
+        using var request = CreateAnonymousProxyRequest(HttpMethod.Post, "/api/public-transactional-test");
+        request.Headers.Add("Cookie", antiforgery.CookieHeader);
+        request.Headers.Add("X-CSRF-TOKEN", antiforgery.Token);
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Test]
     [Arguments("/api/instance/settings/auth-provider")]
     [Arguments("/api/instance/settings/authz-provider")]
     public async Task InstanceProviderPatch_CanonicalPath_ForwardsOnlyResolverSecret(string path)
@@ -134,6 +160,13 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
     {
         _upstream.ResetCapture();
         using var request = CreateProxyRequest(new HttpMethod(method), $"{path}?source=test");
+        if (!string.Equals(method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase))
+        {
+            var antiforgery = await IssueAntiforgeryCookieAsync();
+            request.Headers.Add("Cookie", antiforgery.CookieHeader);
+            request.Headers.Add("X-CSRF-TOKEN", antiforgery.Token);
+        }
+
         request.Headers.Add("X-Setup-Secret", "browser-controlled-secret");
 
         using var response = await _client.SendAsync(request);
@@ -165,10 +198,17 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
         return request;
     }
 
-    private async Task<AntiforgeryCookie> IssueAntiforgeryCookieAsync()
+    private static HttpRequestMessage CreateAnonymousProxyRequest(HttpMethod method, string path)
+        => new(method, path);
+
+    private async Task<AntiforgeryCookie> IssueAntiforgeryCookieAsync(bool authenticated = true)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "/auth/status");
-        request.Headers.Add(TestAuthHandler.AuthHeaderName, _authHeader);
+        if (authenticated)
+        {
+            request.Headers.Add(TestAuthHandler.AuthHeaderName, _authHeader);
+        }
+
         using var response = await _client.SendAsync(request);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -179,14 +219,16 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
             .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
         token.Should().NotBeNullOrWhiteSpace("GET requests should issue the readable XSRF-TOKEN cookie");
-        return new AntiforgeryCookie(token!, BuildCookieHeader(setCookies));
+        return new AntiforgeryCookie(token!, BuildCookieHeader(setCookies, authenticated));
     }
 
-    private static string BuildCookieHeader(IEnumerable<string> setCookies)
+    private static string BuildCookieHeader(IEnumerable<string> setCookies, bool includeBffAuthCookie = true)
     {
-        var cookies = setCookies
-            .Select(setCookie => setCookie.Split(';', 2)[0])
-            .Append(".AspNetCore.Cookies=test-session");
+        var cookies = setCookies.Select(setCookie => setCookie.Split(';', 2)[0]);
+        if (includeBffAuthCookie)
+        {
+            cookies = cookies.Append(".AspNetCore.Cookies=test-session");
+        }
 
         return string.Join("; ", cookies);
     }

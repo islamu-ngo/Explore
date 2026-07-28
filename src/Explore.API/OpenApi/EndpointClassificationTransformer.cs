@@ -1,6 +1,7 @@
 // ABOUTME: OpenAPI operation transformer that emits endpoint posture vendor extensions.
 // ABOUTME: Projects classification, rate-limit, cache, and tenant-mode metadata from endpoint attributes.
 
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Explore.API.Attributes;
@@ -24,11 +25,13 @@ public sealed class EndpointClassificationTransformer : IOpenApiOperationTransfo
         var rateLimit = endpointMetadata.OfType<EnableRateLimitingAttribute>().LastOrDefault();
         var outputCache = endpointMetadata.OfType<OutputCacheAttribute>().LastOrDefault();
         var requiresMultiTenant = endpointMetadata.OfType<RequireMultiTenantAttribute>().Any();
+        var requiresIdempotencyKey = endpointMetadata.OfType<RequireIdempotencyKeyAttribute>().Any();
 
         if (classification is null
             && rateLimit is null
             && outputCache is null
-            && !requiresMultiTenant)
+            && !requiresMultiTenant
+            && !requiresIdempotencyKey)
         {
             return Task.CompletedTask;
         }
@@ -59,6 +62,26 @@ public sealed class EndpointClassificationTransformer : IOpenApiOperationTransfo
                 new JsonNodeExtension("multi-tenant-required");
         }
 
+        if (requiresIdempotencyKey)
+        {
+            ApplyIdempotencyKeyRequirement(operation, endpointMetadata);
+        }
+
         return Task.CompletedTask;
+    }
+
+    internal static bool ApplyIdempotencyKeyRequirement(
+        OpenApiOperation operation,
+        IEnumerable<object> endpointMetadata)
+    {
+        if (!endpointMetadata.OfType<RequireIdempotencyKeyAttribute>().Any())
+        {
+            return false;
+        }
+
+        operation.Extensions ??= new Dictionary<string, IOpenApiExtension>();
+        operation.Extensions["x-idempotency-key-required"] =
+            new JsonNodeExtension(JsonValue.Create(true)!);
+        return true;
     }
 }

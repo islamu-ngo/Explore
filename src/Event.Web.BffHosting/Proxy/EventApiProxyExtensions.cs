@@ -6,14 +6,12 @@ using Event.Web.BffHosting.Abstractions;
 using Event.Web.BffHosting.Authentication;
 using Event.Web.BffHosting.Security;
 using Microsoft.AspNetCore.Antiforgery;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Forwarder;
 using Yarp.ReverseProxy.Transforms;
@@ -127,25 +125,8 @@ public static class EventApiProxyExtensions
         var request = context.Request;
         return request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
             && IsUnsafeMethod(request.Method)
-            && HasBffAuthCookie(context);
-    }
-
-    private static bool HasBffAuthCookie(HttpContext context)
-    {
-        var configuredCookieName = context.RequestServices
-            .GetService<EventBffKeycloakAuthenticationOptions>()
-            ?.CookieName;
-        if (!string.IsNullOrWhiteSpace(configuredCookieName) && context.Request.Cookies.ContainsKey(configuredCookieName))
-        {
-            return true;
-        }
-
-        var cookieOptions = context.RequestServices
-            .GetService<IOptionsMonitor<CookieAuthenticationOptions>>()
-            ?.Get(CookieAuthenticationDefaults.AuthenticationScheme);
-        var cookieName = cookieOptions?.Cookie.Name ?? CookieAuthenticationDefaults.CookiePrefix + CookieAuthenticationDefaults.AuthenticationScheme;
-
-        return context.Request.Cookies.ContainsKey(cookieName);
+            && !RequiresSetupSecret(request.Method, request.Path)
+            && !IsAnonymousOnboardingPath(request.Path);
     }
 
     private static bool IsUnsafeMethod(string method)

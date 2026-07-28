@@ -1,5 +1,5 @@
 // ABOUTME: Architecture tests enforcing that every public HTTP action carries an EndpointClassification.
-// ABOUTME: Fails the build when a controller or action is not tagged Public/Authenticated/Admin.
+// ABOUTME: Fails the build when a controller or action is not tagged with a valid endpoint class.
 
 namespace Event.Architecture.Tests;
 
@@ -144,6 +144,24 @@ public class EndpointClassificationArchitectureTests
     }
 
     [Test]
+    [DisplayName("PublicTransactional endpoints must satisfy anonymous write, rate-limit, antiforgery, and idempotency governance")]
+    public async Task PublicTransactionalEndpoints_ShouldSatisfyGovernance()
+    {
+        var controllerTypes = Types.InAssembly(ApiAssembly)
+            .That()
+            .Inherit(typeof(ControllerBase))
+            .And()
+            .AreNotAbstract()
+            .GetTypes()
+            .ToList();
+
+        var violations = PublicTransactionalEndpointGovernance.FindViolations(controllerTypes);
+
+        await Assert.That(violations).IsEmpty()
+            .Because("PublicTransactional endpoints must be anonymous unsafe writes with the exact public_transactional policy, no API antiforgery metadata, and required POST idempotency; see Phase 3 governance.");
+    }
+
+    [Test]
     [DisplayName("Mutating endpoints must require auth metadata or a documented anonymous exception")]
     public async Task MutatingEndpoints_ShouldRequireAuthorizationMetadataOrDocumentedException()
     {
@@ -168,6 +186,8 @@ public class EndpointClassificationArchitectureTests
             {
                 var actionId = $"{controller.Name}.{action.Name}";
                 var isDocumentedException = AnonymousMutatingEndpointExceptions.Contains(actionId);
+                var isPublicTransactional = ResolveEndpointClassification(controller, action)?.Class
+                    == EndpointClass.PublicTransactional;
                 var isSetupSecretGated = HasAttribute<SetupSecretRequiredAttribute>(controller)
                     || HasAttribute<SetupSecretRequiredAttribute>(action);
                 var hasAuthorize = HasAttribute<AuthorizeAttribute>(controller)
@@ -175,7 +195,7 @@ public class EndpointClassificationArchitectureTests
                 var allowsAnonymous = HasAttribute<AllowAnonymousAttribute>(controller)
                     || HasAttribute<AllowAnonymousAttribute>(action);
 
-                if (!isDocumentedException && !isSetupSecretGated && (!hasAuthorize || allowsAnonymous))
+                if (!isDocumentedException && !isPublicTransactional && !isSetupSecretGated && (!hasAuthorize || allowsAnonymous))
                 {
                     violations.Add(actionId);
                 }
@@ -183,7 +203,7 @@ public class EndpointClassificationArchitectureTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("POST/PUT/PATCH/DELETE endpoints must require authorization metadata unless setup-secret gated or explicitly documented as public ingestion/bootstrap; see dev/active/backend-api-health-refactor/endpoint-classification.md");
+            .Because("POST/PUT/PATCH/DELETE endpoints must require authorization metadata unless setup-secret gated, PublicTransactional, or explicitly documented as public ingestion/bootstrap; see dev/active/backend-api-health-refactor/endpoint-classification.md");
     }
 
     private static bool IsHttpAction(MethodInfo method)

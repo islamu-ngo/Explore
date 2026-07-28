@@ -30,5 +30,11 @@ public enum EndpointClass
     /// <c>[Authorize(Roles = "Admin")]</c> / <c>[Authorize(Roles = "InstanceAdmin")]</c>,
     /// or gated by the setup-secret flow. Used for tenant / instance administration.
     /// </summary>
-    Admin = 2
+    Admin = 2,
+
+    /// <summary>
+    /// Anonymous transactional write endpoint. Requires the public transactional
+    /// rate-limit policy and an Idempotency-Key for POST requests.
+    /// </summary>
+    PublicTransactional = 3
 }

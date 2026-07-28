@@ -707,8 +707,8 @@ app.UseAuthentication();
 app.UseMiddleware<ApiTenantPostAuthenticationMiddleware>();
 app.UseMiddleware<McpRuntimeGateMiddleware>();
 app.UseRequestLocalization();
-app.UseMiddleware<IdempotencyMiddleware>();
 app.UseRateLimiter();
+app.UseMiddleware<IdempotencyMiddleware>();
 app.UseAuthorization();
 app.UseMiddleware<SupportAccessAuditMiddleware>();
 if (!isOpenApiGeneration &&

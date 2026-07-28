@@ -1,6 +1,7 @@
 // ABOUTME: Middleware that implements Idempotency-Key header support for write operations (POST/PUT/PATCH/DELETE).
 // ABOUTME: Caches responses by (Key, TenantId) and replays them on duplicate requests within a 24-hour window.
 
+using Explore.API.Attributes;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
@@ -14,7 +15,7 @@ namespace Explore.API.Middleware;
 /// When a key is provided, the middleware checks for an existing cached response and replays it.
 /// When no cached response exists, the response is captured and persisted for future replay.
 /// GET and HEAD requests are always passed through without processing.
-/// The header is opt-in — requests without the header are processed normally.
+/// The header is opt-in unless endpoint metadata requires it for a specific action.
 /// </summary>
 public sealed class IdempotencyMiddleware
 {
@@ -55,6 +56,31 @@ public sealed class IdempotencyMiddleware
             return;
         }
 
+        var requiresIdempotencyKey = context.GetEndpoint()?.Metadata
+            .GetMetadata<RequireIdempotencyKeyAttribute>() is not null;
+        var hasIdempotencyKey = context.Request.Headers.TryGetValue(IdempotencyKeyHeader, out var keyValues)
+            && !string.IsNullOrEmpty(keyValues.FirstOrDefault());
+
+        if (!hasIdempotencyKey)
+        {
+            if (requiresIdempotencyKey)
+            {
+                await WriteBadRequestAsync(context, "Idempotency-Key is required.");
+                return;
+            }
+
+            await _next(context);
+            return;
+        }
+
+        var key = keyValues.FirstOrDefault()!;
+
+        if (requiresIdempotencyKey && string.IsNullOrWhiteSpace(key))
+        {
+            await WriteBadRequestAsync(context, "Idempotency-Key is required.");
+            return;
+        }
+
         // AI message sends persist run-level idempotency inside the Application handler.
         // Let that domain-specific record own replay/conflict semantics instead of
         // caching the HTTP response with a different request fingerprint.
@@ -65,33 +91,12 @@ public sealed class IdempotencyMiddleware
             return;
         }
 
-        // Opt-in: skip if no Idempotency-Key header
-        if (!context.Request.Headers.TryGetValue(IdempotencyKeyHeader, out var keyValues)
-            || string.IsNullOrEmpty(keyValues.FirstOrDefault()))
-        {
-            await _next(context);
-            return;
-        }
-
-        var key = keyValues.FirstOrDefault()!;
-
         // Validate key: max length, no whitespace
         if (key.Length > MaxKeyLength || key.AsSpan().ContainsAny(" \t\r\n"))
         {
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            var problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
-            await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
-            {
-                HttpContext = context,
-                ProblemDetails = new ProblemDetails
-                {
-                    Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-                    Title = "Bad Request",
-                    Status = StatusCodes.Status400BadRequest,
-                    Detail = "Idempotency-Key must be at most 128 characters and contain no whitespace.",
-                    Instance = context.Request.Path
-                }
-            });
+            await WriteBadRequestAsync(
+                context,
+                "Idempotency-Key must be at most 128 characters and contain no whitespace.");
             return;
         }
 
@@ -244,6 +249,24 @@ public sealed class IdempotencyMiddleware
         {
             HttpContext = context,
             ProblemDetails = problemDetails
+        });
+    }
+
+    private static async Task WriteBadRequestAsync(HttpContext context, string detail)
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        var problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
+        await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = context,
+            ProblemDetails = new ProblemDetails
+            {
+                Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+                Title = "Bad Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = detail,
+                Instance = context.Request.Path
+            }
         });
     }
 
