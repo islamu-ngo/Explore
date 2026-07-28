@@ -220,7 +220,7 @@
                 }).ToList()
             };
 
-            var response = await CustomPropertyService.UpdateDefinitionAsync(Id, updateDto);
+            var response = await CustomPropertyService.UpdateDefinitionAsync(Id, _definition.ConcurrencyStamp.GetValueOrDefault(), updateDto);
             
             if (response?.Success is true)
             {

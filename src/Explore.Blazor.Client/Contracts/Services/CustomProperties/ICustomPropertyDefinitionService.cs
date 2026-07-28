@@ -33,6 +33,7 @@ public interface ICustomPropertyDefinitionService
 
     Task<BaseCommandResponseOfGuid?> UpdateDefinitionAsync(
         Guid id,
+        Guid expectedConcurrencyStamp,
         UpdateCustomPropertyDefinitionDto body,
         CancellationToken cancellationToken = default);
 

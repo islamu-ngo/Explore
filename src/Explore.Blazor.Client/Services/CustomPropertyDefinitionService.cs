@@ -145,6 +145,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
 
     public async Task<BaseCommandResponseOfGuid?> UpdateDefinitionAsync(
         Guid id,
+        Guid expectedConcurrencyStamp,
         UpdateCustomPropertyDefinitionDto body,
         CancellationToken cancellationToken = default)
     {
@@ -152,7 +153,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
 
         try
         {
-            var response = await _apiClient.UpdateCustomPropertyDefinitionAsync(id, body, cancellationToken: cancellationToken);
+            var response = await _apiClient.UpdateCustomPropertyDefinitionAsync(id, body, $"\"{expectedConcurrencyStamp:D}\"", cancellationToken: cancellationToken);
             return response;
         }
         catch (ApiException<ProblemDetails> ex)

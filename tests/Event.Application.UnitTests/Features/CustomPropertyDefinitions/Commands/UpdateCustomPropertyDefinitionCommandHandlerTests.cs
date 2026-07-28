@@ -67,10 +67,12 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
     {
         var command = new UpdateCustomPropertyDefinitionCommand
         {
-            DefinitionDto = CreateDto()
+            DefinitionId = Guid.NewGuid(),
+            DefinitionDto = CreateDto(),
+            ExpectedConcurrencyStamp = ConcurrencyStamp
         };
 
-        _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(command.DefinitionDto.Id, Arg.Any<CancellationToken>())
+        _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(command.DefinitionId, Arg.Any<CancellationToken>())
             .Returns((CustomPropertyDefinition?)null);
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -86,7 +88,9 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         var existing = CreateExistingDefinition(tenantId);
         var command = new UpdateCustomPropertyDefinitionCommand
         {
-            DefinitionDto = CreateDto(existing.Id)
+            DefinitionId = existing.Id,
+            DefinitionDto = CreateDto(),
+            ExpectedConcurrencyStamp = ConcurrencyStamp
         };
 
         _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
@@ -112,7 +116,9 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         var existing = CreateExistingDefinition(tenantId);
         var command = new UpdateCustomPropertyDefinitionCommand
         {
-            DefinitionDto = CreateDto(existing.Id, expectedConcurrencyStamp: Guid.NewGuid())
+            DefinitionId = existing.Id,
+            DefinitionDto = CreateDto(),
+            ExpectedConcurrencyStamp = Guid.NewGuid()
         };
 
         _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
@@ -133,7 +139,8 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
     {
         var command = new UpdateCustomPropertyDefinitionCommand
         {
-            DefinitionDto = CreateDto(expectedConcurrencyStamp: Guid.Empty)
+            DefinitionId = Guid.NewGuid(),
+            DefinitionDto = CreateDto()
         };
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -155,7 +162,8 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         existing.DisplayName = "Legacy Prayer Notes";
         var command = new UpdateCustomPropertyDefinitionCommand
         {
-            DefinitionDto = CreateDto(existing.Id, "Renamed Prayer Notes")
+            DefinitionId = existing.Id,
+            DefinitionDto = CreateDto("Renamed Prayer Notes")
         };
 
         _currentUserService.UserId.Returns(userId);
@@ -170,7 +178,7 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
             .Returns(false);
         _mapper.Map(command.DefinitionDto, existing).Returns(callInfo =>
         {
-            existing.DisplayName = command.DefinitionDto.DisplayName;
+            existing.DisplayName = command.DefinitionDto.Metadata!.DisplayName!;
             return callInfo.ArgAt<CustomPropertyDefinition>(1);
         });
         _customPropertyDefinitionRepository.UpdateWithOptions(Arg.Any<CustomPropertyDefinition>(), Arg.Any<IReadOnlyCollection<CustomPropertyOption>>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
@@ -205,7 +213,9 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         var existing = CreateExistingDefinition(tenantId);
         var command = new UpdateCustomPropertyDefinitionCommand
         {
-            DefinitionDto = CreateDto(existing.Id)
+            DefinitionId = existing.Id,
+            DefinitionDto = CreateDto(),
+            ExpectedConcurrencyStamp = ConcurrencyStamp
         };
 
         _currentUserService.UserId.Returns(userId);
@@ -245,7 +255,9 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         var existing = CreateExistingDefinition(tenantId);
         var command = new UpdateCustomPropertyDefinitionCommand
         {
-            DefinitionDto = CreateDto(existing.Id)
+            DefinitionId = existing.Id,
+            DefinitionDto = CreateDto(),
+            ExpectedConcurrencyStamp = ConcurrencyStamp
         };
 
         _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
@@ -280,22 +292,16 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
     }
 
     private static UpdateCustomPropertyDefinitionDto CreateDto(
-        Guid? id = null,
-        string displayName = "Prayer Notes",
-        Guid? expectedConcurrencyStamp = null)
+        string displayName = "Prayer Notes")
     {
         return new UpdateCustomPropertyDefinitionDto
         {
-            Id = id ?? Guid.NewGuid(),
-            ExpectedConcurrencyStamp = expectedConcurrencyStamp ?? ConcurrencyStamp,
-            EntityTypeName = EntityTypeName.Organization,
-            Namespace = "Tenant Community",
-            Key = "Prayer Notes",
-            DisplayName = displayName,
-            PropertyType = PropertyType.Option,
-            ExposureLevel = ExposureLevel.OrganizerOnly,
-            IsActive = true,
-            Options =
+            Metadata = new UpdateCustomPropertyDefinitionMetadataDto
+            {
+                Namespace = "Tenant Community", Key = "Prayer Notes", DisplayName = displayName,
+                PropertyType = PropertyType.Option, ExposureLevel = ExposureLevel.OrganizerOnly, IsActive = true
+            },
+            Options = new UpdateCustomPropertyDefinitionOptionsDto { Items =
             [
                 new CreateCustomPropertyOptionDto
                 {
@@ -314,7 +320,7 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
                     Value = "stream",
                     IsActive = true,
                 }
-            ]
+            ] }
         };
     }
 

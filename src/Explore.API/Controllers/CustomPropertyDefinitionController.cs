@@ -1,6 +1,7 @@
 // ABOUTME: REST API controller for custom property definition CRUD operations.
 // ABOUTME: Allows organizations to define custom fields for events and registrations with type validation.
 
+using System.ComponentModel.DataAnnotations;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
@@ -155,7 +156,7 @@ public class CustomPropertyDefinitionController : ControllerBase
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateCustomPropertyDefinition)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateCustomPropertyDefinition)]
     [EndpointSummary("Update CustomPropertyDefinition")]
     [EndpointDescription("Update an existing shared custom-property definition and replace its option set.")]
     [Consumes("application/json")]
@@ -167,16 +168,20 @@ public class CustomPropertyDefinitionController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
-        [FromBody] UpdateCustomPropertyDefinitionDto updateDto, CancellationToken cancellationToken = default)
+        [FromBody] UpdateCustomPropertyDefinitionDto updateDto,
+        [FromHeader(Name = "If-Match"), Required] string? ifMatch,
+        CancellationToken cancellationToken = default)
     {
-        if (id != updateDto.Id)
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
         {
-            return this.ToValidationProblem(UpdateValidationProblem, "Custom property definition ID mismatch.");
+            return this.ToValidationProblem(UpdateValidationProblem, "If-Match header is required and must contain the current custom-property definition concurrency stamp.");
         }
 
         var command = new UpdateCustomPropertyDefinitionCommand
         {
-            DefinitionDto = updateDto
+            DefinitionId = id,
+            DefinitionDto = updateDto,
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp
         };
 
         var result = await _mediator.Send(command, cancellationToken);
@@ -238,4 +243,23 @@ public class CustomPropertyDefinitionController : ControllerBase
             ? this.ToNotFoundProblem(PurgeNotFoundProblem)
             : this.ToCommandValidationProblem(result, PurgeValidationProblem);
     }
+
+
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
+
+        var value = ifMatch.Trim();
+        if (value.Length != 38 || value[0] != '"' || value[^1] != '"')
+        {
+            return false;
+        }
+
+        return Guid.TryParse(value[1..^1], out concurrencyStamp) && concurrencyStamp != Guid.Empty;
+    }
+
 }

@@ -85,7 +85,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
             }
 
             var dto = BuildUpdateDto(detail, update);
-            var response = await _apiClient.UpdateCustomPropertyDefinitionAsync(update.DefinitionId, dto, cancellationToken: cancellationToken);
+            var response = await _apiClient.UpdateCustomPropertyDefinitionAsync(update.DefinitionId, dto, $"\"{detail.ConcurrencyStamp:D}\"", cancellationToken: cancellationToken);
             return response;
         }
         catch (ApiException ex)

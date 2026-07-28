@@ -61,7 +61,7 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
             return response;
         }
 
-        var definition = await _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(request.DefinitionDto.Id, cancellationToken);
+        var definition = await _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(request.DefinitionId, cancellationToken);
         if (definition == null)
         {
             response.Success = false;
@@ -69,7 +69,7 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
             return response;
         }
 
-        if (definition.ConcurrencyStamp != request.DefinitionDto.ExpectedConcurrencyStamp)
+        if (definition.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
         {
             throw new ConcurrencyConflictException(
                 ConcurrencyConflictException.ConcurrentUpdate,
@@ -78,7 +78,26 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
                 definition.Id.ToString());
         }
 
-        var governance = _customPropertyGovernancePolicy.EvaluateDefinition(request.DefinitionDto.Namespace, request.DefinitionDto.Key);
+        var candidate = new CreateCustomPropertyDefinitionDto
+        {
+            EntityTypeName = definition.EntityTypeName, Namespace = definition.Namespace, Key = definition.Key, DisplayName = definition.DisplayName, Description = definition.Description, PropertyType = definition.PropertyType,
+            IsRequired = definition.IsRequired, IsMulti = definition.IsMulti, IsActive = definition.IsActive, SortOrder = definition.SortOrder, ExposureLevel = definition.ExposureLevel,
+            IsSearchable = definition.IsSearchable, IsFilterable = definition.IsFilterable, IsExportable = definition.IsExportable, IsModerationRelevant = definition.IsModerationRelevant, IsAnalyticsRelevant = definition.IsAnalyticsRelevant, IsSystemOwned = definition.IsSystemOwned,
+            DefaultTextValue = definition.DefaultTextValue, DefaultNumberValue = definition.DefaultNumberValue, DefaultBooleanValue = definition.DefaultBooleanValue, DefaultDateTimeValue = definition.DefaultDateTimeValue,
+            MinLength = definition.MinLength, MaxLength = definition.MaxLength, RegexPattern = definition.RegexPattern, MinNumber = definition.MinNumber, MaxNumber = definition.MaxNumber, MinDateTime = definition.MinDateTime, MaxDateTime = definition.MaxDateTime, AllowedUrlSchemes = definition.AllowedUrlSchemes
+        };
+        candidate.Options = definition.Options.Select(option => new CreateCustomPropertyOptionDto { Namespace = option.Namespace, Key = option.Key, DisplayName = option.DisplayName, Description = option.Description, Value = option.Value, IsDefault = option.IsDefault, IsActive = option.IsActive, SortOrder = option.SortOrder }).ToList();
+        ApplyPatch(candidate, request.DefinitionDto);
+        var candidateValidation = await new CreateCustomPropertyDefinitionDtoValidator().ValidateAsync(candidate, cancellationToken);
+        if (!candidateValidation.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Custom-property definition update failed.";
+            response.Errors = candidateValidation.Errors.Select(error => error.ErrorMessage).ToList();
+            return response;
+        }
+
+        var governance = _customPropertyGovernancePolicy.EvaluateDefinition(candidate.Namespace, candidate.Key);
         if (!governance.IsValid)
         {
             response.Success = false;
@@ -89,7 +108,7 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
 
         if (await _customPropertyDefinitionRepository.ExistsScopedMachineKey(
                 definition.TenantId,
-                request.DefinitionDto.EntityTypeName,
+                definition.EntityTypeName,
                 governance.NormalizedNamespace,
                 governance.NormalizedKey,
                 definition.Id))
@@ -104,7 +123,7 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
             CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
             definition.TenantId,
             cancellationToken);
-        if (request.DefinitionDto.Options.Count > maxOptions)
+        if (candidate.Options.Count > maxOptions)
         {
             response.SetQuotaExceeded(
                 "Custom-property definition update failed.",
@@ -112,19 +131,19 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
                     CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
                     maxOptions,
                     null,
-                    request.DefinitionDto.Options.Count,
+                    candidate.Options.Count,
                     "custom_property_definition_options",
                     definition.TenantId));
             return response;
         }
 
-        _mapper.Map(request.DefinitionDto, definition);
+        _mapper.Map(candidate, definition);
         definition.Namespace = governance.NormalizedNamespace;
         definition.Key = governance.NormalizedKey;
         definition.UpdatedBy = _currentUserService.UserId;
         definition.UpdatedAt = DateTime.UtcNow;
 
-        var options = CreateOptionEntities(request.DefinitionDto.Options, definition.Id);
+        var options = CreateOptionEntities(candidate.Options, definition.Id);
         var defaultOption = options.SingleOrDefault(x => x.IsDefault);
 
         await _unitOfWork.ExecuteInTransactionAsync(
@@ -159,6 +178,24 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
                 UpdatedBy = _currentUserService.UserId,
             })
             .ToList();
+    }
+
+    private static void ApplyPatch(CreateCustomPropertyDefinitionDto candidate, UpdateCustomPropertyDefinitionDto patch)
+    {
+        var m = patch.Metadata;
+        if (m is not null)
+        {
+            candidate.Namespace = m.Namespace ?? candidate.Namespace; candidate.Key = m.Key ?? candidate.Key; candidate.DisplayName = m.DisplayName ?? candidate.DisplayName;
+            if (m.Description.HasValue) candidate.Description = m.Description.Value;
+            candidate.PropertyType = m.PropertyType ?? candidate.PropertyType; candidate.IsRequired = m.IsRequired ?? candidate.IsRequired; candidate.IsMulti = m.IsMulti ?? candidate.IsMulti; candidate.IsActive = m.IsActive ?? candidate.IsActive; candidate.SortOrder = m.SortOrder ?? candidate.SortOrder; candidate.ExposureLevel = m.ExposureLevel ?? candidate.ExposureLevel;
+            candidate.IsSearchable = m.IsSearchable ?? candidate.IsSearchable; candidate.IsFilterable = m.IsFilterable ?? candidate.IsFilterable; candidate.IsExportable = m.IsExportable ?? candidate.IsExportable; candidate.IsModerationRelevant = m.IsModerationRelevant ?? candidate.IsModerationRelevant; candidate.IsAnalyticsRelevant = m.IsAnalyticsRelevant ?? candidate.IsAnalyticsRelevant; candidate.IsSystemOwned = m.IsSystemOwned ?? candidate.IsSystemOwned;
+        }
+        var v = patch.Validation;
+        if (v is not null)
+        {
+            if (v.DefaultTextValue.HasValue) candidate.DefaultTextValue = v.DefaultTextValue.Value; if (v.DefaultNumberValue.HasValue) candidate.DefaultNumberValue = v.DefaultNumberValue.Value; if (v.DefaultBooleanValue.HasValue) candidate.DefaultBooleanValue = v.DefaultBooleanValue.Value; if (v.DefaultDateTimeValue.HasValue) candidate.DefaultDateTimeValue = v.DefaultDateTimeValue.Value; if (v.MinLength.HasValue) candidate.MinLength = v.MinLength.Value; if (v.MaxLength.HasValue) candidate.MaxLength = v.MaxLength.Value; if (v.RegexPattern.HasValue) candidate.RegexPattern = v.RegexPattern.Value; if (v.MinNumber.HasValue) candidate.MinNumber = v.MinNumber.Value; if (v.MaxNumber.HasValue) candidate.MaxNumber = v.MaxNumber.Value; if (v.MinDateTime.HasValue) candidate.MinDateTime = v.MinDateTime.Value; if (v.MaxDateTime.HasValue) candidate.MaxDateTime = v.MaxDateTime.Value; if (v.AllowedUrlSchemes.HasValue) candidate.AllowedUrlSchemes = v.AllowedUrlSchemes.Value;
+        }
+        if (patch.Options is not null) candidate.Options = patch.Options.Items!;
     }
 
     private async Task InvalidateCaches(EntityTypeName entityTypeName, Guid definitionId, CancellationToken cancellationToken)

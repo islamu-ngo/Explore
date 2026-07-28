@@ -3,6 +3,12 @@
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
+using Explore.API.Controllers;
+using Explore.API.Hateoas.Policies;
+using Explore.Application.Hateoas;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Domain.Enums;
@@ -63,8 +69,6 @@ public class CustomPropertyDefinitionControllerTests
         var id = Guid.NewGuid();
         var dto = new UpdateCustomPropertyDefinitionDto
         {
-            Id = id,
-            ExpectedConcurrencyStamp = Guid.NewGuid(),
             EntityTypeName = EntityTypeName.Organization,
             Namespace = "tenant.community",
             Key = "prayer_notes",
@@ -84,5 +88,66 @@ public class CustomPropertyDefinitionControllerTests
         var response = await _fixture.Client.DeleteAsync($"{BaseUrl}/{Guid.NewGuid()}");
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task UpdateContracts_ShouldUsePatchAndHeaderConcurrency()
+    {
+        AssertUpdateAction<CustomPropertyDefinitionController>("Update");
+        AssertUpdateAction<EventCustomPropertyController>("Update");
+        AssertUpdateAction<EventSessionCustomPropertyController>("Update");
+    }
+
+    [Test]
+    public async Task UpdateDtos_ShouldNotCarryIdentityOrConcurrencyFields()
+    {
+        AssertNoProperty<UpdateCustomPropertyDefinitionDto>("Id", "ExpectedConcurrencyStamp", "TenantId", "EventId", "EventSessionId");
+        AssertNoProperty<Explore.Application.DTOs.EventCustomProperty.UpdateEventCustomPropertyDefinitionDto>("Id", "ExpectedConcurrencyStamp", "TenantId", "EventId", "EventSessionId");
+        AssertNoProperty<Explore.Application.DTOs.EventSessionCustomProperty.UpdateEventSessionCustomPropertyDefinitionDto>("Id", "ExpectedConcurrencyStamp", "TenantId", "EventId", "EventSessionId");
+    }
+
+    [Test]
+    public async Task DetailHalEditLinks_ShouldAdvertisePatch()
+    {
+        Assert.That(new CustomPropertyDefinitionDetailLinkPolicy().GetLinks(new Explore.Application.DTOs.CustomPropertyDefinition.CustomPropertyDefinitionDto { Id = Guid.NewGuid(), EntityTypeName = EntityTypeName.Organization, Namespace = "tenant.community", Key = "prayer_notes", DisplayName = "Prayer Notes" }, null).Single(link => link.Rel == LinkRelations.Edit).Method).IsEqualTo("PATCH");
+        Assert.That(new EventCustomPropertyDefinitionDetailLinkPolicy().GetLinks(new Explore.Application.DTOs.EventCustomProperty.EventCustomPropertyDefinitionDto { Id = Guid.NewGuid(), EventId = Guid.NewGuid(), Namespace = "tenant.community", Key = "prayer_notes", DisplayName = "Prayer Notes" }, null).Single(link => link.Rel == LinkRelations.Edit).Method).IsEqualTo("PATCH");
+        Assert.That(new EventSessionCustomPropertyDefinitionDetailLinkPolicy().GetLinks(new Explore.Application.DTOs.EventSessionCustomProperty.EventSessionCustomPropertyDefinitionDto { Id = Guid.NewGuid(), EventSessionId = Guid.NewGuid(), Namespace = "tenant.community", Key = "prayer_notes", DisplayName = "Prayer Notes" }, null).Single(link => link.Rel == LinkRelations.Edit).Method).IsEqualTo("PATCH");
+    }
+
+    [Test]
+    public async Task ValuePutActions_ShouldStayPut()
+    {
+        AssertHttpMethod<EventCustomPropertyController>("SetValue", "PUT");
+        AssertHttpMethod<EventCustomPropertyController>("SetMultiValues", "PUT");
+        AssertHttpMethod<EventSessionCustomPropertyController>("SetValue", "PUT");
+        AssertHttpMethod<EventSessionCustomPropertyController>("SetMultiValues", "PUT");
+    }
+
+    private static void AssertUpdateAction<TController>(string methodName)
+    {
+        var method = typeof(TController).GetMethods(BindingFlags.Instance | BindingFlags.Public).Single(m => m.Name == methodName);
+        var httpPatch = method.GetCustomAttributes<HttpPatchAttribute>(inherit: true).SingleOrDefault();
+        Assert.That(httpPatch).IsNotNull();
+        Assert.That(httpPatch!.Template).IsEqualTo("{id:guid}");
+
+        var headerParam = method.GetParameters().SingleOrDefault(p => string.Equals(p.Name, "ifMatch", StringComparison.OrdinalIgnoreCase));
+        Assert.That(headerParam).IsNotNull();
+        Assert.That(headerParam!.GetCustomAttribute<FromHeaderAttribute>()?.Name).IsEqualTo("If-Match");
+    }
+
+    private static void AssertNoProperty<T>(params string[] propertyNames)
+    {
+        var type = typeof(T);
+        foreach (var propertyName in propertyNames)
+        {
+            Assert.That(type.GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public)).IsNull();
+        }
+    }
+
+    private static void AssertHttpMethod<TController>(string methodName, string expectedMethod)
+    {
+        var method = typeof(TController).GetMethods(BindingFlags.Instance | BindingFlags.Public).Single(m => m.Name == methodName);
+        var httpMethod = method.GetCustomAttributes<HttpMethodAttribute>(inherit: true).Single();
+        Assert.That(httpMethod.HttpMethods).Contains(expectedMethod);
     }
 }
