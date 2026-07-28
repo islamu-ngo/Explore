@@ -62,8 +62,9 @@ BFF endpoints are split by concern in `Explore.Blazor/Extensions/` and wired thr
 
 | Endpoint family | Representative routes | Source |
 |---|---|---|
-| Authentication | `/auth/challenge`, `/auth/login`, `/auth/signout`, `/auth/status`, `/auth/providers`, `/auth/debug` | `BffAuthEndpoints.cs` |
+| Authentication | `/auth/challenge`, `/auth/login`, `/auth/signout`, `/auth/status`, `/auth/providers`, `/auth/debug`, `/signin-atproto` | `BffAuthEndpoints.cs` |
 | Auth refresh support | `/bff/auth/refresh-schemes`, `/bff/auth/refresh-session`, `/bff/auth/refresh-session/internal` | `BffAuthEndpoints.cs` |
+| AT Protocol OAuth publication | `/oauth/client-metadata.json`, `/oauth/jwks.json` | `AtprotoOAuthEndpointExtensions.cs` |
 | User/session view | `/bff/me` | `BffPreferenceEndpoints.cs` |
 | Preferences and appearance | `/bff/theme`, `/bff/language`, `/bff/direction`, `/bff/ui-themes`, `/bff/appearance/*` | `BffPreferenceEndpoints.cs` |
 | White-label manifest | `/manifest.webmanifest` | `BffManifestEndpoints.cs` |
@@ -71,7 +72,7 @@ BFF endpoints are split by concern in `Explore.Blazor/Extensions/` and wired thr
 | Storage upload proxy | `/bff/storage/upload-session`, `/bff/storage/upload-proxy` | `BffStorageEndpoints.cs` |
 | Support access | `/bff/support-access/current`, `/bff/support-access/sessions`, `/bff/support-access/sessions/current/stop`, `/bff/support-access/tenants/{targetTenantId}/sessions`, `/bff/support-access/tenants/{targetTenantId}/sessions/{sessionId}/audit-events`, `/bff/support-access/sessions/{sessionId}/force-stop` | `BffSupportAccessEndpoints.cs` |
 
-Keep new BFF endpoints in the smallest matching extension file. `BffEndpointExtensions.cs` should remain the facade/orchestrator, not a dumping ground for endpoint logic. The manifest endpoint resolves public-experience branding through the server-side API client and falls back to generic install metadata when branding cannot be read; do not reintroduce a static tenant-branded manifest file.
+Keep new BFF endpoints in the smallest matching extension file. `BffEndpointExtensions.cs` should remain the facade/orchestrator, not a dumping ground for endpoint logic. `AntiforgeryEndpointExtensions.cs` provides `ValidateAntiforgery()` request-token validation filters for state-changing BFF endpoints. The manifest endpoint resolves public-experience branding through the server-side API client and falls back to generic install metadata when branding cannot be read; do not reintroduce a static tenant-branded manifest file.
 
 ## Proxy And Token Forwarding
 
@@ -145,6 +146,26 @@ Admin support access follows the same BFF-owned trust model as tokens, tenant hi
 8. The API validates that forwarded session id against persisted support-access state, actor identity, resolved tenant, expiry, mode, and governance settings on each request that asks for support context.
 9. Blazor UI affordances still come from BFF-confirmed state and API/HAL `_links`, not from local roles or serialized claims. The global shell banner is a visibility/safety control, not an authorization source.
 10. Tenant admins review support-access evidence from tenant settings through `TenantSupportAccessEvidenceSection`. The view is read-only, resolves the current tenant through the tenant onboarding status endpoint, and renders audit drill-in only when a session resource contains the `audit-events` HAL link.
+
+## Dynamic Auth Scheme Management & AT Protocol OAuth
+
+Dynamic authentication scheme management allows the server BFF host (`Explore.Blazor`) to register, configure, update, and remove authentication schemes (Keycloak OIDC, Google SSO, and AT Protocol OAuth) at runtime without requiring an application restart.
+
+### Dynamic Scheme Architecture
+
+1. **`DynamicAuthSchemeManager`**: Implements `IDynamicAuthSchemeManager`. It reads provider settings from API endpoints (`GetInstanceOnboardingAuthProviderConfigurationAsync`) and environment variables (`Keycloak:Authority`, `Google:ClientId`, etc.).
+2. **Startup & Setup Hydration**: At initial startup, environment-configured providers are registered first. Post-onboarding configuration or setup secret synchronization calls `RefreshSchemesAsync(setupSecret)` to reload settings from the backend API.
+3. **Scheme Registration & Invalidation**: Dynamically updates cached `OpenIdConnectOptions` in `IOptionsMonitorCache<OpenIdConnectOptions>` and manages active schemes in `IAuthenticationSchemeProvider`.
+4. **Scheme Refresh Endpoint**: `/bff/auth/refresh-schemes` allows authorized admin workflows or onboarding completion to trigger immediate scheme re-evaluations across the BFF.
+
+### AT Protocol OAuth Boundary
+
+AT Protocol authentication uses a custom authentication handler (`AtprotoAuthenticationHandler`) rather than standard OIDC:
+
+1. **Client Metadata Publication**: `GET /oauth/client-metadata.json` publishes canonical client metadata (including client ID, HTTPS callback redirect URIs, scope `atproto transition:generic`, grant types `authorization_code` and `refresh_token`, and token auth method `private_key_jwt`).
+2. **Public Key Set (JWKS)**: `GET /oauth/jwks.json` serves public keys from `AtprotoClientKeyProvider` for rotation-aware ES256 client assertion signing.
+3. **PKCE & DPoP Tokens**: The flow enforces mandatory PKCE (`S256`) and DPoP (Demonstrating Proof-of-Possession) bound access tokens.
+4. **Session Persistence & Identity Resolution**: OAuth flow state uses `CacheBackedOAuthStateStore` and `ApiBackedOAuthSessionStore`. User identity resolution is cached by `AtprotoIdentityCache` and handles cross-tenant session handoffs via `AtprotoTenantSessionHandoffStore`.
 
 ## Auth Diagnostic Boundary
 
@@ -301,10 +322,15 @@ Source-grounded examples:
 | Pattern | Examples |
 |---|---|
 | Layout/shell state | `DockLayoutState`, `UiShellState`, `MainLayout.razor.cs`, `WorkspaceNavigationHost.razor.cs`, `Workspaces/EventsWorkspaceNavigation.razor.cs` |
-| AI assistant state | `AiAssistantState`, `AiAssistantConversationState`, `IAiAssistantClientService` |
-| Cross-component event bridge | `CookieConsentStateService` |
-| Public-experience cache | `PublicExperienceService` |
-| Render decisions | `RuntimeRenderPolicyService` |
+| AI assistant state & client service | `AiAssistantState`, `AiAssistantConversationState`, `IAiAssistantClientService`, `AiAssistantClientService` |
+| Control plane & admin settings | `InstanceOnboardingService`, `TenantPublicExperienceAdminService`, `TenantBrandingSettingsAdminService`, `AtprotoFederationSettingsService`, `CustomPropertyAdminService`, `FooterAdminService`, `ListmonkIntegrationSettingsService`, `TenantStorageSettingsAdminService` |
+| Support access management | `SupportAccessClientService`, `SupportAccessConsoleSection.razor`, `TenantSupportAccessEvidenceSection.razor` |
+| Localization & accessibility | `LocalizationAdminService`, `TranslationService`, `LanguagePreferenceService`, `AccessibilityAnnouncerService`, `AccessibilityFocusService` |
+| Image storage & upload handling | `ImageUploadClient`, `ImageStorageService`, `ImageStorageRecordClient`, `ImagePreviewService` |
+| Web push & interop | `NotificationService`, `WebPushBrowserInterop`, `BrowserActionInterop`, `AnalyticsInterop`, `CookieConsentInterop` |
+| Cross-component event bridge | `CookieConsentStateService`, `AppearanceState`, `TenantNavLinksState` |
+| Public-experience & lookup cache | `PublicExperienceService`, `HomeDiscoveryService`, `LookupCacheService` |
+| Render & routing decisions | `RuntimeRenderPolicyService`, `StartupRoutingService` |
 
 Keep component lifecycle async and cancellation-aware for long-running loads. UI authorization is for affordance and navigation clarity only; API authorization remains authoritative.
 

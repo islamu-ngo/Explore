@@ -124,7 +124,7 @@ Onboarding is always instance-controlled (no tenant override, hardcoded guardrai
 Two enforcement layers:
 
 1. **Service layer**: `TenantPolicySettingService` silently removes tenant overrides for locked groups during write.
-2. **Handler layer**: `UpdateTenantPolicySettingsCommandHandler.EnsureLockedSettingsAreNotModifiedAsync` returns explicit validation failure if locked fields are changed.
+2. **Handler layer**: `UpdateSettingCommandHandler` checks the resolved lock state and rejects an exact-key tenant write when an instance lock blocks that scope.
 
 ### Tenant Admin UI
 
