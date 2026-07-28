@@ -37,4 +37,6 @@ public static class TestCategories
 
     public const string Manual = "Manual";
 
+    public const string Phase43Ticketing = "Phase43Ticketing";
+
 }

@@ -75,6 +75,7 @@ public class CreateEventCommandHandlerTests
     private readonly HybridCache _cache;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOutboxRepository _outboxRepository;
+    private readonly IEventTicketCatalogRepository _ticketCatalogRepository;
     private readonly CreateEventCommandHandler _handler;
 
     public CreateEventCommandHandlerTests()
@@ -125,6 +126,7 @@ public class CreateEventCommandHandlerTests
         _cache = Substitute.For<HybridCache>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
         _outboxRepository = Substitute.For<IOutboxRepository>();
+        _ticketCatalogRepository = Substitute.For<IEventTicketCatalogRepository>();
 
         _eventRepository.Create(Arg.Any<Explore.Domain.Event>()).Returns(callInfo =>
         {
@@ -223,7 +225,8 @@ public class CreateEventCommandHandlerTests
             _lifecyclePolicyProvider,
             _lifecycleReadinessEvaluator,
             eventLocationAttachmentService,
-            AtprotoPublicationPlannerTestFactory.Disabled()
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            _ticketCatalogRepository
         );
     }
 
@@ -949,10 +952,113 @@ public class CreateEventCommandHandlerTests
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
     }
 
+    [Test]
+    [Category("Phase43Ticketing")]
+    public async Task Handle_WithPlatformManagedParticipation_CreatesDefaultFreeTicketCatalog()
+    {
+        var userId = Guid.CreateVersion7();
+        var actorId = Guid.CreateVersion7();
+        var tenantId = Guid.CreateVersion7();
+        EventTicketCatalogVersion? addedCatalog = null;
+        _ticketCatalogRepository.AddAsync(Arg.Any<EventTicketCatalogVersion>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                addedCatalog = call.Arg<EventTicketCatalogVersion>();
+                return Task.CompletedTask;
+            });
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: false));
+
+        var result = await _handler.Handle(new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Platform-managed event",
+                ParticipationConfiguration = CreateTicketingParticipationConfiguration(ParticipationHandlingModeEnum.PlatformManaged)
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(addedCatalog).IsNotNull();
+        EventTicketType ticket = addedCatalog!.TicketTypes.Single();
+        await Assert.That(addedCatalog.TicketCatalogStatusId).IsEqualTo((int)TicketCatalogStatusEnum.Draft);
+        await Assert.That(addedCatalog.CurrencyCode).IsEqualTo("XXX");
+        await Assert.That(ticket.Name).IsEqualTo("General admission");
+        await Assert.That(ticket.CurrencyCode).IsEqualTo("XXX");
+        await Assert.That(ticket.TicketPricingModeId).IsEqualTo((int)TicketPricingModeEnum.Free);
+        await Assert.That(ticket.Entitlements).Count().IsEqualTo(1);
+        await Assert.That(ticket.Entitlements.Single().TargetEventId).IsEqualTo(result.Id);
+        await Assert.That(ticket.Entitlements.Single().EntitlementScopeTypeId).IsEqualTo((int)EntitlementScopeTypeEnum.Event);
+    }
+
+    [Test]
+    [Category("Phase43Ticketing")]
+    public async Task Handle_WithExternalManagedParticipation_DoesNotCreateTicketCatalog()
+    {
+        var userId = Guid.CreateVersion7();
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(Guid.CreateVersion7());
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(Guid.CreateVersion7(), isCommunitySubmission: false));
+
+        var result = await _handler.Handle(new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "External-managed event",
+                ParticipationConfiguration = CreateTicketingParticipationConfiguration(ParticipationHandlingModeEnum.ExternalManaged)
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _ticketCatalogRepository.DidNotReceive().AddAsync(Arg.Any<EventTicketCatalogVersion>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Category("Phase43Ticketing")]
+    public async Task Handle_WithListingOnlyParticipation_DoesNotCreateTicketCatalog()
+    {
+        var userId = Guid.CreateVersion7();
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(Guid.CreateVersion7());
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(Guid.CreateVersion7(), isCommunitySubmission: true));
+
+        var result = await _handler.Handle(new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Listing-only event",
+                ParticipationConfiguration = CreateTicketingParticipationConfiguration(ParticipationHandlingModeEnum.InformationOnly)
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _ticketCatalogRepository.DidNotReceive().AddAsync(Arg.Any<EventTicketCatalogVersion>(), Arg.Any<CancellationToken>());
+    }
+
     private static ConfigureEventParticipationDto CreateParticipationConfiguration() => new()
     {
         ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly,
         AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable
+    };
+
+    private static ConfigureEventParticipationDto CreateTicketingParticipationConfiguration(ParticipationHandlingModeEnum mode) => mode switch
+    {
+        ParticipationHandlingModeEnum.PlatformManaged => new()
+        {
+            ParticipationHandlingModeId = (int)mode,
+            AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.Required,
+            IdentityAccessModeId = (int)IdentityAccessModeEnum.AccountRequired
+        },
+        ParticipationHandlingModeEnum.ExternalManaged => new()
+        {
+            ParticipationHandlingModeId = (int)mode,
+            AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.Optional
+        },
+        _ => CreateParticipationConfiguration()
     };
 
     private static CreateEventSessionRequest CreateSessionRequest() => new()

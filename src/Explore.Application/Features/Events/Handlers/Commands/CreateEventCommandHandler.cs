@@ -80,6 +80,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IEventLifecycleReadinessEvaluator _lifecycleReadinessEvaluator;
     private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly AtprotoEventPublicationPlanner _atprotoPublicationPlanner;
+    private readonly IEventTicketCatalogRepository _ticketCatalogs;
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
@@ -130,7 +131,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IEventLifecyclePolicyProvider lifecyclePolicyProvider,
         IEventLifecycleReadinessEvaluator lifecycleReadinessEvaluator,
         EventLocationAttachmentService eventLocationAttachmentService,
-        AtprotoEventPublicationPlanner atprotoPublicationPlanner)
+        AtprotoEventPublicationPlanner atprotoPublicationPlanner,
+        IEventTicketCatalogRepository ticketCatalogs)
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
@@ -181,6 +183,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _lifecycleReadinessEvaluator = lifecycleReadinessEvaluator;
         _eventLocationAttachmentService = eventLocationAttachmentService;
         _atprotoPublicationPlanner = atprotoPublicationPlanner;
+        _ticketCatalogs = ticketCatalogs;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
@@ -232,6 +235,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             var eventId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
             {
                 eventEntity = await _eventRepository.Create(eventEntity);
+                await CreateDefaultTicketCatalogAsync(eventEntity, ct);
                 await AssignFeaturedImageActorAsync(dto, actorResult.ActorId);
                 await CreateEventIslamicAspectAsync(dto, eventEntity, ct);
                 await AssignInitialEventOwnerAsync(eventEntity, currentUserId, ct);
@@ -287,6 +291,16 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         }
 
         return response;
+    }
+
+    private async Task CreateDefaultTicketCatalogAsync(Event eventEntity, CancellationToken ct)
+    {
+        if (eventEntity.ParticipationConfiguration?.ParticipationHandlingModeId != (int)ParticipationHandlingModeEnum.PlatformManaged) return;
+        var catalog = EventTicketCatalogVersion.Create(eventEntity.TenantId, eventEntity.Id, "XXX", 1);
+        var ticket = EventTicketType.Create(eventEntity.TenantId, catalog.Id, "General admission", "XXX", TicketPricingModeEnum.Free, null, null, null, ParticipantDataCollectionModeEnum.None, null, null, null, false, false, null, null, null, null);
+        catalog.AddTicketType(ticket, null);
+        catalog.AddEntitlement(ticket, TicketTypeEntitlement.CreateForEvent(ticket.Id, eventEntity.TenantId, eventEntity.Id, 1));
+        await _ticketCatalogs.AddAsync(catalog, ct);
     }
 
     private async Task<List<string>> ValidateRequestAsync(CreateEventRequest request, CancellationToken cancellationToken)
