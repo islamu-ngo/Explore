@@ -89,8 +89,10 @@ Notable cases:
 - `User` is soft-delete filtered but not tenant-scoped.
 - `TenantUser` and `TenantUserProfile` hold tenant-local participation, status, profile, consent, and moderation state for a global `User`; tenant-admin actions such as suspend, ban, remove, or profile moderation must target these tenant-local rows rather than mutating global account identity.
 - `TenantUserRoleGrant` holds tenant role authority as an auditable child of `TenantUser`. Effective tenant membership/admin checks require an active, non-deleted tenant user and an unrevoked tenant-scoped role grant.
-- `Actor` is tenant-scoped. User actors are unique by `(UserId, TenantId)` so the same global account can have separate tenant personas.
+- `Actor`, `AtprotoIdentity`, `Organization`, and `Group` are global. `TenantUser`, `OrganizationTenant`, and `GroupTenant` carry tenant participation. Tenant administrators can suspend or hide participation in their tenant, but cannot suspend a global Actor or exact ATProto credential.
 - some entities combine tenant and soft-delete filters.
+
+Public Event visibility composes global and tenant-local state without granting cross-scope authority. Local User Events require an active tenant user. Local Organization and Group Events require approved, visible, unsuspended participation, but public reads do not recheck organizer eligibility. Inbound federated Events do not create participation; they require current visible tenant presentation plus a non-tombstoned record and exact active DID identity owned by the global Actor. Tenant context therefore selects presentation and participation, not global moderation authority.
 
 ## Support Access Tenant Scoping
 

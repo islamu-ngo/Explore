@@ -114,6 +114,19 @@ These are hard boundaries protecting platform integrity:
 | Enable unapproved modules | Platform consistency |
 | Modify system tables | Data integrity |
 
+### Global Actor Moderation Boundary
+
+Global Actor and exact ATProto identity suspension are instance-administrator operations. The API authorizes them as update of the `global-actor-moderation` instance-setting resource, then the handler rechecks instance-admin status before loading the target.
+
+| Action | Instance Admin | Tenant Admin |
+|---|---|---|
+| Suspend or reinstate global Actor | Allowed | Denied |
+| Suspend or reinstate exact ATProto identity | Allowed | Denied |
+| Suspend or hide local participation | No implicit tenant business authority | Allowed in own tenant under tenant policy |
+| Moderate an Event | Allowed only through event moderation policy | Allowed in own tenant through event moderation policy |
+
+Tenant admins can affect `TenantUser`, `OrganizationTenant`, `GroupTenant`, and tenant federation or import policy only. Tenant identity, route context, and participation never grant authority over the global Actor or credential. Event moderation is content-local and does not silently mutate either global state.
+
 ### Event Moderation Boundary
 
 Event moderation is a narrow safety exception to the normal business-ownership boundary. Instance administrators and tenant administrators can receive event `moderate-light`, `moderate-heavy`, `unmoderate`, and `view-management` authority in scope without receiving event `update` or `delete` authority.
