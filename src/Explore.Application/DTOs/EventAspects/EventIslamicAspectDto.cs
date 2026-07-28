@@ -1,5 +1,5 @@
 // ABOUTME: DTO for EventIslamicAspect containing Islamic-specific event properties.
-// Used when retrieving event details with Islamic aspect data.
+// ABOUTME: Defines read, create, and grouped update contracts for Islamic event aspects.
 
 namespace Explore.Application.DTOs.EventAspects;
 

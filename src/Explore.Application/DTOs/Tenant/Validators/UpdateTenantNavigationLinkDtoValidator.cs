@@ -3,8 +3,8 @@
 // ABOUTME: FluentValidation rules for grouped tenant navigation-link PATCH payloads.
 // ABOUTME: Retains the URL allowlist and rejects empty wrappers or no-op groups.
 
-using FluentValidation;
 using Explore.Application.Validation;
+using FluentValidation;
 
 namespace Explore.Application.DTOs.Tenant.Validators;
 

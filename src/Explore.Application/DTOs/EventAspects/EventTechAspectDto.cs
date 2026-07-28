@@ -1,5 +1,5 @@
 // ABOUTME: DTO for EventTechAspect containing tech/developer-specific event properties.
-// Used when retrieving event details with Tech aspect data.
+// ABOUTME: Defines read, create, and grouped update contracts for Tech event aspects.
 
 namespace Explore.Application.DTOs.EventAspects;
 
