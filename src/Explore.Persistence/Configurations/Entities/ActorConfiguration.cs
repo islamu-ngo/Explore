@@ -1,5 +1,5 @@
-// ABOUTME: EF configuration for tenant-scoped actors and their owner/profile relationships.
-// ABOUTME: Exposes a tenant-scoped alternate key for event organizer, speaker, and contact-sharing FKs.
+// ABOUTME: Configures global Actor ownership, concrete-subject type alignment, and profile relationships.
+// ABOUTME: Enforces one concrete owner and binds external-unclassified Actors to ExternalActorSubject ownership.
 
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -83,9 +83,15 @@ public class ActorConfiguration : IEntityTypeConfiguration<Actor>
             .IsUnique()
             .HasFilter("service_principal_id IS NOT NULL");
 
-        builder.ToTable(t => t.HasCheckConstraint(
-            "ck_actors_exactly_one_owner",
-            "num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 1"));
+        builder.ToTable(t =>
+        {
+            t.HasCheckConstraint(
+                "ck_actors_exactly_one_owner",
+                "num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 1");
+            t.HasCheckConstraint(
+                "ck_actors_external_type_matches_owner",
+                "(external_actor_subject_id IS NULL AND actor_type_id <> 6) OR (external_actor_subject_id IS NOT NULL AND actor_type_id = 6)");
+        });
 
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs

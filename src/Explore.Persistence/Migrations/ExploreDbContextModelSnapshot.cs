@@ -194,6 +194,8 @@ namespace Explore.Persistence.Migrations
 
                     b.ToTable("actors", null, t =>
                         {
+                            t.HasCheckConstraint("ck_actors_external_type_matches_owner", "(external_actor_subject_id IS NULL AND actor_type_id <> 6) OR (external_actor_subject_id IS NOT NULL AND actor_type_id = 6)");
+
                             t.HasCheckConstraint("ck_actors_exactly_one_owner", "num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 1");
                         });
                 });

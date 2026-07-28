@@ -74,6 +74,9 @@ public static class TenantFilterBypassReasons
     public const string AtprotoJetstreamGovernanceResolution =
         "The single Jetstream consumer resolves one exact governance key across active tenants before presentation materialization.";
 
+    public const string AtprotoActorConsolidation =
+        "Verified AT Protocol Actor consolidation moves active operational references across tenants by exact source and canonical Actor ids.";
+
     public const string EmailDispatchTenantOperation =
         "Email dispatch tenant operation bypasses ambient context only after applying an explicit tenant predicate.";
 
