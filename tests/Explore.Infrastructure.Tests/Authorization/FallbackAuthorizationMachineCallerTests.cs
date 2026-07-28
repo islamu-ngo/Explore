@@ -46,6 +46,31 @@ public class FallbackAuthorizationMachineCallerTests
             _logger);
     }
 
+    [Test]
+[Category("Phase43Ticketing")]
+    public async Task EventTicketTypeManageTickets_MachineCaller_Denied()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+
+        SetMachineContext(
+            ExternalApiKeyOwnerType.InstanceAdmin,
+            tenantId: null,
+            Guid.NewGuid(),
+            ExternalApiKeyScopes.AdminInstance);
+
+        await Assert.That(await _sut.IsAllowedAsync(
+            ResourceKinds.EventTicketType,
+            eventId.ToString(),
+            AuthorizationActions.Events.ManageTickets,
+            new Dictionary<string, object>
+            {
+                ["tenantId"] = tenantId,
+                ["eventId"] = eventId
+            },
+            CancellationToken.None)).IsFalse();
+    }
+
     private void SetMachineContext(ExternalApiKeyOwnerType ownerType, Guid? tenantId, Guid ownerId, params string[] scopes)
     {
         var ctx = new ApiKeyPrincipalContext(

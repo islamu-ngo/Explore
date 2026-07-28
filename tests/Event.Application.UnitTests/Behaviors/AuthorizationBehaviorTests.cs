@@ -7,6 +7,7 @@ using Explore.Application.Authorization;
 using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventCategories;
 using Explore.Application.DTOs.EventOrganizerClaim;
@@ -15,9 +16,12 @@ using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.DTOs.EventTags;
+using Explore.Application.DTOs.EventTemplate;
+using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Exceptions;
+using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
 using Explore.Application.Features.EventCategories.Requests.Commands;
 using Explore.Application.Features.EventCustomPropertyProjections.Requests.Queries;
 using Explore.Application.Features.EventOrganizerClaims.Requests.Commands;
@@ -28,6 +32,8 @@ using Explore.Application.Features.EventSessionCustomPropertyProjections.Request
 using Explore.Application.Features.EventSessionGroups.Requests.Commands;
 using Explore.Application.Features.EventSessionSpeakers.Requests.Commands;
 using Explore.Application.Features.EventTags.Requests.Commands;
+using Explore.Application.Features.EventTemplates.Requests.Commands;
+using Explore.Application.Features.EventSessionTemplates.Requests.Commands;
 using Explore.Application.Features.OrganizationMembers.Requests.Queries;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
@@ -692,25 +698,19 @@ public class AuthorizationBehaviorTests
             storageObjectRepository: storageObjectRepository);
         var storageObjectId = Guid.NewGuid();
         var persistedTenantId = Guid.NewGuid();
-        var clientTenantId = Guid.NewGuid();
         var command = new UpdateStorageObjectCommand
         {
+            StorageObjectId = storageObjectId,
             StorageObjectDto = new UpdateStorageObjectDto
             {
-                Id = storageObjectId,
-                TenantId = clientTenantId,
-                FileTypeId = 1,
-                Uri = "/api/storageobject/018f0000-0000-7000-8000-000000000001/content",
-                ObjectKey = "tenants/current/file.png",
-                Provider = StorageProviders.Local,
-                FullName = "file.png",
-                SafeDisplayName = "file.png",
-                Extension = "png",
-                ContentType = "image/png",
-                Size = 1024,
-                Visibility = StorageObjectVisibilities.PublicImage,
-                Purpose = StorageObjectPurposes.LegacyImage,
-                LifecycleState = StorageObjectLifecycleStates.Active
+                Metadata = new StorageObjectMetadataUpdateDto
+                {
+                    FileTypeId = 1,
+                    FullName = "file.png",
+                    SafeDisplayName = "file.png",
+                    Extension = "png",
+                    ContentType = "image/png"
+                }
             }
         };
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
@@ -741,8 +741,7 @@ public class AuthorizationBehaviorTests
                 Arg.Is<IDictionary<string, object>?>(attributes =>
                     attributes != null
                     && attributes["storageObjectId"].Equals(storageObjectId.ToString("D"))
-                    && attributes["tenantId"].Equals(persistedTenantId.ToString("D"))
-                    && !attributes["tenantId"].Equals(clientTenantId.ToString("D"))),
+                    && attributes["tenantId"].Equals(persistedTenantId.ToString("D"))),
                 Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -840,6 +839,151 @@ public class AuthorizationBehaviorTests
 
         await Assert.That(result.Success).IsTrue();
         await sessionRepository.Received(1).GetSessionWithDetails(eventSessionId);
+    }
+
+    [Test]
+    public async Task Handle_WithCustomPropertyDefinitionUpdate_BindsPersistedTenantBeforeAuthorization()
+    {
+        var repository = Substitute.For<ICustomPropertyDefinitionRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var definitionId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        tenantContext.TenantId.Returns(tenantId);
+        repository.GetDefinitionWithDetails(definitionId).Returns(new CustomPropertyDefinition
+        {
+            Id = definitionId,
+            TenantId = tenantId,
+            Tenant = null,
+            EntityTypeName = Explore.Domain.Enums.EntityTypeName.Organization,
+            Namespace = "tenant.community",
+            Key = "prayer_notes",
+            DisplayName = "Prayer notes"
+        });
+        var command = new UpdateCustomPropertyDefinitionCommand
+        {
+            DefinitionId = definitionId,
+            DefinitionDto = new UpdateCustomPropertyDefinitionDto
+            {
+                Metadata = new UpdateCustomPropertyDefinitionMetadataDto { DisplayName = "Renamed" }
+            },
+            ExpectedConcurrencyStamp = Guid.NewGuid()
+        };
+        _authService.IsAllowedAsync(
+                ResourceKinds.Tenant,
+                tenantId.ToString(),
+                AuthorizationActions.Update,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null && attributes["tenantId"].Equals(tenantId.ToString())),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var behavior = new AuthorizationBehavior<UpdateCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<UpdateCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>>>(),
+            tenantContext: tenantContext,
+            customPropertyDefinitionRepository: repository);
+
+        var result = await behavior.Handle(
+            command,
+            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(command.TenantId).IsEqualTo(tenantId);
+    }
+
+    [Test]
+    public async Task Handle_WithEventTemplateUpdate_BindsPersistedTenantBeforeAuthorization()
+    {
+        var repository = Substitute.For<IEventTemplateRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var templateId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        tenantContext.TenantId.Returns(tenantId);
+        repository.GetTemplateWithDetails(templateId).Returns(new EventTemplate
+        {
+            Id = templateId,
+            TenantId = tenantId,
+            TemplateKey = "conference",
+            DisplayName = "Conference"
+        });
+        var command = new UpdateEventTemplateCommand
+        {
+            TemplateId = templateId,
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            TemplateDto = new UpdateEventTemplateDto
+            {
+                Metadata = new UpdateEventTemplateMetadataDto { DisplayName = "Conference 2027" }
+            }
+        };
+        _authService.IsAllowedAsync(
+                ResourceKinds.Tenant,
+                tenantId.ToString(),
+                AuthorizationActions.Update,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null && attributes["tenantId"].Equals(tenantId.ToString())),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var behavior = new AuthorizationBehavior<UpdateEventTemplateCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<UpdateEventTemplateCommand, BaseCommandResponse<Guid>>>>(),
+            tenantContext: tenantContext,
+            eventTemplateRepository: repository);
+
+        var result = await behavior.Handle(
+            command,
+            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(command.TenantId).IsEqualTo(tenantId);
+    }
+
+    [Test]
+    public async Task Handle_WithEventSessionTemplateUpdate_BindsPersistedTenantBeforeAuthorization()
+    {
+        var repository = Substitute.For<IEventSessionTemplateRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var sessionTemplateId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        tenantContext.TenantId.Returns(tenantId);
+        repository.GetSessionTemplateWithDetails(sessionTemplateId).Returns(new EventSessionTemplate
+        {
+            Id = sessionTemplateId,
+            EventTemplateId = Guid.NewGuid(),
+            TenantId = tenantId,
+            SessionTemplateKey = "keynote",
+            DisplayName = "Keynote"
+        });
+        var command = new UpdateEventSessionTemplateCommand
+        {
+            SessionTemplateId = sessionTemplateId,
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            SessionTemplateDto = new UpdateEventSessionTemplateDto
+            {
+                Metadata = new UpdateEventSessionTemplateMetadataDto { DisplayName = "Opening Keynote" }
+            }
+        };
+        _authService.IsAllowedAsync(
+                ResourceKinds.Tenant,
+                tenantId.ToString(),
+                AuthorizationActions.Update,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null && attributes["tenantId"].Equals(tenantId.ToString())),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var behavior = new AuthorizationBehavior<UpdateEventSessionTemplateCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionTemplateCommand, BaseCommandResponse<Guid>>>>(),
+            tenantContext: tenantContext,
+            eventSessionTemplateRepository: repository);
+
+        var result = await behavior.Handle(
+            command,
+            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(command.TenantId).IsEqualTo(tenantId);
     }
 
     [Test]

@@ -83,6 +83,12 @@ public static class ResourceDescriptors
         EventAttributes,
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
+    public static readonly ResourceDescriptor<EventDto> EventTicketTypeForEvent = new(
+        ResourceKinds.EventTicketType,
+        dto => dto.Id.ToString(),
+        EventAttributes,
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
     /// <summary>List DTO variant for collection item-level permission checks.</summary>
     public static readonly ResourceDescriptor<EventListDto> EventList = new(
         ResourceKinds.Event,

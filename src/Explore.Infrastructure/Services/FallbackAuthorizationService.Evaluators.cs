@@ -431,6 +431,12 @@ public partial class FallbackAuthorizationService
                 cancellationToken);
         }
 
+        if (resourceKind == ResourceKinds.EventTicketType
+            && action == AuthorizationActions.Events.ManageTickets)
+        {
+            return await EvaluateManageTicketsAccessAsync(resourceKind, resourceId, resourceAttributes, tenantId, eventId, cancellationToken);
+        }
+
         if (resourceKind == ResourceKinds.EventOrganizerClaim && !IsOrganizerClaimAction(action))
         {
             LogDecision("deny", "unknown_organizer_claim_action", resourceKind, resourceId, action);
@@ -520,6 +526,13 @@ public partial class FallbackAuthorizationService
             tenantId,
             eventId,
             cancellationToken);
+    }
+
+    private async Task<bool> EvaluateManageTicketsAccessAsync(string resourceKind, string resourceId, IDictionary<string, object>? resourceAttributes, Guid tenantId, Guid eventId, CancellationToken cancellationToken)
+    {
+        if (_machinePrincipalAccessor.IsMachineCaller || await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken)) return false;
+        if (await IsVerifiedOrganizerControllerAsync(resourceAttributes, cancellationToken)) return true;
+        return await EvaluateEventRolePermissionAsync(resourceKind, resourceId, AuthorizationActions.Events.ManageTickets, tenantId, eventId, cancellationToken);
     }
 
     private async Task<bool> IsVerifiedOrganizerControllerAsync(
@@ -647,7 +660,10 @@ public partial class FallbackAuthorizationService
 
         var permissionCode = PermissionCodeFor(resourceKind, action);
         var allowed = snapshot.Events.TryGetValue(eventId, out var authority)
-            && authority.PermissionCodes.Contains(permissionCode);
+            && (authority.PermissionCodes.Contains(permissionCode)
+                || (resourceKind == ResourceKinds.EventTicketType
+                    && action == AuthorizationActions.Events.ManageTickets
+                    && authority.IsManager));
 
         LogDecision(
             allowed ? "allow" : "deny",

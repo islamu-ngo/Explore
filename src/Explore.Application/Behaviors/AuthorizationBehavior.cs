@@ -9,13 +9,18 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Exceptions;
+using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
 using Explore.Application.Features.EventCategories.Requests.Commands;
+using Explore.Application.Features.EventCustomProperties.Requests.Commands;
 using Explore.Application.Features.EventOrganizerClaims.Requests.Commands;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
+using Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
 using Explore.Application.Features.EventSessionGroups.Requests.Commands;
 using Explore.Application.Features.EventSessionLanguages.Requests.Commands;
 using Explore.Application.Features.EventSessionSpeakers.Requests.Commands;
+using Explore.Application.Features.EventSessionTemplates.Requests.Commands;
 using Explore.Application.Features.EventTags.Requests.Commands;
+using Explore.Application.Features.EventTemplates.Requests.Commands;
 using Explore.Domain;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -50,6 +55,11 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
     private readonly IEventSessionAgendaItemRepository? _eventSessionAgendaItemRepository;
     private readonly IEventSessionGroupRepository? _eventSessionGroupRepository;
     private readonly IEventSessionSpeakerRepository? _eventSessionSpeakerRepository;
+    private readonly ICustomPropertyDefinitionRepository? _customPropertyDefinitionRepository;
+    private readonly IEventCustomPropertyRepository? _eventCustomPropertyRepository;
+    private readonly IEventSessionCustomPropertyRepository? _eventSessionCustomPropertyRepository;
+    private readonly IEventTemplateRepository? _eventTemplateRepository;
+    private readonly IEventSessionTemplateRepository? _eventSessionTemplateRepository;
     private readonly ITenantContext? _tenantContext;
 
     public AuthorizationBehavior(
@@ -69,7 +79,12 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         IActorRepository? actorRepository = null,
         IEventSessionAgendaItemRepository? eventSessionAgendaItemRepository = null,
         IEventSessionGroupRepository? eventSessionGroupRepository = null,
-        IEventSessionSpeakerRepository? eventSessionSpeakerRepository = null)
+        IEventSessionSpeakerRepository? eventSessionSpeakerRepository = null,
+        ICustomPropertyDefinitionRepository? customPropertyDefinitionRepository = null,
+        IEventCustomPropertyRepository? eventCustomPropertyRepository = null,
+        IEventSessionCustomPropertyRepository? eventSessionCustomPropertyRepository = null,
+        IEventTemplateRepository? eventTemplateRepository = null,
+        IEventSessionTemplateRepository? eventSessionTemplateRepository = null)
     {
         _authorizationProvider = authorizationProvider;
         _logger = logger;
@@ -88,6 +103,11 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         _eventSessionAgendaItemRepository = eventSessionAgendaItemRepository;
         _eventSessionGroupRepository = eventSessionGroupRepository;
         _eventSessionSpeakerRepository = eventSessionSpeakerRepository;
+        _customPropertyDefinitionRepository = customPropertyDefinitionRepository;
+        _eventCustomPropertyRepository = eventCustomPropertyRepository;
+        _eventSessionCustomPropertyRepository = eventSessionCustomPropertyRepository;
+        _eventTemplateRepository = eventTemplateRepository;
+        _eventSessionTemplateRepository = eventSessionTemplateRepository;
     }
 
     public async Task<TResponse> Handle(
@@ -126,7 +146,82 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
             var resourceAttributes = (request is ISecureRequest sr)
                 ? sr.ResourceAttributes
                 : null;
-            if (request is UpdateEventSessionLanguageCommand languageRequest)
+            if (request is UpdateCustomPropertyDefinitionCommand definitionRequest)
+            {
+                var definition = _customPropertyDefinitionRepository is null
+                    ? null
+                    : await _customPropertyDefinitionRepository.GetDefinitionWithDetails(definitionRequest.DefinitionId);
+                if (definition is null ||
+                    (_tenantContext is not null && definition.TenantId != _tenantContext.TenantId))
+                {
+                    throw new AuthorizationException(attribute.Resource, attribute.Action);
+                }
+
+                definitionRequest.TenantId = definition.TenantId;
+                resourceId = definition.TenantId.ToString();
+                resourceAttributes = new Dictionary<string, object> { ["tenantId"] = definition.TenantId.ToString() };
+            }
+            else if (request is UpdateEventCustomPropertyDefinitionCommand eventDefinitionRequest)
+            {
+                var definition = _eventCustomPropertyRepository is null
+                    ? null
+                    : await _eventCustomPropertyRepository.GetDefinitionWithDetails(eventDefinitionRequest.DefinitionId);
+                if (definition is null ||
+                    (_tenantContext is not null && definition.TenantId != _tenantContext.TenantId))
+                {
+                    throw new AuthorizationException(attribute.Resource, attribute.Action);
+                }
+
+                eventDefinitionRequest.TenantId = definition.TenantId;
+                resourceId = definition.TenantId.ToString();
+                resourceAttributes = new Dictionary<string, object> { ["tenantId"] = definition.TenantId.ToString() };
+            }
+            else if (request is UpdateEventSessionCustomPropertyDefinitionCommand sessionDefinitionRequest)
+            {
+                var definition = _eventSessionCustomPropertyRepository is null
+                    ? null
+                    : await _eventSessionCustomPropertyRepository.GetDefinitionWithDetails(sessionDefinitionRequest.DefinitionId);
+                if (definition is null ||
+                    (_tenantContext is not null && definition.TenantId != _tenantContext.TenantId))
+                {
+                    throw new AuthorizationException(attribute.Resource, attribute.Action);
+                }
+
+                sessionDefinitionRequest.TenantId = definition.TenantId;
+                resourceId = definition.TenantId.ToString();
+                resourceAttributes = new Dictionary<string, object> { ["tenantId"] = definition.TenantId.ToString() };
+            }
+            else if (request is UpdateEventTemplateCommand templateRequest)
+            {
+                var template = _eventTemplateRepository is null
+                    ? null
+                    : await _eventTemplateRepository.GetTemplateWithDetails(templateRequest.TemplateId);
+                if (template is null ||
+                    (_tenantContext is not null && template.TenantId != _tenantContext.TenantId))
+                {
+                    throw new AuthorizationException(attribute.Resource, attribute.Action);
+                }
+
+                templateRequest.TenantId = template.TenantId;
+                resourceId = template.TenantId.ToString();
+                resourceAttributes = new Dictionary<string, object> { ["tenantId"] = template.TenantId.ToString() };
+            }
+            else if (request is UpdateEventSessionTemplateCommand sessionTemplateRequest)
+            {
+                var template = _eventSessionTemplateRepository is null
+                    ? null
+                    : await _eventSessionTemplateRepository.GetSessionTemplateWithDetails(sessionTemplateRequest.SessionTemplateId);
+                if (template is null ||
+                    (_tenantContext is not null && template.TenantId != _tenantContext.TenantId))
+                {
+                    throw new AuthorizationException(attribute.Resource, attribute.Action);
+                }
+
+                sessionTemplateRequest.TenantId = template.TenantId;
+                resourceId = template.TenantId.ToString();
+                resourceAttributes = new Dictionary<string, object> { ["tenantId"] = template.TenantId.ToString() };
+            }
+            else if (request is UpdateEventSessionLanguageCommand languageRequest)
             {
                 var assignment = _eventSessionLanguageRepository is null
                     ? null
@@ -361,6 +456,9 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
             ResourceKinds.Event => await EnrichEventResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.EventOrganizerClaim => TryGetGuidAttribute(resourceAttributes, "eventId", out var eventId)
                 ? await EnrichEventResourceAttributesAsync(eventId.ToString("D"), resourceAttributes, cancellationToken)
+                : resourceAttributes,
+            ResourceKinds.EventTicketType => TryGetGuidAttribute(resourceAttributes, "eventId", out var ticketEventId)
+                ? await EnrichEventResourceAttributesAsync(ticketEventId.ToString("D"), resourceAttributes, cancellationToken)
                 : resourceAttributes,
             ResourceKinds.EventSession => await EnrichEventSessionResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.EventRegistration => await EnrichEventRegistrationResourceAttributesAsync(resourceId, cancellationToken),
