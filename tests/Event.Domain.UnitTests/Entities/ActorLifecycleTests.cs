@@ -1,5 +1,5 @@
-// ABOUTME: Proves external Actor promotion and merged-source retirement preserve identity and evidence.
-// ABOUTME: Covers owner XOR, audit/concurrency mutation, subject retirement, and rejected transitions.
+// ABOUTME: Proves Actor lifecycle transitions preserve identity and immutable moderation evidence.
+// ABOUTME: Covers owner XOR, audit/concurrency mutation, retirement, suspension, and rejected transitions.
 
 namespace Event.Domain.UnitTests.Entities;
 
@@ -236,6 +236,114 @@ public sealed class ActorLifecycleTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(() =>
             actor.RetireAsMergedSource(TransitionedAt.AddMinutes(1), Guid.CreateVersion7())));
         await Assert.That(actor.IsDeleted).IsFalse();
+    }
+
+    [Test]
+    public async Task Suspend_ActiveActor_UpdatesCurrentStateAndAppendsImmutableRecord()
+    {
+        var actor = CreateActor(ActorTypeEnum.User);
+        var suspendedBy = Guid.CreateVersion7();
+        var concurrencyStamp = actor.ConcurrencyStamp;
+
+        actor.Suspend(" policy-violation ", TransitionedAt, suspendedBy);
+
+        await Assert.That(actor.IsSuspended).IsTrue();
+        await Assert.That(actor.SuspendedAt).IsEqualTo(TransitionedAt);
+        await Assert.That(actor.SuspendedBy).IsEqualTo(suspendedBy);
+        await Assert.That(actor.ModerationReasonCode).IsEqualTo("policy-violation");
+        await Assert.That(actor.UpdatedAt).IsEqualTo(TransitionedAt);
+        await Assert.That(actor.UpdatedBy).IsEqualTo(suspendedBy);
+        await Assert.That(actor.ConcurrencyStamp).IsNotEqualTo(concurrencyStamp);
+        await Assert.That(actor.ModerationRecords.Count).IsEqualTo(1);
+        await Assert.That(actor.ModerationRecords.Single().Action).IsEqualTo(GlobalModerationAction.Suspend);
+        await Assert.That(actor.ModerationRecords.Single().ReasonCode).IsEqualTo("policy-violation");
+        await Assert.That(actor.ModerationRecords.Single().CreatedAt).IsEqualTo(TransitionedAt);
+        await Assert.That(actor.ModerationRecords.Single().CreatedBy).IsEqualTo(suspendedBy);
+    }
+
+    [Test]
+    public async Task Reinstate_SuspendedActor_ClearsCurrentStateAndAppendsImmutableRecord()
+    {
+        var actor = CreateActor(ActorTypeEnum.User);
+        var suspendedBy = Guid.CreateVersion7();
+        var reinstatedBy = Guid.CreateVersion7();
+        actor.Suspend("policy-violation", TransitionedAt, suspendedBy);
+        var suspension = actor.ModerationRecords.Single();
+        var concurrencyStamp = actor.ConcurrencyStamp;
+        var reinstatedAt = TransitionedAt.AddHours(1);
+
+        actor.Reinstate(" appeal-granted ", reinstatedAt, reinstatedBy);
+
+        await Assert.That(actor.IsSuspended).IsFalse();
+        await Assert.That(actor.SuspendedAt).IsNull();
+        await Assert.That(actor.SuspendedBy).IsNull();
+        await Assert.That(actor.ModerationReasonCode).IsNull();
+        await Assert.That(actor.UpdatedAt).IsEqualTo(reinstatedAt);
+        await Assert.That(actor.UpdatedBy).IsEqualTo(reinstatedBy);
+        await Assert.That(actor.ConcurrencyStamp).IsNotEqualTo(concurrencyStamp);
+        await Assert.That(actor.ModerationRecords.Count).IsEqualTo(2);
+        await Assert.That(suspension.Action).IsEqualTo(GlobalModerationAction.Suspend);
+        await Assert.That(suspension.ReasonCode).IsEqualTo("policy-violation");
+        await Assert.That(actor.ModerationRecords.Last().Action).IsEqualTo(GlobalModerationAction.Reinstate);
+        await Assert.That(actor.ModerationRecords.Last().ReasonCode).IsEqualTo("appeal-granted");
+        await Assert.That(actor.ModerationRecords.Last().CreatedAt).IsEqualTo(reinstatedAt);
+        await Assert.That(actor.ModerationRecords.Last().CreatedBy).IsEqualTo(reinstatedBy);
+    }
+
+    [Test]
+    public async Task Suspend_AlreadySuspendedActor_IsSuccessfulNoOp()
+    {
+        var actor = CreateActor(ActorTypeEnum.User);
+        var suspendedBy = Guid.CreateVersion7();
+        actor.Suspend("policy-violation", TransitionedAt, suspendedBy);
+        var concurrencyStamp = actor.ConcurrencyStamp;
+
+        actor.Suspend("different-reason", TransitionedAt.AddHours(1), Guid.CreateVersion7());
+
+        await Assert.That(actor.SuspendedAt).IsEqualTo(TransitionedAt);
+        await Assert.That(actor.SuspendedBy).IsEqualTo(suspendedBy);
+        await Assert.That(actor.ModerationReasonCode).IsEqualTo("policy-violation");
+        await Assert.That(actor.UpdatedAt).IsEqualTo(TransitionedAt);
+        await Assert.That(actor.ConcurrencyStamp).IsEqualTo(concurrencyStamp);
+        await Assert.That(actor.ModerationRecords.Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Reinstate_ActiveActor_IsSuccessfulNoOp()
+    {
+        var actor = CreateActor(ActorTypeEnum.User);
+        var concurrencyStamp = actor.ConcurrencyStamp;
+
+        actor.Reinstate("appeal-granted", TransitionedAt, Guid.CreateVersion7());
+
+        await Assert.That(actor.IsSuspended).IsFalse();
+        await Assert.That(actor.UpdatedAt).IsNull();
+        await Assert.That(actor.UpdatedBy).IsNull();
+        await Assert.That(actor.ConcurrencyStamp).IsEqualTo(concurrencyStamp);
+        await Assert.That(actor.ModerationRecords.Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task Suspend_RejectsInvalidInputsAndDeletedActor()
+    {
+        var actor = CreateActor(ActorTypeEnum.User);
+        var by = Guid.CreateVersion7();
+
+        await Assert.That(() => actor.Suspend(" ", TransitionedAt, by)).Throws<ArgumentException>();
+        await Assert.That(() => actor.Suspend(new string('x', 129), TransitionedAt, by)).Throws<ArgumentException>();
+        await Assert.That(() => actor.Suspend("policy-violation", TransitionedAt, Guid.Empty)).Throws<ArgumentException>();
+        await Assert.That(() => actor.Suspend(
+                "policy-violation",
+                DateTime.SpecifyKind(TransitionedAt, DateTimeKind.Local),
+                by))
+            .Throws<ArgumentException>();
+
+        actor.IsDeleted = true;
+
+        await Assert.That(() => actor.Suspend("policy-violation", TransitionedAt, by))
+            .Throws<InvalidOperationException>();
+        await Assert.That(() => actor.Reinstate("appeal-granted", TransitionedAt, by))
+            .Throws<InvalidOperationException>();
     }
 
     private static (Actor Actor, ExternalActorSubject ExternalSubject, ActorPii Pii, AtprotoIdentity Identity)

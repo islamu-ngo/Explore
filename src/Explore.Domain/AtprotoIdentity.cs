@@ -2,6 +2,7 @@
 // ABOUTME: Owns mutable handle, PDS, signing-key, cache, and credential moderation state.
 
 using Explore.Domain.Interfaces;
+using Explore.Domain.Enums;
 
 namespace Explore.Domain;
 
@@ -48,5 +49,85 @@ public class AtprotoIdentity : IAuditableEntity, ISoftDeletable, IConcurrencyAwa
         LastResolvedAt = resolvedAt;
         LastSeenAt = resolvedAt;
         IsActive = true;
+    }
+
+    public void Suspend(string reasonCode, DateTime when, Guid by)
+    {
+        string normalizedReasonCode = ValidateModerationTransition(reasonCode, when, by);
+        if (IsSuspended)
+        {
+            return;
+        }
+
+        IsSuspended = true;
+        SuspendedAt = when;
+        SuspendedBy = by;
+        ModerationReasonCode = normalizedReasonCode;
+        ModerationRecords.Add(AtprotoIdentityModerationRecord.Create(
+            Id,
+            GlobalModerationAction.Suspend,
+            normalizedReasonCode,
+            when,
+            by));
+        MarkUpdated(when, by);
+    }
+
+    public void Reinstate(string reasonCode, DateTime when, Guid by)
+    {
+        string normalizedReasonCode = ValidateModerationTransition(reasonCode, when, by);
+        if (!IsSuspended)
+        {
+            return;
+        }
+
+        IsSuspended = false;
+        SuspendedAt = null;
+        SuspendedBy = null;
+        ModerationReasonCode = null;
+        ModerationRecords.Add(AtprotoIdentityModerationRecord.Create(
+            Id,
+            GlobalModerationAction.Reinstate,
+            normalizedReasonCode,
+            when,
+            by));
+        MarkUpdated(when, by);
+    }
+
+    private string ValidateModerationTransition(string reasonCode, DateTime when, Guid by)
+    {
+        if (IsDeleted)
+        {
+            throw new InvalidOperationException("Deleted identities cannot be moderated.");
+        }
+
+        if (by == Guid.Empty)
+        {
+            throw new ArgumentException("A moderating user is required.", nameof(by));
+        }
+
+        if (when.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("A UTC moderation timestamp is required.", nameof(when));
+        }
+
+        if (string.IsNullOrWhiteSpace(reasonCode))
+        {
+            throw new ArgumentException("A moderation reason code is required.", nameof(reasonCode));
+        }
+
+        string normalizedReasonCode = reasonCode.Trim();
+        if (normalizedReasonCode.Length > 128)
+        {
+            throw new ArgumentException("A moderation reason code must be 128 characters or fewer.", nameof(reasonCode));
+        }
+
+        return normalizedReasonCode;
+    }
+
+    private void MarkUpdated(DateTime when, Guid by)
+    {
+        UpdatedAt = when;
+        UpdatedBy = by;
+        ConcurrencyStamp = Guid.CreateVersion7();
     }
 }
