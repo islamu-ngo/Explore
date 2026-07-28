@@ -9,29 +9,36 @@ using FluentValidation;
 public sealed class UpdateListmonkIntegrationSettingsDtoValidator
     : AbstractValidator<UpdateListmonkIntegrationSettingsDto>
 {
-    public UpdateListmonkIntegrationSettingsDtoValidator()
+    public UpdateListmonkIntegrationSettingsDtoValidator(ListmonkIntegrationSettingsDto current)
     {
-        RuleFor(x => x.DefaultListId)
+        RuleFor(x => x)
+            .Must(x => x.Connection is not null || x.Behavior is not null)
+            .WithMessage("At least one Listmonk settings group is required.");
+
+        RuleFor(x => x.Connection!.DefaultListId)
             .GreaterThanOrEqualTo(0)
-            .WithMessage("Listmonk default list ID cannot be negative.");
+            .WithMessage("Listmonk default list ID cannot be negative.")
+            .When(x => x.Connection is not null);
 
-        RuleFor(x => x.DefaultListId)
-            .GreaterThan(0)
-            .When(x => x.Enabled || x.SyncOnRegistration)
-            .WithMessage("Listmonk default list ID is required when the integration is enabled.");
-
-        RuleFor(x => x.InstanceUrl)
-            .NotEmpty()
-            .When(x => x.Enabled || x.SyncOnRegistration)
-            .WithMessage("Listmonk instance URL is required when the integration is enabled.");
-
-        RuleFor(x => x.InstanceUrl)
+        RuleFor(x => x.Connection!.InstanceUrl)
             .Must(BeSafeHttpUrl)
-            .When(x => !string.IsNullOrWhiteSpace(x.InstanceUrl))
+            .When(x => !string.IsNullOrWhiteSpace(x.Connection?.InstanceUrl))
             .WithMessage("Listmonk instance URL must be an absolute public HTTP(S) URL.");
 
-        RuleFor(x => x.SyncOnRegistration)
-            .Must((dto, syncOnRegistration) => !syncOnRegistration || dto.Enabled)
+        RuleFor(x => x)
+            .Must(x =>
+            {
+                var enabled = x.Behavior?.Enabled ?? current.Enabled;
+                var sync = x.Behavior?.SyncOnRegistration ?? current.SyncOnRegistration;
+                var instanceUrl = x.Connection?.InstanceUrl ?? current.InstanceUrl;
+                var defaultListId = x.Connection?.DefaultListId ?? current.DefaultListId;
+                return (!enabled && !sync) || (!string.IsNullOrWhiteSpace(instanceUrl) && defaultListId > 0);
+            })
+            .WithMessage("Listmonk instance URL and default list ID are required when the integration is enabled.");
+
+        RuleFor(x => x)
+            .Must(x => !(x.Behavior?.SyncOnRegistration ?? current.SyncOnRegistration)
+                || (x.Behavior?.Enabled ?? current.Enabled))
             .WithMessage("Listmonk registration sync requires the integration to be enabled.");
     }
 

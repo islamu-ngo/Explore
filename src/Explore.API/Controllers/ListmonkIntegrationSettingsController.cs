@@ -49,7 +49,7 @@ public sealed class ListmonkIntegrationSettingsController(IMediator mediator) : 
         return Ok(result);
     }
 
-    [HttpPut("settings", Name = RouteNames.UpdateListmonkIntegrationSettings)]
+    [HttpPatch("settings", Name = RouteNames.UpdateListmonkIntegrationSettings)]
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [EndpointSummary("Update Listmonk Integration Settings")]

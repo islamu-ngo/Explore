@@ -254,11 +254,17 @@
         {
             var result = await ListmonkSettingsService.UpdateSettingsAsync(new UpdateListmonkIntegrationSettingsDto
             {
-                Enabled = _enabled,
-                InstanceUrl = _instanceUrl,
-                DefaultListId = _defaultListId,
-                PreconfirmSubscriptions = _preconfirmSubscriptions,
-                SyncOnRegistration = _syncOnRegistration
+                Connection = new ListmonkConnectionUpdateDto
+                {
+                    InstanceUrl = _instanceUrl,
+                    DefaultListId = _defaultListId
+                },
+                Behavior = new ListmonkBehaviorUpdateDto
+                {
+                    Enabled = _enabled,
+                    PreconfirmSubscriptions = _preconfirmSubscriptions,
+                    SyncOnRegistration = _syncOnRegistration
+                }
             });
 
             ShowResult(result);
