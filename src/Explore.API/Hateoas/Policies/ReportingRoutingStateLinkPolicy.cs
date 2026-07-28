@@ -29,11 +29,13 @@ public sealed class ReportingRoutingStateLinkPolicy : ILinkPolicy<ReportingRouti
                 TenantRoutingStateAttributes(dto),
                 TenantRoutingStateScope(dto));
 
-        if (!dto.TenantProviderConfigurationLocked
-            && !dto.TenantOspreyProviderLocked
-            && !dto.TenantCoopProviderLocked)
+        if (!dto.TenantProviderConfigurationLocked)
         {
-            yield return LinkDefinition.Edit(RouteNames.UpdateModerationReportingRoutingSettings)
+            yield return new LinkDefinition(
+                    LinkRelations.Edit,
+                    RouteNames.UpdateModerationReportingRoutingSettings,
+                    Method: "PATCH",
+                    RequiresAuth: true)
                 .RequirePermission(AuthorizationActions.TenantSettings.Update,
                     ResourceKinds.TenantSetting,
                     TenantRoutingStateResourceId(dto),

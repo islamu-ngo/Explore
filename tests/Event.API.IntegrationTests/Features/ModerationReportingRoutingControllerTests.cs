@@ -46,7 +46,7 @@ public sealed class ModerationReportingRoutingControllerAnonymousTests
     [Test]
     public async Task UpdateRoutingState_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.PutAsJsonAsync(RoutingStatePath, new UpdateReportingRoutingSettingsDto());
+        var response = await _fixture.Client.PatchAsJsonAsync(RoutingStatePath, new UpdateReportingRoutingSettingsDto());
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
@@ -115,22 +115,28 @@ public sealed class ModerationReportingRoutingControllerAuthorizedTests
         var mediator = new UpdateRoutingMediator();
         using var factory = CreateFactoryWithMediator(mediator);
         using var client = factory.CreateClient();
-        using var request = CreateAuthenticatedRequest(HttpMethod.Put);
+        using var request = CreateAuthenticatedRequest(HttpMethod.Patch);
         request.Content = JsonContent.Create(new UpdateReportingRoutingSettingsDto
         {
-            ExternalSyncEnabled = true,
-            EnableTenantOspreyProvider = true,
-            EnableTenantCoopProvider = true,
-            OspreyEndpointUrl = SecretEndpoint,
-            OspreyApiKey = SecretApiKey,
-            CoopRoutingMode = "tenant"
+            Policy = new ReportingRoutingPolicyUpdateDto { ExternalSyncEnabled = true },
+            Osprey = new ReportingProviderRoutingUpdateDto
+            {
+                Enabled = true,
+                EndpointUrl = SecretEndpoint,
+                Credentials = new ReportingProviderCredentialsUpdateDto { ApiKey = SecretApiKey }
+            },
+            Coop = new ReportingProviderRoutingUpdateDto
+            {
+                Enabled = true,
+                RoutingMode = "tenant"
+            }
         });
 
         var response = await client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await Assert.That(mediator.LastCommand).IsNotNull();
-        await Assert.That(mediator.LastCommand!.Settings.OspreyApiKey).IsEqualTo(SecretApiKey);
+        await Assert.That(mediator.LastCommand!.Settings.Osprey!.Credentials!.ApiKey).IsEqualTo(SecretApiKey);
         var json = await response.Content.ReadAsStringAsync();
         await Assert.That(json).DoesNotContain(SecretApiKey);
         await Assert.That(json).DoesNotContain(SecretEndpoint);

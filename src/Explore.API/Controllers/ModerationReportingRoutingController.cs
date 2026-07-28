@@ -58,7 +58,7 @@ public sealed class ModerationReportingRoutingController(
         return Ok(halResource);
     }
 
-    [HttpPut("", Name = RouteNames.UpdateModerationReportingRoutingSettings)]
+    [HttpPatch("", Name = RouteNames.UpdateModerationReportingRoutingSettings)]
     [EndpointSummary("Update Moderation Reporting Routing Settings")]
     [EndpointDescription("Updates current-tenant moderation reporting provider overrides when instance policy allows tenant edits.")]
     [Consumes("application/json")]

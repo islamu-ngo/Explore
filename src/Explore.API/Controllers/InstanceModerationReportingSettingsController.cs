@@ -27,7 +27,7 @@ public sealed class InstanceModerationReportingSettingsController(IMediator medi
         "Moderation reporting provider lock validation failed",
         "Moderation reporting provider lock update failed.");
 
-    [HttpPut("locks", Name = RouteNames.UpdateInstanceModerationReportingProviderLocks)]
+    [HttpPatch("locks", Name = RouteNames.UpdateInstanceModerationReportingProviderLocks)]
     [EndpointSummary("Update Instance Moderation Reporting Provider Locks")]
     [EndpointDescription("Updates instance governance locks that control tenant Osprey and Coop reporting provider overrides.")]
     [Consumes("application/json")]

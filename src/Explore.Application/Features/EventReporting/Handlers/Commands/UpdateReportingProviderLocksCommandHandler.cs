@@ -30,21 +30,44 @@ public sealed class UpdateReportingProviderLocksCommandHandler(
             };
         }
 
-        await SetAsync(
-            GovernanceSettingKeys.TenantDelegation.LockReportingProviders,
-            request.Locks.LockReportingProviders,
-            request.UserId,
-            cancellationToken);
-        await SetAsync(
-            GovernanceSettingKeys.TenantDelegation.LockTenantOspreyProvider,
-            request.Locks.LockTenantOspreyProvider,
-            request.UserId,
-            cancellationToken);
-        await SetAsync(
-            GovernanceSettingKeys.TenantDelegation.LockTenantCoopProvider,
-            request.Locks.LockTenantCoopProvider,
-            request.UserId,
-            cancellationToken);
+        if (request.Locks.General is null
+            && request.Locks.Osprey is null
+            && request.Locks.Coop is null)
+        {
+            return new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "At least one moderation reporting provider lock group is required.",
+                Errors = ["Supply general, osprey, or coop."],
+            };
+        }
+
+        if (request.Locks.General is { } general)
+        {
+            await SetAsync(
+                GovernanceSettingKeys.TenantDelegation.LockReportingProviders,
+                general.Locked,
+                request.UserId,
+                cancellationToken);
+        }
+
+        if (request.Locks.Osprey is { } osprey)
+        {
+            await SetAsync(
+                GovernanceSettingKeys.TenantDelegation.LockTenantOspreyProvider,
+                osprey.Locked,
+                request.UserId,
+                cancellationToken);
+        }
+
+        if (request.Locks.Coop is { } coop)
+        {
+            await SetAsync(
+                GovernanceSettingKeys.TenantDelegation.LockTenantCoopProvider,
+                coop.Locked,
+                request.UserId,
+                cancellationToken);
+        }
 
         settingsResolver.InvalidateCache(SettingScope.Instance);
 

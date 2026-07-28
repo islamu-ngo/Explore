@@ -32,7 +32,7 @@ public sealed class InstanceModerationReportingSettingsControllerAnonymousTests
     [Test]
     public async Task UpdateLocks_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.PutAsJsonAsync(LocksPath, new UpdateReportingProviderLocksDto());
+        var response = await _fixture.Client.PatchAsJsonAsync(LocksPath, new UpdateReportingProviderLocksDto());
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
@@ -51,18 +51,17 @@ public sealed class InstanceModerationReportingSettingsControllerAuthorizedTests
         using var request = CreateAuthenticatedRequest();
         request.Content = JsonContent.Create(new UpdateReportingProviderLocksDto
         {
-            LockReportingProviders = false,
-            LockTenantOspreyProvider = false,
-            LockTenantCoopProvider = true
+            General = new ReportingProviderLockUpdateDto { Locked = false },
+            Coop = new ReportingProviderLockUpdateDto { Locked = true }
         });
 
         var response = await client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await Assert.That(mediator.LastCommand).IsNotNull();
-        await Assert.That(mediator.LastCommand!.Locks.LockReportingProviders).IsFalse();
-        await Assert.That(mediator.LastCommand.Locks.LockTenantOspreyProvider).IsFalse();
-        await Assert.That(mediator.LastCommand.Locks.LockTenantCoopProvider).IsTrue();
+        await Assert.That(mediator.LastCommand!.Locks.General!.Locked).IsFalse();
+        await Assert.That(mediator.LastCommand.Locks.Osprey).IsNull();
+        await Assert.That(mediator.LastCommand.Locks.Coop!.Locked).IsTrue();
     }
 
     [Test]
@@ -97,7 +96,7 @@ public sealed class InstanceModerationReportingSettingsControllerAuthorizedTests
 
     private static HttpRequestMessage CreateAuthenticatedRequest()
     {
-        var request = new HttpRequestMessage(HttpMethod.Put, LocksPath);
+        var request = new HttpRequestMessage(HttpMethod.Patch, LocksPath);
         request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid()));
         return request;
     }

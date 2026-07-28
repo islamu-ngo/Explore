@@ -1,5 +1,5 @@
-// ABOUTME: Write DTO for tenant moderation reporting provider routing settings.
-// ABOUTME: Accepts optional provider secrets for persistence without exposing them in read models.
+// ABOUTME: Grouped PATCH contract for tenant moderation reporting routing settings.
+// ABOUTME: Provider credentials are explicit nested writes and remain absent from read models.
 
 using Explore.Application.Features.EventReporting.Models;
 using Explore.Application.Settings.Groups;
@@ -8,27 +8,27 @@ namespace Explore.Application.DTOs.EventReporting;
 
 public sealed class UpdateReportingRoutingSettingsDto
 {
-    public bool ExternalSyncEnabled { get; init; } = true;
+    public ReportingRoutingPolicyUpdateDto? Policy { get; set; }
+    public ReportingProviderRoutingUpdateDto? Osprey { get; set; }
+    public ReportingProviderRoutingUpdateDto? Coop { get; set; }
+}
 
-    public bool EnableTenantOspreyProvider { get; init; }
+public sealed class ReportingRoutingPolicyUpdateDto
+{
+    public bool ExternalSyncEnabled { get; set; }
+    public EventReportProviderEvidenceMode EvidenceMode { get; set; } = EventReportProviderEvidenceMode.MetadataOnly;
+}
 
-    public bool EnableTenantCoopProvider { get; init; }
+public sealed class ReportingProviderRoutingUpdateDto
+{
+    public bool Enabled { get; set; }
+    public string RoutingMode { get; set; } = ReportingRoutingMode.Both;
+    public string? EndpointUrl { get; set; }
+    public ReportingProviderCredentialsUpdateDto? Credentials { get; set; }
+}
 
-    public string OspreyRoutingMode { get; init; } = ReportingRoutingMode.Both;
-
-    public string CoopRoutingMode { get; init; } = ReportingRoutingMode.Both;
-
-    public EventReportProviderEvidenceMode EvidenceMode { get; init; } = EventReportProviderEvidenceMode.MetadataOnly;
-
-    public string? OspreyEndpointUrl { get; init; }
-
-    public string? OspreyApiKey { get; init; }
-
-    public string? OspreyWebhookSecret { get; init; }
-
-    public string? CoopEndpointUrl { get; init; }
-
-    public string? CoopApiKey { get; init; }
-
-    public string? CoopWebhookSecret { get; init; }
+public sealed class ReportingProviderCredentialsUpdateDto
+{
+    public string? ApiKey { get; set; }
+    public string? WebhookSecret { get; set; }
 }

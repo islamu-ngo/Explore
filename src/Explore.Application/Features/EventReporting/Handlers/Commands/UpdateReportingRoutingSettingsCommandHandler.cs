@@ -48,12 +48,12 @@ public sealed class UpdateReportingRoutingSettingsCommandHandler(
             return Locked("Tenant moderation reporting provider settings are locked by instance policy.");
         }
 
-        if (delegation.LockTenantOspreyProvider)
+        if (request.Settings.Osprey is not null && delegation.LockTenantOspreyProvider)
         {
             return Locked("Tenant Osprey reporting provider settings are locked by instance policy.");
         }
 
-        if (delegation.LockTenantCoopProvider)
+        if (request.Settings.Coop is not null && delegation.LockTenantCoopProvider)
         {
             return Locked("Tenant Coop reporting provider settings are locked by instance policy.");
         }
@@ -110,23 +110,28 @@ public sealed class UpdateReportingRoutingSettingsCommandHandler(
     {
         var errors = new List<string>();
 
-        if (!IsRoutingMode(settings.OspreyRoutingMode))
+        if (settings.Policy is null && settings.Osprey is null && settings.Coop is null)
+        {
+            errors.Add("At least one moderation reporting routing group is required.");
+        }
+
+        if (settings.Osprey is { } osprey && !IsRoutingMode(osprey.RoutingMode))
         {
             errors.Add("Osprey routing mode must be instance, tenant, or both.");
         }
 
-        if (!IsRoutingMode(settings.CoopRoutingMode))
+        if (settings.Coop is { } coop && !IsRoutingMode(coop.RoutingMode))
         {
             errors.Add("Coop routing mode must be instance, tenant, or both.");
         }
 
-        if (!Enum.IsDefined(settings.EvidenceMode))
+        if (settings.Policy is { } policy && !Enum.IsDefined(policy.EvidenceMode))
         {
             errors.Add("Evidence mode is invalid.");
         }
 
-        AddEndpointError(errors, settings.OspreyEndpointUrl, "Osprey endpoint URL");
-        AddEndpointError(errors, settings.CoopEndpointUrl, "Coop endpoint URL");
+        AddEndpointError(errors, settings.Osprey?.EndpointUrl, "Osprey endpoint URL");
+        AddEndpointError(errors, settings.Coop?.EndpointUrl, "Coop endpoint URL");
 
         return errors;
     }
@@ -156,18 +161,61 @@ public sealed class UpdateReportingRoutingSettingsCommandHandler(
         UpdateReportingRoutingSettingsDto settings,
         CancellationToken cancellationToken)
     {
-        await SetAsync(GovernanceSettingKeys.Reporting.TenantExternalSyncEnabled, settings.ExternalSyncEnabled, tenantId, userId, cancellationToken);
-        await SetAsync(GovernanceSettingKeys.Reporting.EnableTenantOspreyProvider, settings.EnableTenantOspreyProvider, tenantId, userId, cancellationToken);
-        await SetAsync(GovernanceSettingKeys.Reporting.EnableTenantCoopProvider, settings.EnableTenantCoopProvider, tenantId, userId, cancellationToken);
-        await SetAsync(GovernanceSettingKeys.Reporting.OspreyRoutingMode, NormalizeRoutingMode(settings.OspreyRoutingMode), tenantId, userId, cancellationToken);
-        await SetAsync(GovernanceSettingKeys.Reporting.CoopRoutingMode, NormalizeRoutingMode(settings.CoopRoutingMode), tenantId, userId, cancellationToken);
-        await SetAsync(GovernanceSettingKeys.Reporting.EvidenceMode, settings.EvidenceMode.ToString(), tenantId, userId, cancellationToken);
-        await SetIfProvidedAsync(GovernanceSettingKeys.Reporting.OspreyEndpointUrl, settings.OspreyEndpointUrl, tenantId, userId, cancellationToken, writeWhitespace: true);
-        await SetIfProvidedAsync(GovernanceSettingKeys.Reporting.CoopEndpointUrl, settings.CoopEndpointUrl, tenantId, userId, cancellationToken, writeWhitespace: true);
-        await SetIfProvidedAsync(InfrastructureSecretSettingKeys.Reporting.OspreyApiKey, settings.OspreyApiKey, tenantId, userId, cancellationToken);
-        await SetIfProvidedAsync(InfrastructureSecretSettingKeys.Reporting.OspreyWebhookSecret, settings.OspreyWebhookSecret, tenantId, userId, cancellationToken);
-        await SetIfProvidedAsync(InfrastructureSecretSettingKeys.Reporting.CoopApiKey, settings.CoopApiKey, tenantId, userId, cancellationToken);
-        await SetIfProvidedAsync(InfrastructureSecretSettingKeys.Reporting.CoopWebhookSecret, settings.CoopWebhookSecret, tenantId, userId, cancellationToken);
+        if (settings.Policy is { } policy)
+        {
+            await SetAsync(GovernanceSettingKeys.Reporting.TenantExternalSyncEnabled, policy.ExternalSyncEnabled, tenantId, userId, cancellationToken);
+            await SetAsync(GovernanceSettingKeys.Reporting.EvidenceMode, policy.EvidenceMode.ToString(), tenantId, userId, cancellationToken);
+        }
+
+        if (settings.Osprey is { } osprey)
+        {
+            await ApplyProviderAsync(
+                GovernanceSettingKeys.Reporting.EnableTenantOspreyProvider,
+                GovernanceSettingKeys.Reporting.OspreyRoutingMode,
+                GovernanceSettingKeys.Reporting.OspreyEndpointUrl,
+                InfrastructureSecretSettingKeys.Reporting.OspreyApiKey,
+                InfrastructureSecretSettingKeys.Reporting.OspreyWebhookSecret,
+                osprey,
+                tenantId,
+                userId,
+                cancellationToken);
+        }
+
+        if (settings.Coop is { } coop)
+        {
+            await ApplyProviderAsync(
+                GovernanceSettingKeys.Reporting.EnableTenantCoopProvider,
+                GovernanceSettingKeys.Reporting.CoopRoutingMode,
+                GovernanceSettingKeys.Reporting.CoopEndpointUrl,
+                InfrastructureSecretSettingKeys.Reporting.CoopApiKey,
+                InfrastructureSecretSettingKeys.Reporting.CoopWebhookSecret,
+                coop,
+                tenantId,
+                userId,
+                cancellationToken);
+        }
+    }
+
+    private async Task ApplyProviderAsync(
+        string enabledKey,
+        string routingModeKey,
+        string endpointKey,
+        string apiKey,
+        string webhookSecretKey,
+        ReportingProviderRoutingUpdateDto provider,
+        Guid tenantId,
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        await SetAsync(enabledKey, provider.Enabled, tenantId, userId, cancellationToken);
+        await SetAsync(routingModeKey, NormalizeRoutingMode(provider.RoutingMode), tenantId, userId, cancellationToken);
+        await SetIfProvidedAsync(endpointKey, provider.EndpointUrl, tenantId, userId, cancellationToken, writeWhitespace: true);
+
+        if (provider.Credentials is { } credentials)
+        {
+            await SetIfProvidedAsync(apiKey, credentials.ApiKey, tenantId, userId, cancellationToken);
+            await SetIfProvidedAsync(webhookSecretKey, credentials.WebhookSecret, tenantId, userId, cancellationToken);
+        }
     }
 
     private Task SetAsync<T>(string key, T value, Guid tenantId, Guid userId, CancellationToken cancellationToken) =>
