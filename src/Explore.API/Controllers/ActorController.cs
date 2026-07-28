@@ -11,6 +11,7 @@ using Explore.Application.Features.Actors.Requests.Commands;
 using Explore.Application.Features.Actors.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
+using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -43,6 +44,11 @@ public class ActorController : ControllerBase
     private static readonly ApiNotFoundProblemDescriptor ActorNotFoundProblem = new(
         "Actor not found",
         "Actor not found.");
+
+    private static readonly ApiValidationProblemDescriptor GlobalModerationValidationProblem = new(
+        "globalActorModeration",
+        "Global actor moderation validation failed",
+        "Global actor moderation failed.");
 
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<ActorDto, ActorListDto> _resourceAssembler;
@@ -237,6 +243,90 @@ public class ActorController : ControllerBase
     }
 
     /// <summary>
+    /// Suspend an actor globally.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("{actorId:guid}/moderation/suspend", Name = RouteNames.SuspendActor)]
+    [EndpointSummary("Suspend Actor Globally")]
+    [EndpointDescription("Suspends an actor globally using the server-selected moderation action.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> SuspendActor(
+        Guid actorId,
+        [FromBody] GlobalModerationRequestDto request,
+        CancellationToken cancellationToken = default) =>
+        ModerateActor(actorId, GlobalModerationAction.Suspend, request, cancellationToken);
+
+    /// <summary>
+    /// Reinstate an actor globally.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("{actorId:guid}/moderation/reinstate", Name = RouteNames.ReinstateActor)]
+    [EndpointSummary("Reinstate Actor Globally")]
+    [EndpointDescription("Reinstates an actor globally using the server-selected moderation action.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> ReinstateActor(
+        Guid actorId,
+        [FromBody] GlobalModerationRequestDto request,
+        CancellationToken cancellationToken = default) =>
+        ModerateActor(actorId, GlobalModerationAction.Reinstate, request, cancellationToken);
+
+    /// <summary>
+    /// Suspend an AT Protocol identity globally.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("atproto-identities/{identityId:guid}/moderation/suspend", Name = RouteNames.SuspendAtprotoIdentity)]
+    [EndpointSummary("Suspend AT Protocol Identity Globally")]
+    [EndpointDescription("Suspends an AT Protocol identity globally using the server-selected moderation action.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> SuspendAtprotoIdentity(
+        Guid identityId,
+        [FromBody] GlobalModerationRequestDto request,
+        CancellationToken cancellationToken = default) =>
+        ModerateAtprotoIdentity(identityId, GlobalModerationAction.Suspend, request, cancellationToken);
+
+    /// <summary>
+    /// Reinstate an AT Protocol identity globally.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("atproto-identities/{identityId:guid}/moderation/reinstate", Name = RouteNames.ReinstateAtprotoIdentity)]
+    [EndpointSummary("Reinstate AT Protocol Identity Globally")]
+    [EndpointDescription("Reinstates an AT Protocol identity globally using the server-selected moderation action.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> ReinstateAtprotoIdentity(
+        Guid identityId,
+        [FromBody] GlobalModerationRequestDto request,
+        CancellationToken cancellationToken = default) =>
+        ModerateAtprotoIdentity(identityId, GlobalModerationAction.Reinstate, request, cancellationToken);
+
+    /// <summary>
     /// Delete an actor.
     /// </summary>
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteActor)]
@@ -254,6 +344,64 @@ public class ActorController : ControllerBase
         await _mediator.Send(command, cancellationToken);
 
         return NoContent();
+    }
+
+    private async Task<ActionResult<BaseCommandResponse<Guid>>> ModerateActor(
+        Guid actorId,
+        GlobalModerationAction action,
+        GlobalModerationRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator.Send(new ModerateActorCommand
+        {
+            ActorId = actorId,
+            Moderation = new GlobalModerationRequest
+            {
+                Action = action,
+                ReasonCode = request.ReasonCode
+            }
+        }, cancellationToken);
+
+        return MapModerationResponse(response);
+    }
+
+    private async Task<ActionResult<BaseCommandResponse<Guid>>> ModerateAtprotoIdentity(
+        Guid identityId,
+        GlobalModerationAction action,
+        GlobalModerationRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator.Send(new ModerateAtprotoIdentityCommand
+        {
+            AtprotoIdentityId = identityId,
+            Moderation = new GlobalModerationRequest
+            {
+                Action = action,
+                ReasonCode = request.ReasonCode
+            }
+        }, cancellationToken);
+
+        return MapModerationResponse(response);
+    }
+
+    private ActionResult<BaseCommandResponse<Guid>> MapModerationResponse(BaseCommandResponse<Guid> response)
+    {
+        if (response.Success)
+        {
+            return Ok(response);
+        }
+
+        if (string.Equals(
+                response.Message,
+                "Authenticated instance administrator context is required.",
+                StringComparison.Ordinal))
+        {
+            return this.ToAuthenticationRequiredProblem(detail: response.Message!);
+        }
+
+        return response.Message?.Contains("administrators", StringComparison.OrdinalIgnoreCase) == true
+            ? this.ToForbiddenProblem(detail: response.Message)
+            : this.ToCommandValidationProblem(response, GlobalModerationValidationProblem);
     }
 
     private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)

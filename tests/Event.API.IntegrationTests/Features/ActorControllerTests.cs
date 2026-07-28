@@ -94,6 +94,46 @@ public class ActorControllerTests
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
+    [Test]
+    public async Task Suspend_WithoutAuth_ShouldReturnUnauthorized()
+    {
+        var response = await _fixture.Client.PostAsJsonAsync(
+            $"{BaseUrl}/{Guid.NewGuid()}/moderation/suspend",
+            new { reasonCode = "policy-violation" });
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task Reinstate_WithoutAuth_ShouldReturnUnauthorized()
+    {
+        var response = await _fixture.Client.PostAsJsonAsync(
+            $"{BaseUrl}/{Guid.NewGuid()}/moderation/reinstate",
+            new { reasonCode = "appeal-approved" });
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task AtprotoIdentitySuspend_WithoutAuth_ShouldReturnUnauthorized()
+    {
+        var response = await _fixture.Client.PostAsJsonAsync(
+            $"{BaseUrl}/atproto-identities/{Guid.NewGuid()}/moderation/suspend",
+            new { reasonCode = "policy-violation" });
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task AtprotoIdentityReinstate_WithoutAuth_ShouldReturnUnauthorized()
+    {
+        var response = await _fixture.Client.PostAsJsonAsync(
+            $"{BaseUrl}/atproto-identities/{Guid.NewGuid()}/moderation/reinstate",
+            new { reasonCode = "appeal-approved" });
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
     #endregion
 
     #region PATCH Endpoints

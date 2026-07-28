@@ -194,6 +194,10 @@ public static class RouteNames
     public const string CreateActor = "CreateActor";
     public const string UpdateActor = "UpdateActor";
     public const string DeleteActor = "DeleteActor";
+    public const string SuspendActor = "SuspendActor";
+    public const string ReinstateActor = "ReinstateActor";
+    public const string SuspendAtprotoIdentity = "SuspendAtprotoIdentity";
+    public const string ReinstateAtprotoIdentity = "ReinstateAtprotoIdentity";
     public const string GetActorSubscriptions = "GetActorSubscriptions";
     public const string GetActorSubscriptionByActor = "GetActorSubscriptionByActor";
     public const string SubscribeToActor = "SubscribeToActor";
@@ -920,7 +924,6 @@ public static class RouteNames
     public const string GetTenantOnboardingStatus = "GetTenantOnboardingStatus";
     public const string GetTenantOnboardingPolicySettings = "GetTenantOnboardingPolicySettings";
     public const string CompleteTenantOnboarding = "CompleteTenantOnboarding";
-    public const string UpdateTenantOnboardingPolicySettings = "UpdateTenantOnboardingPolicySettings";
     public const string SaveTenantOnboardingStepProgress = "SaveTenantOnboardingStepProgress";
 
     #endregion

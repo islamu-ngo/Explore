@@ -1,0 +1,26 @@
+// ABOUTME: Applies an instance-admin-selected global moderation transition to one AT Protocol identity.
+// ABOUTME: Supplies dynamic instance-setting authorization context without exposing tenant authority.
+
+using Explore.Application.Authorization;
+using Explore.Application.Responses;
+using MediatR;
+
+namespace Explore.Application.Features.Actors.Requests.Commands;
+
+[AuthorizeResource(ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update)]
+public sealed class ModerateAtprotoIdentityCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+{
+    public const string SettingKey = "global-actor-moderation";
+
+    public Guid AtprotoIdentityId { get; init; }
+    public GlobalModerationRequest? Moderation { get; init; }
+
+    string? ISecureRequest.ResourceId => SettingKey;
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["settingKey"] = SettingKey,
+        ["targetAtprotoIdentityId"] = AtprotoIdentityId.ToString(),
+        ["globalModerationAction"] = Moderation?.Action.ToString() ?? string.Empty
+    };
+}
