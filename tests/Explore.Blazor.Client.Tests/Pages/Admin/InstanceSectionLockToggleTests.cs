@@ -84,6 +84,52 @@ public class InstanceSectionLockToggleTests : IDisposable
     }
 
     [Test]
+    public async Task StorageSection_LockToggle_SavesImmediatelyAndAnnouncesSuccess()
+    {
+        bool? captured = null;
+        var model = new HalResourceOfInstanceStorageSettingsDto
+        {
+            _links = new Dictionary<string, HalLink> { ["edit"] = new() { Href = "/storage", Method = "PATCH" } }
+        };
+        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, GetComponentType("InstanceStorageSection"))
+                .Add(component => component.Parameters, new Dictionary<string, object>
+                {
+                    ["Model"] = model,
+                    ["IsSingleTenant"] = false,
+                    ["LockForTenants"] = false,
+                    ["SaveLockAsync"] = new Func<bool, Task<bool>>(value =>
+                    {
+                        captured = value;
+                        return Task.FromResult(true);
+                    })
+                }));
+
+        await cut.InvokeAsync(() => cut.FindComponents<MudSwitch<bool>>().Last().Instance.ValueChanged.InvokeAsync(true));
+
+        await Assert.That(captured).IsTrue();
+        await Assert.That(cut.Find("[role='status']").TextContent).Contains("Storage tenant lock saved.");
+    }
+
+    [Test]
+    public async Task SmtpSection_LockToggle_WhenSaveFails_AnnouncesAuthoritativeRestore()
+    {
+        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, GetComponentType("InstanceSmtpSection"))
+                .Add(component => component.Parameters, new Dictionary<string, object>
+                {
+                    ["Model"] = new InstanceSmtpSettingsDto(),
+                    ["IsSingleTenant"] = false,
+                    ["LockForTenants"] = false,
+                    ["SaveLockAsync"] = new Func<bool, Task<bool>>(_ => Task.FromResult(false))
+                }));
+
+        await cut.InvokeAsync(() => cut.FindComponents<MudSwitch<bool>>().Last().Instance.ValueChanged.InvokeAsync(true));
+
+        await Assert.That(cut.Find("[role='alert']").TextContent).Contains("latest value was restored");
+    }
+
+    [Test]
     public async Task ModulesSection_ToggleSendsOnePropertyAndAnnouncesSavedState()
     {
         ModuleSettingsDto? captured = null;
