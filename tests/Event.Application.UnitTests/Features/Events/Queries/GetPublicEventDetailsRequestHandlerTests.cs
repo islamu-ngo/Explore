@@ -30,6 +30,8 @@ public sealed class GetPublicEventDetailsRequestHandlerTests
         EventDto? result = await _handler.Handle(Request(), CancellationToken.None);
 
         await Assert.That(result).IsSameReferenceAs(eventDto);
+        await Assert.That(result.IsPubliclyEligible).IsTrue();
+        await Assert.That(result.IsManagementView).IsFalse();
         await _detailsProjectionService.Received(1).ResolveImageUrlsAsync(eventDto, Arg.Any<CancellationToken>());
     }
 

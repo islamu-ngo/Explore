@@ -28,6 +28,8 @@ public sealed class GetPublicEventDetailsRequestHandler(
             eventDto.VisibilityTypeId is not (int)VisibilityTypeEnum.Public)
             return null;
 
+        eventDto.IsPubliclyEligible = true;
+        eventDto.IsManagementView = false;
         await detailsProjectionService.ResolveImageUrlsAsync(eventDto, cancellationToken);
         return eventDto;
     }

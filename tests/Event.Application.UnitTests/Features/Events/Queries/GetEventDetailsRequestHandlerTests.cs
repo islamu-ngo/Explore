@@ -1,7 +1,6 @@
 // ABOUTME: Unit tests for public event detail query visibility behavior.
 // ABOUTME: Verifies moderated/hidden events are not exposed through the public detail handler.
 
-using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event;
@@ -20,7 +19,6 @@ public class GetEventDetailsRequestHandlerTests
     private readonly IEventRepository _eventRepository;
     private readonly IEventDetailsProjectionService _detailsProjectionService;
     private readonly HybridCache _cache;
-    private readonly IUserContext _userContext;
     private readonly GetEventDetailsRequestHandler _handler;
 
     public GetEventDetailsRequestHandlerTests()
@@ -28,8 +26,7 @@ public class GetEventDetailsRequestHandlerTests
         _eventRepository = Substitute.For<IEventRepository>();
         _detailsProjectionService = Substitute.For<IEventDetailsProjectionService>();
         _cache = new TestHybridCache();
-        _userContext = Substitute.For<IUserContext>();
-        _handler = new GetEventDetailsRequestHandler(_eventRepository, _detailsProjectionService, _cache, _userContext);
+        _handler = new GetEventDetailsRequestHandler(_eventRepository, _detailsProjectionService, _cache);
     }
 
     private sealed class TestHybridCache : HybridCache
@@ -65,6 +62,7 @@ public class GetEventDetailsRequestHandlerTests
         var eventDto = new EventDto
         {
             Id = eventId,
+            TenantId = Guid.NewGuid(),
             Title = "Test Event",
             Subtitle = "Test Subtitle",
             EventStatusId = (int)EventStatusEnum.Published,
@@ -79,6 +77,7 @@ public class GetEventDetailsRequestHandlerTests
         };
 
         _detailsProjectionService.BuildAsync(eventId, Arg.Any<CancellationToken>()).Returns(eventDto);
+        _eventRepository.IsPubliclyEligibleAsync(eventDto.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
 
         // Act
         var result = await _handler.Handle(request, CancellationToken.None);
@@ -87,9 +86,116 @@ public class GetEventDetailsRequestHandlerTests
         await Assert.That(result).IsNotNull();
         await Assert.That(result.Id).IsEqualTo(eventId);
         await Assert.That(result.Title).IsEqualTo("Test Event");
+        await Assert.That(result.IsPubliclyEligible).IsTrue();
+        await Assert.That(result.IsManagementView).IsFalse();
 
         await _detailsProjectionService.Received(1).BuildAsync(eventId, Arg.Any<CancellationToken>());
-        await _detailsProjectionService.Received(1).ResolveImageUrlsAsync(eventDto, Arg.Any<CancellationToken>());
+        await _eventRepository.Received(1).IsPubliclyEligibleAsync(eventDto.TenantId, eventId, Arg.Any<CancellationToken>());
+        await _detailsProjectionService.Received(1).ResolveImageUrlsAsync(
+            Arg.Is<EventDto>(dto => !ReferenceEquals(dto, eventDto)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WithCachedCandidate_ReturnsRequestLocalCopy()
+    {
+        var eventId = Guid.NewGuid();
+        var eventDto = new EventDto
+        {
+            Id = eventId,
+            TenantId = Guid.NewGuid(),
+            Title = "Cached Event",
+            FeaturedImageUri = "event-image-key",
+            ActorDisplayName = string.Empty,
+            ActorTypeFullName = string.Empty,
+            EventStatusFullName = "Published",
+            EventStatusMasterCode = "PUBLISHED",
+            VisibilityTypeFullName = "Public",
+            VisibilityTypeMasterCode = "PUBLIC",
+            EventFormatFullName = string.Empty,
+            EventFormatMasterCode = string.Empty
+        };
+        _detailsProjectionService.BuildAsync(eventId, Arg.Any<CancellationToken>()).Returns(eventDto);
+        _eventRepository.IsPubliclyEligibleAsync(eventDto.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
+        _detailsProjectionService.ResolveImageUrlsAsync(Arg.Any<EventDto>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                callInfo.ArgAt<EventDto>(0).FeaturedImageUri = "https://cdn.example/event.jpg";
+                return Task.CompletedTask;
+            });
+
+        var result = await _handler.Handle(new GetEventDetailsRequest { Id = eventId }, CancellationToken.None);
+
+        await Assert.That(ReferenceEquals(result, eventDto)).IsFalse();
+        await Assert.That(result.IsPubliclyEligible).IsTrue();
+        await Assert.That(result.IsManagementView).IsFalse();
+        await Assert.That(result.FeaturedImageUri).IsEqualTo("https://cdn.example/event.jpg");
+        await Assert.That(eventDto.IsPubliclyEligible).IsFalse();
+        await Assert.That(eventDto.FeaturedImageUri).IsEqualTo("event-image-key");
+    }
+
+    [Test]
+    public async Task Handle_WithIneligibleEvent_ReturnsNullWithoutResolvingImages()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var eventDto = new EventDto
+        {
+            Id = eventId,
+            TenantId = tenantId,
+            Title = "Ineligible Event",
+            ActorDisplayName = string.Empty,
+            ActorTypeFullName = string.Empty,
+            EventStatusId = (int)EventStatusEnum.Published,
+            EventStatusFullName = "Published",
+            EventStatusMasterCode = "PUBLISHED",
+            VisibilityTypeFullName = "Public",
+            VisibilityTypeMasterCode = "PUBLIC",
+            EventFormatFullName = string.Empty,
+            EventFormatMasterCode = string.Empty
+        };
+
+        _detailsProjectionService.BuildAsync(eventId, Arg.Any<CancellationToken>()).Returns(eventDto);
+        _eventRepository.IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _handler.Handle(new GetEventDetailsRequest { Id = eventId }, CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await _eventRepository.Received(1).IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>());
+        await _detailsProjectionService.DidNotReceive().ResolveImageUrlsAsync(Arg.Any<EventDto>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenEligibilityRepositoryFails_PropagatesWithoutResolvingImages()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var eventDto = new EventDto
+        {
+            Id = eventId,
+            TenantId = tenantId,
+            Title = "Uncertain Event",
+            ActorDisplayName = string.Empty,
+            ActorTypeFullName = string.Empty,
+            EventStatusId = (int)EventStatusEnum.Published,
+            EventStatusFullName = "Published",
+            EventStatusMasterCode = "PUBLISHED",
+            VisibilityTypeFullName = "Public",
+            VisibilityTypeMasterCode = "PUBLIC",
+            EventFormatFullName = string.Empty,
+            EventFormatMasterCode = string.Empty
+        };
+
+        _detailsProjectionService.BuildAsync(eventId, Arg.Any<CancellationToken>()).Returns(eventDto);
+        var repositoryException = new InvalidOperationException("eligibility unavailable");
+        _eventRepository.IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(repositoryException));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _handler.Handle(new GetEventDetailsRequest { Id = eventId }, CancellationToken.None));
+
+        await Assert.That(exception).IsSameReferenceAs(repositoryException);
+        await _detailsProjectionService.DidNotReceive().ResolveImageUrlsAsync(Arg.Any<EventDto>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -114,6 +220,7 @@ public class GetEventDetailsRequestHandlerTests
         };
 
         _detailsProjectionService.BuildAsync(eventId, Arg.Any<CancellationToken>()).Returns(eventDto);
+        _eventRepository.IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await _handler.Handle(new GetEventDetailsRequest { Id = eventId }, CancellationToken.None);
 

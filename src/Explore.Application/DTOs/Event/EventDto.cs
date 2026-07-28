@@ -61,6 +61,10 @@ public class EventDto
     public Guid? OrganizerActorOrganizationId { get; set; }
     [JsonIgnore]
     public Guid? OrganizerActorGroupId { get; set; }
+    [JsonIgnore]
+    public bool IsPubliclyEligible { get; set; }
+    [JsonIgnore]
+    public bool IsManagementView { get; set; }
     public string? SourcePublisherName { get; set; }
     public List<EventPublicActionDto> PublicActions { get; set; } = new();
 
@@ -132,4 +136,6 @@ public class EventDto
 
     // Tenant
     public Guid TenantId { get; set; }
+
+    internal EventDto CreateRequestCopy() => (EventDto)MemberwiseClone();
 }
