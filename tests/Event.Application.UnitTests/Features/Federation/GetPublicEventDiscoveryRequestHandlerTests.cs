@@ -121,6 +121,25 @@ public sealed class GetPublicEventDiscoveryRequestHandlerTests
     }
 
     [Test]
+    public async Task LocalEchoOmitsSourceAffordanceWhenRepositoryDeniesProjection()
+    {
+        Guid recordId = Guid.CreateVersion7();
+        var local = Local("Owned", recordId);
+        var fixture = CreateFixture(true, [local]);
+
+        PaginatedResult<Explore.Application.DTOs.PublicExperience.EventDiscoveryItemDto> result =
+            await fixture.Handler.Handle(Request(), CancellationToken.None);
+
+        await Assert.That(result.Items).HasSingleItem();
+        await Assert.That(result.Items[0].Source).IsEqualTo("local");
+        await Assert.That(result.Items[0].Federation!.IsLocalEcho).IsTrue();
+        await Assert.That(result.Items[0].Federation!.HasSourceLink).IsFalse();
+        await fixture.Projections.Received(1).GetVisibleByRecordIdsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     [Arguments("http://events.example/source")]
     [Arguments("https://user:secret@events.example/source")]
     [Arguments("https://events.example/source#fragment")]
@@ -169,6 +188,23 @@ public sealed class GetPublicEventDiscoveryRequestHandlerTests
             CancellationToken.None);
 
         await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task SourceQueryReturnsNullWhenRepositoryDeniesProjection()
+    {
+        Guid recordId = Guid.CreateVersion7();
+        var projections = Substitute.For<IAtprotoEventProjectionRepository>();
+        projections.GetVisibleByRecordIdAsync(recordId, Arg.Any<CancellationToken>())
+            .Returns((AtprotoEventProjection?)null);
+        GetAtprotoEventSourceQueryHandler handler = CreateSourceHandler(true, projections);
+
+        string? result = await handler.Handle(
+            new GetAtprotoEventSourceQuery(recordId),
+            CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await projections.Received(1).GetVisibleByRecordIdAsync(recordId, Arg.Any<CancellationToken>());
     }
 
     private static DiscoveryFixture CreateFixture(bool enabled, IReadOnlyList<EventListDto> localItems)

@@ -284,6 +284,36 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
     }
 
     [Test]
+    public async Task GetByPublicCodeForModeratedEventReturnsSafeNotFound()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var publicCode = marker;
+        var title = $"Moderated Public Code Event {marker}";
+
+        await using (var scope = _fixture.Factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            var seed = await EnsureDefaultTenantActorAsync(context);
+
+            context.Events.Add(new EventBuilder()
+                .WithTitle(title)
+                .WithPublicCode(publicCode)
+                .WithActorId(seed.ActorId)
+                .WithTenantId(seed.TenantId)
+                .WithStatus(EventStatusEnum.Moderated)
+                .WithVisibility(VisibilityTypeEnum.Public)
+                .Build());
+            await context.SaveChangesAsync();
+        }
+
+        var response = await _fixture.Client.GetAsync($"/api/event/public/event-{publicCode}");
+        var content = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(content).DoesNotContain(title);
+    }
+
+    [Test]
     public async Task GetByIdForCrossTenantEventReturnsSafeNotFound()
     {
         var marker = Guid.NewGuid().ToString("N");
