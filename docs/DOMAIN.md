@@ -11,17 +11,23 @@ This project stores most entities directly under `Explore.Domain/` (not in an `E
    `Tenant`, `TenantUser`, `TenantUserRoleGrant`, `TenantSetting`, `TenantSettingsDocument`, `TenantNavigationLink`, `TenantInvitation`, `TenantLifecycleLog`
 2. Identity and actor model:
    `User`, `Actor`, `ActorSubscription`, `Group`, `Organization`, `Role`, `Permission`, `RolePermission`, `PlatformUserRole`
-3. Events:
-   `Event`, `EventParticipationConfiguration`, `EventPublicAction`, `EventSession`, `EventRegistration`, `EventSessionSpeaker`, `EventSessionLanguage`, `EventSessionAgendaItem`, `Notification`, `NotificationFanoutRun`
+3. Events and ticketing:
+   `Event`, `EventParticipationConfiguration`, `EventPublicAction`, `EventSession`, `EventRegistration`, `EventTicketCatalogVersion`, `EventTicketType`, `EventCapacityPool`, `TicketTypeEntitlement`, `CapacityOversellPolicy`, `PlatformFeePolicy`, `PlatformFeeFixedCharge`, `PlatformContributionOption`, `PlatformContributionSetting`, `EventSessionSpeaker`, `EventSessionLanguage`, `EventSessionAgendaItem`, `Notification`, `NotificationFanoutRun`
 4. Event reporting and moderation review:
-   `EventReport`, `EventReportTarget`, `EventReportEvidence`, `EventReportCase`, `EventReportSignal`, `EventReportDecision`, `EventReportDecisionExecution`, `EventReportExternalLink`
-5. Classification/lookups:
-   `EventType`, `EventStatus`, `VisibilityType`, `EventFormat`, `RegistrationMode`, `Category`, `Tag`, `Language`, `Madhab`, `AudienceAge`, `AudienceGender`
-6. Federation:
+   `EventReport`, `EventReportTarget`, `EventReportEvidence`, `EventReportCase`, `EventReportSignal`, `EventReportDecision`, `EventReportDecisionExecution`, `EventReportExternalLink`, `EventModerationRecord`, `ActorModerationRecord`, `AtprotoIdentityModerationRecord`
+5. Privacy erasure saga & compliance:
+   `PrivacyErasureIntent`, `PrivacyErasureSaga`, `PrivacyErasureProviderWork`, `PrivacyErasureReplayCheckpoint`, `PrivacyErasureCounter`
+6. Web push & messaging outbox:
+   `WebPushSubscription`, `WebPushDispatchOutbox`, `IncomingWebhookEffectOutbox`, `IncomingWebhookMessage`, `IntegrationSyncOutbox`, `EmailDispatchOutbox`
+7. Managed provider & provisioning:
+   `ManagedControlPlaneRegistration`, `ManagedTenantProvisioningOperation`, `ExternalBinding`
+8. Classification/lookups:
+   `EventType`, `EventStatus`, `VisibilityType`, `EventFormat`, `RegistrationMode`, `TicketCatalogStatus`, `TicketPricingMode`, `Category`, `Tag`, `Language`, `Madhab`, `AudienceAge`, `AudienceGender`
+9. Federation:
    `AtprotoRecord`, `IndexedDid`, `SyncState`, `ActorKeyStore`
-7. Settings and governance:
+10. Settings and governance:
    `SystemSetting`, `AppSetting`, `ConfigurationChangeLog`
-8. Module governance:
+11. Module governance:
    `ModuleDefinition`, `TenantCapability`, plus event aspect entities
 
 ## Normalized Lookup Families
@@ -49,6 +55,12 @@ Several previously enum-shaped persistence fields are now modeled as lookup/refe
 | `EventParticipationConfiguration.HandlingMode` | `ParticipationHandlingModeId` | `ParticipationHandlingMode` / `participation_handling_modes` |
 | `EventParticipationConfiguration.AdvanceObligation` | `AdvanceRegistrationObligationId` | `AdvanceRegistrationObligation` / `advance_registration_obligations` |
 | `EventParticipationConfiguration.IdentityAccess` | `IdentityAccessModeId` | `IdentityAccessMode` / `identity_access_modes` |
+| `EventTicketCatalogVersion.Status` | `TicketCatalogStatusId` | `TicketCatalogStatus` / `ticket_catalog_statuses` |
+| `EventTicketType.PricingMode` | `TicketPricingModeId` | `TicketPricingMode` / `ticket_pricing_modes` |
+| `TicketTypeEntitlement.ScopeType` | `EntitlementScopeTypeId` | `EntitlementScopeType` / `entitlement_scope_types` |
+| `TicketTypeEntitlement.SelectionRule` | `EntitlementSelectionRuleId` | `EntitlementSelectionRule` / `entitlement_selection_rules` |
+| `EventCapacityPool.OversellPolicy` | `CapacityOversellPolicyId` | `CapacityOversellPolicy` / `capacity_oversell_policies` |
+| `EventParticipationConfiguration.ParticipantDataCollectionMode` | `ParticipantDataCollectionModeId` | `ParticipantDataCollectionMode` / `participant_data_collection_modes` |
 
 API DTOs expose lookup primitives (`*Id`, `*Code`, `*Name`) rather than domain enum values. Repositories query on the normalized FK IDs. Handlers may convert IDs to internal enums only for business-rule switches while keeping persistence and public contracts normalized.
 
@@ -216,7 +228,22 @@ Consolidation into an existing same-kind Actor is stricter. The signed bootstrap
 
 The serializable onboarding transaction moves active operational references for the identity, Events, EventSeries, session speakers, and tenant-local subscriptions. It records one immutable `ActorMerge` with the identity ID and a bounded SHA-256 DID digest, then retires the source Actor. Consent, reports, organizer claims, notifications, moderation records, exports, canonical records, and other historical evidence remain attached to the source. Prepared encrypted OAuth-session persistence commits in the same retry attempt; JWT issuance occurs only after commit.
 
-### 12) Actor Subscriptions And Notification Fanout
+### 12) Four-Level Actor And Event Moderation
+
+Moderation is split by authority and effect:
+
+| Level | State and effect | Authority |
+|---|---|---|
+| Global Actor | `Actor.IsSuspended` blocks the represented subject across the instance. | Instance administrator only. |
+| Exact ATProto credential | `AtprotoIdentity.IsSuspended` blocks that exact DID credential globally without suspending the Actor. Reinstatement preserves the identity's independent `IsActive` value. | Instance administrator only. |
+| Tenant participation | `TenantUser`, `OrganizationTenant`, and `GroupTenant` hold tenant-local status, visibility, suspension, approval, organizer eligibility, and import policy. | Tenant authority in that tenant only. |
+| Event content | Event moderation changes the tenant-local Event lifecycle and public availability. | Event moderation policy in scope. |
+
+Actor and identity suspend or reinstate transitions append immutable `ActorModerationRecord` or `AtprotoIdentityModerationRecord` rows only when state changes. A retry requesting the current state succeeds without adding another record or persisting another transition.
+
+Event creation eligibility and public visibility are separate rules. Creation requires an active Actor plus an active local `TenantUser`, or an approved, organizer-eligible, unsuspended Organization or Group participation. Public visibility requires a published, public, non-deleted Event and active Actor. A local User Event also requires an active `TenantUser`. A local Organization or Group Event requires approved, visible, unsuspended participation, but does not require organizer eligibility after creation. Outbound-owned ATProto records stay on this local branch. Inbound federated Events instead require a non-tombstoned record, its current visible tenant presentation, and an exact active, unsuspended, non-deleted DID identity owned by the Event Actor.
+
+### 13) Actor Subscriptions And Notification Fanout
 
 `ActorSubscription` is the canonical durable relationship for user subscriptions to subscribable actors. V1 supports organization and group target actors only. The subscription stores the active tenant-local subscriber (`SubscriberTenantUserId`), denormalized global `SubscriberUserId` for notification delivery, target actor, target actor type, subscription status, notification level, audit fields, soft-delete fields, and a concurrency stamp.
 

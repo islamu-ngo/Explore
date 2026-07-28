@@ -322,6 +322,14 @@ Inbound observation creates one global `ExternalUnclassified` Actor per exact DI
 
 An explicit canonical Actor target is not authorized by DID verification alone. The request carries a signed canonical Actor ID and expected concurrency stamp, and the authenticated User must already be an active administrator of the matching approved OrganizationTenant or GroupTenant in the current tenant. Same-kind consolidation moves active operational references, writes immutable `ActorMerge` evidence using a bounded DID digest, and retires the external source. Cross-kind, User-owned, stale, suspended, deleted, unauthorized, or inferred matches fail closed.
 
+### Public projection and outbound compensation
+
+Inbound event projections use the current tenant presentation, record source version, record tombstone, Event visibility and lifecycle, active Actor, and exact active DID identity as one base gate. Public Draft, Cancelled, and Completed imported projections remain visible. Published imported projections are deduplicated to the local Event branch. Moderated, Archived, deleted, non-public, stale-presentation, tombstoned, Actor-suspended, and identity-ineligible projections are hidden. Exact source redirects use the same visible projection gate, so a hidden record cannot retain a public source redirect.
+
+Outbound publication checks the exact active DID identity at planning and again immediately before delivery. An ineligible Create with no grounded remote mutation is skipped. A grounded Update that becomes ineligible is converted to a fenced Delete. Delete delivery requires the original tenant, user, DID, PDS session, source version, owned record, collection, record key, and, when present, CID to still match. Once those fences pass, a Delete may compensate for later Actor, identity, participation, Event, or payload ineligibility. In-flight Create compensation waits beyond the predecessor retry or processing lease safety window. RSVP planning and delivery retain their existing behavior.
+
+Public Event eligibility differs by record ownership. Outbound-owned records remain local and use active local User or visible approved Organization or Group participation. Inbound records require the current visible tenant presentation, a non-tombstoned canonical record, and the exact active, unsuspended, non-deleted DID identity owned by the Event Actor. Discovery and detail caches are invalidated through both HybridCache tags and output-cache tags after global moderation changes.
+
 ## Handling Nullable DID (`did_status`)
 
 The key insight is that DID creation is **async**. Here's how to handle it:
