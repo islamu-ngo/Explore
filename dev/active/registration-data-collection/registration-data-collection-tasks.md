@@ -3,13 +3,13 @@
 
 # Registration Data Collection & Participation Platform — Task Checklist
 
-Last Updated: 2026-07-27 Europe/Brussels
+Last Updated: 2026-07-28 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Implementation in progress — Phase 1 source through Blazor is implemented; persistence migration ordering and native Cerbos verification remain externally blocked
-- **Completed:** 9/88 implementation tasks (phase verification tracked separately)
-- **Current priority:** Preserve actor-lifecycle migration ordering, run native Cerbos verification when the pinned CLI is available, then start migration-independent Phase 2 source work
-- **Next recommended slice:** Begin Task 2.1 domain modeling without scaffolding a migration; keep Phase 1 persistence and Cerbos gates explicit
+- **Overall status:** Blocked in Phase 2. Tasks 2.1 through 2.5 are source/contract complete with focused checks green, but migration rollout and full phase verification are not complete
+- **Completed:** 14/88 implementation tasks (phase verification tracked separately)
+- **Current priority:** Resolve participation migration ownership/order without touching the contaminated lookup migration, then clear external phase-gate failures
+- **Next recommended slice:** External owner generates the dedicated ordered participation migration; keep Phase 3 blocked until Phase 2 closes
 
 ## Implementation Maintenance Rules
 - Read the full workstream once at initial implementation start; on resume, read context/tasks first and only relevant plan sections.
@@ -22,7 +22,8 @@ Last Updated: 2026-07-27 Europe/Brussels
 - Update the plan only when scope, architecture, sequencing, acceptance criteria, risk, or validation strategy changes.
 - Do not run build/tests after individual tasks; verify once at phase end.
 - Do not start the app, browser, Docker, Aspire, Playwright, Chrome DevTools MCP, or live services for verification.
-- ✅ **Migration ordering resolved:** the three privacy-erasure-owned generated init lanes exist. Registration may add only later generated additive migrations after each owning phase's model/configuration/seeder work; never regenerate or rewrite the baseline.
+- ✅ **Migration baseline verified:** the three privacy-erasure-owned generated init lanes exist and must not be regenerated or rewritten. Dedicated participation migration ownership/order remains blocked by the standing gate below.
+- ⚠️ **Participation migration gate:** no ordered dedicated participation migration exists. `20260727174857_EnforceLookupRelationshipUniqueness` is externally owned and contaminated by participation schema plus legacy `ExternalRegistrationUrl`/`IsRegistrationRequired` removal state. Do not edit or stage its migration, designer, or snapshot in this workstream.
 - ⚠️ **Standing gate — NO Hi.Events code copy (plan §4.13, D19):** ISLAMU's CLA enables dual-licensing; copying any AGPLv3 code/snippet/SQL/asset from the Hi.Events repository is forbidden. Clean-room implementation from `hi-events-report.md` + this plan only; never open the Hi.Events repo while coding. The report's §10 code-reuse permission is overridden.
 
 ## Phase 0: Governance, ADRs, And Contract Intent ⚠️ IMPLEMENTATION COMPLETE / EXTERNAL TEST BLOCKER
@@ -40,7 +41,7 @@ Last Updated: 2026-07-27 Europe/Brussels
   - **Effort:** M — **Dependencies:** 0.1, 0.2
 - [x] **0.4 Resolve migration-baseline ordering (erasure workstream)**
   - **Files:** context file (this dir); observe `src/Explore.Persistence/Migrations/`
-  - **Acceptance:** Ordering decision + first-allowed-migration point recorded in context Key Decisions; blocker updated
+  - **Acceptance:** Baseline lane order recorded; later registration migrations require explicit owner/order before generation; blocker updated
   - **Effort:** S — **Dependencies:** none
 
 ### Phase 0 Verification — RUN ONCE AFTER ALL PHASE TASKS
@@ -86,23 +87,25 @@ Last Updated: 2026-07-27 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet` — 0 errors; pre-existing warnings remain
 - [x] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet` — 473/473 passed during Phase 1 domain verification
 
-## Phase 2: Typed Participation Configuration And HAL Actions 🟡 IN PROGRESS
-- [ ] **2.1 `EventParticipationConfiguration` + three mode lookups** — new domain files; delete `IsRegistrationRequired` — **Acceptance:** §5 scenario table constructible; illegal combos typed-rejected — **Effort:** M — **Dependencies:** Phase 1
-  - **Progress:** normalized Domain configuration, stable enums, typed validation failures, and legacy Event property deletion are implemented; final Phase 2 verification remains pending.
-- [ ] **2.2 Persistence + seeding for participation lookups** — configurations/seeder; migration per gate — **Acceptance:** stable IDs documented; parity green — **Effort:** M — **Dependencies:** 2.1
-  - **Progress:** EF mappings, query filters/includes, repository/DI, stable lookup repair seeds, explicit seed/federation writers, and 4/4 repository integration tests are green; generated migration remains deferred to the shared ordering owner.
-- [ ] **2.3 Application + API — configure-participation + action synthesis** — `Features/EventParticipation/**` (new); `EventLinkPolicy` (existing); contract regen — **Acceptance:** per-mode link emission matrix tested; accurate external labels — **Effort:** L — **Dependencies:** 2.2
-  - **Progress:** explicit participation CQRS, configure endpoint, event-update authorization, per-mode HAL synthesis, MCP cutover, generated OpenAPI/inventory/NSwag, and accurate pre/post-verification external labels are implemented; focused API/HAL tests pass 15/15.
-- [ ] **2.4 Blazor — Studio participation configuration + public CTA rendering** — `/studio/events/{eventId}/registration`, `StudioEventNavigation.razor`, Studio-owned `ParticipationConfigurationEditor.razor` (new); public detail CTA refactor — **Acceptance:** Studio route/link absent without `configure-participation`; attendee CTA relations never authorize Studio; no public CTA without its link; external CTA never claims ISLAMU registration — **Effort:** M — **Dependencies:** 2.3
-  - **Progress:** Studio route/navigation fail closed on `configure-participation`; the accessible typed editor preserves configuration concurrency; detail/list/preview/sidebar CTAs use only `start-registration`/`external-registration`; Blazor Client Release builds with zero errors. bUnit execution is blocked by unrelated `ProgramSectionsDialogTests` compile errors.
-- [ ] **2.5 Aggregate outbound-engagement counter** — engagement command + bounded metrics in `BusinessMetrics.cs` — **Acceptance:** no identity captured; bounded labels; click never named registration — **Effort:** S — **Dependencies:** 2.3
-  - **Progress:** the existing stored-action redirect records `explore.event_public_actions.engagements` with only bounded action-kind/surface/outcome labels; focused tests pass 2/2.
+## Phase 2: Typed Participation Configuration And HAL Actions ⚠️ SOURCE COMPLETE / MIGRATION AND PHASE GATES BLOCKED
+- [x] **2.1 `EventParticipationConfiguration` + three mode lookups** — new domain files; delete `IsRegistrationRequired` — **Acceptance:** §5 scenario table constructible; illegal combos typed-rejected; `GuestRecoveryPolicyEnum` is an exact string enum contract — **Effort:** M — **Dependencies:** Phase 1
+  - **Evidence:** normalized Domain configuration, stable enums, typed validation failures, and legacy Event property deletion are implemented; Domain focused checks pass 53/53.
+- [x] **2.2 Persistence + seeding for participation lookups, source portion** — configurations/seeder/repository complete; migration rollout tracked separately below — **Acceptance:** stable IDs documented; parity green — **Effort:** M — **Dependencies:** 2.1
+  - **Evidence:** EF mappings, query filters/includes, repository/DI, stable lookup repair seeds, explicit seed/federation writers, and Persistence integration checks pass 4/4.
+  - [ ] **Migration rollout:** external owner generates the ordered dedicated participation migration. Do not edit or stage `20260727174857_EnforceLookupRelationshipUniqueness`, its designer, or the shared snapshot here.
+- [x] **2.3 Application + API, configure-participation + action synthesis** — `Features/EventParticipation/**`; `EventLinkPolicy`; generated contracts — **Acceptance:** per-mode link matrix, exact authority boundary, output filtering, and labels tested — **Effort:** L — **Dependencies:** 2.2 source
+  - **Evidence:** `ManageRegistrations` authorizes verified `OrganizerActor` controllers or explicit `EventRegistrationManage` assignments. Community reporters receive no implicit `EventOwner`. HAL distinguishes `start-registration`, `sign-in-to-register`, and `external-registration`. `EventDto.PublicActions` and ATProto registration URIs use `EventAuthorityRules` filtering. Focused Application 15/15, fallback/Cerbos service 119/119, participation controller 10/10, HAL 20/20, OpenAPI parity 11/11, and architecture contract 10/10 with one unrelated skip pass.
+- [x] **2.4 Blazor, Studio participation configuration + public CTA rendering source/contract** — `/studio/events/{eventId}/registration`, `StudioEventNavigation.razor`, `ParticipationConfigurationEditor.razor`; public CTA refactor — **Acceptance:** Studio absent without `configure-participation`; attendee CTA relations never authorize Studio; public CTA requires its exact HAL relation; external CTA never claims ISLAMU registration — **Effort:** M — **Dependencies:** 2.3
+  - **Evidence:** Studio route/navigation fail closed on `configure-participation`; detail/list/preview/sidebar consume `start-registration`, `sign-in-to-register`, and `external-registration`; Blazor Client Release builds with zero errors.
+  - [ ] **bUnit execution:** blocked by 17 externally owned `ProgramSectionsDialogTests.cs` compiler errors. Do not fix ProgramSections in this workstream.
+- [x] **2.5 Aggregate outbound-engagement counter** — stored-action redirect + bounded metrics in `BusinessMetrics.cs` — **Acceptance:** no identity captured; bounded labels; click never named registration — **Effort:** S — **Dependencies:** 2.3
+  - **Evidence:** `explore.event_public_actions.engagements` uses only bounded action-kind/surface/outcome labels; focused checks pass 2/2.
 
 ### Phase 2 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [ ] `dotnet build --configuration Release --verbosity quiet` — blocked by 17 externally owned `ProgramSectionsDialogTests.cs` compiler errors; `Explore.API` and `Explore.Blazor.Client` project builds pass
+- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` — focused `EventSessionSpeakerControllerTests` rerun: 4/6 pass; external failures are `CollectionEditLink_UsesOnlyRelationshipIdForCanonicalPatchRoute` and `Update_WhenIfMatchIsMissing_ReturnsValidationProblemDetails`
 
-## Phase 3: Guest Transaction Security Foundation ⏳ NOT STARTED
+## Phase 3: Guest Transaction Security Foundation ⛔ BLOCKED BY PHASE 2 MIGRATION/VERIFICATION
 - [ ] **3.1 `EndpointClass.PublicTransactional` + enforcement** — `EndpointClass.cs`, transformer, arch tests (existing) + `PublicTransactionalGovernanceTests.cs` (new); GOVERNANCE/QUICK_REFERENCE updates — **Acceptance:** failing-first governance test then green — **Effort:** M — **Dependencies:** ADR-017
 - [ ] **3.2 `public_transactional` rate policy + antiforgery decision** — `Program.cs` rate section; SECURITY-MODEL doc — **Acceptance:** policy registered/documented/Testing-disabled; antiforgery decision in context — **Effort:** M — **Dependencies:** 3.1
 - [ ] **3.3 Guest capability-token primitives** — `IGuestCapabilityTokenService` (new contract), Infrastructure impl, `CapabilityTokenHash` VO — **Acceptance:** hash-only storage; constant-time compare; token revealed exactly once — **Effort:** M — **Dependencies:** 3.1
@@ -247,6 +250,8 @@ Last Updated: 2026-07-27 Europe/Brussels
 - [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
 
 ## Remaining / Deferred Work
+- **Phase 2 participation migration rollout** — no ordered dedicated migration exists. External migration owner must resolve order and generate it. `20260727174857_EnforceLookupRelationshipUniqueness` and its generated artifacts are forbidden to edit or stage in this workstream.
+- **External Phase 2 verification failures** — ProgramSections owner fixes the 17 compiler errors; EventSessionSpeaker owner fixes the two exact API tests named above; pinned native Cerbos CLI remains unavailable; Docker/Testcontainers remains unavailable for broader persistence execution.
 - **Payment integration** — deliberately out of scope; unblocked once orders stop at `AwaitingPayment` (Phase 5). Trigger: separate payment consultation (consultation Report 2 §32 Phase 8). Design record via Task 14.8 (Hi.Events §7.3/§7.5 idempotency/reconciliation lessons). Owner: future workstream.
 - **`AdmissionTicket` / QR / check-in / transfers / ticket lookup & self-service** — documented future entities (§16.6; design records via Task 14.8 citing `hi-events-report.md` §5.5/§5.6/§7.10/§7.11); trigger: post-payment or free-event check-in demand. Hard rules already fixed: admission credential ≠ display ID; transfer rotates/revokes; scanner access is authenticated or a scoped expiring capability.
 - **Promo codes / affiliates / invoices / taxes & fees / general-product add-ons / waitlist offers** — Hi.Events commercial breadth deliberately deferred (D19 scope discipline); inventory recorded in Task 14.8 only.
