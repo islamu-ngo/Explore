@@ -237,12 +237,13 @@ Explore.API/
 ├── Controllers/                   — API controllers (one per entity/aggregate)
 │   ├── ExploreControllerBase.cs   — Abstract base with IUserContext (CurrentUserId, RequiredUserId)
 │   ├── EventController.cs         — Event CRUD with specification pattern filtering via [FromQuery] EventFilterRequest
+│   ├── EventTicketingController.cs — Event-scoped ticket catalog versions, ticket types, capacity pools
 │   ├── OrganizationController.cs  — Organization endpoints
 │   ├── InstanceOnboardingController.cs — Instance admin bootstrap
 │   ├── TenantOnboardingController.cs   — Tenant setup wizard
 │   ├── ControlPlaneController.cs — Multi-tenant instance console API (`[RequireMultiTenant]`)
 │   ├── FooterController.cs         — Footer link groups, links, settings, governance (11 endpoints)
-│   └── [40+ more controllers]     — Inherit ExploreControllerBase; GET=AllowAnonymous, POST/PUT/DELETE=Authorize
+│   └── [100+ controllers]         — Inherit ExploreControllerBase; GET=AllowAnonymous, POST/PUT/DELETE=Authorize
 ├── Models/                        — API transport models (not DTOs)
 │   └── EventFilterRequest.cs      — 42-property filter model for [FromQuery] binding
 ├── Services/                      — API-layer services
@@ -257,9 +258,9 @@ Explore.API/
 │   └── PreferHeaderMiddleware.cs      — RFC 7240 Prefer header (return=minimal strips _links)
 ├── Extensions/                    — DI and configuration extensions (extracted from Program.cs)
 │   ├── AuthenticationExtensions.cs    — Multi-auth (JWT Bearer + API Key) with PolicyScheme dispatch
-│   ├── CachingExtensions.cs           — OutputCache (5 policies) + HybridCache (L1+L2) configuration
+│   ├── CachingExtensions.cs           — OutputCache (8 policies) + HybridCache (L1+L2) configuration
 │   ├── CorsExtensions.cs             — 5 CORS policies (InternalApp, ExternalApp, InternalWeb, ExternalWeb, Dev)
-│   ├── RateLimitingExtensions.cs      — 7-tier rate limiting (global, authenticated, write, public ingestion, setup secret, analytics relay, AI assistant)
+│   ├── RateLimitingExtensions.cs      — 8-tier rate limiting (global, authenticated, write, public ingestion, setup secret, analytics relay, AI assistant, EventOpenGraphImage)
 │   ├── RequestTimeoutExtensions.cs    — 3-tier timeouts (default, lookup, complex)
 │   ├── ApiVersioningExtensions.cs     — Media-type versioning (Accept header v parameter)
 │   ├── HateoasServiceExtensions.cs    — HATEOAS DI registration (assemblers, policies, evaluator)
@@ -279,15 +280,19 @@ Explore.API/
 │   ├── HateoasAuthorizationEvaluator.cs — Batch evaluates link permissions (fail-closed)
 │   ├── HateoasConstants.cs            — Link relation names, media types
 │   ├── RouteNames.cs                  — 100+ named route constants
-│   ├── Assemblers/                    — 19 entity-specific assemblers (EventAssembler, OrganizationAssembler, etc.)
-│   └── Policies/                      — 19 entity-specific link policies (EventLinkPolicy, etc.)
+│   ├── Assemblers/                    — Entity-specific assemblers (EventAssembler, OrganizationAssembler, etc.)
+│   └── Policies/                      — Entity-specific link policies (EventLinkPolicy, etc.)
 ├── OpenApi/                       — Scalar/OpenAPI customization and build-time contract transformers
 │   ├── HalDtoSchemaTransformer.cs — Native OpenAPI HAL schema shaping
 │   ├── EndpointClassificationTransformer.cs — Emits endpoint tenant-mode/admin metadata
 │   └── HalSchemaFilter.cs         — Swashbuckle transition HAL schema shaping
 ├── BackgroundServices/            — Hosted background workers
 │   ├── OutboxProcessor.cs         — Polls outbox_messages, dispatches events, retry + dead-letter
-│   └── PdsSyncWorker.cs           — ATProto PDS synchronization (outbox pattern, exponential backoff)
+│   ├── PdsSyncWorker.cs           — ATProto PDS synchronization (outbox pattern, exponential backoff)
+│   ├── WebPushDispatchWorker.cs   — Background VAPID web push notification dispatcher
+│   ├── PrivacyErasureSagaProcessor.cs — Background account erasure saga processor
+│   ├── StorageReconciliationWorker.cs — Periodic S3 storage object reconciliation worker
+│   └── WebhookDeliveryProcessor.cs — Outgoing product webhooks delivery worker
 ├── Static/                        — Static file serving configuration
 ├── schemas/openapi.json           — Generated OpenAPI specification
 └── Properties/
@@ -302,15 +307,39 @@ Server-side BFF host for the public Blazor application. Handles SSR/interactive 
 
 ```
 Explore.Blazor/
-├── Program.cs                     — Server-side host configuration, OIDC auth setup, BFF proxy
+├── Program.cs                     — Server-side host configuration, OIDC/OAuth setup, BFF proxy
+├── Program.Partial.cs             — Partial program class definition
+├── Authentication/                — Custom authentication handlers and options
+│   ├── AtprotoAuthenticationHandler.cs — AT Protocol OAuth authentication handler
+│   └── AtprotoAuthenticationOptions.cs — AT Protocol auth options
 ├── Components/
 │   ├── App.razor                  — Root component (HTML head, body, Blazor script tags)
-│   └── Routes.razor               — Router configuration with render modes
 │   └── ControlPlane/              — Embedded admin-host shell using generated client contracts
-├── Extensions/
-│   └── ConfigurationExtension.cs  — Configuration helpers for Blazor Server
-├── Services/
-│   └── CircuitAccessTokenService.cs — Captures OIDC tokens for circuit-lifetime use
+│       ├── EmbeddedControlPlaneLayout.razor
+│       └── EmbeddedControlPlaneRoutes.razor
+├── Extensions/                    — Modularized BFF endpoint mapping & infrastructure extensions
+│   ├── AtprotoOAuthEndpointExtensions.cs — Maps /oauth/client-metadata.json and /oauth/jwks.json
+│   ├── BffAuthEndpoints.cs        — Maps /auth/* and /bff/auth/* authentication routes
+│   ├── BffManifestEndpoints.cs    — Maps /manifest.webmanifest
+│   ├── BffPreferenceEndpoints.cs  — Maps /bff/me and /bff/appearance/* user preferences
+│   ├── BffSetupSecretEndpoints.cs — Maps /bff/setup-secret endpoints
+│   ├── BffStorageEndpoints.cs     — Maps /bff/storage/upload-session and upload-proxy
+│   ├── BffSupportAccessEndpoints.cs — Maps /bff/support-access session management
+│   ├── AntiforgeryEndpointExtensions.cs — ValidateAntiforgery endpoint filter
+│   ├── HttpClientExtensions.cs    — Forwarding handlers (tokens, tenant, support access, setup secret)
+│   └── YarpProxyExtensions.cs     — Reverse proxy config and request transformations
+├── Services/                      — BFF server-side services
+│   ├── Auth/                      — OAuth state stores, identity cache, readiness, diagnostics
+│   │   ├── ApiBackedOAuthSessionStore.cs
+│   │   ├── AtprotoClientKeyProvider.cs
+│   │   ├── AtprotoIdentityCache.cs
+│   │   ├── BffProviderReadinessService.cs
+│   │   └── BffSessionRefreshService.cs
+│   ├── Preferences/               — User appearance and theme preferences services
+│   ├── DynamicAuthSchemeManager.cs — Dynamic runtime authentication scheme manager
+│   ├── SetupSecretResolver.cs     — Trusted setup secret resolution
+│   ├── StorageUploadSessionStore.cs — Distributed cache upload session store
+│   └── SupportAccessSessionStore.cs — Server-backed support access session store
 └── wwwroot/                       — Static assets (CSS, JS, images)
 ```
 
@@ -325,80 +354,39 @@ Explore.Blazor.Client/
 ├── Program.cs                     — WASM host builder, service registration, HttpClient setup
 ├── Routes.razor                   — Route map, including embedded control-plane routes
 ├── Pages/                         — Routable page components
-│   ├── Event/                     — Event pages
-│   │   ├── EventList.razor/.cs    — Event listing/discovery page
-│   │   ├── EventDetail.razor/.cs  — Single event detail view
-│   │   ├── CreateEvent.razor/.cs  — Event creation wizard
-│   │   └── MyEvents.razor/.cs     — User's own events
-│   ├── Organization/              — Organization pages
-│   │   ├── OrganizationDetails.razor/.cs — Organization detail view
-│   │   ├── CreateOrganization.razor/.cs  — Organization creation
-│   │   └── OrganizationProfile.razor/.cs — Organization profile management
+│   ├── Events/                    — Event discovery, listing, detail, creation pages
+│   ├── Organizations/             — Organization pages (details, profile, members)
 │   ├── Admin/                     — Admin pages
-│   │   ├── LookupTables.razor/.cs — Admin panel for all lookup tables
-│   │   ├── Instance/              — Instance-level settings and multi-tenant console host pages
-│   │   └── Tenant/                — Tenant-level admin settings
+│   │   └── Instance/              — Instance settings & console host pages
+│   │       └── Components/        — Instance admin section components (Ai, AuthProvider, Governance, Storage, SupportAccess)
 │   ├── Auth/                      — Authentication pages
-│   ├── Landing/                   — Public landing page
-│   ├── Onboarding/                — Instance/tenant onboarding wizard pages
-│   └── User/                      — User profile and settings
-├── Services/                      — API proxy services (one per domain area)
-│   ├── EventService.cs            — Event API calls
-│   ├── OrganizationService.cs     — Organization API calls
-│   ├── FooterAdminService.cs      — Footer link groups, links, settings admin API calls
-│   ├── PublicExperienceService.cs — Public-facing discovery + footer config API calls
-│   ├── BffClient.cs               — BFF HTTP client with XSRF token handling
-│   ├── AuthStateService.cs        — Centralized authentication state
-│   ├── LookupCacheService.cs      — Client-side cache for lookup table data
-│   ├── ImageStorageService.cs     — S3 presigned URL upload handling
-│   ├── DialogOptionsFactory.cs    — Static dialog preset factory (Small, Medium, Confirmation, Editor)
-│   ├── Accessibility/             — Accessibility service implementations
-│   │   ├── AccessibilityAnnouncerService.cs — ARIA live region announcements via JS interop
-│   │   └── AccessibilityFocusService.cs     — Focus management via JS interop
-│   └── AppearanceThemeService.cs  — WCAG AA compliant color palette management
+│   ├── Landing/                   — Public discovery landing page
+│   ├── Onboarding/                — Instance and tenant onboarding wizard pages
+│   └── Studio/                    — Studio event workspace pages
+├── Services/                      — Typed application and API services
+│   ├── AdminService.cs            — Instance & tenant administrative calls
+│   ├── InstanceOnboardingService.cs — Instance onboarding wizard service
+│   ├── EventService.cs            — Event API & management operations
+│   ├── OrganizationService.cs     — Organization API operations
+│   ├── AtprotoFederationSettingsService.cs — AT Protocol federation setting management
+│   ├── FooterAdminService.cs      — Footer link groups and settings admin calls
+│   ├── PublicExperienceService.cs — Public discovery and settings cache
+│   ├── SupportAccessClientService.cs — Support access session client
+│   ├── LocalizationAdminService.cs — Localization bundle and secret administration
+│   ├── Web Push & Interop/        — WebPushBrowserInterop, AnalyticsInterop, CookieConsentInterop
+│   ├── Accessibility/             — AccessibilityAnnouncerService, AccessibilityFocusService
+│   ├── Docking/                   — DockLayoutState, ServerBackedDockLayoutPersistence
+│   └── Shell/                     — UiShellState, ShellPreferencesService
 ├── Components/                    — Reusable UI components
-│   ├── Common/                    — MudBlazor wrapper components (consistent defaults)
-│   │   ├── AppButton.razor/.css   — Filled/Primary/Elevation=0 button wrapper
-│   │   ├── AppCard.razor/.css     — Elevation=0/border card wrapper
-│   │   ├── AppTextField.razor/.css— Outlined text field wrapper (generic <T>)
-│   │   ├── AppIconButton.razor/.css — Icon button wrapper
-│   │   └── AppDialogShell.razor/.css — Dialog shell (header/body/actions BEM)
-│   ├── ImageUpload.razor          — Image upload with S3 presigned URLs
-│   ├── S3Image.razor              — Image display from S3 storage
-│   ├── ReviewDialog.razor         — Generic review/rating dialog
-│   └── Loading.razor              — Loading spinner component
-├── Layout/                        — Layout components
-│   ├── MainLayout.razor/.cs       — Main page layout (skip-link, landmarks, ARIA live regions)
-│   ├── NavMenu.razor/.cs          — Navigation menu component
-│   └── Footer.razor               — Site footer (template-based, tenant-configurable)
-├── Shared/                        — Shared editor components
-│   └── AppearanceEditor.razor/.css — Appearance editor (color picker, effects, image URL)
+│   ├── Common/                    — MudBlazor wrapper components (AppButton, AppCard, AppTextField, etc.)
+│   ├── ControlPlane/              — Embedded control plane UI primitives
+│   ├── Discovery/                 — Public home discovery components
+│   └── Shell/                     — Shell workspace rail, dock panels, and navigation
+├── Layout/                        — Layout components (MainLayout, SetupLayout, SettingsLayout)
 ├── Clients/                       — API client boundary
-│   ├── EventApiClient.cs          — Hand-written interface/extensions around generated client behavior
-│   └── EventApiClient.g.cs        — NSwag-generated client code from OpenAPI spec
-├── Models/                        — Client-side models
-│   ├── UserInfo.cs                — Deserialized user info from BFF
-│   ├── TenantContext.cs           — Client-side tenant state
-│   └── Responses/
-│       ├── BaseCommandResponse.cs — Client-side mirror of API response
-│       └── ServiceResult.cs       — Service operation result wrapper
-├── Contracts/Services/Accessibility/ — Accessibility service interfaces
-│   ├── IAccessibilityAnnouncerService.cs — ARIA live region announcement contract
-│   └── IAccessibilityFocusService.cs     — Focus management contract
-├── Helpers/                       — UI helper utilities
-│   ├── AppearanceStyleBuilder.cs  — Builds inline CSS for actor/event appearance (overlays, blur, gradient)
-│   ├── EventAppearanceMetadataHelper.cs     — Event display metadata
-│   └── OrganizationAppearanceMetadataHelper.cs — Organization display metadata
-├── Validators/                    — Client-side FluentValidation validators
-│   └── CreateEventDtoValidator.cs — Client-side event creation validation
-├── Configuration/                 — Client configuration models
-│   └── TenantConfiguration.cs     — Tenant config for WASM
-├── Constants/                     — UI constants
-├── Routing/
-│   └── Guards/                    — Route guard implementations
-│       ├── AuthenticatedRouteGuard.cs — Requires authentication
-│       ├── AdminRouteGuard.cs     — Requires admin role
-│       └── MultiTenantControlPlaneRouteGuard.cs — Suppresses Instance Console routes outside multi-tenant BFF status
+│   └── EventApiClient.g.cs        — NSwag-generated API client from OpenAPI specification
+├── Contracts/                     — Typed service interfaces
+├── Helpers/                       — UI helper utilities (HalResourceExtensions, AppearanceStyleBuilder)
 └── wwwroot/                       — Static web assets
 ```
 

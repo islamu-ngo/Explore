@@ -156,6 +156,8 @@ Specialized outbox variants exist for specific subsystems:
 - `PolicyChangeOutbox` — authorization policy change propagation (SettingScope).
 - `EmailDispatchOutbox` — Basic Dispatch Mode email delivery state for registration confirmation and future lifecycle email workflows. PostgreSQL owns delivery state; TickerQ schedules drain execution; SMTP/RabbitMQ are transports only.
 - `IntegrationSyncOutbox` — durable external integration sync intent for Listmonk and future providers. Handlers enqueue provider/resource payload snapshots; background drains own external I/O and retry/dead-letter state.
+- `WebPushDispatchOutbox` — VAPID web push notification dispatch queue (Endpoint, P256dh, Auth, Retries).
+- `IncomingWebhookEffectOutbox` — provider incoming webhook effect reconciliation outbox for Coop callback repairs.
 
 ### Lifecycle email delivery architecture
 
@@ -179,6 +181,11 @@ See [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) for full entity model, configuration,
 | `CompositeOutboxMessageDispatcher` | Dispatch component used by `OutboxProcessor` to route internal notification fanout, moderation fanout, and report provider sync messages | Invoked per outbox message |
 | `EmailDispatchRabbitMqPointerPublisherService` | Optional RabbitMQ producer loop that publishes pointer-only messages for due `EmailDispatchOutbox` rows after durable storage exists | Configurable polling, default 5s |
 | `IntegrationSyncDrainService` | Claims due `IntegrationSyncOutbox` rows and dispatches Listmonk subscription synchronization through Infrastructure clients | Configurable polling/backoff |
+| `WebPushDispatchWorker` | Background queue processor for `WebPushDispatchOutbox` VAPID push notifications | Configurable polling (default 5s) |
+| `PrivacyErasureSagaProcessor` | Background saga worker processing account erasure steps (`DELETE /api/user`) across tenant subsystems | Configurable polling |
+| `StorageReconciliationWorker` | Dry-run-first storage reconciliation worker identifying orphaned/missing S3 storage objects | Periodic background loop |
+| `IdempotencyCleanupService` / `EmailDispatchRetentionCleanupService` / `AiRetentionCleanupService` | Purges expired idempotency records, old email logs, and AI conversation history per retention policies | Scheduled periodic cleanup |
+| `WebhookDeliveryProcessor` | Processes outgoing product webhooks to external endpoints (Local, Svix, Composite) | Configurable queue drain |
 
 These background services and scheduler triggers use optimistic locking or durable claim semantics for multi-worker safety and are availability-gated where dependent services are required.
 
