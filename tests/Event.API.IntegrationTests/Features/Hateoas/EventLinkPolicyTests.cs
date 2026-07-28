@@ -363,6 +363,69 @@ public sealed class EventLinkPolicyTests
     }
 
     [Test]
+    public async Task IneligibleManagementEvent_UsesManagementSelfAndOmitsPublicAffordances()
+    {
+        var dto = CreateEventDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            status: EventStatusEnum.Moderated,
+            statusName: "Moderated",
+            statusCode: "MODERATED");
+        dto.IsPubliclyEligible = false;
+        dto.IsManagementView = true;
+        dto.ParticipationConfiguration = new EventParticipationConfigurationDto
+        {
+            ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.PlatformManaged
+        };
+
+        var links = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        var self = links.Single(link => link.Rel == LinkRelations.Self);
+        await Assert.That(self.RouteName).IsEqualTo(RouteNames.GetEventManagementDetails);
+
+        foreach (var relation in new[]
+        {
+            LinkRelations.Collection,
+            LinkRelations.Sessions,
+            LinkRelations.Program,
+            LinkRelations.ProgramSummary,
+            LinkRelations.SessionGroups,
+            LinkRelations.PublicActions,
+            LinkRelations.EventReportOptions,
+            LinkRelations.ReportEvent,
+            LinkRelations.SuggestCorrection,
+            LinkRelations.ReportExternalLink,
+            LinkRelations.ClaimEvent,
+            LinkRelations.OrganizerClaims,
+            LinkRelations.StartRegistration,
+            LinkRelations.SignInToRegister,
+            LinkRelations.ExternalRegistration,
+            "actor",
+            "organizer-subscription",
+            "subscribe-organizer"
+        })
+        {
+            await Assert.That(links.Any(link => link.Rel == relation)).IsFalse();
+        }
+
+        foreach (var relation in new[]
+        {
+            LinkRelations.Edit,
+            LinkRelations.ModerationHistory,
+            LinkRelations.ModerationReports,
+            LinkRelations.ManagePublicActions,
+            LinkRelations.ConfigureParticipation,
+            "delete"
+        })
+        {
+            await Assert.That(links.Any(link => link.Rel == relation)).IsTrue();
+        }
+    }
+
+    [Test]
     public async Task ParticipationConfigurationLinks_UseModeSpecificAffordances()
     {
         var eventId = Guid.NewGuid();
@@ -526,8 +589,17 @@ public sealed class EventLinkPolicyTests
             ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.PlatformManaged
         };
         var platformLinks = policy.GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test"))).ToList();
-        await Assert.That(platformLinks.Single(link => link.Rel == LinkRelations.ManageTicketTypes).RouteName).IsEqualTo(RouteNames.GetEventTicketCatalogManagement);
-        await Assert.That(platformLinks.Single(link => link.Rel == LinkRelations.ManageCapacityPools).RouteName).IsEqualTo(RouteNames.GetEventTicketCatalogManagement);
+        foreach (var rel in new[] { LinkRelations.ManageTicketTypes, LinkRelations.ManageCapacityPools })
+        {
+            var link = platformLinks.Single(link => link.Rel == rel);
+            await Assert.That(link.RouteName).IsEqualTo(RouteNames.GetEventTicketCatalogManagement);
+            await Assert.That(link.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManageTickets);
+            await Assert.That(link.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
+            await Assert.That(link.PermissionResourceId).IsEqualTo(dto.Id.ToString());
+            await Assert.That(link.PermissionScope?.TenantId).IsEqualTo(dto.TenantId.ToString());
+            await Assert.That(link.PermissionResourceAttributes!["eventId"]).IsEqualTo(dto.Id.ToString());
+            await Assert.That(link.PermissionResourceAttributes["tenantId"]).IsEqualTo(dto.TenantId.ToString());
+        }
     }
 
     [Test]
@@ -644,6 +716,7 @@ public sealed class EventLinkPolicyTests
             EventStatusId = (int)status,
             EventStatusFullName = statusName,
             EventStatusMasterCode = statusCode,
+            IsPubliclyEligible = true,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityTypeFullName = "Public",
             VisibilityTypeMasterCode = "PUBLIC",

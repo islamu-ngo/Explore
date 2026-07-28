@@ -457,9 +457,6 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
             ResourceKinds.EventOrganizerClaim => TryGetGuidAttribute(resourceAttributes, "eventId", out var eventId)
                 ? await EnrichEventResourceAttributesAsync(eventId.ToString("D"), resourceAttributes, cancellationToken)
                 : resourceAttributes,
-            ResourceKinds.EventTicketType => TryGetGuidAttribute(resourceAttributes, "eventId", out var ticketEventId)
-                ? await EnrichEventResourceAttributesAsync(ticketEventId.ToString("D"), resourceAttributes, cancellationToken)
-                : resourceAttributes,
             ResourceKinds.EventSession => await EnrichEventSessionResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.EventRegistration => await EnrichEventRegistrationResourceAttributesAsync(resourceId, cancellationToken),
             ResourceKinds.OrganizationMember => await EnrichOrganizationMemberResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),

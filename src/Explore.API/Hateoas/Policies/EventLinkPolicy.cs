@@ -26,50 +26,50 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
     /// <inheritdoc />
     public IEnumerable<LinkDefinition> GetLinks(EventDto dto, ClaimsPrincipal? user)
     {
-        // Self link - always included
         yield return new LinkDefinition(
             LinkRelations.Self,
-            RouteNames.GetEventById,
+            dto.IsManagementView ? RouteNames.GetEventManagementDetails : RouteNames.GetEventById,
             new { id = dto.Id },
             "GET",
             "Event details");
 
-        // Collection link
-        yield return new LinkDefinition(
-            LinkRelations.Collection,
-            RouteNames.GetEvents,
-            null,
-            "GET",
-            "All events");
+        if (dto.IsPubliclyEligible)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.Collection,
+                RouteNames.GetEvents,
+                null,
+                "GET",
+                "All events");
 
-        // Sessions link - event has sessions
-        yield return new LinkDefinition(
-            LinkRelations.Sessions,
-            RouteNames.GetEventSessions,
-            new { eventId = dto.Id },
-            "GET",
-            $"Event sessions ({dto.SessionCount ?? 0})");
+            yield return new LinkDefinition(
+                LinkRelations.Sessions,
+                RouteNames.GetEventSessions,
+                new { eventId = dto.Id },
+                "GET",
+                $"Event sessions ({dto.SessionCount ?? 0})");
 
-        yield return new LinkDefinition(
-            LinkRelations.Program,
-            RouteNames.GetEventSessionGroupsByEvent,
-            new { eventId = dto.Id },
-            "GET",
-            "Event program");
+            yield return new LinkDefinition(
+                LinkRelations.Program,
+                RouteNames.GetEventSessionGroupsByEvent,
+                new { eventId = dto.Id },
+                "GET",
+                "Event program");
 
-        yield return new LinkDefinition(
-            LinkRelations.ProgramSummary,
-            RouteNames.GetEventProgramSummary,
-            new { id = dto.Id },
-            "GET",
-            "Program summary");
+            yield return new LinkDefinition(
+                LinkRelations.ProgramSummary,
+                RouteNames.GetEventProgramSummary,
+                new { id = dto.Id },
+                "GET",
+                "Program summary");
 
-        yield return new LinkDefinition(
-            LinkRelations.SessionGroups,
-            RouteNames.GetEventSessionGroupsByEvent,
-            new { eventId = dto.Id },
-            "GET",
-            "Program sections");
+            yield return new LinkDefinition(
+                LinkRelations.SessionGroups,
+                RouteNames.GetEventSessionGroupsByEvent,
+                new { eventId = dto.Id },
+                "GET",
+                "Program sections");
+        }
 
         var eventScopedResourceAttributes = new Dictionary<string, object>
         {
@@ -161,7 +161,8 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Events.ViewManagement, ResourceDescriptors.Event, dto);
 
-        if (dto.EventStatusId == (int)EventStatusEnum.Published
+        if (dto.IsPubliclyEligible
+            && dto.EventStatusId == (int)EventStatusEnum.Published
             && dto.VisibilityTypeId == (int)VisibilityTypeEnum.Public)
         {
             yield return new LinkDefinition(
@@ -244,28 +245,35 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
         if (dto.ParticipationConfiguration?.ParticipationHandlingModeId == (int)ParticipationHandlingModeEnum.PlatformManaged)
         {
             yield return new LinkDefinition(LinkRelations.ManageTicketTypes, RouteNames.GetEventTicketCatalogManagement, new { eventId = dto.Id }, HttpMethods.Get, "Manage ticket types", RequiresAuth: true)
-                .RequirePermission(AuthorizationActions.Events.ManageTickets, ResourceDescriptors.EventTicketTypeForEvent, dto);
+                .RequirePermission(AuthorizationActions.Events.ManageTickets, ResourceDescriptors.Event, dto);
             yield return new LinkDefinition(LinkRelations.ManageCapacityPools, RouteNames.GetEventTicketCatalogManagement, new { eventId = dto.Id }, HttpMethods.Get, "Manage capacity pools", RequiresAuth: true)
-                .RequirePermission(AuthorizationActions.Events.ManageTickets, ResourceDescriptors.EventTicketTypeForEvent, dto);
+                .RequirePermission(AuthorizationActions.Events.ManageTickets, ResourceDescriptors.Event, dto);
         }
 
-        yield return new LinkDefinition(
-            LinkRelations.OrganizerClaims,
-            RouteNames.GetEventOrganizerClaims,
-            new { eventId = dto.Id },
-            HttpMethods.Get,
-            "Organizer claims",
-            RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Events.ViewOrganizerClaims, ResourceDescriptors.EventOrganizerClaimForEvent, dto);
+        if (dto.IsPubliclyEligible)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.OrganizerClaims,
+                RouteNames.GetEventOrganizerClaims,
+                new { eventId = dto.Id },
+                HttpMethods.Get,
+                "Organizer claims",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Events.ViewOrganizerClaims, ResourceDescriptors.EventOrganizerClaimForEvent, dto);
+        }
 
         if (dto.AvailableAspects?.Contains("Islamic") == true || dto.IslamicAspect != null)
         {
-            yield return new LinkDefinition(
-                "islamic-aspect",
-                RouteNames.GetEventIslamicAspect,
-                new { id = dto.Id },
-                "GET",
-                "Islamic aspect details");
+            if (dto.IsPubliclyEligible)
+            {
+                yield return new LinkDefinition(
+                    "islamic-aspect",
+                    RouteNames.GetEventIslamicAspect,
+                    new { id = dto.Id },
+                    "GET",
+                    "Islamic aspect details");
+            }
+
             yield return new LinkDefinition(
                 "islamic-aspect:edit",
                 RouteNames.UpdateEventIslamicAspect,
@@ -289,12 +297,16 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
 
         if (dto.AvailableAspects?.Contains("Tech") == true || dto.TechAspect != null)
         {
-            yield return new LinkDefinition(
-                "tech-aspect",
-                RouteNames.GetEventTechAspect,
-                new { id = dto.Id },
-                "GET",
-                "Tech aspect details");
+            if (dto.IsPubliclyEligible)
+            {
+                yield return new LinkDefinition(
+                    "tech-aspect",
+                    RouteNames.GetEventTechAspect,
+                    new { id = dto.Id },
+                    "GET",
+                    "Tech aspect details");
+            }
+
             yield return new LinkDefinition(
                 "tech-aspect:edit",
                 RouteNames.UpdateEventTechAspect,
@@ -316,39 +328,41 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
         }
 
-        // Actor link (owner)
-        yield return new LinkDefinition(
-            "actor",
-            RouteNames.GetActorById,
-            new { id = dto.ActorId },
-            "GET",
-            dto.ActorDisplayName);
-
-        if (CanSubscribeToOrganizer(dto.ActorTypeId))
+        if (dto.IsPubliclyEligible)
         {
             yield return new LinkDefinition(
-                "organizer-subscription",
-                RouteNames.GetActorSubscriptionByActor,
-                new { targetActorId = dto.ActorId },
+                "actor",
+                RouteNames.GetActorById,
+                new { id = dto.ActorId },
                 "GET",
-                "My subscription to this organizer",
-                RequiresAuth: true)
-                .RequirePermission(AuthorizationActions.ActorSubscriptions.View,
-                    ResourceKinds.ActorSubscription,
-                    dto.ActorId.ToString(),
-                    SubscriptionAttributes(dto.ActorId));
+                dto.ActorDisplayName);
 
-            yield return new LinkDefinition(
-                "subscribe-organizer",
-                RouteNames.SubscribeToActor,
-                null,
-                "POST",
-                "Subscribe to this organizer",
-                RequiresAuth: true)
-                .RequirePermission(AuthorizationActions.ActorSubscriptions.Create,
-                    ResourceKinds.ActorSubscription,
-                    dto.ActorId.ToString(),
-                    SubscriptionAttributes(dto.ActorId));
+            if (CanSubscribeToOrganizer(dto.ActorTypeId))
+            {
+                yield return new LinkDefinition(
+                    "organizer-subscription",
+                    RouteNames.GetActorSubscriptionByActor,
+                    new { targetActorId = dto.ActorId },
+                    "GET",
+                    "My subscription to this organizer",
+                    RequiresAuth: true)
+                    .RequirePermission(AuthorizationActions.ActorSubscriptions.View,
+                        ResourceKinds.ActorSubscription,
+                        dto.ActorId.ToString(),
+                        SubscriptionAttributes(dto.ActorId));
+
+                yield return new LinkDefinition(
+                    "subscribe-organizer",
+                    RouteNames.SubscribeToActor,
+                    null,
+                    "POST",
+                    "Subscribe to this organizer",
+                    RequiresAuth: true)
+                    .RequirePermission(AuthorizationActions.ActorSubscriptions.Create,
+                        ResourceKinds.ActorSubscription,
+                        dto.ActorId.ToString(),
+                        SubscriptionAttributes(dto.ActorId));
+            }
         }
 
         // Edit link - requires authentication
