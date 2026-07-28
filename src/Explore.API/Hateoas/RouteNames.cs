@@ -71,6 +71,16 @@ public static class RouteNames
     public const string UpdateEventPublicAction = "UpdateEventPublicAction";
     public const string DeleteEventPublicAction = "DeleteEventPublicAction";
     public const string ConfigureEventParticipation = "ConfigureEventParticipation";
+    public const string GetEventTicketCatalogManagement = "GetEventTicketCatalogManagement";
+    public const string CreateEventTicketCatalogDraft = "CreateEventTicketCatalogDraft";
+    public const string CloneEventTicketCatalogDraft = "CloneEventTicketCatalogDraft";
+    public const string CreateEventTicketType = "CreateEventTicketType";
+    public const string UpdateEventTicketType = "UpdateEventTicketType";
+    public const string DeleteEventTicketType = "DeleteEventTicketType";
+    public const string CreateEventCapacityPool = "CreateEventCapacityPool";
+    public const string UpdateEventCapacityPool = "UpdateEventCapacityPool";
+    public const string DeleteEventCapacityPool = "DeleteEventCapacityPool";
+    public const string PublishEventTicketCatalog = "PublishEventTicketCatalog";
     public const string GetEventOrganizerClaims = "GetEventOrganizerClaims";
     public const string GetEventOrganizerClaim = "GetEventOrganizerClaim";
     public const string GetClaimantOrganizerClaims = "GetClaimantOrganizerClaims";
@@ -189,11 +199,6 @@ public static class RouteNames
     public const string SubscribeToActor = "SubscribeToActor";
     public const string UpdateActorSubscriptionNotificationLevel = "UpdateActorSubscriptionNotificationLevel";
     public const string UnsubscribeFromActor = "UnsubscribeFromActor";
-    public const string GetActorKeyStores = "GetActorKeyStores";
-    public const string GetActorKeyStoreById = "GetActorKeyStoreById";
-    public const string CreateActorKeyStore = "CreateActorKeyStore";
-    public const string UpdateActorKeyStore = "UpdateActorKeyStore";
-    public const string DeleteActorKeyStore = "DeleteActorKeyStore";
     public const string GetActorTypes = "GetActorTypes";
     public const string GetActorTypeById = "GetActorTypeById";
 
@@ -762,16 +767,6 @@ public static class RouteNames
     public const string RebuildSingleSessionCustomPropertyProjection = "RebuildSingleSessionCustomPropertyProjection";
     public const string GetCustomPropertyProjectionsForSession = "GetCustomPropertyProjectionsForSession";
     public const string GetCustomPropertyGovernanceReport = "GetCustomPropertyGovernanceReport";
-
-    #endregion
-
-    #region Sync State Routes
-
-    public const string GetSyncStates = "GetSyncStates";
-    public const string GetSyncStateById = "GetSyncStateById";
-    public const string CreateSyncState = "CreateSyncState";
-    public const string UpdateSyncState = "UpdateSyncState";
-    public const string DeleteSyncState = "DeleteSyncState";
 
     #endregion
 

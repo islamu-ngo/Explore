@@ -10,6 +10,7 @@ using Explore.Application.Authorization;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Hateoas;
 using Explore.Domain.Enums;
+using Event.Api.IntegrationTests.Fixtures;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using TUnit.Core;
@@ -497,6 +498,36 @@ public sealed class EventLinkPolicyTests
         await Assert.That(platform.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString());
         await Assert.That(platform.PermissionResourceAttributes["organizerUserId"]).IsEqualTo(organizerUserId.ToString());
         await Assert.That(platformLinks.Any(link => link.Rel == LinkRelations.SignInToRegister)).IsFalse();
+    }
+
+    [Test]
+    [Category(TestCategories.Phase43Ticketing)]
+    public async Task TicketManagementLinks_ArePlatformManagedAndSeparate()
+    {
+        var dto = CreateEventDto(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var policy = new EventDetailLinkPolicy();
+
+        dto.ParticipationConfiguration = new EventParticipationConfigurationDto
+        {
+            ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.ExternalManaged
+        };
+        var externalLinks = policy.GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test"))).ToList();
+        await Assert.That(externalLinks.Any(link => link.Rel == LinkRelations.ManageTicketTypes || link.Rel == LinkRelations.ManageCapacityPools)).IsFalse();
+
+        dto.ParticipationConfiguration = new EventParticipationConfigurationDto
+        {
+            ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.InformationOnly
+        };
+        var listingOnlyLinks = policy.GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test"))).ToList();
+        await Assert.That(listingOnlyLinks.Any(link => link.Rel == LinkRelations.ManageTicketTypes || link.Rel == LinkRelations.ManageCapacityPools)).IsFalse();
+
+        dto.ParticipationConfiguration = new EventParticipationConfigurationDto
+        {
+            ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.PlatformManaged
+        };
+        var platformLinks = policy.GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test"))).ToList();
+        await Assert.That(platformLinks.Single(link => link.Rel == LinkRelations.ManageTicketTypes).RouteName).IsEqualTo(RouteNames.GetEventTicketCatalogManagement);
+        await Assert.That(platformLinks.Single(link => link.Rel == LinkRelations.ManageCapacityPools).RouteName).IsEqualTo(RouteNames.GetEventTicketCatalogManagement);
     }
 
     [Test]
