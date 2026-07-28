@@ -110,6 +110,135 @@ public sealed class AtprotoEventPublicationPlannerTests
     }
 
     [Test]
+    public async Task PlanAsync_IneligibleUngroundedCreate_SkipsWithoutOutbox()
+    {
+        PlannerFixture fixture = CreateFixture(true, true, true, true, true);
+        fixture.Events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        AtprotoPublicationPlanningResult result = await fixture.Planner.PlanEventAsync(
+            Request(PdsSyncOperation.Create),
+            CancellationToken.None);
+
+        await Assert.That(result.Enqueued).IsFalse();
+        await Assert.That(result.ReasonCode).IsEqualTo("privacy_ineligible");
+        await fixture.Outbox.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
+    [Test]
+    [Arguments(PdsSyncOperation.Create)]
+    [Arguments(PdsSyncOperation.Update)]
+    public async Task PlanAsync_IneligibleGroundedMutation_EnqueuesExactDelete(PdsSyncOperation operation)
+    {
+        PlannerFixture fixture = CreateFixture(true, true, true, true, true);
+        AtprotoOutboundRecordOwnership ownership = ActiveOwnership();
+        fixture.Records.GetOwnedRecordForSourceAsync(
+                TenantId,
+                AtprotoEventPublicationPlanner.EventSourceType,
+                EventId,
+                Arg.Any<CancellationToken>())
+            .Returns(ownership);
+        fixture.Events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(false);
+        PdsSyncOutbox? saved = null;
+        fixture.Outbox.AddAsync(Arg.Do<PdsSyncOutbox>(value => saved = value), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        AtprotoPublicationPlanningResult result = await fixture.Planner.PlanEventAsync(
+            Request(operation),
+            CancellationToken.None);
+
+        await Assert.That(result.Enqueued).IsTrue();
+        await Assert.That(saved).IsNotNull();
+        await Assert.That(saved!.Operation).IsEqualTo(PdsSyncOperation.Delete);
+        await Assert.That(saved.UserId).IsEqualTo(ownership.UserId);
+        await Assert.That(saved.Did).IsEqualTo(ownership.AtprotoRecord!.Did);
+        await Assert.That(saved.RecordKey).IsEqualTo(ownership.AtprotoRecord.RecordKey);
+        await Assert.That(saved.AtprotoRecordId).IsEqualTo(ownership.AtprotoRecordId);
+        await Assert.That(saved.ExpectedCid).IsEqualTo(ownership.AtprotoRecord.Cid);
+        await Assert.That(saved.SourceVersion).IsEqualTo(SourceVersion);
+        await Assert.That(saved.Payload).IsNull();
+    }
+
+    [Test]
+    public async Task PlanAsync_IneligibleRestore_SkipsWithoutRecreatingRemoteRecord()
+    {
+        PlannerFixture fixture = CreateFixture(true, true, true, true, true);
+        AtprotoOutboundRecordOwnership ownership = ActiveOwnership();
+        ownership.AtprotoRecord!.TombstonedAt = CreatedAt.AddMinutes(-1);
+        fixture.Records.GetOwnedRecordForSourceAsync(
+                TenantId,
+                AtprotoEventPublicationPlanner.EventSourceType,
+                EventId,
+                Arg.Any<CancellationToken>())
+            .Returns(ownership);
+        fixture.Events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        AtprotoPublicationPlanningResult result = await fixture.Planner.PlanEventAsync(
+            Request(PdsSyncOperation.Create) with { RestoreOnly = true },
+            CancellationToken.None);
+
+        await Assert.That(result.Enqueued).IsFalse();
+        await Assert.That(result.ReasonCode).IsEqualTo("privacy_ineligible");
+        await fixture.Outbox.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
+    [Test]
+    [Arguments("missing")]
+    [Arguments("inactive")]
+    [Arguments("suspended")]
+    [Arguments("deleted")]
+    [Arguments("wrong_actor")]
+    public async Task PlanAsync_UngroundedCreateWithInvalidSessionIdentity_SkipsWithoutOutbox(string identityState)
+    {
+        PlannerFixture fixture = CreateFixture(true, true, true, true, true);
+        AtprotoEventPublicationEntityGraph graph = Graph();
+        InvalidateIdentity(graph, identityState);
+        fixture.Events.GetAtprotoPublicationGraphAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(graph);
+
+        AtprotoPublicationPlanningResult result = await fixture.Planner.PlanEventAsync(
+            Request(PdsSyncOperation.Create),
+            CancellationToken.None);
+
+        await Assert.That(result.Enqueued).IsFalse();
+        await Assert.That(result.ReasonCode).IsEqualTo("identity_inactive");
+        await fixture.Outbox.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
+    [Test]
+    [Arguments("inactive")]
+    [Arguments("suspended")]
+    [Arguments("deleted")]
+    [Arguments("wrong_actor")]
+    public async Task PlanAsync_GroundedUpdateWithInvalidSessionIdentity_EnqueuesExactDelete(string identityState)
+    {
+        PlannerFixture fixture = CreateFixture(true, true, true, true, true);
+        AtprotoOutboundRecordOwnership ownership = ActiveOwnership();
+        fixture.Records.GetOwnedRecordForSourceAsync(
+                TenantId,
+                AtprotoEventPublicationPlanner.EventSourceType,
+                EventId,
+                Arg.Any<CancellationToken>())
+            .Returns(ownership);
+        AtprotoEventPublicationEntityGraph graph = Graph();
+        InvalidateIdentity(graph, identityState);
+        fixture.Events.GetAtprotoPublicationGraphAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(graph);
+
+        AtprotoPublicationPlanningResult result = await fixture.Planner.PlanEventAsync(
+            Request(PdsSyncOperation.Update),
+            CancellationToken.None);
+
+        await Assert.That(result.Enqueued).IsTrue();
+        await Assert.That(result.Outbox!.Operation).IsEqualTo(PdsSyncOperation.Delete);
+        await Assert.That(result.Outbox.RecordKey).IsEqualTo(ownership.AtprotoRecord!.RecordKey);
+        await Assert.That(result.Outbox.ExpectedCid).IsEqualTo(ownership.AtprotoRecord.Cid);
+        await Assert.That(result.Outbox.Payload).IsNull();
+    }
+
+    [Test]
     public async Task PlanAsync_UpdateRacingUnsettledCreate_EnqueuesDelayedSameIdentityUpdate()
     {
         PlannerFixture fixture = CreateFixture(true, true, true, true, true);
@@ -399,6 +528,227 @@ public sealed class AtprotoEventPublicationPlannerTests
     }
 
     [Test]
+    [Arguments(PdsSyncOperation.Create, "actor", "privacy_ineligible")]
+    [Arguments(PdsSyncOperation.Create, "participation", "privacy_ineligible")]
+    [Arguments(PdsSyncOperation.Create, "event", "privacy_ineligible")]
+    [Arguments(PdsSyncOperation.Create, "identity_suspended", "identity_inactive")]
+    [Arguments(PdsSyncOperation.Update, "wrong_identity", "identity_inactive")]
+    public async Task DeliveryGate_WhenCurrentEligibilityOrIdentityChanges_DeniesEventMutation(
+        PdsSyncOperation operation,
+        string change,
+        string expectedReason)
+    {
+        PlannerFixture fixture = CreateFixture(true, true, true, true, true);
+        AtprotoEventPublicationEntityGraph graph = Graph();
+        fixture.Events.GetAtprotoPublicationGraphAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(graph);
+        fixture.Events.GetAtprotoLifecycleStateAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(graph.Event);
+        fixture.Events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        if (operation == PdsSyncOperation.Update)
+        {
+            fixture.Records.GetOwnedRecordForSourceAsync(
+                    TenantId,
+                    AtprotoEventPublicationPlanner.EventSourceType,
+                    EventId,
+                    Arg.Any<CancellationToken>())
+                .Returns(ActiveOwnership());
+        }
+
+        AtprotoPublicationPlanningResult planned = await fixture.Planner.PlanEventAsync(
+            Request(operation),
+            CancellationToken.None);
+
+        switch (change)
+        {
+            case "actor":
+                graph.Event.Actor.IsSuspended = true;
+                fixture.Events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+                    .Returns(false);
+                break;
+            case "participation":
+                fixture.Events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+                    .Returns(false);
+                break;
+            case "event":
+                graph.Event.EventStatusId = (int)Explore.Domain.Enums.EventStatusEnum.Moderated;
+                fixture.Events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+                    .Returns(false);
+                break;
+            case "identity_suspended":
+                graph.Event.Actor.AtprotoIdentities.Single().IsSuspended = true;
+                break;
+            case "wrong_identity":
+                graph.Event.Actor.AtprotoIdentities.Single().Did = "did:plc:someone-else";
+                break;
+        }
+
+        AtprotoDeliveryGateResult result = await fixture.Planner.CheckDeliveryAsync(
+            planned.Outbox!,
+            new DateTimeOffset(CreatedAt),
+            CancellationToken.None);
+
+        await Assert.That(result.Allowed).IsFalse();
+        await Assert.That(result.ReasonCode).IsEqualTo(expectedReason);
+    }
+
+    [Test]
+    public async Task DeliveryGate_WhenExactGroundedDeleteBecomesIneligible_PermitsCompensation()
+    {
+        PlannerFixture fixture = CreateFixture(true, true, true, true, true);
+        AtprotoEventPublicationEntityGraph graph = Graph();
+        graph.Event.IsDeleted = true;
+        fixture.Events.GetAtprotoPublicationGraphAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(graph);
+        fixture.Events.GetAtprotoLifecycleStateAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(graph.Event);
+        fixture.Events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(false);
+        AtprotoOutboundRecordOwnership ownership = ActiveOwnership();
+        fixture.Records.GetOwnedRecordForSourceAsync(
+                TenantId,
+                AtprotoEventPublicationPlanner.EventSourceType,
+                EventId,
+                Arg.Any<CancellationToken>())
+            .Returns(ownership);
+
+        AtprotoPublicationPlanningResult planned = await fixture.Planner.PlanEventAsync(
+            Request(PdsSyncOperation.Delete),
+            CancellationToken.None);
+
+        AtprotoDeliveryGateResult result = await fixture.Planner.CheckDeliveryAsync(
+            planned.Outbox!,
+            new DateTimeOffset(CreatedAt),
+            CancellationToken.None);
+
+        await Assert.That(result.Allowed).IsTrue();
+    }
+
+    [Test]
+    [Arguments("actor")]
+    [Arguments("participation")]
+    [Arguments("event")]
+    [Arguments("identity")]
+    public async Task DeliveryGate_WhenExactGroundedDeleteLosesEligibility_PermitsCompensation(string change)
+    {
+        PlannerFixture fixture = CreateFixture(true, true, true, true, true);
+        AtprotoEventPublicationEntityGraph graph = Graph();
+        fixture.Events.GetAtprotoPublicationGraphAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(graph);
+        fixture.Events.GetAtprotoLifecycleStateAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(graph.Event);
+        AtprotoOutboundRecordOwnership ownership = ActiveOwnership();
+        fixture.Records.GetOwnedRecordForSourceAsync(
+                TenantId,
+                AtprotoEventPublicationPlanner.EventSourceType,
+                EventId,
+                Arg.Any<CancellationToken>())
+            .Returns(ownership);
+
+        AtprotoPublicationPlanningResult planned = await fixture.Planner.PlanEventAsync(
+            Request(PdsSyncOperation.Delete),
+            CancellationToken.None);
+
+        switch (change)
+        {
+            case "actor":
+                graph.Event.Actor.IsSuspended = true;
+                fixture.Events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+                    .Returns(false);
+                break;
+            case "participation":
+                fixture.Events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+                    .Returns(false);
+                break;
+            case "event":
+                graph.Event.EventStatusId = (int)Explore.Domain.Enums.EventStatusEnum.Moderated;
+                fixture.Events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+                    .Returns(false);
+                break;
+            case "identity":
+                graph.Event.Actor.AtprotoIdentities.Single().IsSuspended = true;
+                break;
+        }
+
+        AtprotoDeliveryGateResult result = await fixture.Planner.CheckDeliveryAsync(
+            planned.Outbox!,
+            new DateTimeOffset(CreatedAt),
+            CancellationToken.None);
+
+        await Assert.That(result.Allowed).IsTrue();
+    }
+
+    [Test]
+    public async Task DeliveryGate_WhenGroundedDeleteOwnershipChanges_DeniesRemoteDeletion()
+    {
+        PlannerFixture fixture = CreateFixture(true, true, true, true, true);
+        AtprotoEventPublicationEntityGraph graph = Graph();
+        graph.Event.IsDeleted = true;
+        fixture.Events.GetAtprotoPublicationGraphAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(graph);
+        fixture.Events.GetAtprotoLifecycleStateAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(graph.Event);
+        AtprotoOutboundRecordOwnership initialOwnership = ActiveOwnership();
+        fixture.Records.GetOwnedRecordForSourceAsync(
+                TenantId,
+                AtprotoEventPublicationPlanner.EventSourceType,
+                EventId,
+                Arg.Any<CancellationToken>())
+            .Returns(initialOwnership);
+
+        AtprotoPublicationPlanningResult planned = await fixture.Planner.PlanEventAsync(
+            Request(PdsSyncOperation.Delete),
+            CancellationToken.None);
+        fixture.Records.GetOwnedRecordForSourceAsync(
+                TenantId,
+                AtprotoEventPublicationPlanner.EventSourceType,
+                EventId,
+                Arg.Any<CancellationToken>())
+            .Returns(ActiveOwnership(Guid.CreateVersion7()));
+
+        AtprotoDeliveryGateResult result = await fixture.Planner.CheckDeliveryAsync(
+            planned.Outbox!,
+            new DateTimeOffset(CreatedAt),
+            CancellationToken.None);
+
+        await Assert.That(result.Allowed).IsFalse();
+        await Assert.That(result.ReasonCode).IsEqualTo("ownership_invalid");
+    }
+
+    [Test]
+    public async Task DeliveryGate_WhenGroundedDeleteCidChanges_DeniesRemoteDeletion()
+    {
+        PlannerFixture fixture = CreateFixture(true, true, true, true, true);
+        AtprotoEventPublicationEntityGraph graph = Graph();
+        fixture.Events.GetAtprotoPublicationGraphAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(graph);
+        fixture.Events.GetAtprotoLifecycleStateAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(graph.Event);
+        AtprotoOutboundRecordOwnership ownership = ActiveOwnership();
+        fixture.Records.GetOwnedRecordForSourceAsync(
+                TenantId,
+                AtprotoEventPublicationPlanner.EventSourceType,
+                EventId,
+                Arg.Any<CancellationToken>())
+            .Returns(ownership);
+
+        AtprotoPublicationPlanningResult planned = await fixture.Planner.PlanEventAsync(
+            Request(PdsSyncOperation.Delete),
+            CancellationToken.None);
+        ownership.AtprotoRecord!.Cid = "bafy-replaced-event";
+
+        AtprotoDeliveryGateResult result = await fixture.Planner.CheckDeliveryAsync(
+            planned.Outbox!,
+            new DateTimeOffset(CreatedAt),
+            CancellationToken.None);
+
+        await Assert.That(result.Allowed).IsFalse();
+        await Assert.That(result.ReasonCode).IsEqualTo("ownership_invalid");
+    }
+
+    [Test]
     [Category("EventLocationPrivacyExternal")]
     public async Task PlanLocationPrivacyCorrectionAsync_WithOlderRemoteState_EnqueuesCurrentProjection()
     {
@@ -500,6 +850,8 @@ public sealed class AtprotoEventPublicationPlannerTests
             .Returns(Graph());
         events.GetAtprotoLifecycleStateAsync(TenantId, EventId, Arg.Any<CancellationToken>())
             .Returns(Graph().Event);
+        events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns(true);
         var records = Substitute.For<IAtprotoRecordRepository>();
         var sessions = Substitute.For<IUserAuthenticationTokenRepository>();
         sessions.GetAtprotoSessionsForReadAsync(TenantId, UserId, RepositoryBackedAtprotoSession.Provider, Arg.Any<CancellationToken>())
@@ -562,6 +914,54 @@ public sealed class AtprotoEventPublicationPlannerTests
         ProviderKey = Did
     };
 
+    private static AtprotoOutboundRecordOwnership ActiveOwnership(Guid? ownerUserId = null)
+    {
+        var record = new AtprotoRecord
+        {
+            Id = Guid.CreateVersion7(),
+            Did = Did,
+            Collection = AtprotoEventPublicationPlanner.EventCollection,
+            RecordKey = "stable-owned-event-key",
+            Uri = $"at://{Did}/{AtprotoEventPublicationPlanner.EventCollection}/stable-owned-event-key",
+            Cid = "bafy-owned-event",
+            Direction = AtprotoRecordDirection.Outbound,
+            Provenance = AtprotoRecordProvenance.LocalLifecycle,
+            UpdatedAt = CreatedAt
+        };
+        return new()
+        {
+            AtprotoRecordId = record.Id,
+            TenantId = TenantId,
+            UserId = ownerUserId ?? UserId,
+            SourceEntityType = AtprotoEventPublicationPlanner.EventSourceType,
+            SourceEntityId = EventId,
+            SourceVersion = SourceVersion,
+            AtprotoRecord = record
+        };
+    }
+
+    private static void InvalidateIdentity(AtprotoEventPublicationEntityGraph graph, string identityState)
+    {
+        switch (identityState)
+        {
+            case "missing":
+                graph.Event.Actor.AtprotoIdentities.Clear();
+                break;
+            case "inactive":
+                graph.Event.Actor.AtprotoIdentities.Single().IsActive = false;
+                break;
+            case "suspended":
+                graph.Event.Actor.AtprotoIdentities.Single().IsSuspended = true;
+                break;
+            case "deleted":
+                graph.Event.Actor.AtprotoIdentities.Single().IsDeleted = true;
+                break;
+            case "wrong_actor":
+                graph.Event.Actor.AtprotoIdentities.Single().ActorId = Guid.CreateVersion7();
+                break;
+        }
+    }
+
     private static PdsSyncOutbox UnsettledCreate(
         PdsSyncStatus status,
         DateTime? leaseExpiresAt,
@@ -600,6 +1000,16 @@ public sealed class AtprotoEventPublicationPlannerTests
             ActorType = new ActorType { Id = 1, MasterCode = "USER", FullName = "User" },
             Pii = new ActorPii { DisplayName = "Publisher" }
         };
+        actor.AtprotoIdentities.Add(new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            Did = Did,
+            ActorId = actor.Id,
+            Actor = actor,
+            PdsHost = "https://pds.example.test/",
+            IsActive = true,
+            LastResolvedAt = CreatedAt
+        });
         var eventEntity = new Explore.Domain.Event
         {
             Id = EventId,

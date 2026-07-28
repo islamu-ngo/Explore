@@ -168,6 +168,8 @@ public sealed class AtprotoEventPublicationPlanner(
         Guid? atprotoRecordId = null;
         string? expectedCid = null;
         var plannedOperation = request.Operation;
+        var createHasExistingRecord = false;
+        var createHasUnsettledPredecessor = false;
         PdsSyncOutbox? unsettledPredecessor = await outboxRepository.GetLatestUnsettledMutationAsync(
             request.TenantId,
             EventSourceType,
@@ -221,12 +223,16 @@ public sealed class AtprotoEventPublicationPlanner(
         }
         else
         {
-            if (ownership?.AtprotoRecord is { TombstonedAt: null })
+            if (ownership?.AtprotoRecord is { TombstonedAt: null } record)
             {
-                return Skipped(request, "remote_record_exists");
+                ownerUserId = ownership.UserId;
+                recordKey = record.RecordKey;
+                atprotoRecordId = record.Id;
+                expectedCid = record.Cid;
+                createHasExistingRecord = true;
             }
 
-            if (ownership?.AtprotoRecord is { TombstonedAt: not null } tombstonedRecord)
+            else if (ownership?.AtprotoRecord is { TombstonedAt: not null } tombstonedRecord)
             {
                 ownerUserId = ownership.UserId;
                 recordKey = tombstonedRecord.RecordKey;
@@ -234,7 +240,10 @@ public sealed class AtprotoEventPublicationPlanner(
             }
             else if (unsettledPredecessor is not null)
             {
-                return Skipped(request, "publication_pending");
+                ownerUserId = unsettledPredecessor.UserId;
+                recordKey = unsettledPredecessor.RecordKey;
+                atprotoRecordId = ownership?.AtprotoRecord?.Id;
+                createHasUnsettledPredecessor = true;
             }
         }
 
@@ -287,9 +296,36 @@ public sealed class AtprotoEventPublicationPlanner(
             return Skipped(request, "account_not_linked");
         }
 
+        bool hasGroundedRemoteMutation = unsettledPredecessor is not null
+            || ownership?.AtprotoRecord is { TombstonedAt: null };
+        if (request.Operation != PdsSyncOperation.Delete)
+        {
+            bool isPubliclyEligible = await eventRepository.IsPubliclyEligibleAsync(
+                request.TenantId,
+                request.EventId,
+                cancellationToken);
+            if (!isPubliclyEligible)
+            {
+                if (request.RestoreOnly || !hasGroundedRemoteMutation)
+                {
+                    return Skipped(request, "privacy_ineligible");
+                }
+
+                plannedOperation = PdsSyncOperation.Delete;
+            }
+            else if (createHasExistingRecord)
+            {
+                return Skipped(request, "remote_record_exists");
+            }
+            else if (createHasUnsettledPredecessor)
+            {
+                return Skipped(request, "publication_pending");
+            }
+        }
+
         AtprotoPublicationPayload? payload = null;
         bool hasGroundedIdentity = ownership?.AtprotoRecord is not null || unsettledPredecessor is not null;
-        if (request.Operation != PdsSyncOperation.Delete)
+        if (plannedOperation != PdsSyncOperation.Delete)
         {
             AtprotoEventPublicationEntityGraph? graph = await eventRepository.GetAtprotoPublicationGraphAsync(
                 request.TenantId,
@@ -315,22 +351,34 @@ public sealed class AtprotoEventPublicationPlanner(
             }
             else
             {
-                AtprotoPublicationPayloadBuildResult payloadResult = await payloadBuilder.BuildEventAsync(
-                    graph,
-                    new DateTimeOffset(request.CreatedAtUtc),
-                    cancellationToken);
-                if (!payloadResult.IsValid)
+                if (!HasActiveEventIdentity(graph.Event, sessions[0].SubjectDid))
                 {
-                    if (!hasGroundedIdentity || request.Operation != PdsSyncOperation.Update)
+                    if (request.RestoreOnly || !hasGroundedRemoteMutation)
                     {
-                        return Skipped(request, payloadResult.FailureCode ?? "payload_invalid");
+                        return Skipped(request, "identity_inactive");
                     }
 
                     plannedOperation = PdsSyncOperation.Delete;
                 }
                 else
                 {
-                    payload = payloadResult.Payload;
+                    AtprotoPublicationPayloadBuildResult payloadResult = await payloadBuilder.BuildEventAsync(
+                        graph,
+                        new DateTimeOffset(request.CreatedAtUtc),
+                        cancellationToken);
+                    if (!payloadResult.IsValid)
+                    {
+                        if (!hasGroundedIdentity || request.Operation != PdsSyncOperation.Update)
+                        {
+                            return Skipped(request, payloadResult.FailureCode ?? "payload_invalid");
+                        }
+
+                        plannedOperation = PdsSyncOperation.Delete;
+                    }
+                    else
+                    {
+                        payload = payloadResult.Payload;
+                    }
                 }
 
             }
@@ -401,6 +449,14 @@ public sealed class AtprotoEventPublicationPlanner(
         && string.Equals(current.Host, expectedUri.Host, StringComparison.OrdinalIgnoreCase)
         && current.Port == expectedUri.Port
         && string.Equals(current.AbsolutePath.TrimEnd('/'), expectedUri.AbsolutePath.TrimEnd('/'), StringComparison.Ordinal);
+
+    private static bool HasActiveEventIdentity(Explore.Domain.Event eventEntity, string did) =>
+        eventEntity.Actor.AtprotoIdentities.Any(identity =>
+            identity.ActorId == eventEntity.ActorId
+            && string.Equals(identity.Did, did, StringComparison.Ordinal)
+            && identity.IsActive
+            && !identity.IsSuspended
+            && !identity.IsDeleted);
 
     public async Task<AtprotoRsvpReconciliationResult> ReconcileMissingRsvpsAsync(
         Guid? afterIntentId,
@@ -737,10 +793,31 @@ public sealed class AtprotoEventPublicationPlanner(
 
         if (outbox.Operation == PdsSyncOperation.Delete)
         {
-            if (eventEntity.IsDeleted
-                || eventEntity.EventStatusId is (int)EventStatusEnum.Moderated
-                    or (int)EventStatusEnum.Archived
-                    or (int)EventStatusEnum.Cancelled)
+            if (outbox.AtprotoRecordId is Guid atprotoRecordId)
+            {
+                AtprotoOutboundRecordOwnership? ownership = await recordRepository.GetOwnedRecordForSourceAsync(
+                    outbox.TenantId,
+                    EventSourceType,
+                    outbox.SourceEntityId,
+                    cancellationToken);
+                if (ownership?.AtprotoRecord is not { } record
+                    || ownership.AtprotoRecordId != atprotoRecordId
+                    || ownership.UserId != outbox.UserId
+                    || record.Id != atprotoRecordId
+                    || !string.Equals(record.Did, outbox.Did, StringComparison.Ordinal)
+                    || !string.Equals(record.Collection, outbox.Collection, StringComparison.Ordinal)
+                    || !string.Equals(record.RecordKey, outbox.RecordKey, StringComparison.Ordinal)
+                    || outbox.ExpectedCid is not null
+                        && !string.Equals(record.Cid, outbox.ExpectedCid, StringComparison.Ordinal))
+                {
+                    return AtprotoDeliveryGateResult.Deny("ownership_invalid");
+                }
+            }
+
+            if (!await eventRepository.IsPubliclyEligibleAsync(
+                    outbox.TenantId,
+                    outbox.SourceEntityId,
+                    cancellationToken))
             {
                 return AtprotoDeliveryGateResult.Permit();
             }
@@ -749,7 +826,7 @@ public sealed class AtprotoEventPublicationPlanner(
                 outbox.TenantId,
                 outbox.SourceEntityId,
                 cancellationToken);
-            if (removalGraph is null)
+            if (removalGraph is null || !HasActiveEventIdentity(removalGraph.Event, outbox.Did))
             {
                 return AtprotoDeliveryGateResult.Permit();
             }
@@ -763,6 +840,14 @@ public sealed class AtprotoEventPublicationPlanner(
                 : AtprotoDeliveryGateResult.Permit();
         }
 
+        if (!await eventRepository.IsPubliclyEligibleAsync(
+                outbox.TenantId,
+                outbox.SourceEntityId,
+                cancellationToken))
+        {
+            return AtprotoDeliveryGateResult.Deny("privacy_ineligible");
+        }
+
         AtprotoEventPublicationEntityGraph? graph = await eventRepository.GetAtprotoPublicationGraphAsync(
             outbox.TenantId,
             outbox.SourceEntityId,
@@ -770,6 +855,11 @@ public sealed class AtprotoEventPublicationPlanner(
         if (graph is null)
         {
             return AtprotoDeliveryGateResult.Deny("privacy_ineligible");
+        }
+
+        if (!HasActiveEventIdentity(graph.Event, outbox.Did))
+        {
+            return AtprotoDeliveryGateResult.Deny("identity_inactive");
         }
 
         AtprotoPublicationPayloadBuildResult currentPayload = await payloadBuilder.BuildEventAsync(
