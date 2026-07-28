@@ -1,10 +1,10 @@
 // ABOUTME: Handles grouped Group PATCH updates with permission checks, hierarchy validation, and concurrency.
 // ABOUTME: Validates groups, loads once, applies present groups, saves once, and invalidates detail cache after save.
 
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.Authorization;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.Group.Validators;
 using Explore.Application.Exceptions;

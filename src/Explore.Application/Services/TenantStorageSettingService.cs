@@ -4,8 +4,8 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
-using Explore.Application.DTOs.Storage;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.Storage;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Models.Storage;
 using Explore.Application.Settings;

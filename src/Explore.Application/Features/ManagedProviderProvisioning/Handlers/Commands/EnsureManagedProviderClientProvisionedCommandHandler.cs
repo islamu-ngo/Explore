@@ -975,7 +975,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                 EnabledBy = null,
                 CreatedAt = now,
                 CreatedBy = null
-            });
+            }, cancellationToken);
         }
 
         var brandingDocument = await brandingProvisioningService.EnsureTenantBrandingDocumentAsync(

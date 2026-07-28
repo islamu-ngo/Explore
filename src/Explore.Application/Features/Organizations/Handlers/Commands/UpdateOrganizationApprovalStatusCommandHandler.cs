@@ -1,7 +1,7 @@
 // ABOUTME: Handler for the admin-only organization approval status action.
 // ABOUTME: Validates lookup status, updates the organization lifecycle field, and invalidates organization detail cache.
-using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Organization.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Organizations.Requests.Commands;

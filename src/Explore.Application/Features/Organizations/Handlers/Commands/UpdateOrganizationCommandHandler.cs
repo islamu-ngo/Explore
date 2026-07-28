@@ -1,7 +1,7 @@
 // ABOUTME: Handler for grouped Organization PATCH profile updates with authorization and optimistic concurrency.
 // ABOUTME: Validates groups, loads once, applies present groups, saves once, and invalidates detail cache after save.
-using Explore.Application.Contracts.Persistence;
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.Organization.Validators;
 using Explore.Application.Exceptions;
