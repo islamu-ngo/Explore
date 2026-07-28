@@ -31,7 +31,6 @@ public class CqrsPatternTests
     [Test]
     public async Task CommandHandlers_ShouldResideIn_CommandsNamespace()
     {
-        // Command handlers can be in Handlers.Commands or Commands namespace
         var result = Types.InAssembly(ApplicationAssembly)
             .That()
             .HaveNameEndingWith("CommandHandler")
@@ -57,7 +56,11 @@ public class CqrsPatternTests
             .And()
             .AreClasses()
             .And()
+            .ResideInNamespaceContaining("Features")
+            .And()
             .DoNotHaveNameEndingWith("CommandRequest")
+            .And()
+            .DoNotResideInNamespaceContaining("Requests.Commands")
             .And()
             .DoNotResideInNamespaceContaining("DTOs")
             .And()
