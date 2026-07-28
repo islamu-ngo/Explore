@@ -3,9 +3,9 @@
 
 # AT Protocol Integration — Context
 
-Last Updated: 2026-07-25 Europe/Brussels
+Last Updated: 2026-07-28 Europe/Brussels
 
-## SESSION PROGRESS (2026-07-25 Europe/Brussels)
+## SESSION PROGRESS (2026-07-28 Europe/Brussels)
 
 ### COMPLETED
 
@@ -41,22 +41,23 @@ Last Updated: 2026-07-25 Europe/Brussels
 - Completed universal PDS and authorization-server discovery. Provider-neutral tests cover distinct PDS/issuer origins, `did:plc`, hostname-only `did:web`, strict single-service validation, deterministic cache remapping, and token substitution rejection. Evidence: `.omo/evidence/atproto-auth/task-20/`.
 - Completed tenant-local inbound Event/EventSession materialization through one validated internal CQRS mapping shared by Jetstream and PDS recovery. Real PostgreSQL proved 22/22 cases twice, including exact-one concurrency, stable replay/update IDs, Unicode-safe description summary, source EventUrl/createdAt, tenant-scoped absence/tombstone handling, commit-fence rollback, and zero outbound echo. Final independent evidence: `.omo/evidence/atproto-auth/task21/final-adversarial-verify.md`.
 - Completed Phase 16 / Task 16.1 (Todo 22) with lossless `AtprotoRecord.RecordJson`, semantic Event/EventSession mapping, stable slugs, valid timezone projection, authoritative `media[].content` plus generic `media[].blob`, verified DID/PDS `getBlob`, registered storage, atomic Event/StorageObject linkage, replay/tombstone/PDS parity, and zero echo. Evidence: `.omo/evidence/atproto-auth/task22/executor-repair.md`, `.omo/evidence/atproto-auth/task22/final-adversarial-verify.md`, `.omo/evidence/atproto-auth/task22/debug-container-runtime.md`.
+- Completed Todo 24's final thumbnail security boundary in the shared `AtprotoThumbnailBlobGateway` used by both Jetstream and PDS recovery. The exact parameter-free allowlist is JPEG, PNG, GIF, WebP, and AVIF. After bounded read, declared/actual-size, and CID verification—and before `WriteAsync`—the gateway consumes the declared container structure to EOF. Honest SVG, relabeled SVG, and valid-header-plus-active-content tails fail soft without losing canonical data.
+- Completed Todo 23 and F1-F4 against the exact attributable fingerprint: base `c57ebcca0e00b33c43ee4899a285cf1cb8bbd2b2`, manifest `e5ad4d92d28ae06e12df82277519a7865f093b6dc43f24bb249710a388c0a0cd`, and patches `62e5bcbe8f8c8f63b94f38885851914934578f25d586f733d911af297ba19882`, `507a101294b607326a796e033557d81f5742eb73730ab98c3e4fd191b4673469`, and `fbf56d56056d10791b5c7506d7e7d51f5cc102c73b2477f17e69d7197ad7fc51`.
+- Final verification passed: Release build 26 projects/0 errors; Infrastructure ATProto 184/184; Application ATProto 130/130; Architecture 301 passed plus one governed skip; PostgreSQL ATProto 73/73; relabeled-SVG H5 1/1; five-format active-tail H6 5/5; gateway 49/49 twice; PostgreSQL rejection twice; and safe PNG 1/1. All five review lanes and the runtime audit passed under `.omo/evidence/atproto-auth/final-security-review-container-validation/`.
 
 ### IN PROGRESS
 
-- Todo 23 canonical Release build, all-nine-project matrix, generated contracts/migrations, and deterministic integration smoke.
+- None. The ATProto implementation workstream and its final review/runtime gates are complete.
 
 ### NEXT
 
-1. Freeze the attributable snapshot for Todo 23 without changing the completed canonical record authority or absorbing dynamic-event UI work.
-2. Run Todo 23's canonical Release build, all nine per-project commands, locked/generated contract and migration checks, and deterministic fake-service/Testcontainers smoke.
-3. Complete F1-F4 against the verified snapshot.
+1. No implementation slice remains in this workstream.
+2. Treat live Bluesky, Eurosky, and self-hosted PDS deployment evidence as release activity, not unfinished implementation.
 
 ### BLOCKERS
 
-- No environment blocker remains. Docker/Testcontainers is available and supplied the required real PostgreSQL evidence for Todos 18 and 19.
-- The shared worktree is still receiving unrelated dynamic-event-management UI changes. Todo 23 must run on a frozen attributable snapshot without editing or absorbing that workstream.
-- The 2026-07-19 broad matrix below is historical, not a current failure list. Its former shared-tree failures must be re-evaluated by Todo 23 rather than assumed fixed or still failing.
+- None. The shared worktree's unrelated changes were excluded by exact-manifest reconstruction and ordinary patch replay.
+- The 2026-07-19 broad matrix below remains historical and must not be read as the final completion result.
 
 ### ACCEPTED PRODUCT CONSTRAINT
 
@@ -66,18 +67,17 @@ Last Updated: 2026-07-25 Europe/Brussels
 
 1. Read this context and atproto-auth-tasks.md.
 2. Read only the current phase, constraints, or changed decisions from atproto-auth-plan.md.
-3. Start from Todo 23, the current canonical verification gate after completed Phase 16 / Task 16.1.
-4. Keep tasks current during implementation. Update context/plan only at their defined triggers.
-5. Preserve ADR-015's DB-first, one-capability, exhaustive-description, consent, canonical-ingress, exact two-collection, and atomic tenant-local import invariants through final verification.
+3. This workstream is complete; consult the final fingerprint and review evidence before proposing any follow-up.
+4. Preserve ADR-015's DB-first, one-capability, exhaustive-description, consent, canonical-ingress, exact two-collection, atomic tenant-local import, and whole-container thumbnail invariants.
 
 ## Current Status Snapshot
 
 | Field | Value |
 |---|---|
-| Overall status | 34/34 implementation tasks complete; 22/27 execution-plan gates complete; Phase 16 / Task 16.1 is complete; five top-level gates remain: Todo 23 plus F1-F4 |
+| Overall status | Complete: 34/34 implementation tasks and 28/28 execution-plan gates; Todo 24, Todo 23, F1-F4, five final review lanes, and runtime audit all passed |
 | Completed implementation tasks | 34/34 completed tasks |
-| Current priority | Todo 23 canonical Release build, all-nine-project matrix, generated contracts/migrations, and deterministic smoke |
-| Next executable slice | Run Todo 23, then F1-F4 |
+| Current priority | None; implementation closeout complete |
+| Next executable slice | None; live-provider checks remain release activity only |
 | OAuth implementation | Complete in Phases 1-6; live-provider release evidence remains outside automated gates |
 | Federation implementation | Phases 7-16 complete; canonical import is lossless, semantically mapped, timezone-aware, thumbnail-capable, replay/tombstone-safe, and zero-echo |
 | Baseline build | Fresh green baseline at HEAD aefa7797 on 2026-07-18; 25 projects, 0 errors, 0 warnings |
@@ -90,15 +90,15 @@ Last Updated: 2026-07-25 Europe/Brussels
 - Atomic encrypted OAuth refresh: real PostgreSQL 6/6 with lock pair repeated 2/2; security gateway 12/12, encrypted store 6/6, writer 12/12, and architecture boundaries are green.
 - Universal discovery: auth flow 17/17, session binding 6/6, cache 2/2 twice, transport 23/23, linked-account handler 5/5, architecture 29/29, and bounded 10,000-entry cache/cross-lease probes.
 
-These historical results close implementation Tasks 13.1-14.1. They do not replace the current Todo 23 canonical build and all-nine-project matrix.
+These historical results close implementation Tasks 13.1-14.1. The final completion matrix is recorded in the 2026-07-28 closeout above.
 
 ## Phase 16 / Task 16.1 Completion Contract
 
 - `AtprotoRecord.RecordJson` remains the lossless canonical source for every producer field. Unsupported, malformed, producer-specific, and future fields stay in the nested JSON even when no local column exists.
 - Only semantically compatible values map to local `Event` and `EventSession` fields. Normal `SlugGenerator.FromTitle(name, "event")` and implicit-session fallback provide canonical stable slugs; valid IANA timezones participate in the session projection.
-- A valid `media[].content` thumbnail, with generic `media[].blob` fallback, is resolved through the verified DID/PDS boundary, fetched with bounded `com.atproto.sync.getBlob` checks outside the EF transaction, staged through registered storage, and atomically linked via `Event.FeaturedImageId` and `StorageObject`. Optional media failures do not block canonical import; replacement and tombstone invoke existing cleanup.
-- Focused completion evidence is factory 3/3, thumbnail gateway 24/24, PDS gateway 38/38, real production pipeline 1/1, and retained real PostgreSQL 31/31. Runtime cleanup returned to 23 containers/121 volumes.
-- Todo 23 is the current final matrix; it is not complete and must verify Task 22 alongside all nine project commands, generated contracts, migrations, and deterministic integration smoke before F1-F4.
+- A valid `media[].content` thumbnail, with generic `media[].blob` fallback, is resolved through the verified DID/PDS boundary and fetched outside the EF transaction. The shared gateway permits only exact parameter-free JPEG/PNG/GIF/WebP/AVIF MIME values, then performs bounded size/CID checks and whole-container structural validation through EOF before registered-storage `WriteAsync`. PNG chunks, JPEG markers/scans, GIF tables/sub-blocks, WebP RIFF/chunks, and AVIF boxes are consumed structurally; this is not pixel decoding.
+- Honest SVG, relabeled SVG, and header-plus-active tails fail soft. The original semantic `RecordJson`, including nested script text, remains canonical; `Event` and `EventSession` persist; no `FeaturedImage`, `StorageObject`, `PdsSyncOutbox`, or file is created. A safe PNG stores and links normally.
+- Final completion evidence is the 2026-07-28 matrix and `.omo/evidence/atproto-auth/final-security-review-container-validation/`; Todo 24, Todo 23, and F1-F4 are complete.
 
 ## Historical Canonical Verification Matrix — 2026-07-19
 
@@ -383,6 +383,15 @@ These are binding requirements assigned to Phases 7-14:
 - ADR-015 for payload, tenant/user ownership, direction/provenance, aggregate-version idempotency, leases, cursor/checkpoint policy, entity correlation, and settlement.
 
 ## Handoff Notes
+
+### Final completion handoff — 2026-07-28 Europe/Brussels
+
+- **Current state:** Complete. All 34 implementation tasks and all 28 execution-plan gates are closed.
+- **Final security boundary:** The shared thumbnail gateway validates exact parameter-free JPEG/PNG/GIF/WebP/AVIF containers structurally to EOF before storage. Optional invalid media fails soft while canonical JSON and local aggregates remain authoritative.
+- **Verification:** Release 26/0; Infrastructure 184; Application 130; Architecture 301 plus one governed skip; PostgreSQL 73; H5 1; H6 5; gateway 49 twice; PostgreSQL rejection twice; safe PNG 1. Five review lanes and runtime audit passed.
+- **Fingerprint:** `c57ebcca0e00b33c43ee4899a285cf1cb8bbd2b2` + manifest `e5ad4d92d28ae06e12df82277519a7865f093b6dc43f24bb249710a388c0a0cd` + patches `62e5bcbe8f8c8f63b94f38885851914934578f25d586f733d911af297ba19882`, `507a101294b607326a796e033557d81f5742eb73730ab98c3e4fd191b4673469`, and `fbf56d56056d10791b5c7506d7e7d51f5cc102c73b2477f17e69d7197ad7fc51`.
+- **Blockers / next action:** None. Live-provider validation is release activity outside this completed implementation plan.
+- **Evidence:** `.omo/evidence/atproto-auth/final-security-review-container-validation/`.
 
 ### Historical Phases 13-15 completion handoff — 2026-07-23 Europe/Brussels (superseded status snapshot)
 

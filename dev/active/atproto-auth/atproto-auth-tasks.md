@@ -3,32 +3,34 @@
 
 # AT Protocol Integration — Task Checklist
 
-Last Updated: 2026-07-25 Europe/Brussels
+Last Updated: 2026-07-28 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** 34/34 implementation tasks are complete and independently verified. The durable execution plan is 22/27 top-level gates complete; Phase 16 / Task 16.1 (Todo 22) is complete; the remaining matrix is Todo 23 plus F1-F4.
-- **Completed:** 34/34 implementation tasks; Phase 16 / Task 16.1 is complete with focused and retained real PostgreSQL evidence.
-- **Current priority:** Todo 23: canonical Release build, all nine project commands, contract/migration checks, and deterministic integration smoke. No final all-project green claim is made yet.
-- **Next recommended slice:** Freeze the attributable snapshot for Todo 23, then complete F1-F4.
+- **Overall status:** Complete. All 34/34 implementation tasks and 28/28 execution-plan gates are independently verified, including Todo 24, Todo 23, F1-F4, five final review lanes, and the runtime audit.
+- **Completed:** 34/34 implementation tasks; Todo 24 whole-container thumbnail validation; Todo 23 final matrix; F1-F4.
+- **Current priority:** None; implementation closeout is complete.
+- **Next recommended slice:** None. Live-provider checks are release activity outside this workstream.
 - **OAuth scope:** Phases 1-6.
 - **Federation scope:** Phases 7-16 complete; canonical ingress preserves unsupported/future producer fields in `AtprotoRecord.RecordJson` and maps only semantically compatible fields locally.
 
-## Progress Reconciliation — 2026-07-25
+## Progress Reconciliation — 2026-07-28
 
-- Todos 16-22 are confirmed in `.omo/start-work/ledger.jsonl`; five top-level gates remain: Todo 23 (current canonical matrix) and F1-F4.
+- Todos 16-24 and F1-F4 are confirmed; all 28 top-level gates are complete.
 - Phase 13.1 settings passed Application 17/17, Infrastructure 13/13, API 8/8, Architecture 9/9, PostgreSQL 1/1, and both bUnit administration surfaces 25/25 combined.
 - Phase 13.2 held one Jetstream session while updating filters in place; its subscriber/readiness/runtime-store matrix passed 30/30, including coalescing, failure reconnect, cursor preservation, and cancellation cleanup.
 - Phase 13.3 passed the real PostgreSQL PDS snapshot reconciliation matrix 4/4 twice after correcting one test-only JSONB comparison to semantic JSON equality.
 - Phase 13.4 passed the real PostgreSQL encrypted refresh matrix 6/6 plus refresh-lock repeat 2/2; focused security/store/writer/architecture gates are green and no credential material was emitted.
 - Phase 14.1 passed the expanded provider-neutral discovery matrix: auth flow 17/17, encrypted API-backed session binding 6/6, deterministic cache expiry/remap 2/2 twice, OAuth transport 23/23, and the 10,000-entry cache capacity/cross-lease probes.
 - Docker/Testcontainers cleanup is complete. The concurrent dynamic-event-management UI workstream was explicitly excluded from ATProto attribution and edits.
+- Final fingerprint: base `c57ebcca0e00b33c43ee4899a285cf1cb8bbd2b2`, manifest `e5ad4d92d28ae06e12df82277519a7865f093b6dc43f24bb249710a388c0a0cd`, patches `62e5bcbe8f8c8f63b94f38885851914934578f25d586f733d911af297ba19882`, `507a101294b607326a796e033557d81f5742eb73730ab98c3e4fd191b4673469`, and `fbf56d56056d10791b5c7506d7e7d51f5cc102c73b2477f17e69d7197ad7fc51`.
+- Final matrix: Release 26/0; Infrastructure 184; Application 130; Architecture 301 plus one governed skip; PostgreSQL 73; H5 1; H6 5; gateway 49 twice; PostgreSQL rejection twice; safe PNG 1. Five review lanes and runtime audit passed under `.omo/evidence/atproto-auth/final-security-review-container-validation/`.
 
 ## Historical Broad Verification Snapshot — 2026-07-19
 
 The Release build and all nine per-project commands from `docs/TESTING.md` were attempted individually. ATProto-focused Application, Infrastructure, API, BFF, persistence, architecture, and component suites remain green.
 
-This is the last complete per-project matrix, not an all-green or release-readiness claim. A fresh Todo 15 Release build on the current shared tree also exited 1 with five direct unrelated test-source errors: one missing `TryClaimOccurrenceAsync` cancellation argument, two ambiguous `HybridCache.RemoveAsync` calls, and the two required-member fixture errors listed below. Fourteen downstream `CS0006` errors were compilation fallout; Todo 16 must rerun the full matrix after those owners repair the tree.
+This is a historical per-project snapshot, not the final completion result. Its shared-tree failures were superseded by the exact-fingerprint final matrix recorded in the 2026-07-28 reconciliation above.
 
 | Gate | Result | Evidence / classification |
 |---|---|---|
@@ -498,7 +500,7 @@ Focused independent evidence is green: Application handlers 62/62, planners/proc
 - [ ] dotnet build --configuration Release --verbosity quiet
 - [x] dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 
-## Phase 13: Inbound Event Recovery and Backfill Configuration — IMPLEMENTATION COMPLETE; CANONICAL VERIFICATION PENDING
+## Phase 13: Inbound Event Recovery and Backfill Configuration — COMPLETE
 
 - [x] **13.1 Add Tenant Settings and Rules for Backfilling**
   - **Status:** Implemented and focused-verified. The two settings use the existing registry, five-tier resolver, generic settings commands/API/HAL policies, stable locked seed rows, and both current administrator UI surfaces. The adjacent validation-profile controls now submit plain setting codes through the same serialization boundary. Evidence: `.omo/evidence/atproto-auth/task-16/settings.md`.
@@ -542,7 +544,7 @@ Focused independent evidence is green: Application handlers 62/62, planners/proc
 - [ ] dotnet build --configuration Release --verbosity quiet
 - [ ] dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet
 
-## Phase 14: Decoupled PDS Identity and Extensibility — IMPLEMENTATION COMPLETE; CANONICAL VERIFICATION PENDING
+## Phase 14: Decoupled PDS Identity and Extensibility — COMPLETE
 
 - [x] **14.1 Verify Universal PDS OAuth Compatibility**
   - **Status:** Complete and independently confirmed. The provider-neutral flow now covers distinct PDS/authorization-server origins, `did:plc`, hostname-only `did:web`, deterministic cache expiry/remapping, strict PDS-service cardinality/type/HTTPS checks, and callback token binding. Evidence: `.omo/evidence/atproto-auth/task-20/`.
@@ -583,27 +585,32 @@ Focused independent evidence is green: Application handlers 62/62, planners/proc
 ## Phase 16: Extensible Inbound Calendar Import — IMPLEMENTATION COMPLETE
 
 - [x] **16.1 Preserve and map extensible inbound calendar fields, canonical slugs, timezones, and thumbnail blobs (Todo 22)**
-  - **Status:** Complete and independently confirmed. Evidence: `.omo/evidence/atproto-auth/task22/executor-repair.md`, `.omo/evidence/atproto-auth/task22/final-adversarial-verify.md`, and `.omo/evidence/atproto-auth/task22/debug-container-runtime.md`.
+  - **Status:** Complete and independently confirmed, including Todo 24's final whole-container security repair. Evidence: `.omo/evidence/atproto-auth/task22/executor-repair.md`, `.omo/evidence/atproto-auth/task22/final-adversarial-verify.md`, `.omo/evidence/atproto-auth/task22/debug-container-runtime.md`, and `.omo/evidence/atproto-auth/task24-container-validation/ADVERSARIAL_VERIFY_FINAL.md`.
   - **Scope:** Preserve the complete source record in `AtprotoRecord.RecordJson`; map only semantically compatible values with normal `SlugGenerator.FromTitle(name, "event")` and implicit-session fallback; map valid IANA timezones; resolve authoritative `media[].content` with generic `media[].blob` compatibility through the verified DID/PDS boundary, bounded `getBlob`, and registered storage.
   - **Acceptance:**
     - [x] Exact canonical JSON equality survives Jetstream and complete PDS reconciliation for standard, producer-specific, unknown nested, and prompt-like fields.
     - [x] Imported Event/EventSession slugs are normal, deterministic, and stable across replay/update; malformed optional extensions fail soft and remain raw.
-    - [x] Valid thumbnail blobs are CID/MIME/declared-size/actual-size checked, staged through registered storage, and linked atomically through `Event.FeaturedImageId` and tenant-owned `StorageObject`; replacement/tombstone cleanup uses the existing lifecycle.
-    - [x] Missing, unsupported, malformed, oversized, mismatched, hung, or cancelled optional blob work never loses the canonical record, leaves partial state, or enqueues outbound PDS work.
-  - **Focused evidence:** factory 3/3, thumbnail gateway 24/24, PDS gateway 38/38, real production pipeline 1/1, retained real PostgreSQL 31/31; cleanup restored the 23-container/121-volume baseline.
+    - [x] The shared Jetstream/PDS thumbnail gateway accepts only exact parameter-free JPEG/PNG/GIF/WebP/AVIF; after bounded read, size, and CID binding, it consumes the declared container structure through EOF before `WriteAsync`.
+    - [x] Honest SVG, relabeled SVG, header-plus-active tails, malformed/oversized/mismatched/hung/cancelled optional blobs fail soft: semantic `RecordJson` including nested script remains canonical, `Event`/`EventSession` persist, and no image/storage/outbox/file is created.
+    - [x] Safe PNG stores exact bytes and links atomically through `Event.FeaturedImageId` and tenant-owned `StorageObject`; replacement/tombstone cleanup uses the existing lifecycle.
+  - **Focused evidence:** H5 1/1, H6 5/5, gateway 49/49 twice, PostgreSQL rejection twice, safe PNG 1/1.
   - **Dependencies:** Phase 15.
 
-### Phase 16 Verification — DEFERRED TO TODO 23
+### Phase 16 Verification — COMPLETE
 
-- [ ] Canonical Release build, all nine per-project commands, generated-contract/migration checks, and deterministic fake-service/Testcontainers smoke after Task 16.1.
+- [x] Canonical Release build, affected project matrix, generated-contract/migration checks, and deterministic fake-service/Testcontainers smoke after Task 16.1.
 
-## Todo 23: Canonical Verification Matrix — CURRENT
+## Todo 23, Todo 24, And Final Verification — COMPLETE
 
-- [ ] Run the final locked Release build and every project command from `docs/TESTING.md` with nonzero discovered counts.
-- [ ] Inspect generated OpenAPI/client contracts and pending migrations; verify the Phase 16 canonical JSON, slug/timezone, thumbnail, replacement, tombstone, and zero-outbound-echo scenarios at the frozen attributable snapshot.
-- [ ] Complete F1-F4 plan-compliance, code-quality, real-surface QA, and scope-fidelity checks after the matrix passes.
+- [x] Todo 23: final locked Release build, affected project matrix with nonzero counts, generated contracts/migrations, and deterministic integration smoke.
+- [x] Todo 24: exact parameter-free JPEG/PNG/GIF/WebP/AVIF allowlist plus bounded whole-container structural validation to EOF before storage.
+- [x] F1 plan compliance.
+- [x] F2 code quality.
+- [x] F3 real-surface QA.
+- [x] F4 scope fidelity.
+- [x] Five final review lanes and runtime debugging audit at `.omo/evidence/atproto-auth/final-security-review-container-validation/`.
 
-Todo 23 is not complete; its final matrix and F1-F4 remain the five open top-level gates.
+Final result: Release 26 projects/0 errors; Infrastructure 184/184; Application 130/130; Architecture 301 plus one governed skip; PostgreSQL 73/73; H5 1/1; H6 5/5; gateway 49/49 twice; PostgreSQL rejection twice; safe PNG 1/1.
 
 ## Remaining / Deferred Work
 

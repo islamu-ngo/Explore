@@ -3,15 +3,15 @@
 
 # AT Protocol Integration — Implementation Plan
 
-Last Updated: 2026-07-25 Europe/Brussels
+Last Updated: 2026-07-28 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** Write an implementation plan under dev/active for the ATProto implementation, follow dev/report/atproto-report.md strictly, use CarpaNet documentation from /home/amir/dev/Github/CarpaNet/docs/docs and Context7, ignore backward compatibility because the product is still in development, and preserve repository conventions, Clean Architecture, security, and maintainability. The 2026-07-18 clarification makes ATProto Events one governed capability for both fetch and publication, requires local-DB-first publication, requires every non-native public event field in the single event record description, and adds an administrator-selectable community-lexicon validation profile.
 - **Task directory:** dev/active/atproto-auth/
-- **Planning status:** 34/34 implementation tasks are complete and evidence-backed. The user's 2026-07-23 clarification superseded ADR-015's read-model-only inbound boundary: each accepted inbound event now materializes a tenant-local `Event` and exactly one `EventSession`. The execution plan is 22/27 top-level gates complete; Phase 16 / Task 16.1 is complete, and five top-level gates remain: Todo 23 plus F1-F4.
+- **Planning status:** Complete. All 34 implementation tasks and all 28 execution-plan gates are evidence-backed, including Todo 24 whole-container thumbnail validation, Todo 23, F1-F4, five final review lanes, and the runtime debugging audit.
 - **Completed implementation tasks:** 34/34. Recovery, refresh durability, universal discovery, tenant-local inbound aggregate materialization, and extensible import are independently confirmed under `.omo/evidence/atproto-auth/task-16/` through `task22/`.
-- **Current priority:** Todo 23: canonical Release build, all nine project commands, locked/generated contracts, migration checks, and deterministic integration smoke. This is not yet an all-project green claim.
+- **Current priority:** None; the workstream is complete. Live-provider validation remains release activity outside this implementation plan.
 - **Primary source:** dev/report/atproto-report.md, revision 3 dated 2026-07-18.
 - **Matched intents:** bff-auth-bug, add-write-endpoint, add-get-endpoint, add-cqrs-handler, add-ef-migration, update-repository-query, openapi-contract-change, add-hal-link, blazor-component-affordance, and external-infrastructure-bootstrap.
 - **Relevant skills:** implementation-plan, agentic-research, clean-architecture-rules, auth-patterns, blazor-bff-patterns, cqrs-mediatr-guidelines, dotnet-efcore-guidelines, outbox-pattern, error-tracking, blazor-ui-conventions, and lsp.
@@ -27,6 +27,8 @@ Implement AT Protocol OAuth as a real BFF login provider and implement governed 
 Event federation is DB-first. The effective `federation.atproto_events_enabled` setting activates both inbound event fetching and eligible outbound event publication. Local create/publish validation runs under either the default platform profile or the administrator-selected `community_lexicon` profile. A PDS create is never attempted inside a request transaction and never exists without a committed application event: the local publication transition and durable `PdsSyncOutbox` row commit atomically, then a worker restores the user's CarpaNet session and writes the PDS record. One `community.lexicon.calendar.event` record represents the whole event. Every public/federatable field that does not have a native lexicon property—including all sessions, days, agenda items, aspects, lookups, categories, tags, locations, and custom EAV values—is rendered deterministically into that record's description.
 
 Inbound event federation keeps one globally canonical DID/collection/rkey record, but no longer stops at a discovery projection. For every enabled tenant presentation, the fenced Jetstream or complete PDS-snapshot transaction also creates or updates one provenance-linked `Event` and exactly one `EventSession`. A dedicated internal CQRS command and manually instantiated FluentValidation validator accept the community lexicon minimum (`name` and `createdAt`) while validating every optional supplied value. The first safe lexicon URI is the source URL and maps to `Event.EventUrl`; starts/ends map to the session schedule; mode, status, RSVP expectation, description, DID, and canonical record identity map deterministically without enqueuing outbound federation.
+
+Optional inbound thumbnails pass through one shared `AtprotoThumbnailBlobGateway` for Jetstream and PDS recovery. It accepts only exact parameter-free `image/jpeg`, `image/png`, `image/gif`, `image/webp`, and `image/avif`. After bounded read, declared/actual-size, and CID binding, the gateway structurally consumes the declared container to EOF before storage: PNG chunks, JPEG markers/scans, GIF tables/sub-blocks, WebP RIFF/chunks, and AVIF boxes. Honest SVG, relabeled SVG, and valid-header-plus-active-content tails fail soft while the semantic canonical record and local `Event`/`EventSession` remain intact; no image/storage/outbox/file is created. A structurally valid PNG follows normal registered-storage linkage.
 
 The implementation deliberately reuses the existing AtprotoAuthenticationHandler seam, DynamicAuthSchemeManager, LoginRedirect component, SyncUserCommand, UserExternalLogin, IndexedDid, UserAuthenticationToken, cookie/YARP pipeline, tenant context, secret registry, rate limiting, logging, and test fixtures. It does not hand-roll PAR, PKCE, DPoP, nonce retry, handle resolution, PDS discovery, or OAuth token refresh because CarpaNet already owns those protocol details.
 
@@ -1184,7 +1186,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 
 - **Goal:** Implement governed downtime recovery, in-place Jetstream filter updates, bounded current PDS snapshot reconciliation, and atomic encrypted OAuth refresh persistence.
 - **Depends on:** Phase 12.
-- **Progress:** Implementation complete and independently verified in Todos 16-19. The Phase 13 broad build/project gate is deferred to the current Todo 23 matrix after completed Todo 22.
+- **Progress:** Complete. Implementation was independently verified in Todos 16-19 and the final Todo 23 matrix passed.
 - **Related skills/rules:** clean-architecture-rules, cqrs-mediatr-guidelines, dotnet-efcore-guidelines.
 - **Acceptance criteria:**
   - Tenant admin can toggle backfill enabled and select between downtime-only and full modes.
@@ -1270,7 +1272,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 
 - **Goal:** Ensure PDS independence (Bluesky, Eurosky, self-hosted) and maintain clean abstractions to support future Keycloak + local PDS integration without breaking changes.
 - **Depends on:** Phase 13.
-- **Progress:** Implementation complete and independently verified in Todo 20. The Phase 14 broad build/project gate is deferred to the current Todo 23 matrix after completed Todo 22.
+- **Progress:** Complete. Implementation was independently verified in Todo 20 and the final Todo 23 matrix passed.
 - **Related skills/rules:** clean-architecture-rules, auth-patterns.
 - **Acceptance criteria:**
   - Authentication works with accounts in Eurosky, self-hosted, or Bluesky PDS endpoints.
@@ -1302,7 +1304,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 
 - **Goal:** Materialize every accepted tenant-visible ATProto event into the normal Event model with exactly one EventSession while retaining the global canonical record as protocol authority.
 - **Depends on:** Phases 10, 11, 13.3, and 14.
-- **Progress:** Implementation complete and independently confirmed in Todo 21. Canonical all-project verification remains owned by the current Todo 23 matrix after completed Todo 22.
+- **Progress:** Complete. Implementation was independently confirmed in Todo 21 and the final Todo 23 matrix passed.
 - **Related skills/rules:** clean-architecture-rules, cqrs-mediatr-guidelines, dotnet-efcore-guidelines, application-layer.md, efcore-persistence.md, tests.md.
 - **Acceptance criteria:**
   - A dedicated internal command/handler manually instantiates a validator whose only required lexicon fields are name and createdAt; every optional supplied field remains validated.
@@ -1321,23 +1323,23 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 
 - **Goal:** Extend tenant-local inbound event materialization without narrowing the canonical producer record: map semantically compatible fields to local aggregates, derive normal canonical slugs and timezone-aware sessions, and ingest provider-neutral thumbnail blobs.
 - **Depends on:** Phase 15.
-- **Progress:** Task 16.1 is **COMPLETE** as Todo 22, independently confirmed in `.omo/evidence/atproto-auth/task22/executor-repair.md`, `.omo/evidence/atproto-auth/task22/final-adversarial-verify.md`, and `.omo/evidence/atproto-auth/task22/debug-container-runtime.md`. Todo 23 remains the canonical verification gate.
+- **Progress:** Complete. Task 16.1/Todo 22, Todo 24's final thumbnail security repair, Todo 23, and F1-F4 are independently confirmed.
 - **Canonical preservation rule:** `AtprotoRecord.RecordJson` retains the complete source JSON, including unsupported, malformed, producer-specific, and future fields. Only semantically compatible values map to local `Event` / `EventSession` fields; unsupported or future fields are not discarded and do not block import.
-- **Thumbnail boundary:** A valid `media[].content` thumbnail blob (with provider-neutral `media[].blob` fallback) is resolved through the verified DID/PDS boundary, fetched with `com.atproto.sync.getBlob` outside the EF transaction, bounded by CID/MIME/declared/actual size, written through registered storage, and linked atomically to `Event.FeaturedImageId` and the tenant-owned `StorageObject`. Missing or invalid optional media remains lossless canonical JSON and fails soft.
+- **Thumbnail boundary:** A valid `media[].content` thumbnail blob (with provider-neutral `media[].blob` fallback) is resolved through the verified DID/PDS boundary and fetched with `com.atproto.sync.getBlob` outside the EF transaction. The shared gateway accepts only exact parameter-free JPEG/PNG/GIF/WebP/AVIF MIME values; after bounded read, size, and CID checks it consumes the declared container structure to EOF before `WriteAsync`. Missing, honest SVG, relabeled SVG, malformed containers, and valid-header-plus-active tails remain lossless canonical JSON and fail soft.
 - **Acceptance criteria:**
   - Canonical JSON equality survives Jetstream create/update/replay and complete PDS reconciliation for standard, producer-specific, and unknown nested fields.
   - Compatible name, description, createdAt, safe URI, schedule, valid IANA timezone, mode, status, RSVP expectation, and thumbnail metadata map deterministically without changing replay identities.
   - Event and EventSession slugs use the normal `SlugGenerator.FromTitle(name, "event")` and implicit-session fallback and remain stable across replay/update.
   - Thumbnail fetch/storage/linking is provider-neutral, tenant-owned, bounded, cancellable, and lifecycle-cleaned on replacement/tombstone; no outbound federation work is created.
-- **Evidence:** Factory 3/3, thumbnail gateway 24/24, PDS gateway 38/38, real production pipeline 1/1, retained real PostgreSQL 31/31, and cleanup baseline restored to 23 containers/121 volumes. These are focused Task 22 results, not Todo 23 completion.
-- **Phase-end verification:** Todo 23 runs the canonical Release build, all nine project commands, generated-contract/migration checks, and deterministic integration smoke after Task 16.1.
+- **Evidence:** Final exact fingerprint: base `c57ebcca0e00b33c43ee4899a285cf1cb8bbd2b2`, manifest `e5ad4d92d28ae06e12df82277519a7865f093b6dc43f24bb249710a388c0a0cd`, and patches `62e5bcbe8f8c8f63b94f38885851914934578f25d586f733d911af297ba19882`, `507a101294b607326a796e033557d81f5742eb73730ab98c3e4fd191b4673469`, and `fbf56d56056d10791b5c7506d7e7d51f5cc102c73b2477f17e69d7197ad7fc51`.
+- **Phase-end verification:** Passed: Release build 26 projects/0 errors; Infrastructure ATProto 184/184; Application ATProto 130/130; Architecture 301 plus one governed skip; PostgreSQL ATProto 73/73; H5 1/1; H6 5/5; gateway 49/49 twice; PostgreSQL rejection twice; safe PNG 1/1.
 - **Rollback / failure handling:** Preserve the canonical record and prior aggregate state when optional extension or blob work fails; clean staged objects and retry through the existing fenced transaction without orphaning storage.
 
-### Todo 23: Canonical verification gate (CURRENT)
+### Todo 23, Todo 24, and final review/runtime gates — COMPLETE
 
-- Run the final Release build, all nine per-project test commands, locked restore, generated OpenAPI/client inspection, migration/pending-model checks, and deterministic fake AS/PDS/Jetstream plus Testcontainers smoke.
-- Keep this gate after completed Phase 16 / Task 16.1 so the matrix verifies the lossless extension mapping, canonical slugs/timezones, and provider-neutral thumbnail lifecycle at the final attributable snapshot. Do not claim this gate complete until its own evidence exists.
-- F1-F4 remain the final plan-compliance, quality, real-surface QA, and scope-fidelity checks after Todo 23.
+- Todo 23 passed the final Release and affected-project matrix, generated-contract/migration inspection, and deterministic integration smoke.
+- Todo 24 closed the security gap left by signature-only checks: all five allowlisted formats now require a bounded coherent container through EOF before storage.
+- F1-F4, all five final review lanes, and the runtime debugging audit passed against the exact three-patch fingerprint. Evidence: `.omo/evidence/atproto-auth/final-security-review-container-validation/`.
 
 #### Task 15.1: Materialize accepted ATProto events as Event aggregates with one EventSession
 
@@ -1485,6 +1487,7 @@ Intent-mandated projects are distributed across the sixteen phases. Repeated tes
 | Missing Part B prose hides a persistence/moderation choice | Medium | High | User clarification is binding; Task 9.1 records residual choices before runtime federation edits and cannot weaken A8-A12. | ADR unresolved or implementation contradicts plan invariant. | 9.1 |
 | Jetstream buffer expiry during long downtime | Low | Medium | Detect cursor age, fallback to listRecords downtime-restricted backfill, log critical gap warnings. | critical_ingest_gap log warning / alert | 13.3 |
 | PDS API rate limiting during full backfill | Medium | Medium | Implement standard rate-limiting, retry-after support, and paging limits in CarpaNet sync gateway. | pds_rate_limit_exceeded metrics | 13.3 |
+| Hand-written thumbnail container validation requires maintenance as formats evolve | Medium | Medium | Keep the exact five-format allowlist, bounded structural parsers, real raster controls, malformed/trailing-byte matrices, and fail-soft optional-media behavior. Animated WebP remains intentionally unsupported/fail-soft; validation proves structure, not decoded pixels. | Gateway contract or H5/H6 regression failure. | 16.1 / Todo 24 |
 
 
 ## 14. Success Metrics And Definition Of Done
@@ -1521,7 +1524,7 @@ Intent-mandated projects are distributed across the sixteen phases. Repeated tes
 
 ### Automated phase gates
 
-Each of the sixteen phases is complete only when all its tasks are checked and its declared Release build/test gates pass. No separate manual/browser/live-provider gate is part of this plan; Todo 23 owns the final canonical matrix.
+All sixteen phases, Todo 24, Todo 23, and F1-F4 are complete. The final five review lanes and runtime audit passed under `.omo/evidence/atproto-auth/final-security-review-container-validation/`. Live-provider validation remains release activity outside this plan.
 
 ## 15. Implementation Agent Contract — KEEP DEV DOCS CURRENT
 
@@ -1572,3 +1575,5 @@ The largest federation risk is completeness at the privacy boundary. The user re
 The missing Part B prose remains an evidence gap, but it is no longer a blocker. The user's 2026-07-18 clarification supersedes the report summary's split fetch/publish controls and supplies the binding publication/validation/projection behavior. Task 9.1 must record residual persistence, cursor, moderation-storage, and settlement choices in ADR-015 before federation runtime code. If the eventual report body conflicts, stop and re-baseline rather than adding compatibility branches.
 
 The strongest invariant is testable at transaction boundaries: no local validation success means no local publication and no outbox; no database commit means no claimable outbox; no claimable outbox means no CarpaNet repository write. Once a remote write succeeds, the local event remains authoritative even if settlement or later remote operations fail. Recovery reconciles the stable record key and URI/CID; it never deletes the local event to simulate distributed rollback.
+
+The remaining maintenance note is deliberately nonblocking: thumbnail validation is a hand-written bounded structural parser, not a pixel decoder. Animated WebP is intentionally rejected as optional media, and future format evolution requires new real-container and malformed/trailing-byte fixtures before widening the gate. This workstream makes no claim about historical objects deployed before the validated import path.
