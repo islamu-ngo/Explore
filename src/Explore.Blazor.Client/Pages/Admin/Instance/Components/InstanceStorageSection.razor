@@ -281,9 +281,17 @@
                        Value="LockForTenants"
                        ValueChanged="OnLockForTenantsChanged"
                        Color="Color.Warning"
-                       Disabled="@ControlsDisabled">
+                       Disabled="@(ControlsDisabled || _lockSavePending)">
                 Lock storage settings - tenants cannot configure their own storage policy
             </MudSwitch>
+            @if (!string.IsNullOrWhiteSpace(_lockSaveMessage))
+            {
+                <MudAlert Severity="@(_lockSaveSucceeded ? Severity.Success : Severity.Error)"
+                          Dense="true"
+                          role="@(_lockSaveSucceeded ? "status" : "alert")">
+                    @_lockSaveMessage
+                </MudAlert>
+            }
         }
     </MudStack>
 </div>
@@ -302,10 +310,13 @@
     public bool LockForTenants { get; set; }
 
     [Parameter]
-    public EventCallback<bool> LockForTenantsChanged { get; set; }
+    public Func<bool, Task<bool>>? SaveLockAsync { get; set; }
 
     private bool _isTesting;
     private bool _isRecalculating;
+    private bool _lockSavePending;
+    private bool _lockSaveSucceeded;
+    private string? _lockSaveMessage;
     private StorageOperationMessage? _operationResult;
     private InstanceStorageProviderStatusDto? _testedProviderStatus;
     private InstanceStorageUsageDto? _recalculatedUsage;
@@ -411,8 +422,19 @@
 
     private async Task OnLockForTenantsChanged(bool value)
     {
-        Model.LockTenantStorage = value;
-        await LockForTenantsChanged.InvokeAsync(value);
+        if (_lockSavePending || SaveLockAsync is null)
+        {
+            return;
+        }
+
+        _lockSavePending = true;
+        _lockSaveMessage = null;
+        bool saved = await SaveLockAsync(value);
+        _lockSaveSucceeded = saved;
+        _lockSaveMessage = saved
+            ? "Storage tenant lock saved."
+            : "Storage tenant lock could not be saved. The latest value was restored.";
+        _lockSavePending = false;
     }
 
     private static string ConfiguredText(bool? configured, string label) =>

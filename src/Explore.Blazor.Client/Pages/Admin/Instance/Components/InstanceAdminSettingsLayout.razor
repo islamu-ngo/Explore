@@ -157,7 +157,7 @@
                             <InstanceStorageSection Model="_storageModel" OnboardingService="InstanceOnboardingService"
                                                    IsSingleTenant="IsSingleTenantMode"
                                                    LockForTenants="_delegation.LockTenantStorage == true"
-                                                   LockForTenantsChanged="@(v => _delegation.LockTenantStorage = v)" />
+                                                    SaveLockAsync="SaveStorageLockAsync" />
                         }
                         else if (_currentSection == "smtp")
                         {
@@ -165,10 +165,10 @@
                                                 Username="_smtpUsername"
                                                 UsernameChanged="@(value => _smtpUsername = value)"
                                                 Password="_smtpPassword"
-                                                PasswordChanged="@(value => _smtpPassword = value)"
-                                                IsSingleTenant="IsSingleTenantMode"
-                                               LockForTenants="_delegation.LockTenantSmtp == true"
-                                               LockForTenantsChanged="@(v => _delegation.LockTenantSmtp = v)" />
+                                                 PasswordChanged="@(value => _smtpPassword = value)"
+                                                 IsSingleTenant="IsSingleTenantMode"
+                                                LockForTenants="_delegation.LockTenantSmtp == true"
+                                                SaveLockAsync="SaveSmtpLockAsync" />
                         }
                         else if (_currentSection == "analytics-privacy")
                         {
@@ -629,8 +629,6 @@
                 break;
             case "storage":
                 tasks.Add(InstanceOnboardingService.UpdateStorageSettingsAsync(_storageModel));
-                tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(
-                    new TenantDelegationSettingsDto { LockTenantStorage = _delegation.LockTenantStorage }));
                 break;
             case "smtp":
                 tasks.Add(InstanceOnboardingService.UpdateSmtpSettingsAsync(new InstanceSmtpConfigurationWriteDto
@@ -645,8 +643,6 @@
                     TimeoutSeconds = _smtpModel.TimeoutSeconds,
                     SkipCertificateValidation = _smtpModel.SkipCertificateValidation
                 }));
-                tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(
-                    new TenantDelegationSettingsDto { LockTenantSmtp = _delegation.LockTenantSmtp }));
                 break;
             case "announcement-bar" when IsSingleTenantMode && _canManageTenant:
                 var hadAnnouncementBarBeforeSave = _hasAnnouncementBar;
@@ -714,6 +710,30 @@
         await Task.WhenAll(authTask, authorizationTask);
         _authProviderModel = authTask.Result;
         _authorizationProviderModel = authorizationTask.Result;
+    }
+
+    private async Task<bool> SaveStorageLockAsync(bool value)
+    {
+        BaseCommandResponseOfGuid response = await SaveDelegationAsync(
+            new TenantDelegationSettingsDto { LockTenantStorage = value });
+        if (response.Success == true)
+        {
+            _delegation.LockTenantStorage = value;
+        }
+
+        return response.Success == true;
+    }
+
+    private async Task<bool> SaveSmtpLockAsync(bool value)
+    {
+        BaseCommandResponseOfGuid response = await SaveDelegationAsync(
+            new TenantDelegationSettingsDto { LockTenantSmtp = value });
+        if (response.Success == true)
+        {
+            _delegation.LockTenantSmtp = value;
+        }
+
+        return response.Success == true;
     }
 
     private async Task RemoveAnnouncementBarAsync()

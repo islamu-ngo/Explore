@@ -95,10 +95,19 @@
             <MudDivider Class="my-3" />
             <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Tenant Delegation</MudText>
             <MudSwitch T="bool" Value="LockForTenants"
-                       ValueChanged="LockForTenantsChanged"
+                       ValueChanged="SaveTenantLockAsync"
+                       Disabled="_lockSavePending"
                        Color="Color.Warning">
                 Lock SMTP settings — tenants cannot configure their own email delivery
             </MudSwitch>
+            @if (!string.IsNullOrWhiteSpace(_lockSaveMessage))
+            {
+                <MudAlert Severity="@(_lockSaveSucceeded ? Severity.Success : Severity.Error)"
+                          Dense="true"
+                          role="@(_lockSaveSucceeded ? "status" : "alert")">
+                    @_lockSaveMessage
+                </MudAlert>
+            }
         }
     </MudStack>
 </div>
@@ -117,7 +126,7 @@
     public bool LockForTenants { get; set; }
 
     [Parameter]
-    public EventCallback<bool> LockForTenantsChanged { get; set; }
+    public Func<bool, Task<bool>>? SaveLockAsync { get; set; }
 
     [Parameter]
     public string Username { get; set; } = string.Empty;
@@ -132,6 +141,9 @@
     public EventCallback<string> PasswordChanged { get; set; }
 
     private bool _isTesting;
+    private bool _lockSavePending;
+    private bool _lockSaveSucceeded;
+    private string? _lockSaveMessage;
     private SmtpConnectionTestResultDto? _testResult;
 
     private async Task TestConnectionAsync()
@@ -147,5 +159,22 @@
 
         _testResult = await OnboardingService.TestSmtpConnectionAsync();
         _isTesting = false;
+    }
+
+    private async Task SaveTenantLockAsync(bool value)
+    {
+        if (_lockSavePending || SaveLockAsync is null)
+        {
+            return;
+        }
+
+        _lockSavePending = true;
+        _lockSaveMessage = null;
+        bool saved = await SaveLockAsync(value);
+        _lockSaveSucceeded = saved;
+        _lockSaveMessage = saved
+            ? "SMTP tenant lock saved."
+            : "SMTP tenant lock could not be saved. The latest value was restored.";
+        _lockSavePending = false;
     }
 }
