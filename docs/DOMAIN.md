@@ -208,7 +208,15 @@ Tenant role authority is represented by `TenantUserRoleGrant`, not by a direct `
 
 Revocation is explicit (`RevokedAt`, `RevokedBy`, `RevocationReason`) so historical authority evidence remains auditable while active checks ignore revoked grants.
 
-### 11) Actor Subscriptions And Notification Fanout
+### 11) ATProto External Subject Promotion And Consolidation
+
+An unknown exact DID materializes one global `AtprotoIdentity`, one `Actor` with `ActorTypeId = ExternalUnclassified`, and one `ExternalActorSubject`. Verified Organization or Group classification can promote that Actor in place, preserving the Actor, identity, profile, and Event identifiers while retiring the external owner evidence.
+
+Consolidation into an existing same-kind Actor is stricter. The signed bootstrap request must name the canonical Actor and its expected concurrency stamp, and the authenticated User must already hold active OrgAdmin or GroupAdmin authority over an approved, non-suspended participation in the current tenant. Exact DID proves the external source only; names, handles, URLs, profile similarity, and classification intent do not prove authority over the canonical target.
+
+The serializable onboarding transaction moves active operational references for the identity, Events, EventSeries, session speakers, and tenant-local subscriptions. It records one immutable `ActorMerge` with the identity ID and a bounded SHA-256 DID digest, then retires the source Actor. Consent, reports, organizer claims, notifications, moderation records, exports, canonical records, and other historical evidence remain attached to the source. Prepared encrypted OAuth-session persistence commits in the same retry attempt; JWT issuance occurs only after commit.
+
+### 12) Actor Subscriptions And Notification Fanout
 
 `ActorSubscription` is the canonical durable relationship for user subscriptions to subscribable actors. V1 supports organization and group target actors only. The subscription stores the active tenant-local subscriber (`SubscriberTenantUserId`), denormalized global `SubscriberUserId` for notification delivery, target actor, target actor type, subscription status, notification level, audit fields, soft-delete fields, and a concurrency stamp.
 

@@ -21,9 +21,9 @@ AT Protocol OAuth authentication is implemented for accounts that are already li
   - `IndexedDid` (DID cache model)
   - `ActorKeyStore` (key storage model)
   - supporting enums: `ActorType`, `DidCustodyType`
-- **Persistence**: federation tables are represented through `ExploreDbContext` DbSets, entity configurations, and repositories, including ATProto record and PDS sync outbox repositories. `IndexedDid` and `UserExternalLogin` are internal persistence only; neither has a public CRUD controller, HAL resource, or generated client contract.
+- **Persistence**: federation tables are represented through `ExploreDbContext` DbSets, entity configurations, and repositories, including ATProto record and PDS sync outbox repositories. `IndexedDid`, `UserExternalLogin`, `ActorKeyStore`, and legacy `SyncState` are internal persistence only; none has a public CRUD controller, HAL resource, or generated client contract. The private fenced `AtprotoJetstreamConsumerState` workflow owns ingestion cursor advancement instead of generic `SyncState` writes.
 - **OAuth authentication**: the BFF uses CarpaNet confidential-client OAuth with protected single-use state, PKCE, DPoP, a server-private bootstrap bridge, encrypted DID-keyed session persistence, and a short-lived first-party ES256 API session JWT. The browser receives only the HttpOnly BFF cookie and safe display state.
-- **Linked-account boundary**: the verified DID, PDS, tenant, and existing `UserExternalLogin` must agree. ATProto login does not create or email-match platform users, and clients cannot directly create or mutate login/DID ownership rows.
+- **Linked-account boundary**: the verified DID, PDS, tenant, and existing `UserExternalLogin` must agree. ATProto login does not create or email-match platform users, and clients cannot directly create or mutate login/DID ownership rows, encrypted actor keys, or federation cursor state.
 - **Safe public API**: `GET /api/event` returns a typed local-or-federated discovery collection. Federated items receive only a policy-produced `source` relation to `GET /api/event/federated/{atprotoRecordId}/source`; no raw `AtprotoRecord` read or mutation API exists.
 - **Governance**: `federation.atproto_events_enabled` controls inbound tenant presentation/stream demand and eligible outbound enqueue. `federation.atproto_event_validation_profile` selects platform or community-lexicon publication requirements, subject to instance locks; the community profile relaxes only required local business fields. `federation.atproto_publish_my_events` remains self-scoped user consent.
 - **Projection**: one typed community event record maps native lexicon fields and renders every other public event value—including all sessions, aspects, resolved lookups, and EAV values—into one deterministic description. Coverage, privacy, or exact-size failures prevent enqueue; values are never silently dropped or truncated.
@@ -315,6 +315,12 @@ The current login paths converge on the existing platform user identifier so aut
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Verified external subject classification
+
+Inbound observation creates one global `ExternalUnclassified` Actor per exact DID and never creates tenant participation. During verified onboarding, explicit Organization or Group classification may promote that Actor in place. This preserves its identity and imported Event references while creating participation only in the onboarding tenant.
+
+An explicit canonical Actor target is not authorized by DID verification alone. The request carries a signed canonical Actor ID and expected concurrency stamp, and the authenticated User must already be an active administrator of the matching approved OrganizationTenant or GroupTenant in the current tenant. Same-kind consolidation moves active operational references, writes immutable `ActorMerge` evidence using a bounded DID digest, and retires the external source. Cross-kind, User-owned, stale, suspended, deleted, unauthorized, or inferred matches fail closed.
 
 ## Handling Nullable DID (`did_status`)
 

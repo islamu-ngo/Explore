@@ -20,7 +20,7 @@ Table "actor_types" {
     master_code [unique, name: 'ix_actor_types_master_code']
   }
 
-  Note: 'Lookup: classifies federated actors. Values: User(1), Organization(2), Bot(3), Group(4), System(5). Seeded.'
+  Note: 'Lookup: classifies global actors. Values: User(1), Organization(2), Bot(3), Group(4), System(5), ExternalUnclassified(6). Seeded.'
 }
 
 Table "role_scopes" {
@@ -3001,7 +3001,7 @@ Table "actors" {
     (service_principal_id) [unique, note: 'filtered: service_principal_id IS NOT NULL']
   }
 
-  Note: 'Global represented subject. Check ck_actors_exactly_one_owner requires exactly one User, Organization, Group, ExternalActorSubject, or ServicePrincipal owner.'
+  Note: 'Global represented subject. ck_actors_exactly_one_owner requires exactly one concrete owner; ck_actors_external_type_matches_owner binds ExternalActorSubject ownership exclusively to ExternalUnclassified(6).'
 }
 
 

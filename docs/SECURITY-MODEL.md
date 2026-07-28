@@ -100,6 +100,8 @@ The `MultiAuth` policy selector preserves the Keycloak and API-key branches and 
 - The API atomically consumes the bootstrap `jti` in the durable idempotency table before dispatch. PostgreSQL `INSERT ... ON CONFLICT DO NOTHING` makes concurrent replay have exactly one winner across API instances.
 - The private bridge is excluded from API discovery and generated browser clients, rate-limited as a write, request-size bounded, and returned with `no-store`. It accepts opaque CarpaNet session material only over the server-to-server BFF boundary.
 - Infrastructure restores the OAuth session through CarpaNet, permits token refresh through the constrained ATProto transport, calls the user's PDS `com.atproto.server.getSession`, and requires the authenticated DID, returned DID, expected canonical HTTPS PDS, and linked tenant identity to agree before any write.
+- Exact DID verification proves only the external source Actor. Promotion to a new Organization or Group preserves that Actor in place. Consolidation into an existing canonical Actor additionally requires a signed target ID and concurrency stamp plus active current-tenant OrgAdmin or GroupAdmin authority over an approved participation; missing, stale, cross-kind, suspended, deleted, or unauthorized targets fail before reference movement.
+- OAuth-session encryption is prepared once before retryable work. One serializable transaction applies onboarding or consolidation and persists the prepared session on every database retry; cache invalidation and first-party JWT issuance occur only after commit. Merge evidence stores the identity ID and a bounded SHA-256 DID digest rather than the raw DID.
 - `AtprotoSession` accepts only ES256 first-party tokens from the separate session-JWT key ring, with exact issuer/audience, known `kid`, valid lifetime, tenant claim, `auth_provider=atproto`, DID claim, and a platform user `Guid` in `sub`. Configured lifetime is constrained to one through sixty minutes.
 - Current-session read, refresh, and revoke require both that `AtprotoSession` bearer token and a separate one-minute BFF session-bridge assertion bound to tenant, user, DID, method, path, and single-use `jti`. Refresh is serialized with a PostgreSQL advisory lock. Revoke attempts the remote provider operation but always removes the exact local encrypted session in `finally`; remote failure cannot preserve local authority.
 - The browser cookie stores the first-party platform JWT, never a PDS access token, refresh token, or DPoP private key. OAuth state and cross-host handoff values are protected, opaque, single-use, and consumed atomically through Redis in multi-node deployments.
@@ -235,7 +237,7 @@ Unsafe browser requests proxied through the BFF at `/api/*`, including anonymous
 
 - Token issuance: `UseAntiforgeryTokenMiddleware` calls `IAntiforgery.GetAndStoreTokens` on non-static `GET` requests and writes the request token to the readable `XSRF-TOKEN` cookie. Static assets bypass issuance so the antiforgery service does not disable browser caching for immutable UI resources.
 - Header contract: clients send the token back in the `X-CSRF-TOKEN` header. This matches the BFF `AddAntiforgery` configuration.
-- Browser client path: `BrowserCredentialsMessageHandler` attaches browser credentials and adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests.
+- Browser client path: `BrowserCredentialsMessageHandler` sends browser credentials, and `BffAntiforgeryMessageHandler` adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests.
 - Server self-call path: `BffCookieForwardingHandler` forwards captured cookies and mirrors `XSRF-TOKEN` into `X-CSRF-TOKEN` when InteractiveServer code calls BFF endpoints.
 - Endpoint validation: unsafe minimal BFF endpoints call `.ValidateAntiforgery()`, which returns `400 Antiforgery validation failed` for missing or invalid tokens.
 - Proxy validation: unsafe `/api/*` requests validate through `EventApiProxyExtensions` before YARP forwards them. Existing setup-secret and anonymous onboarding/bootstrap decisions remain outside this browser-antiforgery check.
@@ -379,7 +381,9 @@ Five resource policies govern custom property operations:
 |---|---|---|---|---|
 | `GET /api/event/{id}/custom-property-definitions` | `EventCustomPropertyDefinitionController` | view | `islamuevent_custom_property_template` | AllowAnonymous |
 | `POST /api/event/{id}/custom-property-definitions` | `EventCustomPropertyDefinitionController` | create | `islamuevent_custom_property_template` | Authorize |
-| `PUT /api/event/{id}/custom-property-definitions/{defId}` | `EventCustomPropertyDefinitionController` | update | `islamuevent_custom_property_template` | Authorize |
+| `PATCH /api/eventcustomproperty/{id}` | `EventCustomPropertyController` | update | `islamuevent_tenant` | Authorize; persisted definition binds tenant authority |
+| `PATCH /api/eventsessioncustomproperty/{id}` | `EventSessionCustomPropertyController` | update | `islamuevent_tenant` | Authorize; persisted definition binds tenant authority |
+| `PATCH /api/custompropertydefinition/{id}` | `CustomPropertyDefinitionController` | update | `islamuevent_tenant` | Authorize; persisted definition binds tenant authority |
 | `DELETE /api/event/{id}/custom-property-definitions/{defId}` | `EventCustomPropertyDefinitionController` | delete | `islamuevent_custom_property_template` | Authorize |
 | `DELETE /api/eventcustomproperty/{defId}/purge` | `EventCustomPropertyController` | update/delete | `islamuevent_custom_property_template` | Admin role |
 | `DELETE /api/eventsessioncustomproperty/{defId}/purge` | `EventSessionCustomPropertyController` | update/delete | `islamuevent_custom_property_template` | Admin role |
