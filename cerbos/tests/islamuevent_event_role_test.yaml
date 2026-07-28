@@ -18,6 +18,7 @@ principals:
           roles: ["event.owner"]
           permissions:
             - "event:update"
+            - "event:manage-tickets"
             - "event:delete"
             - "event:publish"
             - "event:manage-team"
@@ -49,6 +50,7 @@ principals:
           roles: ["event.manager"]
           permissions:
             - "event:update"
+            - "event:manage-tickets"
             - "event:publish"
             - "event_session:create"
             - "event_session:update"
@@ -210,7 +212,7 @@ tests:
     input:
       principals: ["event_owner"]
       resources: ["event_1"]
-      actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-registrations"]
+      actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-registrations", "manage-tickets"]
     expected:
       - principal: "event_owner"
         resource: "event_1"
@@ -224,12 +226,13 @@ tests:
           transfer-ownership: EFFECT_ALLOW
           manage-finance: EFFECT_ALLOW
           manage-registrations: EFFECT_ALLOW
+          manage-tickets: EFFECT_ALLOW
 
   - name: "Event manager can update and publish but cannot manage ownership or finance"
     input:
       principals: ["event_manager"]
       resources: ["event_1"]
-      actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-registrations"]
+      actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-registrations", "manage-tickets"]
     expected:
       - principal: "event_manager"
         resource: "event_1"
@@ -243,6 +246,19 @@ tests:
           transfer-ownership: EFFECT_DENY
           manage-finance: EFFECT_DENY
           manage-registrations: EFFECT_ALLOW
+          manage-tickets: EFFECT_ALLOW
+
+  - name: "Event update alone does not grant ticket management"
+    input:
+      principals: ["other_event_owner"]
+      resources: ["event_other"]
+      actions: ["update", "manage-tickets"]
+    expected:
+      - principal: "other_event_owner"
+        resource: "event_other"
+        actions:
+          update: EFFECT_ALLOW
+          manage-tickets: EFFECT_DENY
 
   - name: "Event owner can manage every event-family child resource for their event"
     input:
@@ -332,7 +348,7 @@ tests:
     input:
       principals: ["registration_manager"]
       resources: ["event_1", "event_session_1", "event_registration_1"]
-      actions: ["view", "update", "delete", "manage-registrations"]
+      actions: ["view", "update", "delete", "manage-registrations", "manage-tickets"]
     expected:
       - principal: "registration_manager"
         resource: "event_1"
@@ -341,6 +357,7 @@ tests:
           update: EFFECT_DENY
           delete: EFFECT_DENY
           manage-registrations: EFFECT_ALLOW
+          manage-tickets: EFFECT_DENY
       - principal: "registration_manager"
         resource: "event_session_1"
         actions:
@@ -374,7 +391,7 @@ tests:
     input:
       principals: ["regular_user"]
       resources: ["event_1", "event_session_1", "event_registration_1"]
-      actions: ["view", "create", "update", "delete", "manage-registrations"]
+      actions: ["view", "create", "update", "delete", "manage-registrations", "manage-tickets"]
     expected:
       - principal: "regular_user"
         resource: "event_1"
@@ -384,6 +401,7 @@ tests:
           update: EFFECT_DENY
           delete: EFFECT_DENY
           manage-registrations: EFFECT_DENY
+          manage-tickets: EFFECT_DENY
       - principal: "regular_user"
         resource: "event_session_1"
         actions:

@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using Explore.Application.Authorization;
 using Explore.Application.Features.EventOrganizerClaims.Requests.Commands;
 using Explore.Application.Features.EventOrganizerClaims.Requests.Queries;
+using Explore.Domain.Constants;
 using Explore.Infrastructure.Services;
 
 public partial class AuthorizationParityTests
@@ -17,6 +18,7 @@ public partial class AuthorizationParityTests
         "islamuevent_event_owner",
         "islamuevent_event_manager",
         "islamuevent_registration_manager",
+        "islamuevent_ticket_manager",
         "islamuevent_check_in_staff"
     ];
 
@@ -41,7 +43,7 @@ public partial class AuthorizationParityTests
     ];
 
     [Test]
-    [DisplayName("All 4 event-role derived roles exist in derived_roles.yaml")]
+    [DisplayName("All 5 event-role derived roles exist in derived_roles.yaml")]
     public async Task EventRoleDerivedRoles_ShouldExist_InDerivedRolesYaml()
     {
         var derivedRolesPath = Path.Combine(CerbosPoliciesPath, "derived_roles.yaml");
@@ -70,6 +72,18 @@ public partial class AuthorizationParityTests
         await Assert.That(missing)
             .IsEmpty()
             .Because($"These event role codes are missing from derived_roles.yaml conditions: [{string.Join(", ", missing)}]");
+    }
+
+    [Test]
+    [Category("Phase43Ticketing")]
+    [DisplayName("Ticket manager derived role requires the exact ticket-management permission")]
+    public async Task TicketManagerDerivedRole_ShouldRequire_ExactTicketManagementPermission()
+    {
+        var derivedRolesPath = Path.Combine(CerbosPoliciesPath, "derived_roles.yaml");
+        var content = File.ReadAllText(derivedRolesPath);
+
+        await Assert.That(content).Contains("name: islamuevent_ticket_manager");
+        await Assert.That(content).Contains($"\"{PermissionCodes.EventManageTickets}\"");
     }
 
     [Test]

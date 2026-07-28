@@ -1835,6 +1835,7 @@ public static class LookupTableSeeder
             "transfer-ownership",
             "manage-finance",
             "manage-public-actions",
+            "manage-tickets",
             "view-organizer-claims",
             "review-organizer-claim"
         ]);
@@ -1894,6 +1895,7 @@ public static class LookupTableSeeder
             PermissionCodes.EventTransferOwnership,
             PermissionCodes.EventManageFinance,
             PermissionCodes.EventManagePublicActions,
+            PermissionCodes.EventManageTickets,
             PermissionCodes.EventViewOrganizerClaims,
             PermissionCodes.EventReviewOrganizerClaim,
             PermissionCodes.EventRegistrationManage,
@@ -1934,6 +1936,7 @@ public static class LookupTableSeeder
                 PermissionCodes.EventTransferOwnership,
                 PermissionCodes.EventManageFinance,
                 PermissionCodes.EventManagePublicActions,
+                PermissionCodes.EventManageTickets,
                 PermissionCodes.EventViewOrganizerClaims,
                 "event_day:view",
                 PermissionCodes.EventDayCreate,
@@ -1966,6 +1969,7 @@ public static class LookupTableSeeder
                 PermissionCodes.EventPublish,
                 PermissionCodes.EventManageTeam,
                 PermissionCodes.EventManagePublicActions,
+                PermissionCodes.EventManageTickets,
                 PermissionCodes.EventViewOrganizerClaims,
                 "event_day:view",
                 PermissionCodes.EventDayCreate,

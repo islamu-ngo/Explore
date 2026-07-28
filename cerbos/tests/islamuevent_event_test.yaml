@@ -150,7 +150,7 @@ tests:
     input:
       principals: ["islamuevent_instance_admin"]
       resources: ["event_in_tenant1_org1"]
-      actions: ["view", "view-management", "update", "delete", "moderate-light", "moderate-heavy", "unmoderate", "manage-registrations"]
+      actions: ["view", "view-management", "update", "delete", "moderate-light", "moderate-heavy", "unmoderate", "manage-registrations", "manage-tickets"]
     expected:
       - principal: "islamuevent_instance_admin"
         resource: "event_in_tenant1_org1"
@@ -163,12 +163,13 @@ tests:
           moderate-heavy: EFFECT_ALLOW
           unmoderate: EFFECT_ALLOW
           manage-registrations: EFFECT_DENY
+          manage-tickets: EFFECT_DENY
 
   - name: "Tenant admin can view and moderate events in their tenant without edit authority"
     input:
       principals: ["islamuevent_tenant_admin"]
       resources: ["event_in_tenant1_org1"]
-      actions: ["view", "view-management", "update", "delete", "moderate-light", "moderate-heavy", "unmoderate", "manage-registrations"]
+      actions: ["view", "view-management", "update", "delete", "moderate-light", "moderate-heavy", "unmoderate", "manage-registrations", "manage-tickets"]
     expected:
       - principal: "islamuevent_tenant_admin"
         resource: "event_in_tenant1_org1"
@@ -181,12 +182,13 @@ tests:
           moderate-heavy: EFFECT_ALLOW
           unmoderate: EFFECT_ALLOW
           manage-registrations: EFFECT_DENY
+          manage-tickets: EFFECT_DENY
 
   - name: "Org admin can manage events for their organization"
     input:
       principals: ["islamuevent_org_admin"]
       resources: ["event_in_tenant1_org1"]
-      actions: ["view", "view-management", "create", "update", "delete", "moderate-light", "moderate-heavy", "unmoderate", "manage-registrations"]
+      actions: ["view", "view-management", "create", "update", "delete", "moderate-light", "moderate-heavy", "unmoderate", "manage-registrations", "manage-tickets"]
     expected:
       - principal: "islamuevent_org_admin"
         resource: "event_in_tenant1_org1"
@@ -200,17 +202,19 @@ tests:
           moderate-heavy: EFFECT_DENY
           unmoderate: EFFECT_DENY
           manage-registrations: EFFECT_DENY
+          manage-tickets: EFFECT_DENY
 
   - name: "Organization controller of verified organizer can manage registrations"
     input:
       principals: ["islamuevent_org_admin"]
       resources: ["event_publisher_org1_verified_organizer_org1"]
-      actions: ["manage-registrations"]
+      actions: ["manage-registrations", "manage-tickets"]
     expected:
       - principal: "islamuevent_org_admin"
         resource: "event_publisher_org1_verified_organizer_org1"
         actions:
           manage-registrations: EFFECT_ALLOW
+          manage-tickets: EFFECT_ALLOW
 
   - name: "Regular user can only view events"
     input:
@@ -256,13 +260,14 @@ tests:
     input:
       principals: ["machine_user"]
       resources: ["event_in_tenant1_org1"]
-      actions: ["claim-organizer", "manage-registrations"]
+      actions: ["claim-organizer", "manage-registrations", "manage-tickets"]
     expected:
       - principal: "machine_user"
         resource: "event_in_tenant1_org1"
         actions:
           claim-organizer: EFFECT_DENY
           manage-registrations: EFFECT_DENY
+          manage-tickets: EFFECT_DENY
 
   - name: "Only the verified organizer actor controller receives participation management"
     input:

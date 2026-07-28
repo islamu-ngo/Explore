@@ -90,6 +90,37 @@ resourcePolicy:
              (has(request.resource.attr.organizerOrganizationId) &&
               has(request.principal.attr.eventCreateOrganizations) &&
               request.resource.attr.organizerOrganizationId in request.principal.attr.eventCreateOrganizations) ||
+              (has(request.resource.attr.organizerGroupId) &&
+               has(request.principal.attr.eventCreateGroups) &&
+               request.resource.attr.organizerGroupId in request.principal.attr.eventCreateGroups))
+
+    - actions: ["manage-tickets"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_ticket_manager
+      condition:
+        match:
+          expr: >
+            request.principal.attr.isInstanceAdmin != true &&
+            !(request.resource.attr.tenantId in request.principal.attr.tenantMemberships) &&
+            (!has(request.principal.attr.is_machine) || request.principal.attr.is_machine != true)
+
+    - actions: ["manage-tickets"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user
+      condition:
+        match:
+          expr: >
+            request.principal.attr.isInstanceAdmin != true &&
+            !(request.resource.attr.tenantId in request.principal.attr.tenantMemberships) &&
+            (!has(request.principal.attr.is_machine) || request.principal.attr.is_machine != true) &&
+            ((has(request.resource.attr.organizerUserId) &&
+              has(request.principal.attr.userId) &&
+              request.resource.attr.organizerUserId == request.principal.attr.userId) ||
+             (has(request.resource.attr.organizerOrganizationId) &&
+              has(request.principal.attr.eventCreateOrganizations) &&
+              request.resource.attr.organizerOrganizationId in request.principal.attr.eventCreateOrganizations) ||
              (has(request.resource.attr.organizerGroupId) &&
               has(request.principal.attr.eventCreateGroups) &&
               request.resource.attr.organizerGroupId in request.principal.attr.eventCreateGroups))
