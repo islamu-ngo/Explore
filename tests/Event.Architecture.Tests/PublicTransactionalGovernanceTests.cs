@@ -47,6 +47,33 @@ public class PublicTransactionalGovernanceTests
         await Assert.That(violations).Contains("NonCompliantPublicTransactionalController.PostWithAntiforgery: must not declare API antiforgery metadata.");
     }
 
+    [Test]
+    public async Task PublicTransactionalRules_RejectAcceptVerbsPostWithoutIdempotencyKey()
+    {
+        var violations = PublicTransactionalEndpointGovernance.FindViolations(
+            new[] { typeof(AcceptVerbsPublicTransactionalController) });
+
+        await Assert.That(violations).Contains("AcceptVerbsPublicTransactionalController.PostWithoutKey: POST actions must declare [RequireIdempotencyKey].");
+    }
+
+    [Test]
+    public async Task PublicTransactionalRules_RejectEffectiveRateLimitingDisableMetadata()
+    {
+        var violations = PublicTransactionalEndpointGovernance.FindViolations(
+            new[] { typeof(DisabledRateLimitPublicTransactionalController) });
+
+        await Assert.That(violations).Contains("DisabledRateLimitPublicTransactionalController.Post: must not disable rate limiting.");
+    }
+
+    [Test]
+    public async Task PublicTransactionalRules_RejectInheritedNoncompliantAction()
+    {
+        var violations = PublicTransactionalEndpointGovernance.FindViolations(
+            new[] { typeof(InheritedActionPublicTransactionalController) });
+
+        await Assert.That(violations).Contains("InheritedActionPublicTransactionalController.PostWithoutKey: POST actions must declare [RequireIdempotencyKey].");
+    }
+
     [EndpointClassification(EndpointClass.PublicTransactional)]
     private sealed class CompliantPublicTransactionalController : ControllerBase
     {
@@ -88,6 +115,37 @@ public class PublicTransactionalGovernanceTests
         [ValidateAntiForgeryToken]
         public OkResult PostWithAntiforgery() => Ok();
     }
+
+    [EndpointClassification(EndpointClass.PublicTransactional)]
+    private sealed class AcceptVerbsPublicTransactionalController : ControllerBase
+    {
+        [AcceptVerbs("POST")]
+        [AllowAnonymous]
+        [EnableRateLimiting("public_transactional")]
+        public OkResult PostWithoutKey() => Ok();
+    }
+
+    [EndpointClassification(EndpointClass.PublicTransactional)]
+    [AllowAnonymous]
+    [EnableRateLimiting("public_transactional")]
+    private sealed class DisabledRateLimitPublicTransactionalController : ControllerBase
+    {
+        [HttpPost]
+        [RequireIdempotencyKey]
+        [DisableRateLimiting]
+        public OkResult Post() => Ok();
+    }
+
+    private abstract class InheritedActionControllerBase : ControllerBase
+    {
+        [HttpPost]
+        [AllowAnonymous]
+        [EnableRateLimiting("public_transactional")]
+        public OkResult PostWithoutKey() => Ok();
+    }
+
+    [EndpointClassification(EndpointClass.PublicTransactional)]
+    private sealed class InheritedActionPublicTransactionalController : InheritedActionControllerBase;
 }
 
 internal static class PublicTransactionalEndpointGovernance
@@ -119,7 +177,7 @@ internal static class PublicTransactionalEndpointGovernance
         foreach (var controller in controllerTypes)
         {
             var actions = controller
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
                 .Where(IsHttpAction);
 
             foreach (var action in actions)
@@ -148,12 +206,17 @@ internal static class PublicTransactionalEndpointGovernance
                     violations.Add($"{actionId}: must use [EnableRateLimiting(\"public_transactional\")].");
                 }
 
+                if (HasEffectiveAttribute<DisableRateLimitingAttribute>(controller, action))
+                {
+                    violations.Add($"{actionId}: must not disable rate limiting.");
+                }
+
                 if (HasEffectiveAntiforgeryMetadata(controller, action))
                 {
                     violations.Add($"{actionId}: must not declare API antiforgery metadata.");
                 }
 
-                if (HasAttribute<HttpPostAttribute>(action)
+                if (UsesHttpMethod(action, HttpMethods.Post)
                     && !HasEffectiveAttribute<RequireIdempotencyKeyAttribute>(controller, action))
                 {
                     violations.Add($"{actionId}: POST actions must declare [RequireIdempotencyKey].");
@@ -165,16 +228,27 @@ internal static class PublicTransactionalEndpointGovernance
     }
 
     private static bool IsHttpAction(MethodInfo method) =>
-        !method.IsSpecialName && method.GetCustomAttributes<HttpMethodAttribute>(inherit: true).Any();
+        !method.IsSpecialName
+        && method.DeclaringType != typeof(object)
+        && !HasAttribute<NonActionAttribute>(method)
+        && GetEffectiveHttpMethods(method).Length > 0;
 
     private static bool UsesOnlyUnsafeHttpVerbs(MethodInfo method)
     {
-        var httpMethods = method.GetCustomAttributes<HttpMethodAttribute>(inherit: true)
-            .SelectMany(attribute => attribute.HttpMethods)
-            .ToArray();
+        var httpMethods = GetEffectiveHttpMethods(method);
 
         return httpMethods.Length > 0 && httpMethods.All(UnsafeHttpMethods.Contains);
     }
+
+    private static bool UsesHttpMethod(MethodInfo method, string httpMethod) =>
+        GetEffectiveHttpMethods(method).Contains(httpMethod, StringComparer.OrdinalIgnoreCase);
+
+    private static string[] GetEffectiveHttpMethods(MethodInfo method) =>
+        method.GetCustomAttributes(inherit: true)
+            .OfType<IActionHttpMethodProvider>()
+            .SelectMany(provider => provider.HttpMethods)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
     private static bool HasEffectiveAntiforgeryMetadata(Type controller, MethodInfo action) =>
         HasAntiforgeryMetadata(controller) || HasAntiforgeryMetadata(action);
