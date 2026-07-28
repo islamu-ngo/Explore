@@ -1,7 +1,6 @@
 // ABOUTME: API contract tests for event-session speaker management routes.
 // ABOUTME: Verifies canonical update identity plus session-scoped create/delete context forwarding.
 
-using Microsoft.AspNetCore.Http;
 using System.Net.Http.Json;
 using System.Reflection;
 using Event.Api.IntegrationTests.Fixtures;
@@ -17,6 +16,7 @@ using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -58,13 +58,13 @@ public sealed class EventSessionSpeakerControllerTests
         var assignmentId = Guid.NewGuid();
         var policy = new EventSessionSpeakerDetailLinkPolicy();
         var edit = policy.GetLinks(new EventSessionSpeakerDto
-            {
-                Id = assignmentId,
-                EventSessionId = Guid.NewGuid(),
-                EventId = Guid.NewGuid(),
-                TenantId = Guid.NewGuid(),
-                ActorId = Guid.NewGuid()
-            }, null)
+        {
+            Id = assignmentId,
+            EventSessionId = Guid.NewGuid(),
+            EventId = Guid.NewGuid(),
+            TenantId = Guid.NewGuid(),
+            ActorId = Guid.NewGuid()
+        }, null)
             .Single(link => link.Rel == LinkRelations.Edit);
 
         await Assert.That(edit.RouteName).IsEqualTo(RouteNames.UpdateEventSessionSpeaker);

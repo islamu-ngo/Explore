@@ -69,7 +69,7 @@ public sealed class EventSessionSpeakerCollectionLinkPolicy : ICollectionLinkPol
         yield return new LinkDefinition(
             LinkRelations.Edit,
             RouteNames.UpdateEventSessionSpeaker,
-            new { eventSessionId = dto.EventSessionId, id = dto.Id },
+            new { id = dto.Id },
             "PATCH",
             "Update speaker assignment",
             RequiresAuth: true)

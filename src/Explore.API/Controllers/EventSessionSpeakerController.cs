@@ -150,7 +150,7 @@ public sealed class EventSessionSpeakerController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
         [FromBody] UpdateEventSessionSpeakerDto speaker,
-        [FromHeader(Name = "If-Match")] string ifMatch,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
         CancellationToken cancellationToken = default)
     {
         if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
