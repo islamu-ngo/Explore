@@ -163,8 +163,11 @@ public sealed class LocalizationAdminServiceTests
             .Returns(new BaseCommandResponseOfGuid { Success = true, Message = "Saved." });
         var payload = new UpdateLocalizationGovernanceDto
         {
-            DefaultLanguage = "fr",
-            ForceOfflineMode = true
+            Runtime = new LocalizationRuntimeUpdateDto
+            {
+                ClientPickerEnabled = true,
+                ForceOfflineMode = true
+            }
         };
 
         var result = await CreateService().UpdateGovernanceAsync(payload);

@@ -69,15 +69,24 @@ public sealed class LocalizationAdminState
 
     public UpdateLocalizationGovernanceDto ToPayload() => new()
     {
-        DefaultLanguage = DefaultLanguage,
-        TmsProvider = TmsProvider,
-        TmsApiUrl = TmsApiUrl,
-        TmsProjectId = TmsProjectId,
-        TmsComponent = TmsComponent,
-        EnabledLanguages = EnabledLanguages.ToArray(),
-        FallbackLanguage = FallbackLanguage,
-        ClientPickerEnabled = ClientPickerEnabled,
-        ForceOfflineMode = ForceOfflineMode
+        Tms = new LocalizationTmsUpdateDto
+        {
+            Provider = TmsProvider,
+            ApiUrl = TmsApiUrl,
+            ProjectId = TmsProjectId,
+            Component = TmsComponent
+        },
+        Languages = new LocalizationLanguagePolicyUpdateDto
+        {
+            DefaultLanguage = DefaultLanguage,
+            EnabledLanguages = EnabledLanguages.ToArray(),
+            FallbackLanguage = FallbackLanguage
+        },
+        Runtime = new LocalizationRuntimeUpdateDto
+        {
+            ClientPickerEnabled = ClientPickerEnabled,
+            ForceOfflineMode = ForceOfflineMode
+        }
     };
 
     public string? ValidateSynchronously()

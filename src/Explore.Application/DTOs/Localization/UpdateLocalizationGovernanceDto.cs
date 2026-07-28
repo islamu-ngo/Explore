@@ -1,17 +1,32 @@
-// ABOUTME: Admin input DTO for localization governance changes — TMS config + kill-switches + enabled languages.
-// ABOUTME: Secrets (API keys) are NOT carried here; they are rotated through a dedicated SecretProvider path.
+// ABOUTME: Grouped PATCH contract for localization TMS, language, and runtime governance.
+// ABOUTME: TMS API keys remain isolated behind the dedicated secret-provider path.
 
 namespace Explore.Application.DTOs.Localization;
 
-public class UpdateLocalizationGovernanceDto
+public sealed class UpdateLocalizationGovernanceDto
 {
-    public string DefaultLanguage { get; set; } = "en";
-    public string TmsProvider { get; set; } = "none";
-    public string? TmsApiUrl { get; set; }
-    public string? TmsProjectId { get; set; }
-    public string? TmsComponent { get; set; }
-    public string[] EnabledLanguages { get; set; } = ["en", "fr", "ar"];
-    public string FallbackLanguage { get; set; } = "en";
-    public bool ClientPickerEnabled { get; set; } = true;
+    public LocalizationTmsUpdateDto? Tms { get; set; }
+    public LocalizationLanguagePolicyUpdateDto? Languages { get; set; }
+    public LocalizationRuntimeUpdateDto? Runtime { get; set; }
+}
+
+public sealed class LocalizationTmsUpdateDto
+{
+    public required string Provider { get; set; }
+    public string? ApiUrl { get; set; }
+    public string? ProjectId { get; set; }
+    public string? Component { get; set; }
+}
+
+public sealed class LocalizationLanguagePolicyUpdateDto
+{
+    public required string DefaultLanguage { get; set; }
+    public string[] EnabledLanguages { get; set; } = [];
+    public required string FallbackLanguage { get; set; }
+}
+
+public sealed class LocalizationRuntimeUpdateDto
+{
+    public bool ClientPickerEnabled { get; set; }
     public bool ForceOfflineMode { get; set; }
 }

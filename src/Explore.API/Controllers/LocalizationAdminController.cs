@@ -150,7 +150,7 @@ public class LocalizationAdminController : ControllerBase
     /// <summary>
     /// Update localization governance settings (TMS provider, enabled languages, kill-switches, fallback language).
     /// </summary>
-    [HttpPut("governance", Name = RouteNames.UpdateLocalizationGovernance)]
+    [HttpPatch("governance", Name = RouteNames.UpdateLocalizationGovernance)]
     [EndpointSummary("Update Localization Governance")]
     [EndpointDescription("Persists TMS provider configuration, enabled languages, fallback language, and kill-switches.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
