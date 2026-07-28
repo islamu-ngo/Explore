@@ -17,5 +17,11 @@ public class UpdateEventSessionCustomPropertyDefinitionCommand : IRequest<BaseCo
 
     public Guid ExpectedConcurrencyStamp { get; set; }
 
-    string? ISecureRequest.ResourceId => DefinitionId.ToString();
+    public Guid TenantId { get; set; }
+
+    string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString();
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty
+        ? null
+        : new Dictionary<string, object> { ["tenantId"] = TenantId.ToString() };
 }

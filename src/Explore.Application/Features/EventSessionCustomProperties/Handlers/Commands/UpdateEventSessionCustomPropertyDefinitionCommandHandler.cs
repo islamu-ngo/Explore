@@ -53,6 +53,14 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
     {
         var response = new BaseCommandResponse<Guid>();
 
+        if (request.DefinitionId == Guid.Empty || request.ExpectedConcurrencyStamp == Guid.Empty)
+        {
+            response.Success = false;
+            response.Message = "Event session custom property definition update failed.";
+            response.Errors = ["DefinitionId and ExpectedConcurrencyStamp are required."];
+            return response;
+        }
+
         var validator = new UpdateEventSessionCustomPropertyDefinitionDtoValidator();
         var validationResult = await validator.ValidateAsync(request.DefinitionDto, cancellationToken);
         if (!validationResult.IsValid)
@@ -71,6 +79,13 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
             return response;
         }
 
+        if (request.TenantId == Guid.Empty || request.TenantId != definition.TenantId)
+        {
+            response.Success = false;
+            response.Message = "Event session custom property definition not found.";
+            return response;
+        }
+
         if (definition.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
         {
             throw new ConcurrencyConflictException(
@@ -80,7 +95,52 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
                 definition.Id.ToString());
         }
 
-        var governance = _customPropertyGovernancePolicy.EvaluateDefinition(request.DefinitionDto.Namespace, request.DefinitionDto.Key);
+        var candidate = new CreateEventSessionCustomPropertyDefinitionDto
+        {
+            EventSessionId = definition.EventSessionId,
+            Namespace = definition.Namespace,
+            Key = definition.Key,
+            DisplayName = definition.DisplayName,
+            Description = definition.Description,
+            PropertyType = definition.PropertyType,
+            IsRequired = definition.IsRequired,
+            IsMulti = definition.IsMulti,
+            IsActive = definition.IsActive,
+            SortOrder = definition.SortOrder,
+            ExposureLevel = definition.ExposureLevel,
+            IsSearchable = definition.IsSearchable,
+            IsFilterable = definition.IsFilterable,
+            IsExportable = definition.IsExportable,
+            IsModerationRelevant = definition.IsModerationRelevant,
+            IsAnalyticsRelevant = definition.IsAnalyticsRelevant,
+            IsSystemOwned = definition.IsSystemOwned,
+            DefaultTextValue = definition.DefaultTextValue,
+            DefaultNumberValue = definition.DefaultNumberValue,
+            DefaultBooleanValue = definition.DefaultBooleanValue,
+            DefaultDateTimeValue = definition.DefaultDateTimeValue,
+            DefaultOptionId = definition.DefaultOptionId,
+            MinLength = definition.MinLength,
+            MaxLength = definition.MaxLength,
+            RegexPattern = definition.RegexPattern,
+            MinNumber = definition.MinNumber,
+            MaxNumber = definition.MaxNumber,
+            MinDateTime = definition.MinDateTime,
+            MaxDateTime = definition.MaxDateTime,
+            AllowedUrlSchemes = definition.AllowedUrlSchemes,
+            Options = definition.Options.Select(ToCreateOptionDto).ToList()
+        };
+        ApplyPatch(candidate, request.DefinitionDto);
+
+        var candidateValidation = await new CreateEventSessionCustomPropertyDefinitionDtoValidator().ValidateAsync(candidate, cancellationToken);
+        if (!candidateValidation.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Event session custom property definition update failed.";
+            response.Errors = candidateValidation.Errors.Select(error => error.ErrorMessage).ToList();
+            return response;
+        }
+
+        var governance = _customPropertyGovernancePolicy.EvaluateDefinition(candidate.Namespace, candidate.Key);
         if (!governance.IsValid)
         {
             response.Success = false;
@@ -101,37 +161,47 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
             return response;
         }
 
-        var maxOptions = await _quotaResolver.GetIntAsync(
-            CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
-            definition.TenantId,
-            cancellationToken);
-        if (request.DefinitionDto.Options.Count > maxOptions)
+        if (request.DefinitionDto.Options is not null)
         {
-            response.SetQuotaExceeded(
-                "Event session custom property definition update failed.",
-                new QuotaExceededDetails(
-                    CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
-                    maxOptions,
-                    null,
-                    request.DefinitionDto.Options.Count,
-                    "event_session_custom_property_options",
-                    definition.TenantId));
-            return response;
+            var maxOptions = await _quotaResolver.GetIntAsync(
+                CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                definition.TenantId,
+                cancellationToken);
+            if (candidate.Options.Count > maxOptions)
+            {
+                response.SetQuotaExceeded(
+                    "Event session custom property definition update failed.",
+                    new QuotaExceededDetails(
+                        CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                        maxOptions,
+                        null,
+                        candidate.Options.Count,
+                        "event_session_custom_property_options",
+                        definition.TenantId));
+                return response;
+            }
         }
 
-        _mapper.Map(request.DefinitionDto, definition);
+        _mapper.Map(candidate, definition);
         definition.Namespace = governance.NormalizedNamespace;
         definition.Key = governance.NormalizedKey;
         definition.UpdatedBy = _currentUserService.UserId;
         definition.UpdatedAt = DateTime.UtcNow;
 
-        var options = CreateOptionEntities(request.DefinitionDto.Options, definition.Id);
-        var defaultOption = options.SingleOrDefault(x => x.IsDefault);
-
         await _unitOfWork.ExecuteInTransactionAsync(
             async ct =>
             {
-                await _sessionCustomPropertyRepository.UpdateWithOptions(definition, options, defaultOption?.Id, ct);
+                if (request.DefinitionDto.Options is null)
+                {
+                    await _sessionCustomPropertyRepository.Update(definition);
+                }
+                else
+                {
+                    var options = CreateOptionEntities(candidate.Options, definition.Id);
+                    var defaultOption = options.SingleOrDefault(x => x.IsDefault);
+                    await _sessionCustomPropertyRepository.UpdateWithOptions(definition, options, defaultOption?.Id, ct);
+                }
+
                 await _projectionUpdater.UpdateForDefinitionAsync(definition.Id, ct);
             },
             cancellationToken);
@@ -166,6 +236,63 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
                 UpdatedBy = _currentUserService.UserId,
             })
             .ToList();
+    }
+
+    private static CreateEventSessionCustomPropertyOptionDto ToCreateOptionDto(EventSessionCustomPropertyOption option) => new()
+    {
+        Namespace = option.Namespace,
+        Key = option.Key,
+        DisplayName = option.DisplayName,
+        Description = option.Description,
+        Value = option.Value,
+        IsDefault = option.IsDefault,
+        IsActive = option.IsActive,
+        SortOrder = option.SortOrder
+    };
+
+    private static void ApplyPatch(
+        CreateEventSessionCustomPropertyDefinitionDto candidate,
+        UpdateEventSessionCustomPropertyDefinitionDto patch)
+    {
+        var metadata = patch.Metadata;
+        if (metadata is not null)
+        {
+            candidate.Namespace = metadata.Namespace ?? candidate.Namespace;
+            candidate.Key = metadata.Key ?? candidate.Key;
+            candidate.DisplayName = metadata.DisplayName ?? candidate.DisplayName;
+            if (metadata.Description.HasValue) candidate.Description = metadata.Description.Value;
+            candidate.IsActive = metadata.IsActive ?? candidate.IsActive;
+            candidate.SortOrder = metadata.SortOrder ?? candidate.SortOrder;
+            candidate.ExposureLevel = metadata.ExposureLevel ?? candidate.ExposureLevel;
+            candidate.IsSearchable = metadata.IsSearchable ?? candidate.IsSearchable;
+            candidate.IsFilterable = metadata.IsFilterable ?? candidate.IsFilterable;
+            candidate.IsExportable = metadata.IsExportable ?? candidate.IsExportable;
+            candidate.IsModerationRelevant = metadata.IsModerationRelevant ?? candidate.IsModerationRelevant;
+            candidate.IsAnalyticsRelevant = metadata.IsAnalyticsRelevant ?? candidate.IsAnalyticsRelevant;
+            candidate.IsSystemOwned = metadata.IsSystemOwned ?? candidate.IsSystemOwned;
+        }
+
+        var validation = patch.Validation;
+        if (validation is not null)
+        {
+            candidate.PropertyType = validation.PropertyType ?? candidate.PropertyType;
+            candidate.IsRequired = validation.IsRequired ?? candidate.IsRequired;
+            candidate.IsMulti = validation.IsMulti ?? candidate.IsMulti;
+            if (validation.DefaultTextValue.HasValue) candidate.DefaultTextValue = validation.DefaultTextValue.Value;
+            if (validation.DefaultNumberValue.HasValue) candidate.DefaultNumberValue = validation.DefaultNumberValue.Value;
+            if (validation.DefaultBooleanValue.HasValue) candidate.DefaultBooleanValue = validation.DefaultBooleanValue.Value;
+            if (validation.DefaultDateTimeValue.HasValue) candidate.DefaultDateTimeValue = validation.DefaultDateTimeValue.Value;
+            if (validation.MinLength.HasValue) candidate.MinLength = validation.MinLength.Value;
+            if (validation.MaxLength.HasValue) candidate.MaxLength = validation.MaxLength.Value;
+            if (validation.RegexPattern.HasValue) candidate.RegexPattern = validation.RegexPattern.Value;
+            if (validation.MinNumber.HasValue) candidate.MinNumber = validation.MinNumber.Value;
+            if (validation.MaxNumber.HasValue) candidate.MaxNumber = validation.MaxNumber.Value;
+            if (validation.MinDateTime.HasValue) candidate.MinDateTime = validation.MinDateTime.Value;
+            if (validation.MaxDateTime.HasValue) candidate.MaxDateTime = validation.MaxDateTime.Value;
+            if (validation.AllowedUrlSchemes.HasValue) candidate.AllowedUrlSchemes = validation.AllowedUrlSchemes.Value;
+        }
+
+        if (patch.Options is not null) candidate.Options = patch.Options.Items!;
     }
 
     private async Task InvalidateCaches(Guid eventSessionId, Guid definitionId, CancellationToken cancellationToken)

@@ -133,6 +133,7 @@ public class EventSessionCustomPropertyController : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSessionCustomPropertyDefinitionDto definition, CancellationToken cancellationToken = default)
     {
         var command = new CreateEventSessionCustomPropertyDefinitionCommand
@@ -160,13 +161,14 @@ public class EventSessionCustomPropertyController : ControllerBase
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPatch("{id:guid}", Name = RouteNames.UpdateEventSessionCustomPropertyDefinition)]
     [EndpointSummary("Update EventSessionCustomPropertyDefinition")]
-    [EndpointDescription("Update an existing event-session-local custom property definition and replace its option set. " +
+    [EndpointDescription("Update supplied groups on an event-session-local custom property definition; options are replaced only when supplied. " +
         "Provenance fields (source template information) are read-only and preserved.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
@@ -191,7 +193,9 @@ public class EventSessionCustomPropertyController : ControllerBase
 
         if (!result.Success)
         {
-            return this.ToQuotaProblemOrBadRequest(result);
+            return string.Equals(result.Message, "Event session custom property definition not found.", StringComparison.Ordinal)
+                ? this.ToNotFoundProblem(DefinitionNotFoundProblem)
+                : this.ToQuotaProblemOrBadRequest(result);
         }
 
         return Ok(result);

@@ -35,9 +35,12 @@ public sealed class EventSessionCustomPropertyDefinitionDetailLinkPolicy : ILink
             new { eventSessionId = dto.EventSessionId });
 
         // Edit link - requires Update permission
-        yield return LinkDefinition.Edit(
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
             RouteNames.UpdateEventSessionCustomPropertyDefinition,
-            new { id = dto.Id })
+            new { id = dto.Id },
+            HttpMethods.Patch,
+            RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSessionCustomPropertyDefinition, dto);
 
         // Delete link - requires Delete permission
