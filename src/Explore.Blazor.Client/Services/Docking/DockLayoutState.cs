@@ -124,9 +124,9 @@ public sealed class DockLayoutState : IDockPanelRegistry
             }
 
             if (ShouldRenderDockedPanelAsOverlay(activeEntry with
-                {
-                    State = activeEntry.State with { IsOpen = true }
-                }))
+            {
+                State = activeEntry.State with { IsOpen = true }
+            }))
             {
                 _userActivatedInOverlay.Add(id);
             }
