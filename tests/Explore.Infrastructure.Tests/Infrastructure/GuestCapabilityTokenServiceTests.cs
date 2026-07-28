@@ -62,6 +62,16 @@ public sealed class GuestCapabilityTokenServiceTests
     }
 
     [Test]
+    public async Task Issue_ToStringDoesNotExposeCapabilityMaterial()
+    {
+        GuestCapabilityTokenIssue issue = _service.Issue();
+        string representation = issue.ToString();
+
+        await Assert.That(representation.Contains(issue.RawToken)).IsFalse();
+        await Assert.That(representation.Contains(issue.Hash.Value)).IsFalse();
+    }
+
+    [Test]
     public async Task ConfigureInfrastructureServices_ResolvesStatelessCapabilityTokenService()
     {
         var services = new ServiceCollection();
