@@ -3,13 +3,13 @@
 
 # ATProto Federation Actor Lifecycle - Implementation Plan
 
-Last Updated: 2026-07-27 Europe/Brussels
+Last Updated: 2026-07-28 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** Complete the global-subject architecture consistently. `Actor`, `User`, `Organization`, `Group`, and unclassified external subjects are global. `TenantUser`, `OrganizationTenant`, and `GroupTenant` own tenant-specific participation, policy, moderation, hierarchy, settings, and profile overrides. ATProto registration classifies a verified global identity without duplicating subjects per tenant.
 - **Task directory:** `dev/active/atproto-federation-actor-lifecycle/`.
-- **Implementation status:** Phases 0-4 and Task 5.1 protected Person/Organization/Group onboarding are implemented. Task 5.2 promotion/consolidation and Phases 6-7 remain open.
+- **Implementation status:** Phases 0-5 are implemented. Four-level moderation, contextual Actor reads, legitimacy evidence, and final contract/UI convergence in Phases 6-7 remain open.
 - **Superseded decisions:** Both `ActorTenantPresence` and the temporary return to tenant-scoped Actor are rejected. A generic presence row would duplicate concrete participation lifecycles.
 - **Predecessor:** `dev/active/atproto-auth/` remains authoritative for implemented OAuth/DPoP verification, canonical `AtprotoRecord`, Jetstream, outbox, recovery, Event/EventSession materialization, source metadata, and zero echo.
 - **Matched intents:** `add-ef-migration`, `update-repository-query`, `add-cqrs-handler`, `add-get-endpoint`, `add-write-endpoint`, `openapi-contract-change`, `add-hal-link`, `blazor-component-affordance`, and `bff-auth-bug`.
@@ -344,6 +344,8 @@ Actor-wide action requires instance authority. Tenant admins mutate concrete par
 - **Type/Layer:** create/modify; Domain/Application/Persistence.
 - **Files:** internal promotion/consolidation command, owner/FK operations, ActorMerge, memberships/participation, tests/docs.
 - **Acceptance:** Direct promotion preserves Actor/identity/Event IDs; only onboarding tenant gains participation; existing proven same-kind Actor normally remains canonical; mutable references move; immutable evidence remains; different-kind/User conflict fails closed.
+- **Evidence:** `AtprotoSubjectOnboardingOperation` promotes external Actors in place or consolidates only into an explicit same-kind canonical Actor after concurrency, active-state, approved-participation, and current-tenant OrgAdmin/GroupAdmin checks. The handler prepares encryption once, reloads the current User and tracked personal Actor inside each retry, commits onboarding plus prepared OAuth-session persistence atomically, and issues JWTs post-commit. Active identity/Event/EventSeries/speaker/subscription references move; consent and historical evidence remain; `ActorMerge` stores identity ID plus bounded DID digest. Migration `20260728143000_ClassifyExternalUnclassifiedActors` inserts lookup ID 6, backfills legacy external BOT Actors, and enforces owner/type alignment.
+- **Verification:** Task 5.2 boundary Release build 0 errors; focused Application 17/17, EF retry tracking 1/1, BFF 20/20, Infrastructure 13/13, actor-lifecycle architecture 4/4, migration-test compilation, and final Oracle review passed. Idempotent SQL was reviewed. PostgreSQL execution remains environment-blocked by unavailable Docker sockets; unrelated concurrent `AtprotoJetstreamRepository` DTO dependency, registration-model snapshot drift, and later `MinorUnitMath` compile failure remain owned elsewhere.
 - **Dependencies/Effort:** 5.1; XL.
 
 ### Phase 6: Moderation, Authorization, Profiles, And Subscriptions

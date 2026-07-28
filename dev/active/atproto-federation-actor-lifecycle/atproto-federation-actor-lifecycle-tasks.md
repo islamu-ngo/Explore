@@ -7,10 +7,10 @@ Last Updated: 2026-07-27 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Implementation in progress; Phases 0-4 and protected classification onboarding are implemented, while promotion, moderation, evidence, and final contract convergence remain.
-- **Completed:** 9/14 implementation tasks. Phase verification is tracked separately.
-- **Current priority:** Task 5.2 proof-gated external promotion and same-kind consolidation.
-- **Next recommended slice:** Promote an external subject without changing Actor/identity/Event IDs, or consolidate only when same-kind identity proof is sufficient.
+- **Overall status:** Implementation in progress; Phases 0-5 are implemented, while moderation, contextual reads, evidence, and final contract convergence remain.
+- **Completed:** 10/14 implementation tasks. Phase verification is tracked separately.
+- **Current priority:** Task 6.1 four-level moderation and participation-aware Event authorization.
+- **Next recommended slice:** Implement Actor/identity/participation moderation write boundaries first, then compose them into Event authorization and public-read filtering before adding contextual Actor APIs.
 
 ## Maintenance Rules
 
@@ -112,7 +112,7 @@ Last Updated: 2026-07-27 Europe/Brussels
 - [x] Release build passed at the phase boundary.
 - [x] Event.Persistence.IntegrationTests passed 1,093/1,093 before the final migration; current post-migration full-suite fixture drift is tracked under Phase 2 verification.
 
-## Phase 5: Verified Registration And Promotion - IN PROGRESS
+## Phase 5: Verified Registration And Promotion - COMPLETE
 
 - [x] **5.1 Add protected classification onboarding**
   - **Files:** BFF auth state/assertion, bootstrap command/result, classification contracts, User/login/TenantUser/global subject/participation operations, BFF/Application tests/security docs.
@@ -122,15 +122,17 @@ Last Updated: 2026-07-27 Europe/Brussels
   - **Effort:** XL.
   - **Dependencies:** 3.2, 4.2.
 
-- [ ] **5.2 Promote external subject or consolidate proven same-kind subject**
+- [x] **5.2 Promote external subject or consolidate proven same-kind subject**
   - **Files:** internal promotion/consolidation command/handler, owner/FK repositories, ActorMerge, participation/membership operations, Domain/Application/Persistence tests/docs.
   - **Acceptance:** Direct promotion preserves Actor/identity/Event IDs; only onboarding tenant gains participation; proven same-kind consolidation preserves canonical evidence; cross-kind/User conflict fails closed.
+  - **Evidence:** Signed target ID/stamp plus active approved current-tenant OrgAdmin/GroupAdmin authority gates consolidation. Direct promotion retains Actor/identity/Event IDs. Consolidation moves active identity/Event/EventSeries/speaker/subscription references, preserves consent and historical evidence, records bounded DID-digest merge evidence, and persists the prepared OAuth session in the same serializable retry. Every retry reloads the current User and a tracked personal Actor after EF clears failed-attempt state.
+  - **Verification:** Application 17/17, EF retry tracking 1/1, BFF 20/20, Infrastructure 13/13, actor lifecycle architecture 4/4, and the Task 5.2 boundary Release build passed. Migration tests compile but Docker/Testcontainers execution is unavailable; unrelated concurrent architecture/snapshot/build drift is recorded below.
   - **Effort:** XL.
   - **Dependencies:** 5.1.
 
 ### Phase 5 Verification - RUN ONCE
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` — 0 errors.
+- [x] `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet` — focused ATProto flow 20/20.
 
 ## Phase 6: Moderation, Profiles, Authorization, Subscriptions - NOT STARTED
 
@@ -175,4 +177,7 @@ Last Updated: 2026-07-27 Europe/Brussels
 - ActivityPub, PDS/AppView/relay hosting, generic identity frameworks, and automatic cross-kind merge remain out of scope.
 - No compatibility aliases, dual reads/writes, or mixed-version deployment support will be added.
 - Repair post-migration Persistence fixtures by setting valid Event provenance and concrete Actor ownership before using the full suite as a release gate.
-- The repository-wide Release build is green as of the Task 5.1 boundary; existing package/analyzer warnings remain outside this slice.
+- PostgreSQL Task 5.2 tests compile but cannot execute until Docker is available at one configured socket.
+- Concurrent registration-data model changes own current EF snapshot drift; the disposable probe showed only their Event column/table delta.
+- Concurrent `AtprotoJetstreamRepository` work owns the current Persistence-to-Application.DTO architecture failure.
+- The repository-wide Release build was green at the Task 5.2 boundary. A later concurrent `MinorUnitMath` edit currently fails before Task 5.2 with CS9135; Application and Persistence Task 5.2 sources still compile in isolation against the last green Domain binary.

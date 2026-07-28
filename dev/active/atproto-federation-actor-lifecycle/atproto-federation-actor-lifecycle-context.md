@@ -3,9 +3,9 @@
 
 # ATProto Federation Actor Lifecycle - Context
 
-Last Updated: 2026-07-27 Europe/Brussels
+Last Updated: 2026-07-28 Europe/Brussels
 
-## SESSION PROGRESS (2026-07-27 Europe/Brussels)
+## SESSION PROGRESS (2026-07-28 Europe/Brussels)
 
 ### COMPLETED
 
@@ -29,21 +29,31 @@ Last Updated: 2026-07-27 Europe/Brussels
 - Extended the linked-account bootstrap transaction to preflight login, TenantUser, and classification conflicts before mutations; then resolve the global User and personal Actor, create/replay TenantUser, and create/replay OrganizationTenant or GroupTenant plus founder admin membership for represented managed subjects. User remains the audit authority, replay is idempotent, and JWT issuance remains post-commit.
 - Added guarded `20260726231528_EnforceGlobalExternalLoginIdentity`, which widens provider keys to the 2,048-character DID boundary, aborts on duplicate non-null provider identities, creates the reversible filtered unique `(provider, provider_key)` index, and rejects lossy downgrade data.
 - Verified Task 5.1 with a repository-wide Release build (0 errors), focused Application 9/9, BFF 18/18, API JWT 6/6, Infrastructure gateway 12/12, architecture 15/15, and PostgreSQL baseline guards 4/4. EF model parity is clean and the emitted idempotent migration SQL was reviewed.
+- Completed Task 5.2 direct external promotion and proof-gated same-kind consolidation. Canonical targets require signed ID/stamp binding plus active approved current-tenant OrgAdmin/GroupAdmin authority; exact DID proves only the external source. Direct promotion preserves Actor/identity/Event IDs. Consolidation moves active operational identity/Event/EventSeries/speaker/subscription references, preserves consent and immutable evidence, records bounded DID-digest `ActorMerge` proof, and is replay-safe.
+- Restored the atomic bootstrap order: OAuth session encryption prepares once before retries; one serializable transaction applies onboarding and persists the prepared session per attempt; cache invalidation and JWT issuance are post-commit.
+- Corrected EF retry tracking: each serializable attempt reloads the current User and tracked personal Actor after failed-attempt tracking is cleared; a real-EF regression proves missing TenantUser creation does not reinsert either owner.
+- Added `20260728143000_ClassifyExternalUnclassifiedActors`, lookup seeder parity for ID 6, DBML/domain/federation/security documentation, and an owner/type check constraint.
 
 ### IN PROGRESS
 
-- Task 5.2: direct external-subject promotion and proof-gated same-kind consolidation. Task 5.1 intentionally rejects existing cross-kind identities rather than mutating or merging them.
+- Task 6.1: four-level moderation and participation-aware Event authorization.
 
 ### NEXT
 
-1. Implement Task 5.2 direct external promotion and proof-gated same-kind consolidation.
-2. Then complete four-level moderation, contextual Actor reads, OrganizationTenant evidence, and final contract/UI/doc convergence.
+1. Add Actor instance-global and AtprotoIdentity credential-global moderation commands/policies; only instance authority may mutate Actor-wide state.
+2. Add tenant-scoped moderation over TenantUser/OrganizationTenant/GroupTenant or tenant identity-import policy, then compose all four levels into EventActorResolver, public specifications, authorization, and HAL.
+3. Add global/contextual Actor reads and tenant-local subscription discoverability, then OrganizationTenant legitimacy evidence.
+4. Finish OpenAPI/client/UI/localization/doc regeneration and architecture guardrails only after runtime contracts stabilize.
 
 ### BLOCKERS
 
 - Full Phase 0 API suite cannot complete in this environment because Docker/Testcontainers cannot connect to `/var/run/docker.sock` or the Docker Desktop socket. The run reached 1470 passed and 517 infrastructure failures after all code-related failures were fixed.
 - Architecture test baseline currently has two unrelated failures recorded below; implementation must not hide them.
 - The current full Persistence run exposes 198 stale fixtures after the new required provenance FK and exact-one Actor owner constraint; focused lifecycle migration tests pass.
+- Task 5.2 PostgreSQL tests compile but Docker/Testcontainers cannot reach either configured socket.
+- Concurrent registration-data work owns current EF snapshot drift; the model probe contained only its Event participation tables/column removals.
+- Concurrent `AtprotoJetstreamRepository` work owns the current Persistence-to-Application.DTO architecture failure.
+- A concurrent `MinorUnitMath` edit currently blocks the repository build with CS9135 before Task 5.2; the affected Application and Persistence projects compile against the last green Domain binary.
 
 ## Quick Resume
 
@@ -57,10 +67,10 @@ Last Updated: 2026-07-27 Europe/Brussels
 | Field | Value |
 |---|---|
 | Overall status | Implementation in progress |
-| Completed implementation tasks | 9/14 |
-| Current priority | Task 5.2 |
-| Runtime implementation | Phases 0-4 and Task 5.1 complete |
-| Verification | Release build 0 errors; Task 5.1 focused suites 64/64 pass; EF snapshot clean and guarded provider-key migration SQL reviewed; full Persistence fixtures remain open |
+| Completed implementation tasks | 10/14 |
+| Current priority | Task 6.1 |
+| Runtime implementation | Phases 0-5 complete |
+| Verification | Task 5.2 boundary Release build 0 errors; Application 17/17, EF retry tracking 1/1, BFF 20/20, Infrastructure 13/13, lifecycle architecture 4/4; Oracle PASS; idempotent migration SQL reviewed; PostgreSQL execution Docker-blocked |
 
 ## Core Model
 
@@ -102,7 +112,10 @@ Last Updated: 2026-07-27 Europe/Brussels
 | `AtprotoIdentity.cs` | Sole exact-DID authority with DID custody and mutable verified metadata | Add identity moderation command/policy behavior in Task 6.1. |
 | `AtprotoJetstreamRepository.cs` | One global identity/external Actor shared by tenant Events | Complete. |
 | create Organization/Group handlers | Transactional global subject plus local participation creation | Complete. |
-| `BootstrapAtprotoSessionCommandHandler.cs` | Linked-account bootstrap plus explicit represented-subject classification and participation transaction | Complete for Task 5.1; Task 5.2 owns promotion/consolidation. |
+| `BootstrapAtprotoSessionCommandHandler.cs` | Prepares encryption once, reloads tracked owners per serializable attempt, persists onboarding/session atomically, and issues JWT post-commit | Complete for Task 5.2. |
+| `AtprotoSubjectOnboardingOperation.cs` | Direct promotion, authorized same-kind consolidation, replay, and current-tenant participation | Complete for Task 5.2. |
+| `ActorReferenceConsolidationRepository.cs` | Moves active operational references across tenants while preserving consent/history | Complete for Task 5.2. |
+| `20260728143000_ClassifyExternalUnclassifiedActors` | Lookup ID 6, legacy BOT backfill, and external owner/type constraint | Complete; PostgreSQL execution awaits Docker. |
 | `AtprotoAuthenticationHandler.cs` / `AtprotoBootstrapAssertionService.cs` | OAuth state validation and signed DID/classification bridge binding | Complete. |
 | `20260726231528_EnforceGlobalExternalLoginIdentity` | 2,048-character provider keys plus guarded global provider/key uniqueness | Complete. |
 
@@ -117,6 +130,7 @@ Last Updated: 2026-07-27 Europe/Brussels
 - Current full Persistence attempt timed out after reporting 198 fixture failures. Dominant causes are required Event provenance rows not supplied by fixtures and ownerless test Actors rejected by the new database invariant.
 - Task 5.1 validation: repository-wide Release build passed with 0 errors; focused Application classification tests 9/9, BFF binding/bridge tests 18/18, API JWT tests 6/6, Infrastructure OAuth gateway tests 12/12, Clean Architecture tests 15/15, and PostgreSQL baseline guards 4/4 passed.
 - Task 5.1 migration validation: `dotnet ef migrations has-pending-model-changes` reported no changes; the idempotent SQL widens provider keys, checks duplicates, creates the filtered unique index, and writes migration history in one transaction. The PostgreSQL test accepts a 2,048-character key and rejects the same provider/key in another tenant.
+- Task 5.2 validation: Application 17/17, EF retry tracking 1/1, BFF 20/20, Infrastructure 13/13, lifecycle architecture 4/4, diagnostics and diff checks clean, boundary API/Persistence/canonical Release builds 0 errors, migration discovered, idempotent SQL reviewed, and final Oracle review passed. The focused PostgreSQL suite compiled but its two tests could not start without Docker; a later concurrent `MinorUnitMath` edit now blocks a fresh repository build before Task 5.2.
 
 ## Risks
 
@@ -129,12 +143,12 @@ Last Updated: 2026-07-27 Europe/Brussels
 
 ## Handoff Notes
 
-### Handoff - 2026-07-27 Europe/Brussels (updated)
+### Handoff - 2026-07-28 Europe/Brussels
 
-- **Current state:** Phases 0-4 and Task 5.1 are implemented, including protected classification onboarding and guarded global external-login uniqueness; 9/14 tasks complete.
-- **Next action:** Task 5.2 direct promotion and proof-gated same-kind consolidation. Preserve Task 5.1's `classification_conflict` behavior until that command owns the mutation.
-- **Blockers:** 198 stale Persistence fixtures remain for the full database gate; later product phases remain genuinely unimplemented.
+- **Current state:** Phases 0-5 are implemented; 10/14 tasks complete.
+- **Next action:** Task 6.1 moderation write boundaries, followed by composed Event authorization/public filtering.
+- **Blockers:** Docker-blocked PostgreSQL execution, 198 stale Persistence fixtures, concurrent registration-model snapshot drift, a concurrent Jetstream DTO architecture dependency, and a concurrent `MinorUnitMath` compile error.
 - **Modified files:** Runtime, persistence, migrations, tests, schema, and this active workstream; preserve unrelated dirty changes.
-- **Validation:** Repository-wide Release build 0 errors; Task 5.1 focused suites 64/64 pass; EF snapshot clean; guarded uniqueness SQL and PostgreSQL enforcement verified.
-- **Documentation impact:** Active plan/context/tasks now match the shipped classification, participation, and provider-identity behavior.
+- **Validation:** Task 5.2 boundary Release build 0 errors; Application 17/17, EF retry tracking 1/1, BFF 20/20, Infrastructure 13/13, lifecycle architecture 4/4; final Oracle PASS; idempotent migration SQL reviewed.
+- **Documentation impact:** Domain, Federation, Security Model, DBML, and active workstream now match promotion/consolidation behavior.
 - **Notes:** Never reintroduce tenant Actor or ActorTenantPresence. Do not merge Organizations/Groups by name. Preserve predecessor federation infrastructure.
