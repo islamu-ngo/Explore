@@ -6,10 +6,10 @@
 Last Updated: 2026-07-28 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Blocked in Phase 2. Tasks 2.1 through 2.5 are source/contract complete with focused checks green, but migration rollout and full phase verification are not complete
-- **Completed:** 14/88 implementation tasks (phase verification tracked separately)
-- **Current priority:** Resolve participation migration ownership/order without touching the contaminated lookup migration, then clear external phase-gate failures
-- **Next recommended slice:** External owner generates the dedicated ordered participation migration; keep Phase 3 blocked until Phase 2 closes
+- **Overall status:** Phase 3 source complete with full gates externally blocked. Phase 2 migration rollout remains blocked; no Phase 5 endpoint or persistence work exists
+- **Completed:** 17/88 implementation tasks (phase verification tracked separately)
+- **Current priority:** Clear the external Phase 3 build and Architecture blockers while preserving the independent Phase 2 migration gate
+- **Next recommended slice:** Rerun Phase 3 full gates after external fixes, then start Phase 4 only after those gates close
 
 ## Implementation Maintenance Rules
 - Read the full workstream once at initial implementation start; on resume, read context/tasks first and only relevant plan sections.
@@ -105,14 +105,17 @@ Last Updated: 2026-07-28 Europe/Brussels
 - [ ] `dotnet build --configuration Release --verbosity quiet` — blocked by 17 externally owned `ProgramSectionsDialogTests.cs` compiler errors; `Explore.API` and `Explore.Blazor.Client` project builds pass
 - [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` — focused `EventSessionSpeakerControllerTests` rerun: 4/6 pass; external failures are `CollectionEditLink_UsesOnlyRelationshipIdForCanonicalPatchRoute` and `Update_WhenIfMatchIsMissing_ReturnsValidationProblemDetails`
 
-## Phase 3: Guest Transaction Security Foundation ⛔ BLOCKED BY PHASE 2 MIGRATION/VERIFICATION
-- [ ] **3.1 `EndpointClass.PublicTransactional` + enforcement** — `EndpointClass.cs`, transformer, arch tests (existing) + `PublicTransactionalGovernanceTests.cs` (new); GOVERNANCE/QUICK_REFERENCE updates — **Acceptance:** failing-first governance test then green — **Effort:** M — **Dependencies:** ADR-017
-- [ ] **3.2 `public_transactional` rate policy + antiforgery decision** — `Program.cs` rate section; SECURITY-MODEL doc — **Acceptance:** policy registered/documented/Testing-disabled; antiforgery decision in context — **Effort:** M — **Dependencies:** 3.1
-- [ ] **3.3 Guest capability-token primitives** — `IGuestCapabilityTokenService` (new contract), Infrastructure impl, `CapabilityTokenHash` VO — **Acceptance:** hash-only storage; constant-time compare; token revealed exactly once — **Effort:** M — **Dependencies:** 3.1
+## Phase 3: Guest Transaction Security Foundation ⚠️ SOURCE COMPLETE / FULL GATES EXTERNALLY BLOCKED
+- [x] **3.1 `EndpointClass.PublicTransactional` + enforcement** — `EndpointClass.cs`, transformer, arch tests (existing) + `PublicTransactionalGovernanceTests.cs` (new); GOVERNANCE/QUICK_REFERENCE updates — **Acceptance:** failing-first governance test then green — **Effort:** M — **Dependencies:** ADR-017
+  - **Evidence:** governance enforces anonymous `PublicTransactional`, required `public_transactional` rate policy, idempotency metadata/middleware, and the OpenAPI idempotency boolean. PublicTransactional governance passes 3/3, endpoint classification passes 4/4 from the implementation pass, and idempotency passes 6/6.
+- [x] **3.2 `public_transactional` rate policy + antiforgery decision** — `Program.cs` rate section; SECURITY-MODEL doc — **Acceptance:** policy registered/documented/Testing-disabled; antiforgery decision in context — **Effort:** M — **Dependencies:** 3.1
+  - **Evidence:** fixed-window IP policy is 10 requests per 60 seconds and uses `NoLimiter` in `Testing`. Anonymous browser mutations use BFF proxy antiforgery; direct API clients don't use browser cookie/token pairing. BFF proxy checks pass 20/20. The new rate-policy test exists, but a fresh project build stops before discovery on six unrelated `CustomPropertyDefinitionControllerTests` missing DTO-member errors.
+- [x] **3.3 Guest capability-token primitives** — `IGuestCapabilityTokenService` (new contract), Infrastructure impl, `CapabilityTokenHash` VO — **Acceptance:** hash-only storage; constant-time compare; token revealed exactly once — **Effort:** M — **Dependencies:** 3.1
+  - **Evidence:** 256-bit token primitives reveal plaintext once, retain hashes only, and use constant-time comparison. Domain capability passes 3/3 and Infrastructure capability passes 4/4.
 
 ### Phase 3 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- [ ] `dotnet build --configuration Release --verbosity quiet` — blocked by 12 unrelated errors: six `CustomPropertyDefinitionControllerTests` missing DTO-member errors and six Blazor client custom-property generated-contract call-site errors; canonical build is not green
+- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` — 304 passed, 10 unrelated failed, 1 skipped; new PublicTransactional checks aren't among the failures
 
 ## Phase 4: Ticket Catalog, Capacity Pools, Entitlements, And Instance Monetization ⏳ NOT STARTED
 - [ ] **4.1 Catalog domain model with immutable publication + five pricing modes** — catalog/type/entitlement/pool entities + 6 lookups incl. `TicketPricingMode` (`FIXED/FREE/DONATION/PAY_WHAT_YOU_CAN/SLIDING_SCALE`) + `TicketCatalogRules.cs` + `TicketPricingRules.cs` (all new); `MinimumPriceAmount`/`SuggestedPriceAmount` fields — **Acceptance:** publish-freeze, clone-to-draft, one-currency, entitlement legality tests; pricing-mode validation matrix (5 modes × valid/invalid/boundary incl. 0-allowed); deterministic rounding — **Effort:** L — **Dependencies:** Phase 2
