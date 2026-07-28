@@ -112,6 +112,13 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasForeignKey(e => e.AtprotoRecordId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.Navigation(e => e.TicketCatalogVersions)
+            .HasField("_ticketCatalogVersions")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation(e => e.CapacityPools)
+            .HasField("_capacityPools")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         // Configure aspect navigation properties (shared PK pattern - no FK needed)
         builder.HasOne(e => e.IslamicAspect)
             .WithOne(a => a.Event)
