@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Authentication.Atproto.Handlers.Commands;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
+using Explore.Application.Features.Authentication.Atproto.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using NSubstitute;
@@ -24,7 +25,10 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
     private readonly IUserExternalLoginRepository _externalLogins = Substitute.For<IUserExternalLoginRepository>();
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
     private readonly IActorRepository _actors = Substitute.For<IActorRepository>();
+    private readonly IActorTypeRepository _actorTypes = Substitute.For<IActorTypeRepository>();
     private readonly IAtprotoIdentityRepository _atprotoIdentities = Substitute.For<IAtprotoIdentityRepository>();
+    private readonly IActorReferenceConsolidationRepository _references = Substitute.For<IActorReferenceConsolidationRepository>();
+    private readonly IGenericRepository<ActorMerge, Guid> _merges = Substitute.For<IGenericRepository<ActorMerge, Guid>>();
     private readonly ITenantUserRepository _tenantUsers = Substitute.For<ITenantUserRepository>();
     private readonly ITenantUserRoleGrantRepository _tenantUserRoleGrants = Substitute.For<ITenantUserRoleGrantRepository>();
     private readonly IOrganizationRepository _organizations = Substitute.For<IOrganizationRepository>();
@@ -46,10 +50,10 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
     {
         _tenantContext.TenantId.Returns(_tenantId);
         _unitOfWork
-            .ExecuteInTransactionAsync<AtprotoSessionBootstrapResult?>(
-                Arg.Any<Func<CancellationToken, Task<AtprotoSessionBootstrapResult?>>>(),
+            .ExecuteSerializableAsync<AtprotoSubjectOnboardingResult>(
+                Arg.Any<Func<CancellationToken, Task<AtprotoSubjectOnboardingResult>>>(),
                 Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<Func<CancellationToken, Task<AtprotoSessionBootstrapResult?>>>()(
+            .Returns(call => call.Arg<Func<CancellationToken, Task<AtprotoSubjectOnboardingResult>>>()(
                 call.Arg<CancellationToken>()));
 
         _tenantUsers.GetByTenantAndUserAsync(_tenantId, _userId, Arg.Any<CancellationToken>())
@@ -62,6 +66,8 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         _organizations.Create(Arg.Any<Organization>()).Returns(call => WithId(call.Arg<Organization>()));
         _groups.Create(Arg.Any<Group>()).Returns(call => WithId(call.Arg<Group>()));
         _actors.Create(Arg.Any<Actor>()).Returns(call => WithId(call.Arg<Actor>()));
+        _actorTypes.GetById((int)ActorTypeEnum.Organization).Returns(new ActorType { Id = (int)ActorTypeEnum.Organization, MasterCode = "ORGANIZATION", FullName = "Organization" });
+        _actorTypes.GetById((int)ActorTypeEnum.Group).Returns(new ActorType { Id = (int)ActorTypeEnum.Group, MasterCode = "GROUP", FullName = "Group" });
         _organizationTenants.GetByOrganizationAndTenant(
                 Arg.Any<Guid>(),
                 _tenantId,
@@ -315,6 +321,163 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
     }
 
     [Test]
+    public async Task ExternalOrganizationPromotionPreservesActorAndIdentityIds()
+    {
+        ConfigureVerifiedSession();
+        ConfigureLinkedIdentity();
+        var identity = ConfigureExternalIdentity();
+        ConfigureIssuedToken();
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(AtprotoSubjectClassification.Organization),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.ActorId).IsEqualTo(identity.ActorId);
+        await Assert.That(identity.ActorId).IsEqualTo(identity.Actor.Id);
+        await Assert.That(identity.Actor.ActorTypeId).IsEqualTo((int)ActorTypeEnum.Organization);
+        await Assert.That(identity.Actor.OrganizationId).IsNotNull();
+        await Assert.That(identity.Actor.ExternalActorSubjectId).IsNull();
+        await _actors.Received(1).Update(Arg.Is<Actor>(actor => actor.Id == identity.ActorId));
+        await _references.DidNotReceiveWithAnyArgs().MoveMutableReferencesAsync(default, default, default, default);
+    }
+
+    [Test]
+    public async Task ExternalGroupPromotionPreservesActorAndIdentityIds()
+    {
+        ConfigureVerifiedSession();
+        ConfigureLinkedIdentity();
+        var identity = ConfigureExternalIdentity();
+        ConfigureIssuedToken();
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(AtprotoSubjectClassification.Group),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.ActorId).IsEqualTo(identity.ActorId);
+        await Assert.That(identity.Actor.ActorTypeId).IsEqualTo((int)ActorTypeEnum.Group);
+        await Assert.That(identity.Actor.GroupId).IsNotNull();
+        await Assert.That(identity.Actor.ExternalActorSubjectId).IsNull();
+    }
+
+    [Test]
+    public async Task AuthorizedSameKindConsolidationMovesReferencesAndRecordsBoundedEvidence()
+    {
+        ConfigureVerifiedSession();
+        ConfigureLinkedIdentity();
+        var identity = ConfigureExternalIdentity();
+        var canonical = ConfigureCanonicalOrganizationAuthority();
+        _references.MoveMutableReferencesAsync(identity.ActorId, canonical.Id, (int)ActorTypeEnum.Organization, Arg.Any<CancellationToken>())
+            .Returns(true);
+        ConfigureIssuedToken();
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(AtprotoSubjectClassification.Organization, canonical.Id, canonical.ConcurrencyStamp),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.ActorId).IsEqualTo(canonical.Id);
+        await Assert.That(identity.ActorId).IsEqualTo(canonical.Id);
+        await Assert.That(identity.Actor.Id).IsEqualTo(canonical.Id);
+        await Assert.That(identity.Actor.IsDeleted).IsFalse();
+        await _references.Received(1).MoveMutableReferencesAsync(
+            Arg.Any<Guid>(),
+            canonical.Id,
+            (int)ActorTypeEnum.Organization,
+            Arg.Any<CancellationToken>());
+        await _merges.Received(1).Create(Arg.Is<ActorMerge>(merge =>
+            merge.CanonicalActorId == canonical.Id
+            && merge.EvidenceReference.StartsWith($"atproto-identity:{identity.Id:D};did-sha256:", StringComparison.Ordinal)
+            && merge.EvidenceReference.Length < 256));
+    }
+
+    [Test]
+    public async Task ConsolidationWithoutCurrentTenantAdminAuthorityFailsBeforeMutation()
+    {
+        ConfigureVerifiedSession();
+        ConfigureLinkedIdentity();
+        var identity = ConfigureExternalIdentity();
+        var canonical = CreateCanonicalOrganizationActor();
+        _actors.GetById(canonical.Id).Returns(canonical);
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(AtprotoSubjectClassification.Organization, canonical.Id, canonical.ConcurrencyStamp),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("classification_conflict");
+        await _references.DidNotReceiveWithAnyArgs().MoveMutableReferencesAsync(default, default, default, default);
+        await _merges.DidNotReceiveWithAnyArgs().Create(default!);
+        await _securityGateway.DidNotReceiveWithAnyArgs().PersistPreparedAsync(default!, default);
+    }
+
+    [Test]
+    public async Task ConsolidationWithStaleCanonicalStampFailsBeforeMutation()
+    {
+        ConfigureVerifiedSession();
+        ConfigureLinkedIdentity();
+        ConfigureExternalIdentity();
+        var canonical = ConfigureCanonicalOrganizationAuthority();
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(AtprotoSubjectClassification.Organization, canonical.Id, Guid.NewGuid()),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("classification_conflict");
+        await _references.DidNotReceiveWithAnyArgs().MoveMutableReferencesAsync(default, default, default, default);
+    }
+
+    [Test]
+    public async Task CompletedConsolidationReplayUsesMergeEvidenceWithoutMovingReferencesAgain()
+    {
+        ConfigureVerifiedSession();
+        ConfigureLinkedIdentity();
+        var canonical = ConfigureCanonicalOrganizationAuthority();
+        var identity = new AtprotoIdentity
+        {
+            Id = Guid.NewGuid(),
+            Did = Did,
+            ActorId = canonical.Id,
+            Actor = canonical,
+            PdsHost = PdsUri.AbsoluteUri,
+            IsActive = true
+        };
+        _atprotoIdentities.GetByDid(Did, Arg.Any<CancellationToken>()).Returns(identity);
+        _references.HasCompletedConsolidationAsync(identity.Id, canonical.Id, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        ConfigureIssuedToken();
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(AtprotoSubjectClassification.Organization, canonical.Id, canonical.ConcurrencyStamp),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.ActorId).IsEqualTo(canonical.Id);
+        await _references.DidNotReceiveWithAnyArgs().MoveMutableReferencesAsync(default, default, default, default);
+        await _merges.DidNotReceiveWithAnyArgs().Create(default!);
+    }
+
+    [Test]
+    public async Task SuspendedAtprotoIdentityFailsBeforeMutation()
+    {
+        ConfigureVerifiedSession();
+        ConfigureLinkedIdentity();
+        var identity = ConfigureExternalIdentity();
+        identity.IsSuspended = true;
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(AtprotoSubjectClassification.Organization),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("classification_conflict");
+        await _organizations.DidNotReceiveWithAnyArgs().Create(default!);
+        await _securityGateway.DidNotReceiveWithAnyArgs().PersistPreparedAsync(default!, default);
+    }
+
+    [Test]
     public async Task PostCommitIssuerFailureCanRetryThroughIdempotentUpsert()
     {
         ConfigureVerifiedSession();
@@ -351,20 +514,22 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         await _securityGateway.Received(2).PersistPreparedAsync(
             Arg.Any<AtprotoPreparedOAuthSession>(),
             Arg.Any<CancellationToken>());
+        await _users.Received(2).GetById(_userId);
+        await _actors.Received(2).GetTrackedActorByUserId(_userId, Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task RetryableTransactionPreparesOnceAndPersistsPreparedSessionForEachAttempt()
+    public async Task RetryableTransactionPreparesOnceAndPersistsPreparedSessionAfterCommit()
     {
         ConfigureVerifiedSession();
         ConfigureLinkedIdentity();
         _unitOfWork
-            .ExecuteInTransactionAsync<AtprotoSessionBootstrapResult?>(
-                Arg.Any<Func<CancellationToken, Task<AtprotoSessionBootstrapResult?>>>(),
+            .ExecuteSerializableAsync<AtprotoSubjectOnboardingResult>(
+                Arg.Any<Func<CancellationToken, Task<AtprotoSubjectOnboardingResult>>>(),
                 Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
-                var operation = call.Arg<Func<CancellationToken, Task<AtprotoSessionBootstrapResult?>>>();
+                var operation = call.Arg<Func<CancellationToken, Task<AtprotoSubjectOnboardingResult>>>();
                 var cancellationToken = call.Arg<CancellationToken>();
                 await operation(cancellationToken);
                 return await operation(cancellationToken);
@@ -437,7 +602,7 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         };
         _externalLogins.GetByProviderAndKey("atproto", Did).Returns(login);
         _users.GetById(_userId).Returns(user);
-        _actors.GetActorByUserId(_userId).Returns(actor);
+        _actors.GetTrackedActorByUserId(_userId, Arg.Any<CancellationToken>()).Returns(actor);
         return (login, user, actor);
     }
 
@@ -447,27 +612,101 @@ public sealed class BootstrapAtprotoSessionCommandHandlerTests
         _externalLogins,
         _users,
         _actors,
-        _atprotoIdentities,
-        _tenantUsers,
-        _tenantUserRoleGrants,
-        _organizations,
-        _organizationTenants,
-        _organizationMembers,
-        _groups,
-        _groupTenants,
-        _groupMembers,
-        _adminCacheInvalidator,
+        new AtprotoSubjectOnboardingOperation(_externalLogins, _atprotoIdentities, _actors, _actorTypes, _tenantUsers, _tenantUserRoleGrants, _organizations, _organizationTenants, _organizationMembers, _groups, _groupTenants, _groupMembers, _references, _merges),
         _unitOfWork,
+        _adminCacheInvalidator,
         _tenantContext,
         TimeProvider.System);
 
     private static BootstrapAtprotoSessionCommand CreateCommand(
-        AtprotoSubjectClassification classification = AtprotoSubjectClassification.Person) => new(
+        AtprotoSubjectClassification classification = AtprotoSubjectClassification.Person,
+        Guid? canonicalActorId = null,
+        Guid? expectedCanonicalActorConcurrencyStamp = null) => new(
         Did,
         PdsUri.AbsoluteUri,
         "oauth-active",
         classification,
-        [1, 2, 3]);
+        [1, 2, 3],
+        canonicalActorId,
+        expectedCanonicalActorConcurrencyStamp);
+
+    private AtprotoIdentity ConfigureExternalIdentity()
+    {
+        var external = new ExternalActorSubject { Id = Guid.NewGuid(), FirstObservedAt = DateTime.UtcNow, LastObservedAt = DateTime.UtcNow };
+        var actor = new Actor
+        {
+            Id = Guid.NewGuid(),
+            ActorTypeId = (int)ActorTypeEnum.ExternalUnclassified,
+            ActorType = null!,
+            ExternalActorSubjectId = external.Id,
+            ExternalActorSubject = external,
+            Pii = new ActorPii { DisplayName = "External subject" }
+        };
+        external.Actor = actor;
+        var identity = new AtprotoIdentity
+        {
+            Id = Guid.NewGuid(),
+            Did = Did,
+            ActorId = actor.Id,
+            Actor = actor,
+            PdsHost = PdsUri.AbsoluteUri,
+            IsActive = true
+        };
+        _atprotoIdentities.GetByDid(Did, Arg.Any<CancellationToken>()).Returns(identity);
+        return identity;
+    }
+
+    private Actor ConfigureCanonicalOrganizationAuthority()
+    {
+        var canonical = CreateCanonicalOrganizationActor();
+        _actors.GetById(canonical.Id).Returns(canonical);
+        var participation = new OrganizationTenant
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            Tenant = null!,
+            OrganizationId = canonical.OrganizationId!.Value,
+            Organization = canonical.Organization!,
+            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+            ApprovalStatus = null!
+        };
+        _organizationTenants.GetByOrganizationAndTenant(canonical.OrganizationId.Value, _tenantId, Arg.Any<CancellationToken>())
+            .Returns(participation);
+        _organizationMembers.GetByOrganizationAndUser(canonical.OrganizationId.Value, _userId).Returns(new OrganizationMember
+        {
+            Id = Guid.NewGuid(),
+            OrganizationTenantId = participation.Id,
+            OrganizationTenant = participation,
+            UserId = _userId,
+            User = null!,
+            RoleId = (int)RoleEnum.OrgAdmin,
+            Role = null!,
+            TenantId = _tenantId,
+            Tenant = null!
+        });
+        return canonical;
+    }
+
+    private static Actor CreateCanonicalOrganizationActor()
+    {
+        var organization = new Organization { Id = Guid.NewGuid(), Pii = new OrganizationPii { FullName = "Canonical organization" } };
+        var actor = new Actor
+        {
+            Id = Guid.NewGuid(),
+            ActorTypeId = (int)ActorTypeEnum.Organization,
+            ActorType = null!,
+            OrganizationId = organization.Id,
+            Organization = organization,
+            Pii = new ActorPii { DisplayName = "Canonical organization" },
+            ConcurrencyStamp = Guid.NewGuid()
+        };
+        organization.Actor = actor;
+        return actor;
+    }
+
+    private void ConfigureIssuedToken() =>
+        _tokenIssuer.IssueAsync(_userId, _tenantId, Did, Arg.Any<CancellationToken>())
+            .Returns(new AtprotoIssuedSessionToken("platform-jwt", DateTimeOffset.UtcNow.AddMinutes(15)));
 
     private static TenantUser WithId(TenantUser entity)
     {

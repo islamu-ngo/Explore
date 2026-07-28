@@ -12,4 +12,8 @@ public interface IGuestCapabilityTokenService
     bool Matches(string? rawToken, CapabilityTokenHash expectedHash);
 }
 
-public sealed record GuestCapabilityTokenIssue(string RawToken, CapabilityTokenHash Hash);
+public sealed record GuestCapabilityTokenIssue(string RawToken, CapabilityTokenHash Hash)
+{
+    // A token is a bearer capability, not identity proof; never log, persist, or return plaintext after issuance.
+    public override string ToString() => "GuestCapabilityTokenIssue { Redacted = true }";
+}

@@ -22,6 +22,11 @@ public interface IActorRepository : IGenericRepository<Actor, Guid>
     Task<Actor?> GetActorByUserId(Guid userId);
 
     /// <summary>
+    /// Gets the tracked personal Actor used by transactional identity workflows.
+    /// </summary>
+    Task<Actor?> GetTrackedActorByUserId(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the tenant-scoped Actor associated with a specific User.
     /// </summary>
     Task<Actor?> GetActorByUserIdAndTenantId(

@@ -16,6 +16,7 @@ using Explore.Application.Contracts.Secrets;
 using Explore.Application.Features.Authentication.Atproto.Handlers.Commands;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
+using Explore.Application.Features.Authentication.Atproto.Services;
 using Explore.Atproto.Transport;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -114,17 +115,23 @@ public sealed class AtprotoOAuthSecurityGatewayTests
             externalLogins,
             users,
             actors,
-            atprotoIdentities,
-            Substitute.For<ITenantUserRepository>(),
-            Substitute.For<ITenantUserRoleGrantRepository>(),
-            Substitute.For<IOrganizationRepository>(),
-            Substitute.For<IOrganizationTenantRepository>(),
-            Substitute.For<IOrganizationMemberRepository>(),
-            Substitute.For<IGroupRepository>(),
-            Substitute.For<IGroupTenantRepository>(),
-            Substitute.For<IGroupMemberRepository>(),
-            Substitute.For<IAdminCacheInvalidator>(),
+            new AtprotoSubjectOnboardingOperation(
+                externalLogins,
+                atprotoIdentities,
+                actors,
+                Substitute.For<IActorTypeRepository>(),
+                Substitute.For<ITenantUserRepository>(),
+                Substitute.For<ITenantUserRoleGrantRepository>(),
+                Substitute.For<IOrganizationRepository>(),
+                Substitute.For<IOrganizationTenantRepository>(),
+                Substitute.For<IOrganizationMemberRepository>(),
+                Substitute.For<IGroupRepository>(),
+                Substitute.For<IGroupTenantRepository>(),
+                Substitute.For<IGroupMemberRepository>(),
+                Substitute.For<IActorReferenceConsolidationRepository>(),
+                Substitute.For<IGenericRepository<ActorMerge, Guid>>()),
             unitOfWork,
+            Substitute.For<IAdminCacheInvalidator>(),
             tenantContext,
             TimeProvider.System);
         var payload = JsonSerializer.SerializeToUtf8Bytes(CreateSession());

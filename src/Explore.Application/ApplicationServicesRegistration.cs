@@ -15,6 +15,7 @@ using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.AiAssistant.Actors;
 using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.AiAssistant.Tools;
+using Explore.Application.Features.Authentication.Atproto.Services;
 using Explore.Application.Features.ControlPlane.Plans;
 using Explore.Application.Features.EventReporting;
 using Explore.Application.Features.Federation.Atproto.Services;
@@ -116,6 +117,7 @@ public static class ApplicationServicesRegistration
         services.Configure<AccountAuthorityLifecycleEmailOptions>(configuration.GetSection(AccountAuthorityLifecycleEmailOptions.SectionName));
         services.AddSingleton<IAiToolContractRegistry>(_ => AiToolContractRegistry.CreateDefault());
         services.AddScoped<IAiAssistantActorContextService, AiAssistantActorContextService>();
+        services.AddScoped<AtprotoSubjectOnboardingOperation>();
         services.AddScoped<IAiContextGateway, AiContextGateway>();
         services.AddScoped<IAiProviderTrustResolver, DefaultAiProviderTrustResolver>();
         services.AddScoped<IAiContextRedactor, AiContextRedactor>();

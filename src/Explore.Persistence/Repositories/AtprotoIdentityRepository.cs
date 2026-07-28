@@ -13,5 +13,10 @@ public sealed class AtprotoIdentityRepository(ExploreDbContext dbContext)
     public Task<AtprotoIdentity?> GetByDid(string did, CancellationToken cancellationToken = default) =>
         dbContext.AtprotoIdentities
             .Include(identity => identity.Actor)
+                .ThenInclude(actor => actor.ExternalActorSubject)
+            .Include(identity => identity.Actor)
+                .ThenInclude(actor => actor.Organization)
+            .Include(identity => identity.Actor)
+                .ThenInclude(actor => actor.Group)
             .SingleOrDefaultAsync(identity => identity.Did == did, cancellationToken);
 }
