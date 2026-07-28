@@ -9,7 +9,7 @@ Last Updated: 2026-07-28 Europe/Brussels
 
 - **Request:** Standardize every update-eligible API entity on the existing Event/EventSession grouped partial-update convention and make settings, especially policy toggles, save at the point of change.
 - **Task directory:** `dev/active/full-property-update-sub-dto/`
-- **Planning status:** Approved and in implementation; Tasks 1.1-5.1 are accepted, and Task 5.2 is next.
+- **Planning status:** Implementation complete at 20/20; final verification is blocked by recorded unrelated concurrent and Docker debt.
 - **Compatibility:** Breaking changes are intentional. Do not retain old DTOs, routes, overloads, client methods, or tests.
 - **Matched intents:** `add-write-endpoint`, `add-cqrs-handler`, `openapi-contract-change`, `add-hal-link`, `blazor-component-affordance`; `add-ef-migration` only when an update-eligible aggregate lacks required concurrency state.
 - **Relevant skills:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `auth-patterns`, `blazor-ui-conventions`, `blazor-bff-patterns`, `dotnet-efcore-guidelines`.
@@ -22,7 +22,7 @@ Last Updated: 2026-07-28 Europe/Brussels
 - **Reason:** Tasks 3.4 and 3.5 implementation and verification moved ahead of the active records during context compaction and recovery.
 - **What changed:** Task 3.4 completed the seven program/aspect/relationship surfaces. Task 3.5 migrated shared, Event, and EventSession custom-property definitions to grouped PATCH with persisted tenant binding, strong concurrency, presence-aware atomic option replacement, and transactional runtime projection refresh.
 - **Plan impact:** Scope and sequencing are unchanged. Tasks 3.4 and 3.5 passed their focused gates; the completed count is 11/20.
-- **Remaining work:** Begin Task 5.2 and continue the existing phase sequence; Phase 3's full Application suite retains three unrelated failures recorded in the task ledger.
+- **Remaining work:** Resolve or explicitly waive recorded verification blockers, rerun canonical and phase gates, then close the workstream. No implementation task remains.
 
 ## 1. Executive Summary
 
@@ -73,7 +73,7 @@ Relevant projects:
 - `tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj` when persistence changes
 - `tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj`
 
-Existing anchors include `UpdateEventSessionCommandHandlerTests`, `UpdateInstanceSubResourceCommandHandlerTests`, `UpdateTenantPolicySettingsCommandHandlerTests`, and `TenantPoliciesSectionTests`. Gaps remain around immediate policy persistence, failed-save rollback/status, full DTO stale overwrite prevention, old contract removal, and final detection of public broad update DTOs.
+Existing anchors include `UpdateEventSessionCommandHandlerTests`, `UpdateInstanceSubResourceCommandHandlerTests`, `TenantPoliciesSectionTests`, and `TenantSettingsBroadWriteAbsenceTests`. Remaining verification centers on exhaustive semantic exceptions and final detection of public broad update DTOs.
 
 ### 2.4 Documentation And Generated Contracts
 

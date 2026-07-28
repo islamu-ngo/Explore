@@ -7,11 +7,11 @@ Last Updated: 2026-07-28 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Implementation in progress; Phases 1-4 and Task 5.1 are complete.
-- **Completed:** 16/20 implementation tasks; Tasks 1.1-5.1 are accepted.
-- **Current priority:** Begin Task 5.2 settings-control autosave while preserving recorded Docker and phase verification debt.
-- **Next recommended slice:** Classify and wire every remaining tenant and instance settings control to its established save boundary.
-- **Coverage contract:** 59 DTO files, 71 update-handler files, and 104 public PUT/PATCH endpoints are individually registered.
+- **Overall status:** All implementation tasks are complete; final verification remains blocked by recorded unrelated concurrent and Docker debt.
+- **Completed:** 20/20 implementation tasks; Tasks 1.1-6.2 are accepted.
+- **Current priority:** Clear external verification blockers, then rerun canonical build plus Phase 1-6 suites without weakening the new guards.
+- **Next recommended slice:** Resolve the unrelated ticketing compile error and current architecture/UI/Application/OpenAPI failures, restore Docker runtime access, then execute the deferred phase gates.
+- **Coverage contract:** 59 baseline DTO rows, 80 baseline-plus-current handler rows, and 111 baseline-plus-current public PUT/PATCH operation rows are individually registered.
 
 ## Implementation Maintenance Rules
 
@@ -166,7 +166,7 @@ Last Updated: 2026-07-28 Europe/Brussels
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 5: Remove Unsafe Generic Writes And Complete UI Autosave - IN PROGRESS
+## Phase 5: Remove Unsafe Generic Writes And Complete UI Autosave - IMPLEMENTATION COMPLETE; VERIFICATION DEBT RECORDED
 
 - [x] **5.1 Remove generic IndexedDid, SyncState, ActorKeyStore, and UserExternalLogin writes**
   - **Rows:** D-031/D-037/D-044/D-059; H-049/H-052/H-058/H-071; A-044/A-071/A-077/A-098.
@@ -175,14 +175,18 @@ Last Updated: 2026-07-28 Europe/Brussels
   - **Verification:** Federation API absence tests passed 26/26, the runtime OpenAPI absence invariant passed 1/1, the architecture authority-boundary guard passed 1/1, and the API contract inventory generator passed 1/1. Application, API, Blazor Client, API test, and architecture test projects compile with zero errors; the canonical Release build passes with zero errors. Existing package-advisory and analyzer warnings remain unrelated debt.
   - **Effort:** L
   - **Dependencies:** Phase 4.
-- [ ] **5.2 Apply autosave to every remaining tenant and instance settings control**
+- [x] **5.2 Apply autosave to every remaining tenant and instance settings control**
   - **Rows:** All UI callers of Phase 1/3/4 settings contracts.
   - **Acceptance:** Every control is immediate, blur/debounce, atomic batch, or explicit action; HAL/locks gate writes; pending/error/saved state is accessible.
+  - **Evidence:** Tenant render-policy selectors/switches, home-page selection, MCP toggles, and community-guidelines content write exact keys immediately or on blur; domain text fields save on blur. Instance storage and SMTP delegation locks save independently. Sensitive storage/SMTP/provider credentials, coupled JSON, public-experience configuration, and announcement redisplay remain explicit actions. Failed writes reload only the authoritative settings slice and controls expose accessible pending, success, and error states.
+  - **Verification:** Tenant render/domain autosave tests passed 4/4, instance section lock tests passed 15/15, and tenant layout tests passed 8/8. The full Blazor Client suite executed 2,171 tests with 2,168 passing, one governed skip, and two unrelated failures in `LaunchAccessibilitySourceTests` and `SetupTests`. The canonical Release build passes with zero errors; scoped diagnostics, broad-Save scans, whitespace, and conflict checks are clean. Existing package advisories and analyzer warnings remain unrelated debt.
   - **Effort:** XL
   - **Dependencies:** 5.1 and all API migration tasks.
-- [ ] **5.3 Remove obsolete broad Save fan-out and wire DTOs**
+- [x] **5.3 Remove obsolete broad Save fan-out and wire DTOs**
   - **Rows:** H-019/A-003 plus all old tenant/instance broad client calls and local wire DTOs superseded by prior tasks.
   - **Acceptance:** No generic page Save, broad onboarding settings route/handler, or old generated-client call remains; local form models are non-wire only.
+  - **Evidence:** `PUT /api/tenantonboarding/settings`, `UpdateTenantPolicySettingsCommand`, its handler, route constant, Blazor service method, generated NSwag operation, and obsolete tests are removed. The same path retains its management GET, while onboarding completion retains `UpdateTenantPolicyRequest`. Independent settings use exact-key/category writes and public-experience/announcement operations retain dedicated explicit actions. OpenAPI, NSwag, the API inventory, render-policy documentation, and the API changelog are synchronized.
+  - **Verification:** The architecture absence guard passed 1/1, the exact runtime OpenAPI invariant passed 1/1, API inventory generation passed 1/1, tenant onboarding service tests passed 10/10, and tenant layout tests passed 8/8. Application, API, Blazor Client, and affected test projects compile with zero scoped errors. The broader OpenAPI invariant class passed 32/33 with one unrelated missing HAL schema; the full Blazor Client suite passed 2,166/2,169 with one governed skip and the same two unrelated launch/setup failures; the canonical build is blocked by an unrelated concurrent `EventTicketCatalogVersion.DeleteTicketType` call missing `deletedAtUtc`. Existing package advisories and analyzer warnings remain unrelated debt.
   - **Effort:** M
   - **Dependencies:** 5.2.
 
@@ -191,16 +195,20 @@ Last Updated: 2026-07-28 Europe/Brussels
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 6: Verify Every Semantic Exception And Enforce Exhaustiveness - NOT STARTED
+## Phase 6: Verify Every Semantic Exception And Enforce Exhaustiveness - IMPLEMENTATION COMPLETE; VERIFICATION DEBT RECORDED
 
-- [ ] **6.1 Verify all exact-replacement and action endpoints**
+- [x] **6.1 Verify all exact-replacement and action endpoints**
   - **Rows:** A-004/A-012/A-018/A-021/A-023/A-047-A-049/A-051/A-053/A-062-A-065/A-069/A-080-A-083/A-087/A-091-A-099/A-102/A-103 plus every D/H `A`, `S`, and `N` row.
   - **Acceptance:** Each exception has route-specific semantic rationale/tests; any independent property mutation is reclassified and migrated before completion; no wildcard exemption exists.
+  - **Evidence:** `SemanticUpdateExceptionArchitectureTests` binds all 30 surviving baseline `A`/`S` operations plus H-021's POST tenant-selection action to an exact operation ID, path, verb, and non-empty semantic rationale. A separate guard proves nested DTOs and Application-only commands have no direct controller operation. H-043 and H-053 were corrected from `A` to `N` because they are Application-only workflows, not public action endpoints. No independent property mutation remained misclassified, so no API migration was required.
+  - **Verification:** The exact semantic registry passed 2/2 after a no-dependency architecture build. The full Application suite passed 3,218/3,220; the two unrelated failures are `UpdateOrganizationCommandHandlerTests.Handle_WhenRequesterIsNotOrgAdmin_ReturnsAuthorizationFailureAndDoesNotSave` and `EventLocationDisclosureContractTests.Contracts_AreImmutableRecordsAndDoNotReuseGenericLocationDto`. Scoped diagnostics, whitespace, and conflict checks pass; the unrelated canonical build blocker and package/analyzer debt remain recorded.
   - **Effort:** L
   - **Dependencies:** Phase 5.
-- [ ] **6.2 Add exhaustive contract guards and finalize artifacts**
-  - **Rows:** D-001-D-059, H-001-H-071, A-001-A-104.
+- [x] **6.2 Add exhaustive contract guards and finalize artifacts**
+  - **Rows:** D-001-D-059, H-001-H-080, A-001-A-111.
   - **Acceptance:** All `M` rows implemented, `C` rows canonical, `R` routes absent, `A`/`S` exact; new unlisted surfaces fail architecture/contract tests; OpenAPI/HAL/client/docs agree.
+  - **Evidence:** `UpdateContractInventoryArchitectureTests` parses the committed inventory, enforces exact row sequences, scans current `Update*Dto.cs` and `Update*CommandHandler.cs` files, enumerates current OpenAPI PUT/PATCH operations, checks generated-client agreement, requires `M/C` operations to be PATCH, requires `R` source/operations to be absent, and requires every `A/S` operation to have an exact semantic-registry rationale. Its first run discovered five unlisted update handlers, seven unlisted operations, two migrated handler filenames, three renamed tenant document operations, and two removed duplicate onboarding operations. Reconciliation added H-072-H-080 and A-105-A-111 and corrected the stale rows; the guard now passes without wildcard exemptions.
+  - **Verification:** Exhaustive inventory reconciliation passed 1/1 and the extended semantic registry passed 2/2 after a no-dependency Architecture build. The full Architecture suite passed 311/324 with one governed skip and 12 unrelated concurrent failures across ATProto/privacy/cache drift, CQRS namespaces, HAL permission metadata, DTO naming, generated enum shape, persistence layering, and ticketing validator pairing. The canonical build remains blocked by the unrelated `DeleteTicketType` call missing `deletedAtUtc`; previously recorded UI, Application, OpenAPI, Docker, package-advisory, and analyzer debt remains open. Scoped diagnostics, whitespace, and conflict checks pass.
   - **Effort:** L
   - **Dependencies:** 6.1.
 

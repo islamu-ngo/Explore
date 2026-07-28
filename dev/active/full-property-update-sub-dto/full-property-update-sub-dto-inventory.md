@@ -104,7 +104,7 @@ Task 5.1 acceptance removes D-031/D-037/D-044/D-059, H-049/H-052/H-058/H-071, an
 | D-058 | `Appearance/UpdateUiThemeDto.cs` | UiTheme | C | 3.3 |
 | D-059 | `ActorKeyStore/UpdateActorKeyStoreDto.cs` | ActorKeyStore generic key material | R | 5.1 |
 
-## Register 2: All 71 Update Command-Handler Files
+## Register 2: Baseline 71 Plus Post-Baseline Update Handler Surfaces
 
 Paths are relative to `src/Explore.Application/Features/`.
 
@@ -152,8 +152,8 @@ Paths are relative to `src/Explore.Application/Features/`.
 | H-040 | `Actors/Handlers/Commands/UpdateActorCommandHandler.cs` | Actor | C | 2.1 |
 | H-041 | `Organizations/Handlers/Commands/UpdateOrganizationApprovalStatusCommandHandler.cs` | Organization approval action | A | 6.1 |
 | H-042 | `Events/Handlers/Commands/UpdateEventDraftCommandHandler.cs` | Internal Event draft workflow | N | 2.3 |
-| H-043 | `EventRoleAssignments/Handlers/Commands/UpdateEventRoleAssignmentWindowCommandHandler.cs` | Event role-assignment window action | A | 6.1 |
-| H-044 | `TenantStorageSettings/Handlers/Commands/UpdateTenantStorageSettingsCommandHandler.cs` | Tenant storage settings | M | 1.2 |
+| H-043 | `EventRoleAssignments/Handlers/Commands/UpdateEventRoleAssignmentWindowCommandHandler.cs` | Application-only event role-assignment window workflow | N | 6.1 |
+| H-044 | `TenantStorageSettings/Handlers/Commands/UpdateTenantStorageSettingsCommandHandler.cs` | Retired broad tenant storage handler; replaced by H-080 | R | 1.2 |
 | H-045 | `InstanceOnboarding/Handlers/Commands/UpdateInstanceStorageSettingsCommandHandler.cs` | Instance storage settings | M | 1.3 |
 | H-046 | `ActorSubscriptions/Handlers/Commands/UpdateActorSubscriptionNotificationLevelCommandHandler.cs` | ActorSubscription notification property | C | 3.2 |
 | H-047 | `EventSessionTemplates/Handlers/Commands/UpdateEventSessionTemplateCommandHandler.cs` | EventSessionTemplate | M | 3.6 |
@@ -162,7 +162,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 | H-050 | `Tags/Handlers/Commands/UpdateTagCommandHandler.cs` | Tag | C | 3.1 |
 | H-051 | `TagTypeTags/Handlers/Commands/UpdateTagTypeTagsCommandHandler.cs` | TagTypeTags relationship | C | 3.4 |
 | H-052 | `SyncStates/Handlers/Commands/UpdateSyncStateCommandHandler.cs` | SyncState cursor | R | 5.1 |
-| H-053 | `Roles/Handlers/Commands/UpdateRolePermissionsCommandHandler.cs` | Role permission assignment action | A | 6.1 |
+| H-053 | `Roles/Handlers/Commands/UpdateRolePermissionsCommandHandler.cs` | Application-only complete role-permission replacement | N | 6.1 |
 | H-054 | `OrganizationMembers/Handlers/Commands/UpdateOrganizationMemberRoleCommandHandler.cs` | Organization member role action | A | 6.1 |
 | H-055 | `InstanceOnboarding/Handlers/Commands/UpdateResolverConfigurationCommandHandler.cs` | Resolver settings | M | 1.3 |
 | H-056 | `InstanceOnboarding/Handlers/Commands/UpdateInstanceSmtpSettingsCommandHandler.cs` | SMTP settings | M | 1.3 |
@@ -170,7 +170,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 | H-058 | `IndexedDids/Handlers/Commands/UpdateIndexedDidCommandHandler.cs` | IndexedDid index row | R | 5.1 |
 | H-059 | `Groups/Handlers/Commands/UpdateGroupApprovalStatusCommandHandler.cs` | Group approval action | A | 6.1 |
 | H-060 | `GroupMembers/Handlers/Commands/UpdateGroupMemberRoleCommandHandler.cs` | Group member role action | A | 6.1 |
-| H-061 | `Footer/Handlers/Commands/UpdateTenantFooterSettingsCommandHandler.cs` | Tenant footer settings | M | 1.2 |
+| H-061 | `Footer/Handlers/Commands/UpdateTenantFooterSettingsCommandHandler.cs` | Retired broad tenant footer handler; replaced by H-078 | R | 1.2 |
 | H-062 | `Footer/Handlers/Commands/UpdateFooterLinkGroupCommandHandler.cs` | FooterLinkGroup | C | 3.1 |
 | H-063 | `Footer/Handlers/Commands/UpdateFooterLinkCommandHandler.cs` | FooterLink | C | 3.1 |
 | H-064 | `Footer/Handlers/Commands/UpdateFooterGovernanceSettingsCommandHandler.cs` | Footer governance | M | 1.3 |
@@ -181,10 +181,19 @@ Paths are relative to `src/Explore.Application/Features/`.
 | H-069 | `Appearance/Handlers/Commands/UpdateUiThemeCommandHandler.cs` | UiTheme | C | 3.3 |
 | H-070 | `Appearance/Handlers/Commands/UpdateCurrentUserAppearancePreferencesCommandHandler.cs` | User appearance preferences | C | 3.3 |
 | H-071 | `ActorKeyStores/Handlers/Commands/UpdateActorKeyStoreCommandHandler.cs` | ActorKeyStore generic key update | R | 5.1 |
+| H-072 | `EventTicketing/UpdateEventTicketTypeCommandHandler.cs` | Atomic EventTicketType replacement | S | 6.2 |
+| H-073 | `EventTicketing/UpdateEventCapacityPoolCommandHandler.cs` | Atomic EventCapacityPool replacement | S | 6.2 |
+| H-074 | `Tenants/Handlers/Commands/UpdateTenantCommandHandler.cs` | Tenant grouped update | C | 6.2 |
+| H-075 | `EventPublicActions/Handlers/Commands/UpdateEventPublicActionCommandHandler.cs` | Atomic reviewed public-action replacement | S | 6.2 |
+| H-076 | `Tenants/Handlers/Commands/UpdateTenantNavLink/UpdateTenantNavLinkCommandHandler.cs` | Tenant navigation-link grouped update | C | 6.2 |
+| H-077 | `EventParticipation/Handlers/Commands/ConfigureEventParticipationCommandHandler.cs` | Atomic participation-configuration replacement | S | 6.2 |
+| H-078 | `Footer/Handlers/Commands/PatchTenantFooterSettingsCommandHandler.cs` | Tenant footer grouped PATCH | C | 6.2 |
+| H-079 | `TenantSettingsDocuments/Handlers/Commands/PatchTenantBrandingSettingsDocumentCommandHandler.cs` | Tenant branding grouped PATCH | C | 6.2 |
+| H-080 | `TenantStorageSettings/Handlers/Commands/PatchTenantStorageSettingsCommandHandler.cs` | Tenant storage grouped PATCH | C | 6.2 |
 
 `UpdateInstanceSubResourceHandlers.cs` contains additional update-handler classes but does not match the handler-file glob. Those public operations are still individually covered by API rows A-026 through A-042.
 
-## Register 3: All 104 Public PUT/PATCH Endpoints
+## Register 3: Baseline 104 Plus Post-Baseline Public PUT/PATCH Endpoints
 
 `Route` uses the controller-relative template. `PATCH` means migrate to or verify the grouped Event/EventSession convention; `PUT/action` and `PUT/full` are explicit semantic exceptions.
 
@@ -194,8 +203,8 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-002 | `EventController.UpdateEvent` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-003 | `TenantOnboardingController.UpdateTenantOnboardingPolicySettings` | `PUT settings` | R: remove broad duplicate after remaining non-policy callers migrate | 5.3 |
 | A-004 | `TenantOnboardingController.SaveTenantOnboardingStepProgress` | `PUT steps` | A: retain workflow action | 6.1 |
-| A-005 | `InstanceOnboardingController.SaveInstanceOnboardingAuthProviderConfiguration` | `PUT auth-provider-configuration` | M: shared grouped PATCH contract | 1.3 |
-| A-006 | `InstanceOnboardingController.SaveInstanceOnboardingAuthorizationProviderConfiguration` | `PUT authz-provider-configuration` | M: shared grouped PATCH contract | 1.3 |
+| A-005 | `InstanceOnboardingController.SaveInstanceOnboardingAuthProviderConfiguration` | `PUT auth-provider-configuration` | R: removed duplicate; canonical grouped PATCH is A-041 | 1.3 |
+| A-006 | `InstanceOnboardingController.SaveInstanceOnboardingAuthorizationProviderConfiguration` | `PUT authz-provider-configuration` | R: removed duplicate; canonical grouped PATCH is A-042 | 1.3 |
 | A-007 | `ListmonkIntegrationSettingsController.UpdateListmonkIntegrationSettings` | `PUT settings` | M: grouped settings PATCH | 4.2 |
 | A-008 | `InstanceModerationReportingSettingsController.UpdateInstanceModerationReportingProviderLocks` | `PUT locks` | M: grouped settings PATCH | 4.3 |
 | A-009 | `ModerationReportingRoutingController.UpdateModerationReportingRoutingSettings` | `PUT` | M: grouped settings PATCH; secrets explicit | 4.3 |
@@ -243,7 +252,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-051 | `GroupController.SetGroupNotificationPreferenceMute` | `PUT {id}/notification-preferences/mute` | A: retain single-value action PUT | 6.1 |
 | A-052 | `GroupController.UpdateGroup` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-053 | `GroupController.UpdateGroupApprovalStatus` | `PUT {id}/approval-status` | A: retain approval action | 6.1 |
-| A-054 | `TenantStorageSettingsController.UpdateTenantStorageSettings` | `PUT` | M: grouped settings PATCH | 1.2 |
+| A-054 | `TenantStorageSettingsController.UpdateTenantStorageSettings` | `PUT` | R: removed broad operation; canonical grouped PATCH is A-111 | 1.2 |
 | A-055 | `UiThemeAdminController.UpdateUiTheme` | `PATCH {id}` | C: grouped entity PATCH | 3.3 |
 | A-056 | `EventSessionController.UpdateEventSession` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-057 | `ExternalApiKeyController.UpdateExternalApiKey` | `PUT {id}` | M: grouped policy PATCH; key material excluded | 4.2 |
@@ -257,14 +266,14 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-065 | `EmailDispatchAdminController.SetEmailDispatchGlobalRateLimitOverride` | `PUT control/rate-limit` | S: retain control-value PUT | 6.1 |
 | A-066 | `EventDayController.UpdateEventDay` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-067 | `EventAgendaItemController.UpdateEventAgendaItem` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
-| A-068 | `TenantSettingsDocumentsController.ReplaceTenantBrandingSettingsDocument` | `PUT branding` | M: replace with grouped PATCH for autosave | 1.2 |
+| A-068 | `TenantSettingsDocumentsController.ReplaceTenantBrandingSettingsDocument` | `PUT branding` | R: removed replacement operation; canonical grouped PATCH is A-110 | 1.2 |
 | A-069 | `GroupMemberController.UpdateGroupMember` | `PUT role` | A: retain member-role action | 6.1 |
 | A-070 | `CategoryController.UpdateCategory` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-071 | `ActorKeyStoreController.UpdateActorKeyStore` | `PUT {id}` | R: remove generic public key-material update | 5.1 |
 | A-072 | `EventSessionLanguageController.UpdateEventSessionLanguage` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-073 | `FooterController.UpdateFooterLinkGroup` | `PATCH link-groups/{id}` | C: grouped entity PATCH | 3.1 |
 | A-074 | `FooterController.UpdateFooterLink` | `PATCH links/{id}` | C: grouped entity PATCH | 3.1 |
-| A-075 | `FooterController.UpdateTenantFooterSettings` | `PUT settings` | M: grouped settings PATCH/autosave | 1.2 |
+| A-075 | `FooterController.UpdateTenantFooterSettings` | `PUT settings` | R: removed broad operation; canonical grouped PATCH is A-109 | 1.2 |
 | A-076 | `ActorController.UpdateActor` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-077 | `UserExternalLoginController.UpdateUserExternalLogin` | `PUT {id}` | R: remove generic provider-mapping update | 5.1 |
 | A-078 | `EventSessionGroupController.UpdateEventSessionGroup` | `PATCH {id}` | C: grouped relationship PATCH | 3.4 |
@@ -294,6 +303,15 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-102 | `EventCustomPropertyController.SetEventCustomPropertyValue` | `PUT value` | S: retain complete single-value replacement | 6.1 |
 | A-103 | `EventCustomPropertyController.SetEventCustomPropertyMultiValues` | `PUT values` | S: retain complete value-set replacement | 6.1 |
 | A-104 | `CustomPropertyDefinitionController.UpdateCustomPropertyDefinition` | `PUT {id}` | M: grouped entity PATCH | 3.5 |
+| A-105 | `EventParticipationController.ConfigureEventParticipation` | `PATCH` | S: atomic coupled participation-configuration replacement | 6.2 |
+| A-106 | `EventPublicActionController.UpdateEventPublicAction` | `PUT {actionId}` | S: atomic reviewed public-action replacement | 6.2 |
+| A-107 | `EventTicketingController.UpdateEventTicketType` | `PUT ticket-types/{ticketTypeId}` | S: atomic ticket-type replacement | 6.2 |
+| A-108 | `EventTicketingController.UpdateEventCapacityPool` | `PUT capacity-pools/{capacityPoolId}` | S: atomic capacity-pool replacement | 6.2 |
+| A-109 | `FooterController.PatchTenantFooterSettings` | `PATCH settings` | C: grouped settings PATCH | 6.2 |
+| A-110 | `TenantSettingsDocumentsController.PatchTenantBrandingSettingsDocument` | `PATCH branding` | C: grouped settings PATCH | 6.2 |
+| A-111 | `TenantStorageSettingsController.PatchTenantStorageSettings` | `PATCH` | C: grouped settings PATCH with explicit credential action | 6.2 |
+
+Task 6.1 verifies every surviving baseline `A` and `S` operation, plus the POST last-active-tenant selection represented by H-021, through `SemanticUpdateExceptionArchitectureTests`. Task 6.2 extends that exact registry with the four post-baseline `S` operations A-105 through A-108. The guard binds each exception to an exact operation ID, path, verb, and non-empty route-specific rationale. It separately proves that all `N` nested DTOs and Application-only commands have no direct controller operation. H-043 and H-053 were corrected from `A` to `N` because neither has a public endpoint.
 
 ## Autosave Classification
 
