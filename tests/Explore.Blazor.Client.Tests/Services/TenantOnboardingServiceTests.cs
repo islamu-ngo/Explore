@@ -227,44 +227,4 @@ public class TenantOnboardingServiceTests
         await Assert.That(result.Errors).IsNull();
     }
 
-    [Test]
-    public async Task UpdateSettingsAsync_ReturnsSuccess_WhenApiSucceeds()
-    {
-        _api.UpdateTenantOnboardingPolicySettingsAsync(
-                Arg.Any<UpdateTenantPolicyRequest>(),
-                Arg.Any<string?>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponseOfGuid
-            {
-                Success = true,
-                Message = "Updated"
-            });
-
-        var result = await _service.UpdateSettingsAsync(new TenantPolicySettingsDto());
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Message).IsEqualTo("Updated");
-    }
-
-    [Test]
-    public async Task UpdateSettingsAsync_ReturnsStatusFailure_WhenApiRejectsRequest()
-    {
-        _api.UpdateTenantOnboardingPolicySettingsAsync(
-                Arg.Any<UpdateTenantPolicyRequest>(),
-                Arg.Any<string?>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
-            .Returns<Task<BaseCommandResponseOfGuid>>(_ => throw new ApiException(
-                "Bad Request",
-                400,
-                string.Empty,
-                new Dictionary<string, IEnumerable<string>>(),
-                null));
-
-        var result = await _service.UpdateSettingsAsync(new TenantPolicySettingsDto());
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Message).IsEqualTo("Request failed with status 400.");
-    }
 }

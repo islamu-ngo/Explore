@@ -20,9 +20,6 @@ public interface ITenantOnboardingService
         string value,
         CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> CompleteAsync(TenantPolicySettingsDto settings);
-    Task<BaseCommandResponseOfGuid> UpdateSettingsAsync(
-        TenantPolicySettingsDto settings,
-        bool forceAnnouncementBarRedisplay = false);
     Task<IReadOnlyList<AiAssistantModelDto>> GetAiModelsAsync(string endpointUrl, string? apiKey);
 }
 
@@ -122,13 +119,6 @@ public class TenantOnboardingService : ITenantOnboardingService
     public Task<BaseCommandResponseOfGuid> CompleteAsync(TenantPolicySettingsDto settings) =>
         SendCommandAsync(() => _api.CompleteTenantOnboardingAsync(
             ToRequest(settings, false),
-            cancellationToken: CancellationToken.None));
-
-    public Task<BaseCommandResponseOfGuid> UpdateSettingsAsync(
-        TenantPolicySettingsDto settings,
-        bool forceAnnouncementBarRedisplay = false) =>
-        SendCommandAsync(() => _api.UpdateTenantOnboardingPolicySettingsAsync(
-            ToRequest(settings, forceAnnouncementBarRedisplay),
             cancellationToken: CancellationToken.None));
 
     public async Task<IReadOnlyList<AiAssistantModelDto>> GetAiModelsAsync(string endpointUrl, string? apiKey)

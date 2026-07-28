@@ -31,11 +31,6 @@ public class TenantOnboardingController : ExploreControllerBase
         "Tenant onboarding validation failed",
         "Tenant onboarding completion failed.");
 
-    private static readonly ApiValidationProblemDescriptor UpdateSettingsValidationProblem = new(
-        "tenantOnboarding",
-        "Tenant onboarding validation failed",
-        "Tenant onboarding settings update failed.");
-
     private static readonly ApiValidationProblemDescriptor SaveStepValidationProblem = new(
         "tenantOnboarding",
         "Tenant onboarding validation failed",
@@ -112,45 +107,6 @@ public class TenantOnboardingController : ExploreControllerBase
             }
 
             return this.ToCommandValidationProblem(response, CompleteValidationProblem);
-        }
-
-        await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
-        return Ok(response);
-    }
-
-    [HttpPut("settings", Name = RouteNames.UpdateTenantOnboardingPolicySettings)]
-    [Authorize]
-    [EndpointSummary("Update Tenant Policy Settings")]
-    [EndpointDescription("Updates tenant policy settings after onboarding.")]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSettings(
-        [FromBody] UpdateTenantPolicyRequest settings,
-        [FromServices] IOutputCacheStore cacheStore,
-        CancellationToken cancellationToken = default)
-    {
-        var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
-        if (!currentUserId.HasValue)
-        {
-            return this.ToAuthenticationRequiredProblem(
-                detail: "The authenticated principal could not be resolved to an application user.");
-        }
-
-        var response = await _mediator.Send(new UpdateTenantPolicySettingsCommand
-        {
-            UserId = currentUserId.Value,
-            Settings = settings
-        }, cancellationToken);
-
-        if (!response.Success)
-        {
-            if (response.Message?.Contains("Only tenant administrators", StringComparison.OrdinalIgnoreCase) == true)
-            {
-                return this.ToForbiddenProblem(detail: response.Message);
-            }
-
-            return this.ToCommandValidationProblem(response, UpdateSettingsValidationProblem);
         }
 
         await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
