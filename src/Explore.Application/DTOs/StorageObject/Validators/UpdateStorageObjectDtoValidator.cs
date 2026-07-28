@@ -19,31 +19,17 @@ public class UpdateStorageObjectDtoValidator : AbstractValidator<UpdateStorageOb
         _fileTypeRepository = fileTypeRepository;
         _actorRepository = actorRepository;
 
-        RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("{PropertyName} is required");
+        RuleFor(x => x)
+            .Must(x => x.Metadata is not null || x.Access is not null || x.Ownership is not null)
+            .WithMessage("At least one update group is required");
 
-        RuleFor(x => x.FileTypeId)
+        RuleFor(x => x.Metadata!.FileTypeId)
             .NotEmpty().WithMessage("{PropertyName} is required")
             .MustAsync(FileTypeExists)
-            .WithMessage("{PropertyName} not found");
+            .WithMessage("{PropertyName} not found")
+            .When(x => x.Metadata is not null);
 
-        RuleFor(x => x.Uri)
-            .NotEmpty().WithMessage("{PropertyName} is required")
-            .MaximumLength(1000).WithMessage("{PropertyName} must not exceed 1000 characters")
-            .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
-            .WithMessage("{PropertyName} must not contain control characters");
-
-        RuleFor(x => x.ObjectKey)
-            .MaximumLength(1024).WithMessage("{PropertyName} must not exceed 1024 characters")
-            .Must(StorageObjectMetadataValidation.BeValidObjectKey)
-            .WithMessage("{PropertyName} must be a relative provider object key without traversal segments");
-
-        RuleFor(x => x.Provider)
-            .NotEmpty().WithMessage("{PropertyName} is required")
-            .Must(value => StorageProviders.All.Contains(value))
-            .WithMessage("{PropertyName} must be a supported storage provider");
-
-        RuleFor(x => x.FullName)
+        RuleFor(x => x.Metadata!.FullName)
             .NotEmpty().WithMessage("{PropertyName} is required")
             .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters")
             .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
@@ -53,9 +39,10 @@ public class UpdateStorageObjectDtoValidator : AbstractValidator<UpdateStorageOb
             .Must(StorageObjectMetadataValidation.NotBeDotSegment)
             .WithMessage("{PropertyName} must be a simple file name")
             .Must(StorageObjectMetadataValidation.NotBeReservedFileName)
-            .WithMessage("{PropertyName} must not be a reserved file name");
+            .WithMessage("{PropertyName} must not be a reserved file name")
+            .When(x => x.Metadata is not null);
 
-        RuleFor(x => x.SafeDisplayName)
+        RuleFor(x => x.Metadata!.SafeDisplayName)
             .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters")
             .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
             .WithMessage("{PropertyName} must not contain control characters")
@@ -64,9 +51,10 @@ public class UpdateStorageObjectDtoValidator : AbstractValidator<UpdateStorageOb
             .Must(StorageObjectMetadataValidation.NotBeDotSegment)
             .WithMessage("{PropertyName} must be a simple file name")
             .Must(StorageObjectMetadataValidation.NotBeReservedFileName)
-            .WithMessage("{PropertyName} must not be a reserved file name");
+            .WithMessage("{PropertyName} must not be a reserved file name")
+            .When(x => x.Metadata is not null);
 
-        RuleFor(x => x.Extension)
+        RuleFor(x => x.Metadata!.Extension)
             .NotEmpty().WithMessage("{PropertyName} is required")
             .MaximumLength(50).WithMessage("{PropertyName} must not exceed 50 characters")
             .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
@@ -76,58 +64,46 @@ public class UpdateStorageObjectDtoValidator : AbstractValidator<UpdateStorageOb
             .Must(StorageObjectMetadataValidation.NotBeDotSegment)
             .WithMessage("{PropertyName} must be a simple extension")
             .Must(StorageObjectMetadataValidation.BeValidExtension)
-            .WithMessage("{PropertyName} contains unsupported characters");
+            .WithMessage("{PropertyName} contains unsupported characters")
+            .When(x => x.Metadata is not null);
 
-        RuleFor(x => x.ContentType)
+        RuleFor(x => x.Metadata!.ContentType)
             .MaximumLength(255).WithMessage("{PropertyName} must not exceed 255 characters")
             .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
             .WithMessage("{PropertyName} must not contain control characters")
             .Must(StorageObjectMetadataValidation.BeValidOptionalContentType)
-            .WithMessage("{PropertyName} must be a valid MIME type");
+            .WithMessage("{PropertyName} must be a valid MIME type")
+            .When(x => x.Metadata is not null);
 
-        RuleFor(x => x.Sha256Checksum)
-            .Must(StorageObjectMetadataValidation.BeValidSha256HexDigest)
-            .When(x => !string.IsNullOrWhiteSpace(x.Sha256Checksum))
-            .WithMessage("{PropertyName} must be a SHA-256 hex digest");
-
-        RuleFor(x => x.Size)
-            .GreaterThanOrEqualTo(0).WithMessage("{PropertyName} must be zero or greater");
-
-        RuleFor(x => x.Visibility)
+        RuleFor(x => x.Access!.Visibility)
             .NotEmpty().WithMessage("{PropertyName} is required")
             .Must(value => StorageObjectVisibilities.All.Contains(value))
-            .WithMessage("{PropertyName} must be a supported storage visibility");
+            .WithMessage("{PropertyName} must be a supported storage visibility")
+            .When(x => x.Access is not null);
 
-        RuleFor(x => x.Purpose)
+        RuleFor(x => x.Access!.Purpose)
             .NotEmpty().WithMessage("{PropertyName} is required")
             .Must(value => StorageObjectPurposes.All.Contains(value))
-            .WithMessage("{PropertyName} must be a supported storage purpose");
+            .WithMessage("{PropertyName} must be a supported storage purpose")
+            .When(x => x.Access is not null);
 
-        RuleFor(x => x.LifecycleState)
-            .NotEmpty().WithMessage("{PropertyName} is required")
-            .Must(value => StorageObjectLifecycleStates.All.Contains(value))
-            .WithMessage("{PropertyName} must be a supported lifecycle state");
-
-        RuleFor(x => x.OwningResourceKind)
+        RuleFor(x => x.Ownership!.OwningResourceKind)
             .MaximumLength(100).WithMessage("{PropertyName} must not exceed 100 characters")
             .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
             .WithMessage("{PropertyName} must not contain control characters")
             .Matches("^[A-Za-z0-9._:-]+$")
-            .When(x => !string.IsNullOrWhiteSpace(x.OwningResourceKind))
+            .When(x => !string.IsNullOrWhiteSpace(x.Ownership?.OwningResourceKind))
             .WithMessage("{PropertyName} contains unsupported characters")
-            .NotEmpty().When(x => x.OwningResourceId.HasValue)
+            .NotEmpty().When(x => x.Ownership?.OwningResourceId.HasValue == true)
             .WithMessage("{PropertyName} is required when OwningResourceId is provided");
 
-        // TenantId is set by the handler from context, not by the client
-        // No validation needed here
-
-        RuleFor(x => x.OwningResourceId)
-            .NotEmpty().When(x => !string.IsNullOrWhiteSpace(x.OwningResourceKind))
+        RuleFor(x => x.Ownership!.OwningResourceId)
+            .NotEmpty().When(x => !string.IsNullOrWhiteSpace(x.Ownership?.OwningResourceKind))
             .WithMessage("{PropertyName} is required when OwningResourceKind is provided");
 
-        RuleFor(x => x.ActorId)
+        RuleFor(x => x.Ownership!.ActorId)
             .MustAsync(ActorExists)
-            .When(x => x.ActorId.HasValue)
+            .When(x => x.Ownership?.ActorId.HasValue == true)
             .WithMessage("{PropertyName} not found");
     }
 

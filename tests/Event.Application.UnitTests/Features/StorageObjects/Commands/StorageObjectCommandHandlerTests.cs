@@ -41,13 +41,14 @@ public sealed class StorageObjectCommandHandlerTests
     }
 
     [Test]
-    public async Task UpdateCommand_DoesNotExposeClientTenantIdAsAuthorizationContext()
+    public async Task UpdateCommand_UsesRouteOwnedIdentityAsAuthorizationContext()
     {
         var storageObjectId = Guid.CreateVersion7();
 
         ISecureRequest command = new UpdateStorageObjectCommand
         {
-            StorageObjectDto = CreateUpdateDto(storageObjectId, tenantId: Guid.CreateVersion7())
+            StorageObjectId = storageObjectId,
+            StorageObjectDto = CreateUpdateDto()
         };
 
         await Assert.That(command.ResourceId).IsEqualTo(storageObjectId.ToString("D"));
@@ -55,15 +56,13 @@ public sealed class StorageObjectCommandHandlerTests
     }
 
     [Test]
-    public async Task UpdateHandle_WhenDtoTenantIdDiffers_PreservesPersistedTenantAndAppliesAllowedFields()
+    public async Task UpdateHandle_AppliesEditableGroupsAndPreservesProviderOwnedFields()
     {
         var storageObjectId = Guid.CreateVersion7();
         var actorId = Guid.CreateVersion7();
         var owningResourceId = Guid.CreateVersion7();
         var entity = CreateStorageObject(storageObjectId, _tenantId);
         var dto = CreateUpdateDto(
-            storageObjectId,
-            tenantId: Guid.CreateVersion7(),
             actorId: actorId,
             owningResourceKind: "islamuevent_event",
             owningResourceId: owningResourceId,
@@ -73,25 +72,28 @@ public sealed class StorageObjectCommandHandlerTests
         _storageObjectRepository.GetById(storageObjectId).Returns(entity);
 
         var result = await CreateUpdateHandler().Handle(
-            new UpdateStorageObjectCommand { StorageObjectDto = dto },
+            new UpdateStorageObjectCommand
+            {
+                StorageObjectId = storageObjectId,
+                StorageObjectDto = dto
+            },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(storageObjectId);
         await Assert.That(entity.TenantId).IsEqualTo(_tenantId);
-        await Assert.That(entity.Uri).IsEqualTo(dto.Uri);
-        await Assert.That(entity.ObjectKey).IsEqualTo(dto.ObjectKey);
-        await Assert.That(entity.Provider).IsEqualTo(dto.Provider);
-        await Assert.That(entity.FullName).IsEqualTo(dto.FullName);
-        await Assert.That(entity.SafeDisplayName).IsEqualTo(dto.FullName);
-        await Assert.That(entity.Extension).IsEqualTo(dto.Extension);
-        await Assert.That(entity.ContentType).IsEqualTo(dto.ContentType);
-        await Assert.That(entity.Sha256Checksum).IsEqualTo(dto.Sha256Checksum);
-        await Assert.That(entity.Size).IsEqualTo(dto.Size);
-        await Assert.That(entity.Visibility).IsEqualTo(dto.Visibility);
-        await Assert.That(entity.Purpose).IsEqualTo(dto.Purpose);
-        await Assert.That(entity.LifecycleState).IsEqualTo(dto.LifecycleState);
-        await Assert.That(entity.OwningResourceKind).IsEqualTo(dto.OwningResourceKind);
+        await Assert.That(entity.Uri).IsEqualTo("/api/storageobject/018f0000-0000-7000-8000-000000000001/content");
+        await Assert.That(entity.ObjectKey).IsEqualTo("tenants/current/file.png");
+        await Assert.That(entity.Provider).IsEqualTo(StorageProviders.Local);
+        await Assert.That(entity.FullName).IsEqualTo(dto.Metadata!.FullName);
+        await Assert.That(entity.SafeDisplayName).IsEqualTo(dto.Metadata.FullName);
+        await Assert.That(entity.Extension).IsEqualTo(dto.Metadata.Extension);
+        await Assert.That(entity.ContentType).IsEqualTo(dto.Metadata.ContentType);
+        await Assert.That(entity.Size).IsEqualTo(1024);
+        await Assert.That(entity.Visibility).IsEqualTo(dto.Access!.Visibility);
+        await Assert.That(entity.Purpose).IsEqualTo(dto.Access.Purpose);
+        await Assert.That(entity.LifecycleState).IsEqualTo(StorageObjectLifecycleStates.Active);
+        await Assert.That(entity.OwningResourceKind).IsEqualTo(dto.Ownership!.OwningResourceKind);
         await Assert.That(entity.OwningResourceId).IsEqualTo(owningResourceId);
         await Assert.That(entity.ActorId).IsEqualTo(actorId);
 
@@ -111,7 +113,8 @@ public sealed class StorageObjectCommandHandlerTests
         var result = await CreateUpdateHandler().Handle(
             new UpdateStorageObjectCommand
             {
-                StorageObjectDto = CreateUpdateDto(storageObjectId, tenantId: _tenantId)
+                StorageObjectId = storageObjectId,
+                StorageObjectDto = CreateUpdateDto()
             },
             CancellationToken.None);
 
@@ -143,32 +146,31 @@ public sealed class StorageObjectCommandHandlerTests
         };
 
     private static UpdateStorageObjectDto CreateUpdateDto(
-        Guid storageObjectId,
-        Guid tenantId,
         Guid? actorId = null,
         string? owningResourceKind = null,
         Guid? owningResourceId = null,
         string? safeDisplayName = "updated-safe-name.pdf") =>
         new()
         {
-            Id = storageObjectId,
-            FileTypeId = 1,
-            Uri = "/api/storageobject/018f0000-0000-7000-8000-000000000002/content",
-            ObjectKey = "tenants/current/updated-file.pdf",
-            Provider = StorageProviders.Local,
-            FullName = "updated-file.pdf",
-            SafeDisplayName = safeDisplayName,
-            Extension = "pdf",
-            ContentType = "application/pdf",
-            Sha256Checksum = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            Size = 2048,
-            Visibility = StorageObjectVisibilities.AuthenticatedTenant,
-            Purpose = StorageObjectPurposes.Document,
-            LifecycleState = StorageObjectLifecycleStates.Active,
-            OwningResourceKind = owningResourceKind,
-            OwningResourceId = owningResourceId,
-            TenantId = tenantId,
-            ActorId = actorId
+            Metadata = new StorageObjectMetadataUpdateDto
+            {
+                FileTypeId = 1,
+                FullName = "updated-file.pdf",
+                SafeDisplayName = safeDisplayName,
+                Extension = "pdf",
+                ContentType = "application/pdf"
+            },
+            Access = new StorageObjectAccessUpdateDto
+            {
+                Visibility = StorageObjectVisibilities.AuthenticatedTenant,
+                Purpose = StorageObjectPurposes.Document
+            },
+            Ownership = new StorageObjectOwnershipUpdateDto
+            {
+                OwningResourceKind = owningResourceKind,
+                OwningResourceId = owningResourceId,
+                ActorId = actorId
+            }
         };
 
     private static StorageObject CreateStorageObject(Guid storageObjectId, Guid tenantId) =>

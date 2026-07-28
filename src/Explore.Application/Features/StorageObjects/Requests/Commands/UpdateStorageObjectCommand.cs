@@ -10,7 +10,8 @@ namespace Explore.Application.Features.StorageObjects.Requests.Commands;
 [AuthorizeResource(ResourceKinds.StorageObject, AuthorizationActions.Update)]
 public class UpdateStorageObjectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public Guid StorageObjectId { get; init; }
     public required UpdateStorageObjectDto StorageObjectDto { get; set; }
 
-    string? ISecureRequest.ResourceId => StorageObjectDto.Id.ToString();
+    string? ISecureRequest.ResourceId => StorageObjectId.ToString("D");
 }

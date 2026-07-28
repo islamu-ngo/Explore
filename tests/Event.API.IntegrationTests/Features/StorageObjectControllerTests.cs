@@ -344,7 +344,7 @@ public class StorageObjectControllerTests
 
     #endregion
 
-    #region PUT Endpoints
+    #region PATCH Endpoints
 
     [Test]
     public async Task Update_WithoutAuth_ShouldReturnUnauthorized()
@@ -353,48 +353,44 @@ public class StorageObjectControllerTests
         var id = Guid.NewGuid();
         var updateDto = new UpdateStorageObjectDto
         {
-            Id = id,
-            FullName = "updated-file.png",
-            Uri = string.Empty,
-            Extension = string.Empty
+            Metadata = new StorageObjectMetadataUpdateDto
+            {
+                FileTypeId = 1,
+                FullName = "updated-file.png",
+                Extension = "png"
+            }
         };
 
         // Act
-        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", updateDto);
+        var response = await _fixture.Client.PatchAsJsonAsync($"{BaseUrl}/{id}", updateDto);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
-    public async Task Update_WithRouteBodyIdMismatch_WhenAuthenticated_ShouldReturnSafeValidationProblem()
+    public async Task UpdateContract_DoesNotSerializeServerOwnedStorageFields()
     {
-        await using var factory = new AuthenticatedWebApplicationFactory
-        {
-            AuthorizationProviderOverride = new StubAuthorizationProvider { AllowAll = true }
-        };
-        using var client = factory.CreateClient();
-        var routeId = Guid.CreateVersion7();
-        var bodyId = Guid.CreateVersion7();
         var updateDto = new UpdateStorageObjectDto
         {
-            Id = bodyId,
-            FullName = "updated-file.png",
-            Uri = string.Empty,
-            Extension = ".png"
+            Metadata = new StorageObjectMetadataUpdateDto
+            {
+                FileTypeId = 1,
+                FullName = "updated-file.png",
+                Extension = "png"
+            }
         };
-        using var request = new HttpRequestMessage(HttpMethod.Put, $"{BaseUrl}/{routeId}")
-        {
-            Content = JsonContent.Create(updateDto)
-        };
-        request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid()));
+        using var content = JsonContent.Create(updateDto);
+        var body = await content.ReadAsStringAsync();
 
-        using var response = await client.SendAsync(request);
-        var body = await response.Content.ReadAsStringAsync();
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        await Assert.That(body).Contains("Storage object ID mismatch.");
-        await Assert.That(body).DoesNotContain(bodyId.ToString());
+        await Assert.That(body).DoesNotContain("\"id\"");
+        await Assert.That(body).DoesNotContain("\"uri\"");
+        await Assert.That(body).DoesNotContain("\"objectKey\"");
+        await Assert.That(body).DoesNotContain("\"provider\"");
+        await Assert.That(body).DoesNotContain("\"sha256Checksum\"");
+        await Assert.That(body).DoesNotContain("\"size\"");
+        await Assert.That(body).DoesNotContain("\"lifecycleState\"");
+        await Assert.That(body).DoesNotContain("\"tenantId\"");
     }
 
     #endregion

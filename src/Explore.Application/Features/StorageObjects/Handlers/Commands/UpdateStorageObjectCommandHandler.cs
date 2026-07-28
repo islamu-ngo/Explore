@@ -33,23 +33,22 @@ public class UpdateStorageObjectCommandHandler : IRequestHandler<UpdateStorageOb
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validator = new UpdateStorageObjectDtoValidator(_fileTypeRepository, _actorRepository);
-        var validationResult = await validator.ValidateAsync(request.StorageObjectDto, cancellationToken);
-
-        if (!validationResult.IsValid)
-        {
-            response.Success = false;
-            response.Message = "Storage object update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
-        }
-
-        var entity = await _storageObjectRepository.GetById(request.StorageObjectDto.Id);
+        var entity = await _storageObjectRepository.GetById(request.StorageObjectId);
         if (entity is null || entity.TenantId != _tenantContext.TenantId)
         {
             response.Success = false;
             response.Message = "Storage object update failed.";
             response.Errors = ["Storage object not found."];
+            return response;
+        }
+
+        var validator = new UpdateStorageObjectDtoValidator(_fileTypeRepository, _actorRepository);
+        var validationResult = await validator.ValidateAsync(request.StorageObjectDto, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Storage object update failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
             return response;
         }
 
@@ -65,21 +64,28 @@ public class UpdateStorageObjectCommandHandler : IRequestHandler<UpdateStorageOb
 
     private static void ApplyUpdate(Domain.StorageObject entity, UpdateStorageObjectDto dto)
     {
-        entity.FileTypeId = dto.FileTypeId;
-        entity.Uri = dto.Uri;
-        entity.ObjectKey = dto.ObjectKey;
-        entity.Provider = dto.Provider;
-        entity.FullName = dto.FullName;
-        entity.SafeDisplayName = string.IsNullOrWhiteSpace(dto.SafeDisplayName) ? dto.FullName : dto.SafeDisplayName;
-        entity.Extension = dto.Extension;
-        entity.ContentType = dto.ContentType;
-        entity.Sha256Checksum = dto.Sha256Checksum;
-        entity.Size = dto.Size;
-        entity.Visibility = dto.Visibility;
-        entity.Purpose = dto.Purpose;
-        entity.LifecycleState = dto.LifecycleState;
-        entity.OwningResourceKind = dto.OwningResourceKind;
-        entity.OwningResourceId = dto.OwningResourceId;
-        entity.ActorId = dto.ActorId;
+        if (dto.Metadata is { } metadata)
+        {
+            entity.FileTypeId = metadata.FileTypeId;
+            entity.FullName = metadata.FullName;
+            entity.SafeDisplayName = string.IsNullOrWhiteSpace(metadata.SafeDisplayName)
+                ? metadata.FullName
+                : metadata.SafeDisplayName;
+            entity.Extension = metadata.Extension;
+            entity.ContentType = metadata.ContentType;
+        }
+
+        if (dto.Access is { } access)
+        {
+            entity.Visibility = access.Visibility;
+            entity.Purpose = access.Purpose;
+        }
+
+        if (dto.Ownership is { } ownership)
+        {
+            entity.OwningResourceKind = ownership.OwningResourceKind;
+            entity.OwningResourceId = ownership.OwningResourceId;
+            entity.ActorId = ownership.ActorId;
+        }
     }
 }

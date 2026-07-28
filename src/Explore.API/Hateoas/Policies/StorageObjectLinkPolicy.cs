@@ -70,9 +70,12 @@ public sealed class StorageObjectDetailLinkPolicy : ILinkPolicy<StorageObjectDto
 
         if (CanMutate(dto))
         {
-            yield return LinkDefinition.Edit(
+            yield return new LinkDefinition(
+                LinkRelations.Edit,
                 RouteNames.UpdateStorageObject,
-                new { id = dto.Id })
+                new { id = dto.Id },
+                "PATCH",
+                RequiresAuth: true)
                 .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.StorageObject, dto);
 
             yield return LinkDefinition.Delete(
@@ -140,9 +143,12 @@ public sealed class StorageObjectCollectionLinkPolicy : ICollectionLinkPolicy<St
 
         if (CanMutate(dto))
         {
-            yield return LinkDefinition.Edit(
+            yield return new LinkDefinition(
+                LinkRelations.Edit,
                 RouteNames.UpdateStorageObject,
-                new { id = dto.Id })
+                new { id = dto.Id },
+                "PATCH",
+                RequiresAuth: true)
                 .RequirePermission(AuthorizationActions.Update,
                     ResourceKinds.StorageObject,
                     dto.Id.ToString(),

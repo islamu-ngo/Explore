@@ -338,10 +338,10 @@ public class StorageObjectController : ControllerBase
         return Ok(response);
     }
 
-    // PUT: api/storageobject/{id}
+    // PATCH: api/storageobject/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateStorageObject)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateStorageObject)]
     [EndpointSummary("Update Storage Object")]
     [EndpointDescription("Update an existing storage object")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -350,12 +350,11 @@ public class StorageObjectController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateStorageObjectDto dto, CancellationToken cancellationToken = default)
     {
-        if (id != dto.Id)
+        var command = new UpdateStorageObjectCommand
         {
-            return this.ToValidationProblem(UpdateValidationProblem, "Storage object ID mismatch.");
-        }
-
-        var command = new UpdateStorageObjectCommand { StorageObjectDto = dto };
+            StorageObjectId = id,
+            StorageObjectDto = dto
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)

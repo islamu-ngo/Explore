@@ -83,7 +83,7 @@ public sealed class StorageObjectMetadataDtoValidatorTests
 
         await Assert.That(result.IsValid).IsFalse();
         await Assert.That(result.Errors.Any(error =>
-            error.PropertyName == nameof(UpdateStorageObjectDto.SafeDisplayName))).IsTrue();
+            error.PropertyName.EndsWith(nameof(StorageObjectMetadataUpdateDto.SafeDisplayName), StringComparison.Ordinal))).IsTrue();
     }
 
     [Test]
@@ -115,7 +115,7 @@ public sealed class StorageObjectMetadataDtoValidatorTests
 
         await Assert.That(result.IsValid).IsFalse();
         await Assert.That(result.Errors.Any(error =>
-            error.PropertyName == nameof(UpdateStorageObjectDto.ContentType))).IsTrue();
+            error.PropertyName.EndsWith(nameof(StorageObjectMetadataUpdateDto.ContentType), StringComparison.Ordinal))).IsTrue();
     }
 
     [Test]
@@ -135,7 +135,7 @@ public sealed class StorageObjectMetadataDtoValidatorTests
 
         await Assert.That(result.IsValid).IsFalse();
         await Assert.That(result.Errors.Any(error =>
-            error.PropertyName == nameof(UpdateStorageObjectDto.OwningResourceId))).IsTrue();
+            error.PropertyName.EndsWith(nameof(StorageObjectOwnershipUpdateDto.OwningResourceId), StringComparison.Ordinal))).IsTrue();
     }
 
     private CreateStorageObjectDtoValidator CreateValidator()
@@ -174,32 +174,31 @@ public sealed class StorageObjectMetadataDtoValidatorTests
         };
 
     private static UpdateStorageObjectDto UpdateDto(
-        string uri = "/api/storageobject/018f0000-0000-7000-8000-000000000001/content",
-        string? objectKey = "tenants/default/file.png",
         string fullName = "file.png",
         string? safeDisplayName = "file.png",
         string extension = "png",
         string? contentType = "image/png",
-        string? sha256Checksum = null,
         string? owningResourceKind = null,
         Guid? owningResourceId = null) =>
         new()
         {
-            Id = Guid.CreateVersion7(),
-            FileTypeId = 1,
-            Uri = uri,
-            ObjectKey = objectKey,
-            Provider = StorageProviders.Local,
-            FullName = fullName,
-            SafeDisplayName = safeDisplayName,
-            Extension = extension,
-            ContentType = contentType,
-            Sha256Checksum = sha256Checksum,
-            Size = 1024,
-            Visibility = StorageObjectVisibilities.PublicImage,
-            Purpose = StorageObjectPurposes.LegacyImage,
-            LifecycleState = StorageObjectLifecycleStates.Active,
-            OwningResourceKind = owningResourceKind,
-            OwningResourceId = owningResourceId
+            Metadata = new StorageObjectMetadataUpdateDto
+            {
+                FileTypeId = 1,
+                FullName = fullName,
+                SafeDisplayName = safeDisplayName,
+                Extension = extension,
+                ContentType = contentType
+            },
+            Access = new StorageObjectAccessUpdateDto
+            {
+                Visibility = StorageObjectVisibilities.PublicImage,
+                Purpose = StorageObjectPurposes.LegacyImage
+            },
+            Ownership = new StorageObjectOwnershipUpdateDto
+            {
+                OwningResourceKind = owningResourceKind,
+                OwningResourceId = owningResourceId
+            }
         };
 }
