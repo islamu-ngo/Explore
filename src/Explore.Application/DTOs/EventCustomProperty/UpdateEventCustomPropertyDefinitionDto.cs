@@ -1,10 +1,8 @@
-// ABOUTME: Write DTO for editing event-local custom property definitions after instantiation.
-// ABOUTME: Used when organizers customize template-derived definitions for their specific event (task 5.6).
+// ABOUTME: PATCH DTO for event-local custom-property definition updates.
+// ABOUTME: Route ID and If-Match carry identity/concurrency; body mirrors create payload.
 
 namespace Explore.Application.DTOs.EventCustomProperty;
 
 public class UpdateEventCustomPropertyDefinitionDto : CreateEventCustomPropertyDefinitionDto
 {
-    public Guid Id { get; set; }
-    public Guid ExpectedConcurrencyStamp { get; set; }
 }

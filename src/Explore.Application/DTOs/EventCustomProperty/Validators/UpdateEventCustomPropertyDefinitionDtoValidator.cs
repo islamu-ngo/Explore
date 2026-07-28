@@ -1,5 +1,5 @@
-// ABOUTME: Validates event-local definition update payload, extends create validation with Id check.
-// ABOUTME: Manually instantiated in handlers (no DI), following project convention.
+// ABOUTME: Validates event-local custom-property definition update payload shape.
+// ABOUTME: Reuses create validation; route ID and If-Match are handled at the API boundary.
 
 using FluentValidation;
 
@@ -10,11 +10,5 @@ public class UpdateEventCustomPropertyDefinitionDtoValidator : AbstractValidator
     public UpdateEventCustomPropertyDefinitionDtoValidator()
     {
         Include(new CreateEventCustomPropertyDefinitionDtoValidator());
-
-        RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("Id is required.");
-
-        RuleFor(x => x.ExpectedConcurrencyStamp)
-            .NotEmpty().WithMessage("ExpectedConcurrencyStamp is required.");
     }
 }

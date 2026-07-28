@@ -42,7 +42,9 @@ public class UpdateEventCustomPropertyDefinitionConcurrencyTests
         var definition = CreateDefinition();
         var command = new UpdateEventCustomPropertyDefinitionCommand
         {
-            DefinitionDto = CreateDto(definition.Id, definition.EventId, Guid.NewGuid())
+            DefinitionId = definition.Id,
+            DefinitionDto = CreateDto(definition.Id, definition.EventId, Guid.NewGuid()),
+            ExpectedConcurrencyStamp = Guid.NewGuid()
         };
 
         repository.GetTrackedDefinitionWithOptions(definition.Id, Arg.Any<CancellationToken>()).Returns(definition);
@@ -66,8 +68,6 @@ public class UpdateEventCustomPropertyDefinitionConcurrencyTests
     {
         return new UpdateEventCustomPropertyDefinitionDto
         {
-            Id = definitionId,
-            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
             EventId = eventId,
             Namespace = "Tenant Community",
             Key = "Prayer Notes",

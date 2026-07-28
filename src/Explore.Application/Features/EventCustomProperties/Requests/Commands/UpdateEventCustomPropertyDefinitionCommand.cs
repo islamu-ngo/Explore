@@ -1,5 +1,5 @@
-// ABOUTME: Command request for updating an event-local custom property definition after instantiation.
-// ABOUTME: Allows organizers to customize instantiated definitions for their specific event needs (task 5.6).
+// ABOUTME: Command request for updating an event-local custom-property definition.
+// ABOUTME: Route ID and If-Match carry identity/concurrency; the body carries the update payload.
 
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventCustomProperty;
@@ -11,7 +11,11 @@ namespace Explore.Application.Features.EventCustomProperties.Requests.Commands;
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
 public class UpdateEventCustomPropertyDefinitionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public Guid DefinitionId { get; set; }
+
     public required UpdateEventCustomPropertyDefinitionDto DefinitionDto { get; set; }
 
-    string? ISecureRequest.ResourceId => DefinitionDto.Id.ToString();
+    public Guid ExpectedConcurrencyStamp { get; set; }
+
+    string? ISecureRequest.ResourceId => DefinitionId.ToString();
 }
