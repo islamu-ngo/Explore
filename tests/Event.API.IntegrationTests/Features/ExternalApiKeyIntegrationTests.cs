@@ -37,13 +37,15 @@ public class ExternalApiKeyIntegrationTests
 
         var payload = new UpdateExternalApiKeyPolicyDto
         {
-            Id = apiKeyId,
-            Name = "Deploy Bot",
-            Scopes = ["events:write", "events:read", "events:write"],
-            ExpiresAt = expiresAt
+            Metadata = new ExternalApiKeyMetadataUpdateDto { Name = "Deploy Bot" },
+            AccessPolicy = new ExternalApiKeyAccessPolicyUpdateDto
+            {
+                Scopes = ["events:write", "events:read", "events:write"],
+                ExpiresAt = expiresAt
+            }
         };
 
-        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"/api/externalapikey/{apiKeyId}", userId);
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Patch, $"/api/externalapikey/{apiKeyId}", userId);
         request.Content = JsonContent.Create(payload);
 
         var response = await _fixture.Client.SendAsync(request);
@@ -224,28 +226,21 @@ public class ExternalApiKeyIntegrationTests
     }
 
     [Test]
-    public async Task UpdateExternalApiKeyPolicy_WithMismatchedRouteId_ShouldReturnValidationProblemDetails()
+    public async Task UpdateExternalApiKeyPolicy_ContractExcludesBodyIdentityAndKeyMaterial()
     {
-        var userId = Guid.NewGuid();
-        var apiKeyId = await CreateExternalApiKeyAsync(userId, "Mismatch Source", ["events:read"]);
-        var routeId = Guid.NewGuid();
         var payload = new UpdateExternalApiKeyPolicyDto
         {
-            Id = apiKeyId,
-            Name = "Mismatch Target",
-            Scopes = ["events:read"],
-            ExpiresAt = DateTime.UtcNow.AddDays(14)
+            Metadata = new ExternalApiKeyMetadataUpdateDto { Name = "Policy name" }
         };
+        using var content = JsonContent.Create(payload);
 
-        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"/api/externalapikey/{routeId}", userId);
-        request.Content = JsonContent.Create(payload);
+        var body = await content.ReadAsStringAsync();
 
-        var response = await _fixture.Client.SendAsync(request);
-
-        await AssertExternalApiKeyValidationProblemAsync(
-            response,
-            "External API key ID mismatch.",
-            "External API key ID mismatch.");
+        await Assert.That(body).DoesNotContain("\"id\"");
+        await Assert.That(body).DoesNotContain("\"keyId\"");
+        await Assert.That(body).DoesNotContain("\"secret\"");
+        await Assert.That(body).DoesNotContain("\"ownerId\"");
+        await Assert.That(body).DoesNotContain("\"tenantId\"");
     }
 
     [Test]
@@ -255,13 +250,14 @@ public class ExternalApiKeyIntegrationTests
         var apiKeyId = await CreateExternalApiKeyAsync(userId, "Validation Source", ["events:read"]);
         var payload = new UpdateExternalApiKeyPolicyDto
         {
-            Id = apiKeyId,
-            Name = "Validation Target",
-            Scopes = [],
-            ExpiresAt = DateTime.UtcNow.AddDays(14)
+            AccessPolicy = new ExternalApiKeyAccessPolicyUpdateDto
+            {
+                Scopes = [],
+                ExpiresAt = DateTime.UtcNow.AddDays(14)
+            }
         };
 
-        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"/api/externalapikey/{apiKeyId}", userId);
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Patch, $"/api/externalapikey/{apiKeyId}", userId);
         request.Content = JsonContent.Create(payload);
 
         var response = await _fixture.Client.SendAsync(request);
@@ -279,13 +275,10 @@ public class ExternalApiKeyIntegrationTests
         var apiKeyId = await CreateExternalApiKeyAsync(userId, "Control Source", [ExternalApiKeyScopes.EventsRead]);
         var payload = new UpdateExternalApiKeyPolicyDto
         {
-            Id = apiKeyId,
-            Name = "Control\nTarget",
-            Scopes = [ExternalApiKeyScopes.EventsWrite],
-            ExpiresAt = DateTime.UtcNow.AddDays(14)
+            Metadata = new ExternalApiKeyMetadataUpdateDto { Name = "Control\nTarget" }
         };
 
-        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"/api/externalapikey/{apiKeyId}", userId);
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Patch, $"/api/externalapikey/{apiKeyId}", userId);
         request.Content = JsonContent.Create(payload);
 
         var response = await _fixture.Client.SendAsync(request);
@@ -313,13 +306,15 @@ public class ExternalApiKeyIntegrationTests
 
         var payload = new UpdateExternalApiKeyPolicyDto
         {
-            Id = apiKeyId,
-            Name = "Hijacked Key",
-            Scopes = ["events:write"],
-            ExpiresAt = DateTime.UtcNow.AddDays(7)
+            Metadata = new ExternalApiKeyMetadataUpdateDto { Name = "Hijacked Key" },
+            AccessPolicy = new ExternalApiKeyAccessPolicyUpdateDto
+            {
+                Scopes = ["events:write"],
+                ExpiresAt = DateTime.UtcNow.AddDays(7)
+            }
         };
 
-        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"/api/externalapikey/{apiKeyId}", otherUserId);
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Patch, $"/api/externalapikey/{apiKeyId}", otherUserId);
         request.Content = JsonContent.Create(payload);
 
         var response = await _fixture.Client.SendAsync(request);

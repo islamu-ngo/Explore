@@ -312,11 +312,13 @@ public class ExternalApiKeyObservabilityTests
         var response = await handler.Handle(
             new UpdateExternalApiKeyPolicyCommand
             {
+                ExternalApiKeyId = externalApiKey.Id,
                 ExternalApiKeyPolicyDto = new UpdateExternalApiKeyPolicyDto
                 {
-                    Id = externalApiKey.Id,
-                    Name = "MCP Bot",
-                    Scopes = [ExternalApiKeyScopes.McpRead, "mcp:teleport"]
+                    AccessPolicy = new ExternalApiKeyAccessPolicyUpdateDto
+                    {
+                        Scopes = [ExternalApiKeyScopes.McpRead, "mcp:teleport"]
+                    }
                 }
             },
             CancellationToken.None);
@@ -380,11 +382,10 @@ public class ExternalApiKeyObservabilityTests
         var response = await handler.Handle(
             new UpdateExternalApiKeyPolicyCommand
             {
+                ExternalApiKeyId = externalApiKey.Id,
                 ExternalApiKeyPolicyDto = new UpdateExternalApiKeyPolicyDto
                 {
-                    Id = externalApiKey.Id,
-                    Name = "Platform Ops",
-                    Scopes = [ExternalApiKeyScopes.AdminInstance]
+                    Metadata = new ExternalApiKeyMetadataUpdateDto { Name = "Platform Ops" }
                 }
             },
             CancellationToken.None);
@@ -510,11 +511,10 @@ public class ExternalApiKeyObservabilityTests
         var response = await fixture.Handler.Handle(
             new UpdateExternalApiKeyPolicyCommand
             {
+                ExternalApiKeyId = externalApiKey.Id,
                 ExternalApiKeyPolicyDto = new UpdateExternalApiKeyPolicyDto
                 {
-                    Id = externalApiKey.Id,
-                    Name = "Ops\nBot",
-                    Scopes = [ExternalApiKeyScopes.EventsWrite]
+                    Metadata = new ExternalApiKeyMetadataUpdateDto { Name = "Ops\nBot" }
                 }
             },
             CancellationToken.None);

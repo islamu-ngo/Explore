@@ -100,7 +100,7 @@ public class ExternalApiKeyController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPut("{id}", Name = RouteNames.UpdateExternalApiKey)]
+    [HttpPatch("{id}", Name = RouteNames.UpdateExternalApiKey)]
     [EndpointSummary("Update an external API key policy")]
     [EndpointDescription("Update editable policy fields for a visible external API key.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -112,12 +112,11 @@ public class ExternalApiKeyController : ControllerBase
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateExternalApiKeyPolicyDto dto, CancellationToken cancellationToken = default)
     {
-        if (id != dto.Id)
+        var command = new UpdateExternalApiKeyPolicyCommand
         {
-            return this.ToValidationProblem(UpdateValidationProblem, "External API key ID mismatch.");
-        }
-
-        var command = new UpdateExternalApiKeyPolicyCommand { ExternalApiKeyPolicyDto = dto };
+            ExternalApiKeyId = id,
+            ExternalApiKeyPolicyDto = dto
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)

@@ -1,12 +1,21 @@
-// ABOUTME: Input model for updating editable policy fields on a persisted external API key.
-// ABOUTME: Keeps owner and tenant binding immutable while allowing scope and expiry maintenance.
+// ABOUTME: Route-owned grouped PATCH contract for editable external API key policy.
+// ABOUTME: Excludes key material, owner binding, tenant binding, status, and usage state.
 
 namespace Explore.Application.DTOs.ExternalApiKey;
 
-public class UpdateExternalApiKeyPolicyDto
+public sealed class UpdateExternalApiKeyPolicyDto
 {
-    public Guid Id { get; set; }
+    public ExternalApiKeyMetadataUpdateDto? Metadata { get; set; }
+    public ExternalApiKeyAccessPolicyUpdateDto? AccessPolicy { get; set; }
+}
+
+public sealed class ExternalApiKeyMetadataUpdateDto
+{
     public required string Name { get; set; }
+}
+
+public sealed class ExternalApiKeyAccessPolicyUpdateDto
+{
     public List<string> Scopes { get; set; } = [];
     public DateTime? ExpiresAt { get; set; }
 }

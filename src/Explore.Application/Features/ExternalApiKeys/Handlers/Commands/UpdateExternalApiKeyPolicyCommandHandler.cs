@@ -46,7 +46,7 @@ public class UpdateExternalApiKeyPolicyCommandHandler : IRequestHandler<UpdateEx
     {
         var response = new BaseCommandResponse<Guid>();
         var currentUserId = _userContext.GetRequiredUserId();
-        var externalApiKey = await _externalApiKeyRepository.GetByIdIgnoringTenantFilter(request.ExternalApiKeyPolicyDto.Id, cancellationToken);
+        var externalApiKey = await _externalApiKeyRepository.GetByIdIgnoringTenantFilter(request.ExternalApiKeyId, cancellationToken);
 
         if (externalApiKey is null || !await CanManageAsync(externalApiKey, currentUserId, cancellationToken))
         {
@@ -66,9 +66,16 @@ public class UpdateExternalApiKeyPolicyCommandHandler : IRequestHandler<UpdateEx
             return response;
         }
 
-        externalApiKey.Name = request.ExternalApiKeyPolicyDto.Name.Trim();
-        externalApiKey.Scopes = NormalizeScopes(request.ExternalApiKeyPolicyDto.Scopes);
-        externalApiKey.ExpiresAt = request.ExternalApiKeyPolicyDto.ExpiresAt;
+        if (request.ExternalApiKeyPolicyDto.Metadata is { } metadata)
+        {
+            externalApiKey.Name = metadata.Name.Trim();
+        }
+
+        if (request.ExternalApiKeyPolicyDto.AccessPolicy is { } accessPolicy)
+        {
+            externalApiKey.Scopes = NormalizeScopes(accessPolicy.Scopes);
+            externalApiKey.ExpiresAt = accessPolicy.ExpiresAt;
+        }
         externalApiKey.UpdatedAt = DateTime.UtcNow;
         externalApiKey.UpdatedBy = currentUserId;
 
