@@ -89,6 +89,7 @@ public sealed class EventTemplateService : IEventTemplateService
 
     public async Task<BaseCommandResponseOfGuid?> UpdateTemplateAsync(
         Guid id,
+        Guid expectedConcurrencyStamp,
         UpdateEventTemplateDto dto,
         CancellationToken ct = default)
     {
@@ -96,7 +97,7 @@ public sealed class EventTemplateService : IEventTemplateService
 
         try
         {
-            return await _apiClient.UpdateEventTemplateAsync(id, dto, cancellationToken: ct);
+            return await _apiClient.UpdateEventTemplateAsync(id, $"\"{expectedConcurrencyStamp}\"", dto, cancellationToken: ct);
         }
         catch (ApiException<ProblemDetails> ex)
         {

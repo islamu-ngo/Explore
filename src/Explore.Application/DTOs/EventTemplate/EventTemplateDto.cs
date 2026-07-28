@@ -6,6 +6,7 @@ namespace Explore.Application.DTOs.EventTemplate;
 public class EventTemplateDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
     public Guid TenantId { get; set; }
     public string TemplateKey { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;

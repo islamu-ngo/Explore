@@ -29,9 +29,12 @@ public sealed class EventTemplateDetailLinkPolicy : ILinkPolicy<EventTemplateDto
             new { eventTypeId = dto.EventTypeId });
 
         // Edit link - requires Update permission
-        yield return LinkDefinition.Edit(
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
             RouteNames.UpdateEventTemplate,
-            new { id = dto.Id })
+            new { id = dto.Id },
+            HttpMethods.Patch,
+            RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventTemplate, dto);
 
         // Delete link - requires Delete permission
@@ -54,9 +57,12 @@ public sealed class EventTemplateCollectionLinkPolicy : ICollectionLinkPolicy<Ev
             RouteNames.GetEventTemplateById,
             new { id = dto.Id });
 
-        yield return LinkDefinition.Edit(
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
             RouteNames.UpdateEventTemplate,
-            new { id = dto.Id })
+            new { id = dto.Id },
+            HttpMethods.Patch,
+            RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventTemplateList, dto);
 
         yield return LinkDefinition.Delete(

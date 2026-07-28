@@ -84,6 +84,7 @@ public class EventTemplateDefinitionQuotaTests
     {
         var tenantId = Guid.NewGuid();
         var templateId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
         var repository = Substitute.For<IEventTemplateRepository>();
         var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
         var governancePolicy = Substitute.For<ICustomPropertyGovernancePolicy>();
@@ -93,6 +94,7 @@ public class EventTemplateDefinitionQuotaTests
             .Returns(new EventTemplate
             {
                 Id = templateId,
+                ConcurrencyStamp = concurrencyStamp,
                 TenantId = tenantId,
                 TemplateKey = "ramadan-program",
                 DisplayName = "Ramadan Program",
@@ -103,7 +105,13 @@ public class EventTemplateDefinitionQuotaTests
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key, tenantId, Arg.Any<CancellationToken>()).Returns(1);
 
         var result = await handler.Handle(
-            new UpdateEventTemplateCommand { TemplateDto = CreateUpdateTemplateDto(templateId, definitionCount: 2) },
+            new UpdateEventTemplateCommand
+            {
+                TemplateId = templateId,
+                TenantId = tenantId,
+                ExpectedConcurrencyStamp = concurrencyStamp,
+                TemplateDto = CreateUpdateTemplateDto(definitionCount: 2)
+            },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
@@ -125,6 +133,7 @@ public class EventTemplateDefinitionQuotaTests
     {
         var tenantId = Guid.NewGuid();
         var templateId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
         var repository = Substitute.For<IEventTemplateRepository>();
         var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
         var governancePolicy = Substitute.For<ICustomPropertyGovernancePolicy>();
@@ -134,6 +143,7 @@ public class EventTemplateDefinitionQuotaTests
             .Returns(new EventTemplate
             {
                 Id = templateId,
+                ConcurrencyStamp = concurrencyStamp,
                 TenantId = tenantId,
                 TemplateKey = "ramadan-program",
                 DisplayName = "Ramadan Program",
@@ -145,7 +155,13 @@ public class EventTemplateDefinitionQuotaTests
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key, tenantId, Arg.Any<CancellationToken>()).Returns(1);
 
         var result = await handler.Handle(
-            new UpdateEventTemplateCommand { TemplateDto = CreateUpdateTemplateDtoWithOptionDefinition(templateId, optionCount: 2) },
+            new UpdateEventTemplateCommand
+            {
+                TemplateId = templateId,
+                TenantId = tenantId,
+                ExpectedConcurrencyStamp = concurrencyStamp,
+                TemplateDto = CreateUpdateTemplateDtoWithOptionDefinition(optionCount: 2)
+            },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
@@ -158,6 +174,50 @@ public class EventTemplateDefinitionQuotaTests
         await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_template_definition_options");
         await Assert.That(result.QuotaExceeded.TenantId).IsEqualTo(tenantId);
         governancePolicy.DidNotReceiveWithAnyArgs().EvaluateDefinition(default!, default!);
+        await repository.DidNotReceiveWithAnyArgs().UpdateWithDefinitions(default!, default!, default);
+    }
+
+    [Test]
+    public async Task UpdateHandle_WhenDefinitionsOmitted_UpdatesMetadataWithoutReplacingDefinitions()
+    {
+        var tenantId = Guid.NewGuid();
+        var templateId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        var repository = Substitute.For<IEventTemplateRepository>();
+        var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task>>()(CancellationToken.None));
+        var handler = CreateUpdateHandler(repository, quotaResolver, Substitute.For<ICustomPropertyGovernancePolicy>(), unitOfWork);
+        var template = new EventTemplate
+        {
+            Id = templateId,
+            ConcurrencyStamp = concurrencyStamp,
+            TenantId = tenantId,
+            TemplateKey = "ramadan-program",
+            DisplayName = "Ramadan Program",
+            Version = 1,
+            IsActive = true
+        };
+        repository.GetTrackedTemplateWithDefinitions(templateId, Arg.Any<CancellationToken>()).Returns(template);
+        repository.ExistsTemplateKey(tenantId, template.TemplateKey, template.Version, templateId).Returns(false);
+
+        var result = await handler.Handle(
+            new UpdateEventTemplateCommand
+            {
+                TemplateId = templateId,
+                TenantId = tenantId,
+                ExpectedConcurrencyStamp = concurrencyStamp,
+                TemplateDto = new UpdateEventTemplateDto
+                {
+                    Metadata = new UpdateEventTemplateMetadataDto { DisplayName = "Updated Program" }
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(template.DisplayName).IsEqualTo("Updated Program");
+        await repository.Received(1).Update(template);
         await repository.DidNotReceiveWithAnyArgs().UpdateWithDefinitions(default!, default!, default);
     }
 
@@ -184,7 +244,8 @@ public class EventTemplateDefinitionQuotaTests
     private static UpdateEventTemplateCommandHandler CreateUpdateHandler(
         IEventTemplateRepository repository,
         ICustomPropertyQuotaResolver quotaResolver,
-        ICustomPropertyGovernancePolicy governancePolicy)
+        ICustomPropertyGovernancePolicy governancePolicy,
+        IUnitOfWork? unitOfWork = null)
     {
         return new UpdateEventTemplateCommandHandler(
             repository,
@@ -193,7 +254,7 @@ public class EventTemplateDefinitionQuotaTests
             Substitute.For<ICurrentUserService>(),
             Substitute.For<IMapper>(),
             Substitute.For<HybridCache>(),
-            Substitute.For<IUnitOfWork>());
+            unitOfWork ?? Substitute.For<IUnitOfWork>());
     }
 
     private static CreateEventTemplateDto CreateTemplateDto(int definitionCount)
@@ -208,16 +269,14 @@ public class EventTemplateDefinitionQuotaTests
         };
     }
 
-    private static UpdateEventTemplateDto CreateUpdateTemplateDto(Guid templateId, int definitionCount)
+    private static UpdateEventTemplateDto CreateUpdateTemplateDto(int definitionCount)
     {
         return new UpdateEventTemplateDto
         {
-            Id = templateId,
-            TemplateKey = "ramadan-program",
-            DisplayName = "Ramadan Program",
-            Version = 1,
-            IsActive = true,
-            Definitions = CreateDefinitionDtos(definitionCount),
+            Definitions = new UpdateEventTemplateDefinitionsDto
+            {
+                Items = CreateDefinitionDtos(definitionCount)
+            }
         };
     }
 
@@ -233,16 +292,14 @@ public class EventTemplateDefinitionQuotaTests
         };
     }
 
-    private static UpdateEventTemplateDto CreateUpdateTemplateDtoWithOptionDefinition(Guid templateId, int optionCount)
+    private static UpdateEventTemplateDto CreateUpdateTemplateDtoWithOptionDefinition(int optionCount)
     {
         return new UpdateEventTemplateDto
         {
-            Id = templateId,
-            TemplateKey = "ramadan-program",
-            DisplayName = "Ramadan Program",
-            Version = 1,
-            IsActive = true,
-            Definitions = [CreateOptionDefinitionDto(optionCount)],
+            Definitions = new UpdateEventTemplateDefinitionsDto
+            {
+                Items = [CreateOptionDefinitionDto(optionCount)]
+            }
         };
     }
 

@@ -1,5 +1,5 @@
-// ABOUTME: Handles updates to event templates with full definition and option replacement.
-// ABOUTME: Validates governance per definition, checks template-key uniqueness excluding self, and replaces all definitions transactionally.
+// ABOUTME: Applies grouped event template metadata patches and optional atomic definition replacement.
+// ABOUTME: Enforces persisted tenant binding, merged validation, optimistic concurrency, and post-commit cache invalidation.
 
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.DTOs.EventTemplate.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventTemplates.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -49,6 +50,14 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
     {
         var response = new BaseCommandResponse<Guid>();
 
+        if (request.TemplateId == Guid.Empty || request.ExpectedConcurrencyStamp == Guid.Empty)
+        {
+            response.Success = false;
+            response.Message = "Event template update failed.";
+            response.Errors = ["TemplateId and ExpectedConcurrencyStamp are required."];
+            return response;
+        }
+
         var validator = new UpdateEventTemplateDtoValidator();
         var validationResult = await validator.ValidateAsync(request.TemplateDto, cancellationToken);
         if (!validationResult.IsValid)
@@ -59,7 +68,7 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
             return response;
         }
 
-        var template = await _eventTemplateRepository.GetTrackedTemplateWithDefinitions(request.TemplateDto.Id, cancellationToken);
+        var template = await _eventTemplateRepository.GetTrackedTemplateWithDefinitions(request.TemplateId, cancellationToken);
         if (template == null)
         {
             response.Success = false;
@@ -67,10 +76,49 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
             return response;
         }
 
+        if (request.TenantId == Guid.Empty || request.TenantId != template.TenantId)
+        {
+            response.Success = false;
+            response.Message = "Event template not found.";
+            return response;
+        }
+
+        if (template.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
+        {
+            throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The event template changed since it was loaded. Reload and try again.",
+                "event_template",
+                template.Id.ToString());
+        }
+
+        var candidate = new CreateEventTemplateDto
+        {
+            TemplateKey = template.TemplateKey,
+            DisplayName = template.DisplayName,
+            Description = template.Description,
+            EventTypeId = template.EventTypeId,
+            Version = template.Version,
+            IsPublished = template.IsPublished,
+            IsActive = template.IsActive,
+            SortOrder = template.SortOrder,
+            Definitions = request.TemplateDto.Definitions?.Items ?? []
+        };
+        ApplyPatch(candidate, request.TemplateDto);
+
+        var candidateValidation = await new CreateEventTemplateDtoValidator().ValidateAsync(candidate, cancellationToken);
+        if (!candidateValidation.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Event template update failed.";
+            response.Errors = candidateValidation.Errors.Select(error => error.ErrorMessage).ToList();
+            return response;
+        }
+
         if (await _eventTemplateRepository.ExistsTemplateKey(
                 template.TenantId,
-                request.TemplateDto.TemplateKey,
-                request.TemplateDto.Version,
+                candidate.TemplateKey,
+                candidate.Version,
                 template.Id))
         {
             response.Success = false;
@@ -79,68 +127,109 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
             return response;
         }
 
-        var maxDefinitions = await _quotaResolver.GetIntAsync(
-            CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
-            template.TenantId,
-            cancellationToken);
-        if (request.TemplateDto.Definitions.Count > maxDefinitions)
+        IReadOnlyCollection<TemplateDefinitionWithOptions>? definitions = null;
+        if (request.TemplateDto.Definitions is not null)
         {
-            response.SetQuotaExceeded(
-                "Event template update failed.",
-                new QuotaExceededDetails(
-                    CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
-                    maxDefinitions,
-                    null,
-                    request.TemplateDto.Definitions.Count,
-                    "event_template_definitions",
-                    template.TenantId));
-            return response;
+            var maxDefinitions = await _quotaResolver.GetIntAsync(
+                CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
+                template.TenantId,
+                cancellationToken);
+            if (candidate.Definitions.Count > maxDefinitions)
+            {
+                response.SetQuotaExceeded(
+                    "Event template update failed.",
+                    new QuotaExceededDetails(
+                        CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
+                        maxDefinitions,
+                        null,
+                        candidate.Definitions.Count,
+                        "event_template_definitions",
+                        template.TenantId));
+                return response;
+            }
+
+            var maxOptions = await _quotaResolver.GetIntAsync(
+                CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                template.TenantId,
+                cancellationToken);
+            var overOptionDefinition = candidate.Definitions
+                .FirstOrDefault(definition => definition.Options.Count > maxOptions);
+            if (overOptionDefinition is not null)
+            {
+                response.SetQuotaExceeded(
+                    "Event template update failed.",
+                    new QuotaExceededDetails(
+                        CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                        maxOptions,
+                        null,
+                        overOptionDefinition.Options.Count,
+                        "event_template_definition_options",
+                        template.TenantId));
+                return response;
+            }
+
+            var definitionsResult = BuildDefinitionEntities(candidate.Definitions, template.TenantId);
+            if (definitionsResult.Errors.Count > 0)
+            {
+                response.Success = false;
+                response.Message = "Event template update failed.";
+                response.Errors = definitionsResult.Errors;
+                return response;
+            }
+
+            definitions = definitionsResult.Definitions;
         }
 
-        var maxOptions = await _quotaResolver.GetIntAsync(
-            CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
-            template.TenantId,
-            cancellationToken);
-        var overOptionDefinition = request.TemplateDto.Definitions
-            .FirstOrDefault(definition => definition.Options.Count > maxOptions);
-        if (overOptionDefinition is not null)
-        {
-            response.SetQuotaExceeded(
-                "Event template update failed.",
-                new QuotaExceededDetails(
-                    CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
-                    maxOptions,
-                    null,
-                    overOptionDefinition.Options.Count,
-                    "event_template_definition_options",
-                    template.TenantId));
-            return response;
-        }
-
-        var definitionsResult = BuildDefinitionEntities(request.TemplateDto.Definitions, template.TenantId);
-        if (definitionsResult.Errors.Count > 0)
-        {
-            response.Success = false;
-            response.Message = "Event template update failed.";
-            response.Errors = definitionsResult.Errors;
-            return response;
-        }
-
-        _mapper.Map(request.TemplateDto, template);
+        var previousEventTypeId = template.EventTypeId;
+        template.TemplateKey = candidate.TemplateKey;
+        template.DisplayName = candidate.DisplayName;
+        template.Description = candidate.Description;
+        template.EventTypeId = candidate.EventTypeId;
+        template.Version = candidate.Version;
+        template.IsPublished = candidate.IsPublished;
+        template.IsActive = candidate.IsActive;
+        template.SortOrder = candidate.SortOrder;
         template.UpdatedBy = _currentUserService.UserId;
         template.UpdatedAt = DateTime.UtcNow;
 
-        await _unitOfWork.ExecuteInTransactionAsync(
-            ct => _eventTemplateRepository.UpdateWithDefinitions(template, definitionsResult.Definitions, ct),
-            cancellationToken);
+        if (definitions is null)
+        {
+            await _unitOfWork.ExecuteInTransactionAsync(
+                _ => _eventTemplateRepository.Update(template),
+                cancellationToken);
+        }
+        else
+        {
+            await _unitOfWork.ExecuteInTransactionAsync(
+                ct => _eventTemplateRepository.UpdateWithDefinitions(template, definitions, ct),
+                cancellationToken);
+        }
 
         response.Success = true;
         response.Id = template.Id;
         response.Message = "Event template updated successfully.";
 
-        await InvalidateCaches(template.TenantId, template.Id, cancellationToken);
+        await InvalidateCaches(template.TenantId, previousEventTypeId, template.EventTypeId, template.Id, cancellationToken);
 
         return response;
+    }
+
+    private static void ApplyPatch(CreateEventTemplateDto candidate, UpdateEventTemplateDto patch)
+    {
+        var metadata = patch.Metadata;
+        if (metadata is null)
+        {
+            return;
+        }
+
+        candidate.TemplateKey = metadata.TemplateKey ?? candidate.TemplateKey;
+        candidate.DisplayName = metadata.DisplayName ?? candidate.DisplayName;
+        if (metadata.Description.HasValue) candidate.Description = metadata.Description.Value;
+        if (metadata.EventTypeId.HasValue) candidate.EventTypeId = metadata.EventTypeId.Value;
+        candidate.Version = metadata.Version ?? candidate.Version;
+        candidate.IsPublished = metadata.IsPublished ?? candidate.IsPublished;
+        candidate.IsActive = metadata.IsActive ?? candidate.IsActive;
+        candidate.SortOrder = metadata.SortOrder ?? candidate.SortOrder;
     }
 
     private (IReadOnlyCollection<TemplateDefinitionWithOptions> Definitions, List<string> Errors) BuildDefinitionEntities(
@@ -206,11 +295,24 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
             .ToList();
     }
 
-    private async Task InvalidateCaches(Guid tenantId, Guid templateId, CancellationToken cancellationToken)
+    private async Task InvalidateCaches(
+        Guid tenantId,
+        int? previousEventTypeId,
+        int? currentEventTypeId,
+        Guid templateId,
+        CancellationToken cancellationToken)
     {
         await _cache.RemoveAsync(
             $"event-templates:list:{tenantId}:{(int?)null}:1:{PaginatedResult<EventTemplateListDto>.DefaultPageSize}",
             cancellationToken);
+        if (previousEventTypeId.HasValue)
+        {
+            await _cache.RemoveAsync($"event-templates:list:{tenantId}:{previousEventTypeId}:1:{PaginatedResult<EventTemplateListDto>.DefaultPageSize}", cancellationToken);
+        }
+        if (currentEventTypeId.HasValue && currentEventTypeId != previousEventTypeId)
+        {
+            await _cache.RemoveAsync($"event-templates:list:{tenantId}:{currentEventTypeId}:1:{PaginatedResult<EventTemplateListDto>.DefaultPageSize}", cancellationToken);
+        }
         await _cache.RemoveAsync($"event-templates:detail:{templateId}", cancellationToken);
     }
 }

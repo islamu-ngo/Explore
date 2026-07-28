@@ -181,20 +181,23 @@
             else
             {
                 var templateId = Template.Id ?? throw new InvalidOperationException("The template response did not include an ID.");
+                var concurrencyStamp = Template.ConcurrencyStamp ?? throw new InvalidOperationException("The template response did not include a concurrency stamp.");
                 var updateDto = new UpdateEventTemplateDto
                 {
-                    Id = templateId,
-                    TemplateKey = _model.TemplateKey,
-                    DisplayName = _model.DisplayName,
-                    Description = _model.Description,
-                    EventTypeId = _model.EventTypeId,
-                    Version = _model.Version,
-                    IsPublished = _model.IsPublished,
-                    IsActive = _model.IsActive,
-                    SortOrder = _model.SortOrder,
-                    Definitions = _model.Definitions
+                    Metadata = new UpdateEventTemplateMetadataDto
+                    {
+                        TemplateKey = _model.TemplateKey,
+                        DisplayName = _model.DisplayName,
+                        Description = new OptionalUpdateOfstring { HasValue = true, Value = _model.Description },
+                        EventTypeId = new OptionalUpdateOfint { HasValue = true, Value = _model.EventTypeId },
+                        Version = _model.Version,
+                        IsPublished = _model.IsPublished,
+                        IsActive = _model.IsActive,
+                        SortOrder = _model.SortOrder
+                    },
+                    Definitions = new UpdateEventTemplateDefinitionsDto { Items = _model.Definitions }
                 };
-                result = await TemplateService.UpdateTemplateAsync(templateId, updateDto);
+                result = await TemplateService.UpdateTemplateAsync(templateId, concurrencyStamp, updateDto);
             }
 
             if (result?.Success == true)
