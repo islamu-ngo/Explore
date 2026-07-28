@@ -65,7 +65,7 @@ A deep research pass over Hi.Events (`hi-events-report.md`, pinned commit `9de88
 | Contact-share consent is user-centric | Verified: `src/Explore.Domain/EventContactShareConsent.cs` — required `UserId`, `RecipientActorId`, snapshots (`EmailSnapshot`, `ConsentTextSnapshot`, `ConsentUiVersion`), nullable `SourceEventRegistrationIntentId` | High | Snapshot pattern is correct; subject typing needed |
 | Custom-property system is the Layer 3 reference | Verified: `src/Explore.Domain/CustomPropertyDefinition.cs` (namespaced keys, typed validation metadata, exposure/governance flags), `CustomPropertyValue.cs` (one row per value, typed columns, `Ordinal`); `docs/CUSTOM_PROPERTIES.md` defines Layer 1/2/3 boundary | High | Reuse primitives/vocabulary, **not** tables |
 | Hardened incoming-webhook intake exists | Verified: `src/Explore.Domain/IncomingWebhookMessage.cs` (exact bytes, payload hash, retention, fenced processing, redrive), `IncomingWebhookEffectOutbox.cs` (leases, fencing, dead-letter) | High | Provider callbacks extend this; no new mechanism |
-| Endpoint classes are Public/Authenticated/Admin | Verified: `src/Explore.API/Attributes/EndpointClass.cs`; `tests/Event.Architecture.Tests/EndpointClassificationArchitectureTests.cs` | High | `PublicTransactional` must be added |
+| Endpoint classes are Public/Authenticated/Admin/PublicTransactional | Verified: `src/Explore.API/Attributes/EndpointClass.cs`; `tests/Event.Architecture.Tests/EndpointClassificationArchitectureTests.cs`; `tests/Event.Architecture.Tests/PublicTransactionalGovernanceTests.cs` | High | Phase 3 implemented |
 | UnitOfWork transaction pattern exists | Verified: `src/Explore.Application/Contracts/Persistence/IUnitOfWork.cs`; `src/Explore.Persistence/EfCoreUnitOfWork.cs`; `docs/GOVERNANCE.md` command-handler review checklist | High | All multi-step writes (holds, finalization) use it |
 | Idempotency middleware exists | Verified: `docs/ARCHITECTURE.md` §Idempotency — `Idempotency-Key` header, `IdempotencyRecord`, `(Key, TenantId)` replay 24h | High | Guest create/finalize will require it |
 | Secrets bindings support Instance and Tenant scopes only | Verified: `src/Explore.Domain/Secrets/SecretBinding.cs`, `Enums/SecretScope.cs` (`Instance = 0, Tenant = 1`), `SecretDefinitionRegistry.cs` | High | Org-scoped provider connections deferred (D15) |
@@ -595,7 +595,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Status:** Tasks 3.1 through 3.3 are source complete. Focused implementation checks pass, but the canonical build and full Architecture gate are externally blocked. This does not complete Phase 2 migration rollout, Phase 3 verification, or any Phase 5 product endpoint/persistence work.
 - **Goal:** Introduce the governed anonymous-mutation endpoint class and the reusable guest capability-token primitives before any guest-facing endpoint exists.
 - **Depends on:** Phase 0 (ADR-017); independent of Phases 1–2 code but sequenced after them to keep one schema stream.
-- **Relevant files:** existing — `src/Explore.API/Attributes/EndpointClass.cs`, `EndpointClassificationAttribute.cs`, `src/Explore.API/OpenApi/EndpointClassificationTransformer.cs`, `src/Explore.API/Program.cs` (rate limiter registration; middleware order untouched analysis), `tests/Event.Architecture.Tests/EndpointClassificationArchitectureTests.cs`, `docs/GOVERNANCE.md`, `docs/QUICK_REFERENCE.md`, `docs/SECURITY-MODEL.md`; new — `src/Explore.Application/Services/Registration/GuestCapabilityTokenService.cs` (contract in `Contracts/Services/`, impl per layering), `src/Explore.Domain/ValueObjects/CapabilityTokenHash.cs`.
+- **Relevant files:** `src/Explore.API/Attributes/EndpointClass.cs`, `EndpointClassificationAttribute.cs`, `src/Explore.API/OpenApi/EndpointClassificationTransformer.cs`, `src/Explore.API/Extensions/RateLimitingExtensions.cs` (policy), `src/Explore.API/Program.cs` (middleware order), `src/Explore.Application/Contracts/Services/IGuestCapabilityTokenService.cs` (contract), `src/Explore.Infrastructure/Services/GuestCapabilityTokenService.cs` (implementation), `src/Explore.Infrastructure/InfrastructureServicesRegistration.cs` (DI), `src/Explore.Domain/ValueObjects/CapabilityTokenHash.cs`, `tests/Event.Architecture.Tests/EndpointClassificationArchitectureTests.cs`, `docs/GOVERNANCE.md`, `docs/QUICK_REFERENCE.md`, `docs/SECURITY-MODEL.md`.
 - **Related skills/rules:** `auth-patterns`, `blazor-bff-patterns`, `api-controllers.md`, `tests.md`.
 - **Acceptance criteria:** FR-GUEST-04/06 foundations; the class exists with enforced invariants (rate policy, antiforgery, idempotency, classification) and zero endpoints yet; governance docs updated; `Public` semantics untouched.
 - **Phase-end verification (run once after all tasks):**
@@ -604,11 +604,11 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Rollback / failure handling:** Foundation-only phase; nothing consumes it until Phase 5. Revert cleanly if the antiforgery investigation (3.2) demands a different token transport.
 
 #### Task 3.1: `EndpointClass.PublicTransactional` + enforcement
-- **Status:** Source complete; focused PublicTransactional governance passes 3/3, implementation-pass endpoint classification passes 4/4, and idempotency passes 6/6.
+- **Status:** Source complete; focused PublicTransactional governance passes 6/6, implementation-pass endpoint classification passes 4/4, and idempotency passes 6/6.
 - **Type:** modify/create
 - **Layer:** API + tests
 - **Files:** `src/Explore.API/Attributes/EndpointClass.cs` (existing), `EndpointClassificationTransformer.cs` (existing), `tests/Event.Architecture.Tests/EndpointClassificationArchitectureTests.cs` (existing), new `tests/Event.Architecture.Tests/PublicTransactionalGovernanceTests.cs`
-- **Description:** Add enum value + XML doc; transformer emits `x-endpoint-class: PublicTransactional`; new architecture tests assert every `PublicTransactional` action carries `[AllowAnonymous]`, the `public_transactional` rate-limit policy, idempotency requirement metadata for create/finalize verbs, and antiforgery metadata for browser-form verbs. Update `docs/GOVERNANCE.md` classification table + `docs/QUICK_REFERENCE.md` rules and rate-limit table.
+- **Description:** Add enum value + XML doc; transformer emits `x-endpoint-class: PublicTransactional`; new architecture tests assert every `PublicTransactional` action carries `[AllowAnonymous]`, the `public_transactional` rate-limit policy, and idempotency requirement metadata for create/finalize verbs. Architecture tests forbid API antiforgery metadata on `PublicTransactional` actions because same-site browser writes are protected at the BFF proxy boundary; direct bearer/API-key traffic is not browser-antiforgery validated. Update `docs/GOVERNANCE.md` classification table + `docs/QUICK_REFERENCE.md` rules and rate-limit table.
 - **Acceptance Criteria:**
   - [x] Governance enforces anonymous classification, `public_transactional`, required idempotency metadata/middleware, and the OpenAPI idempotency boolean
 - **Dependencies:** ADR-017
@@ -627,10 +627,10 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Effort:** M
 
 #### Task 3.3: Guest capability-token primitives
-- **Status:** Source complete; Domain capability checks pass 3/3 and Infrastructure capability checks pass 4/4.
+- **Status:** Source complete; Domain capability checks pass 3/3 and Infrastructure capability checks pass 5/5.
 - **Type:** create
 - **Layer:** Application (contract) + Infrastructure (impl)
-- **Files:** new `src/Explore.Application/Contracts/Services/IGuestCapabilityTokenService.cs`, new `src/Explore.Infrastructure/Services/Registration/GuestCapabilityTokenService.cs`, new `src/Explore.Domain/ValueObjects/CapabilityTokenHash.cs`, registration in `InfrastructureServicesRegistration.cs` (existing)
+- **Files:** new `src/Explore.Application/Contracts/Services/IGuestCapabilityTokenService.cs`, new `src/Explore.Infrastructure/Services/GuestCapabilityTokenService.cs`, new `src/Explore.Domain/ValueObjects/CapabilityTokenHash.cs`, registration in `src/Explore.Infrastructure/InfrastructureServicesRegistration.cs` (existing)
 - **Description:** High-entropy (≥256-bit) token generation, constant-time hash comparison, storage of hash only, scoping payload (order id + purpose), expiry/rotation policy hooks; explicit "token ≠ identity proof" doc comment; unit tests incl. timing-safe comparison and non-guessability (format).
 - **Acceptance Criteria:**
   - [x] 256-bit token primitives reveal plaintext once, retain hashes only, and compare hashes in constant time
@@ -638,7 +638,8 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Effort:** M
 
 #### Phase 3 verification evidence
-- The focused PublicTransactional governance, endpoint-classification implementation pass, idempotency, BFF proxy, Domain capability, and Infrastructure capability checks pass 3/3, 4/4, 6/6, 20/20, 3/3, and 4/4 respectively.
+- The focused PublicTransactional governance, endpoint-classification implementation pass, idempotency, BFF proxy, Domain capability, and Infrastructure capability checks pass 6/6, 4/4, 6/6, 20/20, 3/3, and 5/5 respectively.
+- Oracle follow-up result: **PASS**, with no Critical or High issues. The governance metadata-bypass and secret-formatting findings were fixed.
 - The new rate-policy test exists, but its fresh project build stops before discovery on six unrelated `CustomPropertyDefinitionControllerTests` errors caused by missing DTO members.
 - The canonical Release build is not green. It reports 12 unrelated errors: six in that API test and six in Blazor client custom-property generated-contract call sites.
 - Full Architecture executes 315 tests: 304 pass, 10 unrelated tests fail, and 1 is skipped. The new `PublicTransactional` checks aren't among the failures.
@@ -766,10 +767,12 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Layer:** API + Application
 - **Files:** new `RegistrationOrderController.cs` guest actions (`start-guest-registration`, get/continue/amend/cancel by capability token), consuming Phase 3 primitives
 - **Description:** `PublicTransactional` classification; identity-access-mode enforcement (`ACCOUNT_REQUIRED` rejects anonymous start; `GUEST_ALLOWED`/`CAPABILITY_TOKEN_ALLOWED` accept per config); token issued once on order creation; email management link when email supplied; name-only path shows booking reference + loss warning; idempotency-key required on create/finalize; no account auto-creation. The Hi.Events public-order exposure defect (completed orders loadable by short ID without session verification, report §7.8/§7.9) is the named counter-example: display/public identifiers never authorize anything, and every guest lookup verifies the full tenant/event/order tuple.
+- **Prerequisite gate:** Before the first Phase 5 `PublicTransactional` endpoint, replace the generic `IdempotencyMiddleware` `FindAsync` → execute → `SaveAsync` window with an atomic in-progress key claim or business-transaction-owned dedupe. Concurrent identical keys must not execute twice, and required claim-persistence failures must fail closed. This gate does not require a migration design now.
 - **Acceptance Criteria:**
   - [ ] §31.3 matrix covered in API tests (anonymous rejected on account-required; token scoped to its order; guessed ID → generic 404; expired token fails safely; no silent account)
   - [ ] Display/public order identifiers grant zero access on every endpoint (explicit test); capability rotation invalidates the prior token; capability values never appear in logs (log-assertion test)
-- **Dependencies:** 5.3, Phase 3
+  - [ ] Atomic in-progress key claim or business-transaction-owned dedupe is implemented before endpoint exposure; concurrent identical keys execute once, and required claim-persistence failure fails closed
+- **Dependencies:** 5.3, Phase 3, atomic idempotency prerequisite above
 - **Effort:** L
 
 #### Task 5.5: Authenticated order flow + finalization + outbox events
