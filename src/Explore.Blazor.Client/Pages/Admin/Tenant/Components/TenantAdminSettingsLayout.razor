@@ -279,15 +279,31 @@
                                     </MudText>
                                 </div>
                                 <MudStack Spacing="2" Class="mt-4">
-                                    <MudSwitch T="bool?" @bind-Value="_model.McpEnabled" Color="Color.Primary" Disabled="_model.CanOverrideMcp != true">
+                                    <MudSwitch T="bool?"
+                                               Value="_model.McpEnabled"
+                                               ValueChanged="SetMcpEnabledAsync"
+                                               Color="Color.Primary"
+                                               Disabled="@(_tenantSettingPending || _model.CanOverrideMcp != true)">
                                         Enable MCP adapter for this tenant
                                     </MudSwitch>
-                                    <MudSwitch T="bool?" @bind-Value="_model.McpEnableLegacySse" Color="Color.Warning" Disabled="_model.CanOverrideMcpLegacySse != true">
+                                    <MudSwitch T="bool?"
+                                               Value="_model.McpEnableLegacySse"
+                                               ValueChanged="SetMcpLegacySseAsync"
+                                               Color="Color.Warning"
+                                               Disabled="@(_tenantSettingPending || _model.CanOverrideMcpLegacySse != true)">
                                         Request legacy SSE transport for this tenant
                                     </MudSwitch>
                                     <MudAlert Severity="Severity.Info" Dense="true">
                                         Endpoint path and stateless transport are startup-only. Legacy SSE remains unavailable until a separate protocol/session review enables it.
                                     </MudAlert>
+                                    @if (!string.IsNullOrWhiteSpace(_tenantSettingMessage))
+                                    {
+                                        <MudAlert Severity="@(_tenantSettingSucceeded ? Severity.Success : Severity.Error)"
+                                                  Dense="true"
+                                                  role="@(_tenantSettingSucceeded ? "status" : "alert")">
+                                            @_tenantSettingMessage
+                                        </MudAlert>
+                                    }
                                 </MudStack>
                             </div>
                         }
@@ -322,17 +338,29 @@
                                 }
                                 <div class="settings-form-section mt-4">
                                     <MudTextField T="string" T="string"
-                                                  @bind-Value="_model.CommunityGuidelinesContent"
+                                                  Value="_model.CommunityGuidelinesContent"
+                                                  ValueChanged="@(value => _model.CommunityGuidelinesContent = value)"
+                                                  OnBlur="@(_ => SaveCommunityGuidelinesAsync())"
+                                                  Immediate="true"
                                                   Label="Guidelines Content"
                                                   Lines="20"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="_model.CanOverrideCommunityGuidelines != true"
+                                                  ReadOnly="@(_tenantSettingPending || _model.CanOverrideCommunityGuidelines != true)"
                                                   HelperText="Supports basic Markdown: # Heading, ## Section, - bullet, **bold**, *italic*."
                                                   FullWidth="true"
                                                   Style="font-family: monospace; font-size: 0.875rem;" />
                                     <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
                                         This content is displayed publicly. Leave empty to use the platform default guidelines.
                                     </MudText>
+                                    @if (!string.IsNullOrWhiteSpace(_tenantSettingMessage))
+                                    {
+                                        <MudAlert Severity="@(_tenantSettingSucceeded ? Severity.Success : Severity.Error)"
+                                                  Dense="true"
+                                                  Class="mt-2"
+                                                  role="@(_tenantSettingSucceeded ? "status" : "alert")">
+                                            @_tenantSettingMessage
+                                        </MudAlert>
+                                    }
                                 </div>
                             </div>
                         }
@@ -395,7 +423,7 @@
                                     <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync"
                                                Disabled="_submitState.IsSubmitting || _policyWritePending || !CanSaveCurrentSection"
                                                StartIcon="@(_submitState.IsSubmitting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
-                                        @(_submitState.IsSubmitting ? "Saving..." : "Save Tenant Settings")
+                                        @(_submitState.IsSubmitting ? "Saving..." : "Save Public Experience")
                                     </MudButton>
                                 </MudStack>
                             }
@@ -422,6 +450,10 @@
     private string? _errorMessage;
     private bool _managementSettingsUnavailable;
     private bool _policyWritePending;
+    private bool _tenantSettingPending;
+    private bool _tenantSettingSucceeded;
+    private string? _tenantSettingMessage;
+    private string _confirmedCommunityGuidelinesContent = string.Empty;
     private string _currentSection = "policies";
     private bool _showMobileMenu = true;
 
@@ -452,6 +484,7 @@
         }
 
         _model = settings;
+        _confirmedCommunityGuidelinesContent = settings.CommunityGuidelinesContent;
         await TenantPublicExperienceAdminService.ApplyAnnouncementBarSettingsAsync(_model);
         _hasAnnouncementBar = HasUsableAnnouncementBar(_model);
         _brandingModel = await TenantBrandingSettingsAdminService.GetAsync();
@@ -478,14 +511,19 @@
             return;
         }
 
+        if (_currentSection != "announcement-bar")
+        {
+            return;
+        }
+
         _submitState.Start();
         _errorMessage = null;
-        var response = await TenantOnboardingService.UpdateSettingsAsync(
+        PublicExperienceAdminSaveResult response = await TenantPublicExperienceAdminService.SaveAnnouncementBarAsync(
             _model,
             _currentSection == "announcement-bar" && forceAnnouncementBarRedisplay);
         _submitState.Complete();
 
-        if (response.Success == true)
+        if (response.Success)
         {
             var hadAnnouncementBarBeforeSave = _hasAnnouncementBar;
             _hasAnnouncementBar = HasUsableAnnouncementBar(_model);
@@ -498,7 +536,9 @@
             return;
         }
 
-        _errorMessage = "Failed to save tenant settings.";
+        _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+            ? "Failed to save announcement bar settings."
+            : response.Message;
     }
 
     private async Task RemoveAnnouncementBarAsync()
@@ -515,10 +555,12 @@
         _submitState.Start();
         _errorMessage = null;
 
-        var response = await TenantOnboardingService.UpdateSettingsAsync(_model);
+        PublicExperienceAdminSaveResult response = await TenantPublicExperienceAdminService.SaveAnnouncementBarAsync(
+            _model,
+            forceRedisplay: false);
         _submitState.Complete();
 
-        if (response.Success == true)
+        if (response.Success)
         {
             _hasAnnouncementBar = false;
             await RefreshShellExperienceAsync();
@@ -526,7 +568,9 @@
             return;
         }
 
-        _errorMessage = "Failed to remove announcement bar.";
+        _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+            ? "Failed to remove announcement bar."
+            : response.Message;
     }
 
     private static bool HasUsableAnnouncementBar(TenantPolicySettingsDto model) =>
@@ -572,6 +616,7 @@
     {
         _currentSection = section;
         _showMobileMenu = false;
+        _tenantSettingMessage = null;
     }
 
     private void OnPolicyPendingChanged(bool pending)
@@ -591,8 +636,68 @@
             _ => true
         };
 
-    private bool IsReadOnlySection =>
-        _currentSection is "policies" or "branding" or "storage" or "nav-links" or "support-access-evidence" or "webhooks" or "shell";
+    private bool IsReadOnlySection => _currentSection is not ("announcement-bar" or "public-experience");
+
+    private Task SetMcpEnabledAsync(bool? value) => SaveTenantSettingAsync(
+        "mcp.enabled",
+        value == true ? "true" : "false",
+        "MCP adapter setting",
+        () => _model.McpEnabled = value);
+
+    private Task SetMcpLegacySseAsync(bool? value) => SaveTenantSettingAsync(
+        "mcp.enable_legacy_sse",
+        value == true ? "true" : "false",
+        "MCP legacy SSE setting",
+        () => _model.McpEnableLegacySse = value);
+
+    private async Task SaveCommunityGuidelinesAsync()
+    {
+        string value = _model.CommunityGuidelinesContent ?? string.Empty;
+        bool saved = await SaveTenantSettingAsync(
+            "policies.community_guidelines_content",
+            value,
+            "Community guidelines",
+            () => _confirmedCommunityGuidelinesContent = value);
+
+        if (!saved)
+        {
+            _model.CommunityGuidelinesContent = _confirmedCommunityGuidelinesContent;
+        }
+    }
+
+    private async Task<bool> SaveTenantSettingAsync(string key, string value, string label, Action apply)
+    {
+        if (_tenantSettingPending)
+        {
+            return false;
+        }
+
+        _tenantSettingPending = true;
+        _tenantSettingMessage = null;
+        BaseCommandResponseOfGuid response = await TenantOnboardingService.UpdateTenantSettingAsync(key, value);
+
+        if (response.Success == true)
+        {
+            apply();
+            _tenantSettingSucceeded = true;
+            _tenantSettingMessage = $"{label} saved.";
+            await RefreshShellExperienceAsync();
+            _tenantSettingPending = false;
+            return true;
+        }
+
+        TenantPolicySettingsDto? latest = await TenantOnboardingService.GetManagementSettingsAsync();
+        if (latest is not null)
+        {
+            _model = latest;
+            _confirmedCommunityGuidelinesContent = latest.CommunityGuidelinesContent;
+        }
+
+        _tenantSettingSucceeded = false;
+        _tenantSettingMessage = $"{label} could not be saved. The latest value was restored.";
+        _tenantSettingPending = false;
+        return false;
+    }
 
     private async Task RefreshShellExperienceAsync()
     {
