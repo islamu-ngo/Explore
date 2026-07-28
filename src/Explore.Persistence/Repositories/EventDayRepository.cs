@@ -16,6 +16,17 @@ public class EventDayRepository : GenericRepository<EventDay, Guid>, IEventDayRe
         _dbContext = dbContext;
     }
 
+    public Task<EventDay?> GetByIdForEventAsync(
+        Guid eventDayId,
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken) =>
+        _dbContext.EventDays
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                day => day.Id == eventDayId && day.EventId == eventId && day.TenantId == tenantId,
+                cancellationToken);
+
     public async Task<bool> BelongsToEventAsync(Guid eventDayId, Guid eventId, CancellationToken cancellationToken)
     {
         return await _dbContext.EventDays

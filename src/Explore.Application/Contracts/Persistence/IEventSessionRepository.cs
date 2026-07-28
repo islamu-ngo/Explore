@@ -8,6 +8,12 @@ namespace Explore.Application.Contracts.Persistence;
 
 public interface IEventSessionRepository : IGenericRepository<EventSession, Guid>
 {
+    Task<EventSession?> GetByIdForEventAsync(
+        Guid eventSessionId,
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken);
+
     Task<EventSession?> GetSessionWithDetails(Guid id);
     Task<EventSession?> GetPublicSessionWithDetailsAsync(Guid id, CancellationToken cancellationToken);
     Task<List<EventSession>> GetSessionsByEvent(Guid eventId);

@@ -24,6 +24,17 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
         _dbContext = dbContext;
     }
 
+    public Task<EventSession?> GetByIdForEventAsync(
+        Guid eventSessionId,
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken) =>
+        _dbContext.EventSessions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                session => session.Id == eventSessionId && session.EventId == eventId && session.TenantId == tenantId,
+                cancellationToken);
+
     public async Task<EventSession?> GetSessionWithDetails(Guid id)
     {
         return await _dbContext.EventSessions
@@ -389,7 +400,7 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             .AsNoTracking()
             .AsSplitQuery()
             .IncludeStandardDetails()
-            .WherePubliclyEligible();
+            .WherePubliclyEligible(_dbContext);
     }
 
     private IQueryable<EventSession> ApplySessionProjectionFilters(
