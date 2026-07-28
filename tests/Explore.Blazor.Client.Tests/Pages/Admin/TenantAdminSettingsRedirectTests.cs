@@ -126,9 +126,6 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         cut.WaitForState(() => cut.Markup.Contains("Event & Organization Policies", StringComparison.Ordinal));
 
         await Assert.That(cut.Markup).DoesNotContain("Save Tenant Settings", StringComparison.Ordinal);
-        await _tenantOnboardingService.DidNotReceive().UpdateSettingsAsync(
-            Arg.Any<TenantPolicySettingsDto>(),
-            Arg.Any<bool>());
     }
 
     [Test]
@@ -168,82 +165,28 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     }
 
     [Test]
-    public async Task TenantAdminSettingsLayout_PublicExperience_KeepsBroadSaveAffordance()
+    public async Task TenantAdminSettingsLayout_PublicExperience_KeepsExplicitSaveAffordance()
     {
         ConfigureAuthorizedManagement(CreateManagementModel());
         var cut = RenderLayout();
 
         NavigateTo(cut, "Public Experience");
 
-        await Assert.That(cut.Markup).Contains("Save Tenant Settings", StringComparison.Ordinal);
+        await Assert.That(cut.Markup).Contains("Save Public Experience", StringComparison.Ordinal);
     }
 
     [Test]
-    public async Task TenantAdminSettingsLayout_NavigatingWhilePolicyWritePending_BlocksBroadSaveUntilConfirmedModelSync()
+    public async Task TenantAdminSettingsLayout_RemainingSparseSections_DoNotExposeBroadSave()
     {
-        var model = CreateManagementModel();
-        ConfigureAuthorizedManagement(model);
-        var pending = new TaskCompletionSource<BaseCommandResponseOfGuid>();
-        _tenantOnboardingService.UpdateTenantSettingAsync(
-                "events.user_submission_enabled",
-                "true",
-                Arg.Any<CancellationToken>())
-            .Returns(pending.Task);
-        _tenantOnboardingService.UpdateSettingsAsync(Arg.Any<TenantPolicySettingsDto>(), Arg.Any<bool>())
-            .Returns(new BaseCommandResponseOfGuid { Success = true });
+        ConfigureAuthorizedManagement(CreateManagementModel());
         var cut = RenderLayout();
-        cut.WaitForState(() => PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled") == false);
 
-        Task exactWrite = cut.InvokeAsync(() => PolicyInput(cut, "Allow users to submit events").Change(true));
-        cut.WaitForState(() => PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled"));
-        NavigateTo(cut, "Domain");
-        IElement broadSave = BroadSaveButton(cut);
+        foreach (string section in new[] { "Render Policy", "Domain", "MCP Adapter", "Community Guidelines" })
+        {
+            NavigateTo(cut, section);
+            await Assert.That(cut.Markup).DoesNotContain("Save Tenant Settings", StringComparison.Ordinal);
+        }
 
-        await Assert.That(broadSave.HasAttribute("disabled")).IsTrue();
-        broadSave.Click();
-        await _tenantOnboardingService.DidNotReceive().UpdateSettingsAsync(
-            Arg.Any<TenantPolicySettingsDto>(),
-            Arg.Any<bool>());
-
-        pending.SetResult(new BaseCommandResponseOfGuid { Success = true });
-        await exactWrite;
-        cut.WaitForState(() => BroadSaveButton(cut).HasAttribute("disabled") == false);
-        BroadSaveButton(cut).Click();
-
-        await _tenantOnboardingService.Received(1).UpdateSettingsAsync(
-            Arg.Is<TenantPolicySettingsDto>(settings => settings.AllowUserSubmittedEvents == true),
-            false);
-    }
-
-    [Test]
-    public async Task TenantAdminSettingsLayout_PolicyRecoveryRestoresModelBeforeBroadSaveReenables()
-    {
-        var model = CreateManagementModel();
-        ConfigureAuthorizedManagement(model);
-        var pending = new TaskCompletionSource<BaseCommandResponseOfGuid>();
-        _tenantOnboardingService.UpdateTenantSettingAsync(
-                "events.user_submission_enabled",
-                "true",
-                Arg.Any<CancellationToken>())
-            .Returns(pending.Task);
-        _tenantOnboardingService.UpdateSettingsAsync(Arg.Any<TenantPolicySettingsDto>(), Arg.Any<bool>())
-            .Returns(new BaseCommandResponseOfGuid { Success = true });
-        var cut = RenderLayout();
-        cut.WaitForState(() => PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled") == false);
-
-        Task exactWrite = cut.InvokeAsync(() => PolicyInput(cut, "Allow users to submit events").Change(true));
-        cut.WaitForState(() => PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled"));
-        NavigateTo(cut, "Domain");
-        await Assert.That(BroadSaveButton(cut).HasAttribute("disabled")).IsTrue();
-
-        pending.SetResult(new BaseCommandResponseOfGuid { Success = false });
-        await exactWrite;
-        cut.WaitForState(() => BroadSaveButton(cut).HasAttribute("disabled") == false);
-        BroadSaveButton(cut).Click();
-
-        await _tenantOnboardingService.Received(1).UpdateSettingsAsync(
-            Arg.Is<TenantPolicySettingsDto>(settings => settings.AllowUserSubmittedEvents == false),
-            false);
     }
 
     [Test]
@@ -293,7 +236,8 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     {
         AllowUserSubmittedEvents = false,
         AllowOrganizationSubmittedEvents = false,
-        AllowGroupSubmittedEvents = false
+        AllowGroupSubmittedEvents = false,
+        CanOverrideMcp = true
     };
 
     private static IElement PolicyInput(IRenderedComponent<DynamicComponent> cut, string label) =>
@@ -305,10 +249,6 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     private static void NavigateTo(IRenderedComponent<DynamicComponent> cut, string section) =>
         cut.FindAll(".mud-list-item").Single(element =>
             element.TextContent.Trim().Equals(section, StringComparison.OrdinalIgnoreCase)).Click();
-
-    private static IElement BroadSaveButton(IRenderedComponent<DynamicComponent> cut) =>
-        cut.FindAll("button").Single(element =>
-            element.TextContent.Contains("Save Tenant Settings", StringComparison.Ordinal));
 
     private static SettingGroupResponseDto CreatePolicyCategory(string category) => category switch
     {
