@@ -2,6 +2,7 @@
 // ABOUTME: Covers exact IDs/codes, missing-row repair, idempotency, named filters, and model seed prohibition.
 
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
@@ -71,6 +72,30 @@ public sealed class EventAuthorityLookupSeederTests
         await LookupTableSeeder.SeedEventAuthorityLookupsAsync(context, default);
 
         await AssertExactRowsAsync(context);
+    }
+
+    [Test]
+    [Category("Phase43Ticketing")]
+    public async Task RuntimeSeeder_GrantsManageTicketsOnlyToOwnerAndManagerIdempotently()
+    {
+        await using var context = CreateSeederContext("event-ticket-management-seeder");
+
+        await LookupTableSeeder.SeedAsync(context, default);
+        await LookupTableSeeder.SeedAsync(context, default);
+
+        var permission = await context.Permissions.SingleAsync(row =>
+            row.MasterCode == PermissionCodes.EventManageTickets);
+        var grantedRoleCodes = await (
+            from grant in context.RolePermissions
+            join role in context.Roles on grant.RoleId equals role.Id
+            where grant.PermissionId == permission.Id
+            orderby role.MasterCode
+            select role.MasterCode)
+            .ToArrayAsync();
+
+        await Assert.That(grantedRoleCodes)
+            .IsEquivalentTo(["event.manager", "event.owner"]);
+        await Assert.That(grantedRoleCodes.Length).IsEqualTo(2);
     }
 
     private static ExploreDbContext CreateModelContext()
