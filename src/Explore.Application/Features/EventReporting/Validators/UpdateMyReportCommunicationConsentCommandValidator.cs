@@ -13,5 +13,8 @@ public sealed class UpdateMyReportCommunicationConsentCommandValidator
     {
         RuleFor(command => command.ReportId).NotEmpty();
         RuleFor(command => command.Request).NotNull();
+        RuleFor(command => command.Request.Consent)
+            .NotNull()
+            .When(command => command.Request is not null);
     }
 }

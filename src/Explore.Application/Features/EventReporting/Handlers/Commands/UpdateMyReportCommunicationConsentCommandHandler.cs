@@ -85,6 +85,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandler(
         }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
+        var consent = request.Request.Consent;
         var changed = false;
         var response = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
@@ -112,8 +113,8 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandler(
                     token);
             }
 
-            var attemptChanged = report.ReportCaseUpdatesConsent != request.Request.ReportCaseUpdatesConsent
-                || report.ReportFollowUpContactConsent != request.Request.ReportFollowUpContactConsent;
+            var attemptChanged = report.ReportCaseUpdatesConsent != consent.ReportCaseUpdatesConsent
+                || report.ReportFollowUpContactConsent != consent.ReportFollowUpContactConsent;
             if (!attemptChanged)
             {
                 return await MaskIfFencedAsync(
@@ -129,8 +130,8 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandler(
 
             changed = true;
             report.ChangeReporterCommunicationConsent(
-                request.Request.ReportCaseUpdatesConsent,
-                request.Request.ReportFollowUpContactConsent,
+                consent.ReportCaseUpdatesConsent,
+                consent.ReportFollowUpContactConsent,
                 now);
             await eventReportRepository.Update(report);
 

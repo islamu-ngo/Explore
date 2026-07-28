@@ -185,7 +185,7 @@ public sealed class EventReportsController : ExploreControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut(
+    [HttpPatch(
         "my/{reportId:guid}/communication-consent",
         Name = RouteNames.UpdateMyEventReportCommunicationConsent)]
     [EndpointSummary("Update My Event Report Communication Consent")]

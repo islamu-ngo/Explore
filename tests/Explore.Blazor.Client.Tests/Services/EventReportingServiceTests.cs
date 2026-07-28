@@ -102,7 +102,7 @@ public sealed class EventReportingServiceTests
             new HalLinkTestLink(
                 "update-communication-consent",
                 $"/api/event-reports/my/{reportId}/communication-consent",
-                "PUT"));
+                "PATCH"));
         UpdateMyReportCommunicationConsentDto? capturedRequest = null;
         var updated = CreateReportResource("submitted", "Submitted", "spam", "Spam");
         updated.Id = reportId;
@@ -113,7 +113,7 @@ public sealed class EventReportingServiceTests
             new HalLinkTestLink(
                 "update-communication-consent",
                 $"/api/event-reports/my/{reportId}/communication-consent",
-                "PUT"));
+                "PATCH"));
         _apiClient.UpdateMyEventReportCommunicationConsentAsync(
                 reportId,
                 Arg.Do<UpdateMyReportCommunicationConsentDto>(request => capturedRequest = request),
@@ -131,8 +131,8 @@ public sealed class EventReportingServiceTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Report).IsSameReferenceAs(updated);
         await Assert.That(capturedRequest).IsNotNull();
-        await Assert.That(capturedRequest!.ReportCaseUpdatesConsent).IsFalse();
-        await Assert.That(capturedRequest.ReportFollowUpContactConsent).IsTrue();
+        await Assert.That(capturedRequest!.Consent!.ReportCaseUpdatesConsent).IsFalse();
+        await Assert.That(capturedRequest.Consent.ReportFollowUpContactConsent).IsTrue();
         await Assert.That(result.Report!.HasLink("update-communication-consent")).IsTrue();
     }
 
@@ -145,7 +145,7 @@ public sealed class EventReportingServiceTests
             new HalLinkTestLink(
                 "update-communication-consent",
                 $"/api/event-reports/my/{Guid.NewGuid()}/communication-consent",
-                "PUT"));
+                "PATCH"));
 
         var result = await CreateService().UpdateCommunicationConsentAsync(
             report,
@@ -163,11 +163,11 @@ public sealed class EventReportingServiceTests
     }
 
     [Test]
-    [Arguments(false, "PUT")]
+    [Arguments(false, "PATCH")]
     [Arguments(true, "POST")]
     [Arguments(true, "put")]
     [Arguments(true, "Put")]
-    public async Task UpdateCommunicationConsentAsync_WhenRelationOrPutMethodIsMissing_FailsClosed(
+    public async Task UpdateCommunicationConsentAsync_WhenRelationOrPatchMethodIsMissing_FailsClosed(
         bool includeRelation,
         string method)
     {
@@ -207,7 +207,7 @@ public sealed class EventReportingServiceTests
             new HalLinkTestLink(
                 "update-communication-consent",
                 $"/api/{reportId}/event-reports/my/{Guid.NewGuid()}/communication-consent",
-                "PUT"));
+                "PATCH"));
 
         var result = await CreateService().UpdateCommunicationConsentAsync(
             report,
@@ -233,7 +233,7 @@ public sealed class EventReportingServiceTests
             new HalLinkTestLink(
                 "update-communication-consent",
                 "https://[invalid/api/event-reports/my/report/communication-consent",
-                "PUT"));
+                "PATCH"));
 
         var result = await CreateService().UpdateCommunicationConsentAsync(
             report,
@@ -276,7 +276,7 @@ public sealed class EventReportingServiceTests
             report.Id = reportId;
             HalLinkTestFactory.WithLinks(
                 report,
-                new HalLinkTestLink("update-communication-consent", href, "PUT"));
+                new HalLinkTestLink("update-communication-consent", href, "PATCH"));
 
             var result = await CreateService().UpdateCommunicationConsentAsync(
                 report,
@@ -305,7 +305,7 @@ public sealed class EventReportingServiceTests
             new HalLinkTestLink(
                 "update-communication-consent",
                 $"/api/event-reports/my/{reportId}/communication-consent",
-                "PUT"));
+                "PATCH"));
         var mismatched = CreateReportResource("submitted", "Submitted", "spam", "Spam");
         _apiClient.UpdateMyEventReportCommunicationConsentAsync(
                 reportId,

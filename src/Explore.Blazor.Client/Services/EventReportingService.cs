@@ -157,8 +157,11 @@ public sealed class EventReportingService(
                 reportId,
                 new UpdateMyReportCommunicationConsentDto
                 {
-                    ReportCaseUpdatesConsent = reportCaseUpdatesConsent,
-                    ReportFollowUpContactConsent = reportFollowUpContactConsent
+                    Consent = new ReportCommunicationConsentUpdateDto
+                    {
+                        ReportCaseUpdatesConsent = reportCaseUpdatesConsent,
+                        ReportFollowUpContactConsent = reportFollowUpContactConsent
+                    }
                 },
                 cancellationToken: cancellationToken);
 
@@ -195,7 +198,7 @@ public sealed class EventReportingService(
     private static bool HasMatchingConsentUpdateLink(HalResourceOfMyEventReportDto report, Guid reportId)
     {
         if (report._links?.TryGetValue(UpdateCommunicationConsentRelation, out var link) != true
-            || !string.Equals(link.Method, "PUT", StringComparison.Ordinal)
+            || !string.Equals(link.Method, "PATCH", StringComparison.Ordinal)
             || string.IsNullOrWhiteSpace(link.Href)
             || !string.Equals(link.Href, link.Href.Trim(), StringComparison.Ordinal)
             || !Uri.TryCreate(link.Href, UriKind.RelativeOrAbsolute, out var uri))

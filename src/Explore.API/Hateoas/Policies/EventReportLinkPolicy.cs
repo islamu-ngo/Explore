@@ -109,7 +109,7 @@ public sealed class MyEventReportDetailLinkPolicy(ICurrentUserService currentUse
             LinkRelations.UpdateCommunicationConsent,
             RouteNames.UpdateMyEventReportCommunicationConsent,
             new { reportId = dto.Id },
-            "PUT",
+            "PATCH",
             "Update communication consent",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Users.Update, ResourceKinds.User, userId.ToString());
@@ -145,7 +145,7 @@ public sealed class MyEventReportCollectionLinkPolicy(ICurrentUserService curren
             LinkRelations.UpdateCommunicationConsent,
             RouteNames.UpdateMyEventReportCommunicationConsent,
             new { reportId = dto.Id },
-            "PUT",
+            "PATCH",
             "Update communication consent",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Users.Update, ResourceKinds.User, userId.ToString());

@@ -85,7 +85,7 @@ public sealed class EventReportsControllerTests
 
         await AssertRoute(
             updateCommunicationConsent,
-            typeof(HttpPutAttribute),
+            typeof(HttpPatchAttribute),
             "my/{reportId:guid}/communication-consent",
             RouteNames.UpdateMyEventReportCommunicationConsent);
         await Assert.That(updateCommunicationConsent.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
@@ -199,8 +199,11 @@ public sealed class EventReportsControllerTests
         var report = CreateMyReportDto();
         var request = new UpdateMyReportCommunicationConsentDto
         {
-            ReportCaseUpdatesConsent = false,
-            ReportFollowUpContactConsent = true
+            Consent = new ReportCommunicationConsentUpdateDto
+            {
+                ReportCaseUpdatesConsent = false,
+                ReportFollowUpContactConsent = true
+            }
         };
         var halResource = new HalResource<MyEventReportDto>(report);
         _mediator.Send(
@@ -229,8 +232,8 @@ public sealed class EventReportsControllerTests
             Arg.Is<UpdateMyReportCommunicationConsentCommand>(command =>
                 command.ReportId == report.Id
                 && ReferenceEquals(command.Request, request)
-                && !command.Request.ReportCaseUpdatesConsent
-                && command.Request.ReportFollowUpContactConsent),
+                && !command.Request.Consent!.ReportCaseUpdatesConsent
+                && command.Request.Consent.ReportFollowUpContactConsent),
             Arg.Any<CancellationToken>());
         await _mediator.Received(1).Send(
             Arg.Is<GetMyReportRequest>(query => query.ReportId == report.Id),
@@ -258,8 +261,7 @@ public sealed class EventReportsControllerTests
             reportId,
             new UpdateMyReportCommunicationConsentDto
             {
-                ReportCaseUpdatesConsent = false,
-                ReportFollowUpContactConsent = false
+                Consent = new ReportCommunicationConsentUpdateDto()
             },
             CancellationToken.None);
 
@@ -290,8 +292,7 @@ public sealed class EventReportsControllerTests
             reportId,
             new UpdateMyReportCommunicationConsentDto
             {
-                ReportCaseUpdatesConsent = false,
-                ReportFollowUpContactConsent = false
+                Consent = new ReportCommunicationConsentUpdateDto()
             },
             CancellationToken.None));
 

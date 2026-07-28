@@ -298,8 +298,11 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
             ReportId = reportId,
             Request = new UpdateMyReportCommunicationConsentDto
             {
-                ReportCaseUpdatesConsent = caseUpdates,
-                ReportFollowUpContactConsent = followUp
+                Consent = new ReportCommunicationConsentUpdateDto
+                {
+                    ReportCaseUpdatesConsent = caseUpdates,
+                    ReportFollowUpContactConsent = followUp
+                }
             }
         };
 
