@@ -121,6 +121,7 @@ public class EventAspectControllerTests
         await Assert.That(action.GetCustomAttribute<ConsumesAttribute>()?.ContentTypes.Contains("application/json")).IsTrue();
         await AssertProducesProblem(action, StatusCodes.Status400BadRequest, typeof(ValidationProblemDetails));
         await AssertProducesProblem(action, StatusCodes.Status401Unauthorized);
+        await AssertProducesProblem(action, StatusCodes.Status403Forbidden);
         await AssertProducesProblem(action, StatusCodes.Status404NotFound);
     }
 
