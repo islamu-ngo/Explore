@@ -19,19 +19,28 @@ public class EventActorResolver : IEventActorResolver
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantContext _tenantContext;
+    private readonly ITenantUserRepository _tenantUserRepository;
+    private readonly IOrganizationTenantRepository _organizationTenantRepository;
+    private readonly IGroupTenantRepository _groupTenantRepository;
 
     public EventActorResolver(
         IActorRepository actorRepository,
         IOrganizationMemberRepository organizationMemberRepository,
         IGroupMemberRepository groupMemberRepository,
         IHierarchicalSettingsResolver settingsResolver,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        ITenantUserRepository tenantUserRepository,
+        IOrganizationTenantRepository organizationTenantRepository,
+        IGroupTenantRepository groupTenantRepository)
     {
         _actorRepository = actorRepository;
         _organizationMemberRepository = organizationMemberRepository;
         _groupMemberRepository = groupMemberRepository;
         _settingsResolver = settingsResolver;
         _tenantContext = tenantContext;
+        _tenantUserRepository = tenantUserRepository;
+        _organizationTenantRepository = organizationTenantRepository;
+        _groupTenantRepository = groupTenantRepository;
     }
 
     public async Task<EventActorResult> ResolveAsync(
@@ -75,6 +84,11 @@ public class EventActorResolver : IEventActorResolver
                 "Organization does not have an associated actor.",
                 "The organization is not properly configured. Please contact support.");
 
+        if (!await IsCreationEligibleAsync(actor, cancellationToken))
+            return EventActorResult.Failure(
+                "The selected actor is not eligible to create events in this tenant.",
+                "The actor is suspended, deleted, or does not have eligible current-tenant participation.");
+
         return EventActorResult.Success(actor.Id, isCommunitySubmission: false);
     }
 
@@ -95,6 +109,11 @@ public class EventActorResolver : IEventActorResolver
                 "Group does not have an associated actor.",
                 "The group is not properly configured. Please contact support.");
 
+        if (!await IsCreationEligibleAsync(actor, cancellationToken))
+            return EventActorResult.Failure(
+                "The selected actor is not eligible to create events in this tenant.",
+                "The actor is suspended, deleted, or does not have eligible current-tenant participation.");
+
         return EventActorResult.Success(actor.Id, isCommunitySubmission: false);
     }
 
@@ -112,6 +131,20 @@ public class EventActorResolver : IEventActorResolver
                 "Your personal actor was not found.",
                 "Your account is not properly set up. Please sync your profile first.");
 
+        if (!await IsCreationEligibleAsync(actor, cancellationToken))
+            return EventActorResult.Failure(
+                "The selected actor is not eligible to create events in this tenant.",
+                "The actor is suspended, deleted, or does not have eligible current-tenant participation.");
+
         return EventActorResult.Success(actor.Id, isCommunitySubmission: true);
     }
+
+    private Task<bool> IsCreationEligibleAsync(Explore.Domain.Actor actor, CancellationToken cancellationToken) =>
+        EventActorCreationEligibilityEvaluator.IsEligibleAsync(
+            actor,
+            _tenantContext.TenantId,
+            _tenantUserRepository,
+            _organizationTenantRepository,
+            _groupTenantRepository,
+            cancellationToken);
 }

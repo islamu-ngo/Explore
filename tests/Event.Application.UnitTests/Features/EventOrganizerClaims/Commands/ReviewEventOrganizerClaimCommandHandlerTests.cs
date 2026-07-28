@@ -15,6 +15,7 @@ using TUnit.Core;
 
 namespace Event.Application.UnitTests.Features.EventOrganizerClaims.Commands;
 
+[Category("EventActorEligibility")]
 public sealed class ReviewEventOrganizerClaimCommandHandlerTests
 {
     [Test]

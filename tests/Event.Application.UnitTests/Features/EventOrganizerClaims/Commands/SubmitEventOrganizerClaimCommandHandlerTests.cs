@@ -13,6 +13,7 @@ using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.EventOrganizerClaims.Commands;
 
+[Category("EventActorEligibility")]
 public sealed class SubmitEventOrganizerClaimCommandHandlerTests
 {
     [Test]
@@ -98,6 +99,94 @@ public sealed class SubmitEventOrganizerClaimCommandHandlerTests
             groupPermission: true);
 
         await Assert.That(result.Success).IsTrue();
+    }
+
+    [Test]
+    public async Task Handle_UserActorWithActiveTenantUser_IsAllowed()
+    {
+        var userId = Guid.CreateVersion7();
+
+        var result = await SubmitAsync(ActorForUser(userId), userId, activeTenantUser: true);
+
+        await Assert.That(result.Success).IsTrue();
+    }
+
+    [Test]
+    public async Task Handle_OrganizationActorWithApprovedEligibleParticipationAndPermission_IsAllowed()
+    {
+        var organizationId = Guid.CreateVersion7();
+        var participation = new OrganizationTenant
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = Guid.CreateVersion7(),
+            Tenant = null!,
+            OrganizationId = organizationId,
+            Organization = null!,
+            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+            ApprovalStatus = null!,
+            IsVisible = false,
+            IsOrganizerEligible = true
+        };
+
+        var result = await SubmitAsync(
+            ActorForOrganization(organizationId),
+            Guid.CreateVersion7(),
+            organizationParticipation: participation,
+            organizationPermission: true);
+
+        await Assert.That(result.Success).IsTrue();
+    }
+
+    [Test]
+    [Arguments(ApprovalStatusEnum.Pending, true, false, false)]
+    [Arguments(ApprovalStatusEnum.Approved, false, false, false)]
+    [Arguments(ApprovalStatusEnum.Approved, true, true, false)]
+    [Arguments(ApprovalStatusEnum.Approved, true, false, true)]
+    public async Task Handle_GroupActorWithoutEligibleParticipation_IsDenied(
+        ApprovalStatusEnum approvalStatus,
+        bool organizerEligible,
+        bool suspended,
+        bool deleted)
+    {
+        var groupId = Guid.CreateVersion7();
+        var participation = new GroupTenant
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = Guid.CreateVersion7(),
+            Tenant = null!,
+            GroupId = groupId,
+            Group = null!,
+            ApprovalStatusId = (int)approvalStatus,
+            ApprovalStatus = null!,
+            IsOrganizerEligible = organizerEligible,
+            IsSuspended = suspended,
+            IsDeleted = deleted
+        };
+
+        var result = await SubmitAsync(
+            ActorForGroup(groupId),
+            Guid.CreateVersion7(),
+            groupParticipation: participation,
+            groupPermission: true);
+
+        await Assert.That(result.Success).IsFalse();
+    }
+
+    [Test]
+    public async Task Handle_ObservedExternalActor_IsDenied()
+    {
+        var actor = new Actor
+        {
+            Id = Guid.CreateVersion7(),
+            ActorTypeId = (int)ActorTypeEnum.ExternalUnclassified,
+            ActorType = null!,
+            ExternalActorSubjectId = Guid.CreateVersion7(),
+            Pii = new ActorPii { DisplayName = "Observed external claimant" }
+        };
+
+        var result = await SubmitAsync(actor, Guid.CreateVersion7());
+
+        await Assert.That(result.Success).IsFalse();
     }
 
     private static async Task<BaseCommandResponse<Guid>> SubmitAsync(

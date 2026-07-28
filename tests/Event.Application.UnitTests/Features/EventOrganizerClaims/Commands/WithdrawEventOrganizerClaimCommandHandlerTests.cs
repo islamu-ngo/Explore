@@ -13,6 +13,7 @@ using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.EventOrganizerClaims.Commands;
 
+[Category("EventActorEligibility")]
 public sealed class WithdrawEventOrganizerClaimCommandHandlerTests
 {
     [Test]
@@ -60,6 +61,7 @@ public sealed class WithdrawEventOrganizerClaimCommandHandlerTests
             "DOMAIN_EMAIL",
             "evidence-reference",
             DateTime.UtcNow);
+        claim.ConcurrencyStamp = Guid.CreateVersion7();
         var claimRepository = Substitute.For<IEventOrganizerClaimRepository>();
         claimRepository.GetForUpdateAsync(claim.Id, Arg.Any<CancellationToken>()).Returns(claim);
         var actorRepository = Substitute.For<IActorRepository>();

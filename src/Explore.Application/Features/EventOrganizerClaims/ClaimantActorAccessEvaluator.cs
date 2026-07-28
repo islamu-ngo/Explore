@@ -2,8 +2,8 @@
 // ABOUTME: Supports personal actors and organization/group actors through existing event-create authority.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Services;
 using Explore.Domain.Constants;
-using Explore.Domain.Enums;
 
 namespace Explore.Application.Features.EventOrganizerClaims;
 
@@ -22,7 +22,7 @@ internal static class ClaimantActorAccessEvaluator
         CancellationToken cancellationToken)
     {
         var actor = await actorRepository.GetActorWithDetails(actorId, cancellationToken);
-        if (actor is null || !await IsEligibleAsync(
+        if (actor is null || !await EventActorCreationEligibilityEvaluator.IsEligibleAsync(
                 actor,
                 tenantId,
                 tenantUserRepository,
@@ -89,7 +89,7 @@ internal static class ClaimantActorAccessEvaluator
         CancellationToken cancellationToken)
     {
         var actor = await actorRepository.GetActorWithDetails(actorId, cancellationToken);
-        return actor is not null && await IsEligibleAsync(
+        return actor is not null && await EventActorCreationEligibilityEvaluator.IsEligibleAsync(
             actor,
             tenantId,
             tenantUserRepository,
@@ -98,54 +98,4 @@ internal static class ClaimantActorAccessEvaluator
             cancellationToken);
     }
 
-    private static async Task<bool> IsEligibleAsync(
-        Explore.Domain.Actor actor,
-        Guid tenantId,
-        ITenantUserRepository tenantUserRepository,
-        IOrganizationTenantRepository organizationTenantRepository,
-        IGroupTenantRepository groupTenantRepository,
-        CancellationToken cancellationToken)
-    {
-        if (actor.IsDeleted || actor.IsSuspended)
-        {
-            return false;
-        }
-
-        if (actor.UserId is { } userId)
-        {
-            return await tenantUserRepository.IsActiveTenantUserAsync(tenantId, userId, cancellationToken);
-        }
-
-        if (actor.OrganizationId is { } organizationId)
-        {
-            var participation = await organizationTenantRepository.GetByOrganizationAndTenant(
-                organizationId,
-                tenantId,
-                cancellationToken);
-            return participation is
-            {
-                ApprovalStatusId: (int)ApprovalStatusEnum.Approved,
-                IsOrganizerEligible: true,
-                IsSuspended: false,
-                IsDeleted: false
-            };
-        }
-
-        if (actor.GroupId is not { } groupId)
-        {
-            return false;
-        }
-
-        var groupParticipation = await groupTenantRepository.GetByGroupAndTenant(
-            groupId,
-            tenantId,
-            cancellationToken);
-        return groupParticipation is
-        {
-            ApprovalStatusId: (int)ApprovalStatusEnum.Approved,
-            IsOrganizerEligible: true,
-            IsSuspended: false,
-            IsDeleted: false
-        };
-    }
 }
