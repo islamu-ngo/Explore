@@ -222,12 +222,22 @@ Listmonk settings are exposed under `/api/integrations/listmonk`:
 | `POST /api/integrations/listmonk/credentials/rotate` | `RotateListmonkIntegrationCredentials` | `[Authorize]` | Rotates the write-only API username/key secret bindings. |
 | `POST /api/integrations/listmonk/test-connection` | `TestListmonkIntegrationConnection` | `[Authorize]` | Runs a server-side connectivity check with resolved settings and credentials. |
 
-`ListmonkIntegrationSettingsDto` includes `Enabled`, `InstanceUrl`,
-`DefaultListId`, `PreconfirmSubscriptions`, `SyncOnRegistration`,
-`ApiUsernameConfigured`, `ApiKeyConfigured`, and `CanEdit`. It never returns raw
-credentials. This singleton settings surface currently returns a plain DTO
-rather than a HAL resource, so Blazor gates edit controls from server-provided
-`CanEdit`.
+### Event Ticketing & Catalog Management Endpoints
+
+Authenticated event-scoped ticket catalog versions, draft authoring, ticket types, and capacity pool management endpoints are exposed under `/api/events/{eventId:guid}/ticketing`:
+
+| Route | Route Name | Auth | Purpose |
+|---|---|---|---|
+| `GET /api/events/{eventId}/ticketing` | `GetEventTicketCatalogManagement` | `[Authorize]` | Returns full ticket catalog management DTO (versions, ticket types, capacity pools, monetization settings). |
+| `POST /api/events/{eventId}/ticketing/draft` | `CreateEventTicketCatalogDraft` | `[Authorize]` | Creates a new draft catalog version with currency code. |
+| `POST /api/events/{eventId}/ticketing/draft:clone` | `CloneEventTicketCatalogDraft` | `[Authorize]` | Clones active published catalog version into a working draft version. |
+| `POST /api/events/{eventId}/ticketing/ticket-types` | `CreateEventTicketType` | `[Authorize]` | Adds a new ticket type (pricing mode, price, capacity pool assignment) to draft catalog. |
+| `PUT /api/events/{eventId}/ticketing/ticket-types/{ticketTypeId}` | `UpdateEventTicketType` | `[Authorize]` | Updates an existing ticket type configuration. |
+| `DELETE /api/events/{eventId}/ticketing/ticket-types/{ticketTypeId}` | `DeleteEventTicketType` | `[Authorize]` | Removes a ticket type from draft catalog. |
+| `POST /api/events/{eventId}/ticketing/capacity-pools` | `CreateEventCapacityPool` | `[Authorize]` | Creates a shared capacity pool with oversell policy and seat allocations. |
+| `PUT /api/events/{eventId}/ticketing/capacity-pools/{capacityPoolId}` | `UpdateEventCapacityPool` | `[Authorize]` | Updates capacity pool limits and oversell policy. |
+| `DELETE /api/events/{eventId}/ticketing/capacity-pools/{capacityPoolId}` | `DeleteEventCapacityPool` | `[Authorize]` | Deletes a capacity pool. |
+| `POST /api/events/{eventId}/ticketing/publish` | `PublishEventTicketCatalog` | `[Authorize]` | Promotes draft catalog version to published status and archives former version. |
 
 ---
 
@@ -828,12 +838,22 @@ Gates onboarding endpoints behind the setup secret:
 | `GET /api/event` | Anonymous HAL collection of `EventDiscoveryItemDto`. Each item is either the existing local `EventListDto` projection or a bounded `FederatedEventDto`; the federated projection does not return raw provider payloads, credentials, DIDs, record keys, or external source URLs. |
 | `GET /api/event/federated/{atprotoRecordId}/source` | Anonymous, globally rate-limited `302` to the current tenant-visible normalized HTTPS source. Disabled capability, missing/tombstoned/cross-tenant records, and unsafe targets all return `404`. |
 | `GET /api/settings/instance/atproto-federation`; keyed `/api/settings/instance/atproto-federation/{key}` and `/api/settings/instance/atproto-federation/{key}/lock` mutations | Instance-admin HAL surface for the exact capability and validation-profile keys. Update and lock affordances are server-produced. |
+| `POST /api/actor/{actorId}/moderation/suspend` | Suspend the global Actor. The body contains only `reasonCode`; the route selects `Suspend`. |
+| `POST /api/actor/{actorId}/moderation/reinstate` | Reinstate the global Actor. The body contains only `reasonCode`; the route selects `Reinstate`. |
+| `POST /api/actor/atproto-identities/{identityId}/moderation/suspend` | Suspend one exact global ATProto identity credential. The body contains only `reasonCode`; the route selects `Suspend`. |
+| `POST /api/actor/atproto-identities/{identityId}/moderation/reinstate` | Reinstate one exact global ATProto identity credential without changing `IsActive`. The body contains only `reasonCode`; the route selects `Reinstate`. |
 
 `federation.atproto_events_enabled` is the single capability for tenant presentation of inbound community events and eligible outbound event/RSVP enqueue. `federation.atproto_event_validation_profile=community_lexicon` relaxes only the required local business fields for publication; it does not relax supplied-value validation, authorization, privacy, projection completeness, or record validation. Outbound publication additionally requires the owner's self-scoped `federation.atproto_publish_my_events` consent and one exact linked encrypted ATProto session.
+
+The four moderation POST routes are authenticated instance operations. Their commands authorize update of the instance setting resource `global-actor-moderation`, then handlers recheck instance-admin authority before target lookup. A tenant administrator cannot mutate either global state. Same-state retries return success without another aggregate update or moderation record. Every accepted request invalidates HybridCache Event tags and output-cache discovery, detail, home, and sitemap tags.
 
 Event publication is database-first: the committed local lifecycle mutation and immutable `PdsSyncOutbox` intent share one transaction, and CarpaNet PDS I/O occurs later under a fenced worker claim. Every eligible public event/session/aspect/resolved-lookup/EAV value must be mapped natively or rendered into the one community event `description`; coverage, privacy, JSON/DAG-CBOR size, or validation failure prevents enqueue, with no truncation or silent omission. RSVP egress represents only a committed active registration as `community.lexicon.calendar.rsvp#going`, ignores organizer approval state, and remains blocked until the event's settled URI/CID can form the exact `strongRef`.
 
 Ingress uses one globally leased Jetstream consumer for exactly `community.lexicon.calendar.event` and `community.lexicon.calendar.rsvp`. Canonical DID/collection/record-key state, current source version, typed event projection, tenant presentation, quarantine/tombstone effects, and cursor advancement are persisted atomically. Public clients must treat HAL links as action authority: federated items have no write affordances, and `source` exists only when the server can safely resolve the internal redirect route.
+
+Public Event reads require a published, public, non-deleted Event and active Actor. Local User Events additionally require an active `TenantUser`; local Organization and Group Events require approved, visible, unsuspended participation, without rechecking organizer eligibility. Inbound federated Events instead require the current visible tenant presentation, non-tombstoned record, and exact active DID identity owned by the Actor. Anonymous child reads inherit the same parent gate. Authorized management detail remains available through `view-management` when public eligibility fails, and HAL omits public affordances from that management representation.
+
+Inbound projection discovery keeps public Draft, Cancelled, and Completed projections, deduplicates Published projections to the local Event branch, and hides Moderated, Archived, deleted, non-public, tombstoned, stale-presentation, or identity-ineligible projections. The exact source redirect applies the same base gate. Outbound planning skips an ungrounded ineligible Create, converts a grounded ineligible Update to a fenced Delete, and rechecks identity, session, source version, ownership, record key, and CID fences at delivery. RSVP behavior is unchanged.
 
 The removed raw `/api/atprotorecord`, `/api/indexeddid`, `/api/userexternallogin`, `/api/actorkeystore`, and `/api/syncstate` surfaces have no compatibility aliases. Clients cannot assert provider, DID, PDS, key, tenant, user, encrypted signing material, or ingestion cursor state through generic CRUD. Authenticated session-metadata reads and idempotent local session deletion remain credential-free; verified authentication, fenced Jetstream ingestion, and other dedicated federation internals are the only authorities over linked identity and provider-owned state. The checked-in OpenAPI contract and [API Contract Inventory](API_CONTRACT_INVENTORY.md) are the route/schema authority.
 
