@@ -682,406 +682,6 @@
         "x-output-cache-policy": "ListData"
       }
     },
-    "/api/actorkeystore": {
-      "get": {
-        "tags": [
-          "ActorKeyStore"
-        ],
-        "summary": "Get all Actor Key Stores",
-        "description": "Retrieve a list of all actor key stores",
-        "operationId": "GetActorKeyStores",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ActorKeyStoreListDto"
-                  }
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ActorKeyStoreListDto"
-                  }
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ActorKeyStoreListDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated",
-        "x-output-cache-policy": "ListData"
-      },
-      "post": {
-        "tags": [
-          "ActorKeyStore"
-        ],
-        "summary": "Create new Actor Key Store",
-        "description": "Create a new actor key store",
-        "operationId": "CreateActorKeyStore",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateActorKeyStoreDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateActorKeyStoreDto"
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateActorKeyStoreDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated"
-      }
-    },
-    "/api/actorkeystore/{id}": {
-      "get": {
-        "tags": [
-          "ActorKeyStore"
-        ],
-        "summary": "Get Actor Key Store by ID",
-        "description": "Retrieve details of a specific actor key store",
-        "operationId": "GetActorKeyStoreById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActorKeyStoreDto"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActorKeyStoreDto"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActorKeyStoreDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated",
-        "x-output-cache-policy": "DetailData"
-      },
-      "put": {
-        "tags": [
-          "ActorKeyStore"
-        ],
-        "summary": "Update Actor Key Store",
-        "description": "Update an existing actor key store",
-        "operationId": "UpdateActorKeyStore",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateActorKeyStoreDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateActorKeyStoreDto"
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateActorKeyStoreDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated"
-      },
-      "delete": {
-        "tags": [
-          "ActorKeyStore"
-        ],
-        "summary": "Delete Actor Key Store",
-        "description": "Delete an actor key store",
-        "operationId": "DeleteActorKeyStore",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated"
-      }
-    },
     "/api/actor-subscriptions": {
       "get": {
         "tags": [
@@ -8801,7 +8401,7 @@
           "CustomPropertyDefinition"
         ],
         "summary": "Update CustomPropertyDefinition",
-        "description": "Update an existing shared custom-property definition and replace its option set.",
+        "description": "Update supplied groups on a shared custom-property definition; options are replaced only when supplied.",
         "operationId": "UpdateCustomPropertyDefinition",
         "parameters": [
           {
@@ -8905,6 +8505,23 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -16828,6 +16445,23 @@
               "application/json": { },
               "application/hal+json": { }
             }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
           }
         },
         "x-endpoint-class": "Authenticated"
@@ -16910,7 +16544,7 @@
           "EventCustomProperty"
         ],
         "summary": "Update EventCustomPropertyDefinition",
-        "description": "Update an existing event-local custom property definition and replace its option set. Provenance fields (source template information) are read-only and preserved.",
+        "description": "Update supplied groups on an event-local custom property definition; options are replaced only when supplied. Provenance fields (source template information) are read-only and preserved.",
         "operationId": "UpdateEventCustomPropertyDefinition",
         "parameters": [
           {
@@ -17014,6 +16648,23 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -21797,7 +21448,7 @@
       }
     },
     "/api/event-reports/my/{reportId}/communication-consent": {
-      "put": {
+      "patch": {
         "tags": [
           "EventReports"
         ],
@@ -25014,6 +24665,23 @@
               "application/json": { },
               "application/hal+json": { }
             }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
           }
         },
         "x-endpoint-class": "Authenticated"
@@ -25096,7 +24764,7 @@
           "EventSessionCustomProperty"
         ],
         "summary": "Update EventSessionCustomPropertyDefinition",
-        "description": "Update an existing event-session-local custom property definition and replace its option set. Provenance fields (source template information) are read-only and preserved.",
+        "description": "Update supplied groups on an event-session-local custom property definition; options are replaced only when supplied. Provenance fields (source template information) are read-only and preserved.",
         "operationId": "UpdateEventSessionCustomPropertyDefinition",
         "parameters": [
           {
@@ -25200,6 +24868,23 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -28266,12 +27951,12 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "EventSessionTemplate"
         ],
         "summary": "Update EventSessionTemplate",
-        "description": "Update an existing event session template and replace its definition set.",
+        "description": "Update supplied event session template groups; definitions are replaced only when supplied.",
         "operationId": "UpdateEventSessionTemplate",
         "parameters": [
           {
@@ -28281,6 +27966,14 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -28350,6 +28043,40 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -29742,12 +29469,12 @@
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "EventTemplate"
         ],
         "summary": "Update EventTemplate",
-        "description": "Update an existing event template and replace its definition set.",
+        "description": "Update supplied event template groups; definitions are replaced only when supplied.",
         "operationId": "UpdateEventTemplate",
         "parameters": [
           {
@@ -29757,6 +29484,14 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -29843,6 +29578,40 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -30436,6 +30205,1507 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/events/{eventId}/ticketing": {
+      "get": {
+        "tags": [
+          "EventTicketing"
+        ],
+        "operationId": "GetEventTicketCatalogManagement",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventTicketCatalogManagementDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventTicketCatalogManagementDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventTicketCatalogManagementDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/events/{eventId}/ticketing/draft": {
+      "post": {
+        "tags": [
+          "EventTicketing"
+        ],
+        "operationId": "CreateEventTicketCatalogDraft",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventTicketCatalogDraftCommand"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventTicketCatalogDraftCommand"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventTicketCatalogDraftCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/events/{eventId}/ticketing/draft:clone": {
+      "post": {
+        "tags": [
+          "EventTicketing"
+        ],
+        "operationId": "CloneEventTicketCatalogDraft",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/events/{eventId}/ticketing/ticket-types": {
+      "post": {
+        "tags": [
+          "EventTicketing"
+        ],
+        "operationId": "CreateEventTicketType",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventTicketTypeDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventTicketTypeDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventTicketTypeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/events/{eventId}/ticketing/ticket-types/{ticketTypeId}": {
+      "put": {
+        "tags": [
+          "EventTicketing"
+        ],
+        "operationId": "UpdateEventTicketType",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "ticketTypeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventTicketTypeDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventTicketTypeDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventTicketTypeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      },
+      "delete": {
+        "tags": [
+          "EventTicketing"
+        ],
+        "operationId": "DeleteEventTicketType",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "ticketTypeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/events/{eventId}/ticketing/capacity-pools": {
+      "post": {
+        "tags": [
+          "EventTicketing"
+        ],
+        "operationId": "CreateEventCapacityPool",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventCapacityPoolDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventCapacityPoolDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventCapacityPoolDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/events/{eventId}/ticketing/capacity-pools/{capacityPoolId}": {
+      "put": {
+        "tags": [
+          "EventTicketing"
+        ],
+        "operationId": "UpdateEventCapacityPool",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "capacityPoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventCapacityPoolDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventCapacityPoolDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventCapacityPoolDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      },
+      "delete": {
+        "tags": [
+          "EventTicketing"
+        ],
+        "operationId": "DeleteEventCapacityPool",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "capacityPoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/events/{eventId}/ticketing/publish": {
+      "post": {
+        "tags": [
+          "EventTicketing"
+        ],
+        "operationId": "PublishEventTicketCatalog",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
     "/api/eventtype": {
       "get": {
         "tags": [
@@ -30840,7 +32110,7 @@
         "x-endpoint-class": "Authenticated",
         "x-rate-limit-policy": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "ExternalApiKey"
         ],
@@ -34297,7 +35567,7 @@
       }
     },
     "/api/instance/settings/moderation-reporting/locks": {
-      "put": {
+      "patch": {
         "tags": [
           "InstanceModerationReportingSettings"
         ],
@@ -39733,7 +41003,7 @@
         },
         "x-endpoint-class": "Public"
       },
-      "put": {
+      "patch": {
         "tags": [
           "ListmonkIntegrationSettings"
         ],
@@ -40359,7 +41629,7 @@
       }
     },
     "/api/admin/localization/governance": {
-      "put": {
+      "patch": {
         "tags": [
           "LocalizationAdmin"
         ],
@@ -44794,7 +46064,7 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "ModerationReportingRouting"
         ],
@@ -51717,7 +52987,7 @@
         "x-endpoint-class": "Authenticated",
         "x-output-cache-policy": "DetailData"
       },
-      "put": {
+      "patch": {
         "tags": [
           "StorageObject"
         ],
@@ -53249,308 +54519,6 @@
         },
         "x-endpoint-class": "Authenticated",
         "x-rate-limit-policy": "Authenticated"
-      }
-    },
-    "/api/syncstate": {
-      "get": {
-        "tags": [
-          "SyncState"
-        ],
-        "operationId": "GetSyncStates",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SyncStateListDto"
-                  }
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SyncStateListDto"
-                  }
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SyncStateListDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated",
-        "x-output-cache-policy": "ListData"
-      },
-      "post": {
-        "tags": [
-          "SyncState"
-        ],
-        "operationId": "CreateSyncState",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateSyncStateDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateSyncStateDto"
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateSyncStateDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfint"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfint"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfint"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated"
-      }
-    },
-    "/api/syncstate/{id}": {
-      "get": {
-        "tags": [
-          "SyncState"
-        ],
-        "operationId": "GetSyncStateById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/SyncStateDto"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/SyncStateDto"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/SyncStateDto"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated",
-        "x-output-cache-policy": "DetailData"
-      },
-      "put": {
-        "tags": [
-          "SyncState"
-        ],
-        "operationId": "UpdateSyncState",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSyncStateDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSyncStateDto"
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSyncStateDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfint"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfint"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfint"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated"
-      },
-      "delete": {
-        "tags": [
-          "SyncState"
-        ],
-        "operationId": "DeleteSyncState",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        },
-        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/system/onboarding-status": {
@@ -60992,7 +61960,7 @@
       }
     },
     "/api/webhooks/consumers/{consumerId}/provider-mode": {
-      "put": {
+      "patch": {
         "tags": [
           "Webhooks"
         ],
@@ -61538,7 +62506,7 @@
         "x-endpoint-class": "Public",
         "x-rate-limit-policy": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "Webhooks"
         ],
@@ -62973,94 +63941,6 @@
               "null",
               "string"
             ],
-            "format": "date-time"
-          }
-        }
-      },
-      "ActorKeyStoreDto": {
-        "required": [
-          "actorDisplayName",
-          "actorDid",
-          "tenantFullName",
-          "keyPurpose",
-          "privateKeyEncrypted",
-          "publicKey"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "actorId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "actorDisplayName": {
-            "type": "string"
-          },
-          "actorDid": {
-            "type": "string"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tenantFullName": {
-            "type": "string"
-          },
-          "keyPurpose": {
-            "type": "string"
-          },
-          "privateKeyEncrypted": {
-            "type": "string"
-          },
-          "publicKey": {
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "ActorKeyStoreListDto": {
-        "required": [
-          "actorDisplayName",
-          "actorDid",
-          "keyPurpose"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "actorId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "actorDisplayName": {
-            "type": "string"
-          },
-          "actorDid": {
-            "type": "string"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "keyPurpose": {
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string",
             "format": "date-time"
           }
         }
@@ -67362,36 +68242,6 @@
           }
         }
       },
-      "CreateActorKeyStoreDto": {
-        "required": [
-          "keyPurpose",
-          "privateKeyEncrypted",
-          "publicKey"
-        ],
-        "type": "object",
-        "properties": {
-          "actorId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "keyPurpose": {
-            "type": "string"
-          },
-          "privateKeyEncrypted": {
-            "type": "string"
-          },
-          "publicKey": {
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          }
-        }
-      },
       "CreateAiConversationRequestDto": {
         "type": "object",
         "properties": {
@@ -69755,6 +70605,21 @@
           }
         }
       },
+      "CreateEventTicketCatalogDraftCommand": {
+        "required": [
+          "currencyCode"
+        ],
+        "type": "object",
+        "properties": {
+          "currencyCode": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "CreateExternalApiKeyCommandResponse": {
         "type": "object",
         "properties": {
@@ -70286,32 +71151,6 @@
           },
           "idempotencyKey": {
             "type": "string"
-          }
-        }
-      },
-      "CreateSyncStateDto": {
-        "required": [
-          "service"
-        ],
-        "type": "object",
-        "properties": {
-          "service": {
-            "type": "string"
-          },
-          "cursor": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "lastSeqTime": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
           }
         }
       },
@@ -72052,6 +72891,46 @@
             "items": {
               "$ref": "#/components/schemas/AgendaDayGroupDto"
             }
+          }
+        }
+      },
+      "EventCapacityPoolDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "maximumQuantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "holdDurationSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "capacityOversellPolicyId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "isActive": {
+            "type": "boolean"
           }
         }
       },
@@ -77822,6 +78701,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "eventTemplateId": {
             "type": "string",
             "format": "uuid"
@@ -78439,6 +79322,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "tenantId": {
             "type": "string",
             "format": "uuid"
@@ -78872,6 +79759,174 @@
           }
         }
       },
+      "EventTicketCatalogManagementDto": {
+        "type": "object",
+        "properties": {
+          "catalogId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "versionNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "statusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ticketTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventTicketTypeDto"
+            }
+          },
+          "capacityPools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventCapacityPoolDto"
+            }
+          }
+        }
+      },
+      "EventTicketTypeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ticketPricingModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fixedPriceMinor": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "minimumPriceMinor": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "suggestedPriceMinor": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "participantDataCollectionModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "capacityPoolId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "minimumAge": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maximumAge": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "requiresGuardian": {
+            "type": "boolean"
+          },
+          "requiresApproval": {
+            "type": "boolean"
+          },
+          "perOrderLimit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "perAccountLimit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "perVerifiedContactLimit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "perBookingPartyLimit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "entitlements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TicketTypeEntitlementDto"
+            }
+          }
+        }
+      },
       "EventTypeListDto": {
         "required": [
           "fullName",
@@ -78932,6 +79987,24 @@
           "Public"
         ],
         "type": "string"
+      },
+      "ExternalApiKeyAccessPolicyUpdateDto": {
+        "type": "object",
+        "properties": {
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
       },
       "ExternalApiKeyListDto": {
         "required": [
@@ -79049,6 +80122,17 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "ExternalApiKeyMetadataUpdateDto": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
           }
         }
       },
@@ -89960,6 +91044,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "eventTemplateId": {
             "type": "string",
             "format": "uuid"
@@ -90331,6 +91419,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -98103,6 +99195,39 @@
           }
         }
       },
+      "ListmonkBehaviorUpdateDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "preconfirmSubscriptions": {
+            "type": "boolean"
+          },
+          "syncOnRegistration": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ListmonkConnectionUpdateDto": {
+        "type": "object",
+        "properties": {
+          "instanceUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultListId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "ListmonkIntegrationSettingsDto": {
         "type": "object",
         "properties": {
@@ -98193,6 +99318,67 @@
           },
           "tmsApiKeyConfigured": {
             "type": "boolean"
+          }
+        }
+      },
+      "LocalizationLanguagePolicyUpdateDto": {
+        "required": [
+          "defaultLanguage",
+          "fallbackLanguage"
+        ],
+        "type": "object",
+        "properties": {
+          "defaultLanguage": {
+            "type": "string"
+          },
+          "enabledLanguages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fallbackLanguage": {
+            "type": "string"
+          }
+        }
+      },
+      "LocalizationRuntimeUpdateDto": {
+        "type": "object",
+        "properties": {
+          "clientPickerEnabled": {
+            "type": "boolean"
+          },
+          "forceOfflineMode": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LocalizationTmsUpdateDto": {
+        "required": [
+          "provider"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "apiUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "projectId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "component": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -104883,6 +106069,69 @@
           }
         }
       },
+      "ReportCommunicationConsentUpdateDto": {
+        "type": "object",
+        "properties": {
+          "reportCaseUpdatesConsent": {
+            "type": "boolean"
+          },
+          "reportFollowUpContactConsent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReportingProviderCredentialsUpdateDto": {
+        "type": "object",
+        "properties": {
+          "apiKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "webhookSecret": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ReportingProviderLockUpdateDto": {
+        "type": "object",
+        "properties": {
+          "locked": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReportingProviderRoutingUpdateDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "routingMode": {
+            "type": "string"
+          },
+          "endpointUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "credentials": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReportingProviderCredentialsUpdateDto"
+              }
+            ]
+          }
+        }
+      },
       "ReportingProviderStateDto": {
         "type": "object",
         "properties": {
@@ -104953,6 +106202,17 @@
           },
           "apiKeyConfigured": {
             "type": "boolean"
+          }
+        }
+      },
+      "ReportingRoutingPolicyUpdateDto": {
+        "type": "object",
+        "properties": {
+          "externalSyncEnabled": {
+            "type": "boolean"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/EventReportProviderEvidenceMode"
           }
         }
       },
@@ -106066,6 +107326,21 @@
           }
         }
       },
+      "StorageObjectAccessUpdateDto": {
+        "required": [
+          "visibility",
+          "purpose"
+        ],
+        "type": "object",
+        "properties": {
+          "visibility": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          }
+        }
+      },
       "StorageObjectDto": {
         "required": [
           "uri",
@@ -106291,6 +107566,66 @@
           },
           "tenantId": {
             "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "StorageObjectMetadataUpdateDto": {
+        "required": [
+          "fullName",
+          "extension"
+        ],
+        "type": "object",
+        "properties": {
+          "fileTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "safeDisplayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "extension": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "StorageObjectOwnershipUpdateDto": {
+        "type": "object",
+        "properties": {
+          "owningResourceKind": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "owningResourceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorId": {
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           }
         }
@@ -106882,75 +108217,6 @@
           },
           "reason": {
             "type": "string"
-          }
-        }
-      },
-      "SyncStateDto": {
-        "required": [
-          "service"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "service": {
-            "type": "string"
-          },
-          "cursor": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "lastSeqTime": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "SyncStateListDto": {
-        "required": [
-          "service"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "service": {
-            "type": "string"
-          },
-          "cursor": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
           }
         }
       },
@@ -108514,6 +109780,49 @@
           }
         }
       },
+      "TicketTypeEntitlementDto": {
+        "type": "object",
+        "properties": {
+          "entitlementScopeTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "eventDayId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "eventSessionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "includedQuantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "entitlementSelectionRuleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "TriageModerationReportRequestDto": {
         "required": [
           "queueCode"
@@ -108877,40 +110186,6 @@
           }
         }
       },
-      "UpdateActorKeyStoreDto": {
-        "required": [
-          "keyPurpose",
-          "privateKeyEncrypted",
-          "publicKey"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "actorId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "keyPurpose": {
-            "type": "string"
-          },
-          "privateKeyEncrypted": {
-            "type": "string"
-          },
-          "publicKey": {
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          }
-        }
-      },
       "UpdateActorProfileDto": {
         "type": "object",
         "properties": {
@@ -109132,6 +110407,16 @@
       "UpdateCustomPropertyDefinitionDto": {
         "type": "object",
         "properties": {
+          "relations": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateCustomPropertyDefinitionRelationsDto"
+              }
+            ]
+          },
           "metadata": {
             "oneOf": [
               {
@@ -109187,28 +110472,6 @@
           },
           "description": {
             "$ref": "#/components/schemas/OptionalUpdateOfstring"
-          },
-          "propertyType": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/PropertyType"
-              }
-            ]
-          },
-          "isRequired": {
-            "type": [
-              "null",
-              "boolean"
-            ]
-          },
-          "isMulti": {
-            "type": [
-              "null",
-              "boolean"
-            ]
           },
           "isActive": {
             "type": [
@@ -109287,9 +110550,46 @@
           }
         }
       },
+      "UpdateCustomPropertyDefinitionRelationsDto": {
+        "type": "object",
+        "properties": {
+          "entityTypeName": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EntityTypeName"
+              }
+            ]
+          }
+        }
+      },
       "UpdateCustomPropertyDefinitionValidationDto": {
         "type": "object",
         "properties": {
+          "propertyType": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PropertyType"
+              }
+            ]
+          },
+          "isRequired": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "isMulti": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
           "defaultTextValue": {
             "$ref": "#/components/schemas/OptionalUpdateOfstring"
           },
@@ -109561,165 +110861,46 @@
       "UpdateEventCustomPropertyDefinitionDto": {
         "type": "object",
         "properties": {
-          "eventId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "namespace": {
-            "type": "string"
-          },
-          "key": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateCustomPropertyDefinitionMetadataDto"
+              }
             ]
           },
-          "propertyType": {
-            "$ref": "#/components/schemas/PropertyType"
-          },
-          "isRequired": {
-            "type": "boolean"
-          },
-          "isMulti": {
-            "type": "boolean"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "sortOrder": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "exposureLevel": {
-            "$ref": "#/components/schemas/ExposureLevel"
-          },
-          "isSearchable": {
-            "type": "boolean"
-          },
-          "isFilterable": {
-            "type": "boolean"
-          },
-          "isExportable": {
-            "type": "boolean"
-          },
-          "isModerationRelevant": {
-            "type": "boolean"
-          },
-          "isAnalyticsRelevant": {
-            "type": "boolean"
-          },
-          "isSystemOwned": {
-            "type": "boolean"
-          },
-          "defaultTextValue": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "defaultNumberValue": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "defaultBooleanValue": {
-            "type": [
-              "null",
-              "boolean"
-            ]
-          },
-          "defaultDateTimeValue": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "defaultOptionId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "minLength": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "maxLength": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "regexPattern": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "minNumber": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "maxNumber": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "minDateTime": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "maxDateTime": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "allowedUrlSchemes": {
-            "type": [
-              "null",
-              "string"
+          "validation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateCustomPropertyDefinitionValidationDto"
+              }
             ]
           },
           "options": {
-            "type": "array",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventCustomPropertyDefinitionOptionsDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventCustomPropertyDefinitionOptionsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "$ref": "#/components/schemas/CreateEventCustomPropertyOptionDto"
             }
@@ -110697,165 +111878,46 @@
       "UpdateEventSessionCustomPropertyDefinitionDto": {
         "type": "object",
         "properties": {
-          "eventSessionId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "namespace": {
-            "type": "string"
-          },
-          "key": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateCustomPropertyDefinitionMetadataDto"
+              }
             ]
           },
-          "propertyType": {
-            "$ref": "#/components/schemas/PropertyType"
-          },
-          "isRequired": {
-            "type": "boolean"
-          },
-          "isMulti": {
-            "type": "boolean"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "sortOrder": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "exposureLevel": {
-            "$ref": "#/components/schemas/ExposureLevel"
-          },
-          "isSearchable": {
-            "type": "boolean"
-          },
-          "isFilterable": {
-            "type": "boolean"
-          },
-          "isExportable": {
-            "type": "boolean"
-          },
-          "isModerationRelevant": {
-            "type": "boolean"
-          },
-          "isAnalyticsRelevant": {
-            "type": "boolean"
-          },
-          "isSystemOwned": {
-            "type": "boolean"
-          },
-          "defaultTextValue": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "defaultNumberValue": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "defaultBooleanValue": {
-            "type": [
-              "null",
-              "boolean"
-            ]
-          },
-          "defaultDateTimeValue": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "defaultOptionId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "minLength": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "maxLength": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "regexPattern": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "minNumber": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "maxNumber": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "minDateTime": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "maxDateTime": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "allowedUrlSchemes": {
-            "type": [
-              "null",
-              "string"
+          "validation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateCustomPropertyDefinitionValidationDto"
+              }
             ]
           },
           "options": {
-            "type": "array",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionCustomPropertyDefinitionOptionsDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventSessionCustomPropertyDefinitionOptionsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "$ref": "#/components/schemas/CreateEventSessionCustomPropertyOptionDto"
             }
@@ -111324,56 +112386,92 @@
           }
         }
       },
+      "UpdateEventSessionTemplateDefinitionsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/CreateEventSessionTemplateDefinitionDto"
+            }
+          }
+        }
+      },
       "UpdateEventSessionTemplateDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionTemplateMetadataDto"
+              }
+            ]
           },
-          "eventTemplateId": {
-            "type": "string",
-            "format": "uuid"
-          },
+          "definitions": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventSessionTemplateDefinitionsDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventSessionTemplateMetadataDto": {
+        "type": "object",
+        "properties": {
           "sessionTemplateKey": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "description": {
             "type": [
               "null",
               "string"
             ]
           },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
           "version": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int32"
           },
           "isPublished": {
-            "type": "boolean"
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
           "isActive": {
-            "type": "boolean"
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
           "sortOrder": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int32"
-          },
-          "definitions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateEventSessionTemplateDefinitionDto"
-            }
           }
         }
       },
@@ -111514,61 +112612,95 @@
           }
         }
       },
+      "UpdateEventTemplateDefinitionsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/CreateEventTemplateDefinitionDto"
+            }
+          }
+        }
+      },
       "UpdateEventTemplateDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventTemplateMetadataDto"
+              }
+            ]
           },
+          "definitions": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventTemplateDefinitionsDto"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateEventTemplateMetadataDto": {
+        "type": "object",
+        "properties": {
           "templateKey": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "description": {
             "type": [
               "null",
               "string"
             ]
           },
-          "eventTypeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
+          "displayName": {
             "type": [
               "null",
-              "integer",
               "string"
-            ],
-            "format": "int32"
+            ]
+          },
+          "description": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "eventTypeId": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
           },
           "version": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int32"
           },
           "isPublished": {
-            "type": "boolean"
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
           "isActive": {
-            "type": "boolean"
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
           "sortOrder": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int32"
-          },
-          "definitions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateEventTemplateDefinitionDto"
-            }
           }
         }
       },
@@ -111605,30 +112737,27 @@
         }
       },
       "UpdateExternalApiKeyPolicyDto": {
-        "required": [
-          "name"
-        ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExternalApiKeyMetadataUpdateDto"
+              }
+            ]
           },
-          "name": {
-            "type": "string"
-          },
-          "scopes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "expiresAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
+          "accessPolicy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExternalApiKeyAccessPolicyUpdateDto"
+              }
+            ]
           }
         }
       },
@@ -111746,72 +112875,60 @@
       "UpdateListmonkIntegrationSettingsDto": {
         "type": "object",
         "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "instanceUrl": {
-            "type": [
-              "null",
-              "string"
+          "connection": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ListmonkConnectionUpdateDto"
+              }
             ]
           },
-          "defaultListId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "preconfirmSubscriptions": {
-            "type": "boolean"
-          },
-          "syncOnRegistration": {
-            "type": "boolean"
+          "behavior": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ListmonkBehaviorUpdateDto"
+              }
+            ]
           }
         }
       },
       "UpdateLocalizationGovernanceDto": {
         "type": "object",
         "properties": {
-          "defaultLanguage": {
-            "type": "string"
-          },
-          "tmsProvider": {
-            "type": "string"
-          },
-          "tmsApiUrl": {
-            "type": [
-              "null",
-              "string"
+          "tms": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LocalizationTmsUpdateDto"
+              }
             ]
           },
-          "tmsProjectId": {
-            "type": [
-              "null",
-              "string"
+          "languages": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LocalizationLanguagePolicyUpdateDto"
+              }
             ]
           },
-          "tmsComponent": {
-            "type": [
-              "null",
-              "string"
+          "runtime": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LocalizationRuntimeUpdateDto"
+              }
             ]
-          },
-          "enabledLanguages": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "fallbackLanguage": {
-            "type": "string"
-          },
-          "clientPickerEnabled": {
-            "type": "boolean"
-          },
-          "forceOfflineMode": {
-            "type": "boolean"
           }
         }
       },
@@ -112103,16 +113220,12 @@
       },
       "UpdateMyReportCommunicationConsentDto": {
         "required": [
-          "reportCaseUpdatesConsent",
-          "reportFollowUpContactConsent"
+          "consent"
         ],
         "type": "object",
         "properties": {
-          "reportCaseUpdatesConsent": {
-            "type": "boolean"
-          },
-          "reportFollowUpContactConsent": {
-            "type": "boolean"
+          "consent": {
+            "$ref": "#/components/schemas/ReportCommunicationConsentUpdateDto"
           }
         }
       },
@@ -112327,72 +113440,69 @@
       "UpdateReportingProviderLocksDto": {
         "type": "object",
         "properties": {
-          "lockReportingProviders": {
-            "type": "boolean"
+          "general": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReportingProviderLockUpdateDto"
+              }
+            ]
           },
-          "lockTenantOspreyProvider": {
-            "type": "boolean"
+          "osprey": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReportingProviderLockUpdateDto"
+              }
+            ]
           },
-          "lockTenantCoopProvider": {
-            "type": "boolean"
+          "coop": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReportingProviderLockUpdateDto"
+              }
+            ]
           }
         }
       },
       "UpdateReportingRoutingSettingsDto": {
         "type": "object",
         "properties": {
-          "externalSyncEnabled": {
-            "type": "boolean"
-          },
-          "enableTenantOspreyProvider": {
-            "type": "boolean"
-          },
-          "enableTenantCoopProvider": {
-            "type": "boolean"
-          },
-          "ospreyRoutingMode": {
-            "type": "string"
-          },
-          "coopRoutingMode": {
-            "type": "string"
-          },
-          "evidenceMode": {
-            "$ref": "#/components/schemas/EventReportProviderEvidenceMode"
-          },
-          "ospreyEndpointUrl": {
-            "type": [
-              "null",
-              "string"
+          "policy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReportingRoutingPolicyUpdateDto"
+              }
             ]
           },
-          "ospreyApiKey": {
-            "type": [
-              "null",
-              "string"
+          "osprey": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReportingProviderRoutingUpdateDto"
+              }
             ]
           },
-          "ospreyWebhookSecret": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "coopEndpointUrl": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "coopApiKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "coopWebhookSecret": {
-            "type": [
-              "null",
-              "string"
+          "coop": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReportingProviderRoutingUpdateDto"
+              }
             ]
           }
         }
@@ -112433,135 +113543,37 @@
         }
       },
       "UpdateStorageObjectDto": {
-        "required": [
-          "uri",
-          "fullName",
-          "extension"
-        ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "fileTypeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "uri": {
-            "type": "string"
-          },
-          "objectKey": {
-            "type": [
-              "null",
-              "string"
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StorageObjectMetadataUpdateDto"
+              }
             ]
           },
-          "provider": {
-            "type": "string"
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "safeDisplayName": {
-            "type": [
-              "null",
-              "string"
+          "access": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StorageObjectAccessUpdateDto"
+              }
             ]
           },
-          "extension": {
-            "type": "string"
-          },
-          "contentType": {
-            "type": [
-              "null",
-              "string"
+          "ownership": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StorageObjectOwnershipUpdateDto"
+              }
             ]
-          },
-          "sha256Checksum": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "size": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "visibility": {
-            "type": "string"
-          },
-          "purpose": {
-            "type": "string"
-          },
-          "lifecycleState": {
-            "type": "string"
-          },
-          "owningResourceKind": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "owningResourceId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "actorId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          }
-        }
-      },
-      "UpdateSyncStateDto": {
-        "required": [
-          "service"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "service": {
-            "type": "string"
-          },
-          "cursor": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "lastSeqTime": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
           }
         }
       },
@@ -113055,7 +114067,7 @@
           }
         }
       },
-      "UpdateWebhookConsumerProviderModeRequestDto": {
+      "UpdateWebhookConsumerProviderModeDto": {
         "required": [
           "pendingWorkReason"
         ],
@@ -113093,29 +114105,24 @@
           }
         }
       },
-      "UpdateWebhookEndpointRequestDto": {
-        "required": [
-          "url",
-          "pendingWorkReason"
-        ],
+      "UpdateWebhookConsumerProviderModeRequestDto": {
         "type": "object",
         "properties": {
-          "url": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
+          "providerMode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateWebhookConsumerProviderModeDto"
+              }
             ]
-          },
-          "eventTypeIds": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
+          }
+        }
+      },
+      "UpdateWebhookEndpointDeliveryPolicyDto": {
+        "type": "object",
+        "properties": {
           "maxAttempts": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -113142,7 +114149,32 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "UpdateWebhookEndpointDestinationDto": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
           },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "UpdateWebhookEndpointGovernanceDto": {
+        "required": [
+          "pendingWorkReason"
+        ],
+        "type": "object",
+        "properties": {
           "expectedConfigurationVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -113164,6 +114196,59 @@
           },
           "acknowledgeUncertainProviderPublications": {
             "type": "boolean"
+          }
+        }
+      },
+      "UpdateWebhookEndpointRequestDto": {
+        "required": [
+          "governance"
+        ],
+        "type": "object",
+        "properties": {
+          "destination": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateWebhookEndpointDestinationDto"
+              }
+            ]
+          },
+          "subscriptions": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateWebhookEndpointSubscriptionsDto"
+              }
+            ]
+          },
+          "deliveryPolicy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateWebhookEndpointDeliveryPolicyDto"
+              }
+            ]
+          },
+          "governance": {
+            "$ref": "#/components/schemas/UpdateWebhookEndpointGovernanceDto"
+          }
+        }
+      },
+      "UpdateWebhookEndpointSubscriptionsDto": {
+        "type": "object",
+        "properties": {
+          "eventTypeIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         }
       },
@@ -115170,9 +116255,6 @@
       "name": "Actor"
     },
     {
-      "name": "ActorKeyStore"
-    },
-    {
       "name": "ActorSubscription"
     },
     {
@@ -115308,6 +116390,9 @@
       "name": "EventTemplateSync"
     },
     {
+      "name": "EventTicketing"
+    },
+    {
       "name": "EventType"
     },
     {
@@ -115426,9 +116511,6 @@
     },
     {
       "name": "SupportAccess"
-    },
-    {
-      "name": "SyncState"
     },
     {
       "name": "System"

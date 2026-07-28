@@ -75,6 +75,10 @@ public class ContractInvariantsTests
             .DoesNotContain(path => path.StartsWith("/api/userexternallogin", System.StringComparison.OrdinalIgnoreCase));
         await Assert.That(paths)
             .DoesNotContain(path => path.StartsWith("/api/indexeddid", System.StringComparison.OrdinalIgnoreCase));
+        await Assert.That(paths)
+            .DoesNotContain(path => path.StartsWith("/api/actorkeystore", System.StringComparison.OrdinalIgnoreCase));
+        await Assert.That(paths)
+            .DoesNotContain(path => path.StartsWith("/api/syncstate", System.StringComparison.OrdinalIgnoreCase));
     }
 
     [Test]
