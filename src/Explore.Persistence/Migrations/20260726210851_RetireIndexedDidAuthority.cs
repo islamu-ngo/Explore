@@ -1,7 +1,7 @@
 // ABOUTME: Promotes the legacy IndexedDid cache into exact-DID AtprotoIdentity authority before removing its table.
 // ABOUTME: Creates deterministic external Actors for previously unclassified indexed identities and preserves downgrade data.
 
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable

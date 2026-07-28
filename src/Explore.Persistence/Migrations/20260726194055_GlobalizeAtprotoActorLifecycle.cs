@@ -1,7 +1,7 @@
 // ABOUTME: Globalizes Actors and concrete subjects while preserving tenant participation and exact-DID identity data.
 // ABOUTME: Performs a guarded PostgreSQL expand-backfill-contract cutover and rejects lossy downgrade attempts.
 
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable

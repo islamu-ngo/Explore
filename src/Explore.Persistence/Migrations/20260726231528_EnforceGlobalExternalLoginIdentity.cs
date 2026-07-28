@@ -1,7 +1,7 @@
 // ABOUTME: Aligns external login keys with bounded DIDs and enforces one global provider identity.
 // ABOUTME: Aborts on duplicate upgrade data or overlong downgrade data before changing constraints.
 
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 

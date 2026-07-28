@@ -585,39 +585,6 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("actor_types", (string)null);
                 });
 
-            modelBuilder.Entity("Explore.Domain.AdvanceRegistrationObligation", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("full_name");
-
-                    b.Property<string>("MasterCode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("master_code");
-
-                    b.HasKey("Id")
-                        .HasName("pk_advance_registration_obligations");
-
-                    b.HasIndex("MasterCode")
-                        .IsUnique()
-                        .HasDatabaseName("ix_advance_registration_obligations_master_code");
-
-                    b.ToTable("advance_registration_obligations", (string)null);
-                });
-
             modelBuilder.Entity("Explore.Domain.Ai.AiConversation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3418,6 +3385,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("event_type_id");
 
+                    b.Property<string>("ExternalRegistrationUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("external_registration_url");
+
                     b.Property<Guid?>("FeaturedImageId")
                         .HasColumnType("uuid")
                         .HasColumnName("featured_image_id");
@@ -3437,6 +3409,10 @@ namespace Explore.Persistence.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsRegistrationRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_registration_required");
 
                     b.Property<DateOnly?>("LastSessionDate")
                         .HasColumnType("date")
@@ -5341,86 +5317,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_event_organizer_claim_statuses_master_code");
 
                     b.ToTable("event_organizer_claim_statuses", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventParticipationConfiguration", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("AdvanceRegistrationObligationId")
-                        .HasColumnType("integer")
-                        .HasColumnName("advance_registration_obligation_id");
-
-                    b.Property<Guid>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("uuid")
-                        .HasColumnName("concurrency_stamp");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("deleted_by");
-
-                    b.Property<int?>("GuestRecoveryPolicy")
-                        .HasColumnType("integer")
-                        .HasColumnName("guest_recovery_policy");
-
-                    b.Property<int?>("IdentityAccessModeId")
-                        .HasColumnType("integer")
-                        .HasColumnName("identity_access_mode_id");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_deleted");
-
-                    b.Property<int>("ParticipationHandlingModeId")
-                        .HasColumnType("integer")
-                        .HasColumnName("participation_handling_mode_id");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.HasKey("Id")
-                        .HasName("pk_event_participation_configurations");
-
-                    b.HasIndex("AdvanceRegistrationObligationId")
-                        .HasDatabaseName("ix_event_participation_configurations_advance_registration_obl");
-
-                    b.HasIndex("IdentityAccessModeId")
-                        .HasDatabaseName("ix_event_participation_configurations_identity_access_mode_id");
-
-                    b.HasIndex("ParticipationHandlingModeId")
-                        .HasDatabaseName("ix_event_participation_configurations_participation_handling_m");
-
-                    b.HasIndex("TenantId", "Id")
-                        .IsUnique()
-                        .HasDatabaseName("ix_event_participation_configurations_tenant_id_id");
-
-                    b.ToTable("event_participation_configurations", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventProvenanceType", b =>
@@ -10861,39 +10757,6 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("idempotency_records", (string)null);
                 });
 
-            modelBuilder.Entity("Explore.Domain.IdentityAccessMode", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("full_name");
-
-                    b.Property<string>("MasterCode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("master_code");
-
-                    b.HasKey("Id")
-                        .HasName("pk_identity_access_modes");
-
-                    b.HasIndex("MasterCode")
-                        .IsUnique()
-                        .HasDatabaseName("ix_identity_access_modes_master_code");
-
-                    b.ToTable("identity_access_modes", (string)null);
-                });
-
             modelBuilder.Entity("Explore.Domain.IncomingWebhookEffectOutbox", b =>
                 {
                     b.Property<Guid>("Id")
@@ -15020,39 +14883,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_owner_types");
 
                     b.ToTable("owner_types", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.ParticipationHandlingMode", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("full_name");
-
-                    b.Property<string>("MasterCode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("master_code");
-
-                    b.HasKey("Id")
-                        .HasName("pk_participation_handling_modes");
-
-                    b.HasIndex("MasterCode")
-                        .IsUnique()
-                        .HasDatabaseName("ix_participation_handling_modes_master_code");
-
-                    b.ToTable("participation_handling_modes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Permission", b =>
@@ -24035,54 +23865,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
-            modelBuilder.Entity("Explore.Domain.EventParticipationConfiguration", b =>
-                {
-                    b.HasOne("Explore.Domain.AdvanceRegistrationObligation", "AdvanceRegistrationObligation")
-                        .WithMany()
-                        .HasForeignKey("AdvanceRegistrationObligationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_participation_configurations_advance_registration_obl");
-
-                    b.HasOne("Explore.Domain.IdentityAccessMode", "IdentityAccessMode")
-                        .WithMany()
-                        .HasForeignKey("IdentityAccessModeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_event_participation_configurations_identity_access_modes_id");
-
-                    b.HasOne("Explore.Domain.ParticipationHandlingMode", "ParticipationHandlingMode")
-                        .WithMany()
-                        .HasForeignKey("ParticipationHandlingModeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_participation_configurations_participation_handling_m");
-
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_participation_configurations_tenants_tenant_id");
-
-                    b.HasOne("Explore.Domain.Event", "Event")
-                        .WithOne("ParticipationConfiguration")
-                        .HasForeignKey("Explore.Domain.EventParticipationConfiguration", "TenantId", "Id")
-                        .HasPrincipalKey("Explore.Domain.Event", "TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_participation_configurations_events_tenant_id_id");
-
-                    b.Navigation("AdvanceRegistrationObligation");
-
-                    b.Navigation("Event");
-
-                    b.Navigation("IdentityAccessMode");
-
-                    b.Navigation("ParticipationHandlingMode");
-
-                    b.Navigation("Tenant");
-                });
-
             modelBuilder.Entity("Explore.Domain.EventPublicAction", b =>
                 {
                     b.HasOne("Explore.Domain.EventPublicActionKind", "EventPublicActionKind")
@@ -31186,8 +30968,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("ModerationRecords");
 
                     b.Navigation("OrganizerClaims");
-
-                    b.Navigation("ParticipationConfiguration");
 
                     b.Navigation("PublicActions");
 
