@@ -1,9 +1,12 @@
 // ABOUTME: Defines the RED contract for provider-neutral ATProto thumbnail blob acquisition and staging.
 // ABOUTME: Requires fresh DID/PDS resolution, bounded image validation, and observable staged-object cleanup.
 
+using System.Buffers.Binary;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
+using CarpaNet;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Application.Models.Storage;
@@ -24,31 +27,34 @@ public sealed class AtprotoThumbnailBlobGatewayContractTests
     private const string ReturnedContentType = "provider/returned-content-type";
     private const string ReturnedSha256Checksum = "provider-returned-sha256";
     private static readonly byte[] ImageBytes = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    private static readonly byte[] ValidPngBytes = Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAEElEQVR4nGP8ywACLGCSAQANEQED1LYyQAAAAABJRU5ErkJggg==");
 
     [Test]
     public async Task FetchAndStageAsync_ValidBlob_UsesCurrentVerifiedPdsAndStagesExactBytes()
     {
-        var fixture = new Fixture(ImageBytes);
+        string cid = CidFor(ValidPngBytes);
+        var fixture = new Fixture(ValidPngBytes, maximumBytes: ValidPngBytes.Length);
 
         var result = await fixture.Gateway.FetchAndStageAsync(
-            Candidate(Cid, "image/png", ImageBytes.Length),
+            Candidate(cid, "image/png", ValidPngBytes.Length),
             TenantId(),
             CancellationToken.None);
 
         await Assert.That(fixture.IdentityRequests).IsEqualTo(1);
         await Assert.That(fixture.PdsRequests).IsEqualTo(1);
         await Assert.That(fixture.PdsRequestUris).IsEquivalentTo(
-            [$"https://current-pds.example/xrpc/com.atproto.sync.getBlob?did={Uri.EscapeDataString(Did)}&cid={Cid}"]);
+            [$"https://current-pds.example/xrpc/com.atproto.sync.getBlob?did={Uri.EscapeDataString(Did)}&cid={cid}"]);
         await Assert.That(fixture.LastPdsRequest!.Method).IsEqualTo(HttpMethod.Get);
         await Assert.That(fixture.LastPdsRequest.Headers.Authorization).IsNull();
-        await Assert.That(fixture.Storage.Bytes).IsEquivalentTo(ImageBytes);
+        await Assert.That(fixture.Storage.Bytes).IsEquivalentTo(ValidPngBytes);
         await Assert.That(fixture.Storage.LastWrite).IsEqualTo(new FileStorageWriteEnvelope(
             TenantId(),
             "image/png",
-            Cid,
+            cid,
             null,
-            ImageBytes.Length,
-            MaximumBytes));
+            ValidPngBytes.Length,
+            ValidPngBytes.Length));
         await Assert.That(result!).IsEqualTo(new FileStorageWriteResult(
             ReturnedProvider,
             ReturnedObjectKey,
@@ -80,23 +86,132 @@ public sealed class AtprotoThumbnailBlobGatewayContractTests
     }
 
     [Test]
+    public async Task FetchAndStageAsync_SvgBytesRelabeledAsPngNeverStage()
+    {
+        byte[] svgBytes = Encoding.UTF8.GetBytes(
+            """<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>""");
+        string cid = ATCid.FromSha256Hash(SHA256.HashData(svgBytes)).Value;
+        var fixture = new Fixture(svgBytes, maximumBytes: svgBytes.Length)
+        {
+            ResponseMimeType = "image/png"
+        };
+
+        var result = await fixture.Gateway.FetchAndStageAsync(
+            Candidate(cid, "image/png", svgBytes.Length),
+            TenantId(),
+            CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await Assert.That(fixture.IdentityRequests).IsEqualTo(1);
+        await Assert.That(fixture.PdsRequests).IsEqualTo(1);
+        await Assert.That(fixture.Storage.WriteCount).IsEqualTo(0);
+        await Assert.That(fixture.Storage.Objects).IsEmpty();
+    }
+
+    [Test]
     [Arguments("image/jpeg")]
-    [Arguments("ImAgE/PnG")]
+    [Arguments("image/png")]
     [Arguments("image/gif")]
     [Arguments("image/webp")]
     [Arguments("image/avif")]
-    public async Task FetchAndStageAsync_AllowlistedRasterMimeStagesCaseInsensitively(string mimeType)
+    public async Task FetchAndStageAsync_ValidRasterHeaderFollowedByActiveContentNeverStages(string mimeType)
     {
-        var fixture = new Fixture(ImageBytes) { ResponseMimeType = mimeType.ToUpperInvariant() };
+        byte[] bytes = ActiveContentContainerBytes(mimeType);
+        string cid = CidFor(bytes);
+        var fixture = new Fixture(bytes, maximumBytes: bytes.Length)
+        {
+            ResponseMimeType = mimeType
+        };
 
         var result = await fixture.Gateway.FetchAndStageAsync(
-            Candidate(Cid, mimeType, ImageBytes.Length),
+            Candidate(cid, mimeType, bytes.Length),
+            TenantId(),
+            CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await Assert.That(fixture.IdentityRequests).IsEqualTo(1);
+        await Assert.That(fixture.PdsRequests).IsEqualTo(1);
+        await Assert.That(fixture.Storage.WriteCount).IsEqualTo(0);
+        await Assert.That(fixture.Storage.Objects).IsEmpty();
+    }
+
+    [Test]
+    [Arguments("image/jpeg", false)]
+    [Arguments("ImAgE/PnG", false)]
+    [Arguments("image/gif", false)]
+    [Arguments("IMAGE/GIF", true)]
+    [Arguments("image/webp", false)]
+    [Arguments("image/avif", false)]
+    [Arguments("IMAGE/AVIF", true)]
+    public async Task FetchAndStageAsync_AllowlistedRasterMimeStagesMatchingBytesCaseInsensitively(
+        string mimeType,
+        bool alternateSignature)
+    {
+        byte[] bytes = ValidRasterBytes(mimeType, alternateSignature);
+        string cid = CidFor(bytes);
+        var fixture = new Fixture(bytes, maximumBytes: bytes.Length)
+        {
+            ResponseMimeType = mimeType.ToUpperInvariant()
+        };
+
+        var result = await fixture.Gateway.FetchAndStageAsync(
+            Candidate(cid, mimeType, bytes.Length),
             TenantId(),
             CancellationToken.None);
 
         await Assert.That(result).IsNotNull();
         await Assert.That(fixture.Storage.WriteCount).IsEqualTo(1);
         await Assert.That(fixture.Storage.Objects.Count).IsEqualTo(1);
+        await Assert.That(fixture.Storage.Bytes).IsEquivalentTo(bytes);
+    }
+
+    [Test]
+    public async Task FetchAndStageAsync_PngBytesRelabeledAsJpegNeverStage()
+    {
+        string cid = ATCid.FromSha256Hash(SHA256.HashData(ImageBytes)).Value;
+        var fixture = new Fixture(ImageBytes)
+        {
+            ResponseMimeType = "image/jpeg"
+        };
+
+        var result = await fixture.Gateway.FetchAndStageAsync(
+            Candidate(cid, "image/jpeg", ImageBytes.Length),
+            TenantId(),
+            CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await Assert.That(fixture.IdentityRequests).IsEqualTo(1);
+        await Assert.That(fixture.PdsRequests).IsEqualTo(1);
+        await Assert.That(fixture.Storage.WriteCount).IsEqualTo(0);
+        await Assert.That(fixture.Storage.Objects).IsEmpty();
+    }
+
+    [Test]
+    [Arguments("image/jpeg")]
+    [Arguments("image/png")]
+    [Arguments("image/gif")]
+    [Arguments("image/webp")]
+    [Arguments("image/avif")]
+    public async Task FetchAndStageAsync_TruncatedRasterSignatureNeverStages(string mimeType)
+    {
+        byte[] valid = ValidRasterBytes(mimeType, alternateSignature: false);
+        byte[] truncated = valid[..^1];
+        string cid = CidFor(truncated);
+        var fixture = new Fixture(truncated, maximumBytes: truncated.Length)
+        {
+            ResponseMimeType = mimeType
+        };
+
+        var result = await fixture.Gateway.FetchAndStageAsync(
+            Candidate(cid, mimeType, truncated.Length),
+            TenantId(),
+            CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await Assert.That(fixture.IdentityRequests).IsEqualTo(1);
+        await Assert.That(fixture.PdsRequests).IsEqualTo(1);
+        await Assert.That(fixture.Storage.WriteCount).IsEqualTo(0);
+        await Assert.That(fixture.Storage.Objects).IsEmpty();
     }
 
     [Test]
@@ -226,12 +341,13 @@ public sealed class AtprotoThumbnailBlobGatewayContractTests
     [Test]
     public async Task FetchAndStageAsync_CancellationAfterStorageDeletesExactObject()
     {
-        var fixture = new Fixture(ImageBytes);
+        string cid = CidFor(ValidPngBytes);
+        var fixture = new Fixture(ValidPngBytes, maximumBytes: ValidPngBytes.Length);
         using var cancellation = new CancellationTokenSource();
         fixture.Storage.CancelAfterWrite = cancellation;
 
         await Assert.That(async () => await fixture.Gateway.FetchAndStageAsync(
-                Candidate(Cid, "image/png", MaximumBytes), TenantId(), cancellation.Token))
+                Candidate(cid, "image/png", ValidPngBytes.Length), TenantId(), cancellation.Token))
             .Throws<OperationCanceledException>();
         await Assert.That(fixture.Storage.Objects).IsEmpty();
         await Assert.That(fixture.Storage.DeletedKeys).IsEquivalentTo([ReturnedObjectKey]);
@@ -308,10 +424,14 @@ public sealed class AtprotoThumbnailBlobGatewayContractTests
     [Test]
     public async Task FetchAndStageAsync_StorageFailureLeavesNoObject()
     {
-        var fixture = new Fixture(ImageBytes) { Storage = { FailWrite = true } };
+        string cid = CidFor(ValidPngBytes);
+        var fixture = new Fixture(ValidPngBytes, maximumBytes: ValidPngBytes.Length)
+        {
+            Storage = { FailWrite = true }
+        };
 
         var result = await fixture.Gateway.FetchAndStageAsync(
-            Candidate(Cid, "image/png", MaximumBytes), TenantId(), CancellationToken.None);
+            Candidate(cid, "image/png", ValidPngBytes.Length), TenantId(), CancellationToken.None);
 
         await Assert.That(result).IsNull();
         await Assert.That(fixture.Storage.WriteCount).IsEqualTo(1);
@@ -322,9 +442,10 @@ public sealed class AtprotoThumbnailBlobGatewayContractTests
     [Test]
     public async Task CleanupAsync_DownstreamFailureDeletesExactStagedObjectIdempotently()
     {
-        var fixture = new Fixture(ImageBytes);
+        string cid = CidFor(ValidPngBytes);
+        var fixture = new Fixture(ValidPngBytes, maximumBytes: ValidPngBytes.Length);
         var staged = await fixture.Gateway.FetchAndStageAsync(
-            Candidate(Cid, "image/png", MaximumBytes), TenantId(), CancellationToken.None);
+            Candidate(cid, "image/png", ValidPngBytes.Length), TenantId(), CancellationToken.None);
 
         await fixture.Gateway.CleanupAsync(staged!, CancellationToken.None);
         await fixture.Gateway.CleanupAsync(staged!, CancellationToken.None);
@@ -377,18 +498,82 @@ public sealed class AtprotoThumbnailBlobGatewayContractTests
     private static AtprotoThumbnailBlobCandidate Candidate(string cid, string mimeType, long size) =>
         new(Did, cid, mimeType, size);
 
+    private static string CidFor(byte[] bytes) =>
+        ATCid.FromSha256Hash(SHA256.HashData(bytes)).Value;
+
+    // 1x1/2x2 fixtures were generated with FFmpeg 8.1.2 and independently decoded by ffprobe.
+    private static byte[] ValidRasterBytes(string mimeType, bool alternateSignature) =>
+        mimeType.ToLowerInvariant() switch
+        {
+            "image/jpeg" => Convert.FromBase64String(
+                "/9j/4AAQSkZJRgABAgAAAQABAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgEBAQEBAUFBQUFBQYGBgYGBgYGBgYGBgYHBwcICAgHBwcGBgcHCAgICAkJCQgICAgJCQoKCgwMCwsODg4RERT/xABMAAEBAAAAAAAAAAAAAAAAAAAABgEBAQAAAAAAAAAAAAAAAAAABgcQAQAAAAAAAAAAAAAAAAAAAAARAQAAAAAAAAAAAAAAAAAAAAD/wAARCAACAAIDASIAAhEAAxEA/9oADAMBAAIRAxEAPwCLAE1/f//Z"),
+            "image/png" => ValidPngBytes,
+            "image/gif" => Convert.FromBase64String(
+                alternateSignature
+                    ? "R0lGODdhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+                    : "R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="),
+            "image/webp" => Convert.FromBase64String(
+                "UklGRhwAAABXRUJQVlA4TA8AAAAvAUAAAAcQ9Y/+ByKi/wEA"),
+            "image/avif" => AvifFixture(alternateSignature),
+            _ => throw new ArgumentOutOfRangeException(nameof(mimeType))
+        };
+
+    private static byte[] AvifFixture(bool compatibleBrandOnly)
+    {
+        byte[] bytes = Convert.FromBase64String(
+            "AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUIAAAD5bWV0YQAAAAAAAAAvaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAFBpY3R1cmVIYW5kbGVyAAAAAA5waXRtAAAAAAABAAAAHmlsb2MAAAAARAAAAQABAAAAAQAAASEAAAAbAAAAKGlpbmYAAAAAAAEAAAAaaW5mZQIAAAAAAQAAYXYwMUNvbG9yAAAAAGppcHJwAAAAS2lwY28AAAAUaXNwZQAAAAAAAAACAAAAAgAAABBwaXhpAAAAAAMICAgAAAAMYXYxQ4EADAAAAAATY29scm5jbHgAAgACAAIAAAAAF2lwbWEAAAAAAAAAAQABBAECgwQAAAAjbWRhdAoFGAA2wCAyEhgAAABQAABAA1Lt5xf080WmIA==");
+        if (compatibleBrandOnly)
+        {
+            "mif1"u8.CopyTo(bytes.AsSpan(8, 4));
+        }
+
+        return bytes;
+    }
+
+    private static byte[] ActiveContentContainerBytes(string mimeType)
+    {
+        byte[] activeContent = Encoding.UTF8.GetBytes(
+            """<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>""");
+        return mimeType switch
+        {
+            "image/jpeg" => [0xff, 0xd8, 0xff, 0xe0, .. activeContent],
+            "image/png" => [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, .. activeContent],
+            "image/gif" => [.. "GIF89a"u8, .. activeContent],
+            "image/webp" => WebpActiveContent(activeContent),
+            "image/avif" =>
+            [
+                0x00, 0x00, 0x00, 0x10,
+                0x66, 0x74, 0x79, 0x70,
+                0x61, 0x76, 0x69, 0x66,
+                0x00, 0x00, 0x00, 0x00,
+                .. activeContent
+            ],
+            _ => throw new ArgumentOutOfRangeException(nameof(mimeType))
+        };
+    }
+
+    private static byte[] WebpActiveContent(byte[] activeContent)
+    {
+        byte[] bytes = [.. "RIFF"u8, 0, 0, 0, 0, .. "WEBP"u8, .. activeContent];
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(4, 4), checked((uint)bytes.Length - 8));
+        return bytes;
+    }
+
     private sealed class Fixture
     {
         private readonly byte[] _bytes;
 
-        public Fixture(byte[] bytes, TimeSpan? requestTimeout = null)
+        public Fixture(
+            byte[] bytes,
+            TimeSpan? requestTimeout = null,
+            int maximumBytes = MaximumBytes)
         {
             _bytes = bytes;
             Storage = new RecordingStorageProvider();
             Gateway = new AtprotoThumbnailBlobGateway(
                 CreatePrimaryHandler,
                 Storage,
-                maximumBytes: MaximumBytes,
+                maximumBytes,
                 requestTimeout: requestTimeout ?? TimeSpan.FromSeconds(5));
         }
 

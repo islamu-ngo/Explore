@@ -1,8 +1,8 @@
 // ABOUTME: Verifies a PDS session, enforces linked-account identity, and atomically stores local ATProto state.
 // ABOUTME: Issues a platform JWT only after the identity, index, and encrypted OAuth session commit succeeds.
 
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;

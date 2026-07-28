@@ -210,7 +210,7 @@ The importer looks for the first `media[]` entry whose `role` is `thumbnail`. Th
 
 - `$type: "blob"`;
 - `ref.$link` with a structurally valid CID;
-- an `image/*` MIME type;
+- an exact parameter-free MIME type from `image/jpeg`, `image/png`, `image/gif`, `image/webp`, or `image/avif`;
 - a positive declared size within the configured bound.
 
 The command handler fetches and stages the optional image before opening the EF transaction:
@@ -218,11 +218,11 @@ The command handler fetches and stages the optional image before opening the EF 
 1. Resolve the record DID without cache and require exactly one bound `AtprotoPersonalDataServer` service.
 2. Apply the hardened HTTPS/SSRF policy to the PDS origin.
 3. Fetch `com.atproto.sync.getBlob` with the DID and CID.
-4. Require successful status, exact MIME type, exact declared/actual byte count, the configured maximum size, and a constant-time SHA-256/CID match.
+4. Require successful status, exact allowlisted MIME type, exact declared/actual byte count, the configured maximum size, a constant-time SHA-256/CID match, and bounded whole-container structural validation through the exact end of a coherent JPEG, PNG, GIF87a/GIF89a, RIFF/WEBP, or AVIF file.
 5. Write through the registered provider-neutral `IFileStorageProvider`.
 6. Inside the fenced database transaction, create a tenant-owned public-image `StorageObject` and set `Event.FeaturedImageId`.
 
-Missing or invalid optional media fails soft: the event still imports and the original media metadata remains in `RecordJson`. If the database apply is rejected or throws, staged but unconsumed bytes are deleted. Replacement marks the previous image for lifecycle deletion; a record tombstone clears the featured image and requests deletion of owned storage objects.
+Missing, unknown, active-content, malformed-container, or MIME/container-mismatched optional media fails soft: the event still imports and the complete original media metadata remains in `RecordJson`, but no image is staged or linked. If the database apply is rejected or throws, staged but unconsumed bytes are deleted. Replacement marks the previous image for lifecycle deletion; a record tombstone clears the featured image and requests deletion of owned storage objects.
 
 ### Atomicity, Replay, And Tombstones
 

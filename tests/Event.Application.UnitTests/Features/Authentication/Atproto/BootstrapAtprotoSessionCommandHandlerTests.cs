@@ -1,8 +1,8 @@
 // ABOUTME: Tests the linked-account-only ATProto bootstrap transaction and post-commit JWT issuance.
 // ABOUTME: Proves verification failures write nothing and post-commit issuance failures are safely retryable.
 
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Authentication.Atproto.Handlers.Commands;
 using Explore.Application.Features.Authentication.Atproto.Models;

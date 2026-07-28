@@ -3,8 +3,8 @@
 
 namespace Explore.Application.Features.Federation.Atproto.Models;
 
-using Explore.Application.Models.Storage;
 using Explore.Application.DTOs.Event;
+using Explore.Application.Models.Storage;
 
 public sealed record AtprotoFederatedEventImportPlan(
     Guid TenantId,

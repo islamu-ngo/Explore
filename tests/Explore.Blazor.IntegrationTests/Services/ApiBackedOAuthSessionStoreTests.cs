@@ -269,11 +269,11 @@ public sealed class ApiBackedOAuthSessionStoreTests
                 userId = UserId,
                 actorId = Guid.NewGuid(),
                 participationId = Guid.NewGuid(),
-                 did = responseDid,
-                 classification = "person",
-                 canonicalActorId,
-                 expectedCanonicalActorConcurrencyStamp,
-                 accessToken = "opaque-platform-token",
+                did = responseDid,
+                classification = "person",
+                canonicalActorId,
+                expectedCanonicalActorConcurrencyStamp,
+                accessToken = "opaque-platform-token",
                 expiresAt = DateTimeOffset.UtcNow.AddMinutes(10)
             });
             return new(HttpStatusCode.OK)

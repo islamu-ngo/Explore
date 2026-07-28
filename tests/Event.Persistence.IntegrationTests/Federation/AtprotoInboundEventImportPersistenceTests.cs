@@ -47,9 +47,11 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
     private const string Service = "https://jetstream.example/import";
     private const string ThumbnailCid = "bafkreibm6jg3ux5quca3po4nukm4m6xkfxzq4bgxjucfd4g6yuk3z7q7di";
     private const string ReplacementThumbnailCid = "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    private const string RealPipelineThumbnailCid = "bafyreicmjnvdxyjrjk4gcof66qyu3xqcfzqasygyncnczd4gggac2ig2wy";
     private const string ThumbnailChecksum = "86d11a5d50f6f68ad9fce8c0c5f992ae147f14f3290b28e14926c90da71e5d1a";
-    private static readonly byte[] RealPipelineImageBytes = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    private static readonly byte[] RealPipelineImageBytes = Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAEElEQVR4nGP8ywACLGCSAQANEQED1LYyQAAAAABJRU5ErkJggg==");
+    private static readonly string RealPipelineThumbnailCid =
+        ATCid.FromSha256Hash(SHA256.HashData(RealPipelineImageBytes)).Value;
 
     [Test]
     public async Task InboundRequestValidation_RejectsMalformedAndOversizedOptionalFields()
@@ -1340,14 +1342,18 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
     }
 
     [Test]
-    public async Task JetstreamHandler_SvgThumbnailPreservesCanonicalImportWithoutStorageOrFeaturedImage()
+    public async Task JetstreamHandler_PngHeaderFollowedBySvgPreservesCanonicalImportWithoutStorageOrFeaturedImage()
     {
         await fixture.ResetAsync();
-        ImportScope scope = await SeedScopeAsync("atproto-import-task24-svg");
+        ImportScope scope = await SeedScopeAsync("atproto-import-task24-png-header-svg");
         const string svgActiveContent =
             """<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>""";
-        byte[] svgBytes = Encoding.UTF8.GetBytes(svgActiveContent);
-        string svgCid = ATCid.FromSha256Hash(SHA256.HashData(svgBytes)).Value;
+        byte[] bytes =
+        [
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+            .. Encoding.UTF8.GetBytes(svgActiveContent)
+        ];
+        string cid = ATCid.FromSha256Hash(SHA256.HashData(bytes)).Value;
         string storageRoot = Path.Combine(
             Path.GetTempPath(),
             $"event-task24-svg-storage-{Guid.CreateVersion7():N}");
@@ -1359,11 +1365,11 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
             services.AddSingleton<IFileStorageProvider, LocalFileStorageProvider>();
             await using ServiceProvider serviceProvider = services.BuildServiceProvider();
             IFileStorageProvider storage = serviceProvider.GetRequiredService<IFileStorageProvider>();
-            var transport = new DeterministicThumbnailTransport(svgBytes, "image/svg+xml");
+            var transport = new DeterministicThumbnailTransport(bytes, "image/png");
             var gateway = new AtprotoThumbnailBlobGateway(
                 transport.CreatePrimaryHandler,
                 storage,
-                maximumBytes: svgBytes.Length,
+                maximumBytes: bytes.Length,
                 requestTimeout: TimeSpan.FromSeconds(5));
 
             await using ExploreDbContext context = fixture.CreateDbContext();
@@ -1377,9 +1383,9 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
                 "https://events.example/svg-thumbnail");
             record.RecordJson = ExtensibleRecordJson(
                 "SVG thumbnail event",
-                svgCid,
-                "image/svg+xml",
-                svgBytes.Length);
+                cid,
+                "image/png",
+                bytes.Length);
             JsonNode recordJson = JsonNode.Parse(record.RecordJson)!;
             recordJson["futureExtension"]!["svgScript"] = svgActiveContent;
             record.RecordJson = recordJson.ToJsonString();
@@ -1421,8 +1427,8 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
             await Assert.That(imported.FeaturedImageId).IsNull();
             await Assert.That(await context.StorageObjects.CountAsync()).IsEqualTo(0);
             await Assert.That(await context.PdsSyncOutbox.CountAsync()).IsEqualTo(0);
-            await Assert.That(transport.IdentityRequests).IsEqualTo(0);
-            await Assert.That(transport.BlobRequests).IsEqualTo(0);
+            await Assert.That(transport.IdentityRequests).IsEqualTo(1);
+            await Assert.That(transport.BlobRequests).IsEqualTo(1);
             await Assert.That(Directory.Exists(storageRoot)
                 ? Directory.EnumerateFiles(storageRoot, "*", SearchOption.AllDirectories).Any()
                 : false).IsFalse();
@@ -2143,17 +2149,17 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
                 "#virtual",
                 status,
                 projection.RsvpExpected)
+        {
+            ParticipationConfiguration = new ConfigureEventParticipationDto
             {
-                ParticipationConfiguration = new ConfigureEventParticipationDto
-                {
-                    ParticipationHandlingModeId = projection.RsvpExpected == true
+                ParticipationHandlingModeId = projection.RsvpExpected == true
                         ? (int)ParticipationHandlingModeEnum.ExternalManaged
                         : (int)ParticipationHandlingModeEnum.InformationOnly,
-                    AdvanceRegistrationObligationId = projection.RsvpExpected == true
+                AdvanceRegistrationObligationId = projection.RsvpExpected == true
                         ? (int)AdvanceRegistrationObligationEnum.Required
                         : (int)AdvanceRegistrationObligationEnum.NotApplicable
-                }
-            };
+            }
+        };
 
     private static DateTime Utc(int hour) =>
         new(2026, 7, 18, hour, 0, 0, DateTimeKind.Utc);
