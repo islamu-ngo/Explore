@@ -11,7 +11,7 @@ public static class UrlSchemePolicy
             return false;
 
         string trimmed = value.Trim();
-        if (trimmed.StartsWith("/", StringComparison.Ordinal))
+        if (trimmed.StartsWith('/'))
             return !trimmed.StartsWith("//", StringComparison.Ordinal);
 
         if (!Uri.TryCreate(trimmed, UriKind.Absolute, out Uri? uri)
