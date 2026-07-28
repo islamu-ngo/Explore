@@ -38,6 +38,8 @@ public sealed class EventTicketCatalogVersion : ITenantEntity, IAuditableEntity,
 
     public int TicketCatalogStatusId { get; private set; }
 
+    public TicketCatalogStatus? TicketCatalogStatus { get; private set; }
+
     public Guid ConcurrencyStamp { get; set; }
 
     public DateTime CreatedAt { get; set; }
@@ -127,15 +129,22 @@ public sealed class EventTicketCatalogVersion : ITenantEntity, IAuditableEntity,
         ticketType.ReplaceEntitlements(entitlements);
     }
 
-    public void DeleteTicketType(EventTicketType ticketType)
+    public void DeleteTicketType(EventTicketType ticketType, DateTime deletedAtUtc, Guid deletedBy)
     {
-        EnsureDraft(); EnsureContains(ticketType); ticketType.IsDeleted = true;
+        EnsureDraft();
+        EnsureContains(ticketType);
+        ticketType.Delete(deletedAtUtc, deletedBy);
+    }
+
+    public void ValidateForPublication()
+    {
+        TicketCatalogRules.ValidateForPublication(this);
     }
 
     public void Publish()
     {
         EnsureDraft();
-        TicketCatalogRules.ValidateForPublication(this);
+        ValidateForPublication();
         TicketCatalogStatusId = (int)TicketCatalogStatusEnum.Published;
     }
 

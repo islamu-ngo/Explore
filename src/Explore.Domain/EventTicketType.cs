@@ -69,6 +69,8 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
 
     public int TicketPricingModeId { get; private set; }
 
+    public TicketPricingMode? TicketPricingMode { get; private set; }
+
     public long? FixedPriceMinor { get; private set; }
 
     public long? MinimumPriceMinor { get; private set; }
@@ -76,6 +78,8 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
     public long? SuggestedPriceMinor { get; private set; }
 
     public int ParticipantDataCollectionModeId { get; private set; }
+
+    public ParticipantDataCollectionMode? ParticipantDataCollectionMode { get; private set; }
 
     public Guid? CapacityPoolId { get; private set; }
 
@@ -196,6 +200,32 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
         Name = name.Trim(); ParticipantDataCollectionModeId = (int)ValidateParticipantDataCollectionMode(participantDataCollectionMode);
         MinimumAge = minimumAge; MaximumAge = maximumAge; RequiresGuardian = requiresGuardian; RequiresApproval = requiresApproval;
         PerOrderLimit = perOrderLimit; PerAccountLimit = perAccountLimit; PerVerifiedContactLimit = perVerifiedContactLimit; PerBookingPartyLimit = perBookingPartyLimit;
+    }
+
+    public void Delete(DateTime deletedAtUtc, Guid deletedBy)
+    {
+        if (deletedAtUtc == default)
+        {
+            throw new ArgumentException("Deletion timestamp is required.", nameof(deletedAtUtc));
+        }
+
+        if (deletedBy == Guid.Empty)
+        {
+            throw new ArgumentException("Deleting actor is required.", nameof(deletedBy));
+        }
+
+        if (IsDeleted)
+        {
+            return;
+        }
+
+        DateTime normalizedDeletedAt = deletedAtUtc.ToUniversalTime();
+        IsDeleted = true;
+        DeletedAt = normalizedDeletedAt;
+        DeletedBy = deletedBy;
+        UpdatedAt = normalizedDeletedAt;
+        UpdatedBy = deletedBy;
+        ConcurrencyStamp = Guid.CreateVersion7();
     }
 
     internal void SetCapacityPool(EventCapacityPool? capacityPool)

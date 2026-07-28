@@ -45,6 +45,8 @@ public sealed class EventCapacityPool : ITenantEntity, IAuditableEntity, ISoftDe
 
     public int CapacityOversellPolicyId { get; private set; }
 
+    public CapacityOversellPolicy? CapacityOversellPolicy { get; private set; }
+
     public bool IsActive { get; private set; }
 
     public Guid ConcurrencyStamp { get; set; }
@@ -108,6 +110,32 @@ public sealed class EventCapacityPool : ITenantEntity, IAuditableEntity, ISoftDe
     public void SetActive(bool isActive)
     {
         IsActive = isActive;
+    }
+
+    public void Delete(DateTime deletedAtUtc, Guid deletedBy)
+    {
+        if (deletedAtUtc == default)
+        {
+            throw new ArgumentException("Deletion timestamp is required.", nameof(deletedAtUtc));
+        }
+
+        if (deletedBy == Guid.Empty)
+        {
+            throw new ArgumentException("Deleting actor is required.", nameof(deletedBy));
+        }
+
+        if (IsDeleted)
+        {
+            return;
+        }
+
+        DateTime normalizedDeletedAt = deletedAtUtc.ToUniversalTime();
+        IsDeleted = true;
+        DeletedAt = normalizedDeletedAt;
+        DeletedBy = deletedBy;
+        UpdatedAt = normalizedDeletedAt;
+        UpdatedBy = deletedBy;
+        ConcurrencyStamp = Guid.CreateVersion7();
     }
 
     public void Update(string name, int? maximumQuantity, int holdDurationSeconds, CapacityOversellPolicyEnum oversellPolicy, bool isActive)

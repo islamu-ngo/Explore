@@ -27,6 +27,26 @@ public sealed class EventTicketCatalogVersionTests
     }
 
     [Test]
+    public async Task ValidateForPublication_DoesNotMutateCatalogStatus()
+    {
+        EventTicketCatalogVersion catalog = CreateCatalog();
+        AddFreeTicketWithEventEntitlement(catalog);
+
+        catalog.ValidateForPublication();
+
+        await Assert.That(catalog.TicketCatalogStatusId).IsEqualTo((int)TicketCatalogStatusEnum.Draft);
+    }
+
+    [Test]
+    public async Task ValidateForPublication_WhenInvalid_DoesNotMutateCatalogStatus()
+    {
+        EventTicketCatalogVersion catalog = CreateCatalog();
+
+        await Assert.That(() => catalog.ValidateForPublication()).Throws<InvalidOperationException>();
+        await Assert.That(catalog.TicketCatalogStatusId).IsEqualTo((int)TicketCatalogStatusEnum.Draft);
+    }
+
+    [Test]
     public async Task CloneToDraft_CreatesIndependentTicketAndEntitlementGraph()
     {
         EventTicketCatalogVersion catalog = CreateCatalog();
@@ -63,7 +83,46 @@ public sealed class EventTicketCatalogVersionTests
         await Assert.That(ticketType.PerBookingPartyLimit).IsEqualTo(5);
 
         catalog.Publish();
-        await Assert.That(() => catalog.DeleteTicketType(ticketType)).Throws<InvalidOperationException>();
+        await Assert.That(() => catalog.DeleteTicketType(ticketType, DateTime.UtcNow, Guid.CreateVersion7()))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task DeleteTicketType_DelegatesExplicitIdempotentDeletion()
+    {
+        EventTicketCatalogVersion catalog = CreateCatalog();
+        EventTicketType ticketType = AddFreeTicketWithEventEntitlement(catalog);
+        DateTime deletedAt = new(2026, 7, 28, 12, 0, 0, DateTimeKind.Utc);
+        Guid deletedBy = Guid.CreateVersion7();
+
+        catalog.DeleteTicketType(ticketType, deletedAt, deletedBy);
+        catalog.DeleteTicketType(ticketType, deletedAt.AddMinutes(1), Guid.CreateVersion7());
+
+        await Assert.That(ticketType.IsDeleted).IsTrue();
+        await Assert.That(ticketType.DeletedAt).IsEqualTo(deletedAt);
+        await Assert.That(ticketType.DeletedBy).IsEqualTo(deletedBy);
+        await Assert.That(ticketType.UpdatedAt).IsEqualTo(deletedAt);
+        await Assert.That(ticketType.UpdatedBy).IsEqualTo(deletedBy);
+    }
+
+    [Test]
+    public async Task TicketAndCapacityPoolDelete_RejectInvalidAuditArguments()
+    {
+        EventTicketCatalogVersion catalog = CreateCatalog();
+        EventTicketType ticketType = AddFreeTicketWithEventEntitlement(catalog);
+        EventCapacityPool pool = EventCapacityPool.Create(
+            catalog.TenantId,
+            catalog.EventId,
+            "Main hall",
+            200,
+            900,
+            CapacityOversellPolicyEnum.Disallow,
+            true);
+
+        await Assert.That(() => ticketType.Delete(default, Guid.CreateVersion7())).Throws<ArgumentException>();
+        await Assert.That(() => ticketType.Delete(DateTime.UtcNow, Guid.Empty)).Throws<ArgumentException>();
+        await Assert.That(() => pool.Delete(default, Guid.CreateVersion7())).Throws<ArgumentException>();
+        await Assert.That(() => pool.Delete(DateTime.UtcNow, Guid.Empty)).Throws<ArgumentException>();
     }
 
     [Test]
