@@ -6,6 +6,7 @@ namespace Explore.Application.DTOs.EventSessionTemplate;
 public class EventSessionTemplateDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
     public Guid EventTemplateId { get; set; }
     public Guid TenantId { get; set; }
     public string SessionTemplateKey { get; set; } = string.Empty;

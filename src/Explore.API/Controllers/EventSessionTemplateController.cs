@@ -2,6 +2,7 @@
 // ABOUTME: Manages reusable session templates that define sets of custom property definitions for event session creation.
 
 using Asp.Versioning;
+using System.ComponentModel.DataAnnotations;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
@@ -149,33 +150,41 @@ public class EventSessionTemplateController : ControllerBase
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateEventSessionTemplate)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateEventSessionTemplate)]
     [EndpointSummary("Update EventSessionTemplate")]
-    [EndpointDescription("Update an existing event session template and replace its definition set.")]
+    [EndpointDescription("Update supplied event session template groups; definitions are replaced only when supplied.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
-        [FromBody] UpdateEventSessionTemplateDto updateDto, CancellationToken cancellationToken = default)
+        [FromBody] UpdateEventSessionTemplateDto updateDto,
+        [FromHeader(Name = "If-Match"), Required] string? ifMatch,
+        CancellationToken cancellationToken = default)
     {
-        if (id != updateDto.Id)
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
         {
-            return this.ToValidationProblem(UpdateValidationProblem, "Event session template ID mismatch.");
+            return this.ToValidationProblem(UpdateValidationProblem, "If-Match header is required and must contain the current event session template concurrency stamp.");
         }
 
         var command = new UpdateEventSessionTemplateCommand
         {
-            SessionTemplateDto = updateDto
+            SessionTemplateId = id,
+            SessionTemplateDto = updateDto,
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp
         };
 
         var result = await _mediator.Send(command, cancellationToken);
 
         if (!result.Success)
         {
-            return this.ToCommandValidationProblem(result, UpdateValidationProblem);
+            return string.Equals(result.Message, "Event session template not found.", StringComparison.Ordinal)
+                ? this.ToNotFoundProblem(EventSessionTemplateNotFoundProblem)
+                : this.ToCommandValidationProblem(result, UpdateValidationProblem);
         }
 
         return Ok(result);
@@ -196,5 +205,22 @@ public class EventSessionTemplateController : ControllerBase
         await _mediator.Send(command, cancellationToken);
 
         return NoContent();
+    }
+
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
+
+        var value = ifMatch.Trim();
+        if (value.Length != 38 || value[0] != '"' || value[^1] != '"')
+        {
+            return false;
+        }
+
+        return Guid.TryParse(value[1..^1], out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 }

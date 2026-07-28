@@ -56,7 +56,7 @@ public sealed class TemplateSyncHateoasTests
         var delete = itemLinks.Single(link => link.Rel == LinkRelations.Delete);
 
         await Assert.That(edit.RouteName).IsEqualTo(RouteNames.UpdateEventTemplate);
-        await Assert.That(edit.Method).IsEqualTo(HttpMethods.Put);
+        await Assert.That(edit.Method).IsEqualTo(HttpMethods.Patch);
         await Assert.That(edit.PermissionResourceKind).IsEqualTo(ResourceKinds.Tenant);
         await Assert.That(edit.PermissionAction).IsEqualTo(AuthorizationActions.Update);
         await Assert.That(edit.PermissionResourceId).IsEqualTo(tenantId.ToString());

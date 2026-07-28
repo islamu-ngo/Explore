@@ -86,18 +86,25 @@ public class EventSessionTemplateDefinitionQuotaTests
         var tenantId = Guid.NewGuid();
         var eventTemplateId = Guid.NewGuid();
         var sessionTemplateId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
         var repository = Substitute.For<IEventSessionTemplateRepository>();
         var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
         var governancePolicy = Substitute.For<ICustomPropertyGovernancePolicy>();
         var handler = CreateUpdateHandler(repository, quotaResolver, governancePolicy);
 
         repository.GetTrackedSessionTemplateWithDefinitions(sessionTemplateId, Arg.Any<CancellationToken>())
-            .Returns(CreateSessionTemplate(sessionTemplateId, eventTemplateId, tenantId));
+            .Returns(CreateSessionTemplate(sessionTemplateId, eventTemplateId, tenantId, concurrencyStamp));
         repository.ExistsSessionTemplateKey(eventTemplateId, "session-track", 1, sessionTemplateId).Returns(false);
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key, tenantId, Arg.Any<CancellationToken>()).Returns(1);
 
         var result = await handler.Handle(
-            new UpdateEventSessionTemplateCommand { SessionTemplateDto = CreateUpdateSessionTemplateDto(sessionTemplateId, eventTemplateId, definitionCount: 2) },
+            new UpdateEventSessionTemplateCommand
+            {
+                SessionTemplateId = sessionTemplateId,
+                TenantId = tenantId,
+                ExpectedConcurrencyStamp = concurrencyStamp,
+                SessionTemplateDto = CreateUpdateSessionTemplateDto(definitionCount: 2)
+            },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
@@ -119,19 +126,26 @@ public class EventSessionTemplateDefinitionQuotaTests
         var tenantId = Guid.NewGuid();
         var eventTemplateId = Guid.NewGuid();
         var sessionTemplateId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
         var repository = Substitute.For<IEventSessionTemplateRepository>();
         var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
         var governancePolicy = Substitute.For<ICustomPropertyGovernancePolicy>();
         var handler = CreateUpdateHandler(repository, quotaResolver, governancePolicy);
 
         repository.GetTrackedSessionTemplateWithDefinitions(sessionTemplateId, Arg.Any<CancellationToken>())
-            .Returns(CreateSessionTemplate(sessionTemplateId, eventTemplateId, tenantId));
+            .Returns(CreateSessionTemplate(sessionTemplateId, eventTemplateId, tenantId, concurrencyStamp));
         repository.ExistsSessionTemplateKey(eventTemplateId, "session-track", 1, sessionTemplateId).Returns(false);
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key, tenantId, Arg.Any<CancellationToken>()).Returns(5);
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key, tenantId, Arg.Any<CancellationToken>()).Returns(1);
 
         var result = await handler.Handle(
-            new UpdateEventSessionTemplateCommand { SessionTemplateDto = CreateUpdateSessionTemplateDtoWithOptionDefinition(sessionTemplateId, eventTemplateId, optionCount: 2) },
+            new UpdateEventSessionTemplateCommand
+            {
+                SessionTemplateId = sessionTemplateId,
+                TenantId = tenantId,
+                ExpectedConcurrencyStamp = concurrencyStamp,
+                SessionTemplateDto = CreateUpdateSessionTemplateDtoWithOptionDefinition(optionCount: 2)
+            },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
@@ -144,6 +158,42 @@ public class EventSessionTemplateDefinitionQuotaTests
         await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_session_template_definition_options");
         await Assert.That(result.QuotaExceeded.TenantId).IsEqualTo(tenantId);
         governancePolicy.DidNotReceiveWithAnyArgs().EvaluateDefinition(default!, default!);
+        await repository.DidNotReceiveWithAnyArgs().UpdateWithDefinitions(default!, default!, default);
+    }
+
+    [Test]
+    public async Task UpdateHandle_WhenDefinitionsOmitted_UpdatesMetadataWithoutReplacingDefinitions()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventTemplateId = Guid.NewGuid();
+        var sessionTemplateId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        var repository = Substitute.For<IEventSessionTemplateRepository>();
+        var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task>>()(CancellationToken.None));
+        var handler = CreateUpdateHandler(repository, quotaResolver, Substitute.For<ICustomPropertyGovernancePolicy>(), unitOfWork);
+        var template = CreateSessionTemplate(sessionTemplateId, eventTemplateId, tenantId, concurrencyStamp);
+        repository.GetTrackedSessionTemplateWithDefinitions(sessionTemplateId, Arg.Any<CancellationToken>()).Returns(template);
+        repository.ExistsSessionTemplateKey(eventTemplateId, template.SessionTemplateKey, template.Version, sessionTemplateId).Returns(false);
+
+        var result = await handler.Handle(
+            new UpdateEventSessionTemplateCommand
+            {
+                SessionTemplateId = sessionTemplateId,
+                TenantId = tenantId,
+                ExpectedConcurrencyStamp = concurrencyStamp,
+                SessionTemplateDto = new UpdateEventSessionTemplateDto
+                {
+                    Metadata = new UpdateEventSessionTemplateMetadataDto { DisplayName = "Updated Session" }
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(template.DisplayName).IsEqualTo("Updated Session");
+        await repository.Received(1).Update(template);
         await repository.DidNotReceiveWithAnyArgs().UpdateWithDefinitions(default!, default!, default);
     }
 
@@ -170,7 +220,8 @@ public class EventSessionTemplateDefinitionQuotaTests
     private static UpdateEventSessionTemplateCommandHandler CreateUpdateHandler(
         IEventSessionTemplateRepository repository,
         ICustomPropertyQuotaResolver quotaResolver,
-        ICustomPropertyGovernancePolicy governancePolicy)
+        ICustomPropertyGovernancePolicy governancePolicy,
+        IUnitOfWork? unitOfWork = null)
     {
         return new UpdateEventSessionTemplateCommandHandler(
             repository,
@@ -179,14 +230,15 @@ public class EventSessionTemplateDefinitionQuotaTests
             Substitute.For<ICurrentUserService>(),
             Substitute.For<IMapper>(),
             Substitute.For<HybridCache>(),
-            Substitute.For<IUnitOfWork>());
+            unitOfWork ?? Substitute.For<IUnitOfWork>());
     }
 
-    private static EventSessionTemplate CreateSessionTemplate(Guid sessionTemplateId, Guid eventTemplateId, Guid tenantId)
+    private static EventSessionTemplate CreateSessionTemplate(Guid sessionTemplateId, Guid eventTemplateId, Guid tenantId, Guid concurrencyStamp)
     {
         return new EventSessionTemplate
         {
             Id = sessionTemplateId,
+            ConcurrencyStamp = concurrencyStamp,
             EventTemplateId = eventTemplateId,
             TenantId = tenantId,
             SessionTemplateKey = "session-track",
@@ -209,17 +261,14 @@ public class EventSessionTemplateDefinitionQuotaTests
         };
     }
 
-    private static UpdateEventSessionTemplateDto CreateUpdateSessionTemplateDto(Guid sessionTemplateId, Guid eventTemplateId, int definitionCount)
+    private static UpdateEventSessionTemplateDto CreateUpdateSessionTemplateDto(int definitionCount)
     {
         return new UpdateEventSessionTemplateDto
         {
-            Id = sessionTemplateId,
-            EventTemplateId = eventTemplateId,
-            SessionTemplateKey = "session-track",
-            DisplayName = "Session Track",
-            Version = 1,
-            IsActive = true,
-            Definitions = CreateDefinitionDtos(definitionCount),
+            Definitions = new UpdateEventSessionTemplateDefinitionsDto
+            {
+                Items = CreateDefinitionDtos(definitionCount)
+            }
         };
     }
 
@@ -236,17 +285,14 @@ public class EventSessionTemplateDefinitionQuotaTests
         };
     }
 
-    private static UpdateEventSessionTemplateDto CreateUpdateSessionTemplateDtoWithOptionDefinition(Guid sessionTemplateId, Guid eventTemplateId, int optionCount)
+    private static UpdateEventSessionTemplateDto CreateUpdateSessionTemplateDtoWithOptionDefinition(int optionCount)
     {
         return new UpdateEventSessionTemplateDto
         {
-            Id = sessionTemplateId,
-            EventTemplateId = eventTemplateId,
-            SessionTemplateKey = "session-track",
-            DisplayName = "Session Track",
-            Version = 1,
-            IsActive = true,
-            Definitions = [CreateOptionDefinitionDto(optionCount)],
+            Definitions = new UpdateEventSessionTemplateDefinitionsDto
+            {
+                Items = [CreateOptionDefinitionDto(optionCount)]
+            }
         };
     }
 

@@ -1,5 +1,5 @@
-// ABOUTME: Validates event session template update payload, extends create validation with Id check.
-// ABOUTME: Manually instantiated in handlers (no DI), following project convention.
+// ABOUTME: Validates grouped event session template patches before merged-state validation in the handler.
+// ABOUTME: Rejects empty wrappers, empty metadata groups, and missing definition item collections.
 
 using FluentValidation;
 
@@ -9,9 +9,23 @@ public class UpdateEventSessionTemplateDtoValidator : AbstractValidator<UpdateEv
 {
     public UpdateEventSessionTemplateDtoValidator()
     {
-        Include(new CreateEventSessionTemplateDtoValidator());
+        RuleFor(x => x)
+            .Must(x => x.Metadata is not null || x.Definitions is not null)
+            .WithMessage("At least one update group is required.");
 
-        RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("Id is required.");
+        RuleFor(x => x.Metadata!)
+            .Must(metadata => metadata.SessionTemplateKey is not null ||
+                metadata.DisplayName is not null ||
+                metadata.Description.HasValue ||
+                metadata.Version.HasValue ||
+                metadata.IsPublished.HasValue ||
+                metadata.IsActive.HasValue ||
+                metadata.SortOrder.HasValue)
+            .WithMessage("Metadata must contain at least one operation.")
+            .When(x => x.Metadata is not null);
+
+        RuleFor(x => x.Definitions!.Items)
+            .NotNull().WithMessage("Definitions.items is required when the definitions group is supplied.")
+            .When(x => x.Definitions is not null);
     }
 }

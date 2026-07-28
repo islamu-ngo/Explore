@@ -89,6 +89,7 @@ public sealed class EventSessionTemplateService : IEventSessionTemplateService
 
     public async Task<BaseCommandResponseOfGuid?> UpdateTemplateAsync(
         Guid id,
+        Guid expectedConcurrencyStamp,
         UpdateEventSessionTemplateDto dto,
         CancellationToken ct = default)
     {
@@ -96,7 +97,7 @@ public sealed class EventSessionTemplateService : IEventSessionTemplateService
 
         try
         {
-            return await _apiClient.UpdateEventSessionTemplateAsync(id, dto, cancellationToken: ct);
+            return await _apiClient.UpdateEventSessionTemplateAsync(id, $"\"{expectedConcurrencyStamp}\"", dto, cancellationToken: ct);
         }
         catch (ApiException<ProblemDetails> ex)
         {

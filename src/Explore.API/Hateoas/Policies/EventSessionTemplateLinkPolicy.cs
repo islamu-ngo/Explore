@@ -29,9 +29,12 @@ public sealed class EventSessionTemplateDetailLinkPolicy : ILinkPolicy<EventSess
             new { eventTemplateId = dto.EventTemplateId });
 
         // Edit link - requires Update permission
-        yield return LinkDefinition.Edit(
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
             RouteNames.UpdateEventSessionTemplate,
-            new { id = dto.Id })
+            new { id = dto.Id },
+            HttpMethods.Patch,
+            RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSessionTemplate, dto);
 
         // Delete link - requires Delete permission

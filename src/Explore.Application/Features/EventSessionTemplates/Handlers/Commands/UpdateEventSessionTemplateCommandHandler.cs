@@ -1,5 +1,5 @@
-// ABOUTME: Handles updates to event session templates with full definition and option replacement.
-// ABOUTME: Validates governance per definition, checks session-template-key uniqueness excluding self, and replaces all definitions transactionally.
+// ABOUTME: Applies grouped event session template metadata patches and optional atomic definition replacement.
+// ABOUTME: Enforces persisted tenant binding, immutable parent ownership, optimistic concurrency, and post-commit cache invalidation.
 
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventSessionTemplate.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessionTemplates.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -49,6 +50,14 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
     {
         var response = new BaseCommandResponse<Guid>();
 
+        if (request.SessionTemplateId == Guid.Empty || request.ExpectedConcurrencyStamp == Guid.Empty)
+        {
+            response.Success = false;
+            response.Message = "Event session template update failed.";
+            response.Errors = ["SessionTemplateId and ExpectedConcurrencyStamp are required."];
+            return response;
+        }
+
         var validator = new UpdateEventSessionTemplateDtoValidator();
         var validationResult = await validator.ValidateAsync(request.SessionTemplateDto, cancellationToken);
         if (!validationResult.IsValid)
@@ -59,7 +68,7 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
             return response;
         }
 
-        var sessionTemplate = await _sessionTemplateRepository.GetTrackedSessionTemplateWithDefinitions(request.SessionTemplateDto.Id, cancellationToken);
+        var sessionTemplate = await _sessionTemplateRepository.GetTrackedSessionTemplateWithDefinitions(request.SessionTemplateId, cancellationToken);
         if (sessionTemplate == null)
         {
             response.Success = false;
@@ -67,10 +76,49 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
             return response;
         }
 
+        if (request.TenantId == Guid.Empty || request.TenantId != sessionTemplate.TenantId)
+        {
+            response.Success = false;
+            response.Message = "Event session template not found.";
+            return response;
+        }
+
+        if (sessionTemplate.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
+        {
+            throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The event session template changed since it was loaded. Reload and try again.",
+                "event_session_template",
+                sessionTemplate.Id.ToString());
+        }
+
+        var candidate = new CreateEventSessionTemplateDto
+        {
+            EventTemplateId = sessionTemplate.EventTemplateId,
+            SessionTemplateKey = sessionTemplate.SessionTemplateKey,
+            DisplayName = sessionTemplate.DisplayName,
+            Description = sessionTemplate.Description,
+            Version = sessionTemplate.Version,
+            IsPublished = sessionTemplate.IsPublished,
+            IsActive = sessionTemplate.IsActive,
+            SortOrder = sessionTemplate.SortOrder,
+            Definitions = request.SessionTemplateDto.Definitions?.Items ?? []
+        };
+        ApplyPatch(candidate, request.SessionTemplateDto);
+
+        var candidateValidation = await new CreateEventSessionTemplateDtoValidator().ValidateAsync(candidate, cancellationToken);
+        if (!candidateValidation.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Event session template update failed.";
+            response.Errors = candidateValidation.Errors.Select(error => error.ErrorMessage).ToList();
+            return response;
+        }
+
         if (await _sessionTemplateRepository.ExistsSessionTemplateKey(
                 sessionTemplate.EventTemplateId,
-                request.SessionTemplateDto.SessionTemplateKey,
-                request.SessionTemplateDto.Version,
+                candidate.SessionTemplateKey,
+                candidate.Version,
                 sessionTemplate.Id))
         {
             response.Success = false;
@@ -79,60 +127,81 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
             return response;
         }
 
-        var maxDefinitions = await _quotaResolver.GetIntAsync(
-            CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
-            sessionTemplate.TenantId,
-            cancellationToken);
-        if (request.SessionTemplateDto.Definitions.Count > maxDefinitions)
+        IReadOnlyCollection<SessionTemplateDefinitionWithOptions>? definitions = null;
+        if (request.SessionTemplateDto.Definitions is not null)
         {
-            response.SetQuotaExceeded(
-                "Event session template update failed.",
-                new QuotaExceededDetails(
-                    CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
-                    maxDefinitions,
-                    null,
-                    request.SessionTemplateDto.Definitions.Count,
-                    "event_session_template_definitions",
-                    sessionTemplate.TenantId));
-            return response;
+            var maxDefinitions = await _quotaResolver.GetIntAsync(
+                CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
+                sessionTemplate.TenantId,
+                cancellationToken);
+            if (candidate.Definitions.Count > maxDefinitions)
+            {
+                response.SetQuotaExceeded(
+                    "Event session template update failed.",
+                    new QuotaExceededDetails(
+                        CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
+                        maxDefinitions,
+                        null,
+                        candidate.Definitions.Count,
+                        "event_session_template_definitions",
+                        sessionTemplate.TenantId));
+                return response;
+            }
+
+            var maxOptions = await _quotaResolver.GetIntAsync(
+                CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                sessionTemplate.TenantId,
+                cancellationToken);
+            var overOptionDefinition = candidate.Definitions
+                .FirstOrDefault(definition => definition.Options.Count > maxOptions);
+            if (overOptionDefinition is not null)
+            {
+                response.SetQuotaExceeded(
+                    "Event session template update failed.",
+                    new QuotaExceededDetails(
+                        CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                        maxOptions,
+                        null,
+                        overOptionDefinition.Options.Count,
+                        "event_session_template_definition_options",
+                        sessionTemplate.TenantId));
+                return response;
+            }
+
+            var definitionsResult = BuildDefinitionEntities(candidate.Definitions, sessionTemplate.TenantId);
+            if (definitionsResult.Errors.Count > 0)
+            {
+                response.Success = false;
+                response.Message = "Event session template update failed.";
+                response.Errors = definitionsResult.Errors;
+                return response;
+            }
+
+            definitions = definitionsResult.Definitions;
         }
 
-        var maxOptions = await _quotaResolver.GetIntAsync(
-            CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
-            sessionTemplate.TenantId,
-            cancellationToken);
-        var overOptionDefinition = request.SessionTemplateDto.Definitions
-            .FirstOrDefault(definition => definition.Options.Count > maxOptions);
-        if (overOptionDefinition is not null)
-        {
-            response.SetQuotaExceeded(
-                "Event session template update failed.",
-                new QuotaExceededDetails(
-                    CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
-                    maxOptions,
-                    null,
-                    overOptionDefinition.Options.Count,
-                    "event_session_template_definition_options",
-                    sessionTemplate.TenantId));
-            return response;
-        }
-
-        var definitionsResult = BuildDefinitionEntities(request.SessionTemplateDto.Definitions, sessionTemplate.TenantId);
-        if (definitionsResult.Errors.Count > 0)
-        {
-            response.Success = false;
-            response.Message = "Event session template update failed.";
-            response.Errors = definitionsResult.Errors;
-            return response;
-        }
-
-        _mapper.Map(request.SessionTemplateDto, sessionTemplate);
+        sessionTemplate.SessionTemplateKey = candidate.SessionTemplateKey;
+        sessionTemplate.DisplayName = candidate.DisplayName;
+        sessionTemplate.Description = candidate.Description;
+        sessionTemplate.Version = candidate.Version;
+        sessionTemplate.IsPublished = candidate.IsPublished;
+        sessionTemplate.IsActive = candidate.IsActive;
+        sessionTemplate.SortOrder = candidate.SortOrder;
         sessionTemplate.UpdatedBy = _currentUserService.UserId;
         sessionTemplate.UpdatedAt = DateTime.UtcNow;
 
-        await _unitOfWork.ExecuteInTransactionAsync(
-            ct => _sessionTemplateRepository.UpdateWithDefinitions(sessionTemplate, definitionsResult.Definitions, ct),
-            cancellationToken);
+        if (definitions is null)
+        {
+            await _unitOfWork.ExecuteInTransactionAsync(
+                _ => _sessionTemplateRepository.Update(sessionTemplate),
+                cancellationToken);
+        }
+        else
+        {
+            await _unitOfWork.ExecuteInTransactionAsync(
+                ct => _sessionTemplateRepository.UpdateWithDefinitions(sessionTemplate, definitions, ct),
+                cancellationToken);
+        }
 
         response.Success = true;
         response.Id = sessionTemplate.Id;
@@ -141,6 +210,23 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
         await InvalidateCaches(sessionTemplate.EventTemplateId, sessionTemplate.Id, cancellationToken);
 
         return response;
+    }
+
+    private static void ApplyPatch(CreateEventSessionTemplateDto candidate, UpdateEventSessionTemplateDto patch)
+    {
+        var metadata = patch.Metadata;
+        if (metadata is null)
+        {
+            return;
+        }
+
+        candidate.SessionTemplateKey = metadata.SessionTemplateKey ?? candidate.SessionTemplateKey;
+        candidate.DisplayName = metadata.DisplayName ?? candidate.DisplayName;
+        if (metadata.Description.HasValue) candidate.Description = metadata.Description.Value;
+        candidate.Version = metadata.Version ?? candidate.Version;
+        candidate.IsPublished = metadata.IsPublished ?? candidate.IsPublished;
+        candidate.IsActive = metadata.IsActive ?? candidate.IsActive;
+        candidate.SortOrder = metadata.SortOrder ?? candidate.SortOrder;
     }
 
     private (IReadOnlyCollection<SessionTemplateDefinitionWithOptions> Definitions, List<string> Errors) BuildDefinitionEntities(
