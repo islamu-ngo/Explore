@@ -1,6 +1,7 @@
 // ABOUTME: REST API controller for event-session-level custom property definition and value operations.
 // ABOUTME: Manages session-local property definitions (ad-hoc or template-instantiated) and their values.
 
+using System.ComponentModel.DataAnnotations;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
@@ -157,7 +158,7 @@ public class EventSessionCustomPropertyController : ControllerBase
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}", Name = RouteNames.UpdateEventSessionCustomPropertyDefinition)]
+    [HttpPatch("{id:guid}", Name = RouteNames.UpdateEventSessionCustomPropertyDefinition)]
     [EndpointSummary("Update EventSessionCustomPropertyDefinition")]
     [EndpointDescription("Update an existing event-session-local custom property definition and replace its option set. " +
         "Provenance fields (source template information) are read-only and preserved.")]
@@ -170,16 +171,20 @@ public class EventSessionCustomPropertyController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
-        [FromBody] UpdateEventSessionCustomPropertyDefinitionDto updateDto, CancellationToken cancellationToken = default)
+        [FromBody] UpdateEventSessionCustomPropertyDefinitionDto updateDto,
+        [FromHeader(Name = "If-Match"), Required] string? ifMatch,
+        CancellationToken cancellationToken = default)
     {
-        if (id != updateDto.Id)
+        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
         {
-            return this.ToValidationProblem(UpdateValidationProblem, "Event session custom property definition ID mismatch.");
+            return this.ToValidationProblem(UpdateValidationProblem, "If-Match header is required and must contain the current event-session custom-property definition concurrency stamp.");
         }
 
         var command = new UpdateEventSessionCustomPropertyDefinitionCommand
         {
-            DefinitionDto = updateDto
+            DefinitionId = id,
+            DefinitionDto = updateDto,
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp
         };
 
         var result = await _mediator.Send(command, cancellationToken);
@@ -328,4 +333,23 @@ public class EventSessionCustomPropertyController : ControllerBase
 
         return Ok(response);
     }
+
+
+    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
+
+        var value = ifMatch.Trim();
+        if (value.Length != 38 || value[0] != '"' || value[^1] != '"')
+        {
+            return false;
+        }
+
+        return Guid.TryParse(value[1..^1], out concurrencyStamp) && concurrencyStamp != Guid.Empty;
+    }
+
 }

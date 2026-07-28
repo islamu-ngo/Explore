@@ -63,7 +63,7 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
             return response;
         }
 
-        var definition = await _sessionCustomPropertyRepository.GetTrackedDefinitionWithOptions(request.DefinitionDto.Id, cancellationToken);
+        var definition = await _sessionCustomPropertyRepository.GetTrackedDefinitionWithOptions(request.DefinitionId, cancellationToken);
         if (definition == null)
         {
             response.Success = false;
@@ -71,7 +71,7 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
             return response;
         }
 
-        if (definition.ConcurrencyStamp != request.DefinitionDto.ExpectedConcurrencyStamp)
+        if (definition.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
         {
             throw new ConcurrencyConflictException(
                 ConcurrencyConflictException.ConcurrentUpdate,

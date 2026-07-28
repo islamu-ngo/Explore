@@ -1,5 +1,5 @@
-// ABOUTME: Validates session runtime custom property definition update, extends create with Id check.
-// ABOUTME: Manually instantiated in handlers (no DI), following project convention.
+// ABOUTME: Validates session-local custom-property definition update payload shape.
+// ABOUTME: Reuses create validation; route ID and If-Match are handled at the API boundary.
 
 using FluentValidation;
 
@@ -10,11 +10,5 @@ public class UpdateEventSessionCustomPropertyDefinitionDtoValidator : AbstractVa
     public UpdateEventSessionCustomPropertyDefinitionDtoValidator()
     {
         Include(new CreateEventSessionCustomPropertyDefinitionDtoValidator());
-
-        RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("Id is required.");
-
-        RuleFor(x => x.ExpectedConcurrencyStamp)
-            .NotEmpty().WithMessage("ExpectedConcurrencyStamp is required.");
     }
 }
