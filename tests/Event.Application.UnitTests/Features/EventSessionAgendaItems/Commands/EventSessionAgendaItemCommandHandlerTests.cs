@@ -501,17 +501,17 @@ public sealed class EventSessionAgendaItemCommandHandlerTests
     };
 
     private static UpdateEventSessionAgendaItemDto UpdateDto(Guid sessionId, Guid? locationId) => new()
+    {
+        Relationship = new UpdateEventSessionAgendaItemRelationshipDto { EventSessionId = sessionId },
+        Content = new UpdateEventSessionAgendaItemContentDto { Title = "Moved agenda item" },
+        Schedule = new UpdateEventSessionAgendaItemScheduleDto
         {
-            Relationship = new UpdateEventSessionAgendaItemRelationshipDto { EventSessionId = sessionId },
-            Content = new UpdateEventSessionAgendaItemContentDto { Title = "Moved agenda item" },
-            Schedule = new UpdateEventSessionAgendaItemScheduleDto
-            {
-                StartTime = new DateTimeOffset(2026, 7, 19, 12, 0, 0, TimeSpan.Zero),
-                EndTime = new DateTimeOffset(2026, 7, 19, 13, 0, 0, TimeSpan.Zero)
-            },
-            Location = new UpdateEventSessionAgendaItemLocationDto
-            {
-                Value = new Explore.Application.Models.Common.OptionalUpdate<Guid?>(true, locationId)
-            }
-        };
+            StartTime = new DateTimeOffset(2026, 7, 19, 12, 0, 0, TimeSpan.Zero),
+            EndTime = new DateTimeOffset(2026, 7, 19, 13, 0, 0, TimeSpan.Zero)
+        },
+        Location = new UpdateEventSessionAgendaItemLocationDto
+        {
+            Value = new Explore.Application.Models.Common.OptionalUpdate<Guid?>(true, locationId)
+        }
+    };
 }
