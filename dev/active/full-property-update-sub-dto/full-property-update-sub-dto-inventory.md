@@ -3,7 +3,7 @@
 
 # Full Property Update Sub-DTO Pattern - Exhaustive Inventory
 
-Last Updated: 2026-07-27 Europe/Brussels
+Last Updated: 2026-07-28 Europe/Brussels
 
 ## Purpose And Coverage Gate
 
@@ -50,7 +50,7 @@ No row may finish as `investigate`, `other`, or an unbounded family wildcard.
 | D-006 | `EventReporting/UpdateReportingProviderLocksDto.cs` | Instance reporting provider locks | M | 4.3 |
 | D-007 | `EventReporting/UpdateReportingRoutingSettingsDto.cs` | Tenant reporting routing | M | 4.3 |
 | D-008 | `EventSession/UpdateEventSessionDto.cs` | EventSession | C | 2.1 |
-| D-009 | `EventSessionSpeaker/UpdateEventSessionSpeakerDto.cs` | EventSessionSpeaker | M | 3.4 |
+| D-009 | `EventSessionSpeaker/UpdateEventSessionSpeakerDto.cs` | EventSessionSpeaker | C | 3.4 |
 | D-010 | `EventCategories/UpdateEventCategoriesDto.cs` | EventCategories relationship | C | 2.2 |
 | D-011 | `EventTags/UpdateEventTagsDto.cs` | EventTags relationship | C | 2.2 |
 | D-012 | `EventSessionLanguage/UpdateEventSessionLanguageDto.cs` | EventSessionLanguage | C | 2.1 |
@@ -76,7 +76,7 @@ No row may finish as `investigate`, `other`, or an unbounded family wildcard.
 | D-032 | `Tenant/UpdateTenantNavigationLinkOrderDto.cs` | Tenant navigation reorder action | A | 3.2 |
 | D-033 | `Tenant/UpdateTenantNavigationLinkDto.cs` | TenantNavigationLink | C | 3.1 |
 | D-034 | `Tenant/UpdateTenantDto.cs` | Tenant | C | 3.1 |
-| D-035 | `TagTypeTags/UpdateTagTypeTagsDto.cs` | TagTypeTags relationship | M | 3.4 |
+| D-035 | `TagTypeTags/UpdateTagTypeTagsDto.cs` | TagTypeTags relationship | C | 3.4 |
 | D-036 | `Tag/UpdateTagDto.cs` | Tag | C | 3.1 |
 | D-037 | `SyncState/UpdateSyncStateDto.cs` | ATProto SyncState internal cursor | R | 5.1 |
 | D-038 | `Settings/UpdateSettingValueDto.cs` | Exact setting-key replacement | S | 1.1 |
@@ -92,12 +92,12 @@ No row may finish as `investigate`, `other`, or an unbounded family wildcard.
 | D-048 | `EventTemplate/UpdateEventTemplateDefinitionDto.cs` | EventTemplate definition nested group | N | 3.6 |
 | D-049 | `EventSessionTemplate/UpdateEventSessionTemplateDto.cs` | EventSessionTemplate | M | 3.6 |
 | D-050 | `EventSessionTemplate/UpdateEventSessionTemplateDefinitionDto.cs` | EventSessionTemplate definition nested group | N | 3.6 |
-| D-051 | `EventSessionGroup/UpdateEventSessionGroupRequestDto.cs` | EventSessionGroup | M | 3.4 |
+| D-051 | `EventSessionGroup/UpdateEventSessionGroupRequestDto.cs` | EventSessionGroup | C | 3.4 |
 | D-052 | `EventSessionCustomProperty/UpdateEventSessionCustomPropertyDefinitionDto.cs` | EventSession custom-property definition | M | 3.5 |
-| D-053 | `EventSessionAgendaItem/UpdateEventSessionAgendaItemDto.cs` | EventSessionAgendaItem | M | 3.4 |
+| D-053 | `EventSessionAgendaItem/UpdateEventSessionAgendaItemDto.cs` | EventSessionAgendaItem | C | 3.4 |
 | D-054 | `EventCustomProperty/UpdateEventCustomPropertyDefinitionDto.cs` | Event custom-property definition | M | 3.5 |
 | D-055 | `CustomPropertyDefinition/UpdateCustomPropertyDefinitionDto.cs` | CustomPropertyDefinition | M | 3.5 |
-| D-056 | `CategoryTypeCategories/UpdateCategoryTypeCategoriesDto.cs` | CategoryTypeCategories relationship | M | 3.4 |
+| D-056 | `CategoryTypeCategories/UpdateCategoryTypeCategoriesDto.cs` | CategoryTypeCategories relationship | C | 3.4 |
 | D-057 | `Appearance/UpdateUserAppearancePreferencesDto.cs` | Current user appearance preferences | C | 3.3 |
 | D-058 | `Appearance/UpdateUiThemeDto.cs` | UiTheme | C | 3.3 |
 | D-059 | `ActorKeyStore/UpdateActorKeyStoreDto.cs` | ActorKeyStore generic key material | R | 5.1 |
@@ -108,7 +108,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 
 | ID | Handler file | Surface | Disposition | Task |
 |---|---|---|---|---|
-| H-001 | `EventLocations/Handlers/Commands/UpdateEventLocationPolicyCommandHandler.cs` | Event location disclosure policy | M | 3.4 |
+| H-001 | `EventLocations/Handlers/Commands/UpdateEventLocationPolicyCommandHandler.cs` | Event location disclosure policy | C | 3.4 |
 | H-002 | `Events/Handlers/Commands/UpdateEventCommandHandler.cs` | Event | C | 2.1 |
 | H-003 | `EventSessions/Handlers/Commands/UpdateEventSessionCommandHandler.cs` | EventSession | C | 2.1 |
 | H-004 | `EventRegistrations/Handlers/Commands/UpdateEventRegistrationCommandHandler.cs` | EventRegistration | C | 2.1 |
@@ -117,8 +117,8 @@ Paths are relative to `src/Explore.Application/Features/`.
 | H-007 | `Settings/Handlers/Commands/UpdateSettingBatchCommandHandler.cs` | Category setting replacement | S | 1.1 |
 | H-008 | `Settings/Handlers/Commands/UpdateSettingCommandHandler.cs` | Exact setting-key replacement | S | 1.1 |
 | H-009 | `EventAgendaItems/Handlers/Commands/UpdateEventAgendaItemCommandHandler.cs` | EventAgendaItem | C | 2.1 |
-| H-010 | `EventSessionAgendaItems/Handlers/Commands/UpdateEventSessionAgendaItemCommandHandler.cs` | EventSessionAgendaItem | M | 3.4 |
-| H-011 | `EventSessionGroups/Handlers/Commands/UpdateEventSessionGroupCommandHandler.cs` | EventSessionGroup | M | 3.4 |
+| H-010 | `EventSessionAgendaItems/Handlers/Commands/UpdateEventSessionAgendaItemCommandHandler.cs` | EventSessionAgendaItem | C | 3.4 |
+| H-011 | `EventSessionGroups/Handlers/Commands/UpdateEventSessionGroupCommandHandler.cs` | EventSessionGroup | C | 3.4 |
 | H-012 | `LocationRooms/Handlers/Commands/UpdateLocationRoomCommandHandler.cs` | LocationRoom | C | 2.1 |
 | H-013 | `EventSessionLanguages/Handlers/Commands/UpdateEventSessionLanguageCommandHandler.cs` | EventSessionLanguage | C | 2.1 |
 | H-014 | `Webhooks/Handlers/Commands/UpdateWebhookEndpointCommandHandler.cs` | WebhookEndpoint | M | 4.1 |
@@ -135,7 +135,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 | H-025 | `ControlPlane/Handlers/Commands/UpdateControlPlaneTenantPlanVersionDraftCommandHandler.cs` | Tenant plan version draft | C | 3.1 |
 | H-026 | `EventReporting/Handlers/Commands/UpdateReportingProviderLocksCommandHandler.cs` | Reporting provider locks | M | 4.3 |
 | H-027 | `EventReporting/Handlers/Commands/UpdateReportingRoutingSettingsCommandHandler.cs` | Reporting routing settings | M | 4.3 |
-| H-028 | `EventSessionSpeakers/Handlers/Commands/UpdateEventSessionSpeakerCommandHandler.cs` | EventSessionSpeaker | M | 3.4 |
+| H-028 | `EventSessionSpeakers/Handlers/Commands/UpdateEventSessionSpeakerCommandHandler.cs` | EventSessionSpeaker | C | 3.4 |
 | H-029 | `StorageObjects/Handlers/Commands/UpdateStorageObjectCommandHandler.cs` | StorageObject metadata | M | 4.1 |
 | H-030 | `ExternalApiKeys/Handlers/Commands/UpdateExternalApiKeyPolicyCommandHandler.cs` | External API key policy | M | 4.2 |
 | H-031 | `Groups/Handlers/Commands/UpdateGroupCommandHandler.cs` | Group | C | 2.1 |
@@ -158,7 +158,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 | H-048 | `EventTemplates/Handlers/Commands/UpdateEventTemplateCommandHandler.cs` | EventTemplate | M | 3.6 |
 | H-049 | `UserExternalLogins/Handlers/Commands/UpdateUserExternalLoginCommandHandler.cs` | UserExternalLogin generic mapping | R | 5.1 |
 | H-050 | `Tags/Handlers/Commands/UpdateTagCommandHandler.cs` | Tag | C | 3.1 |
-| H-051 | `TagTypeTags/Handlers/Commands/UpdateTagTypeTagsCommandHandler.cs` | TagTypeTags relationship | M | 3.4 |
+| H-051 | `TagTypeTags/Handlers/Commands/UpdateTagTypeTagsCommandHandler.cs` | TagTypeTags relationship | C | 3.4 |
 | H-052 | `SyncStates/Handlers/Commands/UpdateSyncStateCommandHandler.cs` | SyncState cursor | R | 5.1 |
 | H-053 | `Roles/Handlers/Commands/UpdateRolePermissionsCommandHandler.cs` | Role permission assignment action | A | 6.1 |
 | H-054 | `OrganizationMembers/Handlers/Commands/UpdateOrganizationMemberRoleCommandHandler.cs` | Organization member role action | A | 6.1 |
@@ -175,7 +175,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 | H-065 | `EventSessionCustomProperties/Handlers/Commands/UpdateEventSessionCustomPropertyDefinitionCommandHandler.cs` | EventSession custom-property definition | M | 3.5 |
 | H-066 | `EventCustomProperties/Handlers/Commands/UpdateEventCustomPropertyDefinitionCommandHandler.cs` | Event custom-property definition | M | 3.5 |
 | H-067 | `CustomPropertyDefinitions/Handlers/Commands/UpdateCustomPropertyDefinitionCommandHandler.cs` | CustomPropertyDefinition | M | 3.5 |
-| H-068 | `CategoryTypeCategories/Handlers/Commands/UpdateCategoryTypeCategoriesCommandHandler.cs` | CategoryTypeCategories relationship | M | 3.4 |
+| H-068 | `CategoryTypeCategories/Handlers/Commands/UpdateCategoryTypeCategoriesCommandHandler.cs` | CategoryTypeCategories relationship | C | 3.4 |
 | H-069 | `Appearance/Handlers/Commands/UpdateUiThemeCommandHandler.cs` | UiTheme | C | 3.3 |
 | H-070 | `Appearance/Handlers/Commands/UpdateCurrentUserAppearancePreferencesCommandHandler.cs` | User appearance preferences | C | 3.3 |
 | H-071 | `ActorKeyStores/Handlers/Commands/UpdateActorKeyStoreCommandHandler.cs` | ActorKeyStore generic key update | R | 5.1 |
@@ -188,7 +188,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 
 | ID | Controller / route name | Current route | Final disposition | Task |
 |---|---|---|---|---|
-| A-001 | `EventLocationController.UpdateEventLocationDisclosure` | `PUT {eventLocationId}/disclosure` | M: grouped PATCH | 3.4 |
+| A-001 | `EventLocationController.UpdateEventLocationDisclosure` | `PATCH {eventLocationId}/disclosure` | C: grouped PATCH | 3.4 |
 | A-002 | `EventController.UpdateEvent` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-003 | `TenantOnboardingController.UpdateTenantOnboardingPolicySettings` | `PUT settings` | R: remove broad duplicate after remaining non-policy callers migrate | 5.3 |
 | A-004 | `TenantOnboardingController.SaveTenantOnboardingStepProgress` | `PUT steps` | A: retain workflow action | 6.1 |
@@ -197,11 +197,11 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-007 | `ListmonkIntegrationSettingsController.UpdateListmonkIntegrationSettings` | `PUT settings` | M: grouped settings PATCH | 4.2 |
 | A-008 | `InstanceModerationReportingSettingsController.UpdateInstanceModerationReportingProviderLocks` | `PUT locks` | M: grouped settings PATCH | 4.3 |
 | A-009 | `ModerationReportingRoutingController.UpdateModerationReportingRoutingSettings` | `PUT` | M: grouped settings PATCH; secrets explicit | 4.3 |
-| A-010 | `EventSessionSpeakerController.UpdateEventSessionSpeaker` | `PATCH management/by-session/{eventSessionId}/{id}` | M: canonical route-ID grouped PATCH | 3.4 |
+| A-010 | `EventSessionSpeakerController.UpdateEventSessionSpeaker` | `PATCH management/{id}` | C: canonical route-ID grouped PATCH | 3.4 |
 | A-011 | `ControlPlaneController.UpdateControlPlaneTenantPlanVersionDraft` | `PATCH plans/versions/{versionId}` | C: grouped entity PATCH | 3.1 |
 | A-012 | `ControlPlaneController.SetControlPlaneTenantSetting` | `PUT tenants/{tenantId}/settings/{key}` | S: retain exact-key PUT | 6.1 |
-| A-013 | `EventAspectController.UpsertEventIslamicAspect` | `PUT {id}/aspects/islamic` | M: POST create plus grouped PATCH update | 3.4 |
-| A-014 | `EventAspectController.UpsertEventTechAspect` | `PUT {id}/aspects/tech` | M: POST create plus grouped PATCH update | 3.4 |
+| A-013 | `EventAspectController.UpdateEventIslamicAspect` | `PATCH {id}/aspects/islamic` | C: POST create plus grouped PATCH update | 3.4 |
+| A-014 | `EventAspectController.UpdateEventTechAspect` | `PATCH {id}/aspects/tech` | C: POST create plus grouped PATCH update | 3.4 |
 | A-015 | `WebhooksController.UpdateWebhookConsumerProviderMode` | `PUT consumers/{consumerId}/provider-mode` | M: grouped PATCH | 4.1 |
 | A-016 | `WebhooksController.UpdateWebhookEndpoint` | `PUT endpoints/{endpointId}` | M: grouped entity PATCH | 4.1 |
 | A-017 | `EventReportsController.UpdateMyEventReportCommunicationConsent` | `PUT my/{reportId}/communication-consent` | M: grouped PATCH | 4.3 |
@@ -248,7 +248,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-058 | `ActorSubscriptionController.UpdateActorSubscriptionNotificationLevel` | `PATCH actors/{targetActorId}/notification-level` | C: grouped preference PATCH | 3.2 |
 | A-059 | `LocalizationAdminController.UpdateLocalizationGovernance` | `PUT governance` | M: grouped settings PATCH | 4.2 |
 | A-060 | `EventSeriesController.UpdateEventSeries` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
-| A-061 | `EventSessionAgendaItemController.UpdateEventSessionAgendaItem` | `PUT {id}` | M: grouped entity PATCH | 3.4 |
+| A-061 | `EventSessionAgendaItemController.UpdateEventSessionAgendaItem` | `PATCH {id}` | C: grouped entity PATCH | 3.4 |
 | A-062 | `EmailDispatchAdminController.PauseEmailDispatchTenant` | `PUT tenants/{tenantId}/pause` | A: retain operational action | 6.1 |
 | A-063 | `EmailDispatchAdminController.ParkEmailDispatch` | `PUT tenants/{tenantId}/outbox/{outboxId}/park` | A: retain operational action | 6.1 |
 | A-064 | `EmailDispatchAdminController.PauseEmailDispatchProcessor` | `PUT control/pause` | A: retain operational action | 6.1 |
@@ -265,7 +265,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-075 | `FooterController.UpdateTenantFooterSettings` | `PUT settings` | M: grouped settings PATCH/autosave | 1.2 |
 | A-076 | `ActorController.UpdateActor` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
 | A-077 | `UserExternalLoginController.UpdateUserExternalLogin` | `PUT {id}` | R: remove generic provider-mapping update | 5.1 |
-| A-078 | `EventSessionGroupController.UpdateEventSessionGroup` | `PUT {id}` | M: grouped relationship PATCH | 3.4 |
+| A-078 | `EventSessionGroupController.UpdateEventSessionGroup` | `PATCH {id}` | C: grouped relationship PATCH | 3.4 |
 | A-079 | `NotificationController.UpdateCurrentUserNotificationPreferences` | `PATCH preferences/me` | C: grouped PATCH | 3.2 |
 | A-080 | `NotificationController.SetCurrentUserNotificationPreferenceMute` | `PUT preferences/me/mute` | A: retain single-value action PUT | 6.1 |
 | A-081 | `NotificationController.MarkNotificationAsRead` | `PATCH {id}/read` | A: retain state-transition PATCH | 6.1 |

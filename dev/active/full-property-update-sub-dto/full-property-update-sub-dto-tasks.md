@@ -3,14 +3,14 @@
 
 # Full Property Update Sub-DTO Pattern - Task Checklist
 
-Last Updated: 2026-07-27 Europe/Brussels
+Last Updated: 2026-07-28 Europe/Brussels
 
 ## Status Summary
 
 - **Overall status:** Implementation in progress; Phase 2 implementation complete and Phase 3 underway.
-- **Completed:** 9/20 implementation tasks; Task 3.3 implementation, focused verification, and final GPT Oracle review pass.
-- **Current priority:** Begin Task 3.4 program/aspect/relationship resources. Broader phase execution tests remain deferred by user direction rather than reported as passed.
-- **Next recommended slice:** Execute Task 3.4 while preserving recorded Docker and phase verification debt.
+- **Completed:** 10/20 implementation tasks; Tasks 1.1-3.4 are accepted.
+- **Current priority:** Implement Task 3.5 custom-property definition entities. Broader phase execution tests remain deferred by user direction rather than reported as passed.
+- **Next recommended slice:** Migrate the three Task 3.5 definition surfaces while preserving recorded Docker and phase verification debt.
 - **Coverage contract:** 59 DTO files, 71 update-handler files, and 104 public PUT/PATCH endpoints are individually registered.
 
 ## Implementation Maintenance Rules
@@ -112,9 +112,12 @@ Last Updated: 2026-07-27 Europe/Brussels
   - **Verification:** Application, API, BFF, Blazor Client, and affected test projects compile. Focused current-user preference tests pass 5/5, profile service tests 17/17, UiTheme handler tests 3/3, BFF forwarding/validation tests 5/5, BFF route/antiforgery tests 8/8, appearance architecture tests 8/8, client appearance tests 15/15, and the API contract inventory generator passes 1/1. API, Blazor Client, and BFF Release builds pass with zero errors; scoped diagnostics, whitespace, and conflict checks are clean.
   - **Effort:** L
   - **Dependencies:** 3.2.
-- [ ] **3.4 Migrate all remaining program/aspect/relationship entities**
+- [x] **3.4 Migrate all remaining program/aspect/relationship entities**
   - **Rows:** D-009/D-035/D-051/D-053/D-056; H-001/H-010/H-011/H-028/H-051/H-068; A-001/A-010/A-013/A-014/A-061/A-078.
   - **Acceptance:** EventLocation disclosure, Islamic/Tech aspects, EventSessionAgendaItem, EventSessionGroup, EventSessionSpeaker, TagTypeTags, and CategoryTypeCategories use canonical grouped partial contracts; aspect create is separate; speaker update uses only its authoritative route ID.
+  - **Implementation:** EventLocation disclosure independently patches `Fields` and `Audience`; Islamic/Tech aspects expose separate POST create and grouped PATCH update operations; agenda-item and session-group updates are route-ID PATCH; speaker updates use `management/{id}` with strict optional `If-Match`; TagTypeTags and CategoryTypeCategories remain Application-only grouped commands. Tenant-scoped composite unique indexes protect the two lookup relationships after duplicate preflight checks.
+  - **Review:** PASS. The fresh gate rejected an invalid actor-tenant finding because `Actor` is intentionally global, then corrected touched-source ABOUTME headers and typed 403 metadata for all four authorized Event aspect create/update routes.
+  - **Verification:** Focused Application tests passed 33/33, API/HAL tests 30/30, migration tests 2/2, and Blazor client tests 28/28. The post-review Event aspect metadata suite passed 5/5. `dotnet build --configuration Release --verbosity quiet -maxcpucount:1` passed with 0 errors; affected API and generated-client builds also pass. Forward/reverse EF migration scripts contain only the guarded two-index transition. Canonical OpenAPI, NSwag, and inventory generation completed without artifact drift; scoped diagnostics, JSON/NUL validation, whitespace, and conflict checks pass. The full Architecture suite has 11 unrelated concurrent failures and one governed skip; Docker-backed runtime lanes remain unavailable.
   - **Effort:** XL
   - **Dependencies:** 3.3.
 - [ ] **3.5 Migrate all custom-property definition entities**

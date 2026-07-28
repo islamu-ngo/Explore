@@ -3,19 +3,26 @@
 
 # Full Property Update Sub-DTO Pattern - Implementation Plan
 
-Last Updated: 2026-07-26 Europe/Brussels
+Last Updated: 2026-07-28 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Request:** Standardize every update-eligible API entity on the existing Event/EventSession grouped partial-update convention and make settings, especially policy toggles, save at the point of change.
 - **Task directory:** `dev/active/full-property-update-sub-dto/`
-- **Planning status:** Approved and in implementation; Phase 1 implementation is complete and Task 2.1 is active.
+- **Planning status:** Approved and in implementation; Tasks 1.1-3.4 are accepted, and Task 3.5 is next.
 - **Compatibility:** Breaking changes are intentional. Do not retain old DTOs, routes, overloads, client methods, or tests.
 - **Matched intents:** `add-write-endpoint`, `add-cqrs-handler`, `openapi-contract-change`, `add-hal-link`, `blazor-component-affordance`; `add-ef-migration` only when an update-eligible aggregate lacks required concurrency state.
 - **Relevant skills:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `auth-patterns`, `blazor-ui-conventions`, `blazor-bff-patterns`, `dotnet-efcore-guidelines`.
 - **Relevant rules:** `.claude/rules/application-layer.md`, `.claude/rules/api-controllers.md`, matching Blazor rules, and `.claude/rules/efcore-migrations.md` when persistence changes.
 - **Primary layers:** Application, API, Blazor Client, tests, OpenAPI/generated client, and documentation. Domain/Persistence only where concurrency or an existing invariant requires it.
 - **Complexity:** XL. Current scans found 59 `Update*Dto.cs` files, 71 matching update command-handler files, 104 public `PUT`/`PATCH` endpoints across 53 controllers, and 46 update-named tests. The exhaustive inventory assigns every one a final disposition.
+
+## Re-baseline - 2026-07-28 Europe/Brussels
+
+- **Reason:** Task 3.4 implementation and verification moved ahead of the active records during a context compaction.
+- **What changed:** The seven program/aspect/relationship surfaces now use canonical grouped partial-update semantics. Event aspects split create (`POST`) from update (`PATCH`), EventSessionSpeaker uses only its assignment ID, and the two Application-only lookup relationships gained database-enforced tenant-scoped uniqueness with duplicate-safe migration preflight.
+- **Plan impact:** Scope and sequencing are unchanged. Task 3.4 passed fresh review after scoped contract-metadata/header remediation; the completed count is 10/20.
+- **Remaining work:** Begin Task 3.5 and continue the existing phase sequence.
 
 ## 1. Executive Summary
 
@@ -315,8 +322,8 @@ Every task owns the exact D/H/A rows listed below. A task is incomplete if any o
 - **Type:** modify
 - **Layer:** Application / API / Blazor
 - **Files:** EventLocation disclosure, Event Islamic/Tech aspects, EventSessionAgendaItem, EventSessionGroup, EventSessionSpeaker, TagTypeTags, CategoryTypeCategories DTOs/handlers/controllers/tests.
-- **Description:** Migrate D-009/D-035/D-051/D-053/D-056, H-001/H-010/H-011/H-028/H-051/H-068, and A-001/A-010/A-013/A-014/A-061/A-078. Split aspect create from partial update and remove the redundant parent session ID from the speaker update route.
-- **Acceptance Criteria:** Every named surface has canonical route-ID grouped PATCH or Application-only grouped command semantics; cross-tenant relationships, duplicates, schedule/privacy, and parent cache invariants hold.
+- **Description:** Migrate D-009/D-035/D-051/D-053/D-056, H-001/H-010/H-011/H-028/H-051/H-068, and A-001/A-010/A-013/A-014/A-061/A-078. Split aspect create from partial update, remove the redundant parent session ID from the speaker update route, and enforce tenant-scoped uniqueness for the two Application-only lookup relationships.
+- **Acceptance Criteria:** Every named surface has canonical route-ID grouped PATCH or Application-only grouped command semantics; cross-tenant relationships, duplicates, schedule/privacy, parent cache invariants, and database race safety hold. The migration must fail before index replacement when duplicate lookup relationships exist and must contain no unrelated schema changes.
 - **Dependencies:** 3.3.
 - **Effort:** XL
 - **Required Skills/Rules:** CQRS, privacy, tenant isolation, UoW.

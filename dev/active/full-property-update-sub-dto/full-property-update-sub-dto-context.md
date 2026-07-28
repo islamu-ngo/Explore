@@ -3,9 +3,9 @@
 
 # Full Property Update Sub-DTO Pattern - Context
 
-Last Updated: 2026-07-27 Europe/Brussels
+Last Updated: 2026-07-28 Europe/Brussels
 
-## SESSION PROGRESS (2026-07-27 Europe/Brussels)
+## SESSION PROGRESS (2026-07-28 Europe/Brussels)
 
 ### COMPLETED
 
@@ -72,31 +72,36 @@ Last Updated: 2026-07-27 Europe/Brussels
 - Appearance handlers reject empty wrappers/groups before mutation. Profile and UI-theme updates apply only supplied leaves; UI-theme default/active invariants are checked against merged persisted state and one transaction performs any default clearing plus one entity update. The BFF sends one localization leaf at a time and uses the focused mode operation for theme changes.
 - OpenAPI and NSwag were regenerated. Application, API, BFF, Blazor Client, and affected test projects compile. Focused evidence passes 5 current-user handler tests, 17 profile service tests, 3 UiTheme handler tests, 5 BFF forwarding/validation tests, 8 BFF route/antiforgery tests, 8 appearance architecture tests, 15 client appearance tests, and 1 contract-inventory generator test. API, Blazor Client, and BFF Release builds pass with zero errors; scoped diagnostics, whitespace, and conflict checks are clean.
 - Final GPT Oracle review returned PASS after confirming the remediated BFF profile PATCH route, obsolete PUT rejection, and typed HTTP 400 profile-update contract. Task 3.3 has no remaining scoped blocker.
+- Task 3.4 implementation and verification are complete across EventLocation disclosure, Event Islamic/Tech aspects, EventSessionAgendaItem, EventSessionGroup, EventSessionSpeaker, TagTypeTags, and CategoryTypeCategories. Acceptance remains open solely for the fresh GPT Oracle gate.
+- EventLocation disclosure now independently applies nullable `Fields` and `Audience` groups through PATCH, so omitted privacy state is preserved. Islamic/Tech aspects use explicit POST create operations and grouped PATCH updates instead of upsert semantics.
+- EventSessionAgendaItem and EventSessionGroup use route-authoritative grouped PATCH. EventSessionSpeaker now patches `management/{id}` without a redundant parent session ID; its optional `If-Match` header still rejects malformed or unquoted GUID validators.
+- TagTypeTags and CategoryTypeCategories remain Application-only relationship commands. Their tenant-scoped composite unique indexes are enforced by `20260727174857_EnforceLookupRelationshipUniqueness`, which performs duplicate preflight checks before replacing only the two prior indexes and restores them in `Down`.
+- Focused verification passed 33 Application tests, 30 API/HAL tests, 2 migration tests, and 28 Blazor client tests. The canonical Release build passed with zero errors. Forward/reverse migration scripts contain only the guarded index transition; OpenAPI, NSwag, and inventory generation completed without generated-artifact drift.
+- Fresh Task 3.4 review passed after correcting the review's invalid actor-tenant assumption, adding the missing second ABOUTME lines on touched aspect/HAL files, and documenting typed 403 responses for all four authorized Event aspect create/update routes. OpenAPI and NSwag were regenerated, affected API/client builds pass, and the focused metadata suite passes 5/5.
 
 ### IN PROGRESS
 
-- Task 3.4 is the next implementation slice; no Task 3.3 work remains.
+- Task 3.5 custom-property definition entities are the active slice; Task 3.4 is accepted and the workstream is at 10/20.
 
 ### NEXT
 
-1. Begin Task 3.4 program/aspect/relationship resources from its assigned inventory rows.
-2. Preserve Task 3.3 grouped PATCH, focused-action, and route-owned identity contracts while adjacent surfaces change.
-3. Preserve the Task 3.1 grouped PATCH, route-owned identity, HTTPS, slug-cache, and footer active-state contracts while later phases evolve adjacent files.
-4. Run the Docker-backed stress/race verification and deferred phase tests before final workstream completion.
-5. Keep H-019/A-003 until Task 5.3, then remove them after their remaining callers have explicit save boundaries.
-6. Keep unrelated dirty worktree changes untouched.
+1. Implement Task 3.5 across the shared, Event, and EventSession custom-property definition contracts.
+2. Preserve exact custom-property value replacement PUT rows A-091/A-092/A-102/A-103.
+3. Run the Docker-backed stress/race verification and deferred phase tests before final workstream completion.
+4. Keep H-019/A-003 until Task 5.3, then remove them after their remaining callers have explicit save boundaries.
+5. Keep unrelated dirty worktree changes untouched.
 
 ### BLOCKERS
 
 - Deferred verification: Docker-backed stress/race execution is unavailable because `unix:///home/amir/.docker/desktop/docker.sock` does not exist; the user explicitly allowed implementation to continue.
-- Non-blocking external status: the full Architecture suite has a stale event-report consent source assertion and four missing newly added registration/privacy inventory fields.
+- Non-blocking external status: the full Architecture suite has 11 unrelated concurrent failures and one governed skip; do not attribute them to Task 3.4 or claim a green full suite.
 - Runtime visual QA is intentionally skipped by explicit user direction; do not report a browser visual pass for Tasks 1.1 or 1.2.
 
 ## Quick Resume
 
 1. Read this file and `full-property-update-sub-dto-tasks.md`.
 2. Read only the current phase, decisions, and affected rows in the plan/inventory.
-3. Start from the first unchecked task after user approval.
+3. Continue with Task 3.5 rows D-052/D-054/D-055, H-065-H-067, and A-090/A-101/A-104.
 4. Update tasks immediately after substantial completion; update context only at a meaningful boundary.
 
 ## Key Files And Responsibilities
@@ -118,6 +123,10 @@ Last Updated: 2026-07-27 Europe/Brussels
 | `src/Explore.Infrastructure/Services/ResolverConfigService.cs` | Updated | Cached resolver configuration. | Returns isolated copies so callers cannot mutate cache-owned state. |
 | `src/Explore.Persistence/Repositories/SystemSettingRepository.cs` | Updated | Atomic system-setting persistence. | Supports metadata-only governance lock upserts without value rewrites. |
 | `src/Explore.Application/Settings/SettingUpsertService.cs` | Updated | Setting upsert orchestration. | Uses the atomic metadata-only path for lock-only governance patches. |
+| `src/Explore.API/Controllers/EventSessionSpeakerController.cs` | Updated | Canonical speaker-assignment PATCH. | Uses only assignment `id`; optional `If-Match` remains strict. |
+| `src/Explore.Persistence/Migrations/20260727174857_EnforceLookupRelationshipUniqueness.cs` | Updated | Relationship race-safety migration. | Duplicate preflight plus only two tenant-scoped unique-index replacements. |
+| `tests/Event.Persistence.IntegrationTests/Migrations/LookupRelationshipUniquenessMigrationTests.cs` | Added | Migration operation guard. | Proves focused Up/Down index operations and duplicate preflight SQL. |
+| `tests/Event.API.IntegrationTests/Features/EventSessionAgendaItemControllerTests.cs` | Added | Agenda-item contract coverage. | Proves canonical PATCH and obsolete PUT absence. |
 | `src/Explore.Domain/Constants/PlatformDefaults.cs` | Existing | Canonical platform tenant constants. | Module PATCH capability synchronization uses `DefaultTenantId`. |
 | `tests/Explore.Blazor.Client.Tests/Pages/Admin/TenantPoliciesSectionTests.cs` | Existing | Tenant policy interaction coverage. | Add immediate save, lock, pending, and failure recovery cases. |
 | `tests/Event.Application.UnitTests/Features/InstanceOnboarding/Commands/UpdateInstanceSubResourceCommandHandlerTests.cs` | Added | Instance sparse-handler and storage-secret coverage. | Covers omitted leaves, one-property updates, complete groups, and redacted S3 credential preservation. |
@@ -162,23 +171,25 @@ Planning-only verification uses `git diff --check` for this active directory. Th
 
 Latest Task 1.3 evidence: exact setup authority/limiter combined tests passed 13/13; focused metadata passed 16/16; API and generated-client builds passed; the Application source build passed; deferred-notification focused runs passed 33 service tests and 26 handler tests; resolver tests passed 2/2; the inventory writer passed 1/1; scoped architecture passed 4/4; the Persistence integration test project builds; and the scoped diff is clean. The canonical Release build passes with 0 errors, and the Phase 1 Blazor suite passes 2,115/2,116 with one governed skip. The full Architecture suite executes 304 tests with 301 passing, one governed skip, and two unrelated non-blocking concurrent failures. Final scoped Oracle review passed after GET 429 parity with no remediation remaining. A fresh GPT Oracle gate review returned WAIT: Task 1.3 stays open solely for unavailable Docker stress/race lanes absent an explicit user waiver; no Docker runtime result is claimed.
 
+Latest Task 3.4 evidence: focused Application tests passed 33/33, API/HAL tests 30/30, persistence migration tests 2/2, and Blazor client tests 28/28. `dotnet build --configuration Release --verbosity quiet -maxcpucount:1` passed with zero errors. Forward/reverse `dotnet ef migrations script` output contains only the guarded two-index transition. Canonical OpenAPI, NSwag, and inventory generators completed without artifact drift; generated operation IDs/routes, JSON validity, zero-NUL checks, scoped diagnostics, `git diff --check`, and conflict scanning pass. The post-review Event aspect metadata suite passed 5/5, and affected API/client builds pass after typed 403 and ABOUTME remediation. The full Architecture suite has 11 unrelated concurrent failures and one governed skip. Task 3.4 is accepted.
+
 ## Current Known Risks / Unknowns
 
 - The current 59/71/104 scans have no unclassified row. Task 6.2 must enforce that exact coverage and catch new rows.
-- Active unrelated changes touch admin layouts and generated contracts. Implementation agents must reread affected files and merge with current work rather than overwrite it.
+- Active unrelated changes include the registration-data-collection workstream and federation/participation files. Implementation agents must reread affected files and merge with current work rather than overwrite it.
 - H-019/A-003 remain until Task 5.3 because announcement-bar writes still depend on them; removing them earlier would break a live non-policy caller.
 - Instance sub-resource concurrency may rely on existing policy-set/version behavior; Task 1.3 must preserve it rather than introduce a new token blindly.
 - Task 1.2 intentionally adds one footer `manage-link-groups` HAL capability rather than per-item link policies because every explicit link mutation shares the same tenant-update permission and governance lock.
 
 ## Handoff Notes
 
-### Handoff - 2026-07-27 Europe/Brussels
+### Handoff - 2026-07-28 Europe/Brussels
 
-- **Current state:** Tasks 1.1-3.3 are complete, representing 9/20 implementation tasks. Task 3.3 compile/generated-contract gates, focused execution, integrity checks, and final GPT Oracle review pass. Broader phase execution tests remain explicitly deferred rather than reported as passed. H-019/A-003 deletion remains assigned to Task 5.3.
-- **Next action:** Begin Task 3.4 program/aspect/relationship resources.
-- **Blockers:** No Task 3.3 implementation blocker. Docker runtime and phase test execution remain deferred, not passed. Runtime visual QA remains explicitly waived.
-- **Modified files:** Task 3.3 touches appearance request DTOs/validators/handlers, AppearanceProfile resolution, API controllers, BFF routes/forwarding, the UiTheme editor, focused tests, OpenAPI/generated client, contract inventory, API docs, and active workstream files. Preserve unrelated worktree changes.
-- **Validation:** Focused current-user, profile, UiTheme, BFF, architecture, client, and inventory tests pass. API, Blazor Client, and BFF Release builds pass with zero errors. Scoped diagnostics, whitespace, and conflict checks are clean. Final GPT Oracle review passed; broader suites remain deferred.
-- **Documentation impact:** API changelog/reference, API contract inventory, exhaustive workstream inventory, tasks, and context describe the appearance grouped PATCH migration and retained focused actions.
-- **Risks:** The worktree contains broad concurrent changes; final review must stay scoped to Task 3.3 and must not infer that deferred tests passed.
-- **Notes for next contributor/agent:** Never revert unrelated changes. Re-read a file immediately before editing if it is already dirty.
+- **Current state:** Tasks 1.1-3.4 are accepted, representing 10/20 tasks. Task 3.4 implementation, focused execution, migration-script inspection, generated-contract synchronization, Release build, and fresh review pass.
+- **Next action:** Implement Task 3.5 custom-property definition entities.
+- **Blockers:** No Task 3.4 blocker remains. Docker runtime remains unavailable, and the full Architecture suite has 11 unrelated concurrent failures plus one governed skip.
+- **Modified files:** Task 3.4 spans program/aspect/relationship DTOs and handlers already present at HEAD, current EventSessionSpeaker controller/HAL corrections, focused API/Blazor tests, the relationship uniqueness migration/designer/snapshot, API docs, and these active records. Registration-data-collection and federation/participation changes are unrelated concurrent work.
+- **Validation:** Application 33/33, API/HAL 30/30, persistence migration 2/2, Blazor client 28/28, and post-review metadata 5/5 focused tests pass. Release and affected API/client builds pass with zero errors. Migration scripts, generated artifacts, diagnostics, JSON/NUL checks, whitespace, and conflict checks pass.
+- **Documentation impact:** API reference/changelog describe the canonical Task 3.4 routes; this refresh synchronizes plan, context, and tasks with accepted implementation reality.
+- **Risks:** The graph snapshot predates current HEAD and the worktree contains broad concurrent changes. Review must remain scoped and must not infer that unrelated architecture failures or Docker lanes passed.
+- **Notes for next contributor/agent:** Read this context and the Task 3.4 ledger first. Never revert unrelated changes; reread any dirty file immediately before editing.
