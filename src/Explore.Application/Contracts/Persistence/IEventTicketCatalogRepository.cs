@@ -11,6 +11,10 @@ public interface IEventTicketCatalogRepository
 
     Task<EventTicketCatalogVersion?> GetPublishedCatalogAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken);
 
+    Task<EventTicketCatalogVersion?> GetDraftForUpdateAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken);
+
+    Task<EventTicketCatalogVersion?> GetPublishedForUpdateAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken);
+
     Task<EventTicketCatalogVersion?> GetByEventVersionAndTenantAsync(Guid eventId, int versionNumber, Guid tenantId, CancellationToken cancellationToken);
 
     Task<EventTicketType?> GetTicketTypeByIdEventAndTenantAsync(Guid ticketTypeId, Guid eventId, Guid tenantId, CancellationToken cancellationToken);
@@ -25,5 +29,5 @@ public interface IEventTicketCatalogRepository
 
     Task UpdateCapacityPoolAsync(EventCapacityPool pool, CancellationToken cancellationToken);
 
-    Task PublishDraftReplacingCurrentAsync(EventTicketCatalogVersion draft, Guid eventId, Guid tenantId, CancellationToken cancellationToken);
+    Task SaveChangesAsync(CancellationToken cancellationToken);
 }

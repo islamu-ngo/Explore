@@ -23,6 +23,16 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
             && catalog.TenantId == tenantId
             && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Published, cancellationToken);
 
+    public Task<EventTicketCatalogVersion?> GetDraftForUpdateAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken) =>
+        ManagementGraph().FirstOrDefaultAsync(catalog => catalog.EventId == eventId
+            && catalog.TenantId == tenantId
+            && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Draft, cancellationToken);
+
+    public Task<EventTicketCatalogVersion?> GetPublishedForUpdateAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken) =>
+        ManagementGraph().FirstOrDefaultAsync(catalog => catalog.EventId == eventId
+            && catalog.TenantId == tenantId
+            && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Published, cancellationToken);
+
     public Task<EventTicketCatalogVersion?> GetByEventVersionAndTenantAsync(Guid eventId, int versionNumber, Guid tenantId, CancellationToken cancellationToken) =>
         CatalogDetailsQuery().FirstOrDefaultAsync(catalog => catalog.EventId == eventId && catalog.VersionNumber == versionNumber && catalog.TenantId == tenantId, cancellationToken);
 
@@ -58,25 +68,8 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task PublishDraftReplacingCurrentAsync(EventTicketCatalogVersion draft, Guid eventId, Guid tenantId, CancellationToken cancellationToken)
-    {
-        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-        try
-        {
-            var published = await ManagementGraph().FirstOrDefaultAsync(catalog => catalog.EventId == eventId && catalog.TenantId == tenantId && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Published, cancellationToken);
-            published?.Retire();
-            await dbContext.SaveChangesAsync(cancellationToken);
-
-            draft.Publish();
-            await dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-        }
-        catch
-        {
-            await transaction.RollbackAsync(CancellationToken.None);
-            throw;
-        }
-    }
+    public Task SaveChangesAsync(CancellationToken cancellationToken) =>
+        dbContext.SaveChangesAsync(cancellationToken);
 
     private IQueryable<EventTicketCatalogVersion> CatalogDetailsQuery() =>
         ManagementGraph().AsNoTracking();

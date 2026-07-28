@@ -11,6 +11,7 @@ using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using DomainEvent = Explore.Domain.Event;
 
 namespace Event.Persistence.IntegrationTests.Repositories;
 
@@ -38,6 +39,13 @@ public sealed class TicketingMonetizationPersistenceTests
         await Assert.That(ticketType.FindProperty(nameof(EventTicketType.SuggestedPriceMinor))!.GetColumnType()).IsEqualTo("bigint");
 
         IEntityType feePolicy = model.FindEntityType(typeof(PlatformFeePolicy))!;
+        IEntityType eventEntity = model.FindEntityType(typeof(DomainEvent))!;
+        await Assert.That(eventEntity.FindNavigation(nameof(DomainEvent.TicketCatalogVersions))!.GetFieldName()).IsEqualTo("_ticketCatalogVersions");
+        await Assert.That(eventEntity.FindNavigation(nameof(DomainEvent.CapacityPools))!.GetFieldName()).IsEqualTo("_capacityPools");
+        await Assert.That(model.FindEntityType(typeof(EventTicketCatalogVersion))!.GetTableName()).IsEqualTo("event_ticket_catalog_versions");
+        await Assert.That(model.FindEntityType(typeof(EventTicketType))!.GetTableName()).IsEqualTo("event_ticket_types");
+        await Assert.That(model.FindEntityType(typeof(TicketTypeEntitlement))!.GetTableName()).IsEqualTo("ticket_type_entitlements");
+        await Assert.That(model.FindEntityType(typeof(EventCapacityPool))!.GetTableName()).IsEqualTo("event_capacity_pools");
         await Assert.That(feePolicy.FindProperty(nameof(PlatformFeePolicy.FeeBasisPoints))!.GetColumnType()).IsEqualTo("integer");
         await Assert.That(model.FindEntityType(typeof(PlatformFeeFixedCharge))!.FindProperty(nameof(PlatformFeeFixedCharge.AmountMinor))!.GetColumnType()).IsEqualTo("bigint");
         await Assert.That(model.FindEntityType(typeof(PlatformContributionOption))!.FindProperty(nameof(PlatformContributionOption.ContributionBasisPoints))!.GetColumnType()).IsEqualTo("integer");
@@ -136,7 +144,7 @@ public sealed class TicketingMonetizationPersistenceTests
     }
 
     [Test]
-    public async Task CatalogReads_SelectLatestNonRetiredManagementGraphAndNoTrackingPublishedGraph()
+    public async Task CatalogReads_SelectLatestNonRetiredManagementGraphAndTrackStatusSpecificUpdateGraphs()
     {
         await using var context = CreateInMemoryContext("ticketing-catalog-reads");
         Guid tenantId = Guid.CreateVersion7();
@@ -157,10 +165,31 @@ public sealed class TicketingMonetizationPersistenceTests
         await Assert.That(context.Entry(management).State).IsEqualTo(EntityState.Unchanged);
 
         context.ChangeTracker.Clear();
+        EventTicketCatalogVersion draftForUpdate = (await repository.GetDraftForUpdateAsync(eventId, tenantId, CancellationToken.None))!;
+        await Assert.That(draftForUpdate.VersionNumber).IsEqualTo(1);
+        await Assert.That(context.Entry(draftForUpdate).State).IsEqualTo(EntityState.Unchanged);
+
+        EventTicketCatalogVersion publishedForUpdate = (await repository.GetPublishedForUpdateAsync(eventId, tenantId, CancellationToken.None))!;
+        await Assert.That(publishedForUpdate.VersionNumber).IsEqualTo(2);
+        await Assert.That(context.Entry(publishedForUpdate).State).IsEqualTo(EntityState.Unchanged);
+
+        context.ChangeTracker.Clear();
         EventTicketCatalogVersion publishedRead = (await repository.GetPublishedCatalogAsync(eventId, tenantId, CancellationToken.None))!;
         await Assert.That(publishedRead.VersionNumber).IsEqualTo(2);
         await Assert.That(context.Entry(publishedRead).State).IsEqualTo(EntityState.Detached);
         await Assert.That(publishedRead.TicketTypes.Single().Entitlements.Single().TicketTypeId).IsEqualTo(publishedRead.TicketTypes.Single().Id);
+    }
+
+    [Test]
+    public async Task TicketRepository_DoesNotOwnTransactionCreation()
+    {
+        string repositoryPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "../../../../../src/Explore.Persistence/Repositories/EventTicketCatalogRepository.cs"));
+        string source = await File.ReadAllTextAsync(repositoryPath);
+
+        await Assert.That(source.Contains("BeginTransaction", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(source.Contains("PublishDraftReplacingCurrentAsync", StringComparison.Ordinal)).IsFalse();
     }
 
     private static EventTicketCatalogVersion CreatePublishedCatalog(Guid tenantId, Guid eventId, int versionNumber)
