@@ -47,6 +47,22 @@ public class EventTests
     }
 
     [Test]
+    public async Task TicketingNavigations_AreReadonlyAggregateOwnedCollections()
+    {
+        var catalogProperty = typeof(global::Explore.Domain.Event).GetProperty(
+            nameof(global::Explore.Domain.Event.TicketCatalogVersions));
+        var poolProperty = typeof(global::Explore.Domain.Event).GetProperty(
+            nameof(global::Explore.Domain.Event.CapacityPools));
+
+        await Assert.That(catalogProperty?.PropertyType)
+            .IsEqualTo(typeof(IReadOnlyCollection<Explore.Domain.EventTicketCatalogVersion>));
+        await Assert.That(poolProperty?.PropertyType)
+            .IsEqualTo(typeof(IReadOnlyCollection<Explore.Domain.EventCapacityPool>));
+        await Assert.That(catalogProperty?.SetMethod).IsNull();
+        await Assert.That(poolProperty?.SetMethod).IsNull();
+    }
+
+    [Test]
     public async Task NullableTextAndMoneyProperties_DefaultValue_IsExpected()
     {
         var entity = CreateEvent();

@@ -12,6 +12,9 @@ namespace Explore.Domain;
 
 public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
+    private readonly List<EventTicketCatalogVersion> _ticketCatalogVersions = [];
+    private readonly List<EventCapacityPool> _capacityPools = [];
+
     public Guid Id { get; set; }
 
     [ForeignKey("EventType")]
@@ -74,8 +77,8 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public ICollection<EventPublicAction> PublicActions { get; set; } = new List<EventPublicAction>();
     public ICollection<EventOrganizerClaim> OrganizerClaims { get; set; } = new List<EventOrganizerClaim>();
     public EventParticipationConfiguration? ParticipationConfiguration { get; set; }
-    public ICollection<EventTicketCatalogVersion> TicketCatalogVersions { get; set; } = new List<EventTicketCatalogVersion>();
-    public ICollection<EventCapacityPool> CapacityPools { get; set; } = new List<EventCapacityPool>();
+    public IReadOnlyCollection<EventTicketCatalogVersion> TicketCatalogVersions => _ticketCatalogVersions.AsReadOnly();
+    public IReadOnlyCollection<EventCapacityPool> CapacityPools => _capacityPools.AsReadOnly();
 
     public string? Slug { get; set; }
     public string PublicCode { get; set; } = string.Empty;
