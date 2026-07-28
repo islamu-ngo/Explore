@@ -1,3 +1,6 @@
+// ABOUTME: Tests naming and source-layout conventions across the platform assemblies.
+// ABOUTME: Includes the Phase 4 one-configuration-class-per-file persistence contract.
+
 namespace Event.Architecture.Tests;
 
 using System.Reflection;
@@ -60,6 +63,67 @@ public class NamingConventionTests
             .GetResult();
 
         await Assert.That(result.IsSuccessful).IsTrue();
+    }
+
+    #endregion
+
+    #region Persistence Configuration Conventions
+
+    [Test]
+    public async Task Phase4PersistenceConfigurations_ShouldUseOneClassPerCanonicalFile()
+    {
+        string configurationDirectory = Path.Combine(FindRepoRoot(), "src", "Explore.Persistence", "Configurations", "Entities");
+        string[] configurationNames =
+        [
+            "EventTicketCatalogVersionConfiguration",
+            "EventTicketTypeConfiguration",
+            "TicketTypeEntitlementConfiguration",
+            "EventCapacityPoolConfiguration",
+            "LookupConfiguration",
+            "TicketCatalogStatusConfiguration",
+            "TicketPricingModeConfiguration",
+            "ParticipantDataCollectionModeConfiguration",
+            "EntitlementScopeTypeConfiguration",
+            "EntitlementSelectionRuleConfiguration",
+            "CapacityOversellPolicyConfiguration",
+            "PlatformFeePolicyConfiguration",
+            "PlatformFeeFixedChargeConfiguration",
+            "PlatformContributionSettingConfiguration",
+            "PlatformContributionOptionConfiguration"
+        ];
+
+        foreach (string configurationName in configurationNames)
+        {
+            string path = Path.Combine(configurationDirectory, $"{configurationName}.cs");
+            await Assert.That(File.Exists(path)).IsTrue();
+            string source = await File.ReadAllTextAsync(path);
+            string[] classDeclarations = source.Split('\n')
+                .Where(line => line.Contains(" class ", StringComparison.Ordinal))
+                .ToArray();
+            await Assert.That(source).Contains($"class {configurationName}");
+            await Assert.That(classDeclarations.Length).IsEqualTo(1);
+        }
+
+        foreach (string groupedFile in new[] { "EventTicketingConfigurations.cs", "TicketingLookupConfigurations.cs", "PlatformMonetizationConfigurations.cs" })
+        {
+            await Assert.That(File.Exists(Path.Combine(configurationDirectory, groupedFile))).IsFalse();
+        }
+    }
+
+    private static string FindRepoRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Explore.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate repository root containing Explore.slnx.");
     }
 
     #endregion
