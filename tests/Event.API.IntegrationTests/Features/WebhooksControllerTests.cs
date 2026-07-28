@@ -360,7 +360,7 @@ public sealed class WebhooksControllerTests
         var listRoute = listAction.GetCustomAttribute<HttpGetAttribute>();
         var detailRoute = detailAction.GetCustomAttribute<HttpGetAttribute>();
         var createRoute = createAction.GetCustomAttribute<HttpPostAttribute>();
-        var updateRoute = updateAction.GetCustomAttribute<HttpPutAttribute>();
+        var updateRoute = updateAction.GetCustomAttribute<HttpPatchAttribute>();
         var deleteRoute = deleteAction.GetCustomAttribute<HttpDeleteAttribute>();
         var rotateRoute = rotateAction.GetCustomAttribute<HttpPostAttribute>();
         var testRoute = testAction.GetCustomAttribute<HttpPostAttribute>();
@@ -426,7 +426,7 @@ public sealed class WebhooksControllerTests
     {
         var action = typeof(WebhooksController)
             .GetMethod(nameof(WebhooksController.UpdateConsumerProviderMode))!;
-        var route = action.GetCustomAttribute<HttpPutAttribute>();
+        var route = action.GetCustomAttribute<HttpPatchAttribute>();
         var authorization = typeof(UpdateWebhookConsumerProviderModeCommand)
             .GetCustomAttribute<AuthorizeResourceAttribute>();
 
@@ -763,16 +763,25 @@ public sealed class WebhooksControllerTests
             endpointId,
             new UpdateWebhookEndpointRequestDto
             {
-                Url = "https://integrator.example/hooks/updated",
-                Description = "Updated endpoint",
-                EventTypeIds = [eventTypeId],
-                MaxAttempts = 6,
-                TimeoutSeconds = 12,
-                RateLimitPerMinute = 120,
-                ExpectedConfigurationVersion = 4,
-                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
-                PendingWorkReason = "Preserve queued work.",
-                AcknowledgeUncertainProviderPublications = true
+                Destination = new UpdateWebhookEndpointDestinationDto
+                {
+                    Url = "https://integrator.example/hooks/updated",
+                    Description = "Updated endpoint"
+                },
+                Subscriptions = new UpdateWebhookEndpointSubscriptionsDto { EventTypeIds = [eventTypeId] },
+                DeliveryPolicy = new UpdateWebhookEndpointDeliveryPolicyDto
+                {
+                    MaxAttempts = 6,
+                    TimeoutSeconds = 12,
+                    RateLimitPerMinute = 120
+                },
+                Governance = new UpdateWebhookEndpointGovernanceDto
+                {
+                    ExpectedConfigurationVersion = 4,
+                    PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                    PendingWorkReason = "Preserve queued work.",
+                    AcknowledgeUncertainProviderPublications = true
+                }
             },
             CancellationToken.None);
 
@@ -782,16 +791,16 @@ public sealed class WebhooksControllerTests
         await _mediator.Received(1).Send(
             Arg.Is<UpdateWebhookEndpointCommand>(command =>
                 command.EndpointId == endpointId &&
-                command.Url == "https://integrator.example/hooks/updated" &&
-                command.Description == "Updated endpoint" &&
-                command.EventTypeIds.Contains(eventTypeId) &&
-                command.MaxAttempts == 6 &&
-                command.TimeoutSeconds == 12 &&
-                command.RateLimitPerMinute == 120 &&
-                command.ExpectedConfigurationVersion == 4 &&
-                command.PendingWorkDecisionId == (int)WebhookPendingWorkDecision.PreserveExisting &&
-                command.PendingWorkReason == "Preserve queued work." &&
-                command.AcknowledgeUncertainProviderPublications),
+                command.Destination!.Url == "https://integrator.example/hooks/updated" &&
+                command.Destination.Description == "Updated endpoint" &&
+                command.Subscriptions!.EventTypeIds.Contains(eventTypeId) &&
+                command.DeliveryPolicy!.MaxAttempts == 6 &&
+                command.DeliveryPolicy.TimeoutSeconds == 12 &&
+                command.DeliveryPolicy.RateLimitPerMinute == 120 &&
+                command.Governance.ExpectedConfigurationVersion == 4 &&
+                command.Governance.PendingWorkDecisionId == (int)WebhookPendingWorkDecision.PreserveExisting &&
+                command.Governance.PendingWorkReason == "Preserve queued work." &&
+                command.Governance.AcknowledgeUncertainProviderPublications),
             Arg.Any<CancellationToken>());
     }
 
@@ -812,11 +821,14 @@ public sealed class WebhooksControllerTests
             consumerId,
             new UpdateWebhookConsumerProviderModeRequestDto
             {
-                ProviderModeId = (int)WebhookProviderMode.Svix,
-                ExpectedConfigurationVersion = 5,
-                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
-                PendingWorkReason = "Move new deliveries to self-hosted Svix.",
-                AcknowledgeUncertainProviderPublications = true
+                ProviderMode = new UpdateWebhookConsumerProviderModeDto
+                {
+                    ProviderModeId = (int)WebhookProviderMode.Svix,
+                    ExpectedConfigurationVersion = 5,
+                    PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                    PendingWorkReason = "Move new deliveries to self-hosted Svix.",
+                    AcknowledgeUncertainProviderPublications = true
+                }
             },
             CancellationToken.None);
 
@@ -850,10 +862,13 @@ public sealed class WebhooksControllerTests
             Guid.CreateVersion7(),
             new UpdateWebhookConsumerProviderModeRequestDto
             {
-                ProviderModeId = (int)WebhookProviderMode.Local,
-                ExpectedConfigurationVersion = 2,
-                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
-                PendingWorkReason = "Preserve pending work."
+                ProviderMode = new UpdateWebhookConsumerProviderModeDto
+                {
+                    ProviderModeId = (int)WebhookProviderMode.Local,
+                    ExpectedConfigurationVersion = 2,
+                    PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                    PendingWorkReason = "Preserve pending work."
+                }
             },
             CancellationToken.None);
 
@@ -864,6 +879,24 @@ public sealed class WebhooksControllerTests
         await Assert.That(problem).IsNotNull();
         await Assert.That(problem!.Extensions["code"])
             .IsEqualTo("webhook_consumer_configuration_conflict");
+    }
+
+    [Test]
+    public async Task UpdateConsumerProviderMode_WithoutProviderModeGroup_ReturnsValidationProblem()
+    {
+        var controller = CreateController("keycloak-subject-update-consumer-provider-mode-invalid");
+
+        var result = await controller.UpdateConsumerProviderMode(
+            Guid.CreateVersion7(),
+            new UpdateWebhookConsumerProviderModeRequestDto(),
+            CancellationToken.None);
+
+        var objectResult = result.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<UpdateWebhookConsumerProviderModeCommand>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -883,11 +916,20 @@ public sealed class WebhooksControllerTests
             Guid.CreateVersion7(),
             new UpdateWebhookEndpointRequestDto
             {
-                Url = "https://integrator.example/webhooks/islamu",
-                EventTypeIds = [Guid.CreateVersion7()],
-                ExpectedConfigurationVersion = 1,
-                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
-                PendingWorkReason = "Preserve queued work."
+                Destination = new UpdateWebhookEndpointDestinationDto
+                {
+                    Url = "https://integrator.example/webhooks/islamu"
+                },
+                Subscriptions = new UpdateWebhookEndpointSubscriptionsDto
+                {
+                    EventTypeIds = [Guid.CreateVersion7()]
+                },
+                Governance = new UpdateWebhookEndpointGovernanceDto
+                {
+                    ExpectedConfigurationVersion = 1,
+                    PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                    PendingWorkReason = "Preserve queued work."
+                }
             },
             CancellationToken.None);
 
@@ -1228,7 +1270,7 @@ public sealed class WebhooksControllerTests
 
         var changeMode = activeLinks.Single(link => link.Rel == LinkRelations.ChangeProviderMode);
         await Assert.That(changeMode.RouteName).IsEqualTo(RouteNames.UpdateWebhookConsumerProviderMode);
-        await Assert.That(changeMode.Method).IsEqualTo("PUT");
+        await Assert.That(changeMode.Method).IsEqualTo("PATCH");
         await Assert.That(changeMode.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.Update);
         await Assert.That(archivedLinks.Any(link => link.Rel == LinkRelations.ChangeProviderMode)).IsFalse();
     }

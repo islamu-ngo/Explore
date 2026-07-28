@@ -2,8 +2,11 @@
 // ABOUTME: Verifies canonical owner resolution, inherited child scope, authorization, and entity-first persistence.
 
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
+using Explore.Application.DTOs.Webhooks;
 using Explore.Application.Features.Webhooks.Handlers.Commands;
 using Explore.Application.Features.Webhooks.Handlers.Queries;
 using Explore.Application.Features.Webhooks.Requests.Commands;
@@ -23,6 +26,8 @@ public sealed class WebhookConsumerHandlersTests
         Substitute.For<IWebhookEndpointRepository>();
     private readonly IWebhookEventTypeRepository _eventTypeRepository =
         Substitute.For<IWebhookEventTypeRepository>();
+    private readonly IWebhookProviderPublicationRepository _providerPublicationRepository =
+        Substitute.For<IWebhookProviderPublicationRepository>();
     private readonly IWebhookOwnershipScopeResolver _ownershipScopeResolver =
         Substitute.For<IWebhookOwnershipScopeResolver>();
     private readonly IWebhookAuditEventWriter _auditWriter =
@@ -258,6 +263,93 @@ public sealed class WebhookConsumerHandlersTests
                 audit.TenantId == ownership.TenantId &&
                 audit.EffectiveScopeKind == ownership.AuditScopeKind &&
                 audit.EffectiveScopeId == ownership.OwnerId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateEndpoint_OmittedDestinationAndSubscriptions_PreservesPersistedGroups()
+    {
+        var consumer = CreateConsumer(CreateOwnership(WebhookConsumerKind.Tenant));
+        var endpoint = CreateEndpoint(consumer);
+        var eventType = CreateEventType();
+        endpoint.Description = "Persisted destination";
+        endpoint.Subscriptions.Add(new WebhookEndpointSubscription
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = endpoint.TenantId,
+            InstanceId = endpoint.InstanceId,
+            EndpointId = endpoint.Id,
+            EventTypeId = eventType.Id,
+            EventType = eventType,
+            IsEnabled = true,
+            CreatedAt = DateTime.UtcNow
+        });
+        _endpointRepository.GetByIdForOwnerOperationAsync(
+                endpoint.Id,
+                true,
+                Arg.Any<CancellationToken>())
+            .Returns(endpoint);
+        _endpointRepository.GetByConsumerAndUrlForOwnerOperationAsync(
+                endpoint.ConsumerId,
+                endpoint.Url,
+                Arg.Any<CancellationToken>())
+            .Returns((WebhookEndpoint?)null);
+        _eventTypeRepository.GetByIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(),
+                Arg.Any<CancellationToken>())
+            .Returns([eventType]);
+        _endpointRepository.GetEligiblePendingTargetsForUpdateAsync(
+                endpoint.TenantId,
+                endpoint.Id,
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+        _endpointRepository.UpdateWithSubscriptionsAsync(
+                endpoint,
+                Arg.Any<IReadOnlyCollection<WebhookEndpointSubscription>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(endpoint);
+        var currentUser = Substitute.For<ICurrentUserService>();
+        currentUser.UserId.Returns(Guid.CreateVersion7());
+        var handler = new UpdateWebhookEndpointCommandHandler(
+            _endpointRepository,
+            _consumerRepository,
+            _eventTypeRepository,
+            _providerPublicationRepository,
+            _capabilityResolver,
+            _auditWriter,
+            _unitOfWork,
+            currentUser,
+            Substitute.For<IMachinePrincipalAccessor>(),
+            TimeProvider.System);
+
+        var result = await handler.Handle(
+            new UpdateWebhookEndpointCommand
+            {
+                EndpointId = endpoint.Id,
+                DeliveryPolicy = new UpdateWebhookEndpointDeliveryPolicyDto
+                {
+                    MaxAttempts = 12,
+                    TimeoutSeconds = 30,
+                    RateLimitPerMinute = 90
+                },
+                Governance = new UpdateWebhookEndpointGovernanceDto
+                {
+                    ExpectedConfigurationVersion = 1,
+                    PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                    PendingWorkReason = "Preserve queued work."
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(endpoint.Url).IsEqualTo("https://integrator.example/webhook");
+        await Assert.That(endpoint.Description).IsEqualTo("Persisted destination");
+        await Assert.That(endpoint.MaxAttempts).IsEqualTo(12);
+        await Assert.That(endpoint.TimeoutSeconds).IsEqualTo(30);
+        await _endpointRepository.Received(1).UpdateWithSubscriptionsAsync(
+            endpoint,
+            Arg.Is<IReadOnlyCollection<WebhookEndpointSubscription>>(subscriptions =>
+                subscriptions.Count == 1 && subscriptions.Single().EventTypeId == eventType.Id),
             Arg.Any<CancellationToken>());
     }
 

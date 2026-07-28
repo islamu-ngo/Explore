@@ -1101,16 +1101,28 @@
                 endpointId,
                 new UpdateWebhookEndpointRequestDto
                 {
-                    Url = _endpointForm.Url.Trim(),
-                    Description = NullIfWhiteSpace(_endpointForm.Description),
-                    EventTypeIds = _selectedEventTypeIds.ToList(),
-                    MaxAttempts = _endpointForm.MaxAttempts,
-                    TimeoutSeconds = _endpointForm.TimeoutSeconds,
-                    RateLimitPerMinute = _endpointForm.RateLimitPerMinute,
-                    ExpectedConfigurationVersion = _endpointForm.ExpectedConfigurationVersion,
-                    PendingWorkDecisionId = _endpointForm.PendingWorkDecisionId,
-                    PendingWorkReason = _endpointForm.PendingWorkReason.Trim(),
-                    AcknowledgeUncertainProviderPublications = _endpointForm.AcknowledgeUncertainProviderPublications
+                    Destination = new UpdateWebhookEndpointDestinationDto
+                    {
+                        Url = _endpointForm.Url.Trim(),
+                        Description = NullIfWhiteSpace(_endpointForm.Description)
+                    },
+                    Subscriptions = new UpdateWebhookEndpointSubscriptionsDto
+                    {
+                        EventTypeIds = _selectedEventTypeIds.ToList()
+                    },
+                    DeliveryPolicy = new UpdateWebhookEndpointDeliveryPolicyDto
+                    {
+                        MaxAttempts = _endpointForm.MaxAttempts,
+                        TimeoutSeconds = _endpointForm.TimeoutSeconds,
+                        RateLimitPerMinute = _endpointForm.RateLimitPerMinute
+                    },
+                    Governance = new UpdateWebhookEndpointGovernanceDto
+                    {
+                        ExpectedConfigurationVersion = _endpointForm.ExpectedConfigurationVersion,
+                        PendingWorkDecisionId = _endpointForm.PendingWorkDecisionId,
+                        PendingWorkReason = _endpointForm.PendingWorkReason.Trim(),
+                        AcknowledgeUncertainProviderPublications = _endpointForm.AcknowledgeUncertainProviderPublications
+                    }
                 }),
             closeDialog: () => _endpointDialogOpen = false);
     }

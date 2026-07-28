@@ -27,7 +27,7 @@ public sealed class WebhookEndpointDetailLinkPolicy : ILinkPolicy<WebhookEndpoin
                 LinkRelations.Update,
                 RouteNames.UpdateWebhookEndpoint,
                 new { endpointId = dto.Id },
-                "PUT",
+                "PATCH",
                 "Update webhook endpoint")
                 .RequirePermission(AuthorizationActions.Webhooks.Update, ResourceDescriptors.WebhookEndpoint, dto);
 

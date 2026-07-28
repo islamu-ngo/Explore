@@ -214,7 +214,7 @@ public sealed class WebhooksController(
             response);
     }
 
-    [HttpPut("consumers/{consumerId:guid}/provider-mode", Name = RouteNames.UpdateWebhookConsumerProviderMode)]
+    [HttpPatch("consumers/{consumerId:guid}/provider-mode", Name = RouteNames.UpdateWebhookConsumerProviderMode)]
     [EndpointSummary("Change webhook consumer provider mode")]
     [EndpointDescription("Changes the provider mode for new deliveries while preserving already materialized work on its immutable delivery snapshots.")]
     [Consumes(HateoasConstants.JsonMediaType)]
@@ -231,15 +231,21 @@ public sealed class WebhooksController(
         [FromBody] UpdateWebhookConsumerProviderModeRequestDto request,
         CancellationToken cancellationToken = default)
     {
+        if (request.ProviderMode is null)
+        {
+            return this.ToValidationProblem(ConsumerValidationProblem, "ProviderMode group is required.");
+        }
+
+        var providerMode = request.ProviderMode;
         var response = await mediator.Send(
             new UpdateWebhookConsumerProviderModeCommand
             {
                 ConsumerId = consumerId,
-                ProviderModeId = request.ProviderModeId,
-                ExpectedConfigurationVersion = request.ExpectedConfigurationVersion,
-                PendingWorkDecisionId = request.PendingWorkDecisionId,
-                PendingWorkReason = request.PendingWorkReason,
-                AcknowledgeUncertainProviderPublications = request.AcknowledgeUncertainProviderPublications
+                ProviderModeId = providerMode.ProviderModeId,
+                ExpectedConfigurationVersion = providerMode.ExpectedConfigurationVersion,
+                PendingWorkDecisionId = providerMode.PendingWorkDecisionId,
+                PendingWorkReason = providerMode.PendingWorkReason,
+                AcknowledgeUncertainProviderPublications = providerMode.AcknowledgeUncertainProviderPublications
             },
             cancellationToken);
 
@@ -391,7 +397,7 @@ public sealed class WebhooksController(
             response);
     }
 
-    [HttpPut("endpoints/{endpointId:guid}", Name = RouteNames.UpdateWebhookEndpoint)]
+    [HttpPatch("endpoints/{endpointId:guid}", Name = RouteNames.UpdateWebhookEndpoint)]
     [EndpointSummary("Update webhook endpoint")]
     [EndpointDescription("Updates a tenant-scoped outgoing webhook endpoint and replaces its event type subscriptions.")]
     [Consumes(HateoasConstants.JsonMediaType)]
@@ -412,16 +418,10 @@ public sealed class WebhooksController(
             new UpdateWebhookEndpointCommand
             {
                 EndpointId = endpointId,
-                Url = request.Url,
-                Description = request.Description,
-                EventTypeIds = request.EventTypeIds,
-                MaxAttempts = request.MaxAttempts,
-                TimeoutSeconds = request.TimeoutSeconds,
-                RateLimitPerMinute = request.RateLimitPerMinute,
-                ExpectedConfigurationVersion = request.ExpectedConfigurationVersion,
-                PendingWorkDecisionId = request.PendingWorkDecisionId,
-                PendingWorkReason = request.PendingWorkReason,
-                AcknowledgeUncertainProviderPublications = request.AcknowledgeUncertainProviderPublications
+                Destination = request.Destination,
+                Subscriptions = request.Subscriptions,
+                DeliveryPolicy = request.DeliveryPolicy,
+                Governance = request.Governance
             },
             cancellationToken);
 

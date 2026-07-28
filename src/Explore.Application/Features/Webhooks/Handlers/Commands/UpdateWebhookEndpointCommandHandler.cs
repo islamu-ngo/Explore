@@ -31,12 +31,6 @@ public sealed class UpdateWebhookEndpointCommandHandler(
         UpdateWebhookEndpointCommand request,
         CancellationToken cancellationToken)
     {
-        var validationErrors = Validate(request, out var normalizedUrl, out var eventTypeIds);
-        if (validationErrors.Count > 0)
-        {
-            return Failure("webhook_endpoint_validation_failed", validationErrors);
-        }
-
         if (!TryResolveActor(out _, out _))
         {
             return Failure(
@@ -55,11 +49,25 @@ public sealed class UpdateWebhookEndpointCommandHandler(
                 return Failure("webhook_endpoint_not_found", ["Webhook endpoint was not found."]);
             }
 
-            if (endpoint.ConfigurationVersion != request.ExpectedConfigurationVersion)
+            if (endpoint.ConfigurationVersion != request.Governance.ExpectedConfigurationVersion)
             {
                 return Failure(
                     "webhook_endpoint_configuration_conflict",
                     ["Webhook endpoint configuration changed. Reload it before applying another update."]);
+            }
+
+            var validationErrors = Validate(
+                request,
+                endpoint,
+                out var normalizedUrl,
+                out var description,
+                out var eventTypeIds,
+                out var maxAttempts,
+                out var timeoutSeconds,
+                out var rateLimitPerMinute);
+            if (validationErrors.Count > 0)
+            {
+                return Failure("webhook_endpoint_validation_failed", validationErrors);
             }
 
             var consumer = endpoint.Consumer ?? await consumerRepository.GetByIdForOwnerOperationAsync(
@@ -100,7 +108,7 @@ public sealed class UpdateWebhookEndpointCommandHandler(
                 consumer.TenantId,
                 consumer.Id,
                 transactionCancellationToken);
-            if (uncertainPublicationCount > 0 && !request.AcknowledgeUncertainProviderPublications)
+            if (uncertainPublicationCount > 0 && !request.Governance.AcknowledgeUncertainProviderPublications)
             {
                 return Failure(
                     "webhook_endpoint_configuration_uncertain_publications",
@@ -116,13 +124,13 @@ public sealed class UpdateWebhookEndpointCommandHandler(
             var now = timeProvider.GetUtcNow().UtcDateTime;
             endpoint.UpdateConfiguration(
                 normalizedUrl,
-                NormalizeOptional(request.Description),
-                request.MaxAttempts ?? endpoint.MaxAttempts,
-                request.TimeoutSeconds ?? endpoint.TimeoutSeconds,
-                request.RateLimitPerMinute,
+                description,
+                maxAttempts,
+                timeoutSeconds,
+                rateLimitPerMinute,
                 now);
 
-            var decision = (WebhookPendingWorkDecision)request.PendingWorkDecisionId;
+            var decision = (WebhookPendingWorkDecision)request.Governance.PendingWorkDecisionId;
             var migratedTargetCount = 0;
             if (decision == WebhookPendingWorkDecision.MigrateEligible)
             {
@@ -152,7 +160,7 @@ public sealed class UpdateWebhookEndpointCommandHandler(
                 subscriptions,
                 transactionCancellationToken);
             var pendingWorkDecisionCode = NormalizedLookupMetadata
-                .WebhookPendingWorkDecision(request.PendingWorkDecisionId).Code;
+                .WebhookPendingWorkDecision(request.Governance.PendingWorkDecisionId).Code;
             await auditWriter.AppendAsync(
                 new WebhookAuditWriteRequest(
                     endpoint.TenantId,
@@ -174,7 +182,7 @@ public sealed class UpdateWebhookEndpointCommandHandler(
                         eligiblePendingTargetCount = eligibleTargets.Count,
                         migratedTargetCount,
                         uncertainProviderPublicationCount = uncertainPublicationCount,
-                        uncertainProviderPublicationsAcknowledged = request.AcknowledgeUncertainProviderPublications,
+                        uncertainProviderPublicationsAcknowledged = request.Governance.AcknowledgeUncertainProviderPublications,
                         outcome = "applied"
                     }),
                     ConfigurationVersion: $"endpoint-v{endpoint.ConfigurationVersion}",
@@ -218,69 +226,90 @@ public sealed class UpdateWebhookEndpointCommandHandler(
 
     private static List<string> Validate(
         UpdateWebhookEndpointCommand request,
+        WebhookEndpoint endpoint,
         out string normalizedUrl,
-        out Guid[] eventTypeIds)
+        out string? description,
+        out Guid[] eventTypeIds,
+        out int maxAttempts,
+        out int timeoutSeconds,
+        out int? rateLimitPerMinute)
     {
         var errors = new List<string>();
+        var destination = request.Destination;
+        var deliveryPolicy = request.DeliveryPolicy;
+        var url = destination?.Url ?? endpoint.Url;
+        description = destination is null ? endpoint.Description : NormalizeOptional(destination.Description);
+        maxAttempts = deliveryPolicy?.MaxAttempts ?? endpoint.MaxAttempts;
+        timeoutSeconds = deliveryPolicy?.TimeoutSeconds ?? endpoint.TimeoutSeconds;
+        rateLimitPerMinute = deliveryPolicy is null
+            ? endpoint.RateLimitPerMinute
+            : deliveryPolicy.RateLimitPerMinute;
         normalizedUrl = string.Empty;
-        eventTypeIds = request.EventTypeIds
+        eventTypeIds = (request.Subscriptions?.EventTypeIds
+                ?? endpoint.Subscriptions.Where(subscription => subscription.IsEnabled).Select(subscription => subscription.EventTypeId).ToArray())
             .Where(id => id != Guid.Empty)
             .Distinct()
             .ToArray();
+
+        if (destination is null && request.Subscriptions is null && deliveryPolicy is null)
+        {
+            errors.Add("At least one endpoint configuration group is required.");
+        }
 
         if (request.EndpointId == Guid.Empty)
         {
             errors.Add("Endpoint id is required.");
         }
 
-        if (!string.IsNullOrWhiteSpace(request.Description) && request.Description.Trim().Length > 1000)
+        if (!string.IsNullOrWhiteSpace(description) && description.Length > 1000)
         {
             errors.Add("Description must be 1000 characters or fewer.");
         }
 
-        if (request.EventTypeIds.Count == 0 || eventTypeIds.Length == 0)
+        var suppliedEventTypeIds = request.Subscriptions?.EventTypeIds;
+        if (eventTypeIds.Length == 0)
         {
             errors.Add("At least one event type is required.");
         }
 
-        if (request.EventTypeIds.Count != eventTypeIds.Length)
+        if (suppliedEventTypeIds is not null && suppliedEventTypeIds.Count != eventTypeIds.Length)
         {
             errors.Add("Event type ids must be non-empty and unique.");
         }
 
-        if (request.MaxAttempts is < 1 or > 20)
+        if (maxAttempts is < 1 or > 20)
         {
             errors.Add("Max attempts must be between 1 and 20.");
         }
 
-        if (request.TimeoutSeconds is < 1 or > 60)
+        if (timeoutSeconds is < 1 or > 60)
         {
             errors.Add("Timeout seconds must be between 1 and 60.");
         }
 
-        if (request.RateLimitPerMinute is < 1 or > 10_000)
+        if (rateLimitPerMinute is < 1 or > 10_000)
         {
             errors.Add("Rate limit per minute must be between 1 and 10000.");
         }
 
-        if (request.ExpectedConfigurationVersion < 1)
+        if (request.Governance.ExpectedConfigurationVersion < 1)
         {
             errors.Add("Expected configuration version must be positive.");
         }
 
-        if (!Enum.IsDefined(typeof(WebhookPendingWorkDecision), request.PendingWorkDecisionId))
+        if (!Enum.IsDefined(typeof(WebhookPendingWorkDecision), request.Governance.PendingWorkDecisionId))
         {
             errors.Add("Pending work decision is invalid.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.PendingWorkReason) || request.PendingWorkReason.Trim().Length > 500)
+        if (string.IsNullOrWhiteSpace(request.Governance.PendingWorkReason) || request.Governance.PendingWorkReason.Trim().Length > 500)
         {
             errors.Add("Pending work reason is required and must be 500 characters or fewer.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.Url)
-            || request.Url.Trim().Length > 2048
-            || !Uri.TryCreate(request.Url.Trim(), UriKind.Absolute, out var uri)
+        if (string.IsNullOrWhiteSpace(url)
+            || url.Trim().Length > 2048
+            || !Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri)
             || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
             errors.Add("Endpoint URL must be an absolute HTTP or HTTPS URL.");

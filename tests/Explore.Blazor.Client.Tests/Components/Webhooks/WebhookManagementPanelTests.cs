@@ -297,11 +297,11 @@ public sealed class WebhookManagementPanelTests : IDisposable
         await _webhookService.Received(1).UpdateEndpointAsync(
             endpointId,
             Arg.Is<UpdateWebhookEndpointRequestDto>(request =>
-                request.ExpectedConfigurationVersion == endpoint.ConfigurationVersion
-                && request.PendingWorkDecisionId == WebhookPendingWorkDecisionIds.MigrateEligible
-                && request.PendingWorkReason == "Adopt the rotated integration route"
-                && request.AcknowledgeUncertainProviderPublications == true
-                && request.Url == "https://hooks.example.test/events"),
+                request.Governance.ExpectedConfigurationVersion == endpoint.ConfigurationVersion
+                && request.Governance.PendingWorkDecisionId == WebhookPendingWorkDecisionIds.MigrateEligible
+                && request.Governance.PendingWorkReason == "Adopt the rotated integration route"
+                && request.Governance.AcknowledgeUncertainProviderPublications == true
+                && request.Destination!.Url == "https://hooks.example.test/events"),
             Arg.Any<CancellationToken>());
     }
 

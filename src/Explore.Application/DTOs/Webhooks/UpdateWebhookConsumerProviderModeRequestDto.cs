@@ -1,9 +1,14 @@
-// ABOUTME: Request DTO for changing a webhook consumer's provider mode under optimistic concurrency.
-// ABOUTME: Requires an explicit pending-work decision, operator reason, and uncertainty acknowledgement.
+// ABOUTME: Grouped request DTO for governed webhook consumer provider-mode transitions.
+// ABOUTME: Keeps mode, concurrency, pending-work, and uncertainty acknowledgement atomic.
 
 namespace Explore.Application.DTOs.Webhooks;
 
 public sealed class UpdateWebhookConsumerProviderModeRequestDto
+{
+    public UpdateWebhookConsumerProviderModeDto? ProviderMode { get; init; }
+}
+
+public sealed class UpdateWebhookConsumerProviderModeDto
 {
     public int ProviderModeId { get; init; }
 

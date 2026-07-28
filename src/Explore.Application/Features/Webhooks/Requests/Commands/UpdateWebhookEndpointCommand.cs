@@ -2,6 +2,7 @@
 // ABOUTME: Uses persisted endpoint ownership as authoritative authorization metadata.
 
 using Explore.Application.Authorization;
+using Explore.Application.DTOs.Webhooks;
 using Explore.Application.Responses;
 using MediatR;
 
@@ -13,25 +14,10 @@ public sealed class UpdateWebhookEndpointCommand
 {
     public Guid EndpointId { get; init; }
 
-    public required string Url { get; init; }
-
-    public string? Description { get; init; }
-
-    public IReadOnlyList<Guid> EventTypeIds { get; init; } = [];
-
-    public int? MaxAttempts { get; init; }
-
-    public int? TimeoutSeconds { get; init; }
-
-    public int? RateLimitPerMinute { get; init; }
-
-    public int ExpectedConfigurationVersion { get; init; }
-
-    public int PendingWorkDecisionId { get; init; }
-
-    public required string PendingWorkReason { get; init; }
-
-    public bool AcknowledgeUncertainProviderPublications { get; init; }
+    public UpdateWebhookEndpointDestinationDto? Destination { get; init; }
+    public UpdateWebhookEndpointSubscriptionsDto? Subscriptions { get; init; }
+    public UpdateWebhookEndpointDeliveryPolicyDto? DeliveryPolicy { get; init; }
+    public required UpdateWebhookEndpointGovernanceDto Governance { get; init; }
 
     string? ISecureRequest.ResourceId => EndpointId.ToString("D");
 

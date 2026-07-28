@@ -27,7 +27,7 @@ public sealed class WebhookConsumerDetailLinkPolicy : ILinkPolicy<WebhookConsume
                 LinkRelations.ChangeProviderMode,
                 RouteNames.UpdateWebhookConsumerProviderMode,
                 new { consumerId = dto.Id },
-                "PUT",
+                "PATCH",
                 "Change provider mode",
                 RequiresAuth: true)
                 .RequirePermission(AuthorizationActions.Webhooks.Update,
