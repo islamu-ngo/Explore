@@ -64,6 +64,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAtprotoFederationSettingsService, AtprotoFederationSettingsService>();
         services.AddScoped<ITenantShellSettingsService, TenantShellSettingsService>();
         services.AddScoped<IEventService, EventService>();
+        services.AddScoped<IEventTicketingService, EventTicketingService>();
+        services.AddScoped<IPlatformMonetizationService, PlatformMonetizationService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();

@@ -1,0 +1,220 @@
+@* ABOUTME: Instance-level platform fee and optional checkout contribution settings. *@
+@* ABOUTME: Displays generated settings read-only and enables updates only from the exact HAL edit relation. *@
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@implements IDisposable
+@inject IPlatformMonetizationService MonetizationService
+@inject IAccessibilityAnnouncerService AccessibilityAnnouncerService
+
+<section class="instance-monetization" aria-labelledby="instance-monetization-title" data-testid="instance-monetization-section">
+    <div>
+        <MudText Id="instance-monetization-title" Typo="Typo.h5" HtmlTag="h2">Monetization</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Configure platform fees and optional attendee contributions.</MudText>
+    </div>
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_settings is null)
+    {
+        <MudAlert Severity="Severity.Error" role="alert" data-testid="monetization-load-error">
+            @(_message ?? LoadFailureMessage)
+        </MudAlert>
+    }
+    else
+    {
+        @if (!CanEdit)
+        {
+            <MudAlert Severity="Severity.Info" data-testid="monetization-read-only">These settings are read-only.</MudAlert>
+        }
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <MudAlert Severity="@(_saved ? Severity.Success : Severity.Error)"
+                      role="@(_saved ? "status" : "alert")"
+                      data-testid="monetization-save-message">
+                @_message
+            </MudAlert>
+        }
+        <MudSwitch T="bool?" @bind-Value="_model.FeeEnabled" Disabled="@(!CanEdit)">Enable platform fees</MudSwitch>
+        <MudNumericField T="int?" @bind-Value="_model.FeeBasisPoints" Label="Percentage fee (basis points)" Min="0" Max="10000" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+        <MudText Typo="Typo.subtitle2" HtmlTag="h3">Fixed charges</MudText>
+        @foreach (PlatformFeeFixedChargeDto charge in _fixedCharges)
+        {
+            <div class="instance-monetization__row">
+                <MudTextField T="string" @bind-Value="charge.CurrencyCode" Label="Currency" MaxLength="3" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+                <MudNumericField T="long?" @bind-Value="charge.AmountMinor" Label="Amount (minor units)" Min="0" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+                @if (CanEdit)
+                {
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" AccessibleName="Remove fixed charge" OnClick="@(() => _fixedCharges.Remove(charge))" />
+                }
+            </div>
+        }
+        @if (CanEdit)
+        {
+            <MudButton StartIcon="@Icons.Material.Outlined.Add" OnClick="@(() => _fixedCharges.Add(new()))">Add fixed charge</MudButton>
+        }
+        <MudDivider />
+        <MudSwitch T="bool?" @bind-Value="_model.ContributionEnabled" Disabled="@(!CanEdit)">Enable attendee contributions</MudSwitch>
+        <MudTextField T="string" @bind-Value="_model.ContributionHeading" Label="Contribution heading" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+        <MudTextField T="string" @bind-Value="_model.ContributionBody" Label="Contribution message" Lines="3" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+        <MudText Typo="Typo.subtitle2" HtmlTag="h3">Contribution options</MudText>
+        @foreach (PlatformContributionOptionDto option in _contributionOptions)
+        {
+            <div class="instance-monetization__row">
+                <MudNumericField T="int?" @bind-Value="option.ContributionBasisPoints" Label="Percentage (basis points)" Min="0" Max="10000" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+                <MudNumericField T="int?" @bind-Value="option.SortOrder" Label="Sort order" Min="0" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+                <MudSwitch T="bool?" @bind-Value="option.IsDefault" Disabled="@(!CanEdit)">Default</MudSwitch>
+                @if (CanEdit)
+                {
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" AccessibleName="Remove contribution option" OnClick="@(() => _contributionOptions.Remove(option))" />
+                }
+            </div>
+        }
+        @if (CanEdit)
+        {
+            <MudButton StartIcon="@Icons.Material.Outlined.Add" OnClick="@(() => _contributionOptions.Add(new()))">Add contribution option</MudButton>
+            <AppButton OnClick="SaveAsync" Disabled="_saving" data-testid="save-monetization-settings">Save monetization settings</AppButton>
+        }
+    }
+</section>
+
+@code {
+    private HalResourceOfPlatformMonetizationSettingsDto? _settings;
+    private UpdatePlatformMonetizationSettingsDto _model = new();
+    private readonly List<PlatformFeeFixedChargeDto> _fixedCharges = [];
+    private readonly List<PlatformContributionOptionDto> _contributionOptions = [];
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
+    private bool _loading = true;
+    private bool _saving;
+    private bool _saved;
+    private bool _disposed;
+    private string? _message;
+    private const string LoadFailureMessage = "Monetization settings could not be loaded.";
+    private const string SaveFailureMessage = "Monetization settings could not be saved.";
+    private const string ValidationFailureMessage = "Review the monetization values and try again.";
+    private const string ConflictMessage = "Monetization settings changed elsewhere. The latest values were reloaded.";
+    private bool CanEdit => _settings?._links?.ContainsKey("edit") == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CancellationToken cancellationToken = _lifetimeCancellation.Token;
+        try
+        {
+            await ReloadSettingsAsync(cancellationToken);
+            await AccessibilityAnnouncerService.AnnouncePoliteAsync("Monetization settings loaded.");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+            _settings = null;
+            _message = LoadFailureMessage;
+            await AccessibilityAnnouncerService.AnnounceAssertiveAsync(LoadFailureMessage);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void MapSettings()
+    {
+        if (_settings is null) return;
+        _model = new UpdatePlatformMonetizationSettingsDto
+        {
+            FeeEnabled = _settings.FeeEnabled,
+            FeeBasisPoints = _settings.FeeBasisPoints,
+            ExpectedFeeVersion = _settings.FeeVersion,
+            ContributionEnabled = _settings.ContributionEnabled,
+            ContributionHeading = _settings.ContributionHeading,
+            ContributionBody = _settings.ContributionBody,
+            ExpectedContributionVersion = _settings.ContributionVersion
+        };
+        _fixedCharges.Clear();
+        _fixedCharges.AddRange(_settings.FixedCharges?.Select(item => new PlatformFeeFixedChargeDto { CurrencyCode = item.CurrencyCode, AmountMinor = item.AmountMinor }) ?? []);
+        _contributionOptions.Clear();
+        _contributionOptions.AddRange(_settings.ContributionOptions?.Select(item => new PlatformContributionOptionDto { ContributionBasisPoints = item.ContributionBasisPoints, SortOrder = item.SortOrder, IsDefault = item.IsDefault }) ?? []);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!CanEdit || _saving || _disposed) return;
+        CancellationToken cancellationToken = _lifetimeCancellation.Token;
+        _saving = true;
+        _saved = false;
+        _message = null;
+        try
+        {
+            _model.FixedCharges = _fixedCharges;
+            _model.ContributionOptions = _contributionOptions;
+            BaseCommandResponseOfGuid response = await MonetizationService.UpdateAsync(_model, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            _saved = response.Success == true;
+            _message = _saved ? "Monetization settings saved." : response.Message ?? SaveFailureMessage;
+            if (_saved)
+            {
+                await ReloadSettingsAsync(cancellationToken);
+                await AccessibilityAnnouncerService.AnnouncePoliteAsync(_message);
+            }
+            else
+            {
+                await AccessibilityAnnouncerService.AnnounceAssertiveAsync(_message);
+            }
+        }
+        catch (ApiException<ProblemDetails> exception) when (exception.StatusCode == 409)
+        {
+            try
+            {
+                await ReloadSettingsAsync(cancellationToken);
+                _message = ConflictMessage;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception)
+            {
+                _settings = null;
+                _message = "Monetization settings changed elsewhere. Reload the section and try again.";
+            }
+
+            await AccessibilityAnnouncerService.AnnounceAssertiveAsync(_message);
+        }
+        catch (ApiException<ProblemDetails> exception) when (exception.StatusCode == 400)
+        {
+            _message = ValidationFailureMessage;
+            await AccessibilityAnnouncerService.AnnounceAssertiveAsync(ValidationFailureMessage);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+            _message = SaveFailureMessage;
+            await AccessibilityAnnouncerService.AnnounceAssertiveAsync(SaveFailureMessage);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task ReloadSettingsAsync(CancellationToken cancellationToken)
+    {
+        _settings = await MonetizationService.GetAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        MapSettings();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _lifetimeCancellation.Cancel();
+        _lifetimeCancellation.Dispose();
+    }
+}

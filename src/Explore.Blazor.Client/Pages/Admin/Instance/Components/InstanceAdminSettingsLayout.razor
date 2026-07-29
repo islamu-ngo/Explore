@@ -179,6 +179,10 @@
                                                             SaveAnalyticsAsync="SaveAnalyticsAsync"
                                                             SaveDelegationAsync="SaveDelegationAsync" />
                         }
+                        else if (_currentSection == "monetization")
+                        {
+                            <InstanceMonetizationSection />
+                        }
                         else if (_currentSection == "footer-governance" && !IsSingleTenantMode)
                         {
                             <InstanceFooterGovernanceSection Model="_footerGovernance"
@@ -849,6 +853,7 @@
                 new("storage",          Icons.Material.Filled.Cloud,           "Object Storage"),
                 new("smtp",             Icons.Material.Filled.AlternateEmail,  "SMTP"),
                 new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
+                new("monetization",     Icons.Material.Filled.Payments,        "Monetization"),
                 new("localization",     Icons.Material.Filled.Translate,       "Localization"),
                 new("listmonk",         Icons.Material.Filled.MarkEmailRead,   "Listmonk"),
                 new("advanced",         Icons.Material.Filled.DisplaySettings, "Advanced"),
@@ -873,6 +878,7 @@
             new("storage",          Icons.Material.Filled.Cloud,           "Object Storage"),
             new("smtp",             Icons.Material.Filled.AlternateEmail,  "SMTP"),
             new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
+            new("monetization",     Icons.Material.Filled.Payments,        "Monetization"),
             new("footer-governance",Icons.Material.Filled.ViewAgenda,      "Footer"),
             new("localization",     Icons.Material.Filled.Translate,       "Localization"),
             new("listmonk",         Icons.Material.Filled.MarkEmailRead,   "Listmonk"),
