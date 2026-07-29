@@ -4,6 +4,7 @@
 namespace Explore.Application.Features.EventAspects.Requests.Queries;
 
 using System;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventAspects;
 using MediatR;
 
@@ -16,4 +17,12 @@ public class GetEventTechAspectRequest : IRequest<EventTechAspectDto?>
     /// The event ID to get the Tech aspect for.
     /// </summary>
     public Guid EventId { get; set; }
+}
+
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
+public sealed class GetManagedEventTechAspectRequest : IRequest<EventTechAspectDto?>, ISecureRequest
+{
+    public Guid EventId { get; set; }
+
+    string? ISecureRequest.ResourceId => EventId.ToString();
 }

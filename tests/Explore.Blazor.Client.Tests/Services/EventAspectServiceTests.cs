@@ -43,6 +43,20 @@ public class EventAspectServiceTests
     }
 
     [Test]
+    public async Task GetIslamicAspectAsync_UsesManagedRoute_WhenRequested()
+    {
+        var eventId = Guid.NewGuid();
+        var expected = new EventIslamicAspectDto();
+        _apiClient.GetManagedEventIslamicAspectAsync(eventId).Returns(expected);
+
+        var result = await _service.GetIslamicAspectAsync(eventId, includeManaged: true);
+
+        await Assert.That(result).IsEqualTo(expected);
+        await _apiClient.Received(1).GetManagedEventIslamicAspectAsync(eventId);
+        await _apiClient.DidNotReceive().GetEventIslamicAspectAsync(Arg.Any<Guid>());
+    }
+
+    [Test]
     public async Task GetIslamicAspectAsync_ReturnsNull_WhenNotFound()
     {
         // Arrange

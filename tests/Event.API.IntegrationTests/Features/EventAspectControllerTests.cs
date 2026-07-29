@@ -5,6 +5,8 @@ using System.Reflection;
 using Explore.API.Attributes;
 using Explore.API.Controllers;
 using Explore.API.Hateoas;
+using Explore.Application.Authorization;
+using Explore.Application.Features.EventAspects.Requests.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -37,6 +39,21 @@ public class EventAspectControllerTests
             nameof(EventAspectController.GetTechAspect),
             "{id:guid}/aspects/tech",
             RouteNames.GetEventTechAspect);
+    }
+
+    [Test]
+    public async Task ManagedReadRoutes_UseAuthenticatedViewManagementContracts()
+    {
+        await AssertManagedReadRoute(
+            nameof(EventAspectController.GetManagedIslamicAspect),
+            "{id:guid}/management-aspects/islamic",
+            RouteNames.GetManagedEventIslamicAspect,
+            typeof(GetManagedEventIslamicAspectRequest));
+        await AssertManagedReadRoute(
+            nameof(EventAspectController.GetManagedTechAspect),
+            "{id:guid}/management-aspects/tech",
+            RouteNames.GetManagedEventTechAspect,
+            typeof(GetManagedEventTechAspectRequest));
     }
 
     [Test]
@@ -103,6 +120,25 @@ public class EventAspectControllerTests
         await Assert.That(action.GetCustomAttribute<AuthorizeAttribute>()).IsNull();
         await Assert.That(action.GetCustomAttribute<OutputCacheAttribute>()?.PolicyName).IsEqualTo("DetailData");
         await AssertProducesProblem(action, StatusCodes.Status404NotFound);
+    }
+
+    private static async Task AssertManagedReadRoute(
+        string actionName,
+        string template,
+        string routeName,
+        Type requestType)
+    {
+        var action = typeof(EventAspectController).GetMethod(actionName)!;
+        var route = action.GetCustomAttribute<HttpGetAttribute>()!;
+        var authorization = requestType.GetCustomAttribute<AuthorizeResourceAttribute>()!;
+
+        await Assert.That(route.Template).IsEqualTo(template);
+        await Assert.That(route.Name).IsEqualTo(routeName);
+        await Assert.That(action.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        await Assert.That(action.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull();
+        await Assert.That(action.GetCustomAttribute<OutputCacheAttribute>()).IsNull();
+        await Assert.That(authorization.Resource).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(authorization.Action).IsEqualTo(AuthorizationActions.Events.ViewManagement);
     }
 
     private static async Task AssertWriteRoute<TAttribute>(string actionName, string template, string routeName)

@@ -4,6 +4,7 @@
 namespace Explore.Application.Features.EventAspects.Requests.Queries;
 
 using System;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventAspects;
 using MediatR;
 
@@ -16,4 +17,12 @@ public class GetEventIslamicAspectRequest : IRequest<EventIslamicAspectDto?>
     /// The event ID to get the Islamic aspect for.
     /// </summary>
     public Guid EventId { get; set; }
+}
+
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
+public sealed class GetManagedEventIslamicAspectRequest : IRequest<EventIslamicAspectDto?>, ISecureRequest
+{
+    public Guid EventId { get; set; }
+
+    string? ISecureRequest.ResourceId => EventId.ToString();
 }

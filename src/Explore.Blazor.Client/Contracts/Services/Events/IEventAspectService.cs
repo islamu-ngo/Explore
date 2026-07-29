@@ -14,12 +14,12 @@ public interface IEventAspectService
     /// <summary>
     /// Gets the Islamic aspect for an event, if it exists.
     /// </summary>
-    Task<EventIslamicAspectDto?> GetIslamicAspectAsync(Guid eventId);
+    Task<EventIslamicAspectDto?> GetIslamicAspectAsync(Guid eventId, bool includeManaged = false);
 
     /// <summary>
     /// Gets the Tech aspect for an event, if it exists.
     /// </summary>
-    Task<EventTechAspectDto?> GetTechAspectAsync(Guid eventId);
+    Task<EventTechAspectDto?> GetTechAspectAsync(Guid eventId, bool includeManaged = false);
 
     /// <summary>
     /// Creates the Islamic aspect for an event.

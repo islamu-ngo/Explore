@@ -24,11 +24,13 @@ public class EventAspectService : IEventAspectService
     }
 
     /// <inheritdoc />
-    public async Task<EventIslamicAspectDto?> GetIslamicAspectAsync(Guid eventId)
+    public async Task<EventIslamicAspectDto?> GetIslamicAspectAsync(Guid eventId, bool includeManaged = false)
     {
         try
         {
-            return await _apiClient.GetEventIslamicAspectAsync(eventId);
+            return includeManaged
+                ? await _apiClient.GetManagedEventIslamicAspectAsync(eventId)
+                : await _apiClient.GetEventIslamicAspectAsync(eventId);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -49,11 +51,13 @@ public class EventAspectService : IEventAspectService
     }
 
     /// <inheritdoc />
-    public async Task<EventTechAspectDto?> GetTechAspectAsync(Guid eventId)
+    public async Task<EventTechAspectDto?> GetTechAspectAsync(Guid eventId, bool includeManaged = false)
     {
         try
         {
-            return await _apiClient.GetEventTechAspectAsync(eventId);
+            return includeManaged
+                ? await _apiClient.GetManagedEventTechAspectAsync(eventId)
+                : await _apiClient.GetEventTechAspectAsync(eventId);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {

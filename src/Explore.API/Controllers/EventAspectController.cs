@@ -66,6 +66,25 @@ public sealed class EventAspectController : ExploreControllerBase
         return Ok(aspect);
     }
 
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("{id:guid}/management-aspects/islamic", Name = RouteNames.GetManagedEventIslamicAspect)]
+    [EndpointSummary("Get Managed Event Islamic Aspect")]
+    [EndpointDescription("Get the Islamic aspect after view-management authorization.")]
+    [ProducesResponseType(typeof(EventIslamicAspectDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<EventIslamicAspectDto>> GetManagedIslamicAspect(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var aspect = await _mediator.Send(
+            new GetManagedEventIslamicAspectRequest { EventId = id },
+            cancellationToken);
+
+        return Ok(aspect);
+    }
+
     /// <summary>
     /// Create the Islamic aspect for an event.
     /// </summary>
@@ -179,6 +198,25 @@ public sealed class EventAspectController : ExploreControllerBase
         CancellationToken cancellationToken = default)
     {
         var aspect = await _mediator.Send(new GetEventTechAspectRequest { EventId = id }, cancellationToken);
+
+        return Ok(aspect);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("{id:guid}/management-aspects/tech", Name = RouteNames.GetManagedEventTechAspect)]
+    [EndpointSummary("Get Managed Event Tech Aspect")]
+    [EndpointDescription("Get the Tech aspect after view-management authorization.")]
+    [ProducesResponseType(typeof(EventTechAspectDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<EventTechAspectDto>> GetManagedTechAspect(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var aspect = await _mediator.Send(
+            new GetManagedEventTechAspectRequest { EventId = id },
+            cancellationToken);
 
         return Ok(aspect);
     }
