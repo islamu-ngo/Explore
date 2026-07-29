@@ -7,8 +7,8 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 ## Current Status
 
-- Implementation is active under `.omo/plans/storage-content-security.md`; Wave 1 is independently confirmed.
-- Next task: `SCS-200` upload-session purpose/visibility/MIME/extension policy.
+- Implementation is active under `.omo/plans/storage-content-security.md`; Waves 1 and 2 plus SCS-300 through SCS-330 are independently confirmed.
+- Next task: `SCS-400` exact BFF/browser raster policy; SCS-340 regeneration follows removal of generated client callers.
 - Approval checkpoint: accepting the plan authorizes the pre-v1 removal of
   `POST /api/storageobject/generate-upload-url` and `POST /api/storageobject`.
 - No matching active/paused workstream currently owns platform-wide storage content safety.
@@ -279,11 +279,11 @@ Final reviews are invalidated by any later code/doc commit. Every lane must reco
 
 ## Handoff
 
-Continue with Phase 2:
+Continue with Phase 4, then close Phase 3:
 
-1. enforce upload-session purpose/visibility/MIME/extension rules before quota or provider work;
-2. make stored byte identity immutable and validate merged access updates;
-3. reuse metadata/reference eligibility for reads and every image assignment;
-4. validate AI bytes before persistence/provider use;
-5. keep ATProto gateway production code untouched until Phase 5;
-6. record each independently confirmed task and the cumulative Phase 2 gate.
+1. restrict BFF upload sessions/proxy and browser readers to exact JPEG/PNG/GIF/WebP plus matching extensions;
+2. remove every reachable browser direct-upload/caller-authored metadata fallback;
+3. restrict the AI composer before base64/network work;
+4. complete real browser and visual QA on Event/User/Organization/AI upload surfaces;
+5. regenerate OpenAPI/client contracts and API docs after generated callers are gone;
+6. rerun the cumulative Phase 3 and Phase 4 gates.

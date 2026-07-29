@@ -7,10 +7,10 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 ## Status
 
-- Overall: implementation active; Wave 1 is independently confirmed.
-- Completed: 4 of 30 implementation tasks.
-- Current phase: Phase 2 — Storage metadata, image references, and AI ingress.
-- Current task: `SCS-200`.
+- Overall: implementation active; Waves 1 and 2 plus SCS-300 through SCS-330 are independently confirmed.
+- Completed: 15 of 30 implementation tasks.
+- Current phase: Phase 4 — BFF and browser image UX; SCS-340 regeneration follows caller removal.
+- Current task: `SCS-410`.
 - Approval blocker: legacy route removal in `SCS-320` requires plan acceptance.
 - Runtime blocker: unknown until the Phase 6 container-runtime preflight.
 - Review status: not started; no final SHA is pinned.
@@ -122,103 +122,122 @@ Confirmed 2026-07-29 at shared HEAD d1cd1ae2edfbd32322f93fa6f7a47e8365d61e44:
 
 ### SCS-200 — Upload-session cross-field policy
 
-- [ ] Reject `public_image` unless MIME/extension is a safe raster and purpose is image-capable.
-- [ ] Reject image purposes with non-safe MIME/extension.
-- [ ] Fail before quota reservation/provider work where metadata alone is invalid.
-- [ ] Retain byte inspection before active object creation.
-- [ ] Add safe positive controls for all server-supported raster MIME types.
+- [x] Reject `public_image` unless MIME/extension is a safe raster and purpose is image-capable.
+- [x] Reject image purposes with non-safe MIME/extension.
+- [x] Fail before quota reservation/provider work where metadata alone is invalid.
+- [x] Retain byte inspection before active object creation.
+- [x] Add safe positive controls for all server-supported raster MIME types.
 
 ### SCS-210 — Storage update hardening
 
-- [ ] Remove byte-identity fields from client-editable update DTOs.
-- [ ] Keep display-name/ownership fields only where valid.
-- [ ] Validate the merged existing-plus-patch entity before visibility/purpose updates.
-- [ ] Reject attachment/document/general objects promoted to `public_image`.
-- [ ] Reject split metadata/access update bypasses.
+- [x] Remove byte-identity fields from client-editable update DTOs.
+- [x] Keep display-name/ownership fields only where valid.
+- [x] Validate the merged existing-plus-patch entity before visibility/purpose updates.
+- [x] Reject attachment/document/general objects promoted to `public_image`.
+- [x] Reject split metadata/access update bypasses.
 
 ### SCS-220 — Read and presigned eligibility
 
-- [ ] Require active/public/image-purpose/safe MIME+extension for anonymous reads.
-- [ ] Prove denial happens before provider open.
-- [ ] Return sanitized display name and attachment decision for authenticated delivery.
-- [ ] Reuse eligibility in presigned-download authorization/response construction.
-- [ ] Keep owner/tenant/authenticated visibility semantics intact.
+- [x] Require active/public/image-purpose/safe MIME+extension for anonymous reads.
+- [x] Prove denial happens before provider open.
+- [x] Return sanitized display name and attachment decision for authenticated delivery.
+- [x] Reuse eligibility in presigned-download authorization/response construction.
+- [x] Keep owner/tenant/authenticated visibility semantics intact.
 
 ### SCS-230 — Image-reference eligibility
 
-- [ ] Refresh graph/LSP references for every `StorageObject` image FK assignment.
-- [ ] Harden Event featured image.
-- [ ] Harden Event background image.
-- [ ] Harden nested EventSession image references.
-- [ ] Harden Event draft image references.
-- [ ] Harden Actor create/update profile images.
-- [ ] Harden User profile picture updates.
-- [ ] Harden Organization logo/profile picture creation/update paths.
-- [ ] Require active, same-tenant, public, safe-raster metadata.
-- [ ] Return validation failure instead of silently ignoring an invalid reference.
+- [x] Refresh graph/LSP references for every `StorageObject` image FK assignment.
+- [x] Harden Event featured image.
+- [x] Harden Event background image.
+- [x] Harden nested EventSession image references.
+- [x] Harden Event draft image references.
+- [x] Harden Actor create/update profile images.
+- [x] Harden User profile picture updates.
+- [x] Harden Organization logo/profile picture creation/update paths.
+- [x] Require active, same-tenant, public, safe-raster metadata.
+- [x] Return validation failure instead of silently ignoring an invalid reference.
 
 ### SCS-240 — AI authoritative image validation
 
-- [ ] Restrict server AI image input to exact JPEG/PNG/GIF/WebP.
-- [ ] Decode base64 once in the authoritative validation path.
-- [ ] Require declared `SizeBytes` to equal decoded bytes when supplied.
-- [ ] Validate filename extension when supplied.
-- [ ] Validate complete container before serializing message JSON.
-- [ ] Prove rejected content causes no conversation/message persistence.
-- [ ] Prove rejected content is not added to provider prompt images.
-- [ ] Reuse the policy in proposed Event image materialization.
+- [x] Restrict server AI image input to exact JPEG/PNG/GIF/WebP.
+- [x] Decode base64 once in the authoritative validation path.
+- [x] Require declared `SizeBytes` to equal decoded bytes when supplied.
+- [x] Validate filename extension when supplied.
+- [x] Validate complete container before serializing message JSON.
+- [x] Prove rejected content causes no conversation/message persistence.
+- [x] Prove rejected content is not added to provider prompt images.
+- [x] Reuse the policy in proposed Event image materialization.
 
 ### SCS-250 — Phase 2 docs/tests
 
-- [ ] Add Application tests for every changed handler/validator/reader path.
-- [ ] Update storage, image-reference, and AI boundaries in `docs/SECURITY-MODEL.md`.
+- [x] Add Application tests for every changed handler/validator/reader path.
+- [x] Update storage, image-reference, and AI boundaries in `docs/SECURITY-MODEL.md`.
 
 ### Phase 2 gate
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
-- [ ] Record nonzero counts, SHA, warnings/failures, and evidence.
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+- [x] Record nonzero counts, SHA, warnings/failures, and evidence.
 
 Evidence:
 
 ```text
-Pending.
+Confirmed 2026-07-29 at shared HEAD 44804ee34709805c94d14f7be82e340297e91d60
+plus the independently reviewed working-tree test/API compile-consumer fixes:
+- Storage-core focused selectors: 81/81.
+- AI selectors: 508/508.
+- Image-reference selectors: 54/54, including 18 new invocations across
+  Event/Session/Series/Day, Actor/User, Group/Organization, and AI boundaries.
+- Full Application project: 3378/3381 passed; the only failures are the same
+  three deterministic unrelated current-HEAD contract failures documented in
+  Wave 1.
+- Release build: 26 projects, 0 errors.
+- Manual probe: unsafe_public_html=False; safe_public_avif=True;
+  editable_byte_identity=False; valid reference/AI=True; cross-tenant and
+  active-tail=False.
+- Executor evidence:
+  `.omo/evidence/storage-content-security/wave2/storage-core/DONE_CLAIM.md`
+  and `.omo/evidence/storage-content-security/wave2/images-ai/DONE_CLAIM.md`.
+- Independent gates:
+  `.omo/evidence/storage-content-security/wave2/storage-core/ADVERSARIAL_VERIFY.md`
+  and `.omo/evidence/storage-content-security/wave2/images-ai/ADVERSARIAL_VERIFY.md`,
+  both `confirmed`.
 ```
 
 ## Phase 3 — API Delivery and Legacy Bypass Removal
 
 ### SCS-300 — Safe file response behavior
 
-- [ ] Serve eligible safe public raster inline.
-- [ ] Serve authenticated non-raster content with sanitized attachment disposition.
-- [ ] Preserve range processing, Last-Modified, ETag/checksum, CSP, and `nosniff`.
-- [ ] Prove SVG/HTML/general content cannot use the anonymous route.
+- [x] Serve eligible safe public raster inline.
+- [x] Serve authenticated non-raster content with sanitized attachment disposition.
+- [x] Preserve range processing, Last-Modified, ETag/checksum, CSP, and `nosniff`.
+- [x] Prove SVG/HTML/general content cannot use the anonymous route.
 
 ### SCS-310 — Presigned and presentation URL hardening
 
-- [ ] Add provider response content-disposition override for ID-based presigned downloads.
-- [ ] Keep presigned responses no-store and secret-safe.
-- [ ] Remove raw-object-key signing from `StoragePresentationUrlResolver`.
-- [ ] Preserve metadata-backed `/api/storageobject/{id}/public` image URLs.
-- [ ] If the provider cannot enforce disposition, remove non-raster presigned affordance instead of returning inline content.
+- [x] Add provider response content-disposition override for ID-based presigned downloads.
+- [x] Keep presigned responses no-store and secret-safe.
+- [x] Remove raw-object-key signing from `StoragePresentationUrlResolver`.
+- [x] Preserve metadata-backed `/api/storageobject/{id}/public` image URLs.
+- [x] If the provider cannot enforce disposition, remove non-raster presigned affordance instead of returning inline content.
 
 ### SCS-320 — Remove legacy write operations
 
-- [ ] Confirm plan acceptance authorizes the breaking removal.
-- [ ] Remove `GenerateStorageObjectUploadUrl` controller operation and route.
-- [ ] Remove caller-authored `CreateStorageObject` controller operation and route.
-- [ ] Remove their HAL affordances.
-- [ ] Keep provider-neutral upload-session operations.
-- [ ] Prove removed operations are absent from endpoint inventory/OpenAPI.
+- [x] Confirm plan acceptance authorizes the breaking removal.
+- [x] Remove `GenerateStorageObjectUploadUrl` controller operation and route.
+- [x] Remove caller-authored `CreateStorageObject` controller operation and route.
+- [x] Remove their HAL affordances.
+- [x] Keep provider-neutral upload-session operations.
+- [x] Prove removed operations are absent from endpoint inventory/OpenAPI.
 
 ### SCS-330 — API integration coverage
 
-- [ ] Unsafe public metadata returns 404.
-- [ ] Provider is not opened for unsafe public metadata.
-- [ ] Safe raster remains inline with the correct MIME.
-- [ ] Authenticated SVG/HTML/document/general content is attachment.
-- [ ] Presigned download carries disposition override/no-store behavior.
-- [ ] Removed legacy operations are not callable.
+- [x] Unsafe public metadata returns 404.
+- [x] Provider is not opened for unsafe public metadata.
+- [x] Safe raster remains inline with the correct MIME.
+- [x] Authenticated SVG/HTML/document/general content is attachment.
+- [x] Presigned download carries disposition override/no-store behavior.
+- [x] Removed legacy operations are not callable.
 
 ### SCS-340 — Contract/docs regeneration
 
@@ -245,11 +264,11 @@ Pending.
 
 ### SCS-400 — BFF image-only contract
 
-- [ ] Restrict session requests to exact JPEG/PNG/GIF/WebP.
-- [ ] Require matching simple extension.
-- [ ] Recheck proxy form MIME against session/file declarations.
-- [ ] Preserve auth, antiforgery, opaque session, user, size, and consumed-session binding.
-- [ ] Preserve rejection of raw destinations/object keys/paths.
+- [x] Restrict session requests to exact JPEG/PNG/GIF/WebP.
+- [x] Require matching simple extension.
+- [x] Recheck proxy form MIME against session/file declarations.
+- [x] Preserve auth, antiforgery, opaque session, user, size, and consumed-session binding.
+- [x] Preserve rejection of raw destinations/object keys/paths.
 
 ### SCS-410 — Persistent UI upload convergence
 
