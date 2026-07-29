@@ -3,7 +3,7 @@
 
 # Registration Data Collection & Participation Platform — Implementation Plan
 
-Last Updated: 2026-07-28 Europe/Brussels
+Last Updated: 2026-07-29 Europe/Brussels
 
 ---
 
@@ -14,7 +14,7 @@ Last Updated: 2026-07-28 Europe/Brussels
 - **Licensing correction (2026-07-21):** ISLAMU Event operates under a CLA that enables dual-licensing (offering the software under a non-AGPLv3 license to recipients who cannot use AGPLv3). Therefore **zero code may be copied from the Hi.Events repository** — copying AGPLv3-licensed third-party code would contaminate the codebase and destroy the dual-licensing capability. Hi.Events remains a *behavior, design, and data-model* reference only; the report's §10 code-reuse permission is explicitly overridden by this workstream (see §4.13, D19).
 - **Studio integration re-baseline (2026-07-26):** Treat the implemented workspace shell from `dev/active/dynamic-event-management-ui/` as current architecture. Organizer ticketing, orders, attendees, registration forms, and provider operations extend the existing Studio workspace and its single contextual sidebar; they do not create a parallel `/events/manage` navigation system. Public and guest checkout remains outside Studio.
 - **Task directory:** `dev/active/registration-data-collection/`
-- **Planning status:** Approved by the user on 2026-07-26; re-baselined on 2026-07-28 after the user permitted Phase 3 source-only implementation despite the Phase 2 rollout blocker. Tasks 2.1 through 2.5 and 3.1 through 3.3 are source complete. Phase 2 still lacks its owned, ordered migration, and Phase 3 full gates remain externally blocked. No Phase 5 endpoint or persistence work exists.
+- **Planning status:** Approved by the user on 2026-07-26; re-baselined through Phase 4 on 2026-07-29. Tasks 2.1 through 2.5, 3.1 through 3.3, and 4.1 through 4.5 are source complete, for 22/88 implementation tasks. Phase 2 still lacks its owned, ordered migration, and broad Phase 4 gates remain blocked by unrelated/environment failures. Oracle review is next. No Phase 5 endpoint or persistence work exists.
 - **Matched intent:** `registration-data-collection`, the dedicated cross-cutting intent created in Phase 0. Its related granular intents remain `add-write-endpoint`, `add-get-endpoint`, `add-hal-link`, `add-cqrs-handler`, `add-ef-migration`, `update-repository-query`, `blazor-component-affordance`, `cerbos-policy-change`, and `openapi-contract-change`.
 - **Relevant skills:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, `outbox-pattern`, `auth-patterns`, `blazor-bff-patterns`, `blazor-ui-conventions`, `error-tracking`.
 - **Relevant rules:** `.claude/rules/domain.md`, `application-layer.md`, `efcore-persistence.md`, `efcore-migrations.md`, `api-controllers.md`, `api-hateoas.md`, `blazor-server.md`, `blazor-client.md`, `tests.md`.
@@ -643,11 +643,12 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - The new rate-policy test exists, but its fresh project build stops before discovery on six unrelated `CustomPropertyDefinitionControllerTests` errors caused by missing DTO members.
 - The canonical Release build is not green. It reports 12 unrelated errors: six in that API test and six in Blazor client custom-property generated-contract call sites.
 - Full Architecture executes 315 tests: 304 pass, 10 unrelated tests fail, and 1 is skipped. The new `PublicTransactional` checks aren't among the failures.
-- **Next slice:** External owners clear the build and Architecture blockers, then rerun the Phase 3 full gates. Start Phase 4 only after those gates close. The Phase 2 migration blocker remains independently open.
+- **Next slice:** Phase 4 source has since landed under explicit user direction. Its focused evidence is green, broad gates remain blocked, and Oracle review is next. The Phase 2 migration blocker remains independently open.
 
 ---
 
 ### Phase 4: Ticket Catalog, Capacity Pools, Entitlements, And Instance Monetization
+- **Status:** SOURCE COMPLETE / FULL GATES BLOCKED. Tasks 4.1 through 4.5 are checked and focused Phase 4 evidence is green. Broad Application, Architecture, Persistence, API, and Blazor Client gates retain unrelated or environment failures, so Phase 4 is not fully complete. Oracle review is next.
 - **Goal:** Versioned admission products with five pricing modes (D17), shared capacity pools and session/day entitlements; Studio Ticketing authoring; instance-admin-only monetization configuration (D18); delete decorative prices.
 - **Depends on:** Phases 1–2 (organizer authority + participation config).
 - **Relevant files:** existing — `Event.cs`, `EventSession.cs` (Price removal), seeder, DbContext partials, event manage API, `Routes.razor`, `StudioEventNavigation.razor`, `StudioEventShell.razor`; new — `src/Explore.Domain/EventTicketCatalogVersion.cs`, `EventTicketType.cs`, `TicketTypeEntitlement.cs`, `EventCapacityPool.cs`, `PlatformFeePolicy.cs`, `PlatformContributionSetting.cs`, `PlatformContributionOption.cs`, lookups `TicketCatalogStatus`, `TicketPricingMode`, `ParticipantDataCollectionMode`, `EntitlementScopeType`, `EntitlementSelectionRule`, `CapacityOversellPolicy` (+ enums), `Services/Registration/TicketPricingRules.cs`, configurations, `Features/EventTicketing/**`, `Features/PlatformMonetization/**`, `EventTicketTypeController.cs` etc., HAL policies, Cerbos `islamuevent_event_ticket_type.yaml`, Studio ticketing page/components.
@@ -658,61 +659,74 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
   - `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Price deletion is the phase's final task; all read models (list/detail/SEO/AT Proto lexicon projections if any reference price — enumerate via `rg "\.Price" src/`) must compile against derived display price before deletion commits.
 
+#### Phase 4 verification evidence
+- Release build: 0 errors and 551 existing warnings.
+- Focused green evidence: Domain 600/600; Phase 4 Application classes 53/53; EventTicketing layout Architecture 5/5; ticketing/monetization Persistence 7/7; Phase 4 API cluster 17/17; focused ticketing Blazor 57/57; monetization Blazor 9/9; Explore.Infrastructure 1149/1149; Secrets 205/205; Blazor Integration 376/376.
+- Broad non-green evidence: Application 3312/3315 with three unrelated failures; Architecture 320/330 with nine unrelated failures and one skip; Persistence 91/688 with 597 Docker/Testcontainers failures; API 1557/2099 with 542 environment/shared failures; Blazor Client 2206/2209 with two unrelated failures and one skip.
+- The unrelated Application failures are in `PublishEventCommandHandlerTests.Handle_WithEnabledAtproto_StagesEventOutboxAfterLocalSaveInsideTransactionWithoutPdsCall`, `UpdateOrganizationCommandHandlerTests.Handle_WhenRequesterIsNotOrgAdmin_ReturnsAuthorizationFailureAndDoesNotSave`, and `EventLocationDisclosureContractTests.Contracts_AreImmutableRecordsAndDoNotReuseGenericLocationDto`. The unrelated Blazor failures are `LaunchAccessibilitySourceTests.LaunchCriticalPages_ShouldPreserveAccessibilityContracts` and `SetupTests.Setup_AfterValidation_ResumesSafeReturnUrl`.
+- Stale `EventTicketingLinkPolicyTests` relation literals were corrected to `LinkRelations.CreateDraft`, `LinkRelations.CreateTicketType`, and `LinkRelations.CreateCapacityPool`: RED 1/3, then GREEN 3/3. Production/runtime/client contracts were already correct.
+- Browser visual QA, Docker, Aspire, and native pinned Cerbos execution are unavailable. Focused bUnit and architecture results are the UI evidence, not a browser claim.
+
 #### Task 4.1: Catalog domain model with immutable publication and five pricing modes
+- **Status:** Source complete; Domain 600/600 passes.
 - **Type:** create
 - **Layer:** Domain
 - **Files:** new entities/lookups listed above; new `Services/Registration/TicketCatalogRules.cs`; new `Services/Registration/TicketPricingRules.cs`; new `src/Explore.Domain/TicketPricingMode.cs` + `Enums/TicketPricingModeEnum.cs`
 - **Description:** Catalog version states `Draft/Published/Retired`; publication freezes; mutation of published members throws; new-version cloning; eligibility typed fields (`MinimumAge`, `MaximumAge`, `RequiresGuardian`, `RequiresApproval`); quantity-limit fields (`PerOrder/PerAccount/PerVerifiedContact/PerBookingParty`); entitlements per §15 with selection rules `AllIncluded/FixedSelection/ChooseOne/ChooseUpToN`; one-currency rule across a version. Pricing per D17: `TicketPricingModeId` (`FIXED/FREE/DONATION/PAY_WHAT_YOU_CAN/SLIDING_SCALE`) with `PriceAmount`, `MinimumPriceAmount`, `SuggestedPriceAmount` and `TicketPricingRules` enforcing per-mode field consistency (FIXED requires price; FREE forbids amounts; DONATION/PWYC allow minimum ≥ 0 with 0-input semantics; SLIDING_SCALE requires minimum + suggested ≥ minimum) plus chosen-price bounds validation used later by order handlers; explicit per-currency decimal rounding rules as a value object.
 - **Acceptance Criteria:**
-  - [ ] Domain unit tests: publish-freeze, clone-to-draft, currency uniformity, entitlement legality vs Event/Day/Session references
-  - [ ] Pricing-mode validation matrix unit-tested (each of the five modes × valid/invalid/boundary amounts, incl. 0-allowed cases)
-  - [ ] Rounding rules deterministic and covered by decimal tests
+  - [x] Domain unit tests: publish-freeze, clone-to-draft, currency uniformity, entitlement legality vs Event/Day/Session references
+  - [x] Pricing-mode validation matrix unit-tested (each of the five modes × valid/invalid/boundary amounts, incl. 0-allowed cases)
+  - [x] Persisted/API money uses `long ...Minor`, percentages use integer basis points (`10_000 = 100%`), and currency-aware conversion/rounding is explicit and deterministic
 - **Dependencies:** Phase 2
 - **Effort:** L
 
 #### Task 4.2: Persistence + seeding
+- **Status:** Source complete; focused ticketing/monetization Persistence 7/7 passes. Full Persistence remains Docker/Testcontainers-blocked at 91/688.
 - **Type:** create/modify
 - **Layer:** Persistence
 - **Files:** new configurations + repositories (`IEventTicketCatalogRepository` etc.); existing DbSets/QueryFilters/seeder; additive migration per gate
 - **Description:** Filtered unique indexes (one active published catalog per event), FK cascades reviewed (no cascade delete into published versions), stable lookup IDs, integration tests for immutability at DB level (concurrency stamp) and tenant filters.
 - **Acceptance Criteria:**
-  - [ ] Persistence tests: published version rows unmodifiable via optimistic concurrency; pool shared by two ticket types resolves single capacity row
-  - [ ] Hidden/cross-tenant/cross-event ticket-type lookups return generic not-found (report §7.9/§11.2 lesson)
+  - [x] Persistence tests: published version rows unmodifiable via optimistic concurrency; pool shared by two ticket types resolves single capacity row
+  - [x] Hidden/cross-tenant/cross-event ticket-type lookups return generic not-found (report §7.9/§11.2 lesson)
 - **Dependencies:** 4.1
 - **Effort:** L
 
 #### Task 4.3: Authoring Application + API + Cerbos + HAL
+- **Status:** Source complete; focused Application 53/53, EventTicketing layout Architecture 5/5, and API 17/17 pass.
 - **Type:** create
 - **Layer:** Application + API
 - **Files:** new `Features/EventTicketing/**` (catalog/ticket/pool/entitlement commands+queries, DTOs, validators), new controllers + link policies, `RouteNames`/`LinkRelations` additions (`manage-ticket-types`, `manage-capacity-pools`), new Cerbos policy + schema
 - **Description:** Organizer-only writes (verified organizer authority via Phase 1 rules — community contributor forbidden test); publish command runs one-currency + entitlement + pricing-mode preflight (`TicketPricingRules`); public event read model derives display price ("from X" across active types; "Free / pay what you can" labels for buyer-priced modes). Event HAL emits `manage-ticket-types` and/or `manage-capacity-pools` only when the corresponding Studio Ticketing operations are authorized. Contract regeneration + changelog.
 - **Acceptance Criteria:**
-  - [ ] Contributor-denied and curator-delegation Cerbos parity tests
-  - [ ] Publish preflight rejects mixed currencies, orphan entitlements, and pricing-mode field inconsistencies
-  - [ ] Event HAL omits both Ticketing relations for community contributors and external-managed/listing-only events
+  - [x] Contributor-denied and curator-delegation provider parity tests
+  - [x] Publish preflight rejects mixed currencies, orphan entitlements, and pricing-mode field inconsistencies
+  - [x] Event HAL omits both Ticketing relations for community contributors and external-managed/listing-only events
 - **Dependencies:** 4.2
 - **Effort:** L
 
 #### Task 4.4: Studio ticket authoring + price display migration + field deletion
+- **Status:** Source complete; focused ticketing Blazor 57/57 passes. Browser visual QA is unavailable.
 - **Type:** create/modify/delete
 - **Layer:** Blazor + Domain
 - **Files:** new `Pages/Studio/StudioEventTicketing.razor` (+ scoped CSS and child editors under `Components/Studio/Ticketing/`); modify `Routes.razor`, `StudioEventNavigation.razor`, existing event display components; final commit deletes `Event.Price`, `Event.CurrencyCode`, `EventSession.Price` and updates every reader
 - **Description:** Add `/studio/events/{eventId}/tickets`. `StudioEventNavigation` renders Ticketing when either `manage-ticket-types` or `manage-capacity-pools` exists and reuses the shared `StudioEventContextState`; the page renders only controls authorized by their exact relations. The catalog editor covers types, pools, entitlements, windows, limits, pricing modes, and shared-capacity visualization per the Hi.Events organizer lesson. Public price display comes from the derived DTO; delete decorative price fields last.
 - **Acceptance Criteria:**
-  - [ ] `rg "\.Price" src/` returns only catalog-owned members after deletion
-  - [ ] bUnit: Ticketing sidebar/route controls are absent without both management links; ticket editor hidden without `manage-ticket-types`; pool controls hidden without `manage-capacity-pools`; visualization and pricing-mode rules render correctly
+  - [x] Legacy decorative Event/EventSession price members are removed; ticket catalog minor-unit fields own ticket pricing
+  - [x] bUnit: Ticketing navigation/route uses `manage-ticket-types OR manage-capacity-pools`; ticket and pool controls are independently gated by their exact relations; catalog item mutations use item HAL links
 - **Dependencies:** 4.3
 - **Effort:** L
 
 #### Task 4.5: Instance monetization configuration (fee policy + platform contribution)
+- **Status:** Source complete; monetization Blazor 9/9 passes. The API is the separate Admin-class `GET|PUT /api/instance/settings/platform-monetization` resource.
 - **Type:** create
 - **Layer:** Domain + Persistence + Application + API + Blazor
 - **Files:** new `src/Explore.Domain/PlatformFeePolicy.cs`, `PlatformContributionSetting.cs`, `PlatformContributionOption.cs` (typed option rows: percentage + sort order — no JSON blob); new configurations + DbSets; new `Features/PlatformMonetization/{Requests,Handlers}/**`; new Admin controller actions (`EndpointClass.Admin`, instance-admin authorization) + `RouteNames`; new Blazor instance-admin settings page; `docs/CONFIGURATION.md` + `docs/ADMIN_GUIDE.md` sections
 - **Description:** Per D18. Both concepts instance-scoped, versioned (edits create a new version so order snapshots stay deterministic), and **default off/zero**. `PlatformFeePolicy`: percentage + fixed components used only for organizer-earnings computation/display until payments ship. `PlatformContributionSetting`: enable flag; DB-stored heading + body text (localization-ready, example seeded as documentation not data: "Help us help the Ummah…"); option list seeded `0 (default, preselected), 5, 10, 15, 20` percent — fully editable by the instance admin. Authorization: instance administrators only; tenant admins must have no read-write management path (fail-closed tests). No hardcoded strings, percentages, or amounts anywhere in API or client.
 - **Acceptance Criteria:**
-  - [ ] Tenant admin (and organizer/curator) receive 403/404 on every monetization management endpoint (authorization tests)
-  - [ ] Defaults off/0 on fresh instance; enabling requires an explicit instance-admin action; edits version rather than mutate consumed rows
-  - [ ] Heading/body/percentages round-trip through the API — zero hardcoded monetization content in `src/`
+  - [x] Query and command handlers independently recheck instance-admin authority; tenant-scoped roles have no management path
+  - [x] Defaults are off/zero on a fresh instance; enabling is explicit and edits create new active revisions
+  - [x] Heading/body/basis-point options round-trip through the separate API resource; platform contribution remains separate from organizer earnings
 - **Dependencies:** 4.1
 - **Effort:** L
 

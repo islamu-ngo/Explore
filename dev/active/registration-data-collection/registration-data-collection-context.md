@@ -3,11 +3,14 @@
 
 # Registration Data Collection & Participation Platform — Context
 
-Last Updated: 2026-07-28 Europe/Brussels
+Last Updated: 2026-07-29 Europe/Brussels
 
-## SESSION PROGRESS (2026-07-28 Europe/Brussels)
+## SESSION PROGRESS (2026-07-29 Europe/Brussels)
 
 ### ✅ COMPLETED
+- **Phase 4 source completion (2026-07-29):** Tasks 4.1 through 4.5 are source complete, bringing the ledger to 22/88 implementation tasks. Versioned ticket catalogs, five pricing modes, entitlements, shared capacity pools, authoring CQRS/API/HAL, Studio ticket management, and separate instance monetization management are implemented. No Phase 5 endpoint or persistence work exists.
+- **Phase 4 focused evidence:** Release build 0 errors with 551 existing warnings; Domain 600/600; Phase 4 Application classes 53/53; EventTicketing layout Architecture 5/5; ticketing/monetization Persistence 7/7; Phase 4 API cluster 17/17; focused ticketing Blazor 57/57; monetization Blazor 9/9; Explore.Infrastructure 1149/1149; Secrets 205/205; Blazor Integration 376/376.
+- **Ticketing relation test correction:** stale `EventTicketingLinkPolicyTests` literals were replaced by canonical `LinkRelations.CreateDraft`, `LinkRelations.CreateTicketType`, and `LinkRelations.CreateCapacityPool`. The focused run was RED 1/3, then GREEN 3/3. Production policies, runtime HAL, generated contracts, and client state already used the canonical relations.
 - Full read of the combined consultation document (`registration-data-collection-consultation.md`, Reports No. 1 + No. 2, 3,786 lines).
 - Repository investigation with evidence: current registration aggregate, Event participation fields, custom-property system, incoming-webhook intake, endpoint classifications, UnitOfWork, idempotency, secrets, Cerbos, Blazor registration UX, empty migration baseline.
 - Planning created: 15-phase plan (P0–P14), 16 architecture decisions (D1–D16), risk register, testing strategy, per-task acceptance criteria.
@@ -34,14 +37,14 @@ Last Updated: 2026-07-28 Europe/Brussels
 - **Oracle follow-up:** **PASS**, with no Critical or High issues. The governance metadata-bypass and secret-formatting findings were fixed. One Medium prerequisite remains for Task 5.4 and is recorded below; it is not fixed by the Phase 3 foundation.
 
 ### 🟡 IN PROGRESS
-- Phase 2 source/contract work and Phase 3 source-only work are complete. Phase 2 remains blocked on migration ownership/order, and Phase 3 full gates remain externally blocked.
+- Phase 4 is SOURCE COMPLETE / FULL GATES BLOCKED. Focused Phase 4 evidence is green; broad Application, Architecture, Persistence, API, and Blazor Client projects retain unrelated or environment failures and must not be reported globally green.
 - Phase 1 Task 1.4 and Phase 2 Task 2.2 have no ordered dedicated registration/participation migration. Source mappings, seeds, and focused repository tests are green.
 - Phase 1 Task 1.6 remains externally blocked only on native pinned Cerbos execution.
 
 ### ⏭️ NEXT
-1. The external migration owner must establish the exact order and generate a dedicated participation migration. Do not edit or stage `20260727174857_EnforceLookupRelationshipUniqueness` in this workstream.
-2. External custom-property and Architecture owners clear the exact Phase 3 gate failures recorded below, then rerun the canonical build and full Architecture project.
-3. Start Phase 4 only after the Phase 3 full gates close. Keep the Phase 2 migration blocker open independently. Run bundled Cerbos tests when the pinned CLI is available; do not substitute an unpinned binary.
+1. Run Oracle review of the Phase 4 source, focused evidence, and documentation synchronization.
+2. Address only Oracle findings owned by Tasks 4.1 through 4.5. Do not absorb unrelated broad-suite failures or generated/migration work.
+3. Keep the Phase 2 migration ownership blocker, Task 5.4 atomic-idempotency prerequisite, and unavailable Docker/browser/Aspire/Cerbos constraints open. Phase 5 must not start from a false global-green claim.
 
 ### ⚠️ BLOCKERS
 - **Unrelated architecture test:** Phase 0 ran 304 architecture tests: 302 passed, 1 skipped, and the pre-existing `EventReportConsentArchitectureTests.ConsentAffordanceShouldExistOnlyOnMyReportsPolicies` failure remains (`reporterUserId.ToString()` expectation versus the dirty-worktree handler's `resolvedReporterUserId.ToString()`). Registration changes did not touch that surface.
@@ -56,6 +59,8 @@ Last Updated: 2026-07-28 Europe/Brussels
 - **Task 5.4 atomic-idempotency blocker (Medium):** the current generic `IdempotencyMiddleware` performs `FindAsync` → execute → `SaveAsync`, so concurrent identical keys may execute twice and save failures are fail-open. Before the first Phase 5 `PublicTransactional` endpoint, implement an atomic in-progress key claim or business-transaction-owned dedupe and fail closed if required claim persistence fails. No migration design is required now.
 - **Selected Phase 2 API test blocker:** a focused 2026-07-28 rerun of `EventSessionSpeakerControllerTests` executed six tests, four passed and two externally owned tests failed. `CollectionEditLink_UsesOnlyRelationshipIdForCanonicalPatchRoute` expects the collection edit link route values to omit `eventSessionId`. `Update_WhenIfMatchIsMissing_ReturnsValidationProblemDetails` expects title `Event session speaker validation failed` but receives `Validation failed`. Do not fix speaker code/tests in this workstream.
 - **Current architecture blocker:** full Architecture executes 315 tests: 304 pass, 10 unrelated tests fail, and 1 is skipped. None of the new `PublicTransactional` checks appears in the failures. The earlier focused privacy inventory failure remains unrelated.
+- **Current Phase 4 broad-gate truth:** Application 3312/3315 with three unrelated failures in `PublishEventCommandHandlerTests.Handle_WithEnabledAtproto_StagesEventOutboxAfterLocalSaveInsideTransactionWithoutPdsCall`, `UpdateOrganizationCommandHandlerTests.Handle_WhenRequesterIsNotOrgAdmin_ReturnsAuthorizationFailureAndDoesNotSave`, and `EventLocationDisclosureContractTests.Contracts_AreImmutableRecordsAndDoNotReuseGenericLocationDto`; Architecture 320/330 with nine unrelated failures and one skip; Persistence 91/688 with 597 Docker/Testcontainers failures; API 1557/2099 with 542 environment/shared failures; Blazor Client 2206/2209 with two unrelated failures and one skip. The Blazor failures are `LaunchAccessibilitySourceTests.LaunchCriticalPages_ShouldPreserveAccessibilityContracts` and `SetupTests.Setup_AfterValidation_ResumesSafeReturnUrl`.
+- **Unavailable runtime/visual evidence:** Docker/Testcontainers, browser visual QA, Aspire startup, and native pinned Cerbos execution are unavailable. Focused bUnit and architecture evidence is authoritative for Phase 4 UI behavior, but no browser visual claim is made.
 
 ## Task 1.6 Verification Evidence (2026-07-26)
 
@@ -142,7 +147,7 @@ Pending decisions owned by tasks: `ActorId` rename vs narrowing (1.1), BFF antif
 - NSwag/OpenAPI regeneration is a discrete, governed final step of any API-changing phase.
 - Hi.Events reject-list is binding (plan §4.13): no mutable published prices, no JSON canonical answers, no public/display IDs as authorization, no cache-only idempotency, no float money, no attendee-derived inventory release, no external calls inside transactions; never add "Powered by Hi.Events" branding.
 - **NO Hi.Events code copy — ever** (plan §4.13, D19): CLA/dual-licensing protection; no file, snippet, migration, SQL, or asset from the Hi.Events repo; no opening/transcribing/paraphrase-translating its source during implementation; clean-room from `hi-events-report.md` + plan only.
-- Money rules (plan §4.14): decimal-only with explicit per-currency rounding; monetization defaults off/zero; instance-admin-only enablement — tenant-level enablement is a forbidden move.
+- Money rules (plan §4.14): persisted and API amounts are integer minor units (`long ...Minor`), percentages are integer basis points (`10_000 = 100%`), and calculations use explicit currency-aware decimal conversion/rounding; monetization defaults off/zero; instance-admin-only enablement. Tenant-level enablement is forbidden.
 - Studio is the organizer UI boundary (D20): canonical `/studio/**` routes, existing navigation replacement model, and HAL-only section visibility. `configure-participation`, ticket/capacity management, orders, participants, workflow, and channel/health relations map to Registration, Ticketing, Orders, Attendees, Forms, and Integrations respectively; export remains an Attendees action.
 - Baseline test-failure note: 15 pre-existing shared failures from upstream webhook fallout (see MEMORY) — snapshot at Phase 1 start; never attribute to this workstream.
 
@@ -160,6 +165,16 @@ Every phase: `dotnet build --configuration Release --verbosity quiet` once, plus
 - Full register in plan §13.
 
 ## Handoff Notes
+
+### Handoff: 2026-07-29 Europe/Brussels (Phase 4 source complete, full gates blocked)
+- **Current state:** Tasks 4.1 through 4.5 are source complete and the implementation count is 22/88. Focused Phase 4 evidence is green, but broad Application, Architecture, Persistence, API, and Blazor Client gates remain blocked by the exact unrelated/environment results above. Phase 2 still lacks an owned, ordered participation migration. No Phase 5 endpoint or persistence work exists.
+- **Next action:** Oracle review of Phase 4 is next. Fix only review findings owned by Phase 4, then retain or rerun broad gates only when their external/environment blockers are available.
+- **Blockers:** Phase 2 migration ownership/order; Task 5.4 atomic idempotency before any Phase 5 `PublicTransactional` endpoint; Docker/Testcontainers, browser visual QA, Aspire, and pinned Cerbos unavailable; broad-suite failures remain unrelated and are named above.
+- **Modified files:** `registration-data-collection-{tasks,context,plan}.md`, `docs/adr/ADR-018-registration-order-ticketing-aggregate.md`, `docs/API.md`, `docs/API_CHANGELOG.md`, `docs/AUTHORIZATION.md`, `docs/BLAZOR.md`, `docs/DOMAIN.md`, `docs/CONFIGURATION.md`, and `docs/ADMIN_GUIDE.md`. Preserve runtime source, tests, generated OpenAPI/NSwag/inventory files, migrations/snapshots, consultation/research reports, and all unrelated worktree changes.
+- **Validation:** Release build 0 errors/551 existing warnings; focused counts are Domain 600/600, Application 53/53, Architecture 5/5, Persistence 7/7, API 17/17, ticketing Blazor 57/57, monetization Blazor 9/9, Infrastructure 1149/1149, Secrets 205/205, and Blazor Integration 376/376. Relation literals were RED 1/3 then GREEN 3/3. Broad gate counts remain non-green as recorded above.
+- **Documentation impact:** Plan, context, tasks, ADR-018, and only materially affected canonical behavior docs are synchronized to the implemented ticketing and instance-monetization representation. Generated artifacts remain untouched.
+- **Risks:** Do not infer global green, browser visual quality, migration completion, payment behavior, or Phase 5 readiness. Keep platform contribution separate from organizer earnings and keep all UI mutation/navigation authority HAL-driven.
+- **Notes for next contributor/agent:** Persist/API money as `long ...Minor`, percentages as integer basis points, and use explicit currency-aware conversion/rounding. Ticketing navigation is an OR gate, but ticket and pool controls require their own exact relations. Both monetization handlers recheck instance-admin authority, and the UI saves only when HAL includes `edit`.
 
 ### Handoff: 2026-07-28 Europe/Brussels (Phase 3 source complete, full gates blocked)
 - **Current state:** Tasks 3.1 through 3.3 are source complete with focused checks green. Phase 3 is not complete because its canonical build and full Architecture gates are externally blocked. Phase 2 still lacks an owned, ordered participation migration. No Phase 5 endpoint or persistence implementation exists.
