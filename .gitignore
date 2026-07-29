@@ -573,3 +573,5 @@ event/
 opencode.jsonc
 dev/report/visuals/
 .playwright-cli/
+.qa-cookie/
+.debug-journal.md
