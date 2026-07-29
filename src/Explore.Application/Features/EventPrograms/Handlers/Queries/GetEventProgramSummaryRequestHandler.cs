@@ -11,7 +11,6 @@ using Explore.Application.Features.EventPrograms.Models;
 using Explore.Application.Features.EventPrograms.Requests.Queries;
 using Explore.Application.Services;
 using Explore.Domain;
-using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.EventPrograms.Handlers.Queries;
@@ -55,7 +54,13 @@ public class GetEventProgramSummaryRequestHandler :
         CancellationToken cancellationToken)
     {
         var eventEntity = await _eventRepository.GetEventWithDetails(eventId);
-        if (eventEntity is null || (!includeManaged && !IsPublicProgramEligible(eventEntity)))
+        if (eventEntity is null)
+            return null;
+
+        if (!includeManaged && !await _eventRepository.IsPubliclyEligibleAsync(
+                eventEntity.TenantId,
+                eventEntity.Id,
+                cancellationToken))
             return null;
 
         var sessions = includeManaged
@@ -117,12 +122,6 @@ public class GetEventProgramSummaryRequestHandler :
             .ToList();
 
         return summary;
-    }
-
-    private static bool IsPublicProgramEligible(Event eventEntity)
-    {
-        return eventEntity.EventStatusId == (int)EventStatusEnum.Published &&
-            eventEntity.VisibilityTypeId == (int)VisibilityTypeEnum.Public;
     }
 
     private static List<ProgramGroupAccumulator> BuildProgramGroups(

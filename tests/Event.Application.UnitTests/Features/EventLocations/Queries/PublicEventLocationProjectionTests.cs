@@ -274,6 +274,7 @@ public sealed class PublicEventLocationProjectionTests
         EventSession session = CreateSession(tenantId, eventId, Guid.NewGuid(), sharedLocation);
         EventAgendaItem agendaItem = CreateEventAgendaItem(tenantId, eventId, Guid.NewGuid(), sharedLocation);
         eventRepository.GetById(eventId).Returns(parentEvent);
+        eventRepository.IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
         eventDayRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
         sessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
         agendaRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([agendaItem]);
@@ -326,6 +327,7 @@ public sealed class PublicEventLocationProjectionTests
             Tenant = null!
         });
         eventRepository.GetEventWithDetails(eventId).Returns(parentEvent);
+        eventRepository.IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
         sessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
         groupRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([group]);
         agendaRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);

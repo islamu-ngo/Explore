@@ -7,7 +7,6 @@ using Explore.Application.DTOs.Agenda;
 using Explore.Application.Features.Agenda.Requests.Queries;
 using Explore.Application.Services;
 using Explore.Domain;
-using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.Agenda.Handlers.Queries;
@@ -37,7 +36,10 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
     public async Task<EventAgendaProjectionDto?> Handle(GetEventAgendaProjectionRequest request, CancellationToken cancellationToken)
     {
         var parentEvent = await _eventRepository.GetById(request.EventId);
-        if (parentEvent == null || !IsPublicAgendaEligible(parentEvent))
+        if (parentEvent is null || !await _eventRepository.IsPubliclyEligibleAsync(
+                parentEvent.TenantId,
+                parentEvent.Id,
+                cancellationToken))
             return null;
 
         var eventDays = (await _eventDayRepository.GetByEventAsync(request.EventId, cancellationToken))
@@ -172,9 +174,4 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
         };
     }
 
-    private static bool IsPublicAgendaEligible(Event parentEvent)
-    {
-        return parentEvent.EventStatusId == (int)EventStatusEnum.Published &&
-            parentEvent.VisibilityTypeId == (int)VisibilityTypeEnum.Public;
-    }
 }

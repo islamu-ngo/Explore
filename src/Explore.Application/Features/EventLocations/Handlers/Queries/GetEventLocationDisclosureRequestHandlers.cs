@@ -32,6 +32,11 @@ public sealed class GetPublicEventLocationsRequestHandler(
             return null;
         }
 
+        if (!await events.IsPubliclyEligibleAsync(eventEntity.TenantId, request.EventId, cancellationToken))
+        {
+            return null;
+        }
+
         IReadOnlyList<EventLocation> placements = await eventLocations.GetByEventIdAsync(
             request.EventId,
             cancellationToken);

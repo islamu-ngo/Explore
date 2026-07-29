@@ -41,6 +41,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         session.SessionGroups.Add(CreateAssignment(group, session, eventEntity, tenant, isPrimary: true, sortOrder: 4));
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
+        _eventRepository.IsPubliclyEligibleAsync(eventEntity.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
         _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
         _eventSessionGroupRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([group]);
         _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
@@ -86,6 +87,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         session.SessionGroups.Add(CreateAssignment(group, session, eventEntity, tenant, isPrimary: true, sortOrder: 1));
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
+        _eventRepository.IsPubliclyEligibleAsync(eventEntity.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
         _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
         _eventSessionGroupRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([group]);
         _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
@@ -119,14 +121,13 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenEventIsNotPublicPublished_ReturnsNullWithoutLoadingProgram()
+    public async Task Handle_WhenEventIsNotCentrallyPubliclyEligible_ReturnsNullWithoutLoadingProgram()
     {
         var eventId = Guid.NewGuid();
         var tenant = CreateTenant(Guid.NewGuid());
         var eventEntity = CreateEvent(eventId, tenant);
-        eventEntity.EventStatusId = (int)EventStatusEnum.Draft;
-
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
+        _eventRepository.IsPubliclyEligibleAsync(eventEntity.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
 
@@ -198,6 +199,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         session.RegistrationMode = null;
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
+        _eventRepository.IsPubliclyEligibleAsync(eventEntity.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
         _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
         _eventSessionGroupRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
         _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
@@ -237,6 +239,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
             new DateTimeOffset(2026, 5, 30, 8, 0, 0, TimeSpan.Zero));
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
+        _eventRepository.IsPubliclyEligibleAsync(eventEntity.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
         _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
         _eventSessionGroupRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
         _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([agendaItem]);

@@ -72,6 +72,7 @@ public class GetEventAgendaProjectionRequestHandlerTests
         parentEvent.EventStatusId = (int)EventStatusEnum.Published;
         parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         _eventRepository.GetById(eventId).Returns(parentEvent);
+        _eventRepository.IsPubliclyEligibleAsync(parentEvent.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
 
         _eventDayRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventDay>());
@@ -91,7 +92,7 @@ public class GetEventAgendaProjectionRequestHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenEventIsNotPublicPublished_ReturnsNullWithoutLoadingProjectionInputs()
+    public async Task Handle_WhenEventIsNotCentrallyPubliclyEligible_ReturnsNullWithoutLoadingProjectionInputs()
     {
         var eventId = Guid.NewGuid();
         var request = new GetEventAgendaProjectionRequest { EventId = eventId };
@@ -101,6 +102,7 @@ public class GetEventAgendaProjectionRequestHandlerTests
         parentEvent.EventStatusId = (int)EventStatusEnum.Draft;
         parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         _eventRepository.GetById(eventId).Returns(parentEvent);
+        _eventRepository.IsPubliclyEligibleAsync(parentEvent.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await _handler.Handle(request, CancellationToken.None);
 
@@ -125,6 +127,7 @@ public class GetEventAgendaProjectionRequestHandlerTests
         parentEvent.EventStatusId = (int)EventStatusEnum.Published;
         parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         _eventRepository.GetById(eventId).Returns(parentEvent);
+        _eventRepository.IsPubliclyEligibleAsync(parentEvent.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
 
         var eventDay = new EventDay
         {
@@ -188,6 +191,7 @@ public class GetEventAgendaProjectionRequestHandlerTests
         parentEvent.EventStatusId = (int)EventStatusEnum.Published;
         parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         _eventRepository.GetById(eventId).Returns(parentEvent);
+        _eventRepository.IsPubliclyEligibleAsync(parentEvent.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
         _eventDayRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
 
         var calculator = Substitute.For<IEventScheduleProjectionCalculator>();
@@ -253,6 +257,7 @@ public class GetEventAgendaProjectionRequestHandlerTests
         parentEvent.EventStatusId = (int)EventStatusEnum.Published;
         parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         _eventRepository.GetById(eventId).Returns(parentEvent);
+        _eventRepository.IsPubliclyEligibleAsync(parentEvent.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
 
         _eventDayRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventDay>());

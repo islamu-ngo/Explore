@@ -30,6 +30,14 @@ public sealed class GetEventPublicActionsRequestHandler(
             return [];
         }
 
+        if (!await eventRepository.IsPubliclyEligibleAsync(
+                @event.TenantId,
+                @event.Id,
+                cancellationToken))
+        {
+            return [];
+        }
+
         var actions = await actionRepository.ListByEventAsync(
             request.EventId,
             trackChanges: false,

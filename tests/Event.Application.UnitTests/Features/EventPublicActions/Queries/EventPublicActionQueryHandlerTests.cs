@@ -42,6 +42,8 @@ public sealed class EventPublicActionQueryHandlerTests
             eventId,
             tenantId,
             (int)ParticipationHandlingModeEnum.PlatformManaged));
+        eventRepository.IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>())
+            .Returns(true);
         var actionRepository = Substitute.For<IEventPublicActionRepository>();
         actionRepository.ListByEventAsync(eventId, false, Arg.Any<CancellationToken>())
             .Returns([compatibleActive, incompatibleActive, compatiblePending]);
@@ -54,6 +56,8 @@ public sealed class EventPublicActionQueryHandlerTests
 
         await Assert.That(result.Count).IsEqualTo(1);
         await Assert.That(result[0].Id).IsEqualTo(compatibleActive.Id);
+        await eventRepository.Received(1)
+            .IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -88,6 +92,35 @@ public sealed class EventPublicActionQueryHandlerTests
             CancellationToken.None);
 
         await Assert.That(result).IsEmpty();
+    }
+
+    [Test]
+    public async Task List_PublicEligibilityDenied_ReturnsEmptyBeforeActionRead()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid tenantId = Guid.CreateVersion7();
+        var eventRepository = Substitute.For<IEventRepository>();
+        eventRepository.GetById(eventId).Returns(CreateEvent(
+            eventId,
+            tenantId,
+            (int)ParticipationHandlingModeEnum.PlatformManaged));
+        eventRepository.IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>())
+            .Returns(false);
+        var actionRepository = Substitute.For<IEventPublicActionRepository>();
+        var handler = new GetEventPublicActionsRequestHandler(
+            eventRepository,
+            actionRepository,
+            CreateMapper());
+
+        IReadOnlyList<EventPublicActionDto> result = await handler.Handle(
+            new GetEventPublicActionsRequest(eventId),
+            CancellationToken.None);
+
+        await Assert.That(result).IsEmpty();
+        await eventRepository.Received(1)
+            .IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>());
+        await actionRepository.DidNotReceiveWithAnyArgs()
+            .ListByEventAsync(default, default, default);
     }
 
     [Test]
@@ -143,6 +176,8 @@ public sealed class EventPublicActionQueryHandlerTests
             eventId,
             tenantId,
             (int)ParticipationHandlingModeEnum.PlatformManaged));
+        eventRepository.IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>())
+            .Returns(true);
         var actionRepository = Substitute.For<IEventPublicActionRepository>();
         actionRepository.GetDetailsAsync(action.Id, false, Arg.Any<CancellationToken>()).Returns(action);
         var handler = new GetEventPublicActionRequestHandler(
@@ -155,6 +190,43 @@ public sealed class EventPublicActionQueryHandlerTests
             CancellationToken.None);
 
         await Assert.That(result is not null).IsEqualTo(expected);
+        await eventRepository.Received(1)
+            .IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Detail_PublicEligibilityDenied_ReturnsNullBeforeActionRead()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid tenantId = Guid.CreateVersion7();
+        EventPublicAction action = CreateAction(
+            eventId,
+            tenantId,
+            EventPublicActionKindEnum.ExternalEventPage,
+            EventPublicActionHealthStateEnum.Active);
+        var eventRepository = Substitute.For<IEventRepository>();
+        eventRepository.GetById(eventId).Returns(CreateEvent(
+            eventId,
+            tenantId,
+            (int)ParticipationHandlingModeEnum.PlatformManaged));
+        eventRepository.IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>())
+            .Returns(false);
+        var actionRepository = Substitute.For<IEventPublicActionRepository>();
+        actionRepository.GetDetailsAsync(action.Id, false, Arg.Any<CancellationToken>()).Returns(action);
+        var handler = new GetEventPublicActionRequestHandler(
+            eventRepository,
+            actionRepository,
+            CreateMapper());
+
+        EventPublicActionDto? result = await handler.Handle(
+            new GetEventPublicActionRequest(eventId, action.Id),
+            CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await eventRepository.Received(1)
+            .IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>());
+        await actionRepository.DidNotReceiveWithAnyArgs()
+            .GetDetailsAsync(default, default, default);
     }
 
     private static IMapper CreateMapper()
