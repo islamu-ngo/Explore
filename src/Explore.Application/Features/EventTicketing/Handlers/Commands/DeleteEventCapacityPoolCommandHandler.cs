@@ -18,6 +18,7 @@ public sealed class DeleteEventCapacityPoolCommandHandler(
     ITenantContext tenant,
     ICurrentUserService currentUser,
     TimeProvider timeProvider,
+    IUnitOfWork unitOfWork,
     HybridCache cache) : IRequestHandler<DeleteEventCapacityPoolCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -30,45 +31,51 @@ public sealed class DeleteEventCapacityPoolCommandHandler(
             return Missing(request.CapacityPoolId);
         }
 
-        EventCapacityPool? pool = await catalogs.GetCapacityPoolByIdEventAndTenantAsync(
-            request.CapacityPoolId,
-            request.EventId,
-            tenant.TenantId,
-            cancellationToken);
-        if (pool is null)
-        {
-            return Missing(request.CapacityPoolId);
-        }
-
-        EventTicketCatalogVersion? managementCatalog = await catalogs.GetManagementCatalogAsync(
-            request.EventId,
-            tenant.TenantId,
-            cancellationToken);
-        EventTicketCatalogVersion? publishedCatalog = await catalogs.GetPublishedCatalogAsync(
-            request.EventId,
-            tenant.TenantId,
-            cancellationToken);
-        if (managementCatalog?.TicketTypes.Any(ticketType => !ticketType.IsDeleted && ticketType.CapacityPoolId == pool.Id) == true
-            || publishedCatalog?.TicketTypes.Any(ticketType => !ticketType.IsDeleted && ticketType.CapacityPoolId == pool.Id) == true)
-        {
-            return Bad(pool.Id, "Capacity pool is assigned to an active ticket type.");
-        }
-
         if (currentUser.UserId is not Guid userId)
         {
-            return Bad(pool.Id, "An authenticated user is required.");
+            return Bad(request.CapacityPoolId, "An authenticated user is required.");
         }
 
         try
         {
-            pool.Delete(timeProvider.GetUtcNow().UtcDateTime, userId);
-            await catalogs.UpdateCapacityPoolAsync(pool, cancellationToken);
+            BaseCommandResponse<Guid> response = await unitOfWork.ExecuteInTransactionAsync(async token =>
+            {
+                EventCapacityPool? pool = await catalogs.GetActiveCapacityPoolForUpdateAsync(
+                    request.CapacityPoolId,
+                    request.EventId,
+                    tenant.TenantId,
+                    token);
+                if (pool is null)
+                {
+                    return Missing(request.CapacityPoolId);
+                }
+
+                bool hasLiveReferences = await catalogs.HasLiveTicketTypeReferencesAsync(
+                    pool.Id,
+                    request.EventId,
+                    tenant.TenantId,
+                    token);
+                if (hasLiveReferences)
+                {
+                    return Bad(pool.Id, "Capacity pool is assigned to an active ticket type.");
+                }
+
+                pool.Delete(timeProvider.GetUtcNow().UtcDateTime, userId);
+                await catalogs.UpdateCapacityPoolAsync(pool, token);
+                return Ok(pool.Id, "Capacity pool deleted.");
+            }, cancellationToken);
+
+            if (!response.Success)
+            {
+                return response;
+            }
+
             await cache.RemoveAsync($"event:detail:{request.EventId}", cancellationToken);
-            return Ok(pool.Id, "Capacity pool deleted.");
+            return response;
         }
         catch (ArgumentException exception)
         {
-            return Bad(pool.Id, exception.Message);
+            return Bad(request.CapacityPoolId, exception.Message);
         }
     }
 

@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -53,6 +54,7 @@ public class EventSeriesRepository : GenericRepository<EventSeries, Guid>, IEven
     public async Task<EventSeries?> GetEventSeriesWithEvents(Guid id)
     {
         return await _dbContext.EventSeries
+            .AsSplitQuery()
             .Include(e => e.Actor)
                 .ThenInclude(a => a.Pii)
             .Include(e => e.FeaturedImage)
@@ -60,6 +62,12 @@ public class EventSeriesRepository : GenericRepository<EventSeries, Guid>, IEven
                 .ThenInclude(ev => ev.EventType)
             .Include(e => e.Events)
                 .ThenInclude(ev => ev.FeaturedImage)
+            .Include(e => e.Events)
+                .ThenInclude(ev => ev.ParticipationConfiguration)
+            .Include(e => e.Events)
+                .ThenInclude(ev => ev.TicketCatalogVersions.Where(catalog =>
+                    !catalog.IsDeleted && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Published))
+                    .ThenInclude(catalog => catalog.TicketTypes.Where(ticketType => !ticketType.IsDeleted))
             .FirstOrDefaultAsync(q => q.Id == id);
     }
 
@@ -68,7 +76,8 @@ public class EventSeriesRepository : GenericRepository<EventSeries, Guid>, IEven
         // Logic: published series that have at least one upcoming/ongoing event
         // Ordered by: number of upcoming events, then total views
         return await _dbContext.EventSeries
-            .AsNoTracking()
+            .AsNoTrackingWithIdentityResolution()
+            .AsSplitQuery()
             .Include(e => e.FeaturedImage)
             .Include(e => e.Actor)
                 .ThenInclude(a => a.Pii)
@@ -76,6 +85,12 @@ public class EventSeriesRepository : GenericRepository<EventSeries, Guid>, IEven
                 .ThenInclude(ev => ev.EventType)
             .Include(e => e.Events.Where(ev => ev.LastSessionEndUtc == null || ev.LastSessionEndUtc > now))
                 .ThenInclude(ev => ev.FeaturedImage)
+            .Include(e => e.Events.Where(ev => ev.LastSessionEndUtc == null || ev.LastSessionEndUtc > now))
+                .ThenInclude(ev => ev.ParticipationConfiguration)
+            .Include(e => e.Events.Where(ev => ev.LastSessionEndUtc == null || ev.LastSessionEndUtc > now))
+                .ThenInclude(ev => ev.TicketCatalogVersions.Where(catalog =>
+                    !catalog.IsDeleted && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Published))
+                    .ThenInclude(catalog => catalog.TicketTypes.Where(ticketType => !ticketType.IsDeleted))
             .Where(q => q.IsPublished && !q.IsDeleted)
             .Where(q => q.Events.Any(ev => ev.LastSessionEndUtc == null || ev.LastSessionEndUtc > now))
             .OrderByDescending(q => q.Events.Count(ev => ev.LastSessionEndUtc == null || ev.LastSessionEndUtc > now))

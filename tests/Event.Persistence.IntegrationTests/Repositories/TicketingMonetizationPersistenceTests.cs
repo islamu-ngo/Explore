@@ -200,7 +200,7 @@ public sealed class TicketingMonetizationPersistenceTests
         await Assert.That(context.Entry(management).State).IsEqualTo(EntityState.Unchanged);
 
         context.ChangeTracker.Clear();
-        EventTicketCatalogVersion draftForUpdate = (await repository.GetDraftForUpdateAsync(eventId, tenantId, CancellationToken.None))!;
+        EventTicketCatalogVersion draftForUpdate = (await repository.GetDraftCatalogForUpdateAsync(eventId, tenantId, CancellationToken.None))!;
         await Assert.That(draftForUpdate.VersionNumber).IsEqualTo(1);
         await Assert.That(context.Entry(draftForUpdate).State).IsEqualTo(EntityState.Unchanged);
 

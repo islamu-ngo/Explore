@@ -29,6 +29,7 @@ public sealed class UpdateEventTicketTypeCommandHandlerTests
     private readonly IEventSessionRepository _sessions = Substitute.For<IEventSessionRepository>();
     private readonly ITenantContext _tenant = Substitute.For<ITenantContext>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
+    private readonly TicketingTestUnitOfWork _unitOfWork = new();
 
     public UpdateEventTicketTypeCommandHandlerTests()
     {
@@ -43,8 +44,8 @@ public sealed class UpdateEventTicketTypeCommandHandlerTests
         EventTicketCatalogVersion catalog = CreateDraftCatalog();
         EventTicketType ticket = AddFreeTicket(catalog);
         EventCapacityPool pool = CreatePool();
-        _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
-        _catalogs.GetCapacityPoolByIdEventAndTenantAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _catalogs.GetActiveCapacityPoolForUpdateAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
 
         var result = await CreateHandler().Handle(
             new UpdateEventTicketTypeCommand { EventId = _eventId, TicketTypeId = ticket.Id, TicketType = FullTicketDto(pool.Id) },
@@ -72,12 +73,33 @@ public sealed class UpdateEventTicketTypeCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenRepositoryReportsConcurrencyConflict_ReturnsConflictWithoutCacheInvalidation()
+    {
+        EventTicketCatalogVersion catalog = CreateDraftCatalog();
+        EventTicketType ticket = AddFreeTicket(catalog);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _catalogs.UpdateAsync(Arg.Any<EventTicketCatalogVersion>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The ticket type was modified by another request."));
+
+        var result = await CreateHandler().Handle(
+            new UpdateEventTicketTypeCommand { EventId = _eventId, TicketTypeId = ticket.Id, TicketType = FreeTicketDto("Revised admission") },
+            CancellationToken.None);
+
+        await Assert.That(result.FailureCode).IsEqualTo("event_ticketing_concurrency_conflict");
+        await Assert.That(result.Errors).Contains("The ticket type was modified by another request.");
+        await _catalogs.Received(1).UpdateAsync(catalog, Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Handle_WhenPoolBelongsToAnotherEvent_ReturnsGenericNotFoundWithoutChangingTicket()
     {
         EventTicketCatalogVersion catalog = CreateDraftCatalog();
         EventTicketType ticket = AddFreeTicket(catalog);
         Guid foreignPoolId = Guid.CreateVersion7();
-        _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
 
         var result = await CreateHandler().Handle(
             new UpdateEventTicketTypeCommand
@@ -100,7 +122,7 @@ public sealed class UpdateEventTicketTypeCommandHandlerTests
         EventTicketCatalogVersion catalog = CreateDraftCatalog();
         EventTicketType ticket = AddFreeTicket(catalog);
         Guid foreignSessionId = Guid.CreateVersion7();
-        _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
         _sessions.GetByIdForEventAsync(foreignSessionId, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(new EventSession
         {
             Id = foreignSessionId,
@@ -131,6 +153,7 @@ public sealed class UpdateEventTicketTypeCommandHandlerTests
         _catalogs,
         new TicketTypeEntitlementResolver(_days, _sessions, _tenant),
         _tenant,
+        _unitOfWork,
         _cache);
 
     private DomainEvent CreatePlatformEvent() => new()

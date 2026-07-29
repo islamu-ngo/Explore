@@ -36,7 +36,7 @@ public sealed class PublishEventTicketCatalogCommandHandler(
         {
             catalogId = await unitOfWork.ExecuteInTransactionAsync<Guid?>(async token =>
             {
-                EventTicketCatalogVersion? draft = await catalogs.GetDraftForUpdateAsync(
+                EventTicketCatalogVersion? draft = await catalogs.GetDraftCatalogForUpdateAsync(
                     request.EventId,
                     tenant.TenantId,
                     token);

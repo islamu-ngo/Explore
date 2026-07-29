@@ -29,6 +29,7 @@ public sealed class CreateEventTicketTypeCommandHandlerTests
     private readonly IEventSessionRepository _sessions = Substitute.For<IEventSessionRepository>();
     private readonly ITenantContext _tenant = Substitute.For<ITenantContext>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
+    private readonly TicketingTestUnitOfWork _unitOfWork = new();
 
     public CreateEventTicketTypeCommandHandlerTests()
     {
@@ -44,8 +45,8 @@ public sealed class CreateEventTicketTypeCommandHandlerTests
         EventCapacityPool pool = CreatePool();
         EventDay day = CreateDay();
         EventSession session = CreateSession();
-        _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
-        _catalogs.GetCapacityPoolByIdEventAndTenantAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _catalogs.GetActiveCapacityPoolForUpdateAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
         _days.GetByIdForEventAsync(day.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(day);
         _sessions.GetByIdForEventAsync(session.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(session);
 
@@ -61,6 +62,8 @@ public sealed class CreateEventTicketTypeCommandHandlerTests
         await Assert.That(ticket.Entitlements.Count).IsEqualTo(3);
         Received.InOrder(() =>
         {
+            _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>());
+            _catalogs.GetActiveCapacityPoolForUpdateAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>());
             _catalogs.UpdateAsync(catalog, Arg.Any<CancellationToken>());
             _cache.RemoveAsync($"event:detail:{_eventId}", Arg.Any<CancellationToken>());
         });
@@ -71,7 +74,7 @@ public sealed class CreateEventTicketTypeCommandHandlerTests
     {
         EventTicketCatalogVersion catalog = CreateDraftCatalog();
         Guid foreignPoolId = Guid.CreateVersion7();
-        _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
 
         var result = await CreateHandler().Handle(
             new CreateEventTicketTypeCommand { EventId = _eventId, TicketType = FreeTicketDto(capacityPoolId: foreignPoolId) },
@@ -88,7 +91,7 @@ public sealed class CreateEventTicketTypeCommandHandlerTests
     {
         EventTicketCatalogVersion catalog = CreateDraftCatalog();
         Guid foreignDayId = Guid.CreateVersion7();
-        _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
         _days.GetByIdForEventAsync(foreignDayId, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(new EventDay
         {
             Id = foreignDayId,
@@ -128,11 +131,27 @@ public sealed class CreateEventTicketTypeCommandHandlerTests
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task Handle_WhenDraftLockReadIsCancelled_PropagatesCancellationWithoutCacheInvalidation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromCanceled<EventTicketCatalogVersion?>(cancellation.Token));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateHandler().Handle(
+            new CreateEventTicketTypeCommand { EventId = _eventId, TicketType = FreeTicketDto() },
+            cancellation.Token));
+
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     private CreateEventTicketTypeCommandHandler CreateHandler() => new(
         _events,
         _catalogs,
         new TicketTypeEntitlementResolver(_days, _sessions, _tenant),
         _tenant,
+        _unitOfWork,
         _cache);
 
     private DomainEvent CreatePlatformEvent() => new()

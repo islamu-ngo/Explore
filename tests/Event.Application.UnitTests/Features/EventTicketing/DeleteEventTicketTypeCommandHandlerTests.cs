@@ -27,6 +27,7 @@ public sealed class DeleteEventTicketTypeCommandHandlerTests
     private readonly ITenantContext _tenant = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
+    private readonly TicketingTestUnitOfWork _unitOfWork = new();
 
     public DeleteEventTicketTypeCommandHandlerTests()
     {
@@ -41,7 +42,7 @@ public sealed class DeleteEventTicketTypeCommandHandlerTests
     {
         EventTicketCatalogVersion catalog = CreateDraftCatalog();
         EventTicketType ticket = AddFreeTicket(catalog);
-        _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
 
         var result = await CreateHandler().Handle(
             new DeleteEventTicketTypeCommand { EventId = _eventId, TicketTypeId = ticket.Id },
@@ -64,7 +65,7 @@ public sealed class DeleteEventTicketTypeCommandHandlerTests
     public async Task Handle_WhenTicketBelongsToAnotherEvent_ReturnsGenericNotFoundWithoutCacheInvalidation()
     {
         EventTicketCatalogVersion catalog = CreateDraftCatalog();
-        _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
 
         var result = await CreateHandler().Handle(
             new DeleteEventTicketTypeCommand { EventId = _eventId, TicketTypeId = Guid.CreateVersion7() },
@@ -80,7 +81,7 @@ public sealed class DeleteEventTicketTypeCommandHandlerTests
     {
         EventTicketCatalogVersion catalog = CreateDraftCatalog();
         EventTicketType ticket = AddFreeTicket(catalog);
-        _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
         _currentUser.UserId.Returns((Guid?)null);
 
         var result = await CreateHandler().Handle(
@@ -99,6 +100,7 @@ public sealed class DeleteEventTicketTypeCommandHandlerTests
         _tenant,
         _currentUser,
         new FixedTimeProvider(_deletedAt),
+        _unitOfWork,
         _cache);
 
     private DomainEvent CreatePlatformEvent() => new()

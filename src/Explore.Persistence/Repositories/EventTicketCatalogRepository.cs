@@ -28,15 +28,27 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
             && catalog.TenantId == tenantId
             && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Published, cancellationToken);
 
-    public Task<EventTicketCatalogVersion?> GetDraftForUpdateAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken) =>
-        ManagementGraph().FirstOrDefaultAsync(catalog => catalog.EventId == eventId
+    public async Task<EventTicketCatalogVersion?> GetDraftCatalogForUpdateAsync(
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        await LockCatalogRowAsync(eventId, tenantId, TicketCatalogStatusEnum.Draft, cancellationToken);
+        return await ManagementGraph().FirstOrDefaultAsync(catalog => catalog.EventId == eventId
             && catalog.TenantId == tenantId
             && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Draft, cancellationToken);
+    }
 
-    public Task<EventTicketCatalogVersion?> GetPublishedForUpdateAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken) =>
-        ManagementGraph().FirstOrDefaultAsync(catalog => catalog.EventId == eventId
+    public async Task<EventTicketCatalogVersion?> GetPublishedForUpdateAsync(
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        await LockCatalogRowAsync(eventId, tenantId, TicketCatalogStatusEnum.Published, cancellationToken);
+        return await ManagementGraph().FirstOrDefaultAsync(catalog => catalog.EventId == eventId
             && catalog.TenantId == tenantId
             && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Published, cancellationToken);
+    }
 
     public Task<EventTicketCatalogVersion?> GetByEventVersionAndTenantAsync(Guid eventId, int versionNumber, Guid tenantId, CancellationToken cancellationToken) =>
         CatalogDetailsQuery().FirstOrDefaultAsync(catalog => catalog.EventId == eventId && catalog.VersionNumber == versionNumber && catalog.TenantId == tenantId, cancellationToken);
@@ -49,6 +61,37 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
 
     public Task<EventCapacityPool?> GetCapacityPoolByIdEventAndTenantAsync(Guid capacityPoolId, Guid eventId, Guid tenantId, CancellationToken cancellationToken) =>
         dbContext.EventCapacityPools.AsNoTracking().FirstOrDefaultAsync(pool => pool.Id == capacityPoolId && pool.EventId == eventId && pool.TenantId == tenantId, cancellationToken);
+
+    public async Task<EventCapacityPool?> GetActiveCapacityPoolForUpdateAsync(
+        Guid capacityPoolId,
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        await LockCapacityPoolRowAsync(capacityPoolId, eventId, tenantId, cancellationToken);
+        return await dbContext.EventCapacityPools.FirstOrDefaultAsync(pool =>
+            pool.Id == capacityPoolId
+            && pool.EventId == eventId
+            && pool.TenantId == tenantId, cancellationToken);
+    }
+
+    public Task<bool> HasLiveTicketTypeReferencesAsync(
+        Guid capacityPoolId,
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken) =>
+        dbContext.EventTicketTypes.AnyAsync(ticketType =>
+            ticketType.CapacityPoolId == capacityPoolId
+            && ticketType.TenantId == tenantId
+            && !ticketType.IsDeleted
+            && dbContext.EventTicketCatalogVersions.Any(catalog =>
+                catalog.Id == ticketType.CatalogId
+                && catalog.EventId == eventId
+                && catalog.TenantId == tenantId
+                && !catalog.IsDeleted
+                && (catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Draft
+                    || catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Published)),
+            cancellationToken);
 
     public async Task AddAsync(EventTicketCatalogVersion catalog, CancellationToken cancellationToken)
     {
@@ -100,6 +143,61 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
             SqlState: PostgresErrorCodes.UniqueViolation,
             ConstraintName: PublishedCatalogUniqueIndexName or CapacityPoolNameUniqueIndexName
         };
+
+    private async Task LockCatalogRowAsync(
+        Guid eventId,
+        Guid tenantId,
+        TicketCatalogStatusEnum status,
+        CancellationToken cancellationToken)
+    {
+        if (dbContext.Database.ProviderName != "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            return;
+        }
+
+        EnsureActiveTransaction();
+        await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
+            SELECT id
+            FROM event_ticket_catalog_versions
+            WHERE event_id = {eventId}
+              AND tenant_id = {tenantId}
+              AND ticket_catalog_status_id = {(int)status}
+              AND is_deleted = false
+            FOR UPDATE
+            """, cancellationToken);
+    }
+
+    private async Task LockCapacityPoolRowAsync(
+        Guid capacityPoolId,
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        if (dbContext.Database.ProviderName != "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            return;
+        }
+
+        EnsureActiveTransaction();
+        await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
+            SELECT id
+            FROM event_capacity_pools
+            WHERE id = {capacityPoolId}
+              AND event_id = {eventId}
+              AND tenant_id = {tenantId}
+              AND is_deleted = false
+            FOR UPDATE
+            """, cancellationToken);
+    }
+
+    private void EnsureActiveTransaction()
+    {
+        if (dbContext.Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException(
+                "Ticketing row locks require an active unit-of-work transaction.");
+        }
+    }
 
     private IQueryable<EventTicketCatalogVersion> CatalogDetailsQuery() =>
         ManagementGraph().AsNoTracking();

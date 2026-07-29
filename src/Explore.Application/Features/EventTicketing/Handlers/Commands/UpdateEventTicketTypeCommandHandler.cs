@@ -20,6 +20,7 @@ public sealed class UpdateEventTicketTypeCommandHandler(
     IEventTicketCatalogRepository catalogs,
     TicketTypeEntitlementResolver entitlementResolver,
     ITenantContext tenant,
+    IUnitOfWork unitOfWork,
     HybridCache cache) : IRequestHandler<UpdateEventTicketTypeCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -33,56 +34,82 @@ public sealed class UpdateEventTicketTypeCommandHandler(
             return Bad(request.TicketTypeId, validation.Errors.Select(error => error.ErrorMessage));
         }
 
-        EventTicketCatalogVersion? catalog = await GetDraftCatalogAsync(request.EventId, cancellationToken);
-        EventTicketType? ticketType = catalog?.TicketTypes.SingleOrDefault(
-            candidate => candidate.Id == request.TicketTypeId && !candidate.IsDeleted);
-        if (ticketType is null)
+        Event? eventTarget = await events.GetAuthorizationTargetByIdAsync(request.EventId, cancellationToken);
+        if (!IsPlatformManaged(eventTarget, tenant.TenantId))
         {
             return Missing(request.TicketTypeId);
         }
 
         try
         {
-            EventCapacityPool? pool = await GetPoolAsync(
-                request.TicketType.CapacityPoolId,
-                request.EventId,
-                cancellationToken);
-            if (request.TicketType.CapacityPoolId.HasValue && pool is null)
+            Guid? ticketTypeId = await unitOfWork.ExecuteInTransactionAsync<Guid?>(async token =>
+            {
+                EventTicketCatalogVersion? catalog = await catalogs.GetDraftCatalogForUpdateAsync(
+                    request.EventId,
+                    tenant.TenantId,
+                    token);
+                EventTicketType? ticketType = catalog?.TicketTypes.SingleOrDefault(
+                    candidate => candidate.Id == request.TicketTypeId && !candidate.IsDeleted);
+                if (ticketType is null)
+                {
+                    return null;
+                }
+
+                EventCapacityPool? pool = request.TicketType.CapacityPoolId.HasValue
+                    ? await catalogs.GetActiveCapacityPoolForUpdateAsync(
+                        request.TicketType.CapacityPoolId.Value,
+                        request.EventId,
+                        tenant.TenantId,
+                        token)
+                    : null;
+                if (request.TicketType.CapacityPoolId.HasValue && pool is null)
+                {
+                    return null;
+                }
+
+                IReadOnlyList<TicketTypeEntitlement> entitlements = await entitlementResolver.ResolveAsync(
+                    ticketType.Id,
+                    request.TicketType.Entitlements,
+                    request.EventId,
+                    token);
+
+                catalog!.UpdateTicketType(
+                    ticketType,
+                    request.TicketType.Name,
+                    (TicketPricingModeEnum)request.TicketType.TicketPricingModeId,
+                    request.TicketType.FixedPriceMinor,
+                    request.TicketType.MinimumPriceMinor,
+                    request.TicketType.SuggestedPriceMinor,
+                    (ParticipantDataCollectionModeEnum)request.TicketType.ParticipantDataCollectionModeId,
+                    pool,
+                    request.TicketType.MinimumAge,
+                    request.TicketType.MaximumAge,
+                    request.TicketType.RequiresGuardian,
+                    request.TicketType.RequiresApproval,
+                    request.TicketType.PerOrderLimit,
+                    request.TicketType.PerAccountLimit,
+                    request.TicketType.PerVerifiedContactLimit,
+                    request.TicketType.PerBookingPartyLimit,
+                    entitlements);
+                await catalogs.UpdateAsync(catalog, token);
+                return ticketType.Id;
+            }, cancellationToken);
+
+            if (ticketTypeId is null)
             {
                 return Missing(request.TicketTypeId);
             }
 
-            IReadOnlyList<TicketTypeEntitlement> entitlements = await entitlementResolver.ResolveAsync(
-                ticketType.Id,
-                request.TicketType.Entitlements,
-                request.EventId,
-                cancellationToken);
-
-            catalog!.UpdateTicketType(
-                ticketType,
-                request.TicketType.Name,
-                (TicketPricingModeEnum)request.TicketType.TicketPricingModeId,
-                request.TicketType.FixedPriceMinor,
-                request.TicketType.MinimumPriceMinor,
-                request.TicketType.SuggestedPriceMinor,
-                (ParticipantDataCollectionModeEnum)request.TicketType.ParticipantDataCollectionModeId,
-                pool,
-                request.TicketType.MinimumAge,
-                request.TicketType.MaximumAge,
-                request.TicketType.RequiresGuardian,
-                request.TicketType.RequiresApproval,
-                request.TicketType.PerOrderLimit,
-                request.TicketType.PerAccountLimit,
-                request.TicketType.PerVerifiedContactLimit,
-                request.TicketType.PerBookingPartyLimit,
-                entitlements);
-            await catalogs.UpdateAsync(catalog, cancellationToken);
             await cache.RemoveAsync($"event:detail:{request.EventId}", cancellationToken);
-            return Ok(ticketType.Id, "Ticket type updated.");
+            return Ok(ticketTypeId.Value, "Ticket type updated.");
         }
         catch (TicketingNotFoundException)
         {
             return Missing(request.TicketTypeId);
+        }
+        catch (ConcurrencyConflictException exception)
+        {
+            return Conflict(request.TicketTypeId, exception.Message);
         }
         catch (ArgumentException exception)
         {
@@ -90,36 +117,10 @@ public sealed class UpdateEventTicketTypeCommandHandler(
         }
     }
 
-    private async Task<EventTicketCatalogVersion?> GetDraftCatalogAsync(
-        Guid eventId,
-        CancellationToken cancellationToken)
-    {
-        Event? eventTarget = await events.GetAuthorizationTargetByIdAsync(eventId, cancellationToken);
-        if (eventTarget?.TenantId != tenant.TenantId
-            || eventTarget.ParticipationConfiguration?.ParticipationHandlingModeId
-                != (int)ParticipationHandlingModeEnum.PlatformManaged)
-        {
-            return null;
-        }
-
-        EventTicketCatalogVersion? catalog = await catalogs.GetManagementCatalogAsync(
-            eventId,
-            tenant.TenantId,
-            cancellationToken);
-        return catalog?.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Draft ? catalog : null;
-    }
-
-    private Task<EventCapacityPool?> GetPoolAsync(
-        Guid? capacityPoolId,
-        Guid eventId,
-        CancellationToken cancellationToken) =>
-        capacityPoolId.HasValue
-            ? catalogs.GetCapacityPoolByIdEventAndTenantAsync(
-                capacityPoolId.Value,
-                eventId,
-                tenant.TenantId,
-                cancellationToken)
-            : Task.FromResult<EventCapacityPool?>(null);
+    private static bool IsPlatformManaged(Event? eventTarget, Guid tenantId) =>
+        eventTarget?.TenantId == tenantId
+        && eventTarget.ParticipationConfiguration?.ParticipationHandlingModeId
+            == (int)ParticipationHandlingModeEnum.PlatformManaged;
 
     private static BaseCommandResponse<Guid> Ok(Guid id, string message) => new()
     {
@@ -146,5 +147,14 @@ public sealed class UpdateEventTicketTypeCommandHandler(
         FailureCode = "event_ticketing_validation_failed",
         Message = "Ticketing configuration is invalid.",
         Errors = errors.ToList()
+    };
+
+    private static BaseCommandResponse<Guid> Conflict(Guid id, string error) => new()
+    {
+        Id = id,
+        Success = false,
+        FailureCode = "event_ticketing_concurrency_conflict",
+        Message = "Ticketing configuration was updated by another request.",
+        Errors = [error]
     };
 }

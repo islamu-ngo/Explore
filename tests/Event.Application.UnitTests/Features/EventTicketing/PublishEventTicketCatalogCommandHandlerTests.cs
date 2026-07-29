@@ -37,7 +37,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
     public async Task Handle_WhenTicketingIsMissing_ReturnsNotFoundWithoutMutationOrCacheInvalidation()
     {
         var unitOfWork = new RecordingUnitOfWork();
-        _catalogs.GetDraftForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>())
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>())
             .Returns((EventTicketCatalogVersion?)null);
 
         var result = await CreateHandler(unitOfWork).Handle(new PublishEventTicketCatalogCommand { EventId = _eventId }, CancellationToken.None);
@@ -55,7 +55,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
     {
         EventTicketCatalogVersion draft = CreateDraftCatalog();
         var unitOfWork = new RecordingUnitOfWork();
-        _catalogs.GetDraftForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
 
         var result = await CreateHandler(unitOfWork).Handle(new PublishEventTicketCatalogCommand { EventId = _eventId }, CancellationToken.None);
 
@@ -71,7 +71,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
     {
         EventTicketCatalogVersion draft = CreateValidDraftCatalog();
         var unitOfWork = new RecordingUnitOfWork(commitFailure: new InvalidOperationException("Catalog publication failed."));
-        _catalogs.GetDraftForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
 
         var result = await CreateHandler(unitOfWork).Handle(new PublishEventTicketCatalogCommand { EventId = _eventId }, CancellationToken.None);
 
@@ -89,7 +89,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         var unitOfWork = new RecordingUnitOfWork();
         var flushes = new List<(int CurrentStatus, int DraftStatus)>();
         var cacheObservedCommittedUow = false;
-        _catalogs.GetDraftForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
         _catalogs.GetPublishedForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(currentPublication);
         _catalogs.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(_ =>
         {
@@ -122,7 +122,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         EventTicketCatalogVersion firstPublication = CreatePublishedCatalog(_tenantId, _eventId, 2);
         EventTicketCatalogVersion retryPublication = CreatePublishedCatalog(_tenantId, _eventId, 3);
         var unitOfWork = new RecordingUnitOfWork(attempts: 2);
-        _catalogs.GetDraftForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>())
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>())
             .Returns(firstDraft, retryDraft);
         _catalogs.GetPublishedForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>())
             .Returns(firstPublication, retryPublication);
@@ -134,7 +134,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         await Assert.That(result.Id).IsEqualTo(retryDraft.Id);
         await Assert.That(unitOfWork.TransactionBoundaries).IsEqualTo(1);
         await Assert.That(unitOfWork.DelegateAttempts).IsEqualTo(2);
-        await _catalogs.Received(2).GetDraftForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>());
+        await _catalogs.Received(2).GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>());
         await _catalogs.Received(2).GetPublishedForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>());
         await _catalogs.Received(4).SaveChangesAsync(Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveAsync($"event:detail:{_eventId}", Arg.Any<CancellationToken>());
@@ -147,7 +147,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
             ConcurrencyConflictException.ConcurrentUpdate,
             "The catalog was modified by another request."));
         EventTicketCatalogVersion draft = CreateValidDraftCatalog();
-        _catalogs.GetDraftForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
 
         var result = await CreateHandler(unitOfWork).Handle(new PublishEventTicketCatalogCommand { EventId = _eventId }, CancellationToken.None);
 

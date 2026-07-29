@@ -49,6 +49,31 @@ public sealed class EventTicketCatalogVersionTests
     }
 
     [Test]
+    public async Task Publish_WhenOnlyTicketTypeIsDeleted_RejectsCatalog()
+    {
+        EventTicketCatalogVersion catalog = CreateCatalog();
+        EventTicketType ticketType = AddFreeTicketWithEventEntitlement(catalog);
+        catalog.DeleteTicketType(ticketType, DateTime.UtcNow, Guid.CreateVersion7());
+
+        await Assert.That(() => catalog.Publish()).Throws<InvalidOperationException>();
+        await Assert.That(catalog.TicketCatalogStatusId).IsEqualTo((int)TicketCatalogStatusEnum.Draft);
+    }
+
+    [Test]
+    public async Task Publish_IgnoresDeletedTicketTypesAndValidatesLiveGraph()
+    {
+        EventTicketCatalogVersion catalog = CreateCatalog();
+        AddFreeTicketWithEventEntitlement(catalog);
+        EventTicketType deletedTicketType = CreateTicket(catalog, "USD", TicketPricingModeEnum.Free, null, null, null);
+        catalog.AddTicketType(deletedTicketType, null);
+        catalog.DeleteTicketType(deletedTicketType, DateTime.UtcNow, Guid.CreateVersion7());
+
+        catalog.Publish();
+
+        await Assert.That(catalog.TicketCatalogStatusId).IsEqualTo((int)TicketCatalogStatusEnum.Published);
+    }
+
+    [Test]
     public async Task CloneToDraft_CreatesIndependentTicketAndEntitlementGraph()
     {
         EventTicketCatalogVersion catalog = CreateCatalog();
@@ -67,6 +92,22 @@ public sealed class EventTicketCatalogVersionTests
         await Assert.That(clonedTicketType.Entitlements.Single().Id).IsNotEqualTo(ticketType.Entitlements.Single().Id);
         await Assert.That(clonedTicketType.FixedPriceMinor).IsEqualTo(1_235);
         await Assert.That(ticketType.TicketPricingModeId).IsEqualTo((int)TicketPricingModeEnum.Free);
+    }
+
+    [Test]
+    public async Task CloneToDraft_DoesNotResurrectDeletedTicketTypes()
+    {
+        EventTicketCatalogVersion catalog = CreateCatalog();
+        EventTicketType liveTicketType = AddFreeTicketWithEventEntitlement(catalog);
+        EventTicketType deletedTicketType = CreateTicket(catalog, "USD", TicketPricingModeEnum.Free, null, null, null);
+        catalog.AddTicketType(deletedTicketType, null);
+        catalog.DeleteTicketType(deletedTicketType, DateTime.UtcNow, Guid.CreateVersion7());
+        catalog.Publish();
+
+        EventTicketCatalogVersion clone = catalog.CloneToDraft();
+
+        await Assert.That(clone.TicketTypes).HasSingleItem();
+        await Assert.That(clone.TicketTypes.Single().Name).IsEqualTo(liveTicketType.Name);
     }
 
     [Test]

@@ -11,12 +11,15 @@ public static class TicketCatalogRules
     {
         ArgumentNullException.ThrowIfNull(catalog);
 
-        if (catalog.TicketTypes.Count == 0)
+        EventTicketType[] liveTicketTypes = catalog.TicketTypes
+            .Where(ticketType => !ticketType.IsDeleted)
+            .ToArray();
+        if (liveTicketTypes.Length == 0)
         {
             throw new InvalidOperationException("A published ticket catalog requires at least one ticket type.");
         }
 
-        foreach (EventTicketType ticketType in catalog.TicketTypes)
+        foreach (EventTicketType ticketType in liveTicketTypes)
         {
             if (!string.Equals(ticketType.CurrencyCode, catalog.CurrencyCode, StringComparison.Ordinal))
             {

@@ -46,7 +46,7 @@ public sealed class PlatformMonetizationSettingsApiTests
         await Assert.That(controller.GetCustomAttribute<EndpointClassificationAttribute>()?.Class).IsEqualTo(EndpointClass.Admin);
 
         await AssertAction(nameof(PlatformMonetizationSettingsController.Get), RouteNames.GetInstancePlatformMonetizationSettings, HttpMethods.Get);
-        await AssertAction(nameof(PlatformMonetizationSettingsController.Update), RouteNames.UpdateInstancePlatformMonetizationSettings, HttpMethods.Put);
+        await AssertAction(nameof(PlatformMonetizationSettingsController.Update), RouteNames.UpdateInstancePlatformMonetizationSettings, HttpMethods.Put, expectConflict: true);
     }
 
     [Test]
@@ -122,7 +122,7 @@ public sealed class PlatformMonetizationSettingsApiTests
         ContributionOptions = [new PlatformContributionOptionDto { ContributionBasisPoints = 0, SortOrder = 0, IsDefault = true }]
     };
 
-    private static async Task AssertAction(string actionName, string routeName, string method)
+    private static async Task AssertAction(string actionName, string routeName, string method, bool expectConflict = false)
     {
         MethodInfo action = typeof(PlatformMonetizationSettingsController).GetMethod(actionName)
             ?? throw new InvalidOperationException($"Action {actionName} was not found.");
@@ -135,6 +135,13 @@ public sealed class PlatformMonetizationSettingsApiTests
         await Assert.That(responses.Single(response => response.StatusCode == StatusCodes.Status401Unauthorized).Type).IsEqualTo(typeof(ProblemDetails));
         await Assert.That(responses.Single(response => response.StatusCode == StatusCodes.Status403Forbidden).Type).IsEqualTo(typeof(ProblemDetails));
         await Assert.That(responses.Single(response => response.StatusCode == StatusCodes.Status404NotFound).Type).IsEqualTo(typeof(ProblemDetails));
+        bool hasConflictResponse = responses.Any(response => response.StatusCode == StatusCodes.Status409Conflict);
+        await Assert.That(hasConflictResponse).IsEqualTo(expectConflict);
+        if (expectConflict)
+        {
+            await Assert.That(responses.Single(response => response.StatusCode == StatusCodes.Status409Conflict).Type)
+                .IsEqualTo(typeof(ProblemDetails));
+        }
     }
 }
 

@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventTicketing;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventTicketing.Handlers.Commands;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
 using Explore.Domain;
@@ -25,6 +26,7 @@ public sealed class UpdateEventCapacityPoolCommandHandlerTests
     private readonly IEventTicketCatalogRepository _catalogs = Substitute.For<IEventTicketCatalogRepository>();
     private readonly ITenantContext _tenant = Substitute.For<ITenantContext>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
+    private readonly TicketingTestUnitOfWork _unitOfWork = new();
 
     public UpdateEventCapacityPoolCommandHandlerTests()
     {
@@ -37,7 +39,7 @@ public sealed class UpdateEventCapacityPoolCommandHandlerTests
     public async Task Handle_WithAllFields_UpdatesThenInvalidatesCache()
     {
         EventCapacityPool pool = CreatePool();
-        _catalogs.GetCapacityPoolByIdEventAndTenantAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
+        _catalogs.GetActiveCapacityPoolForUpdateAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
 
         var result = await CreateHandler().Handle(
             new UpdateEventCapacityPoolCommand { EventId = _eventId, CapacityPoolId = pool.Id, CapacityPool = FullPoolDto() },
@@ -54,6 +56,26 @@ public sealed class UpdateEventCapacityPoolCommandHandlerTests
             _catalogs.UpdateCapacityPoolAsync(pool, Arg.Any<CancellationToken>());
             _cache.RemoveAsync($"event:detail:{_eventId}", Arg.Any<CancellationToken>());
         });
+    }
+
+    [Test]
+    public async Task Handle_WhenRepositoryReportsConcurrencyConflict_ReturnsConflictWithoutCacheInvalidation()
+    {
+        EventCapacityPool pool = CreatePool();
+        _catalogs.GetActiveCapacityPoolForUpdateAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
+        _catalogs.UpdateCapacityPoolAsync(Arg.Any<EventCapacityPool>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The capacity pool was modified by another request."));
+
+        var result = await CreateHandler().Handle(
+            new UpdateEventCapacityPoolCommand { EventId = _eventId, CapacityPoolId = pool.Id, CapacityPool = FullPoolDto() },
+            CancellationToken.None);
+
+        await Assert.That(result.FailureCode).IsEqualTo("event_ticketing_concurrency_conflict");
+        await Assert.That(result.Errors).Contains("The capacity pool was modified by another request.");
+        await _catalogs.Received(1).UpdateCapacityPoolAsync(pool, Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -74,7 +96,7 @@ public sealed class UpdateEventCapacityPoolCommandHandlerTests
     public async Task Handle_WhenCapacityPoolIsInvalid_ReturnsValidationFailureWithoutPersistence()
     {
         EventCapacityPool pool = CreatePool();
-        _catalogs.GetCapacityPoolByIdEventAndTenantAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
+        _catalogs.GetActiveCapacityPoolForUpdateAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
 
         var result = await CreateHandler().Handle(
             new UpdateEventCapacityPoolCommand
@@ -91,7 +113,7 @@ public sealed class UpdateEventCapacityPoolCommandHandlerTests
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    private UpdateEventCapacityPoolCommandHandler CreateHandler() => new(_events, _catalogs, _tenant, _cache);
+    private UpdateEventCapacityPoolCommandHandler CreateHandler() => new(_events, _catalogs, _tenant, _unitOfWork, _cache);
 
     private DomainEvent CreatePlatformEvent() => new()
     {

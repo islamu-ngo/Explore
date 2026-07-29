@@ -34,6 +34,12 @@ public sealed class EventTicketingControllerContractTests
             [nameof(EventTicketingController.DeletePool)] = RouteNames.DeleteEventCapacityPool,
             [nameof(EventTicketingController.Publish)] = RouteNames.PublishEventTicketCatalog
         };
+        var conflictCapableActions = new HashSet<string>
+        {
+            nameof(EventTicketingController.UpdateType),
+            nameof(EventTicketingController.UpdatePool),
+            nameof(EventTicketingController.Publish)
+        };
 
         foreach ((string actionName, string routeName) in expected)
         {
@@ -54,6 +60,15 @@ public sealed class EventTicketingControllerContractTests
                 ProducesResponseTypeAttribute response = action.GetCustomAttributes<ProducesResponseTypeAttribute>()
                     .Single(attribute => attribute.StatusCode == statusCode);
                 await Assert.That(response.Type).IsEqualTo(typeof(ProblemDetails));
+            }
+
+            ProducesResponseTypeAttribute[] responses = action.GetCustomAttributes<ProducesResponseTypeAttribute>().ToArray();
+            bool hasConflictResponse = responses.Any(response => response.StatusCode == StatusCodes.Status409Conflict);
+            await Assert.That(hasConflictResponse).IsEqualTo(conflictCapableActions.Contains(actionName));
+            if (hasConflictResponse)
+            {
+                await Assert.That(responses.Single(response => response.StatusCode == StatusCodes.Status409Conflict).Type)
+                    .IsEqualTo(typeof(ProblemDetails));
             }
         }
     }

@@ -167,7 +167,7 @@ public sealed class EventTicketCatalogVersion : ITenantEntity, IAuditableEntity,
         }
 
         EventTicketCatalogVersion clone = Create(TenantId, EventId, CurrencyCode, checked(VersionNumber + 1));
-        foreach (EventTicketType ticketType in _ticketTypes)
+        foreach (EventTicketType ticketType in _ticketTypes.Where(ticketType => !ticketType.IsDeleted))
         {
             clone._ticketTypes.Add(ticketType.CloneTo(clone.Id));
         }

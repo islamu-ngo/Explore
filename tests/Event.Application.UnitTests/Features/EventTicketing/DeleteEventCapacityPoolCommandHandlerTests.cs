@@ -27,6 +27,7 @@ public sealed class DeleteEventCapacityPoolCommandHandlerTests
     private readonly ITenantContext _tenant = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
+    private readonly TicketingTestUnitOfWork _unitOfWork = new();
 
     public DeleteEventCapacityPoolCommandHandlerTests()
     {
@@ -40,10 +41,8 @@ public sealed class DeleteEventCapacityPoolCommandHandlerTests
     public async Task Handle_WhenActiveTicketReferencesPool_ReturnsValidationFailureWithoutMutation()
     {
         EventCapacityPool pool = CreatePool();
-        EventTicketCatalogVersion catalog = CreateDraftCatalog();
-        AddFreeTicket(catalog, pool);
-        _catalogs.GetCapacityPoolByIdEventAndTenantAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
-        _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _catalogs.GetActiveCapacityPoolForUpdateAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
+        _catalogs.HasLiveTicketTypeReferencesAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(true);
 
         var result = await CreateHandler().Handle(
             new DeleteEventCapacityPoolCommand { EventId = _eventId, CapacityPoolId = pool.Id },
@@ -59,15 +58,8 @@ public sealed class DeleteEventCapacityPoolCommandHandlerTests
     public async Task Handle_WhenPublishedCatalogReferencesPoolEvenIfNewerDraftDoesNot_ReturnsValidationFailureWithoutMutation()
     {
         EventCapacityPool pool = CreatePool();
-        EventTicketCatalogVersion publishedCatalog = CreateDraftCatalog(1);
-        AddFreeTicket(publishedCatalog, pool);
-        publishedCatalog.Publish();
-
-        EventTicketCatalogVersion draftCatalog = CreateDraftCatalog(2);
-        AddFreeTicket(draftCatalog, null);
-        _catalogs.GetCapacityPoolByIdEventAndTenantAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
-        _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draftCatalog);
-        _catalogs.GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(publishedCatalog);
+        _catalogs.GetActiveCapacityPoolForUpdateAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
+        _catalogs.HasLiveTicketTypeReferencesAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(true);
 
         var result = await CreateHandler().Handle(
             new DeleteEventCapacityPoolCommand { EventId = _eventId, CapacityPoolId = pool.Id },
@@ -83,7 +75,8 @@ public sealed class DeleteEventCapacityPoolCommandHandlerTests
     public async Task Handle_DeletesPoolWithCurrentUserAuditThenInvalidatesCache()
     {
         EventCapacityPool pool = CreatePool();
-        _catalogs.GetCapacityPoolByIdEventAndTenantAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
+        _catalogs.GetActiveCapacityPoolForUpdateAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
+        _catalogs.HasLiveTicketTypeReferencesAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await CreateHandler().Handle(
             new DeleteEventCapacityPoolCommand { EventId = _eventId, CapacityPoolId = pool.Id },
@@ -97,6 +90,8 @@ public sealed class DeleteEventCapacityPoolCommandHandlerTests
         await Assert.That(pool.UpdatedBy).IsEqualTo(_userId);
         Received.InOrder(() =>
         {
+            _catalogs.GetActiveCapacityPoolForUpdateAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>());
+            _catalogs.HasLiveTicketTypeReferencesAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>());
             _catalogs.UpdateCapacityPoolAsync(pool, Arg.Any<CancellationToken>());
             _cache.RemoveAsync($"event:detail:{_eventId}", Arg.Any<CancellationToken>());
         });
@@ -120,6 +115,7 @@ public sealed class DeleteEventCapacityPoolCommandHandlerTests
         _tenant,
         _currentUser,
         new FixedTimeProvider(_deletedAt),
+        _unitOfWork,
         _cache);
 
     private DomainEvent CreatePlatformEvent() => new()

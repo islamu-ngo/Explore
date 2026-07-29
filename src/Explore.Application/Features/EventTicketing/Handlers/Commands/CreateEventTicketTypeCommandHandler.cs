@@ -21,6 +21,7 @@ public sealed class CreateEventTicketTypeCommandHandler(
     IEventTicketCatalogRepository catalogs,
     TicketTypeEntitlementResolver entitlementResolver,
     ITenantContext tenant,
+    IUnitOfWork unitOfWork,
     HybridCache cache) : IRequestHandler<CreateEventTicketTypeCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -34,39 +35,61 @@ public sealed class CreateEventTicketTypeCommandHandler(
             return Bad(request.EventId, validation.Errors.Select(error => error.ErrorMessage));
         }
 
-        EventTicketCatalogVersion? catalog = await GetDraftCatalogAsync(request.EventId, cancellationToken);
-        if (catalog is null)
+        Event? eventTarget = await events.GetAuthorizationTargetByIdAsync(request.EventId, cancellationToken);
+        if (!IsPlatformManaged(eventTarget, tenant.TenantId))
         {
             return Missing(request.EventId);
         }
 
         try
         {
-            EventCapacityPool? pool = await GetPoolAsync(
-                request.TicketType.CapacityPoolId,
-                request.EventId,
-                cancellationToken);
-            if (request.TicketType.CapacityPoolId.HasValue && pool is null)
+            Guid? ticketTypeId = await unitOfWork.ExecuteInTransactionAsync<Guid?>(async token =>
+            {
+                EventTicketCatalogVersion? catalog = await catalogs.GetDraftCatalogForUpdateAsync(
+                    request.EventId,
+                    tenant.TenantId,
+                    token);
+                if (catalog is null)
+                {
+                    return null;
+                }
+
+                EventCapacityPool? pool = request.TicketType.CapacityPoolId.HasValue
+                    ? await catalogs.GetActiveCapacityPoolForUpdateAsync(
+                        request.TicketType.CapacityPoolId.Value,
+                        request.EventId,
+                        tenant.TenantId,
+                        token)
+                    : null;
+                if (request.TicketType.CapacityPoolId.HasValue && pool is null)
+                {
+                    return null;
+                }
+
+                EventTicketType ticketType = CreateTicketType(catalog, request.TicketType);
+                IReadOnlyList<TicketTypeEntitlement> entitlements = await entitlementResolver.ResolveAsync(
+                    ticketType.Id,
+                    request.TicketType.Entitlements,
+                    request.EventId,
+                    token);
+
+                catalog.AddTicketType(ticketType, pool);
+                foreach (TicketTypeEntitlement entitlement in entitlements)
+                {
+                    catalog.AddEntitlement(ticketType, entitlement);
+                }
+
+                await catalogs.UpdateAsync(catalog, token);
+                return ticketType.Id;
+            }, cancellationToken);
+
+            if (ticketTypeId is null)
             {
                 return Missing(request.EventId);
             }
 
-            EventTicketType ticketType = CreateTicketType(catalog, request.TicketType);
-            IReadOnlyList<TicketTypeEntitlement> entitlements = await entitlementResolver.ResolveAsync(
-                ticketType.Id,
-                request.TicketType.Entitlements,
-                request.EventId,
-                cancellationToken);
-
-            catalog.AddTicketType(ticketType, pool);
-            foreach (TicketTypeEntitlement entitlement in entitlements)
-            {
-                catalog.AddEntitlement(ticketType, entitlement);
-            }
-
-            await catalogs.UpdateAsync(catalog, cancellationToken);
             await cache.RemoveAsync($"event:detail:{request.EventId}", cancellationToken);
-            return Ok(ticketType.Id, "Ticket type created.");
+            return Ok(ticketTypeId.Value, "Ticket type created.");
         }
         catch (TicketingNotFoundException)
         {
@@ -78,36 +101,10 @@ public sealed class CreateEventTicketTypeCommandHandler(
         }
     }
 
-    private async Task<EventTicketCatalogVersion?> GetDraftCatalogAsync(
-        Guid eventId,
-        CancellationToken cancellationToken)
-    {
-        Event? eventTarget = await events.GetAuthorizationTargetByIdAsync(eventId, cancellationToken);
-        if (eventTarget?.TenantId != tenant.TenantId
-            || eventTarget.ParticipationConfiguration?.ParticipationHandlingModeId
-                != (int)ParticipationHandlingModeEnum.PlatformManaged)
-        {
-            return null;
-        }
-
-        EventTicketCatalogVersion? catalog = await catalogs.GetManagementCatalogAsync(
-            eventId,
-            tenant.TenantId,
-            cancellationToken);
-        return catalog?.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Draft ? catalog : null;
-    }
-
-    private Task<EventCapacityPool?> GetPoolAsync(
-        Guid? capacityPoolId,
-        Guid eventId,
-        CancellationToken cancellationToken) =>
-        capacityPoolId.HasValue
-            ? catalogs.GetCapacityPoolByIdEventAndTenantAsync(
-                capacityPoolId.Value,
-                eventId,
-                tenant.TenantId,
-                cancellationToken)
-            : Task.FromResult<EventCapacityPool?>(null);
+    private static bool IsPlatformManaged(Event? eventTarget, Guid tenantId) =>
+        eventTarget?.TenantId == tenantId
+        && eventTarget.ParticipationConfiguration?.ParticipationHandlingModeId
+            == (int)ParticipationHandlingModeEnum.PlatformManaged;
 
     private static EventTicketType CreateTicketType(
         EventTicketCatalogVersion catalog,

@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventTicketing.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -17,6 +18,7 @@ public sealed class UpdateEventCapacityPoolCommandHandler(
     IEventRepository events,
     IEventTicketCatalogRepository catalogs,
     ITenantContext tenant,
+    IUnitOfWork unitOfWork,
     HybridCache cache) : IRequestHandler<UpdateEventCapacityPoolCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -36,31 +38,45 @@ public sealed class UpdateEventCapacityPoolCommandHandler(
             return Missing(request.CapacityPoolId);
         }
 
-        EventCapacityPool? pool = await catalogs.GetCapacityPoolByIdEventAndTenantAsync(
-            request.CapacityPoolId,
-            request.EventId,
-            tenant.TenantId,
-            cancellationToken);
-        if (pool is null)
-        {
-            return Missing(request.CapacityPoolId);
-        }
-
         try
         {
-            pool.Update(
-                request.CapacityPool.Name,
-                request.CapacityPool.MaximumQuantity,
-                request.CapacityPool.HoldDurationSeconds,
-                (CapacityOversellPolicyEnum)request.CapacityPool.CapacityOversellPolicyId,
-                request.CapacityPool.IsActive);
-            await catalogs.UpdateCapacityPoolAsync(pool, cancellationToken);
+            BaseCommandResponse<Guid> response = await unitOfWork.ExecuteInTransactionAsync(async token =>
+            {
+                EventCapacityPool? pool = await catalogs.GetActiveCapacityPoolForUpdateAsync(
+                    request.CapacityPoolId,
+                    request.EventId,
+                    tenant.TenantId,
+                    token);
+                if (pool is null)
+                {
+                    return Missing(request.CapacityPoolId);
+                }
+
+                pool.Update(
+                    request.CapacityPool.Name,
+                    request.CapacityPool.MaximumQuantity,
+                    request.CapacityPool.HoldDurationSeconds,
+                    (CapacityOversellPolicyEnum)request.CapacityPool.CapacityOversellPolicyId,
+                    request.CapacityPool.IsActive);
+                await catalogs.UpdateCapacityPoolAsync(pool, token);
+                return Ok(pool.Id, "Capacity pool updated.");
+            }, cancellationToken);
+
+            if (!response.Success)
+            {
+                return response;
+            }
+
             await cache.RemoveAsync($"event:detail:{request.EventId}", cancellationToken);
-            return Ok(pool.Id, "Capacity pool updated.");
+            return response;
+        }
+        catch (ConcurrencyConflictException exception)
+        {
+            return Conflict(request.CapacityPoolId, exception.Message);
         }
         catch (ArgumentException exception)
         {
-            return Bad(pool.Id, exception.Message);
+            return Bad(request.CapacityPoolId, exception.Message);
         }
     }
 
@@ -94,5 +110,14 @@ public sealed class UpdateEventCapacityPoolCommandHandler(
         FailureCode = "event_ticketing_validation_failed",
         Message = "Ticketing configuration is invalid.",
         Errors = errors.ToList()
+    };
+
+    private static BaseCommandResponse<Guid> Conflict(Guid id, string error) => new()
+    {
+        Id = id,
+        Success = false,
+        FailureCode = "event_ticketing_concurrency_conflict",
+        Message = "Ticketing configuration was updated by another request.",
+        Errors = [error]
     };
 }
