@@ -149,7 +149,7 @@
                     <div class="event-card__hover-reveal">
                         @if (IsFieldVisible("event_list.card.show_price") && TicketPriceSummaryText is { } compactPriceSummary)
                         {
-                            <span class="event-card__hover-item">
+                            <span class="event-card__hover-item event-card__hover-item--price">
                                 <MudIcon Icon="@Icons.Material.Outlined.Sell" Size="Size.Small" />
                                 <span>@compactPriceSummary</span>
                             </span>
@@ -304,7 +304,7 @@
                         }
                         @if (IsFieldVisible("event_list.card.show_price") && TicketPriceSummaryText is { } detailedPriceSummary)
                         {
-                            <MudChip T="string" Size="Size.Small" Color="@TicketPriceSummaryColor" Variant="Variant.Text">@detailedPriceSummary</MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="@TicketPriceSummaryColor" Variant="Variant.Text" Class="event-card__price-summary">@detailedPriceSummary</MudChip>
                         }
                     </div>
 
@@ -474,7 +474,7 @@
                         }
                         @if (IsFieldVisible("event_list.card.show_price") && TicketPriceSummaryText is { } rowPriceSummary)
                         {
-                            <MudChip T="string" Size="Size.Small" Color="@TicketPriceSummaryColor" Variant="Variant.Text">@rowPriceSummary</MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="@TicketPriceSummaryColor" Variant="Variant.Text" Class="event-card__price-summary">@rowPriceSummary</MudChip>
                         }
                         @if (!string.IsNullOrEmpty(Event.MadhabFullName))
                         {
