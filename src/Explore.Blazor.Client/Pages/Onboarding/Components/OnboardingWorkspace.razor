@@ -2,49 +2,46 @@
 @* ABOUTME: Renders accessible navigation and content regions without owning workflow authority or persistence. *@
 
 <div class="onboarding-workspace" dir="auto">
-    <header class="onboarding-workspace__header">
-        @HeaderContent
-
-        @if (!string.IsNullOrWhiteSpace(StatusText))
-        {
-            <p class="onboarding-workspace__status"
-               data-state="@State"
-               role="status"
-               aria-live="polite">
-                @StatusText
-            </p>
-        }
-    </header>
+    <div class="onboarding-workspace__heading">
+        @HeadingContent
+    </div>
 
     @if (Steps.Count > 0)
     {
         <nav class="onboarding-workspace__progress" aria-label="@ProgressLabel">
-            @if (CurrentStepNumber > 0)
+            @if (!string.IsNullOrWhiteSpace(StatusText))
             {
-                <p class="onboarding-workspace__position">
-                    @StepPositionFormatter(CurrentStepNumber, Steps.Count)
-                </p>
+                <span class="sr-only" role="status" aria-live="polite">@StatusText</span>
             }
 
-            <ol class="onboarding-workspace__steps">
-                @foreach (var step in Steps)
+            <div class="onboarding-workspace__progress-heading">
+                @if (CurrentStepNumber > 0)
                 {
+                    <p class="onboarding-workspace__current-step">@Steps[CurrentStepNumber - 1].Label</p>
+                    <p class="onboarding-workspace__position">
+                        @StepPositionFormatter(CurrentStepNumber, Steps.Count)
+                    </p>
+                }
+            </div>
+
+            <ol class="onboarding-workspace__steps">
+                @for (var index = 0; index < Steps.Count; index++)
+                {
+                    var step = Steps[index];
                     <li class="onboarding-workspace__step" data-state="@step.State">
                         @if (!string.IsNullOrWhiteSpace(step.Href))
                         {
                             <a class="onboarding-workspace__step-link"
                                href="@step.Href"
+                               aria-label="@FormatStepAccessibleName(index, step)"
                                aria-current="@(step.IsCurrent ? "step" : null)">
-                                <span class="onboarding-workspace__step-label">@step.Label</span>
-                                <span class="onboarding-workspace__step-status">@step.StatusText</span>
                             </a>
                         }
                         else
                         {
                             <span class="onboarding-workspace__step-link"
                                   aria-current="@(step.IsCurrent ? "step" : null)">
-                                <span class="onboarding-workspace__step-label">@step.Label</span>
-                                <span class="onboarding-workspace__step-status">@step.StatusText</span>
+                                <span class="sr-only">@FormatStepAccessibleName(index, step)</span>
                             </span>
                         }
                     </li>
@@ -54,26 +51,34 @@
     }
 
     <section class="onboarding-workspace__content" aria-labelledby="@HeadingId">
-        @HeadingContent
         @ChildContent
     </section>
 
     @if (SummaryContent is not null)
     {
         <aside class="onboarding-workspace__aside" aria-label="@SummaryLabel">
-            <details class="onboarding-workspace__summary" open="@SummaryExpanded">
-                <summary class="onboarding-workspace__summary-label">@SummaryLabel</summary>
-                <div class="onboarding-workspace__summary-content">
-                    @SummaryContent
+            <div class="onboarding-workspace__summary-desktop">
+                <h2 class="onboarding-workspace__summary-heading">@SummaryLabel</h2>
+                <OnboardingSummary Steps="@Steps"
+                                   SummaryContent="@SummaryContent"
+                                   HelpContent="@HelpContent" />
+            </div>
+
+            <details class="onboarding-workspace__summary-mobile" open="@SummaryExpanded">
+                <summary class="onboarding-workspace__summary-label">
+                    <MudIcon Icon="@Icons.Material.Filled.Menu"
+                             Size="Size.Medium"
+                             Class="onboarding-workspace__mobile-menu-icon"
+                             aria-hidden="true" />
+                    <span>Setup menu</span>
+                </summary>
+                <div class="onboarding-workspace__summary-menu">
+                    <h2 class="onboarding-workspace__summary-heading">@SummaryLabel</h2>
+                    <OnboardingSummary Steps="@Steps"
+                                       SummaryContent="@SummaryContent"
+                                       HelpContent="@HelpContent" />
                 </div>
             </details>
-
-            @if (HelpContent is not null)
-            {
-                <div class="onboarding-workspace__help">
-                    @HelpContent
-                </div>
-            }
         </aside>
     }
 
@@ -105,13 +110,7 @@
     public string? StatusText { get; set; }
 
     [Parameter]
-    public PresentationState State { get; set; } = PresentationState.Current;
-
-    [Parameter]
     public bool SummaryExpanded { get; set; }
-
-    [Parameter]
-    public RenderFragment? HeaderContent { get; set; }
 
     [Parameter, EditorRequired]
     public RenderFragment HeadingContent { get; set; } = default!;
@@ -143,6 +142,9 @@
             return 0;
         }
     }
+
+    private string FormatStepAccessibleName(int index, StepDescriptor step) =>
+        $"Step {index + 1} of {Steps.Count}: {step.StatusText}";
 
     public sealed record StepDescriptor(
         string Label,

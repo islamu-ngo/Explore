@@ -12,8 +12,13 @@ public sealed class OnboardingWorkspaceContractTests
 
         await Assert.That(design).Contains("### OnboardingWorkspace");
         await Assert.That(design).Contains("display/navigation-only");
+        await Assert.That(design).Contains("visible ordinals belong in the setup-summary rail");
         await Assert.That(design).Contains("Authentication, Site profile, Authorization, and Readiness/Launch");
-        await Assert.That(design).Contains("`20rem` to `24rem` summary rail");
+        await Assert.That(design).Contains("right summary rail occupying one quarter of the page");
+        await Assert.That(design).Contains("right rail occupies one third");
+        await Assert.That(design).Contains("sticky top navigation bar");
+        await Assert.That(design).Contains("theme and language controls");
+        await Assert.That(design).Contains("balanced footer actions");
         await Assert.That(design).Contains("loading, error, locked remediation, skipped/configured, complete, current, upcoming, and dirty");
         await Assert.That(design).Contains("LTR/RTL, light/dark themes, forced colors, `prefers-reduced-motion`");
         await Assert.That(design).Contains("Never persist setup secrets");
@@ -29,10 +34,23 @@ public sealed class OnboardingWorkspaceContractTests
             "Onboarding",
             "Components",
             "OnboardingWorkspace.razor"));
+        var summarySource = await ReadRepositoryFileAsync(Path.Combine(
+            "src",
+            "Explore.Blazor.Client",
+            "Pages",
+            "Onboarding",
+            "Components",
+            "OnboardingSummary.razor"));
 
-        await Assert.That(source).Contains("<header");
+        await Assert.That(source).DoesNotContain("<header");
+        await Assert.That(source.IndexOf("@HeadingContent", StringComparison.Ordinal))
+            .IsLessThan(source.IndexOf("<nav", StringComparison.Ordinal));
         await Assert.That(source).Contains("<nav");
         await Assert.That(source).Contains("aria-current");
+        await Assert.That(source).Contains("onboarding-workspace__current-step");
+        await Assert.That(source).DoesNotContain("onboarding-workspace__step-label");
+        await Assert.That(summarySource).Contains("onboarding-workspace__summary-step-number");
+        await Assert.That(source).Contains("onboarding-workspace__mobile-menu-icon");
         await Assert.That(source).Contains("<section");
         await Assert.That(source).Contains("<aside");
         await Assert.That(source).Contains("<details");

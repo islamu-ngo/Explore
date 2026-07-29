@@ -12,6 +12,10 @@ public class AuthProviderConfigurationSourceTests
 
         await Assert.That(source).Contains("Use an already configured Keycloak realm");
         await Assert.That(source).Contains("Let ISLAMU configure Keycloak clients now");
+        await Assert.That(source).Contains("Set up the first login path for onboarding.");
+        await Assert.That(source).Contains("NextStepsText");
+        await Assert.That(source).Contains("Next you'll configure the site profile and readiness screens.");
+        await Assert.That(source).Contains("Next you'll configure the site profile, authorization, and readiness screens.");
         await Assert.That(source).Contains("Label=\"Admin username (Required)\"");
         await Assert.That(source).Contains("aria-label=\"One-time Keycloak admin username (required)\"");
         await Assert.That(source).Contains("Label=\"Admin password (Required)\"");
@@ -73,7 +77,24 @@ public class AuthProviderConfigurationSourceTests
         var source = await ReadAuthProviderConfigurationAsync();
 
         await Assert.That(source).Contains("class=\"auth-provider-configuration\" dir=\"auto\"");
-        await Assert.That(source).Contains("<MudContainer MaxWidth=\"MaxWidth.Small\">");
+        await Assert.That(source).DoesNotContain("<MudContainer MaxWidth=\"MaxWidth.Small\">");
+    }
+
+    [Test]
+    public async Task AuthProviderConfiguration_ShouldProjectPrimaryAndExitActionsIntoWorkspaceFooter()
+    {
+        var source = await ReadAuthProviderConfigurationAsync();
+        var actionsStart = source.IndexOf("<ActionsContent>", StringComparison.Ordinal);
+        var actionsEnd = source.IndexOf("</ActionsContent>", actionsStart, StringComparison.Ordinal);
+
+        await Assert.That(actionsStart).IsGreaterThanOrEqualTo(0);
+        await Assert.That(actionsEnd).IsGreaterThan(actionsStart);
+
+        var actions = source[actionsStart..actionsEnd];
+        await Assert.That(actions).Contains("RequestExitAsync");
+        await Assert.That(actions).Contains("SaveAndContinueAsync");
+        await Assert.That(actions).Contains("Exit setup");
+        await Assert.That(actions).Contains("Save & Continue to Login");
     }
 
     [Test]
@@ -157,6 +178,19 @@ public class AuthProviderConfigurationSourceTests
         await Assert.That(source).Contains("role=\"alertdialog\"");
         await Assert.That(source).Contains("SaveFocusAsync()");
         await Assert.That(source).Contains("RestoreFocusAsync(\"#onboarding-exit\")");
+        await Assert.That(source).Contains("<MudFocusTrap DefaultFocus=\"DefaultFocus.FirstChild\">");
+        await Assert.That(source).Contains("tabindex=\"-1\"");
+        await Assert.That(source).Contains("@onkeydown=\"HandleDiscardDialogKeyDownAsync\"");
+        await Assert.That(source).Contains("args.Key == \"Escape\"");
+        await Assert.That(source).Contains("ShouldSkipAuthorizationProviderStepAsync()");
+        await Assert.That(source).Contains("if (!_skipAuthorizationProviderStep)");
+        await Assert.That(source).Contains("ITranslationService TranslationService");
+        await Assert.That(source).Contains("T(\"ui.onboarding.workspace.step.authentication\", \"Authentication\")");
+        await Assert.That(source).Contains("T(\"ui.onboarding.workspace.step.site_profile\", \"Site profile\")");
+        await Assert.That(source).Contains("T(\"ui.onboarding.workspace.step.authorization\", \"Authorization\")");
+        await Assert.That(source).Contains("T(\"ui.onboarding.workspace.step.readiness\", \"Readiness\")");
+        await Assert.That(source).Contains("T(\"ui.onboarding.workspace.status.upcoming\", \"Upcoming\")");
+        await Assert.That(source).DoesNotContain("new(\"Authorization\", \"Upcoming\"");
         await Assert.That(source).DoesNotContain("localStorage");
         await Assert.That(source).DoesNotContain("sessionStorage");
     }

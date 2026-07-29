@@ -16,7 +16,7 @@ public sealed class OnboardingWorkspaceTests : IDisposable
     {
         var cut = Render(DefaultSteps());
 
-        await Assert.That(cut.FindAll("header").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("header").Count).IsEqualTo(0);
         await Assert.That(cut.FindAll("nav[aria-label='Setup progress']").Count).IsEqualTo(1);
         await Assert.That(cut.FindAll("section").Count).IsEqualTo(1);
         await Assert.That(cut.FindAll("aside").Count).IsEqualTo(1);
@@ -25,6 +25,8 @@ public sealed class OnboardingWorkspaceTests : IDisposable
         await Assert.That(cut.FindAll("h1").Count).IsEqualTo(1);
         await Assert.That(cut.Find("h1").TextContent.Trim()).IsEqualTo("Configure your site");
         await Assert.That(cut.FindAll("main").Count).IsEqualTo(0);
+        await Assert.That(cut.Markup.IndexOf("<h1", StringComparison.Ordinal))
+            .IsLessThan(cut.Markup.IndexOf("<nav", StringComparison.Ordinal));
     }
 
     [Test]
@@ -41,9 +43,37 @@ public sealed class OnboardingWorkspaceTests : IDisposable
 
         await Assert.That(cut.FindAll("nav ol > li").Count).IsEqualTo(3);
         await Assert.That(cut.Markup).Contains("Step 2 of 3", StringComparison.Ordinal);
-        await Assert.That(cut.FindAll("[aria-current='step']").Count).IsEqualTo(1);
-        await Assert.That(cut.Find("[aria-current='step'] .onboarding-workspace__step-label").TextContent.Trim())
+        await Assert.That(cut.FindAll("nav[aria-label='Setup progress'] [aria-current='step']").Count).IsEqualTo(1);
+        await Assert.That(cut.Find(".onboarding-workspace__current-step").TextContent.Trim())
             .IsEqualTo("Authorization");
+    }
+
+    [Test]
+    public async Task Progress_RendersVisibleOrdinalForEveryProjectedStep()
+    {
+        var cut = Render(DefaultSteps());
+
+        var ordinals = cut.FindAll(".onboarding-workspace__summary-desktop .onboarding-workspace__summary-step-number");
+
+        await Assert.That(ordinals.Count).IsEqualTo(4);
+        await Assert.That(ordinals.Select(element => element.TextContent.Trim()))
+            .IsEquivalentTo(["1", "2", "3", "4"]);
+        await Assert.That(ordinals.All(element => element.GetAttribute("aria-hidden") == "true")).IsTrue();
+    }
+
+    [Test]
+    public async Task Progress_MainSegmentsDoNotExposeNonCurrentStepNames()
+    {
+        var cut = Render(DefaultSteps());
+        var progress = cut.Find("nav[aria-label='Setup progress']");
+
+        await Assert.That(progress.TextContent).Contains("Site profile", StringComparison.Ordinal);
+        await Assert.That(progress.TextContent).DoesNotContain("Authentication", StringComparison.Ordinal);
+        await Assert.That(progress.TextContent).DoesNotContain("Authorization", StringComparison.Ordinal);
+        await Assert.That(progress.TextContent).DoesNotContain("Readiness", StringComparison.Ordinal);
+        await Assert.That(progress.QuerySelectorAll("[aria-label*='Authentication']").Length).IsEqualTo(0);
+        await Assert.That(progress.QuerySelectorAll("[aria-label*='Authorization']").Length).IsEqualTo(0);
+        await Assert.That(progress.QuerySelectorAll("[aria-label*='Readiness']").Length).IsEqualTo(0);
     }
 
     [Test]
@@ -61,7 +91,7 @@ public sealed class OnboardingWorkspaceTests : IDisposable
 
         await Assert.That(cut.FindAll("nav ol > li").Count).IsEqualTo(2);
         await Assert.That(cut.Markup).Contains("Step 1 of 2", StringComparison.Ordinal);
-        await Assert.That(cut.Find("[aria-current='step'] .onboarding-workspace__step-label").TextContent.Trim())
+        await Assert.That(cut.Find(".onboarding-workspace__current-step").TextContent.Trim())
             .IsEqualTo("Authorization");
     }
 
@@ -80,8 +110,10 @@ public sealed class OnboardingWorkspaceTests : IDisposable
         var cut = Render(DefaultSteps(), summaryExpanded: true);
 
         await Assert.That(cut.Find("details").HasAttribute("open")).IsTrue();
-        await Assert.That(cut.Find("summary").TextContent.Trim()).IsEqualTo("Setup summary");
-        await Assert.That(cut.Find("button").TextContent.Trim()).IsEqualTo("Continue");
+        await Assert.That(cut.Find("summary").TextContent.Trim()).IsEqualTo("Setup menu");
+        await Assert.That(cut.Find(".onboarding-workspace__summary-desktop h2").TextContent.Trim()).IsEqualTo("Setup summary");
+        await Assert.That(cut.FindAll("footer button, footer a").Count).IsEqualTo(2);
+        await Assert.That(cut.Find("footer").TextContent).Contains("Continue", StringComparison.Ordinal);
         await Assert.That(cut.Find("a[href='/setup/exit']").TextContent.Trim()).IsEqualTo("Exit");
         await Assert.That(cut.Find("button").HasAttribute("role")).IsFalse();
         await Assert.That(cut.Find("a[href='/setup/exit']").HasAttribute("role")).IsFalse();
@@ -101,18 +133,23 @@ public sealed class OnboardingWorkspaceTests : IDisposable
         OnboardingWorkspace.PresentationState state,
         string statusText)
     {
-        var cut = Render(DefaultSteps(), state: state, statusText: statusText);
+        var cut = Render(
+        [
+            Step("Authentication", statusText, state, isCurrent: true)
+        ], statusText: statusText);
         var status = cut.Find("[role='status']");
+        var summaryStep = cut.Find(".onboarding-workspace__summary-desktop .onboarding-summary__step");
+        var summaryStatus = cut.Find(".onboarding-workspace__summary-desktop .onboarding-summary__step-status");
 
-        await Assert.That(status.GetAttribute("data-state")).IsEqualTo(state.ToString());
         await Assert.That(status.TextContent.Trim()).IsEqualTo(statusText);
         await Assert.That(status.GetAttribute("aria-live")).IsEqualTo("polite");
+        await Assert.That(summaryStep.GetAttribute("data-state")).IsEqualTo(state.ToString());
+        await Assert.That(summaryStatus.TextContent.Trim()).IsEqualTo(statusText);
     }
 
     private IRenderedComponent<OnboardingWorkspace> Render(
         IReadOnlyList<OnboardingWorkspace.StepDescriptor> steps,
         bool summaryExpanded = false,
-        OnboardingWorkspace.PresentationState state = OnboardingWorkspace.PresentationState.Current,
         string statusText = "Current step") =>
         _ctx.Render<OnboardingWorkspace>(parameters => parameters
             .Add(component => component.Steps, steps)
@@ -122,9 +159,7 @@ public sealed class OnboardingWorkspaceTests : IDisposable
             .Add(component => component.SummaryLabel, "Setup summary")
             .Add(component => component.ActionsLabel, "Setup actions")
             .Add(component => component.StatusText, statusText)
-            .Add(component => component.State, state)
             .Add(component => component.SummaryExpanded, summaryExpanded)
-            .Add(component => component.HeaderContent, "<p>Instance setup</p>")
             .Add(component => component.HeadingContent, "<h1 id='workspace-heading'>Configure your site</h1>")
             .Add(component => component.ChildContent, "<p>Focused step content</p>")
             .Add(component => component.SummaryContent, "<p>Two steps remain</p>")

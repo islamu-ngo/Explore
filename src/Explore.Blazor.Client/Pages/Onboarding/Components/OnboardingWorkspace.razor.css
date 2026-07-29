@@ -1,25 +1,22 @@
-/* ABOUTME: Isolated BEM layout and state styling for the responsive onboarding workspace. */
-/* ABOUTME: Uses semantic project tokens and logical properties for theme, RTL, and narrow-screen safety. */
+/* ABOUTME: Responsive shell for the onboarding main workspace, summary rail, and mobile menu. */
+/* ABOUTME: Uses project tokens, logical properties, and sticky navigation without owning workflow state. */
 
 .onboarding-workspace {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-        "header"
-        "progress"
         "summary"
+        "heading"
+        "progress"
         "content"
         "actions";
-    gap: var(--isl-space-8);
-    inline-size: min(100%, 80rem);
-    margin-inline: auto;
-    padding-block: var(--isl-space-8);
-    padding-inline: var(--isl-space-page);
+    inline-size: 100%;
+    min-block-size: 100dvh;
     color: var(--isl-color-text);
     overflow-wrap: anywhere;
 }
 
-.onboarding-workspace__header,
+.onboarding-workspace__heading,
 .onboarding-workspace__progress,
 .onboarding-workspace__content,
 .onboarding-workspace__aside,
@@ -27,74 +24,81 @@
     min-inline-size: 0;
 }
 
-.onboarding-workspace__header {
-    grid-area: header;
+.onboarding-workspace__heading {
+    grid-area: heading;
+    padding-block-start: var(--isl-space-4);
+    padding-inline: var(--isl-space-4);
 }
 
 .onboarding-workspace__progress {
     grid-area: progress;
+    display: grid;
+    gap: var(--isl-space-2);
+    padding-block: var(--isl-space-4) var(--isl-space-6);
+    padding-inline: var(--isl-space-4);
 }
 
 .onboarding-workspace__content {
     grid-area: content;
+    display: grid;
+    align-content: start;
+    gap: var(--isl-space-4);
+    padding-inline: var(--isl-space-4);
 }
 
 .onboarding-workspace__aside {
     grid-area: summary;
+    position: sticky;
+    inset-block-start: 0;
+    z-index: var(--mud-zindex-appbar, 1100);
+    min-block-size: 4.5rem;
+    background: var(--isl-color-surface);
+    border-block-end: 1px solid var(--isl-color-divider);
 }
 
 .onboarding-workspace__actions {
     grid-area: actions;
-}
-
-.onboarding-workspace__header {
-    display: grid;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
     gap: var(--isl-space-3);
-    padding-block-end: var(--isl-space-4);
-    border-block-end: 1px solid var(--isl-color-divider);
+    margin-block-start: var(--isl-space-8);
+    padding-block: var(--isl-space-4) var(--isl-space-6);
+    padding-inline: var(--isl-space-4);
+    border-block-start: 1px solid var(--isl-color-divider);
 }
 
-.onboarding-workspace__status,
-.onboarding-workspace__position {
+.onboarding-workspace__position,
+.onboarding-workspace__current-step {
     margin: 0;
+}
+
+.onboarding-workspace__position {
     color: var(--isl-color-text-secondary);
     font-size: var(--isl-typography-body2-size);
     line-height: var(--isl-typography-body2-line-height);
 }
 
-.onboarding-workspace__status {
-    display: inline-flex;
-    align-items: center;
-    justify-self: start;
-    min-block-size: var(--isl-target-min);
-    padding-block: var(--isl-space-1);
-    padding-inline: var(--isl-space-2);
-    border: 1px solid currentColor;
-    border-radius: var(--isl-radius-sm);
+.onboarding-workspace__progress-heading {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--isl-space-2);
 }
 
-.onboarding-workspace__status[data-state="Error"],
-.onboarding-workspace__status[data-state="Locked"] {
-    color: var(--isl-color-error);
+.onboarding-workspace__current-step {
+    font-size: var(--isl-typography-body2-size);
+    font-weight: 600;
 }
 
-.onboarding-workspace__status[data-state="Complete"],
-.onboarding-workspace__status[data-state="Configured"] {
-    color: var(--isl-color-success-strong);
-}
-
-.onboarding-workspace__status[data-state="Dirty"] {
-    color: var(--isl-color-warning-strong);
-}
-
-.onboarding-workspace__progress {
-    display: grid;
-    gap: var(--isl-space-3);
+.onboarding-workspace__position {
+    font-variant-numeric: tabular-nums;
 }
 
 .onboarding-workspace__steps {
     display: flex;
-    flex-wrap: wrap;
     gap: var(--isl-space-2);
     margin: 0;
     padding: 0;
@@ -102,39 +106,35 @@
 }
 
 .onboarding-workspace__step {
-    flex: 1 1 10rem;
+    flex: 1 1 0;
     min-inline-size: 0;
-    border-block-start: var(--isl-focus-ring-width) solid var(--isl-color-border);
-}
-
-.onboarding-workspace__step[data-state="Current"],
-.onboarding-workspace__step[data-state="Dirty"] {
-    border-block-start-color: var(--isl-color-primary);
-}
-
-.onboarding-workspace__step[data-state="Complete"],
-.onboarding-workspace__step[data-state="Configured"] {
-    border-block-start-color: var(--isl-color-success-strong);
-}
-
-.onboarding-workspace__step[data-state="Error"],
-.onboarding-workspace__step[data-state="Locked"] {
-    border-block-start-color: var(--isl-color-error);
 }
 
 .onboarding-workspace__step-link {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--isl-space-1);
+    display: block;
     min-block-size: var(--isl-target-min);
-    padding-block: var(--isl-space-2);
-    padding-inline: var(--isl-space-1);
+    border-block-start: 0.25rem solid var(--isl-color-border);
     color: inherit;
     text-decoration: none;
 }
 
+.onboarding-workspace__step[data-state="Current"] .onboarding-workspace__step-link,
+.onboarding-workspace__step[data-state="Dirty"] .onboarding-workspace__step-link {
+    border-block-start-color: var(--isl-color-primary);
+}
+
+.onboarding-workspace__step[data-state="Complete"] .onboarding-workspace__step-link,
+.onboarding-workspace__step[data-state="Configured"] .onboarding-workspace__step-link {
+    border-block-start-color: var(--isl-color-success-strong);
+}
+
+.onboarding-workspace__step[data-state="Error"] .onboarding-workspace__step-link,
+.onboarding-workspace__step[data-state="Locked"] .onboarding-workspace__step-link {
+    border-block-start-color: var(--isl-color-error);
+}
+
 a.onboarding-workspace__step-link:hover {
-    background: var(--isl-state-hover);
+    border-block-start-color: var(--isl-color-primary);
 }
 
 a.onboarding-workspace__step-link:focus-visible,
@@ -143,104 +143,116 @@ a.onboarding-workspace__step-link:focus-visible,
     outline-offset: var(--isl-focus-ring-offset);
 }
 
-.onboarding-workspace__step-label {
-    font-weight: 600;
+.onboarding-workspace__summary-desktop {
+    display: none;
 }
 
-.onboarding-workspace__step-status {
-    color: var(--isl-color-text-secondary);
-    font-size: var(--isl-typography-caption-size);
-    line-height: var(--isl-typography-caption-line-height);
-}
-
-.onboarding-workspace__content {
-    display: grid;
-    align-content: start;
-    gap: var(--isl-space-4);
-}
-
-.onboarding-workspace__aside {
-    display: grid;
-    align-content: start;
-    gap: var(--isl-space-4);
-    padding-block-start: var(--isl-space-4);
-    border-block-start: 1px solid var(--isl-color-divider);
+.onboarding-workspace__summary-mobile {
+    position: relative;
 }
 
 .onboarding-workspace__summary-label {
-    min-block-size: var(--isl-target-min);
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-2);
+    inline-size: calc(100% - 11rem);
+    min-block-size: 4.5rem;
+    padding-inline-start: var(--isl-space-4);
+    padding-inline-end: var(--isl-space-2);
     color: var(--isl-color-text);
     font-weight: 600;
     cursor: pointer;
+    list-style: none;
 }
 
-.onboarding-workspace__summary-content,
-.onboarding-workspace__help {
-    margin-block-start: var(--isl-space-3);
+.onboarding-workspace__summary-label::-webkit-details-marker {
+    display: none;
+}
+
+.onboarding-workspace__summary-menu {
+    position: absolute;
+    inset-block-start: 100%;
+    inset-inline: 0;
+    max-block-size: calc(100dvh - 4.5rem);
+    padding: var(--isl-space-4);
+    overflow-y: auto;
+    border-block-start: 1px solid var(--isl-color-divider);
+    border-block-end: 1px solid var(--isl-color-divider);
+    background: var(--isl-color-surface);
+    box-shadow: var(--isl-shadow-md);
+}
+
+.onboarding-workspace__summary-heading {
+    margin: 0 0 var(--isl-space-4);
     color: var(--isl-color-text-secondary);
-}
-
-.onboarding-workspace__help {
-    padding-block-start: var(--isl-space-4);
-    border-block-start: 1px solid var(--isl-color-divider);
-}
-
-.onboarding-workspace__actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: var(--isl-space-3);
-    padding-block-start: var(--isl-space-4);
-    border-block-start: 1px solid var(--isl-color-divider);
+    font-size: var(--isl-typography-caption-size);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 
 @media (max-width: 30rem) {
-    .onboarding-workspace {
-        gap: var(--isl-space-6);
-        padding-block: var(--isl-space-6);
-        padding-inline: var(--isl-space-4);
-    }
-
-    .onboarding-workspace__steps,
-    .onboarding-workspace__actions {
-        flex-direction: column;
-    }
-
-    .onboarding-workspace__step {
-        flex-basis: auto;
-    }
-
     .onboarding-workspace__actions {
         align-items: stretch;
     }
 }
 
-@media (min-width: 48rem) and (max-width: 79.99rem) {
+@media (min-width: 48rem) {
     .onboarding-workspace {
+        grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
         grid-template-areas:
-            "header"
-            "progress"
-            "summary"
-            "content"
-            "actions";
+            "heading summary"
+            "progress summary"
+            "content summary"
+            "actions summary";
+    }
+
+    .onboarding-workspace__heading,
+    .onboarding-workspace__progress,
+    .onboarding-workspace__content,
+    .onboarding-workspace__actions {
+        padding-inline: var(--isl-space-6);
+    }
+
+    .onboarding-workspace__heading {
+        padding-block-start: var(--isl-space-6);
+    }
+
+    .onboarding-workspace__progress {
+        padding-block: var(--isl-space-2) var(--isl-space-4);
+    }
+
+    .onboarding-workspace__aside {
+        position: sticky;
+        inset-block-start: 0;
+        align-self: start;
+        block-size: 100dvh;
+        padding-block: calc(var(--isl-space-16) + var(--isl-space-8)) var(--isl-space-6);
+        padding-inline: var(--isl-space-6);
+        overflow-y: auto;
+        border-block-end: 0;
+        border-inline-start: 1px solid var(--isl-color-divider);
+    }
+
+    .onboarding-workspace__summary-desktop {
+        display: block;
+    }
+
+    .onboarding-workspace__summary-mobile {
+        display: none;
     }
 }
 
 @media (min-width: 80rem) {
     .onboarding-workspace {
-        grid-template-columns: minmax(0, 1fr) minmax(20rem, 24rem);
-        grid-template-areas:
-            "header header"
-            "progress progress"
-            "content summary"
-            "actions actions";
+        grid-template-columns: minmax(0, 3fr) minmax(20rem, 1fr);
     }
 
-    .onboarding-workspace__aside {
-        padding-block-start: 0;
-        padding-inline-start: var(--isl-space-8);
-        border-block-start: 0;
-        border-inline-start: 1px solid var(--isl-color-divider);
+    .onboarding-workspace__heading,
+    .onboarding-workspace__progress,
+    .onboarding-workspace__content,
+    .onboarding-workspace__actions {
+        padding-inline: var(--isl-space-10);
     }
 }
 

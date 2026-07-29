@@ -1,0 +1,55 @@
+@* ABOUTME: Renders the numbered onboarding summary shared by the persistent rail and mobile menu. *@
+@* ABOUTME: Keeps projected labels, statuses, revisit links, contextual summary, and help display-only. *@
+
+<ol class="onboarding-summary">
+    @for (var index = 0; index < Steps.Count; index++)
+    {
+        var step = Steps[index];
+        <li class="onboarding-summary__step" data-state="@step.State">
+            @if (!string.IsNullOrWhiteSpace(step.Href))
+            {
+                <a class="onboarding-summary__step-link"
+                   href="@step.Href"
+                   aria-current="@(step.IsCurrent ? "step" : null)">
+                    <span class="onboarding-workspace__summary-step-number" aria-hidden="true">@(index + 1)</span>
+                    <span class="onboarding-summary__step-label">@step.Label</span>
+                    <span class="onboarding-summary__step-status">@step.StatusText</span>
+                </a>
+            }
+            else
+            {
+                <span class="onboarding-summary__step-link"
+                      aria-current="@(step.IsCurrent ? "step" : null)">
+                    <span class="onboarding-workspace__summary-step-number" aria-hidden="true">@(index + 1)</span>
+                    <span class="onboarding-summary__step-label">@step.Label</span>
+                    <span class="onboarding-summary__step-status">@step.StatusText</span>
+                </span>
+            }
+        </li>
+    }
+</ol>
+
+@if (SummaryContent is not null)
+{
+    <div class="onboarding-summary__context">
+        @SummaryContent
+    </div>
+}
+
+@if (HelpContent is not null)
+{
+    <div class="onboarding-summary__help">
+        @HelpContent
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<OnboardingWorkspace.StepDescriptor> Steps { get; set; } = [];
+
+    [Parameter]
+    public RenderFragment? SummaryContent { get; set; }
+
+    [Parameter]
+    public RenderFragment? HelpContent { get; set; }
+}

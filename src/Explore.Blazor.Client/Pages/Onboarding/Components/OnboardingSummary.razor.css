@@ -1,0 +1,94 @@
+/* ABOUTME: Styles the numbered setup summary used in the onboarding rail and mobile menu. */
+/* ABOUTME: Uses compact token-driven rows with visible state text and logical properties. */
+
+.onboarding-summary {
+    display: grid;
+    gap: var(--isl-space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.onboarding-summary__step {
+    min-inline-size: 0;
+}
+
+.onboarding-summary__step-link {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+        "number label"
+        "number status";
+    column-gap: var(--isl-space-2);
+    row-gap: var(--isl-space-1);
+    min-block-size: var(--isl-target-min);
+    padding: var(--isl-space-2);
+    border-radius: var(--isl-radius-sm);
+    color: inherit;
+    text-decoration: none;
+}
+
+.onboarding-summary__step-link[aria-current="step"],
+a.onboarding-summary__step-link:hover {
+    background: var(--isl-state-hover);
+}
+
+a.onboarding-summary__step-link:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--isl-color-primary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
+.onboarding-workspace__summary-step-number {
+    grid-area: number;
+    display: inline-grid;
+    place-items: center;
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-full);
+    color: var(--isl-color-text-secondary);
+    font-size: var(--isl-typography-caption-size);
+    font-variant-numeric: tabular-nums;
+}
+
+.onboarding-summary__step[data-state="Current"] .onboarding-workspace__summary-step-number,
+.onboarding-summary__step[data-state="Dirty"] .onboarding-workspace__summary-step-number {
+    border-color: var(--isl-color-primary);
+    color: var(--isl-color-primary);
+}
+
+.onboarding-summary__step[data-state="Complete"] .onboarding-workspace__summary-step-number,
+.onboarding-summary__step[data-state="Configured"] .onboarding-workspace__summary-step-number {
+    border-color: var(--isl-color-success-strong);
+    color: var(--isl-color-success-strong);
+}
+
+.onboarding-summary__step-label {
+    grid-area: label;
+    min-inline-size: 0;
+    font-size: var(--isl-typography-body2-size);
+    font-weight: 600;
+}
+
+.onboarding-summary__step-status {
+    grid-area: status;
+    color: var(--isl-color-text-secondary);
+    font-size: var(--isl-typography-caption-size);
+    line-height: var(--isl-typography-caption-line-height);
+}
+
+.onboarding-summary__context,
+.onboarding-summary__help {
+    margin-block-start: var(--isl-space-6);
+    padding-block-start: var(--isl-space-4);
+    border-block-start: 1px solid var(--isl-color-divider);
+    color: var(--isl-color-text-secondary);
+    font-size: var(--isl-typography-body2-size);
+    line-height: var(--isl-typography-body2-line-height);
+}
+
+@media (forced-colors: active) {
+    a.onboarding-summary__step-link:focus-visible {
+        outline-color: Highlight;
+    }
+}

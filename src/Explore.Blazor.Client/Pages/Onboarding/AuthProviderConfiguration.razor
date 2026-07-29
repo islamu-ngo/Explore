@@ -5,6 +5,7 @@
 @rendermode InteractiveServer
 @layout SetupLayout
 @using Explore.Blazor.Client.Components.Forms
+@using Explore.Blazor.Client.Contracts.Services
 @using Explore.Blazor.Client.Contracts.Services.Accessibility
 @using Explore.Blazor.Client.Pages.Onboarding.Components
 @inject IInstanceOnboardingService InstanceOnboardingService
@@ -13,6 +14,7 @@
 @inject IAccessibilityAnnouncerService AccessibilityAnnouncer
 @inject IBffAuthApi BffAuthApi
 @inject ILogger<AuthProviderConfiguration> Logger
+@inject ITranslationService TranslationService
 
 <PageTitle>Authentication Providers</PageTitle>
 
@@ -22,21 +24,20 @@
                      HeadingId="auth-provider-heading"
                      SummaryLabel="Setup summary"
                      ActionsLabel="Authentication provider actions"
-                     StatusText="@WorkspaceStatusText"
-                     State="@WorkspaceState">
-    <HeaderContent>
-        <MudText Typo="Typo.overline">Event Platform</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">Instance onboarding</MudText>
-    </HeaderContent>
+                     StatusText="@WorkspaceStatusText">
     <HeadingContent>
-        <MudText Id="auth-provider-heading" Typo="Typo.h4" HtmlTag="h1">Authentication Providers</MudText>
+        <MudText Id="auth-provider-heading" Typo="Typo.h3" HtmlTag="h1">Authentication Providers</MudText>
     </HeadingContent>
     <ChildContent>
     <div class="auth-provider-configuration" dir="auto" @oninput="MarkDirty" @onchange="MarkDirty">
-    <MudContainer MaxWidth="MaxWidth.Small">
-        <MudText Typo="Typo.body2" Class="mb-4">
-            Choose how users will authenticate. At least one provider must be enabled.
-        </MudText>
+        <div class="auth-provider-configuration__intro">
+            <MudText Typo="Typo.body1">
+                Set up the first login path for onboarding.
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @NextStepsText
+            </MudText>
+        </div>
 
         @if (_isLoading)
         {
@@ -308,47 +309,63 @@
                 }
 
                 @* ── Actions ── *@
-                <MudStack Row="true" Spacing="2" Class="mt-2">
-                    <AppButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave)"
-                               OnClick="SaveAndContinueAsync">
-                        @if (_submitState.IsSubmitting)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                            @:Saving...
-                        }
-                        else
-                        {
-                            @:Save & Continue to Login
-                        }
-                    </AppButton>
-                </MudStack>
             }
         }
-    </MudContainer>
 </div>
     </ChildContent>
     <SummaryContent>
-        <p>Authentication is the first numbered step. Deployment-detected providers remain manageable.</p>
+        <p>Choose at least one login provider. Keycloak can use an existing realm or bootstrap clients; AT Protocol and Google remain optional.</p>
     </SummaryContent>
     <HelpContent>
         <p>Provider secrets are sent only to the server and are cleared from the form after one-time bootstrap requests.</p>
     </HelpContent>
     <ActionsContent>
-        <MudButton Id="onboarding-exit" Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="RequestExitAsync">
-            Exit setup
-        </MudButton>
+        @if (_model.KeycloakDetectedFromEnvironment == true && !_showAdvancedConfig)
+        {
+            <MudButton Id="onboarding-exit" Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="RequestExitAsync">
+                Exit setup
+            </MudButton>
+        }
+        else
+        {
+            <div class="auth-provider-configuration__actions">
+                <MudButton Id="onboarding-exit" Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="RequestExitAsync">
+                    Exit setup
+                </MudButton>
+                <AppButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave)"
+                           OnClick="SaveAndContinueAsync">
+                    @if (_submitState.IsSubmitting)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        @:Saving...
+                    }
+                    else
+                    {
+                        @:Save & Continue to Login
+                    }
+                </AppButton>
+            </div>
+        }
     </ActionsContent>
 </OnboardingWorkspace>
 
 @if (_showDiscardConfirmation)
 {
-    <div id="discard-confirmation" class="auth-provider-configuration__discard" role="alertdialog" aria-modal="true" aria-labelledby="discard-confirmation-title">
-        <MudText Id="discard-confirmation-title" Typo="Typo.h6" HtmlTag="h2">Discard unsaved authentication changes?</MudText>
-        <MudText Typo="Typo.body2">Unsaved provider values will be cleared. Nothing is saved in browser storage.</MudText>
-        <MudStack Row="true" Spacing="2">
-            <MudButton Elevation="0" Variant="Variant.Text" OnClick="CancelExitAsync">Keep editing</MudButton>
-            <MudButton Elevation="0" Color="Color.Error" Variant="Variant.Filled" OnClick="DiscardAndExit">Discard and exit</MudButton>
-        </MudStack>
+    <div id="discard-confirmation"
+         class="auth-provider-configuration__discard"
+         role="alertdialog"
+         aria-modal="true"
+         aria-labelledby="discard-confirmation-title"
+         tabindex="-1"
+         @onkeydown="HandleDiscardDialogKeyDownAsync">
+        <MudFocusTrap DefaultFocus="DefaultFocus.FirstChild">
+            <MudText Id="discard-confirmation-title" Typo="Typo.h6" HtmlTag="h2">Discard unsaved authentication changes?</MudText>
+            <MudText Typo="Typo.body2">Unsaved provider values will be cleared. Nothing is saved in browser storage.</MudText>
+            <MudStack Row="true" Spacing="2">
+                <MudButton Elevation="0" Variant="Variant.Text" OnClick="CancelExitAsync">Keep editing</MudButton>
+                <MudButton Elevation="0" Color="Color.Error" Variant="Variant.Filled" OnClick="DiscardAndExit">Discard and exit</MudButton>
+            </MudStack>
+        </MudFocusTrap>
     </div>
 }
 
@@ -365,6 +382,7 @@
     private bool _isDirty;
     private bool _showDiscardConfirmation;
     private bool _focusDiscardConfirmation;
+    private bool _skipAuthorizationProviderStep;
     private bool _googleSecretAlreadyConfigured;
     private bool HasAnyProviderEnabled =>
         _model.KeycloakEnabled == true || _model.AtprotoLoginEnabled == true || _model.GoogleSsoEnabled == true;
@@ -397,19 +415,45 @@
         (_model.AtprotoLoginEnabled != true || HasAtprotoCredentials) &&
         (_model.GoogleSsoEnabled != true || HasGoogleCredentials);
 
-    private IReadOnlyList<OnboardingWorkspace.StepDescriptor> WorkspaceSteps =>
-    [
-        new(
-            "Authentication",
-            WorkspaceStatusText,
-            WorkspaceState,
-            IsCurrent: true),
-        new("Site profile", "Upcoming", OnboardingWorkspace.PresentationState.Upcoming),
-        new("Authorization", "Upcoming", OnboardingWorkspace.PresentationState.Upcoming),
-        new("Readiness", "Upcoming", OnboardingWorkspace.PresentationState.Upcoming)
-    ];
+    private IReadOnlyList<OnboardingWorkspace.StepDescriptor> WorkspaceSteps
+    {
+        get
+        {
+            var upcoming = T("ui.onboarding.workspace.status.upcoming", "Upcoming");
+            var steps = new List<OnboardingWorkspace.StepDescriptor>
+            {
+                new(
+                    T("ui.onboarding.workspace.step.authentication", "Authentication"),
+                    WorkspaceStatusText,
+                    WorkspaceState,
+                    IsCurrent: true),
+                new(
+                    T("ui.onboarding.workspace.step.site_profile", "Site profile"),
+                    upcoming,
+                    OnboardingWorkspace.PresentationState.Upcoming)
+            };
 
-    private static string FormatStepPosition(int current, int total) => $"Step {current} of {total}";
+            if (!_skipAuthorizationProviderStep)
+            {
+                steps.Add(new(
+                    T("ui.onboarding.workspace.step.authorization", "Authorization"),
+                    upcoming,
+                    OnboardingWorkspace.PresentationState.Upcoming));
+            }
+
+            steps.Add(new(
+                T("ui.onboarding.workspace.step.readiness", "Readiness"),
+                upcoming,
+                OnboardingWorkspace.PresentationState.Upcoming));
+            return steps;
+        }
+    }
+
+    private string FormatStepPosition(int current, int total) => string.Format(
+        System.Globalization.CultureInfo.CurrentCulture,
+        T("ui.onboarding.workspace.step_position", "Step {0} of {1}"),
+        current,
+        total);
 
     private OnboardingWorkspace.PresentationState WorkspaceState => _isLoading
         ? OnboardingWorkspace.PresentationState.Loading
@@ -420,12 +464,16 @@
                 : OnboardingWorkspace.PresentationState.Current;
 
     private string WorkspaceStatusText => _isLoading
-        ? "Checking authentication configuration"
+        ? T("ui.onboarding.authentication.status.checking", "Checking authentication configuration")
         : _isDirty
-            ? "Unsaved changes"
+            ? T("ui.onboarding.workspace.status.unsaved", "Unsaved changes")
             : _model.KeycloakDetectedFromEnvironment == true
-                ? "Configuration detected"
-                : "Current step";
+                ? T("ui.onboarding.workspace.status.configured", "Configuration detected")
+                : T("ui.onboarding.workspace.status.current", "Current step");
+
+    private string NextStepsText => _skipAuthorizationProviderStep
+        ? T("ui.onboarding.authentication.next_steps_without_authorization", "Next you'll configure the site profile and readiness screens.")
+        : T("ui.onboarding.authentication.next_steps", "Next you'll configure the site profile, authorization, and readiness screens.");
 
     protected override async Task OnInitializedAsync()
     {
@@ -437,6 +485,7 @@
         }
 
         _model = await InstanceOnboardingService.GetAuthProviderConfigurationAsync();
+        _skipAuthorizationProviderStep = await InstanceOnboardingService.ShouldSkipAuthorizationProviderStepAsync();
         _googleSecretAlreadyConfigured = _model.GoogleSsoEnabled == true;
         _model.KeycloakClientSecret = string.Empty;
         _model.GoogleClientSecret = string.Empty;
@@ -628,6 +677,14 @@
         await AccessibilityFocusService.RestoreFocusAsync("#onboarding-exit");
     }
 
+    private async Task HandleDiscardDialogKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            await CancelExitAsync();
+        }
+    }
+
     private void DiscardAndExit()
     {
         ClearKeycloakBootstrapSecrets();
@@ -658,6 +715,8 @@
             || host.EndsWith(".local")
             || host.EndsWith(".internal");
     }
+
+    private string T(string key, string fallback) => TranslationService.T(key, fallback);
 
     private enum KeycloakConfigurationMode
     {

@@ -23,6 +23,17 @@ public sealed class SetupLayoutSourceTests
         await Assert.That(styles).DoesNotContain("padding-left");
     }
 
+    [Test]
+    public async Task SetupLayout_ShouldDockExistingSwitchersIntoOnboardingSidebar()
+    {
+        var styles = await ReadClientSourceAsync("Layout/SetupLayout.razor.css");
+
+        await Assert.That(styles).Contains(".setup-layout-root:has(.onboarding-workspace)");
+        await Assert.That(styles).Contains("inline-size: 25%");
+        await Assert.That(styles).Contains("inline-size: 33.333%");
+        await Assert.That(styles).Contains("position: fixed");
+    }
+
     private static async Task<string> ReadClientSourceAsync(string relativePath)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
