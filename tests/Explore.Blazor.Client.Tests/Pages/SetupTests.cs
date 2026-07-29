@@ -91,6 +91,35 @@ public class SetupTests : IDisposable
     }
 
     [Test]
+    public async Task Setup_WhenSecretIsRequired_RendersOriginalSecretEntryGateway()
+    {
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
+        {
+            IsCompleted = false,
+            IsAuthenticated = false
+        });
+        SetupBffJsModule();
+
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+
+        cut.WaitForAssertion(() =>
+        {
+            var headings = cut.FindAll("h1");
+            if (headings.Count != 1
+                || !headings[0].TextContent.Contains("Setup Access", StringComparison.OrdinalIgnoreCase)
+                || cut.Find("input").GetAttribute("type") != "password"
+                || !cut.Markup.Contains("Setup Secret", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Validate Secret", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected the original setup-secret entry gateway.");
+            }
+        });
+
+        await _instanceOnboardingService.Received(1).GetStatusAsync();
+    }
+
+    [Test]
     public async Task RestorePersistedSecret_WhenStoredSecretIsInvalid_ShowsError()
     {
         // Arrange
@@ -224,6 +253,34 @@ public class SetupTests : IDisposable
         });
 
         await _instanceOnboardingService.Received(1).ShouldSkipAuthorizationProviderStepAsync();
+    }
+
+    [Test]
+    public void Setup_WhenAuthenticationConfigurationSelected_EntersAuthProviderOnboarding()
+    {
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
+        {
+            IsCompleted = false,
+            IsAuthenticated = false
+        });
+        SetupBffJsModule(hasPersistedSecret: true, isValid: true, includeProviders: false);
+        var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>();
+        nav.NavigateTo("/setup");
+
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+
+        cut.WaitForAssertion(() => cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Configure Authentication", StringComparison.OrdinalIgnoreCase))
+            .Click());
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!nav.Uri.EndsWith("/onboarding/auth-provider", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"Unexpected authentication configuration URL: '{nav.Uri}'.");
+            }
+        });
     }
 
     [Test]

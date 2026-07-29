@@ -1,14 +1,142 @@
-/* ABOUTME: Scoped layout for setup access within the shared onboarding workspace. */
-/* ABOUTME: Keeps the secret gate constrained, token-based, and safe for narrow viewports. */
+/* ABOUTME: Scoped split-screen layout for the setup-secret entry gateway. */
+/* ABOUTME: Uses design-system tokens and logical properties across desktop and narrow viewports. */
 
 .setup-page {
-    display: grid;
-    inline-size: min(100%, 42rem);
-    margin-inline: auto;
+    --setup-brand-panel-size: 58%;
+    --setup-form-panel-size: 50%;
+    --setup-brand-content-size: 37.5rem;
+    --setup-form-content-size: 26.25rem;
+    --setup-diagonal-cut: 72%;
+    --setup-brand-gradient-angle: 160deg;
+    --setup-brand-gradient-start: color-mix(in oklch, var(--isl-color-primary) 68%, black);
+    --setup-brand-gradient-end: color-mix(in oklch, var(--isl-color-primary) 72%, white);
+    --setup-brand-text: var(--mud-palette-primary-text);
+    --setup-brand-text-muted: color-mix(in oklch, var(--setup-brand-text) 85%, transparent);
+    --setup-brand-divider: color-mix(in oklch, var(--setup-brand-text) 30%, transparent);
+    display: flex;
+    min-block-size: 100dvh;
+    inline-size: 100%;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    overflow-inline: clip;
+}
+
+.setup-left-panel {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    inline-size: var(--setup-brand-panel-size);
+    background: linear-gradient(
+        var(--setup-brand-gradient-angle),
+        var(--setup-brand-gradient-start),
+        var(--isl-color-primary),
+        var(--setup-brand-gradient-end));
+    clip-path: polygon(0 0, 100% 0, var(--setup-diagonal-cut) 100%, 0 100%);
+    z-index: 1;
+    display: flex;
+    align-items: center;
+}
+
+.setup-left-content {
+    padding-block: var(--isl-space-12);
+    padding-inline: var(--isl-space-16);
+    padding-inline-end: 20%;
+    max-inline-size: var(--setup-brand-content-size);
+}
+
+.setup-left-content ::deep .setup-title,
+.setup-left-content ::deep .setup-title-brand {
+    color: var(--setup-brand-text);
+}
+
+.setup-left-content ::deep .setup-subtitle,
+.setup-left-content ::deep .setup-feature-icon,
+.setup-left-content ::deep .setup-feature-text {
+    color: var(--setup-brand-text-muted);
+}
+
+.setup-left-content ::deep .setup-divider {
+    border-color: var(--setup-brand-divider);
+    inline-size: var(--isl-space-16);
+}
+
+.setup-left-content ::deep .setup-feature-icon {
+    margin-block-start: var(--isl-space-1);
+    flex-shrink: 0;
+}
+
+.setup-right-panel {
+    margin-inline-start: auto;
+    inline-size: var(--setup-form-panel-size);
+    min-block-size: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--isl-space-8);
+    z-index: 2;
+    background: var(--isl-color-background);
+}
+
+.setup-form-container {
+    inline-size: 100%;
+    max-inline-size: var(--setup-form-content-size);
+    text-align: center;
+}
+
+.setup-form-container ::deep .setup-form-icon {
+    color: var(--isl-color-primary);
+    font-size: var(--isl-typography-h1-font-size);
 }
 
 .setup-form-width {
-    display: grid;
-    gap: var(--isl-space-3, 0.75rem);
+    inline-size: 100%;
     min-inline-size: 0;
+    text-align: start;
+}
+
+@media (max-width: 60em) {
+    .setup-page {
+        flex-direction: column;
+    }
+
+    .setup-left-panel {
+        position: relative;
+        inline-size: 100%;
+        min-block-size: 21.25rem;
+        clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
+    }
+
+    .setup-left-content {
+        padding: var(--isl-space-8);
+        padding-block-end: var(--isl-space-16);
+        max-inline-size: 100%;
+    }
+
+    .setup-right-panel {
+        inline-size: 100%;
+        min-block-size: auto;
+        margin-inline-start: 0;
+        margin-block-start: calc(var(--isl-space-14) * -1);
+        padding: var(--isl-space-8);
+        padding-block-start: var(--isl-space-6);
+        background: transparent;
+    }
+}
+
+@media (max-width: 37.5em) {
+    .setup-left-panel {
+        min-block-size: 17.5rem;
+    }
+
+    .setup-left-content {
+        padding: var(--isl-space-6);
+        padding-block-end: var(--isl-space-14);
+    }
+
+    .setup-right-panel {
+        margin-block-start: calc(var(--isl-space-10) * -1);
+        padding: var(--isl-space-6);
+        padding-block-start: var(--isl-space-4);
+    }
 }

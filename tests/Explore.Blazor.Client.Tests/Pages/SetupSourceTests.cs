@@ -24,12 +24,13 @@ public class SetupSourceTests
     }
 
     [Test]
-    public async Task Setup_ShouldProjectAccessThroughTheWorkspaceWithoutBrowserStorage()
+    public async Task Setup_ShouldRemainSplitScreenOutsideOnboardingWorkspace()
     {
         var source = await ReadSetupSourceAsync();
 
-        await Assert.That(source).Contains("<OnboardingWorkspace");
-        await Assert.That(source).Contains("AccessSteps");
+        await Assert.That(source).Contains("class=\"setup-left-panel\"");
+        await Assert.That(source).Contains("class=\"setup-right-panel\"");
+        await Assert.That(source).DoesNotContain("<OnboardingWorkspace");
         await Assert.That(source).DoesNotContain("localStorage");
         await Assert.That(source).DoesNotContain("sessionStorage");
     }
