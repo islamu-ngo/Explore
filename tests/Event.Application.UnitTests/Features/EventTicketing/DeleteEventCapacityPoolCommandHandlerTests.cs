@@ -56,6 +56,30 @@ public sealed class DeleteEventCapacityPoolCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenPublishedCatalogReferencesPoolEvenIfNewerDraftDoesNot_ReturnsValidationFailureWithoutMutation()
+    {
+        EventCapacityPool pool = CreatePool();
+        EventTicketCatalogVersion publishedCatalog = CreateDraftCatalog(1);
+        AddFreeTicket(publishedCatalog, pool);
+        publishedCatalog.Publish();
+
+        EventTicketCatalogVersion draftCatalog = CreateDraftCatalog(2);
+        AddFreeTicket(draftCatalog, null);
+        _catalogs.GetCapacityPoolByIdEventAndTenantAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
+        _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draftCatalog);
+        _catalogs.GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(publishedCatalog);
+
+        var result = await CreateHandler().Handle(
+            new DeleteEventCapacityPoolCommand { EventId = _eventId, CapacityPoolId = pool.Id },
+            CancellationToken.None);
+
+        await Assert.That(result.FailureCode).IsEqualTo("event_ticketing_validation_failed");
+        await Assert.That(pool.IsDeleted).IsFalse();
+        await _catalogs.DidNotReceive().UpdateCapacityPoolAsync(Arg.Any<EventCapacityPool>(), Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Handle_DeletesPoolWithCurrentUserAuditThenInvalidatesCache()
     {
         EventCapacityPool pool = CreatePool();
@@ -118,7 +142,7 @@ public sealed class DeleteEventCapacityPoolCommandHandlerTests
             DateTime.UtcNow)
     };
 
-    private EventTicketCatalogVersion CreateDraftCatalog() => EventTicketCatalogVersion.Create(_tenantId, _eventId, "USD", 1);
+    private EventTicketCatalogVersion CreateDraftCatalog(int versionNumber = 1) => EventTicketCatalogVersion.Create(_tenantId, _eventId, "USD", versionNumber);
 
     private EventCapacityPool CreatePool() => EventCapacityPool.Create(
         _tenantId,
@@ -129,7 +153,7 @@ public sealed class DeleteEventCapacityPoolCommandHandlerTests
         CapacityOversellPolicyEnum.Disallow,
         true);
 
-    private EventTicketType AddFreeTicket(EventTicketCatalogVersion catalog, EventCapacityPool pool)
+    private EventTicketType AddFreeTicket(EventTicketCatalogVersion catalog, EventCapacityPool? pool)
     {
         EventTicketType ticket = EventTicketType.Create(
             _tenantId,
@@ -141,7 +165,7 @@ public sealed class DeleteEventCapacityPoolCommandHandlerTests
             null,
             null,
             ParticipantDataCollectionModeEnum.None,
-            pool.Id,
+            pool?.Id,
             null,
             null,
             false,

@@ -40,11 +40,16 @@ public sealed class DeleteEventCapacityPoolCommandHandler(
             return Missing(request.CapacityPoolId);
         }
 
-        EventTicketCatalogVersion? catalog = await catalogs.GetManagementCatalogAsync(
+        EventTicketCatalogVersion? managementCatalog = await catalogs.GetManagementCatalogAsync(
             request.EventId,
             tenant.TenantId,
             cancellationToken);
-        if (catalog?.TicketTypes.Any(ticketType => !ticketType.IsDeleted && ticketType.CapacityPoolId == pool.Id) == true)
+        EventTicketCatalogVersion? publishedCatalog = await catalogs.GetPublishedCatalogAsync(
+            request.EventId,
+            tenant.TenantId,
+            cancellationToken);
+        if (managementCatalog?.TicketTypes.Any(ticketType => !ticketType.IsDeleted && ticketType.CapacityPoolId == pool.Id) == true
+            || publishedCatalog?.TicketTypes.Any(ticketType => !ticketType.IsDeleted && ticketType.CapacityPoolId == pool.Id) == true)
         {
             return Bad(pool.Id, "Capacity pool is assigned to an active ticket type.");
         }
