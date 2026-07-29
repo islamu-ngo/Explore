@@ -1,5 +1,6 @@
 // ABOUTME: Query handler returning full event details by ID or slug.
 // ABOUTME: Maps Event entity to EventDto with nested sessions and speakers.
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event;
@@ -40,6 +41,12 @@ public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequ
                 Expiration = TimeSpan.FromMinutes(5),
                 LocalCacheExpiration = TimeSpan.FromMinutes(1)
             },
+            tags:
+            [
+                CacheTags.Events,
+                CacheTags.EventDetails,
+                CacheTags.Event(request.Id)
+            ],
             cancellationToken: cancellationToken);
 
         if (eventDto is null)

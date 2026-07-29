@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event;
+using Explore.Application.Caching;
 using Explore.Application.Features.Events.Handlers.Queries;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Domain.Enums;
@@ -18,7 +19,7 @@ public class GetEventDetailsRequestHandlerTests
 {
     private readonly IEventRepository _eventRepository;
     private readonly IEventDetailsProjectionService _detailsProjectionService;
-    private readonly HybridCache _cache;
+    private readonly TestHybridCache _cache;
     private readonly GetEventDetailsRequestHandler _handler;
 
     public GetEventDetailsRequestHandlerTests()
@@ -33,6 +34,7 @@ public class GetEventDetailsRequestHandlerTests
     {
         public override ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory, HybridCacheEntryOptions? options = null, IEnumerable<string>? tags = null, CancellationToken cancellationToken = default)
         {
+            LastTags = tags?.ToArray();
             return factory(state, cancellationToken);
         }
 
@@ -50,6 +52,8 @@ public class GetEventDetailsRequestHandlerTests
         {
             return ValueTask.CompletedTask;
         }
+
+        public IReadOnlyCollection<string>? LastTags { get; private set; }
     }
 
     [Test]
@@ -88,6 +92,11 @@ public class GetEventDetailsRequestHandlerTests
         await Assert.That(result.Title).IsEqualTo("Test Event");
         await Assert.That(result.IsPubliclyEligible).IsTrue();
         await Assert.That(result.IsManagementView).IsFalse();
+        await Assert.That(_cache.LastTags).IsEquivalentTo([
+            CacheTags.Events,
+            CacheTags.EventDetails,
+            CacheTags.Event(eventId)
+        ]);
 
         await _detailsProjectionService.Received(1).BuildAsync(eventId, Arg.Any<CancellationToken>());
         await _eventRepository.Received(1).IsPubliclyEligibleAsync(eventDto.TenantId, eventId, Arg.Any<CancellationToken>());
