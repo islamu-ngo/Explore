@@ -3,9 +3,9 @@
 
 # ATProto Federation Actor Lifecycle - Context
 
-Last Updated: 2026-07-28 Europe/Brussels
+Last Updated: 2026-07-29 Europe/Brussels
 
-## SESSION PROGRESS (2026-07-28 Europe/Brussels)
+## SESSION PROGRESS (2026-07-29 Europe/Brussels)
 
 ### COMPLETED
 
@@ -33,28 +33,29 @@ Last Updated: 2026-07-28 Europe/Brussels
 - Restored the atomic bootstrap order: OAuth session encryption prepares once before retries; one serializable transaction applies onboarding and persists the prepared session per attempt; cache invalidation and JWT issuance are post-commit.
 - Corrected EF retry tracking: each serializable attempt reloads the current User and tracked personal Actor after failed-attempt tracking is cleared; a real-EF regression proves missing TenantUser creation does not reinsert either owner.
 - Added `20260728143000_ClassifyExternalUnclassifiedActors`, lookup seeder parity for ID 6, DBML/domain/federation/security documentation, and an owner/type check constraint.
-- Implemented Task 6.1 runtime behavior across global Actor moderation, exact identity moderation, creation eligibility, public Event and anonymous child eligibility, federated projection lifecycle, management detail/HAL behavior, HybridCache and output-cache invalidation, and fenced outbound publication compensation. Four reason-only POST routes select the action server-side. The slice has no schema, migration, Cerbos policy, generated-client, OpenAPI, or UI change.
+- Completed Task 6.1 implementation across global Actor moderation, exact identity moderation, creation eligibility, public Event and anonymous child eligibility, federated projection lifecycle, management detail/HAL behavior, HybridCache and output-cache invalidation, and fenced outbound publication compensation.
+- Completed review remediation: transactional grounded `PdsSyncOutbox` Delete compensation covers settled ownership and pending/processing Event mutations; exact-identity moderation is DID-scoped; soft-deleted source Events remain selectable for cleanup; central eligibility gates public Event and child projections; local echoes require exact outbound ownership plus current local eligibility; Event-detail HybridCache and five process-local output-cache tags are invalidated without a cross-replica consistency claim; and moderation metadata plus secured management child reads are present in regenerated OpenAPI/client artifacts and adopted by MCP/Blazor.
 
 ### IN PROGRESS
 
-- Task 6.1 verification and canonical documentation convergence. Runtime implementation is complete; final Phase 6 verification remains for the parent.
+- Task 6.2 global/contextual Actor reads and tenant-local subscription discoverability.
 
 ### NEXT
 
-1. Parent runs the remaining Task 6.1 and Phase 6 verification, including the final Release build and selected API project command.
-2. Start Task 6.2 global/contextual Actor reads and tenant-local subscription discoverability only after Task 6.1 verification closes.
+1. Implement Task 6.2 global/contextual Actor reads without leaking participation-private data.
+2. Preserve ActorSubscription as tenant-contextual and require local discoverability without creating presence rows.
 3. Add OrganizationTenant legitimacy evidence in Task 7.1.
 4. Finish OpenAPI/client/UI/localization/doc regeneration and architecture guardrails only in the owning later task.
 
 ### BLOCKERS
 
 - Full Phase 0 API suite cannot complete in this environment because Docker/Testcontainers cannot connect to `/var/run/docker.sock` or the Docker Desktop socket. The run reached 1470 passed and 517 infrastructure failures after all code-related failures were fixed.
-- Architecture test baseline currently has two unrelated failures recorded below; implementation must not hide them.
+- Architecture passed 320/330 with nine failures in privacy/cache registries, naming, generated-client, authorization-parity, update-inventory, and concurrent persistence/ticketing work; implementation must not hide them or claim suite success.
 - The current full Persistence run exposes 198 stale fixtures after the new required provenance FK and exact-one Actor owner constraint; focused lifecycle migration tests pass.
 - Task 5.2 PostgreSQL tests compile but Docker/Testcontainers cannot reach either configured socket.
 - Concurrent registration-data work owns current EF snapshot drift; the model probe contained only its Event participation tables/column removals.
 - Concurrent `AtprotoJetstreamRepository` work owns the current Persistence-to-Application.DTO architecture failure.
-- A concurrent `MinorUnitMath` edit currently blocks the repository build with CS9135 before Task 5.2; the affected Application and Persistence projects compile against the last green Domain binary.
+- A concurrent `MinorUnitMath` edit previously blocked the repository build with CS9135 before Task 5.2; the affected Application and Persistence projects compiled against the last green Domain binary. The current canonical Release build passes with 0 errors.
 
 ## Quick Resume
 
@@ -69,9 +70,9 @@ Last Updated: 2026-07-28 Europe/Brussels
 |---|---|
 | Overall status | Implementation in progress |
 | Completed implementation tasks | 11/14 |
-| Current priority | Task 6.1 verification |
+| Current priority | Task 6.2 global/contextual Actor reads |
 | Runtime implementation | Phases 0-5 and Task 6.1 complete |
-| Verification | Task 6.1 focused evidence passes; final Phase 6 build/API verification remains parent-owned; PostgreSQL projection and eligibility execution is Docker-blocked |
+| Verification | Task 6.1 Release build and focused lanes pass; public eligibility 3/3 passed in the full Persistence run; PostgreSQL is Docker-blocked; final architecture is 320/330 with the same nine recorded failures; direct review passed |
 
 ## Core Model
 
@@ -132,7 +133,7 @@ Last Updated: 2026-07-28 Europe/Brussels
 - Task 5.1 validation: repository-wide Release build passed with 0 errors; focused Application classification tests 9/9, BFF binding/bridge tests 18/18, API JWT tests 6/6, Infrastructure OAuth gateway tests 12/12, Clean Architecture tests 15/15, and PostgreSQL baseline guards 4/4 passed.
 - Task 5.1 migration validation: `dotnet ef migrations has-pending-model-changes` reported no changes; the idempotent SQL widens provider keys, checks duplicates, creates the filtered unique index, and writes migration history in one transaction. The PostgreSQL test accepts a 2,048-character key and rejects the same provider/key in another tenant.
 - Task 5.2 validation: Application 17/17, EF retry tracking 1/1, BFF 20/20, Infrastructure 13/13, lifecycle architecture 4/4, diagnostics and diff checks clean, boundary API/Persistence/canonical Release builds 0 errors, migration discovered, idempotent SQL reviewed, and final Oracle review passed. The focused PostgreSQL suite compiled but its two tests could not start without Docker; a later concurrent `MinorUnitMath` edit now blocks a fresh repository build before Task 5.2.
-- Task 6.1 focused evidence: Domain Actor 17/17 and identity 5/5; moderation handlers 13/13; moderation API 15/15; creation eligibility 33/33; deterministic public eligibility matrix and child tests 3/3; projection persistence 2/2 in-memory; discovery/source Application 18/18 and API discovery 12/12; detail handlers 11/11; Event HAL 22/22; planner 49/49; PDS 5/5; RSVP 10/10. PostgreSQL projection and eligibility matrices compile but cannot execute without Docker. Recent slice Release builds passed, but later concurrent ticketing drift has intermittently blocked broad builds, so final canonical verification is not claimed.
+- Task 6.1 validation: canonical Release build passed with 0 errors; pre-existing package advisory warnings remain. Moderation compensation passed 17/17, public actions 10/10, local echo 3/3, Actor moderation API 9/9, cache invalidation 1/1, public eligibility 3/3, publication planning 49/49, managed child Application/API/Blazor lanes, and management collection HAL 23/23. The full Persistence run confirmed all three in-memory eligibility tests before 597 Docker/Testcontainers failures. Final architecture verification remained 320/330 with the same nine recorded non-runtime failures. Direct review passed after separating managed and public requests into one-request-per-handler classes; the remediation build, Application 4/4, API 2/2, diagnostics, conflict scan, and diff check passed.
 
 ## Risks
 
@@ -147,10 +148,10 @@ Last Updated: 2026-07-28 Europe/Brussels
 
 ### Handoff - 2026-07-28 Europe/Brussels
 
-- **Current state:** Phases 0-5 and Task 6.1 runtime are implemented; 11/14 tasks complete. Phase 6 verification remains open.
-- **Next action:** Parent runs final Task 6.1 verification, then Task 6.2 is next. Do not mark Phase 6 complete before that verification.
-- **Blockers:** Docker-blocked PostgreSQL projection/eligibility execution, 198 stale Persistence fixtures, concurrent registration/ticketing model drift, and intermittent broad-build drift owned by other workstreams.
+- **Current state:** Phases 0-5 and Task 6.1 are complete; 11/14 tasks complete. Task 6.2 is active.
+- **Next action:** Implement global/contextual Actor reads and tenant-local subscription discoverability without global follow or presence semantics.
+- **Blockers:** Docker-blocked PostgreSQL execution, architecture 320/330 with nine unrelated failures, 198 stale Persistence fixtures, and concurrent registration/ticketing model drift owned by other workstreams.
 - **Modified files:** Runtime, persistence, migrations, tests, schema, and this active workstream; preserve unrelated dirty changes.
-- **Validation:** Task 5.2 boundary Release build 0 errors; Application 17/17, EF retry tracking 1/1, BFF 20/20, Infrastructure 13/13, lifecycle architecture 4/4; final Oracle PASS; idempotent migration SQL reviewed.
-- **Documentation impact:** Domain, Authorization, Security Model, Federation, API, API Changelog, Multi-Tenancy, Admin Hierarchy, and this active workstream describe Task 6.1. No generated inventory, schema, OpenAPI, client, or UI artifact changed.
+- **Validation:** Task 5.2 evidence remains unchanged. Task 6.1 Release build passed with 0 errors; moderation compensation 17/17, public actions 10/10, local echo 3/3, Actor moderation API 9/9, cache invalidation 1/1, public eligibility 3/3, publication planning 49/49, managed child lanes, and management HAL passed. Final direct review and its remediation checks passed. PostgreSQL is Docker-blocked; architecture retains the same nine recorded failures.
+- **Documentation impact:** Federation, API Changelog, and this active workstream record Task 6.1 behavior. OpenAPI and the generated client were regenerated for moderation metadata and management child reads; MCP and Blazor adopted those secured reads. No schema, migration, or Cerbos policy changed.
 - **Notes:** Never reintroduce tenant Actor or ActorTenantPresence. Do not merge Organizations/Groups by name. Preserve predecessor federation infrastructure.

@@ -3,14 +3,14 @@
 
 # ATProto Federation Actor Lifecycle - Task Checklist
 
-Last Updated: 2026-07-28 Europe/Brussels
+Last Updated: 2026-07-29 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Implementation in progress; Phases 0-5 and Task 6.1 runtime are implemented. Phase 6 verification, contextual reads, evidence, and final contract convergence remain.
+- **Overall status:** Implementation in progress; Phases 0-5 and Task 6.1 are complete. Contextual reads, evidence, and final contract convergence remain in Tasks 6.2 and 7.
 - **Completed:** 11/14 implementation tasks. Phase verification is tracked separately.
-- **Current priority:** Complete parent-owned Task 6.1 and Phase 6 verification without overstating current build status.
-- **Next recommended slice:** Run the final Phase 6 verification, then start Task 6.2 global/contextual Actor reads and tenant-local subscription discoverability.
+- **Current priority:** Start Task 6.2 global/contextual Actor reads and tenant-local subscription discoverability.
+- **Next recommended slice:** Implement the smallest safe global/contextual Actor read contract without adding a presence row or global-follow semantics.
 
 ## Maintenance Rules
 
@@ -139,10 +139,12 @@ Last Updated: 2026-07-28 Europe/Brussels
 - [x] **6.1 Implement four-level moderation and participation-aware Event authorization**
   - **Files:** Actor/identity/tenant moderation entities and commands, EventActorResolver, federation policy, public specifications, authorization/HAL/API tests/docs.
   - **Acceptance:** Actor is instance-global; identity is credential-global; tenant admin affects only participation/federation policy; Event remains content-local; public reads compose every applicable level.
-  - **Implementation evidence:** Instance-admin-only Actor and exact identity moderation use `global-actor-moderation`, append immutable records only on real transitions, preserve identity `IsActive`, and invalidate HybridCache/output-cache public data. Creation and public eligibility are separate. Anonymous child reads inherit parent eligibility. Inbound projection lifecycle, management `view-management`/HAL behavior, and outbound grounded compensation are implemented. RSVP is unchanged.
-  - **Contract evidence:** Four reason-only POST routes select Suspend or Reinstate server-side. No schema, migration, Cerbos policy, OpenAPI, generated-client, or Blazor change is part of Task 6.1.
-  - **Focused runnable evidence:** Domain Actor 17/17 and identity 5/5; moderation handlers 13/13; moderation API 15/15; creation eligibility 33/33; deterministic public eligibility matrix/child tests 3/3; projection persistence 2/2 in-memory; discovery/source Application 18/18 and API discovery 12/12; detail handlers 11/11; Event HAL 22/22; planner 49/49; PDS 5/5; RSVP 10/10.
-  - **Blocked evidence:** PostgreSQL projection and eligibility matrices compile but cannot execute while Docker is unavailable.
+  - **Implementation evidence:** Instance-admin-only Actor and exact identity moderation use `global-actor-moderation`, append immutable records only on real transitions, preserve identity `IsActive`, and invalidate public caches. Grounded `PdsSyncOutbox` work transactionally compensates settled and unsettled Event mutations with a fenced Delete after Actor or exact-DID suspension; exact-identity reconciliation is DID-scoped, and soft-deleted source Events remain selectable for cleanup. Central eligibility gates all public Event and child projections before disclosure, counting, or pagination. Local echoes require exact outbound ownership plus current local eligibility. RSVP is unchanged.
+  - **Cache evidence:** Moderation evicts tagged Event-detail HybridCache entries plus `event-discovery`, `public-home-discovery`, `list-data`, `detail-data`, and `seo-sitemap` from the process-local output-cache store. This does not prove cross-replica consistency.
+  - **Contract evidence:** Four reason-only POST routes select Suspend or Reinstate server-side, declare `WritePolicy` and typed `429` metadata, and are present in regenerated OpenAPI and generated-client artifacts. Dedicated authenticated management routes for Event days, session languages, Islamic aspects, and Tech aspects preserve management access without weakening public reads. MCP and Blazor use those generated operations, and management Event collections emit management-specific HAL. No schema, migration, or Cerbos policy change is part of Task 6.1.
+  - **Focused runnable evidence:** Moderation compensation 17/17, public actions 10/10, local echo 3/3, Actor moderation API 9/9, cache invalidation 1/1, public eligibility 3/3, publication planning 49/49, managed child Application/API/Blazor lanes, and management collection HAL 23/23 passed. The full Persistence run confirmed the three in-memory eligibility tests before 597 Docker/Testcontainers startup failures.
+  - **Review:** Final direct code/security review passed after splitting public and managed requests into one-request-per-handler classes. The remediation Release build, focused Application 4/4, focused API 2/2, diagnostics, conflict scan, and `git diff --check` passed.
+  - **Blocked/unrelated evidence:** The PostgreSQL Docker lane cannot execute. Final architecture verification remained 320/330 with the same nine failures attributable to existing privacy/cache registries, naming, generated-client, authorization-parity, update-inventory, and concurrent persistence/ticketing work. Pre-existing package advisory warnings remain.
   - **Effort:** XL.
   - **Dependencies:** 5.2.
 
@@ -153,8 +155,10 @@ Last Updated: 2026-07-28 Europe/Brussels
   - **Dependencies:** 6.1.
 
 ### Phase 6 Verification - RUN ONCE
-- [ ] `dotnet build --configuration Release --verbosity quiet` - parent final run pending. Recent slices passed, but later concurrent ticketing drift has intermittently blocked broad builds.
-- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` - parent final run pending; Docker-backed PostgreSQL matrices remain environment-blocked.
+- [x] `dotnet build --configuration Release --verbosity quiet` - 0 errors; package advisory warnings are pre-existing.
+- [x] Focused Event API moderation command - 9/9 passed.
+- [x] Focused Event API cache command - 1/1 passed.
+- [x] Final direct review - passed after one-request-per-handler remediation. PostgreSQL remains Docker-blocked; architecture is 320/330 with the same nine failures outside the Task 6.1 runtime changes.
 
 ## Phase 7: Evidence, UI, Contracts, Canonical Docs - NOT STARTED
 
