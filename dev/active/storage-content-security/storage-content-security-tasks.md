@@ -7,12 +7,14 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 ## Status
 
-- Overall: implementation active; Waves 1 and 2 plus SCS-300 through SCS-330 are independently confirmed.
-- Completed: 15 of 30 implementation tasks.
-- Current phase: Phase 4 — BFF and browser image UX; SCS-340 regeneration follows caller removal.
-- Current task: `SCS-410`.
-- Approval blocker: legacy route removal in `SCS-320` requires plan acceptance.
-- Runtime blocker: unknown until the Phase 6 container-runtime preflight.
+- Overall: implementation active; Waves 1 through 7 are independently confirmed.
+- Completed: 28 of 30 implementation tasks.
+- Current phase: Final review and completion closeout.
+- Current task: `SCS-730`.
+- Approval blocker: none; the approved pre-v1 legacy route removal and contract regeneration are complete.
+- Runtime blocker: none for the storage-security scope; the expanded Wave 6 B1
+  PostgreSQL selectors pass. Broad Release/Persistence gates remain unaccepted
+  because of unrelated concurrent pricing/schema failures.
 - Review status: not started; no final SHA is pinned.
 
 ## Maintenance Rules
@@ -241,23 +243,33 @@ plus the independently reviewed working-tree test/API compile-consumer fixes:
 
 ### SCS-340 — Contract/docs regeneration
 
-- [ ] Regenerate the canonical OpenAPI schema.
-- [ ] Regenerate `EventApiClient.g.cs`.
-- [ ] Update `docs/API.md`.
-- [ ] Update `docs/API_CHANGELOG.md`.
-- [ ] Update `docs/API_CONTRACT_INVENTORY.md`.
-- [ ] Confirm no stale legacy operation/client methods remain.
+- [x] Regenerate the canonical OpenAPI schema.
+- [x] Regenerate `EventApiClient.g.cs`.
+- [x] Update `docs/API.md`.
+- [x] Update `docs/API_CHANGELOG.md`.
+- [x] Update `docs/API_CONTRACT_INVENTORY.md`.
+- [x] Confirm no stale legacy operation/client methods remain.
 
 ### Phase 3 gate
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
-- [ ] Record nonzero counts, SHA, warnings/failures, and evidence.
+- [x] Record nonzero counts, SHA, warnings/failures, and evidence.
 
 Evidence:
 
 ```text
-Pending.
+SCS-340 is independently confirmed at reviewer-observed SHA
+`bb84ad7a128668570655c88c9d28ea7cdb9fd833`: Release build 26 projects,
+0 errors; focused API/HAL/upload-session selectors 27/27, 8/8, and 16/16;
+497 paths, 644 unique operations, 644 inventory rows; zero legacy storage
+operations, DTOs, client methods, or fallbacks. The cumulative full API gate
+remains not accepted: 1,570/2,113 passed and 543 pre-existing/shared failures
+remain, with zero new failure names and zero storage-focused failures.
+
+Evidence:
+`.omo/evidence/storage-content-security/wave3/contracts/DONE_CLAIM.md` and
+`.omo/evidence/storage-content-security/wave3/contracts/ADVERSARIAL_VERIFY.md`.
 ```
 
 ## Phase 4 — BFF and Browser Image UX
@@ -272,164 +284,236 @@ Pending.
 
 ### SCS-410 — Persistent UI upload convergence
 
-- [ ] Confirm Event images use `ImageUploadClientPolicy` and BFF sessions only.
-- [ ] Confirm User profile pictures use the same path.
-- [ ] Confirm Organization logos use the same path.
-- [ ] Remove reachable direct-upload URL fallback.
-- [ ] Remove reachable caller-authored storage-record fallback.
-- [ ] Preserve preview, size, cancellation, and user-safe errors.
+- [x] Confirm Event images use `ImageUploadClientPolicy` and BFF sessions only.
+- [x] Confirm User profile pictures use the same path.
+- [x] Confirm Organization logos use the same path.
+- [x] Remove reachable direct-upload URL fallback.
+- [x] Remove reachable caller-authored storage-record fallback.
+- [x] Preserve preview, size, cancellation, and user-safe errors.
 
 ### SCS-420 — AI composer UX
 
-- [ ] Restrict accept list to JPEG/PNG/GIF/WebP.
-- [ ] Remove BMP/SVG inference.
-- [ ] Compare detected byte signature with declared/extension MIME after reading.
-- [ ] Preserve max count and max bytes.
-- [ ] Add bUnit negative and positive controls.
+- [x] Restrict accept list to JPEG/PNG/GIF/WebP.
+- [x] Remove BMP/SVG inference.
+- [x] Compare detected byte signature with declared/extension MIME after reading.
+- [x] Preserve max count and max bytes.
+- [x] Add bUnit negative and positive controls.
 
 ### SCS-430 — BFF/client docs and tests
 
-- [ ] Update BFF integration tests.
-- [ ] Update affected Blazor client/bUnit tests.
-- [ ] Update `docs/BLAZOR.md`.
+- [x] Update BFF integration tests.
+- [x] Update affected Blazor client/bUnit tests.
+- [x] Update `docs/BLAZOR.md`.
 
 ### Phase 4 gate
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet`
-- [ ] Record nonzero counts, SHA, warnings/failures, and evidence.
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [x] Record nonzero counts, SHA, warnings/failures, and evidence.
 
 ### Phase 4 cumulative client gate
 
 - [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
-- [ ] Record nonzero counts, SHA, warnings/failures, and evidence.
+- [x] Record nonzero counts, SHA, warnings/failures, and evidence.
 
 Evidence:
 
 ```text
-Pending.
+SCS-410, SCS-420, and SCS-430 are independently confirmed at SHA
+`d6ac21497d104b3b7842c8bc09f181166f9cbfc3`. The final residual
+`DirectStorageUploadMessageHandler`/`StorageHttpClientNames.DirectUpload`
+transport and both DI registrations were removed; exact legacy browser-path
+scans return zero. Release build passed with 0 errors; reader 20/20, AI 32/32,
+upload 4/4, storage 12/12, focused BFF 37/37, and full BFF 398/398 passed.
+The full client gate remains unaccepted with 2 named unrelated failures:
+2,231 passed, 2 failed, and 1 governed skip. Canonical browser evidence
+contains 15 PNGs, 15 accessibility snapshots, and 15 zero-error console logs;
+both independent final visual reviews passed.
+
+Evidence:
+`.omo/evidence/storage-content-security/wave4/third-stop-verification/VERIFICATION.md`,
+`.omo/evidence/storage-content-security/wave4/ADVERSARIAL_VERIFY.md`,
+`.omo/evidence/storage-content-security/wave4/VISUAL_PASS_A_FINAL.md`, and
+`.omo/evidence/storage-content-security/wave4/VISUAL_PASS_B_FINAL.md`.
 ```
 
 ## Phase 5 — ATProto Gateway Reuse
 
 ### SCS-500 — Shared policy integration
 
-- [ ] Make gateway MIME checks call the Application policy.
-- [ ] Make gateway container checks call the Application policy.
-- [ ] Retain AVIF for ATProto.
-- [ ] Retain candidate, response, CID, and size binding.
+- [x] Make gateway MIME checks call the Application policy.
+- [x] Make gateway container checks call the Application policy.
+- [x] Retain AVIF for ATProto.
+- [x] Retain candidate, response, CID, and size binding.
 
 ### SCS-510 — Remove parser duplication safely
 
-- [ ] Delete moved private MIME/container parser code.
-- [ ] Preserve DID/PDS resolution and SSRF protections.
-- [ ] Preserve redirect/DNS pinning behavior.
-- [ ] Preserve bounded response and timeout behavior.
-- [ ] Preserve cancellation propagation and staged cleanup.
-- [ ] Preserve optional-thumbnail fail-soft behavior.
+- [x] Delete moved private MIME/container parser code.
+- [x] Preserve DID/PDS resolution and SSRF protections.
+- [x] Preserve redirect/DNS pinning behavior.
+- [x] Preserve bounded response and timeout behavior.
+- [x] Preserve cancellation propagation and staged cleanup.
+- [x] Preserve optional-thumbnail fail-soft behavior.
 
 ### SCS-520 — Federation tests/docs
 
-- [ ] Add valid animated WebP.
-- [ ] Rerun safe five-format matrix.
-- [ ] Rerun MIME parameter/mismatch/truncation/active-tail matrix.
-- [ ] Prove zero writes on rejection.
-- [ ] Update `docs/FEDERATION.md`.
+- [x] Add valid animated WebP.
+- [x] Rerun safe five-format matrix.
+- [x] Rerun MIME parameter/mismatch/truncation/active-tail matrix.
+- [x] Prove zero writes on rejection.
+- [x] Update `docs/FEDERATION.md`.
 
 ### Phase 5 gate
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet`
-- [ ] Record nonzero counts, SHA, warnings/failures, and evidence.
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet`
+- [x] Record nonzero counts, SHA, warnings/failures, and evidence.
 
 Evidence:
 
 ```text
-Pending.
+SCS-500, SCS-510, and SCS-520 are independently confirmed at SHA
+`d6ac21497d104b3b7842c8bc09f181166f9cbfc3`. The gateway contains
+exactly three shared-policy calls and zero private raster parser hits.
+Gateway tests passed 50/50; full fast Infrastructure passed 1,151/1,151;
+the Application-to-Infrastructure architecture selector passed 1/1; Release
+build passed with 0 errors. The safe matrix includes progressive JPEG, PNG,
+GIF, still and independently decoded two-frame animated WebP, and AVIF.
+Parameterized/mismatched MIME, relabeled SVG, truncation, per-format active
+tails, CID/size mismatch, and provider failure all retain zero-write/cleanup
+proof while SSRF, redirect/DNS, bounded-read, timeout, cancellation, and DID/PDS
+binding remain Infrastructure-owned.
+
+Evidence:
+`.omo/evidence/storage-content-security/wave5/DONE_CLAIM.md` and
+`.omo/evidence/storage-content-security/wave5/ADVERSARIAL_VERIFY.md`.
 ```
 
 ## Phase 6 — PostgreSQL Materialization and Record Preservation
 
 ### SCS-600 — Persistence materialization policy
 
-- [ ] Reuse shared MIME-to-extension mapping.
-- [ ] Remove SVG/unknown image extension fallback.
-- [ ] Recheck staged provider result against thumbnail metadata.
-- [ ] Require safe public-image metadata before adding `StorageObject`.
-- [ ] Leave canonical import successful when optional image is rejected.
+- [x] Reuse shared MIME-to-extension mapping.
+- [x] Remove SVG/unknown image extension fallback.
+- [x] Recheck staged provider result against thumbnail metadata.
+- [x] Require safe public-image metadata before adding `StorageObject`.
+- [x] Leave canonical import successful when optional image is rejected.
 
 ### SCS-610 — PostgreSQL matrix
 
-- [ ] Safe JPEG materializes and links.
-- [ ] Safe PNG materializes and links.
-- [ ] Safe GIF materializes and links.
-- [ ] Safe still/animated WebP materializes and links.
-- [ ] Safe AVIF materializes and links.
-- [ ] Relabeled SVG is not stored/linked.
-- [ ] Truncated/active-tail content is not stored/linked.
-- [ ] Original `AtprotoRecord.RecordJson` deep-equals producer JSON.
-- [ ] Imported Event/EventSession relationships remain correct.
-- [ ] Rejected thumbnail leaves zero unsafe `StorageObject` rows.
+- [x] Safe JPEG materializes and links.
+- [x] Safe PNG materializes and links.
+- [x] Safe GIF materializes and links.
+- [x] Safe still/animated WebP materializes and links.
+- [x] Safe AVIF materializes and links.
+- [x] Relabeled SVG is not stored/linked.
+- [x] Truncated/active-tail content is not stored/linked.
+- [x] Original `AtprotoRecord.RecordJson` deep-equals producer JSON.
+- [x] Imported Event/EventSession relationships remain correct.
+- [x] Rejected thumbnail leaves zero unsafe `StorageObject` rows.
 
 ### SCS-620 — Container runtime evidence
 
-- [ ] Preflight the supported Docker/Podman runtime.
-- [ ] Run the project gate through existing Testcontainers fixtures.
-- [ ] Record nonzero counts and TRX/log evidence.
-- [ ] Confirm no test container remains.
-- [ ] Do not remove shared containers, databases, volumes, or backups.
+- [x] Preflight the supported Docker/Podman runtime.
+- [x] Run the project gate through existing Testcontainers fixtures.
+- [x] Record nonzero counts and TRX/log evidence.
+- [x] Confirm no test container remains.
+- [x] Do not remove shared containers, databases, volumes, or backups.
 
 ### Phase 6 gate
 
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
-- [ ] Record nonzero counts, SHA, warnings/failures, and evidence.
+- [x] Record nonzero counts, SHA, warnings/failures, and evidence.
 
 Evidence:
 
 ```text
-Pending.
+SCS-600, SCS-610, and SCS-620 are independently confirmed at SHA
+`d6ac21497d104b3b7842c8bc09f181166f9cbfc3`. Fresh PostgreSQL results:
+staged adversarial 10/10, cleanup 5/5, handler surface 9/9, safe metadata
+5/5, replacement/replay 1/1, and architecture 7/7. Accepted JPEG, PNG,
+GIF, still/animated WebP, and AVIF materialize and link; SVG, parameterized
+or mismatched MIME, truncation/active tails, size/checksum/CID mismatch, and
+blank/whitespace provider/object key preserve exact `RecordJson` and the
+Event/EventSession graph with zero unsafe row/link/outbox effects. Rejected
+stages are cleaned exactly once. No owned container/process/temp directory
+remains. Broad Release and full Persistence gates remain explicitly
+unaccepted due unrelated concurrent pricing/schema failures.
+
+Evidence:
+`.omo/evidence/storage-content-security/wave6/DONE_CLAIM.md`,
+`.omo/evidence/storage-content-security/wave6/ADVERSARIAL_VERIFY.md`, and
+`.omo/evidence/storage-content-security/wave6/ADVERSARIAL_VERIFY_FINAL.md`.
 ```
 
 ## Phase 7 — Cleanup, Architecture, and Completion
 
 ### SCS-700 — Delete dead legacy code
 
-- [ ] Delete unused direct-upload commands/handlers/DTOs.
-- [ ] Delete obsolete mapping/serialization registrations.
-- [ ] Delete obsolete direct image upload/record client methods/classes.
-- [ ] Delete stale generated-client operations through regeneration, not manual generated-file surgery.
-- [ ] Delete obsolete tests only when their production surface is removed; retain/replace security assertions.
-- [ ] Confirm provider services still used by safe server-owned operations remain.
+- [x] Delete unused direct-upload commands/handlers/DTOs.
+- [x] Delete obsolete mapping/serialization registrations.
+- [x] Delete obsolete direct image upload/record client methods/classes.
+- [x] Delete stale generated-client operations through regeneration, not manual generated-file surgery.
+- [x] Delete obsolete tests only when their production surface is removed; retain/replace security assertions.
+- [x] Confirm provider services still used by safe server-owned operations remain.
 
 ### SCS-710 — Architecture regression
 
-- [ ] Assert no direct provider-upload URL API operation exists.
-- [ ] Assert no caller-authored active storage-metadata create API exists.
-- [ ] Assert Infrastructure consumes the Application raster policy.
-- [ ] Assert browser storage writes remain upload-session based.
-- [ ] Assert no second production container parser remains.
+- [x] Assert no direct provider-upload URL API operation exists.
+- [x] Assert no caller-authored active storage-metadata create API exists.
+- [x] Assert Infrastructure consumes the Application raster policy.
+- [x] Assert browser storage writes remain upload-session based.
+- [x] Assert no second production container parser remains.
 
 ### SCS-720 — Docs and ledgers
 
-- [ ] Reconcile plan/context/tasks.
-- [ ] Add completion cross-reference to ATProto plan/context/tasks.
-- [ ] Reconcile API/BLAZOR/FEDERATION/SECURITY docs.
-- [ ] Reconcile OpenAPI/generated client.
-- [ ] Append task/gate events to `.omo/start-work/ledger.jsonl`.
-- [ ] Leave completion status pending final review.
-- [ ] Do not rewrite historical ledger lines/evidence.
+- [x] Reconcile plan/context/tasks.
+- [x] Add completion cross-reference to the logical archived ATProto plan/context/tasks.
+- [x] Reconcile API/BLAZOR/FEDERATION/SECURITY docs.
+- [x] Reconcile OpenAPI/generated client.
+- [x] Append task/gate events to `.omo/start-work/ledger.jsonl`.
+- [x] Leave completion status pending final review.
+- [x] Do not rewrite historical ledger lines/evidence.
 
 ### Phase 7 gate
 
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
-- [ ] Record nonzero counts, SHA, warnings/failures, and evidence.
+- [x] Record nonzero counts, SHA, warnings/failures, and evidence.
 
 Evidence:
 
 ```text
-Pending.
+SCS-700 and SCS-710 are independently confirmed at SHA
+`d6ac21497d104b3b7842c8bc09f181166f9cbfc3`. Deletion audit found no
+reachable legacy production artifact. Six bounded architecture checks passed
+6/6 twice and cover OpenAPI/generated/source absence, shared policy ownership
+with no Infrastructure parser, upload-session-only browser mutation, static
+SVG presentation outside upload allowlists, and retained safe server-owned
+download/finalize/delete/reconcile operations. Full Architecture remains
+unaccepted at 329 passed, 9 unrelated failed, 1 governed skip; Release build
+remains unaccepted with 8 unrelated pricing/federation errors.
+
+Evidence:
+`.omo/evidence/storage-content-security/wave7/cleanup-architecture/DONE_CLAIM.md`
+and
+`.omo/evidence/storage-content-security/wave7/cleanup-architecture/ADVERSARIAL_VERIFY.md`.
+
+SCS-720 is independently confirmed at the same observed SHA. OpenAPI and
+inventory contain the same 644 operation IDs, zero legacy storage operations,
+and all ten retained storage operations; the generated client remains
+deterministic. API, Blazor, Federation, Security, and logical archived ATProto
+progress docs agree on the single policy, browser/server format split,
+exact-EOF guarantee, static SVG distinction, delivery modes, staged CID
+validation, and exact `RecordJson` preservation. Focused architecture passed
+6/6. The append-only ledger contains a reviewed SCS-720 gate-ready event;
+completion remains pending SCS-730/SCS-740.
+
+Evidence:
+`.omo/evidence/storage-content-security/wave7/docs/DONE_CLAIM.md`,
+`.omo/evidence/storage-content-security/wave7/docs/ADVERSARIAL_VERIFY.md`, and
+`.omo/evidence/storage-content-security/wave7/docs/ADVERSARIAL_VERIFY_FINAL.md`.
 ```
 
 ## Final Review and Completion Closeout

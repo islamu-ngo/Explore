@@ -7,13 +7,18 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 ## Current Status
 
-- Implementation is active under `.omo/plans/storage-content-security.md`; Waves 1 and 2 plus SCS-300 through SCS-330 are independently confirmed.
-- Next task: `SCS-400` exact BFF/browser raster policy; SCS-340 regeneration follows removal of generated client callers.
-- Approval checkpoint: accepting the plan authorizes the pre-v1 removal of
-  `POST /api/storageobject/generate-upload-url` and `POST /api/storageobject`.
+- Implementation is active under `.omo/plans/storage-content-security.md`; Waves 1 through 6 plus SCS-700/SCS-710 are independently confirmed.
+- Next task: `SCS-730` final review wave; documentation/contracts are independently reconciled and PostgreSQL materialization consumes the shared policy, binds staged metadata/CID, preserves canonical records, and cleans rejected optional thumbnails.
+- The approved pre-v1 removal of `POST /api/storageobject/generate-upload-url`
+  and `POST /api/storageobject` is complete across API, HAL, OpenAPI, generated
+  client, and documentation surfaces.
 - No matching active/paused workstream currently owns platform-wide storage content safety.
 - The repository has unrelated dirty Event/Actor/Studio/API/docs changes. Implementation must record and preserve them.
 - The implementation graph retry resolved the intended seam but reported a stale index (`2de073f...` versus baseline `2f0426e...`); narrow repository inspection remains the authoritative fallback.
+- Wave 6 final independent review is approved after direct empty/whitespace
+  provider/object-key PostgreSQL regressions passed 10/10 twice and cleanup
+  passed 5/5. Broad Release and full Persistence projects remain red from
+  unrelated concurrent pricing/schema work and are not claimed as passing.
 
 ## Contract Classification
 
@@ -279,11 +284,9 @@ Final reviews are invalidated by any later code/doc commit. Every lane must reco
 
 ## Handoff
 
-Continue with Phase 4, then close Phase 3:
+Execute final review and closeout:
 
-1. restrict BFF upload sessions/proxy and browser readers to exact JPEG/PNG/GIF/WebP plus matching extensions;
-2. remove every reachable browser direct-upload/caller-authored metadata fallback;
-3. restrict the AI composer before base64/network work;
-4. complete real browser and visual QA on Event/User/Organization/AI upload surfaces;
-5. regenerate OpenAPI/client contracts and API docs after generated callers are gone;
-6. rerun the cumulative Phase 3 and Phase 4 gates.
+1. pin the final review SHA/content manifest after concurrent runtime/contract edits settle;
+2. run five independent review lanes plus the runtime-debugging audit;
+3. rerun cumulative build/project gates and classify every remaining failure;
+4. update append-only completion evidence and Boulder only if every required gate approves.
