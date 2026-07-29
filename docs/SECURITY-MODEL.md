@@ -115,7 +115,7 @@ Only an authenticated instance administrator can suspend or reinstate a global A
 
 Actor suspension blocks the represented subject instance-wide. Identity suspension blocks only that exact DID credential instance-wide. Identity reinstatement clears moderation state without changing `IsActive`, because verified credential activity and moderation are independent facts. Real suspend and reinstate transitions append immutable moderation records. Same-state retries are successful no-ops and append nothing.
 
-Every accepted moderation request invalidates Event list, detail, and discovery data in both `HybridCache` and ASP.NET Core output-cache tags. This prevents a previously eligible Event from remaining public after Actor or identity moderation. The public query still rechecks current Actor, participation, presentation, record, and exact DID identity state, so cache invalidation is not the authorization boundary.
+Every accepted moderation request invalidates Event list, detail, and discovery data in both `HybridCache` and the ASP.NET Core output-cache tags on the handling replica. The default output-cache store is process-local; `HybridCache`/`IDistributedCache` does not distribute output-cache tag eviction, so other replicas may serve stale discovery, detail, home, or sitemap output until the policy TTL expires. Cross-replica output-cache invalidation is deferred. The public query still rechecks current Actor, participation, presentation, record, and exact DID identity state, so cache invalidation is not the authorization boundary.
 
 ## Auth Diagnostic Safety
 

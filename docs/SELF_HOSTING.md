@@ -137,7 +137,7 @@ Goal: lowest maintenance footprint for one operator/environment.
 - **Optional services to add only if needed:** `storage`, `authz`, `webhooks`, `localization`, `moderation`, `osprey`.
 
 Environment posture:
-- Keep Redis optional unless you need shared cache/sessions across replicas.
+- Keep Redis optional unless you need shared HybridCache L2/state or sessions across replicas. Redis does not distribute ASP.NET Core output-cache entries or tag eviction: immediate invalidation is guaranteed only on the handling replica, while other replicas may serve stale output until the policy TTL expires. Cross-replica output-cache invalidation is deferred without a dedicated dependency.
 - Keep `reporting` in local fallback posture (`REPORTING_MODE` should stay `LocalOnly` for this profile).
 - Keep MCP mapped by default; override only if the operator intentionally does not want `/mcp`.
 
