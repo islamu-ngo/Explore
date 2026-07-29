@@ -8,6 +8,7 @@ using Explore.API.Hateoas;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventDay;
 using Explore.Application.Features.EventDays.Requests.Commands;
+using Explore.Application.Features.EventDays.Requests.Queries;
 using Explore.Application.Models.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -18,6 +19,22 @@ namespace Event.Api.IntegrationTests.Features;
 
 public class EventDayControllerTests
 {
+    [Test]
+    public async Task ManagedReadRoute_UsesAuthenticatedViewManagementContract()
+    {
+        var action = typeof(EventDayController).GetMethod(nameof(EventDayController.GetManagedByEvent))!;
+        var route = action.GetCustomAttribute<HttpGetAttribute>()!;
+        var authorization = typeof(GetManagedEventDaysByEventRequest)
+            .GetCustomAttribute<AuthorizeResourceAttribute>()!;
+
+        await Assert.That(route.Template).IsEqualTo("management/by-event/{eventId:guid}");
+        await Assert.That(route.Name).IsEqualTo(RouteNames.GetManagedEventDaysByEvent);
+        await Assert.That(action.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        await Assert.That(action.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull();
+        await Assert.That(authorization.Resource).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(authorization.Action).IsEqualTo(AuthorizationActions.Events.ViewManagement);
+    }
+
     [Test]
     public async Task UpdateRoute_UsesPatchRouteIdAuthoritativeContract()
     {

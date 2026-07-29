@@ -19,11 +19,13 @@ public class EventDayService : IEventDayService
         _logger = logger;
     }
 
-    public async Task<ICollection<EventDayListDto>> GetDaysByEventAsync(Guid eventId)
+    public async Task<ICollection<EventDayListDto>> GetDaysByEventAsync(Guid eventId, bool includeManaged = false)
     {
         try
         {
-            var result = await _client.GetEventDaysByEventAsync(eventId);
+            var result = includeManaged
+                ? await _client.GetManagedEventDaysByEventAsync(eventId)
+                : await _client.GetEventDaysByEventAsync(eventId);
             return result?.GetItems() ?? new List<EventDayListDto>();
         }
         catch (Exception ex)

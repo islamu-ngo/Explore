@@ -37,6 +37,31 @@ public class EventDayServiceTests
     }
 
     [Test]
+    public async Task GetDaysByEventAsync_UsesManagedRoute_WhenRequested()
+    {
+        var eventId = Guid.NewGuid();
+        _apiClient.GetManagedEventDaysByEventAsync(
+                eventId,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(CreateHalCollectionResponse([]));
+
+        await _service.GetDaysByEventAsync(eventId, includeManaged: true);
+
+        await _apiClient.Received(1).GetManagedEventDaysByEventAsync(
+            eventId,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        await _apiClient.DidNotReceive().GetEventDaysByEventAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task GetDaysByEventAsync_ReturnsEmptyList_WhenApiThrows()
     {
         _apiClient.GetEventDaysByEventAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())

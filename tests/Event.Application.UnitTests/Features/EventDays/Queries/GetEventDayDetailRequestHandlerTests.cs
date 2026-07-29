@@ -1,3 +1,6 @@
+// ABOUTME: Unit tests for the public EventDay detail query handler.
+// ABOUTME: Verifies parent eligibility is checked before mapping a child day.
+
 using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
@@ -13,16 +16,18 @@ namespace Event.Application.UnitTests.Features.EventDays.Queries;
 
 public class GetEventDayDetailRequestHandlerTests
 {
+    private readonly IEventRepository _eventRepository;
     private readonly IEventDayRepository _eventDayRepository;
     private readonly IMapper _mapper;
     private readonly GetEventDayDetailRequestHandler _handler;
 
     public GetEventDayDetailRequestHandlerTests()
     {
+        _eventRepository = Substitute.For<IEventRepository>();
         _eventDayRepository = Substitute.For<IEventDayRepository>();
         _mapper = Substitute.For<IMapper>();
 
-        _handler = new GetEventDayDetailRequestHandler(_eventDayRepository, _mapper);
+        _handler = new GetEventDayDetailRequestHandler(_eventRepository, _eventDayRepository, _mapper);
     }
 
     [Test]
@@ -35,6 +40,9 @@ public class GetEventDayDetailRequestHandlerTests
         var eventDay = DataBuilder.EventDay.Generate();
         eventDay.Id = eventDayId;
         eventDay.Label = "Day 1";
+        eventDay.EventId = Guid.NewGuid();
+        eventDay.TenantId = Guid.NewGuid();
+        _eventRepository.IsPubliclyEligibleAsync(eventDay.TenantId, eventDay.EventId, Arg.Any<CancellationToken>()).Returns(true);
 
         var expectedDto = new EventDayDto
         {
@@ -68,5 +76,24 @@ public class GetEventDayDetailRequestHandlerTests
 
         // Assert
         await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task Handle_WhenParentEventIsNotCentrallyPubliclyEligible_ReturnsNullWithoutMappingDay()
+    {
+        var eventDayId = Guid.NewGuid();
+        var eventDay = DataBuilder.EventDay.Generate();
+        eventDay.Id = eventDayId;
+        eventDay.EventId = Guid.NewGuid();
+        eventDay.TenantId = Guid.NewGuid();
+        _eventDayRepository.GetById(eventDayId).Returns(eventDay);
+        _eventRepository.IsPubliclyEligibleAsync(eventDay.TenantId, eventDay.EventId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _handler.Handle(
+            new GetEventDayDetailRequest { Id = eventDayId },
+            CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        _mapper.DidNotReceive().Map<EventDayDto>(eventDay);
     }
 }

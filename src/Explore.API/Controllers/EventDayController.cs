@@ -81,6 +81,34 @@ public class EventDayController : ControllerBase
     }
 
     /// <summary>
+    /// Get all event days for an event management view.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("management/by-event/{eventId:guid}", Name = RouteNames.GetManagedEventDaysByEvent)]
+    [EndpointSummary("Get Managed Event Days by Event")]
+    [EndpointDescription("Get all days for an event after view-management authorization.")]
+    [ProducesResponseType(typeof(HalCollectionResource<EventDayListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<HalCollectionResource<EventDayListDto>>> GetManagedByEvent(
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        var days = await _mediator.Send(
+            new GetManagedEventDaysByEventRequest { EventId = eventId },
+            cancellationToken);
+
+        var halResource = await _resourceAssembler.ToCollectionResource(
+            days,
+            RouteNames.GetManagedEventDaysByEvent,
+            new { eventId },
+            HttpContext);
+
+        return Ok(halResource);
+    }
+
+    /// <summary>
     /// Get event day details by ID.
     /// </summary>
     [AllowAnonymous]
