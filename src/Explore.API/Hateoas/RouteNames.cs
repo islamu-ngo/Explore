@@ -915,6 +915,7 @@ public static class RouteNames
     public const string CompleteInstanceOnboarding = "CompleteInstanceOnboarding";
     public const string ValidateInstanceSetupSecret = "ValidateInstanceSetupSecret";
     public const string GetInstanceOnboardingAuthProviderConfiguration = "GetInstanceOnboardingAuthProviderConfiguration";
+    public const string SaveInstanceOnboardingProfile = "SaveInstanceOnboardingProfile";
     public const string GetInstanceOnboardingAuthProviderConfigurationInternal = "GetInstanceOnboardingAuthProviderConfigurationInternal";
     public const string BootstrapInstanceOnboardingKeycloakRealm = "BootstrapInstanceOnboardingKeycloakRealm";
     public const string GetInstanceOnboardingAuthorizationProviderConfigurationInternal = "GetInstanceOnboardingAuthorizationProviderConfigurationInternal";

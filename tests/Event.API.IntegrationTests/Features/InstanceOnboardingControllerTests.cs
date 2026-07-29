@@ -4,10 +4,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Controllers;
+using Explore.API.Extensions;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
@@ -22,6 +24,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -46,6 +49,207 @@ public class InstanceOnboardingControllerTests
         var response = await client.GetAsync($"{BaseUrl}/status");
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task SaveProfile_WithActiveSetupAuthority_PersistsOnlyExistingNonSecretProfileSettings()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+        var userId = Guid.NewGuid();
+        var profile = new SelfHostOnboardingProfileDto
+        {
+            SiteName = "  Community Events  ",
+            SupportEmail = "  support@example.org  ",
+            CanonicalUrl = "https://Events.Example.Org/onboarding",
+            Locale = " EN ",
+            TimeZone = "UTC",
+            Purpose = "Keep this operator note out of persisted settings."
+        };
+
+        using var request = CreateInstanceAdminRequest(
+            HttpMethod.Patch,
+            $"{BaseUrl}/profile",
+            userId,
+            profile,
+            includeSetupSecret: true);
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var settings = await dbContext.SystemSettings
+            .Where(setting => setting.SettingKey == GovernanceSettingKeys.Branding.DisplayName
+                || setting.SettingKey == GovernanceSettingKeys.Email.FromAddress
+                || setting.SettingKey == GovernanceSettingKeys.Domains.InstanceBaseDomain
+                || setting.SettingKey == GovernanceSettingKeys.Localization.DefaultLanguage)
+            .ToDictionaryAsync(setting => setting.SettingKey, setting => setting.Value);
+
+        await Assert.That(settings[GovernanceSettingKeys.Branding.DisplayName]).IsEqualTo(JsonSerializer.Serialize("Community Events"));
+        await Assert.That(settings[GovernanceSettingKeys.Email.FromAddress]).IsEqualTo(JsonSerializer.Serialize("support@example.org"));
+        await Assert.That(settings[GovernanceSettingKeys.Domains.InstanceBaseDomain]).IsEqualTo(JsonSerializer.Serialize("events.example.org"));
+        await Assert.That(settings[GovernanceSettingKeys.Localization.DefaultLanguage]).IsEqualTo(JsonSerializer.Serialize("en"));
+        await Assert.That(settings.Count).IsEqualTo(4);
+    }
+
+    [Test]
+    public async Task SaveProfile_WithMissingSetupSecret_AndAuthentication_ReturnsForbiddenProblemDetails()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+        var userId = Guid.NewGuid();
+
+        using var request = CreateInstanceAdminRequest(
+            HttpMethod.Patch,
+            $"{BaseUrl}/profile",
+            userId,
+            new SelfHostOnboardingProfileDto { SiteName = "Community Events" },
+            includeSetupSecret: false);
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+
+        var problemDetails = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        await Assert.That(problemDetails).IsNotNull();
+        await Assert.That(problemDetails!.Status).IsEqualTo(StatusCodes.Status403Forbidden);
+    }
+
+    [Test]
+    public async Task SaveProfile_WithInvalidSetupSecret_AndAuthentication_ReturnsForbiddenProblemDetails()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+        var userId = Guid.NewGuid();
+
+        using var request = CreateInstanceAdminRequest(
+            HttpMethod.Patch,
+            $"{BaseUrl}/profile",
+            userId,
+            new SelfHostOnboardingProfileDto { SiteName = "Community Events" },
+            includeSetupSecret: true);
+        request.Headers.Remove("X-Setup-Secret");
+        request.Headers.Add("X-Setup-Secret", "not-the-real-secret");
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/problem+json");
+
+        var problemDetails = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        await Assert.That(problemDetails).IsNotNull();
+        await Assert.That(problemDetails!.Status).IsEqualTo(StatusCodes.Status403Forbidden);
+    }
+
+    [Test]
+    public async Task SaveProfile_WithInvalidProfile_AndValidSetupSecret_ReturnsValidationProblemDetailsWithoutPersistingSettings()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+        var userId = Guid.NewGuid();
+        var allowedSettingKeys = new[]
+        {
+            GovernanceSettingKeys.Branding.DisplayName,
+            GovernanceSettingKeys.Email.FromAddress,
+            GovernanceSettingKeys.Domains.InstanceBaseDomain,
+            GovernanceSettingKeys.Localization.DefaultLanguage
+        };
+
+        List<Guid> existingSettingIds;
+        using (var baselineScope = factory.Services.CreateScope())
+        {
+            var baselineDbContext = baselineScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            existingSettingIds = await baselineDbContext.SystemSettings
+                .Where(setting => allowedSettingKeys.Contains(setting.SettingKey))
+                .Select(setting => setting.Id)
+                .ToListAsync();
+        }
+
+        var invalidProfile = new SelfHostOnboardingProfileDto
+        {
+            SiteName = string.Empty,
+            SupportEmail = "not-an-email",
+            CanonicalUrl = "not-a-valid-url",
+            Locale = string.Empty,
+            TimeZone = string.Empty
+        };
+
+        using var request = CreateInstanceAdminRequest(
+            HttpMethod.Patch,
+            $"{BaseUrl}/profile",
+            userId,
+            invalidProfile,
+            includeSetupSecret: true);
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/problem+json");
+
+        var problemDetails = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        await Assert.That(problemDetails).IsNotNull();
+        await Assert.That(problemDetails!.Status).IsEqualTo(StatusCodes.Status400BadRequest);
+        await Assert.That(problemDetails.Errors.Count).IsGreaterThan(0);
+
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var persistedSettingIds = await dbContext.SystemSettings
+            .Where(setting => allowedSettingKeys.Contains(setting.SettingKey))
+            .Select(setting => setting.Id)
+            .ToListAsync();
+
+        await Assert.That(persistedSettingIds.Count).IsEqualTo(existingSettingIds.Count);
+        await Assert.That(persistedSettingIds.OrderBy(id => id).SequenceEqual(existingSettingIds.OrderBy(id => id))).IsTrue();
+    }
+
+    [Test]
+    public async Task SaveProfile_AdvertisesSetupSecretRateLimitProblemDetailsMetadata()
+    {
+        var action = typeof(InstanceOnboardingController).GetMethod(nameof(InstanceOnboardingController.SaveProfile));
+        await Assert.That(action).IsNotNull();
+
+        var rateLimit = action!.GetCustomAttribute<EnableRateLimitingAttribute>();
+        await Assert.That(rateLimit).IsNotNull();
+        await Assert.That(rateLimit!.PolicyName).IsEqualTo(RateLimitingExtensions.SetupSecretPolicy);
+
+        var has429ProblemMetadata = action.GetCustomAttributes<ProducesResponseTypeAttribute>()
+            .Any(attribute => attribute.StatusCode == StatusCodes.Status429TooManyRequests && attribute.Type == typeof(ProblemDetails));
+
+        await Assert.That(has429ProblemMetadata).IsTrue();
+    }
+
+    [Test]
+    public async Task SaveProfile_WithoutAuthentication_ReturnsUnauthorized()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        using var request = new HttpRequestMessage(HttpMethod.Patch, $"{BaseUrl}/profile")
+        {
+            Content = JsonContent.Create(new SelfHostOnboardingProfileDto { SiteName = "Community Events" })
+        };
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task SaveProfile_AfterCompletion_ReturnsGone()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+        var userId = Guid.NewGuid();
+        await EnsureInstanceAdminRoleAsync(factory, userId);
+
+        using var request = CreateInstanceAdminRequest(
+            HttpMethod.Patch,
+            $"{BaseUrl}/profile",
+            userId,
+            new SelfHostOnboardingProfileDto { SiteName = "Community Events" },
+            includeSetupSecret: true);
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Gone);
     }
 
     [Test]

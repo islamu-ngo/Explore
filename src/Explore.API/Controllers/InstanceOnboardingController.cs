@@ -37,6 +37,11 @@ public class InstanceOnboardingController : ExploreControllerBase
         "Instance onboarding validation failed",
         "Instance onboarding completion failed.");
 
+    private static readonly ApiValidationProblemDescriptor ProfileValidationProblem = new(
+        "instanceOnboardingProfile",
+        "Instance onboarding profile validation failed",
+        "Instance onboarding profile save failed.");
+
     private static readonly ApiValidationProblemDescriptor AuthorizationPolicySyncValidationProblem = new(
         "instanceAuthorizationPolicyPackage",
         "Instance authorization policy package validation failed",
@@ -80,6 +85,33 @@ public class InstanceOnboardingController : ExploreControllerBase
         var status = await _mediator.Send(new GetInstanceOnboardingStatusQuery(), cancellationToken);
         var resource = await _statusAssembler.ToResource(status, HttpContext);
         return Ok(resource);
+    }
+
+    [Authorize]
+    [SetupSecretRequired(requireIncomplete: true)]
+    [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
+    [EndpointClassification(EndpointClass.Admin)]
+    [HttpPatch("profile", Name = RouteNames.SaveInstanceOnboardingProfile)]
+    [EndpointSummary("Save Instance Onboarding Profile")]
+    [EndpointDescription("Saves the non-secret instance profile while first-run setup authority is active.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveProfile(
+        [FromBody] SelfHostOnboardingProfileDto profile,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new SaveInstanceOnboardingProfileCommand
+        {
+            Profile = profile
+        }, cancellationToken);
+
+        return response.Success
+            ? Ok(response)
+            : this.ToCommandValidationProblem(response, ProfileValidationProblem);
     }
 
     [Authorize]

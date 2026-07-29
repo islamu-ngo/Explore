@@ -42,6 +42,13 @@ public sealed class InstanceOnboardingStatusLinkPolicy(
             if (dto.IsAuthenticated)
             {
                 yield return new LinkDefinition(
+                    "save-profile",
+                    RouteNames.SaveInstanceOnboardingProfile,
+                    Method: HttpMethods.Patch,
+                    Title: "Save instance profile during setup",
+                    RequiresAuth: true);
+
+                yield return new LinkDefinition(
                     "complete",
                     RouteNames.CompleteInstanceOnboarding,
                     Method: HttpMethods.Post,

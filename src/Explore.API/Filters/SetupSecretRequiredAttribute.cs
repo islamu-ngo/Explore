@@ -2,6 +2,7 @@
 // ABOUTME: Uses TypeFilterAttribute pattern for DI-aware filtering with ISetupSecretProvider validation.
 
 using Explore.API.ExceptionHandling;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Onboarding;
 using Microsoft.AspNetCore.Mvc;
@@ -12,26 +13,35 @@ namespace Explore.API.Filters;
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
 public class SetupSecretRequiredAttribute : TypeFilterAttribute
 {
-    public SetupSecretRequiredAttribute() : base(typeof(SetupSecretRequiredFilter))
+    public SetupSecretRequiredAttribute(bool requireIncomplete = false) : base(typeof(SetupSecretRequiredFilter))
     {
+        Arguments = [requireIncomplete];
     }
 
     private class SetupSecretRequiredFilter : IAsyncActionFilter
     {
         private readonly ISetupSecretProvider _setupSecretProvider;
+        private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
         private readonly IInstanceBootstrapAuditLogger _bootstrapAuditLogger;
+        private readonly bool _requireIncomplete;
 
         public SetupSecretRequiredFilter(
             ISetupSecretProvider setupSecretProvider,
-            IInstanceBootstrapAuditLogger bootstrapAuditLogger)
+            IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
+            IInstanceBootstrapAuditLogger bootstrapAuditLogger,
+            bool requireIncomplete)
         {
             _setupSecretProvider = setupSecretProvider;
+            _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
             _bootstrapAuditLogger = bootstrapAuditLogger;
+            _requireIncomplete = requireIncomplete;
         }
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
-            if (!_setupSecretProvider.IsSetupModeActive)
+            var isCompleted = _requireIncomplete
+                && (await _instanceBootstrapStateRepository.GetCurrent(context.HttpContext.RequestAborted))?.IsCompleted == true;
+            if (isCompleted || !_setupSecretProvider.IsSetupModeActive)
             {
                 LogAudit(
                     context,

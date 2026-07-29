@@ -41,6 +41,7 @@ public sealed class OnboardingStatusLinkPolicyTests
         var links = policy.GetLinks(status, user: null).ToArray();
         var authentication = links.Single(link => link.Rel == "manage-authentication");
         var authorization = links.Single(link => link.Rel == "manage-authorization");
+        var saveProfile = links.Single(link => link.Rel == "save-profile");
         var complete = links.Single(link => link.Rel == "complete");
 
         await Assert.That(authentication.RouteName)
@@ -53,9 +54,30 @@ public sealed class OnboardingStatusLinkPolicyTests
         await Assert.That(authorization.Method).IsEqualTo("GET");
         await Assert.That(authorization.RequiresAuth).IsFalse();
         await Assert.That(authorization.PermissionAction).IsNull();
+        await Assert.That(saveProfile.RouteName).IsEqualTo("SaveInstanceOnboardingProfile");
+        await Assert.That(saveProfile.Method).IsEqualTo("PATCH");
+        await Assert.That(saveProfile.RequiresAuth).IsTrue();
         await Assert.That(complete.RouteName).IsEqualTo(RouteNames.CompleteInstanceOnboarding);
         await Assert.That(complete.Method).IsEqualTo("POST");
         await Assert.That(complete.RequiresAuth).IsTrue();
+    }
+
+    [Test]
+    public async Task Valid_setup_authority_but_unauthenticated_omits_save_profile_and_complete_affordances()
+    {
+        var policy = CreateInstancePolicy(isSetupModeActive: true, isSecretValid: true);
+        var status = new InstanceOnboardingStatusDto
+        {
+            IsAuthenticated = false,
+            IsCompleted = false
+        };
+
+        var links = policy.GetLinks(status, user: null).ToArray();
+
+        await Assert.That(links.Any(link => link.Rel == "manage-authentication")).IsTrue();
+        await Assert.That(links.Any(link => link.Rel == "manage-authorization")).IsTrue();
+        await Assert.That(links.Any(link => link.Rel == "save-profile")).IsFalse();
+        await Assert.That(links.Any(link => link.Rel == "complete")).IsFalse();
     }
 
     [Test]
@@ -98,6 +120,25 @@ public sealed class OnboardingStatusLinkPolicyTests
             RouteNames.GetInstanceAuthorizationProviderConfiguration);
         await Assert.That(links.Any(link => link.Rel == "complete")).IsFalse();
         await Assert.That(links.Any(link => link.Rel == "manage-tenants")).IsFalse();
+    }
+
+    [Test]
+    public async Task Completed_instance_admin_omits_setup_save_profile_but_keeps_management_links()
+    {
+        var policy = CreateInstancePolicy(isSetupModeActive: false, isSecretValid: false);
+        var status = new InstanceOnboardingStatusDto
+        {
+            IsAuthenticated = true,
+            IsCompleted = true,
+            IsCurrentUserInstanceAdmin = true,
+            SelectedDeploymentMode = "SingleTenant"
+        };
+
+        var links = policy.GetLinks(status, user: null).ToArray();
+
+        await Assert.That(links.Any(link => link.Rel == "save-profile")).IsFalse();
+        await Assert.That(links.Any(link => link.Rel == "manage-authentication")).IsTrue();
+        await Assert.That(links.Any(link => link.Rel == "manage-authorization")).IsTrue();
     }
 
     [Test]
