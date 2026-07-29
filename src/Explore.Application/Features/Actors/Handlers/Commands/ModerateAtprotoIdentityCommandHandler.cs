@@ -7,9 +7,11 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Caching;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Actors.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -18,6 +20,10 @@ namespace Explore.Application.Features.Actors.Handlers.Commands;
 public sealed class ModerateAtprotoIdentityCommandHandler(
     IAdminContext adminContext,
     IAtprotoIdentityRepository identityRepository,
+    IAtprotoRecordRepository recordRepository,
+    IPdsSyncOutboxRepository pdsSyncOutboxRepository,
+    IEventRepository eventRepository,
+    AtprotoEventPublicationPlanner atprotoPublicationPlanner,
     IUnitOfWork unitOfWork,
     HybridCache cache,
     IEnumerable<IAtprotoDiscoveryCacheInvalidator> discoveryCacheInvalidators,
@@ -84,6 +90,27 @@ public sealed class ModerateAtprotoIdentityCommandHandler(
                 await identityRepository.Update(identity);
             }
 
+            if (request.Moderation.Action == GlobalModerationAction.Suspend)
+            {
+                IReadOnlyList<AtprotoOutboundRecordOwnership> ownerships =
+                    await recordRepository.GetLiveGroundedEventOwnershipsForActorAndDidAsync(
+                        identity.ActorId,
+                        identity.Did,
+                        token);
+                IReadOnlyList<PdsSyncOutbox> unsettledMutations =
+                    await pdsSyncOutboxRepository.GetUnsettledEventMutationsForActorAndDidAsync(
+                        identity.ActorId,
+                        identity.Did,
+                        AtprotoEventPublicationPlanner.EventSourceType,
+                        AtprotoEventPublicationPlanner.EventCollection,
+                        token);
+                await PlanDeleteCompensationAsync(
+                    ownerships,
+                    unsettledMutations,
+                    moderatedAt,
+                    token);
+            }
+
             return (
                 Response: new BaseCommandResponse<Guid>
                 {
@@ -110,6 +137,47 @@ public sealed class ModerateAtprotoIdentityCommandHandler(
         foreach (IAtprotoDiscoveryCacheInvalidator invalidator in discoveryCacheInvalidators)
         {
             await invalidator.InvalidateAsync(cancellationToken);
+        }
+    }
+
+    private async Task PlanDeleteCompensationAsync(
+        IReadOnlyList<AtprotoOutboundRecordOwnership> ownerships,
+        IReadOnlyList<PdsSyncOutbox> unsettledMutations,
+        DateTime createdAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var targets = ownerships
+            .Select(ownership => (
+                ownership.TenantId,
+                ownership.UserId,
+                EventId: ownership.SourceEntityId))
+            .Concat(unsettledMutations.Select(outbox => (
+                outbox.TenantId,
+                outbox.UserId,
+                EventId: outbox.SourceEntityId)))
+            .DistinctBy(target => (target.TenantId, target.EventId));
+
+        foreach (var target in targets)
+        {
+            Event? eventEntity = await eventRepository.GetAtprotoLifecycleStateAsync(
+                target.TenantId,
+                target.EventId,
+                cancellationToken);
+            if (eventEntity is null)
+            {
+                continue;
+            }
+
+            await atprotoPublicationPlanner.PlanEventAsync(
+                new AtprotoEventPublicationInput(
+                    target.TenantId,
+                    target.UserId,
+                    target.EventId,
+                    eventEntity.ConcurrencyStamp,
+                    PdsSyncOperation.Delete,
+                    Guid.CreateVersion7(),
+                    createdAtUtc),
+                cancellationToken);
         }
     }
 

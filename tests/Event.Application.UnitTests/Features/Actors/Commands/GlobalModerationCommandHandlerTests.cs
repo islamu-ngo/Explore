@@ -1,6 +1,7 @@
 // ABOUTME: Focused tests for instance-admin global Actor and AT Protocol identity moderation handlers.
 // ABOUTME: Covers secure request context, authorization-before-lookup, transitions, deleted targets, and idempotent retries.
 
+using Event.Application.UnitTests.Common;
 using Explore.Application.Authorization;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Identity;
@@ -9,9 +10,11 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Actors.Handlers.Commands;
 using Explore.Application.Features.Actors.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
@@ -25,6 +28,9 @@ public sealed class GlobalModerationCommandHandlerTests
     private readonly IAdminContext _adminContext = Substitute.For<IAdminContext>();
     private readonly IActorRepository _actorRepository = Substitute.For<IActorRepository>();
     private readonly IAtprotoIdentityRepository _identityRepository = Substitute.For<IAtprotoIdentityRepository>();
+    private readonly IAtprotoRecordRepository _recordRepository = Substitute.For<IAtprotoRecordRepository>();
+    private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
+    private readonly IPdsSyncOutboxRepository _pdsSyncOutboxRepository = Substitute.For<IPdsSyncOutboxRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
     private readonly IAtprotoDiscoveryCacheInvalidator _discoveryCacheInvalidator =
@@ -50,10 +56,36 @@ public sealed class GlobalModerationCommandHandlerTests
 
         _adminContext.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns(_operatorUserId);
         _adminContext.IsInstanceAdminAsync(_operatorUserId, Arg.Any<CancellationToken>()).Returns(true);
+        _recordRepository.GetLiveGroundedEventOwnershipsForActorAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+        _recordRepository.GetLiveGroundedEventOwnershipsForActorAndDidAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+        _pdsSyncOutboxRepository.GetUnsettledEventMutationsForActorAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+        _pdsSyncOutboxRepository.GetUnsettledEventMutationsForActorAndDidAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
 
         _actorHandler = new ModerateActorCommandHandler(
             _adminContext,
             _actorRepository,
+            _recordRepository,
+            _pdsSyncOutboxRepository,
+            _eventRepository,
+            AtprotoPublicationPlannerTestFactory.Disabled(),
             _unitOfWork,
             _cache,
             [_discoveryCacheInvalidator],
@@ -61,6 +93,10 @@ public sealed class GlobalModerationCommandHandlerTests
         _identityHandler = new ModerateAtprotoIdentityCommandHandler(
             _adminContext,
             _identityRepository,
+            _recordRepository,
+            _pdsSyncOutboxRepository,
+            _eventRepository,
+            AtprotoPublicationPlannerTestFactory.Disabled(),
             _unitOfWork,
             _cache,
             [_discoveryCacheInvalidator],
@@ -126,6 +162,156 @@ public sealed class GlobalModerationCommandHandlerTests
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventLists, Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventDetails, Arg.Any<CancellationToken>());
         await _discoveryCacheInvalidator.Received(1).InvalidateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ActorSuspend_ReconcilesGroundedEventsAcrossTenantsWithoutAppendingAnotherModerationRecord()
+    {
+        var actor = CreateActor();
+        actor.Suspend("policy-violation", ModeratedAt, _operatorUserId);
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        Guid ownerUserId = Guid.CreateVersion7();
+        var eventEntity = new Explore.Domain.Event
+        {
+            Id = eventId,
+            TenantId = tenantId,
+            ActorId = actor.Id,
+            Title = "Moderated event",
+            Actor = actor,
+            Tenant = null!,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        var ownership = new AtprotoOutboundRecordOwnership
+        {
+            AtprotoRecordId = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            UserId = ownerUserId,
+            SourceEntityType = AtprotoEventPublicationPlanner.EventSourceType,
+            SourceEntityId = eventId,
+            SourceVersion = Guid.CreateVersion7()
+        };
+        _actorRepository.GetById(actor.Id).Returns(actor);
+        _recordRepository.GetLiveGroundedEventOwnershipsForActorAsync(actor.Id, Arg.Any<CancellationToken>())
+            .Returns([ownership]);
+        _eventRepository.GetAtprotoLifecycleStateAsync(tenantId, eventId, Arg.Any<CancellationToken>())
+            .Returns(eventEntity);
+
+        var handler = CreateActorHandler(
+            AtprotoPublicationPlannerTestFactory.ExistingEventDelete(
+                tenantId,
+                eventId,
+                ownerUserId,
+                _pdsSyncOutboxRepository,
+                _eventRepository,
+                _recordRepository));
+
+        var result = await handler.Handle(
+            ActorCommand(actor.Id, GlobalModerationAction.Suspend, "retry"),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(actor.ModerationRecords.Count).IsEqualTo(1);
+        await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
+        await _pdsSyncOutboxRepository.Received(1).AddAsync(
+            Arg.Is<PdsSyncOutbox>(outbox =>
+                outbox.Operation == PdsSyncOperation.Delete
+                && outbox.TenantId == tenantId
+                && outbox.UserId == ownerUserId
+                && outbox.SourceEntityId == eventId
+                && outbox.SourceVersion == eventEntity.ConcurrencyStamp),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ActorSuspend_ReconcilesUnsettledCreateWithoutSettledOwnership()
+    {
+        var actor = CreateActor();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        Guid ownerUserId = Guid.CreateVersion7();
+        var eventEntity = new Explore.Domain.Event
+        {
+            Id = eventId,
+            TenantId = tenantId,
+            ActorId = actor.Id,
+            Title = "Racing event",
+            Actor = actor,
+            Tenant = null!,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        var pendingCreate = new PdsSyncOutbox
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            UserId = ownerUserId,
+            Did = "did:plc:lifecycle-owner",
+            Collection = AtprotoEventPublicationPlanner.EventCollection,
+            RecordKey = "pending-create",
+            Operation = PdsSyncOperation.Create,
+            PayloadHash = "hash",
+            IdempotencyKey = Guid.CreateVersion7().ToString("N"),
+            PdsHost = "https://pds.example/",
+            SourceEntityType = AtprotoEventPublicationPlanner.EventSourceType,
+            SourceEntityId = eventId,
+            SourceVersion = eventEntity.ConcurrencyStamp,
+            Status = PdsSyncStatus.Processing,
+            CreatedAt = ModeratedAt,
+            MaxRetries = 10
+        };
+        _actorRepository.GetById(actor.Id).Returns(actor);
+        _pdsSyncOutboxRepository.GetUnsettledEventMutationsForActorAsync(
+                actor.Id,
+                AtprotoEventPublicationPlanner.EventSourceType,
+                AtprotoEventPublicationPlanner.EventCollection,
+                Arg.Any<CancellationToken>())
+            .Returns([pendingCreate]);
+        _eventRepository.GetAtprotoLifecycleStateAsync(tenantId, eventId, Arg.Any<CancellationToken>())
+            .Returns(eventEntity);
+
+        var handler = CreateActorHandler(
+            AtprotoPublicationPlannerTestFactory.ExistingEventDelete(
+                tenantId,
+                eventId,
+                ownerUserId,
+                _pdsSyncOutboxRepository,
+                _eventRepository,
+                _recordRepository));
+
+        var result = await handler.Handle(
+            ActorCommand(actor.Id, GlobalModerationAction.Suspend),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _pdsSyncOutboxRepository.Received(1).AddAsync(
+            Arg.Is<PdsSyncOutbox>(outbox =>
+                outbox.Operation == PdsSyncOperation.Delete
+                && outbox.TenantId == tenantId
+                && outbox.SourceEntityId == eventId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ActorReinstate_DoesNotSelectGroundedEventOwnerships()
+    {
+        var actor = CreateActor();
+        actor.Suspend("policy-violation", ModeratedAt, _operatorUserId);
+        _actorRepository.GetById(actor.Id).Returns(actor);
+
+        var result = await _actorHandler.Handle(
+            ActorCommand(actor.Id, GlobalModerationAction.Reinstate),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _recordRepository.DidNotReceive().GetLiveGroundedEventOwnershipsForActorAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -215,6 +401,70 @@ public sealed class GlobalModerationCommandHandlerTests
     }
 
     [Test]
+    public async Task IdentitySuspend_ReconcilesOnlyGroundedEventsForItsExactDid()
+    {
+        var identity = CreateIdentity(isActive: true, isSuspended: false);
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        Guid ownerUserId = Guid.CreateVersion7();
+        var eventEntity = new Explore.Domain.Event
+        {
+            Id = eventId,
+            TenantId = tenantId,
+            ActorId = identity.ActorId,
+            Title = "Moderated event",
+            Actor = identity.Actor,
+            Tenant = null!,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        var ownership = new AtprotoOutboundRecordOwnership
+        {
+            AtprotoRecordId = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            UserId = ownerUserId,
+            SourceEntityType = AtprotoEventPublicationPlanner.EventSourceType,
+            SourceEntityId = eventId,
+            SourceVersion = Guid.CreateVersion7()
+        };
+        _identityRepository.GetById(identity.Id).Returns(identity);
+        _recordRepository.GetLiveGroundedEventOwnershipsForActorAndDidAsync(
+                identity.ActorId,
+                identity.Did,
+                Arg.Any<CancellationToken>())
+            .Returns([ownership]);
+        _eventRepository.GetAtprotoLifecycleStateAsync(tenantId, eventId, Arg.Any<CancellationToken>())
+            .Returns(eventEntity);
+
+        var handler = CreateIdentityHandler(
+            AtprotoPublicationPlannerTestFactory.ExistingEventDelete(
+                tenantId,
+                eventId,
+                ownerUserId,
+                _pdsSyncOutboxRepository,
+                _eventRepository,
+                _recordRepository,
+                identity.Did));
+
+        var result = await handler.Handle(
+            IdentityCommand(identity.Id, GlobalModerationAction.Suspend),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _pdsSyncOutboxRepository.Received(1).AddAsync(
+            Arg.Is<PdsSyncOutbox>(outbox =>
+                outbox.Operation == PdsSyncOperation.Delete
+                && outbox.Did == identity.Did
+                && outbox.TenantId == tenantId
+                && outbox.UserId == ownerUserId
+                && outbox.SourceEntityId == eventId
+                && outbox.SourceVersion == eventEntity.ConcurrencyStamp),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task IdentityReinstate_WhenAlreadyActive_ReturnsSuccessWithoutPersistingAnotherRecord()
     {
         var identity = CreateIdentity(isActive: true, isSuspended: false);
@@ -227,6 +477,10 @@ public sealed class GlobalModerationCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(identity.ModerationRecords.Count).IsZero();
         await _identityRepository.DidNotReceive().Update(Arg.Any<AtprotoIdentity>());
+        await _recordRepository.DidNotReceive().GetLiveGroundedEventOwnershipsForActorAndDidAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveByTagAsync(CacheTags.Events, Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventLists, Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventDetails, Arg.Any<CancellationToken>());
@@ -296,6 +550,30 @@ public sealed class GlobalModerationCommandHandlerTests
                 ReasonCode = reasonCode
             }
         };
+
+    private ModerateActorCommandHandler CreateActorHandler(AtprotoEventPublicationPlanner planner) => new(
+        _adminContext,
+        _actorRepository,
+        _recordRepository,
+        _pdsSyncOutboxRepository,
+        _eventRepository,
+        planner,
+        _unitOfWork,
+        _cache,
+        [_discoveryCacheInvalidator],
+        _timeProvider);
+
+    private ModerateAtprotoIdentityCommandHandler CreateIdentityHandler(AtprotoEventPublicationPlanner planner) => new(
+        _adminContext,
+        _identityRepository,
+        _recordRepository,
+        _pdsSyncOutboxRepository,
+        _eventRepository,
+        planner,
+        _unitOfWork,
+        _cache,
+        [_discoveryCacheInvalidator],
+        _timeProvider);
 
     private static Actor CreateActor()
     {

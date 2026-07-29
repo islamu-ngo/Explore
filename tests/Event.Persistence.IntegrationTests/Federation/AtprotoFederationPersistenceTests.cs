@@ -944,6 +944,72 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
     }
 
     [Test]
+    public async Task GlobalModerationOwnership_IncludesSoftDeletedEventWithLiveExactRecord()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("global-moderation-deleted-event");
+        DateTime now = Utc(10);
+        await using var context = fixture.CreateDbContext();
+        Actor actor = CreateActor(scope.UserId, "Global moderation event owner", now);
+        var eventEntity = new Explore.Domain.Event
+        {
+            Id = Guid.CreateVersion7(),
+            Title = "Deleted local event with live remote record",
+            ActorId = actor.Id,
+            Actor = actor,
+            TenantId = scope.TenantId,
+            Tenant = null!,
+            VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+            VisibilityType = null!,
+            EventStatusId = (int)EventStatusEnum.Published,
+            EventStatus = null!,
+            EventFormatId = (int)EventFormatEnum.Digital,
+            EventFormat = null!,
+            CreatedAt = now,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        PdsSyncOutbox outbox = CreateOutbox(scope, now.AddSeconds(1), sourceEntityId: eventEntity.Id);
+        context.Actors.Add(actor);
+        SetForeignKeyIfPresent(context, actor, "TenantId", scope.TenantId);
+        context.AddRange(eventEntity, outbox);
+        await context.SaveChangesAsync();
+        PdsSyncOutboxRepository outboxRepository = new(context);
+        PdsSyncClaim claim = (await outboxRepository.ClaimDueAsync(
+            1,
+            "worker-global-moderation",
+            now.AddSeconds(2),
+            TimeSpan.FromSeconds(90))).Single();
+        bool settled = await outboxRepository.TrySettleAsync(
+            claim,
+            $"at://{outbox.Did}/{outbox.Collection}/{outbox.RecordKey}",
+            "bafy-global-moderation",
+            now.AddSeconds(3));
+        eventEntity.IsDeleted = true;
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        AtprotoRecord liveRecord = await context.AtprotoRecords.SingleAsync();
+        var repository = new AtprotoRecordRepository(context);
+
+        List<AtprotoOutboundRecordOwnership> byActor = await repository.GetLiveGroundedEventOwnershipsForActorAsync(
+            actor.Id,
+            CancellationToken.None);
+        List<AtprotoOutboundRecordOwnership> byActorAndDid =
+            await repository.GetLiveGroundedEventOwnershipsForActorAndDidAsync(
+                actor.Id,
+                outbox.Did,
+                CancellationToken.None);
+
+        await Assert.That(settled).IsTrue();
+        await Assert.That(liveRecord.TombstonedAt).IsNull();
+        await Assert.That(byActor).HasSingleItem();
+        await Assert.That(byActor[0].TenantId).IsEqualTo(scope.TenantId);
+        await Assert.That(byActor[0].SourceEntityType).IsEqualTo("Event");
+        await Assert.That(byActor[0].SourceEntityId).IsEqualTo(eventEntity.Id);
+        await Assert.That(byActorAndDid).HasSingleItem();
+        await Assert.That(byActorAndDid[0].AtprotoRecordId).IsEqualTo(byActor[0].AtprotoRecordId);
+    }
+
+    [Test]
     public async Task PdsSettlement_ExactCreateEchoSettlesWithoutOverwritingDifferentState()
     {
         await fixture.ResetAsync();

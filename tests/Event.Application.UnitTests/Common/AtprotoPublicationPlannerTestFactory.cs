@@ -46,7 +46,10 @@ internal static class AtprotoPublicationPlannerTestFactory
         Guid tenantId,
         Guid eventId,
         Guid ownerUserId,
-        IPdsSyncOutboxRepository outbox)
+        IPdsSyncOutboxRepository outbox,
+        IEventRepository? eventRepository = null,
+        IAtprotoRecordRepository? recordRepository = null,
+        string did = "did:plc:lifecycle-owner")
     {
         var settings = Substitute.For<IHierarchicalSettingsResolver>();
         settings.ResolveBatchAsync(
@@ -64,16 +67,16 @@ internal static class AtprotoPublicationPlannerTestFactory
         var record = new AtprotoRecord
         {
             Id = Guid.CreateVersion7(),
-            Did = "did:plc:lifecycle-owner",
+            Did = did,
             Collection = AtprotoEventPublicationPlanner.EventCollection,
             RecordKey = "stable-lifecycle-key",
-            Uri = "at://did:plc:lifecycle-owner/community.lexicon.calendar.event/stable-lifecycle-key",
+            Uri = $"at://{did}/community.lexicon.calendar.event/stable-lifecycle-key",
             Cid = "bafy-lifecycle",
             Direction = AtprotoRecordDirection.Outbound,
             Provenance = AtprotoRecordProvenance.LocalLifecycle,
             UpdatedAt = DateTime.UtcNow
         };
-        var records = Substitute.For<IAtprotoRecordRepository>();
+        var records = recordRepository ?? Substitute.For<IAtprotoRecordRepository>();
         records.GetOwnedRecordForSourceAsync(
                 tenantId,
                 AtprotoEventPublicationPlanner.EventSourceType,
@@ -103,14 +106,14 @@ internal static class AtprotoPublicationPlannerTestFactory
                 UserId = ownerUserId,
                 User = null!,
                 Provider = RepositoryBackedAtprotoSession.Provider,
-                SubjectDid = record.Did,
+                SubjectDid = did,
                 SessionCiphertext = [1],
                 EncryptionKeyId = "enc",
                 OAuthClientKeyId = "oauth",
                 PdsHost = "https://pds.example/"
             }]);
         var logins = Substitute.For<IUserExternalLoginRepository>();
-        logins.GetByProviderAndKey(RepositoryBackedAtprotoSession.Provider, record.Did)
+        logins.GetByProviderAndKey(RepositoryBackedAtprotoSession.Provider, did)
             .Returns(new UserExternalLogin
             {
                 Id = Guid.CreateVersion7(),
@@ -119,11 +122,11 @@ internal static class AtprotoPublicationPlannerTestFactory
                 UserId = ownerUserId,
                 User = null!,
                 Provider = RepositoryBackedAtprotoSession.Provider,
-                ProviderKey = record.Did
+                ProviderKey = did
             });
         return new(
             new AtprotoEventGovernanceResolver(settings),
-            Substitute.For<IEventRepository>(),
+            eventRepository ?? Substitute.For<IEventRepository>(),
             Substitute.For<IEventRegistrationIntentRepository>(),
             records,
             sessions,

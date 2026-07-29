@@ -11,6 +11,7 @@ namespace Explore.Persistence.Repositories;
 
 public sealed class AtprotoRecordRepository : IAtprotoRecordRepository
 {
+    private const string EventSourceType = "Event";
     private readonly ExploreDbContext _dbContext;
 
     public AtprotoRecordRepository(ExploreDbContext dbContext)
@@ -93,6 +94,43 @@ public sealed class AtprotoRecordRepository : IAtprotoRecordRepository
                         && intent.UserId == userId
                         && intent.EventId == eventId),
                 cancellationToken);
+
+    public Task<List<AtprotoOutboundRecordOwnership>> GetLiveGroundedEventOwnershipsForActorAsync(
+        Guid actorId,
+        CancellationToken cancellationToken = default) =>
+        LiveGroundedEventOwnerships()
+            .Where(ownership => EventsForGlobalModeration().Any(eventEntity =>
+                eventEntity.Id == ownership.SourceEntityId
+                && eventEntity.TenantId == ownership.TenantId
+                && eventEntity.ActorId == actorId))
+            .ToListAsync(cancellationToken);
+
+    public Task<List<AtprotoOutboundRecordOwnership>> GetLiveGroundedEventOwnershipsForActorAndDidAsync(
+        Guid actorId,
+        string did,
+        CancellationToken cancellationToken = default) =>
+        LiveGroundedEventOwnerships()
+            .Where(ownership => ownership.AtprotoRecord!.Did == did)
+            .Where(ownership => EventsForGlobalModeration().Any(eventEntity =>
+                eventEntity.Id == ownership.SourceEntityId
+                && eventEntity.TenantId == ownership.TenantId
+                && eventEntity.ActorId == actorId))
+            .ToListAsync(cancellationToken);
+
+    private IQueryable<AtprotoOutboundRecordOwnership> LiveGroundedEventOwnerships() =>
+        _dbContext.AtprotoOutboundRecordOwnerships
+            .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoGlobalActorModeration)
+            .AsNoTracking()
+            .Where(ownership =>
+                ownership.SourceEntityType == EventSourceType
+                && ownership.AtprotoRecord != null
+                && ownership.AtprotoRecord.TombstonedAt == null);
+
+    private IQueryable<Explore.Domain.Event> EventsForGlobalModeration() =>
+        _dbContext.Events
+            .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoGlobalActorModeration)
+            .IncludeDeleted()
+            .AsNoTracking();
 
     private IQueryable<AtprotoRecord> VisibleRecords() =>
         _dbContext.AtprotoRecords

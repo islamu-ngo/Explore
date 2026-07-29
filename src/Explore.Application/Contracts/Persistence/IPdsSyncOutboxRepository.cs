@@ -52,6 +52,19 @@ public interface IPdsSyncOutboxRepository
         string collection,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<PdsSyncOutbox>> GetUnsettledEventMutationsForActorAsync(
+        Guid actorId,
+        string sourceEntityType,
+        string collection,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PdsSyncOutbox>> GetUnsettledEventMutationsForActorAndDidAsync(
+        Guid actorId,
+        string did,
+        string sourceEntityType,
+        string collection,
+        CancellationToken cancellationToken = default);
+
     Task<PdsSyncOutbox?> GetLatestUnsettledRsvpMutationAsync(
         Guid tenantId,
         Guid userId,

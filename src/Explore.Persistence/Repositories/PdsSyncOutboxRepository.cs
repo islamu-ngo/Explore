@@ -176,6 +176,42 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
             .ThenByDescending(value => value.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<PdsSyncOutbox>> GetUnsettledEventMutationsForActorAsync(
+        Guid actorId,
+        string sourceEntityType,
+        string collection,
+        CancellationToken cancellationToken = default) =>
+        await GlobalModerationOutbox()
+            .Where(outbox =>
+                outbox.SourceEntityType == sourceEntityType
+                && outbox.Collection == collection
+                && (outbox.Status == PdsSyncStatus.Pending || outbox.Status == PdsSyncStatus.Processing)
+                && outbox.SupersededAt == null
+                && EventsForGlobalModeration().Any(eventEntity =>
+                    eventEntity.Id == outbox.SourceEntityId
+                    && eventEntity.TenantId == outbox.TenantId
+                    && eventEntity.ActorId == actorId))
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<PdsSyncOutbox>> GetUnsettledEventMutationsForActorAndDidAsync(
+        Guid actorId,
+        string did,
+        string sourceEntityType,
+        string collection,
+        CancellationToken cancellationToken = default) =>
+        await GlobalModerationOutbox()
+            .Where(outbox =>
+                outbox.Did == did
+                && outbox.SourceEntityType == sourceEntityType
+                && outbox.Collection == collection
+                && (outbox.Status == PdsSyncStatus.Pending || outbox.Status == PdsSyncStatus.Processing)
+                && outbox.SupersededAt == null
+                && EventsForGlobalModeration().Any(eventEntity =>
+                    eventEntity.Id == outbox.SourceEntityId
+                    && eventEntity.TenantId == outbox.TenantId
+                    && eventEntity.ActorId == actorId))
+            .ToListAsync(cancellationToken);
+
     public Task<PdsSyncOutbox?> GetLatestUnsettledRsvpMutationAsync(
         Guid tenantId,
         Guid userId,
@@ -730,6 +766,17 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
 
     private IQueryable<PdsSyncOutbox> CrossTenantOutbox() =>
         _dbContext.PdsSyncOutbox.IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoPdsWorkerCrossTenantQueue);
+
+    private IQueryable<PdsSyncOutbox> GlobalModerationOutbox() =>
+        _dbContext.PdsSyncOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoGlobalActorModeration)
+            .AsNoTracking();
+
+    private IQueryable<Explore.Domain.Event> EventsForGlobalModeration() =>
+        _dbContext.Events
+            .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoGlobalActorModeration)
+            .IncludeDeleted()
+            .AsNoTracking();
 
     private IQueryable<PdsSyncOutbox> ActiveClaimQuery(PdsSyncClaim claim, DateTime observedAt) =>
         CrossTenantOutbox().Where(value =>

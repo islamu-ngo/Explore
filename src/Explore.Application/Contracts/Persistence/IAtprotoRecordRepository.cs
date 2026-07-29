@@ -34,4 +34,13 @@ public interface IAtprotoRecordRepository
         string sourceEntityType,
         string collection,
         CancellationToken cancellationToken = default);
+
+    Task<List<AtprotoOutboundRecordOwnership>> GetLiveGroundedEventOwnershipsForActorAsync(
+        Guid actorId,
+        CancellationToken cancellationToken = default);
+
+    Task<List<AtprotoOutboundRecordOwnership>> GetLiveGroundedEventOwnershipsForActorAndDidAsync(
+        Guid actorId,
+        string did,
+        CancellationToken cancellationToken = default);
 }

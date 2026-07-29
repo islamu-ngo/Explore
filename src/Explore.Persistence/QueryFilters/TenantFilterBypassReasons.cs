@@ -77,6 +77,9 @@ public static class TenantFilterBypassReasons
     public const string AtprotoActorConsolidation =
         "Verified AT Protocol Actor consolidation moves active operational references across tenants by exact source and canonical Actor ids.";
 
+    public const string AtprotoGlobalActorModeration =
+        "Instance-global AT Protocol Actor moderation reconciles live owned Event records across tenants by exact Actor and DID predicates.";
+
     public const string EmailDispatchTenantOperation =
         "Email dispatch tenant operation bypasses ambient context only after applying an explicit tenant predicate.";
 
