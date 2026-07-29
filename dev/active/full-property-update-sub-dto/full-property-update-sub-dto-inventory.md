@@ -181,8 +181,8 @@ Paths are relative to `src/Explore.Application/Features/`.
 | H-069 | `Appearance/Handlers/Commands/UpdateUiThemeCommandHandler.cs` | UiTheme | C | 3.3 |
 | H-070 | `Appearance/Handlers/Commands/UpdateCurrentUserAppearancePreferencesCommandHandler.cs` | User appearance preferences | C | 3.3 |
 | H-071 | `ActorKeyStores/Handlers/Commands/UpdateActorKeyStoreCommandHandler.cs` | ActorKeyStore generic key update | R | 5.1 |
-| H-072 | `EventTicketing/UpdateEventTicketTypeCommandHandler.cs` | Atomic EventTicketType replacement | S | 6.2 |
-| H-073 | `EventTicketing/UpdateEventCapacityPoolCommandHandler.cs` | Atomic EventCapacityPool replacement | S | 6.2 |
+| H-072 | `EventTicketing/Handlers/Commands/UpdateEventTicketTypeCommandHandler.cs` | Atomic EventTicketType replacement | S | 6.2 |
+| H-073 | `EventTicketing/Handlers/Commands/UpdateEventCapacityPoolCommandHandler.cs` | Atomic EventCapacityPool replacement | S | 6.2 |
 | H-074 | `Tenants/Handlers/Commands/UpdateTenantCommandHandler.cs` | Tenant grouped update | C | 6.2 |
 | H-075 | `EventPublicActions/Handlers/Commands/UpdateEventPublicActionCommandHandler.cs` | Atomic reviewed public-action replacement | S | 6.2 |
 | H-076 | `Tenants/Handlers/Commands/UpdateTenantNavLink/UpdateTenantNavLinkCommandHandler.cs` | Tenant navigation-link grouped update | C | 6.2 |
@@ -190,6 +190,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 | H-078 | `Footer/Handlers/Commands/PatchTenantFooterSettingsCommandHandler.cs` | Tenant footer grouped PATCH | C | 6.2 |
 | H-079 | `TenantSettingsDocuments/Handlers/Commands/PatchTenantBrandingSettingsDocumentCommandHandler.cs` | Tenant branding grouped PATCH | C | 6.2 |
 | H-080 | `TenantStorageSettings/Handlers/Commands/PatchTenantStorageSettingsCommandHandler.cs` | Tenant storage grouped PATCH | C | 6.2 |
+| H-081 | `PlatformMonetization/Handlers/Commands/UpdatePlatformMonetizationSettingsCommandHandler.cs` | Complete platform monetization settings replacement | S | 6.2 |
 
 `UpdateInstanceSubResourceHandlers.cs` contains additional update-handler classes but does not match the handler-file glob. Those public operations are still individually covered by API rows A-026 through A-042.
 
@@ -311,8 +312,9 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-110 | `TenantSettingsDocumentsController.PatchTenantBrandingSettingsDocument` | `PATCH branding` | C: grouped settings PATCH | 6.2 |
 | A-111 | `TenantStorageSettingsController.PatchTenantStorageSettings` | `PATCH` | C: grouped settings PATCH with explicit credential action | 6.2 |
 | A-112 | `InstanceOnboardingController.SaveInstanceOnboardingProfile` | `PATCH profile` | A: setup-secret-gated non-secret profile save before completion | 6.2 |
+| A-113 | `UpdateInstancePlatformMonetizationSettings` | `PUT` | S: complete instance-level fee and contribution settings replacement | 6.2 |
 
-Task 6.1 verifies every surviving baseline `A` and `S` operation, plus the POST last-active-tenant selection represented by H-021, through `SemanticUpdateExceptionArchitectureTests`. Task 6.2 extends that exact registry with the four post-baseline `S` operations A-105 through A-108. The guard binds each exception to an exact operation ID, path, verb, and non-empty route-specific rationale. It separately proves that all `N` nested DTOs and Application-only commands have no direct controller operation. H-043 and H-053 were corrected from `A` to `N` because neither has a public endpoint.
+Task 6.1 verifies every surviving baseline `A` and `S` operation, plus the POST last-active-tenant selection represented by H-021, through `SemanticUpdateExceptionArchitectureTests`. Task 6.2 extends that exact registry with the five post-baseline `S` operations A-105 through A-108 and A-113. The guard binds each exception to an exact operation ID, path, verb, and non-empty route-specific rationale. It separately proves that all `N` nested DTOs and Application-only commands have no direct controller operation. H-043 and H-053 were corrected from `A` to `N` because neither has a public endpoint.
 
 ## Autosave Classification
 
