@@ -920,7 +920,9 @@ public sealed class EventManagementMcpTools(
         var sessionGroups = await mediator.Send(
             new GetManagedEventSessionGroupsByEventRequest { EventId = eventDto.Id },
             cancellationToken);
-        var days = await mediator.Send(new GetEventDaysByEventRequest { EventId = eventDto.Id }, cancellationToken);
+        var days = await mediator.Send(
+            new GetManagedEventDaysByEventRequest { EventId = eventDto.Id },
+            cancellationToken);
         var agendaItems = await mediator.Send(
             new GetManagedEventAgendaItemsByEventRequest { EventId = eventDto.Id },
             cancellationToken);
