@@ -1,4 +1,24 @@
 {
   "ui.common.appName": "ISLAMU Événements",
-  "ui.common.loading": "Chargement…"
+  "ui.common.loading": "Chargement…",
+  "ui.organization.evidence.approve": "Approuver",
+  "ui.organization.evidence.description": "Envoyez un PDF privé pour examen par le locataire. Les documents sont visibles uniquement par les réviseurs autorisés.",
+  "ui.organization.evidence.download": "Ouvrir le document",
+  "ui.organization.evidence.empty": "Aucun justificatif n’a été envoyé.",
+  "ui.organization.evidence.helper": "PDF uniquement. Les limites d’envoi et le quota de stockage du locataire s’appliquent.",
+  "ui.organization.evidence.load_error": "Les justificatifs n’ont pas pu être chargés.",
+  "ui.organization.evidence.loading": "Chargement des justificatifs…",
+  "ui.organization.evidence.reject": "Rejeter",
+  "ui.organization.evidence.review_error": "L’examen du justificatif n’a pas pu être enregistré.",
+  "ui.organization.evidence.review_success": "Examen du justificatif enregistré.",
+  "ui.organization.evidence.select_pdf": "Sélectionner un PDF",
+  "ui.organization.evidence.selected_file": "Sélectionné",
+  "ui.organization.evidence.status_approved": "Approuvé",
+  "ui.organization.evidence.status_pending": "En attente",
+  "ui.organization.evidence.status_rejected": "Rejeté",
+  "ui.organization.evidence.title": "Justificatif de légitimité",
+  "ui.organization.evidence.upload": "Envoyer pour examen",
+  "ui.organization.evidence.upload_error": "Le justificatif n’a pas pu être envoyé.",
+  "ui.organization.evidence.upload_success": "Justificatif envoyé pour examen.",
+  "ui.organization.evidence.uploading": "Envoi…"
 }

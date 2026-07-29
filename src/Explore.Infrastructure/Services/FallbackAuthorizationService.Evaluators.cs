@@ -110,13 +110,47 @@ public partial class FallbackAuthorizationService
         }
 
         var tenantId = _tenantContext.TenantId;
-        if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
+        var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
+        if (action == AuthorizationActions.Organizations.ReviewEvidence)
+        {
+            LogDecision(
+                isTenantAdmin ? "allow" : "deny",
+                $"organization_evidence_reviewer_tenant_admin={isTenantAdmin}",
+                "islamuevent_organization",
+                resourceId,
+                action);
+            return isTenantAdmin;
+        }
+
+        if (action == AuthorizationActions.Organizations.SubmitEvidence)
+        {
+            var canSubmitEvidence = await _adminContext.IsOrganizationAdminAsync(orgId, cancellationToken);
+            LogDecision(
+                canSubmitEvidence ? "allow" : "deny",
+                $"organization_evidence_submitter_org_admin={canSubmitEvidence}",
+                "islamuevent_organization",
+                resourceId,
+                action);
+            return canSubmitEvidence;
+        }
+
+        if (isTenantAdmin)
         {
             LogDecision("allow", "is_tenant_admin=true", "islamuevent_organization", resourceId, action);
             return true;
         }
 
         var isOrgAdmin = await _adminContext.IsOrganizationAdminAsync(orgId, cancellationToken);
+        if (action == AuthorizationActions.Organizations.ViewEvidence)
+        {
+            LogDecision(
+                isOrgAdmin ? "allow" : "deny",
+                $"organization_evidence_submitter_org_admin={isOrgAdmin}",
+                "islamuevent_organization",
+                resourceId,
+                action);
+            return isOrgAdmin;
+        }
         LogDecision(
             isOrgAdmin ? "allow" : "deny",
             $"organization_admin={isOrgAdmin}",

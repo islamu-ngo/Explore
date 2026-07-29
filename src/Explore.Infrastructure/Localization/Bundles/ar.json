@@ -1,4 +1,24 @@
 {
   "ui.common.appName": "فعاليات إسلامو",
-  "ui.common.loading": "جارٍ التحميل…"
+  "ui.common.loading": "جارٍ التحميل…",
+  "ui.organization.evidence.approve": "موافقة",
+  "ui.organization.evidence.description": "أرسل ملف PDF خاصًا لمراجعة المستأجر. لا تظهر المستندات إلا للمراجعين المخولين.",
+  "ui.organization.evidence.download": "فتح المستند",
+  "ui.organization.evidence.empty": "لم تُرسل أي مستندات إثبات.",
+  "ui.organization.evidence.helper": "ملفات PDF فقط. تطبق حدود الرفع وحصة التخزين الخاصة بالمستأجر.",
+  "ui.organization.evidence.load_error": "تعذر تحميل مستندات الإثبات.",
+  "ui.organization.evidence.loading": "جارٍ تحميل مستندات الإثبات…",
+  "ui.organization.evidence.reject": "رفض",
+  "ui.organization.evidence.review_error": "تعذر حفظ مراجعة مستند الإثبات.",
+  "ui.organization.evidence.review_success": "تم حفظ مراجعة مستند الإثبات.",
+  "ui.organization.evidence.select_pdf": "اختيار ملف PDF",
+  "ui.organization.evidence.selected_file": "المحدد",
+  "ui.organization.evidence.status_approved": "مقبول",
+  "ui.organization.evidence.status_pending": "قيد المراجعة",
+  "ui.organization.evidence.status_rejected": "مرفوض",
+  "ui.organization.evidence.title": "إثبات الشرعية",
+  "ui.organization.evidence.upload": "رفع للمراجعة",
+  "ui.organization.evidence.upload_error": "تعذر إرسال مستند الإثبات.",
+  "ui.organization.evidence.upload_success": "تم إرسال مستند الإثبات للمراجعة.",
+  "ui.organization.evidence.uploading": "جارٍ الرفع…"
 }

@@ -1,4 +1,24 @@
 {
   "ui.common.appName": "ISLAMU Event",
-  "ui.common.loading": "Loading…"
+  "ui.common.loading": "Loading…",
+  "ui.organization.evidence.approve": "Approve",
+  "ui.organization.evidence.description": "Submit a private PDF for tenant review. Documents are visible only to authorized reviewers.",
+  "ui.organization.evidence.download": "Open document",
+  "ui.organization.evidence.empty": "No evidence has been submitted.",
+  "ui.organization.evidence.helper": "PDF only. The tenant's upload limits and storage quota apply.",
+  "ui.organization.evidence.load_error": "Evidence could not be loaded.",
+  "ui.organization.evidence.loading": "Loading evidence…",
+  "ui.organization.evidence.reject": "Reject",
+  "ui.organization.evidence.review_error": "Evidence review could not be saved.",
+  "ui.organization.evidence.review_success": "Evidence review saved.",
+  "ui.organization.evidence.select_pdf": "Select PDF",
+  "ui.organization.evidence.selected_file": "Selected",
+  "ui.organization.evidence.status_approved": "Approved",
+  "ui.organization.evidence.status_pending": "Pending",
+  "ui.organization.evidence.status_rejected": "Rejected",
+  "ui.organization.evidence.title": "Legitimacy evidence",
+  "ui.organization.evidence.upload": "Upload for review",
+  "ui.organization.evidence.upload_error": "Evidence could not be submitted.",
+  "ui.organization.evidence.upload_success": "Evidence submitted for review.",
+  "ui.organization.evidence.uploading": "Uploading…"
 }

@@ -325,6 +325,11 @@ public static class LinkRelations
     public const string OrganizerClaims = "organizer-claims";
     public const string WithdrawClaim = "withdraw-claim";
     public const string ReviewClaim = "review-claim";
+    public const string LegitimacyEvidence = "legitimacy-evidence";
+    public const string PrepareEvidenceUpload = "prepare-evidence-upload";
+    public const string SubmitEvidence = "submit-evidence";
+    public const string ReviewEvidence = "review-evidence";
+    public const string Document = "document";
     public const string SuggestCorrection = "suggest-correction";
     public const string ReportExternalLink = "report-external-link";
 
