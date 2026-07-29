@@ -14,6 +14,9 @@ namespace Explore.Blazor.Client.Tests.Components.Shell;
 
 public sealed class AiAssistantRailTests : IDisposable
 {
+    private static readonly byte[] ValidPng = Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAEElEQVR4nGP8ywACLGCSAQANEQED1LYyQAAAAABJRU5ErkJggg==");
+
     private readonly BlazorTestContext _ctx = new();
     private readonly IAiAssistantClientService _clientService = Substitute.For<IAiAssistantClientService>();
     private readonly AiAssistantState _shellState = new();
@@ -751,15 +754,85 @@ public sealed class AiAssistantRailTests : IDisposable
         cut.WaitForElement("[data-testid='ai-rail-prompt']");
 
         await Assert.That(cut.FindComponents<MudFileUpload<IReadOnlyList<IBrowserFile>>>().Count).IsEqualTo(1);
+        await Assert.That(cut.Find("input[type='file']").GetAttribute("accept"))
+            .IsEqualTo(ImageUploadClientPolicy.DefaultAcceptedImageFormats);
         await Assert.That(cut.Markup).DoesNotContain("Browse files");
         await Assert.That(cut.Markup).DoesNotContain("mud-file-upload-files-default-template");
+    }
+
+    [Test]
+    [Arguments("vector.svg", "image/svg+xml")]
+    [Arguments("bitmap.bmp", "image/bmp")]
+    [Arguments("modern.avif", "image/avif")]
+    [Arguments("mismatch.jpg", "image/jpeg")]
+    public async Task SelectImage_WhenTypeOrExtensionDoesNotMatchSafeRaster_RejectsBeforeAttachment(
+        string fileName,
+        string contentType)
+    {
+        byte[] pngBytes = ValidPng;
+        var conversationId = Guid.CreateVersion7();
+        _conversationState.SelectConversation(CreateConversation(conversationId, "Unsafe image test"));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromBinary(
+            pngBytes,
+            fileName,
+            contentType: contentType));
+
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.FindAll("[data-testid='ai-rail-image-chip']").Count != 0)
+            {
+                throw new InvalidOperationException("Unsafe or mismatched image reached the attachment list.");
+            }
+        });
+    }
+
+    [Test]
+    public async Task SelectImage_WhenSafePrefixHasActiveTail_RejectsBeforeAttachmentOrNetwork()
+    {
+        byte[] activeTail = [.. ValidPng, .. "<html><script>alert(1)</script></html>"u8];
+        var conversationId = Guid.CreateVersion7();
+        _conversationState.SelectConversation(CreateConversation(conversationId, "Active tail test"));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromBinary(
+            activeTail,
+            "active-tail.png",
+            contentType: "image/png"));
+
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.FindAll("[data-testid='ai-rail-image-chip']").Count != 0)
+            {
+                throw new InvalidOperationException("Active-tail image reached the attachment list.");
+            }
+        });
+        await _clientService.DidNotReceive().SendMessageAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<IReadOnlyList<AiMessageImageInputDto>?>(),
+            Arg.Any<IReadOnlyList<AiSelectedReferenceDto>?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task SendMessage_WhenImageIsSelected_ConvertsImageToPlainBase64()
     {
         var conversationId = Guid.CreateVersion7();
-        var imageBytes = new byte[] { 1, 2, 3, 4 };
+        byte[] imageBytes = ValidPng;
         var expectedBase64 = Convert.ToBase64String(imageBytes);
         _conversationState.SelectConversation(CreateConversation(conversationId, "Image send test"));
         _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())

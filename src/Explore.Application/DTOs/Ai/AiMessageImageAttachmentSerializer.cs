@@ -14,14 +14,6 @@ internal static class AiMessageImageAttachmentSerializer
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public static string? SerializeForStorage(IEnumerable<AiMessageImageInputDto>? images)
-    {
-        var attachments = Normalize(images).ToList();
-        return attachments.Count == 0
-            ? null
-            : JsonSerializer.Serialize(attachments, JsonOptions);
-    }
-
     public static bool TrySerializeValidated(
         IEnumerable<AiMessageImageInputDto>? images,
         out string? imageAttachmentsJson,
@@ -109,37 +101,6 @@ internal static class AiMessageImageAttachmentSerializer
                 string.IsNullOrWhiteSpace(image.FileName) ? null : image.FileName.Trim(),
                 image.SizeBytes))
             .ToList();
-
-    private static IEnumerable<StoredAiMessageImageDto> Normalize(IEnumerable<AiMessageImageInputDto>? images)
-    {
-        if (images is null)
-        {
-            yield break;
-        }
-
-        foreach (var image in images)
-        {
-            if (image is null)
-            {
-                continue;
-            }
-
-            var mediaType = image.MediaType?.Trim() ?? string.Empty;
-            var data = image.Data?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(mediaType) || string.IsNullOrWhiteSpace(data))
-            {
-                continue;
-            }
-
-            yield return new StoredAiMessageImageDto
-            {
-                MediaType = mediaType,
-                Data = data,
-                FileName = string.IsNullOrWhiteSpace(image.FileName) ? null : image.FileName.Trim(),
-                SizeBytes = image.SizeBytes
-            };
-        }
-    }
 
     private static IReadOnlyList<StoredAiMessageImageDto> Deserialize(string? imageAttachmentsJson)
     {

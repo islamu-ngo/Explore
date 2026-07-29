@@ -202,6 +202,52 @@ public sealed class AiProposedActionCommandHandlerTests
     }
 
     [Test]
+    public async Task Confirm_WhenImageHasActiveTail_RejectsBeforeMaterialization()
+    {
+        byte[] imageBytes = [.. ValidPngBytes(), 0x41];
+        await AssertInvalidImageRejectedAsync(
+            "[{\"mediaType\":\"image/png\",\"data\":\""
+            + Convert.ToBase64String(imageBytes)
+            + "\",\"fileName\":\"poster.png\",\"sizeBytes\":" + imageBytes.LongLength + "}]");
+    }
+
+    [Test]
+    public async Task Confirm_WhenImageMimeIsNotBrowserSafe_RejectsBeforeMaterialization()
+    {
+        await AssertInvalidImageRejectedAsync(
+            "[{\"mediaType\":\"image/svg+xml\",\"data\":\""
+            + Convert.ToBase64String("<svg></svg>"u8.ToArray())
+            + "\",\"fileName\":\"poster.svg\",\"sizeBytes\":11}]");
+    }
+
+    [Test]
+    public async Task Confirm_WhenImageExtensionDoesNotMatchMime_RejectsBeforeMaterialization()
+    {
+        byte[] imageBytes = ValidPngBytes();
+        await AssertInvalidImageRejectedAsync(
+            "[{\"mediaType\":\"image/png\",\"data\":\""
+            + Convert.ToBase64String(imageBytes)
+            + "\",\"fileName\":\"poster.jpg\",\"sizeBytes\":" + imageBytes.LongLength + "}]");
+    }
+
+    [Test]
+    public async Task Confirm_WhenDeclaredImageSizeDoesNotMatchBytes_RejectsBeforeMaterialization()
+    {
+        byte[] imageBytes = ValidPngBytes();
+        await AssertInvalidImageRejectedAsync(
+            "[{\"mediaType\":\"image/png\",\"data\":\""
+            + Convert.ToBase64String(imageBytes)
+            + "\",\"fileName\":\"poster.png\",\"sizeBytes\":" + (imageBytes.LongLength + 1) + "}]");
+    }
+
+    [Test]
+    public async Task Confirm_WhenImageDataIsMalformedBase64_RejectsBeforeMaterialization()
+    {
+        await AssertInvalidImageRejectedAsync(
+            "[{\"mediaType\":\"image/png\",\"data\":\"not-base64!\",\"fileName\":\"poster.png\",\"sizeBytes\":8}]");
+    }
+
+    [Test]
     public async Task Confirm_WhenCreateEventDraftUsesAllowedOrganization_DispatchesOrganizationScopedCreateCommand()
     {
         var organizationId = Guid.CreateVersion7();
@@ -562,6 +608,31 @@ public sealed class AiProposedActionCommandHandlerTests
             CreatedAt = DateTime.UtcNow,
             CreatedBy = _userId
         };
+    }
+
+    private async Task AssertInvalidImageRejectedAsync(string imageAttachmentsJson)
+    {
+        AiProposedAction action = CreateProposedAction(
+            payloadJson: "{\"title\":\"Poster Event\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}",
+            sourceImageAttachmentsJson: imageAttachmentsJson);
+        _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>())
+            .Returns(action);
+
+        BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(
+            CreateConfirmCommand(),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("invalid_ai_image_attachment");
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<CreateStorageUploadSessionCommand>(),
+            Arg.Any<CancellationToken>());
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<FinalizeStorageUploadSessionCommand>(),
+            Arg.Any<CancellationToken>());
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<CreateEventCommand>(),
+            Arg.Any<CancellationToken>());
     }
 
     private Actor CreateActor(

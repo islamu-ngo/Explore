@@ -1392,8 +1392,7 @@
         var addedCount = 0;
         foreach (var file in files.Take(remainingSlots))
         {
-            var mediaType = ResolveImageMediaType(file);
-            if (!IsImageMediaType(mediaType))
+            if (!ImageUploadClientPolicy.IsAllowedImageContentType(file.ContentType))
             {
                 Snackbar.Add($"{file.Name} is not a supported image file.", Severity.Warning);
                 continue;
@@ -1409,6 +1408,16 @@
                 if (bytes.Length == 0)
                 {
                     Snackbar.Add($"{file.Name} is empty and was not attached.", Severity.Warning);
+                    continue;
+                }
+
+                if (!ImageUploadClientPolicy.TryValidateImageFile(
+                        file.Name,
+                        file.ContentType,
+                        bytes,
+                        out var mediaType))
+                {
+                    Snackbar.Add($"{file.Name} is not a supported image file.", Severity.Warning);
                     continue;
                 }
 
@@ -1497,30 +1506,6 @@
         var kind = summary[ActorContextSummaryPrefix.Length..].Trim();
         return string.IsNullOrWhiteSpace(kind) ? null : kind;
     }
-
-    private static string ResolveImageMediaType(IBrowserFile file)
-    {
-        var contentType = file.ContentType?.Trim();
-        if (IsImageMediaType(contentType))
-        {
-            return contentType!.ToLowerInvariant();
-        }
-
-        return System.IO.Path.GetExtension(file.Name).ToLowerInvariant() switch
-        {
-            ".jpg" or ".jpeg" => "image/jpeg",
-            ".png" => "image/png",
-            ".gif" => "image/gif",
-            ".webp" => "image/webp",
-            ".bmp" => "image/bmp",
-            ".svg" => "image/svg+xml",
-            _ => string.Empty
-        };
-    }
-
-    private static bool IsImageMediaType(string? mediaType) =>
-        !string.IsNullOrWhiteSpace(mediaType)
-        && mediaType.Trim().StartsWith("image/", StringComparison.OrdinalIgnoreCase);
 
     private static string FormatFileSize(long bytes)
     {

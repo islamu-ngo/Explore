@@ -321,7 +321,10 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(message.Content).IsEqualTo("Describe this picture:");
         await Assert.That(message.ImageAttachmentsJson).IsNotNull();
         await Assert.That(message.ImageAttachmentsJson!).Contains("\"mediaType\":\"image/png\"");
-        await Assert.That(message.ImageAttachmentsJson!).Contains($"\"data\":\"{imageData}\"");
+        using var attachmentsDocument = JsonDocument.Parse(message.ImageAttachmentsJson!);
+        await Assert.That(
+                attachmentsDocument.RootElement[0].GetProperty("data").GetString())
+            .IsEqualTo(imageData);
         await Assert.That(savedIdempotency).IsNotNull();
         await Assert.That(savedIdempotency!.RequestBodyHash).IsEqualTo(
             ComputeBodyHash(
@@ -357,6 +360,36 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("invalid_ai_image_attachment");
         await Assert.That(conversation.Messages).IsEmpty();
+        await _settingsResolver.DidNotReceive().ResolveGroupAsync<AiAssistantSettingGroup>(
+            Arg.Any<SettingContext>(),
+            Arg.Any<CancellationToken>());
+        await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
+        await _idempotencyRepository.DidNotReceive().SaveAsync(
+            Arg.Any<IdempotencyRecord>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenImageHasActiveTail_RejectsBeforeProviderOrPersistence()
+    {
+        byte[] imageBytes = [.. ValidPngBytes(), 0x41];
+        IReadOnlyList<AiMessageImageInputDto> images =
+        [
+            new()
+            {
+                MediaType = "image/png",
+                Data = Convert.ToBase64String(imageBytes),
+                FileName = "poster.png",
+                SizeBytes = imageBytes.LongLength
+            }
+        ];
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(content: "Use this poster", images: images),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("invalid_ai_image_attachment");
         await _settingsResolver.DidNotReceive().ResolveGroupAsync<AiAssistantSettingGroup>(
             Arg.Any<SettingContext>(),
             Arg.Any<CancellationToken>());

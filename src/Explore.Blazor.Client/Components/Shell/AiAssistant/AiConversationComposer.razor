@@ -2,6 +2,7 @@
 @* ABOUTME: Owns browser elements and menus while leaving conversation state and commands with its host. *@
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.JSInterop
+@using Explore.Blazor.Client.Services
 
 <div class="ai-rail__composer" role="form" aria-label="Send an AI assistant message">
     @if (IsReferenceAutocompleteVisible)
@@ -91,7 +92,7 @@
         <MudFileUpload T="IReadOnlyList<IBrowserFile>"
                        @ref="_imageFileUpload"
                        FilesChanged="OnFilesSelected"
-                       Accept="image/*"
+                       Accept="@ImageUploadClientPolicy.DefaultAcceptedImageFormats"
                        MaximumFileCount="MaximumFileCount">
             <CustomContent Context="fileUpload"></CustomContent>
             <SelectedTemplate Context="files"></SelectedTemplate>
