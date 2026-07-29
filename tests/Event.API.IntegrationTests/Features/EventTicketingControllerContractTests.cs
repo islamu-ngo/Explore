@@ -5,6 +5,9 @@ using System.Reflection;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Controllers;
 using Explore.API.Hateoas;
+using Explore.API.Filters;
+using Explore.Application.Hateoas;
+using Explore.Application.DTOs.EventTicketing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -53,5 +56,18 @@ public sealed class EventTicketingControllerContractTests
                 await Assert.That(response.Type).IsEqualTo(typeof(ProblemDetails));
             }
         }
+    }
+
+    [Test]
+    public async Task ManagementRead_UsesHalResponseAndPrivateNoStore()
+    {
+        MethodInfo action = typeof(EventTicketingController).GetMethod(nameof(EventTicketingController.Get))
+            ?? throw new InvalidOperationException("The ticketing management read action was not found.");
+
+        ProducesResponseTypeAttribute response = action.GetCustomAttributes<ProducesResponseTypeAttribute>()
+            .Single(attribute => attribute.StatusCode == StatusCodes.Status200OK);
+
+        await Assert.That(response.Type).IsEqualTo(typeof(HalResource<EventTicketCatalogManagementDto>));
+        await Assert.That(action.IsDefined(typeof(PrivateNoStoreAttribute), inherit: true)).IsTrue();
     }
 }

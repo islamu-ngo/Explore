@@ -3,12 +3,16 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
+using Explore.API.Filters;
 using Explore.API.Hateoas;
+using Explore.API.Hateoas.Assemblers;
 using Explore.Application.DTOs.EventTicketing;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
 using Explore.Application.Features.EventTicketing.Requests.Queries;
 using Explore.Application.Responses;
+using Explore.Application.Hateoas;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,18 +25,40 @@ namespace Explore.API.Controllers;
 [Route("api/events/{eventId:guid}/ticketing")]
 [Authorize]
 [EndpointClassification(EndpointClass.Authenticated)]
-public sealed class EventTicketingController(IMediator mediator) : ControllerBase
+public sealed class EventTicketingController(
+    IMediator mediator,
+    IResourceAssembler<EventTicketCatalogManagementDto, EventTicketCatalogManagementDto> assembler) : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor TicketingValidationProblem = new(
+        "eventTicketing",
+        "Event ticketing validation failed",
+        "Event ticketing command failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor NotFoundProblem = new(
+        "Resource not found",
+        "The requested resource was not found.");
+
     [HttpGet("", Name = RouteNames.GetEventTicketCatalogManagement)]
-    [ProducesResponseType(typeof(EventTicketCatalogManagementDto), StatusCodes.Status200OK)]
+    [PrivateNoStore]
+    [ProducesResponseType(typeof(HalResource<EventTicketCatalogManagementDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<EventTicketCatalogManagementDto>> Get(Guid eventId, CancellationToken cancellationToken)
+    public async Task<ActionResult<HalResource<EventTicketCatalogManagementDto>>> Get(Guid eventId, CancellationToken cancellationToken)
     {
         var dto = await mediator.Send(new GetEventTicketCatalogManagementQuery(eventId), cancellationToken);
-        return dto is null ? NotFound() : Ok(dto);
+        if (dto is null)
+        {
+            return this.ToNotFoundProblem(NotFoundProblem);
+        }
+
+        var result = new ObjectResult(await assembler.ToResource(dto, HttpContext))
+        {
+            StatusCode = StatusCodes.Status200OK
+        };
+        result.ContentTypes.Add(HateoasConstants.HalJsonMediaType);
+        return result;
     }
 
     [HttpPost("draft", Name = RouteNames.CreateEventTicketCatalogDraft)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
@@ -68,9 +94,34 @@ public sealed class EventTicketingController(IMediator mediator) : ControllerBas
     public Task<ActionResult<BaseCommandResponse<Guid>>> DeletePool(Guid eventId, Guid capacityPoolId, CancellationToken ct) => SendOk(new DeleteEventCapacityPoolCommand { EventId = eventId, CapacityPoolId = capacityPoolId }, ct);
 
     [HttpPost("publish", Name = RouteNames.PublishEventTicketCatalog)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> Publish(Guid eventId, CancellationToken ct) => SendOk(new PublishEventTicketCatalogCommand { EventId = eventId }, ct);
 
-    private async Task<ActionResult<BaseCommandResponse<Guid>>> SendOk<T>(T command, CancellationToken ct) where T : IRequest<BaseCommandResponse<Guid>> { var response = await mediator.Send(command, ct); return response.Success ? Ok(response) : response.FailureCode == "event_ticketing_not_found" ? NotFound() : BadRequest(response); }
-    private async Task<ActionResult<BaseCommandResponse<Guid>>> SendCreated<T>(T command, string route, object values, CancellationToken ct) where T : IRequest<BaseCommandResponse<Guid>> { var response = await mediator.Send(command, ct); return response.Success ? CreatedAtRoute(route, values, response) : response.FailureCode == "event_ticketing_not_found" ? NotFound() : BadRequest(response); }
+    private async Task<ActionResult<BaseCommandResponse<Guid>>> SendOk<T>(T command, CancellationToken ct)
+        where T : IRequest<BaseCommandResponse<Guid>>
+    {
+        BaseCommandResponse<Guid> response = await mediator.Send(command, ct);
+        return response.Success ? Ok(response) : MapFailure(response);
+    }
+
+    private async Task<ActionResult<BaseCommandResponse<Guid>>> SendCreated<T>(
+        T command,
+        string route,
+        object values,
+        CancellationToken ct)
+        where T : IRequest<BaseCommandResponse<Guid>>
+    {
+        BaseCommandResponse<Guid> response = await mediator.Send(command, ct);
+        return response.Success ? CreatedAtRoute(route, values, response) : MapFailure(response);
+    }
+
+    private ActionResult MapFailure(BaseCommandResponse<Guid> response) => response.FailureCode switch
+    {
+        "event_ticketing_not_found" => this.ToNotFoundProblem(NotFoundProblem),
+        "event_ticketing_concurrency_conflict" => this.ToCommandConflictProblem(
+            response,
+            "Event ticketing conflict",
+            "Event ticketing configuration was updated by another request."),
+        _ => this.ToCommandValidationProblem(response, TicketingValidationProblem)
+    };
 }

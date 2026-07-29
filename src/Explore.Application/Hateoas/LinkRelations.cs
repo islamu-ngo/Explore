@@ -307,6 +307,12 @@ public static class LinkRelations
     public const string ConfigureParticipation = "configure-participation";
     public const string ManageTicketTypes = "manage-ticket-types";
     public const string ManageCapacityPools = "manage-capacity-pools";
+    public const string TicketTypes = "ticket-types";
+    public const string CapacityPools = "capacity-pools";
+    public const string CreateDraft = "create-draft";
+    public const string CloneDraft = "clone-draft";
+    public const string CreateTicketType = "create-type";
+    public const string CreateCapacityPool = "create-pool";
     public const string StartRegistration = "start-registration";
     public const string SignInToRegister = "sign-in-to-register";
     public const string ViewOriginalSource = "view-original-source";

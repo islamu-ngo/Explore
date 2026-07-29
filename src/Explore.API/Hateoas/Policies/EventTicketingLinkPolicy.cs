@@ -1,0 +1,199 @@
+// ABOUTME: HATEOAS candidates for event ticket catalog management resources.
+// ABOUTME: Every ticketing affordance is authorized against the parent event ManageTickets action.
+
+using System.Security.Claims;
+using Explore.Application.Authorization;
+using Explore.Application.Contracts.Hateoas;
+using Explore.Application.DTOs.EventTicketing;
+using Explore.Application.Hateoas;
+using Explore.Domain.Enums;
+
+namespace Explore.API.Hateoas.Policies;
+
+public sealed class EventTicketCatalogManagementLinkPolicy : ILinkPolicy<EventTicketCatalogManagementDto>
+{
+    public IEnumerable<LinkDefinition> GetLinks(
+        EventTicketCatalogManagementDto dto,
+        ClaimsPrincipal? user)
+    {
+        yield return LinkDefinition.Self(
+            RouteNames.GetEventTicketCatalogManagement,
+            new { eventId = dto.EventId });
+
+        yield return new LinkDefinition(
+            LinkRelations.Event,
+            RouteNames.GetEventManagementDetails,
+            new { id = dto.EventId },
+            HttpMethods.Get);
+
+        if (dto.EventId == Guid.Empty)
+        {
+            yield break;
+        }
+
+        if (dto.CatalogId is null)
+        {
+            yield return Manage(
+                new LinkDefinition(
+                    LinkRelations.CreateDraft,
+                    RouteNames.CreateEventTicketCatalogDraft,
+                    new { eventId = dto.EventId },
+                    HttpMethods.Post,
+                    "Create ticket catalog draft",
+                    RequiresAuth: true),
+                dto);
+            yield break;
+        }
+
+        if (dto.StatusId == (int)TicketCatalogStatusEnum.Draft)
+        {
+            yield return Manage(
+                new LinkDefinition(
+                    LinkRelations.CreateTicketType,
+                    RouteNames.CreateEventTicketType,
+                    new { eventId = dto.EventId },
+                    HttpMethods.Post,
+                    "Create ticket type",
+                    RequiresAuth: true),
+                dto);
+            yield return Manage(
+                new LinkDefinition(
+                    LinkRelations.CreateCapacityPool,
+                    RouteNames.CreateEventCapacityPool,
+                    new { eventId = dto.EventId },
+                    HttpMethods.Post,
+                    "Create capacity pool",
+                    RequiresAuth: true),
+                dto);
+            yield return Manage(
+                new LinkDefinition(
+                    LinkRelations.Publish,
+                    RouteNames.PublishEventTicketCatalog,
+                    new { eventId = dto.EventId },
+                    HttpMethods.Post,
+                    "Publish ticket catalog",
+                    RequiresAuth: true),
+                dto);
+        }
+        else if (dto.StatusId == (int)TicketCatalogStatusEnum.Published)
+        {
+            yield return Manage(
+                new LinkDefinition(
+                    LinkRelations.CloneDraft,
+                    RouteNames.CloneEventTicketCatalogDraft,
+                    new { eventId = dto.EventId },
+                    HttpMethods.Post,
+                    "Clone ticket catalog draft",
+                    RequiresAuth: true),
+                dto);
+        }
+    }
+
+    public IEnumerable<LinkDefinition> GetTicketTypeLinks(
+        EventTicketCatalogManagementDto catalog,
+        EventTicketTypeDto ticketType) =>
+        catalog.StatusId == (int)TicketCatalogStatusEnum.Draft
+            ? GetDraftTicketTypeLinks(catalog, ticketType.Id)
+            : [];
+
+    public IEnumerable<LinkDefinition> GetCapacityPoolLinks(
+        EventTicketCatalogManagementDto catalog,
+        EventCapacityPoolDto capacityPool) =>
+        catalog.StatusId == (int)TicketCatalogStatusEnum.Draft
+            ? GetDraftCapacityPoolLinks(catalog, capacityPool.Id)
+            : [];
+
+    private static IEnumerable<LinkDefinition> GetDraftTicketTypeLinks(
+        EventTicketCatalogManagementDto catalog,
+        Guid ticketTypeId)
+    {
+        Guid eventId = catalog.EventId;
+        yield return Manage(
+            new LinkDefinition(
+                LinkRelations.Edit,
+                RouteNames.UpdateEventTicketType,
+                new { eventId, ticketTypeId },
+                HttpMethods.Put,
+                "Update ticket type",
+                RequiresAuth: true),
+            catalog);
+        yield return Manage(
+            LinkDefinition.Delete(
+                RouteNames.DeleteEventTicketType,
+                new { eventId, ticketTypeId }),
+            catalog);
+    }
+
+    private static IEnumerable<LinkDefinition> GetDraftCapacityPoolLinks(
+        EventTicketCatalogManagementDto catalog,
+        Guid capacityPoolId)
+    {
+        Guid eventId = catalog.EventId;
+        yield return Manage(
+            new LinkDefinition(
+                LinkRelations.Edit,
+                RouteNames.UpdateEventCapacityPool,
+                new { eventId, capacityPoolId },
+                HttpMethods.Put,
+                "Update capacity pool",
+                RequiresAuth: true),
+            catalog);
+        yield return Manage(
+            LinkDefinition.Delete(
+                RouteNames.DeleteEventCapacityPool,
+                new { eventId, capacityPoolId }),
+            catalog);
+    }
+
+    private static LinkDefinition Manage(
+        LinkDefinition link,
+        EventTicketCatalogManagementDto catalog) =>
+        link.RequirePermission(
+            AuthorizationActions.Events.ManageTickets,
+            ResourceKinds.Event,
+            catalog.EventId.ToString("D"),
+            BuildEventAttributes(catalog),
+            new AuthorizationScope(TenantId: catalog.TenantId.ToString("D")));
+
+    private static Dictionary<string, object> BuildEventAttributes(
+        EventTicketCatalogManagementDto catalog)
+    {
+        var attributes = new Dictionary<string, object>
+        {
+            ["eventId"] = catalog.EventId.ToString("D"),
+            ["tenantId"] = catalog.TenantId.ToString("D"),
+            ["actorId"] = catalog.ActorId.ToString("D")
+        };
+
+        AddIfPresent(attributes, "userId", catalog.ActorUserId);
+        AddIfPresent(attributes, "organizationId", catalog.ActorOrganizationId);
+        AddIfPresent(attributes, "groupId", catalog.ActorGroupId);
+        AddIfPresent(attributes, "organizerActorId", catalog.OrganizerActorId);
+        AddIfPresent(attributes, "organizerUserId", catalog.OrganizerUserId);
+        AddIfPresent(attributes, "organizerOrganizationId", catalog.OrganizerOrganizationId);
+        AddIfPresent(attributes, "organizerGroupId", catalog.OrganizerGroupId);
+        return attributes;
+    }
+
+    private static void AddIfPresent(
+        Dictionary<string, object> attributes,
+        string key,
+        Guid? value)
+    {
+        if (value.HasValue)
+        {
+            attributes[key] = value.Value.ToString("D");
+        }
+    }
+}
+
+public sealed class EventTicketCatalogManagementCollectionLinkPolicy(
+    EventTicketCatalogManagementLinkPolicy detailPolicy)
+    : ICollectionLinkPolicy<EventTicketCatalogManagementDto>
+{
+    public IEnumerable<LinkDefinition> GetItemLinks(
+        EventTicketCatalogManagementDto dto,
+        ClaimsPrincipal? user) => detailPolicy.GetLinks(dto, user);
+
+    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user) => [];
+}
