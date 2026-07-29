@@ -3325,6 +3325,33 @@ Table "organization_tenants" {
   }
 }
 
+Table "organization_tenant_evidence" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "organization_tenant_id" uuid [not null]
+  "document_storage_object_id" uuid [not null]
+  "review_status_id" int [not null, default: 1]
+  "reviewed_by_user_id" uuid
+  "review_notes" varchar(2000)
+  "reviewed_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, id) [unique]
+    (tenant_id, organization_tenant_id, document_storage_object_id) [unique]
+    (tenant_id, organization_tenant_id, review_status_id)
+    (tenant_id, document_storage_object_id)
+    review_status_id
+    reviewed_by_user_id
+  }
+
+  Note: 'Retained private Document evidence for tenant-local Organization participation review. Review does not auto-approve participation.'
+}
+
 Table "organization_pii" {
   "organization_id" uuid [pk, not null, note: 'shared PK with organization']
   "full_name" varchar(500) [not null]
@@ -3559,6 +3586,8 @@ Table "storage_upload_sessions" {
   "object_key" varchar(1024)
   "sha256_checksum" varchar(64)
   "storage_object_id" uuid
+  "owning_resource_kind" varchar(100)
+  "owning_resource_id" uuid
   "idempotency_key" varchar(128)
   "failure_code" varchar(100)
   "failure_message" varchar(500)
@@ -3579,6 +3608,7 @@ Table "storage_upload_sessions" {
     (provider, object_key) [note: 'Filtered when object_key is present.']
     storage_object_id
     user_id
+    (tenant_id, owning_resource_kind, owning_resource_id) [note: 'Filtered when both owner fields are present.']
   }
 
   Note: 'Tenant/user scoped upload reservation before bytes are accepted.'
@@ -3801,8 +3831,6 @@ Table "events" {
   "audience_gender_id" int
   "audience_age_id" int
   "actor_id" uuid [not null]
-  "price" decimal(19,4)
-  "currency_code" varchar(3)
   "featured_image_id" uuid
   "total_views" int [not null]
   "is_registration_required" boolean [not null]
@@ -3863,7 +3891,7 @@ Table "events" {
     (visibility_type_id) [name: 'ix_events_visibility_type_id']
   }
 
-  Note: 'Core aggregate. Checks: CK_Event_NonNegativePrice (price >= 0), CK_Event_SessionDateRange, CK_Event_SessionStartUtcRange, CK_Event_TimeZoneIdNotBlank. Soft-deletable, tenant-scoped, concurrency-protected. Event graph child rows use (tenant_id, id) as the principal key. UTC session starts are source of truth; local dates are server-owned projections.'
+  Note: 'Core aggregate. Checks: CK_Event_SessionDateRange, CK_Event_SessionStartUtcRange, CK_Event_TimeZoneIdNotBlank. Soft-deletable, tenant-scoped, concurrency-protected. Event graph child rows use (tenant_id, id) as the principal key. UTC session starts are source of truth; local dates are server-owned projections.'
 }
 
 
@@ -3982,8 +4010,6 @@ Table "event_sessions" {
   "max_audience_attendees" int
   "current_audience_attendees" int
   "registration_mode_id" int
-  "price" decimal(19,4)
-  "currency_code" varchar(3)
   "description" varchar(500)
   "sort_order" int [not null, default: 0]
   "local_start_date" date
@@ -4021,7 +4047,7 @@ Table "event_sessions" {
     (featured_image_id) [name: 'ix_event_sessions_featured_image_id']
   }
 
-  Note: 'Draft-capable program item. Checks: CK_EventSession_NonNegativePrice, CK_EventSession_EndAfterStart (conditional when scheduled), CK_EventSession_RoomRequiresLocation, CK_EventSession_LocalStartMinuteRange, CK_EventSession_LocalEndMinuteRange, CK_EventSession_LocalStartMinuteMatchesTime, CK_EventSession_LocalEndMinuteMatchesTime. Nullable start/end/local projection fields represent unscheduled draft/internal sessions. Model-owned exclusion: EX_EventSession_RoomNoOverlap prevents overlapping active scheduled sessions in the same tenant/location/room using tstzrange(start_time, end_time, ''[)'') and ignores rows where start_time or end_time is null. UTC times are source of truth when present; local fields are server-owned projections.'
+  Note: 'Draft-capable program item. Checks: CK_EventSession_EndAfterStart (conditional when scheduled), CK_EventSession_RoomRequiresLocation, CK_EventSession_LocalStartMinuteRange, CK_EventSession_LocalEndMinuteRange, CK_EventSession_LocalStartMinuteMatchesTime, CK_EventSession_LocalEndMinuteMatchesTime. Nullable start/end/local projection fields represent unscheduled draft/internal sessions. Model-owned exclusion: EX_EventSession_RoomNoOverlap prevents overlapping active scheduled sessions in the same tenant/location/room using tstzrange(start_time, end_time, ''[)'') and ignores rows where start_time or end_time is null. UTC times are source of truth when present; local fields are server-owned projections.'
 }
 
 Table "event_session_groups" {
@@ -5035,6 +5061,11 @@ Ref: "organization_pii"."organization_id" - "organizations"."id" [delete: cascad
 Ref: "organization_tenants"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "organization_tenants"."organization_id" > "organizations"."id" [delete: restrict]
 Ref: "organization_tenants"."approval_status_id" > "approval_statuses"."id" [delete: restrict]
+Ref: "organization_tenant_evidence".("tenant_id", "organization_tenant_id") > "organization_tenants".("tenant_id", "id") [delete: restrict]
+Ref: "organization_tenant_evidence".("tenant_id", "document_storage_object_id") > "storage_objects".("tenant_id", "id") [delete: restrict]
+Ref: "organization_tenant_evidence"."review_status_id" > "approval_statuses"."id" [delete: restrict]
+Ref: "organization_tenant_evidence"."reviewed_by_user_id" > "users"."id" [delete: restrict]
+Ref: "organization_tenant_evidence"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "organization_members".("tenant_id", "organization_tenant_id") > "organization_tenants".("tenant_id", "id") [delete: cascade]
 Ref: "organization_members"."user_id" > "users"."id" [delete: restrict]
 Ref: "organization_members"."organization_position_id" > "organization_positions"."id" [delete: restrict]
