@@ -1,9 +1,10 @@
-<!-- ABOUTME: Operational memory for the implemented onboarding UX refactor and its remaining verification work. -->
-<!-- ABOUTME: Records decisions, evidence, risks, validation blockers, and the next safe action for a cold agent. -->
+<!-- ABOUTME: Operational memory for the onboarding foundation and planned unified workspace refactor. -->
+<!-- ABOUTME: Records screenshot evidence, design decisions, security boundaries, implementation slices, and the next safe action. -->
 
 # Onboarding UX Refactor — Context
 
-> **Current state (2026-07-12):** Production Keycloak manageability and explicit authorization-provider deployment reconciliation are implemented with focused green regression coverage. Tasks 6.3, 8.1, 8.2, and 8.3 remain open for fresh runtime/visual, required-suite, authenticated, and final-review evidence.
+> **Implemented foundation (2026-07-12):** Production Keycloak manageability, authorization-provider reconciliation, HAL-gated task actions, and mode-specific completion behavior exist with focused regression coverage.
+> **Corrected re-baseline (2026-07-29):** The user's current-state screenshots and prototype prove the unified experience is not implemented. `SetupLayout` supplies minimal theme/language chrome only; current routes lack the prototype's persistent journey header, segmented progress, focused step layout, setup summary/help rail, and stable Back/Continue/Save-and-exit model. Phase 9 is now the primary implementation scope.
 
 ## Production Detection Update
 
@@ -13,9 +14,9 @@
 - Current focused evidence is 6 service tests, 2 confidential-client validator tests, 5 rotation-handler tests, 1 compatibility-mapping test, and 1 real TestServer HTTP projection test, all passing. Save/update handler regression cases for server-derived configured state and forged request ownership also pass.
 - This resolves the producer/service boundary. A deployed Keycloak browser login and create/repair/reconcile realm journey remains open because the current browser visual artifact used a stubbed detected-provider response.
 
-Last Updated: 2026-07-12 Europe/Brussels
+Last Updated: 2026-07-29 Europe/Brussels
 
-## SESSION PROGRESS (2026-07-12 Europe/Brussels)
+## SESSION PROGRESS (2026-07-29 Europe/Brussels)
 
 ### ✅ COMPLETED
 
@@ -31,16 +32,29 @@ Last Updated: 2026-07-12 Europe/Brussels
 - Retained configured Keycloak as a complete task with a HAL-gated management route before and after launch.
 - Hardened setup-secret forwarding against browser-header spoofing, query-string confusion, and similar-route prefix confusion; the final focused BFF suite passes 14/14.
 - Hardened the provider editor so setup reads only the public redacted contract, clears any returned secret fields before render, never prefills an existing client secret into bootstrap controls, and clears all one-time bootstrap values in `finally`.
-- Completed the earlier Keycloak-focused browser QA across base/detected, desktop/mobile, LTR/RTL, light/dark, long-text, disclosure-keyboard, focus, and provider-action states; that independent visual gate is `PASS`. Fresh authorization-page QA remains open.
+- Completed the earlier Keycloak-focused browser QA across base/detected, desktop/mobile, LTR/RTL, light/dark, long-text, disclosure-keyboard, focus, and provider-action states; that foundation-only gate passed but does not verify the Phase 9 unified workspace.
 - Implemented explicit blank/Local/Cerbos authorization intent, runtime precedence, deployment-owned writes, instance PDP verification, instance-only policy publication, bounded startup retries, singleton single-flight state, safe failure remediation, authoritative route skipping, post-launch retry refresh, and the one-column Local-first page.
 - Updated canonical configuration, secrets, self-hosting, troubleshooting, Blazor, and API change documentation for the authorization flow.
+- Corrected the earlier planning error that equated a shared Blazor layout with a unified user experience. The screenshots establish the fragmented baseline; the prototype establishes the missing workspace information architecture.
+- Re-baselined the plan around a prototype-informed `OnboardingWorkspace` while retaining mode-specific handoffs, HAL authority, recovery states, provider manageability, setup-secret/OIDC hard transitions, optional first-tenant scope, existing editors, and the no-snapshot decision.
 
 ### 🟡 IN PROGRESS
 
-- Core UI, production Keycloak detection, and authorization-provider automation are implemented. Tasks 6.3, 8.1, and 8.2 remain open because fresh authorization visual/runtime evidence and post-change required suites are incomplete, API/Architecture retain failures, and authenticated/assisted-screen-reader journeys are unverified.
+- The behavioral foundation is implemented, but the unified onboarding workspace has not started. New Tasks 9.1-9.5 and 10.1 are open.
 - The current Release build passes with zero errors; full Application, serialized Client, and BFF Integration projects pass.
 - Context7 `/mudblazor/mudblazor` guidance informed semantic markup, keyboard-safe native links, live regions, and bUnit coverage.
 - `add-hal-link`, `openapi-contract-change`, and `blazor-component-affordance` were implemented; the aggregate snapshot remains deferred after measurement.
+- No production edit was made during the 2026-07-29 corrected planning pass. The next safe action is Task 9.1: update `docs/DESIGN.md` and add failing workspace contract tests before changing components.
+
+### Screenshot And Prototype Evidence — 2026-07-29
+
+- **Current setup access:** a bespoke split-screen entry with floating theme/language controls. It establishes setup authority but does not expose numbered journey progress.
+- **Current authentication setup:** either a narrow tall provider form or a small detected-provider card centered in a mostly empty viewport.
+- **Current overview/readiness:** a long single-column task list followed by profile fields, required checks, warnings, and launch action; it has no persistent step navigation or contextual side summary.
+- **Current authorization:** a long standalone Local/Cerbos page with its own hierarchy and action placement.
+- **Prototype target:** a persistent product header, saved/resumable state, segmented progress with `Step n of m`, a focused form body, right-side setup summary plus About this step context, and stable Back/Continue controls.
+- **Interpretation:** copy the layout grammar and orientation model, not Oppworx branding, fixed eight-step content, colors, or accounting-specific fields. ISLAMU tokens and MudBlazor wrappers remain authoritative.
+- **Persistence gap:** `InstanceOnboarding.razor` submits `SelfHostOnboardingProfileDto` only through final completion. `InstanceSettingsController.UpdateBrandingSettings` requires instance-admin authority, which the first operator does not receive until completion. Therefore honest pre-launch Save and exit/resume requires the planned onboarding-scoped `PATCH /api/instance-onboarding/profile` plus `save-profile` HAL relation; browser draft storage is forbidden.
 
 ### Implementation Evidence
 
@@ -62,15 +76,16 @@ Last Updated: 2026-07-12 Europe/Brussels
 - **Accessibility:** existing `IAccessibilityAnnouncerService`; MainLayout continues to own global focus and live-region infrastructure.
 - **Navigation:** existing focused provider routes plus canonical `ControlPlaneRoutes` constants.
 - **Styling:** existing three-tier `--isl-*` tokens and component-scoped BEM CSS; no new global override or wrapper.
+- **Design contract:** `docs/DESIGN.md` exists and must gain the `OnboardingWorkspace` primitive before UI implementation.
 - **Trust boundary:** existing BFF setup-secret session and resolver are reused; the forwarding handler now also serves status reads and uses strict path matching.
 - **Security coverage:** BFF/API tests cover global browser-header stripping, trusted replacement, near-route/query rejection, secret redaction, invalid/inactive/rate-limited setup, safe ProblemDetails, permission-bound HAL relations, and tenant isolation/drift.
 
 ### ⏭️ NEXT
 
-1. Restart the real FullLocal Aspire stack from current source and prove explicit Cerbos background readiness plus the authorization-page skip/remediation routes.
-2. Run fresh desktop/mobile authorization visual QA without using browser tooling for file exploration.
-3. Rerun the required post-change build and project suites, preserving unrelated workspace changes and attributing API/Architecture failures.
-4. Execute authenticated SingleTenant/MultiTenant, deployment-supplied Keycloak create/repair/reconcile, and assisted screen-reader journeys.
+1. Task 9.1: add the workspace primitive, states, geometry, responsive behavior, and reference contract to `docs/DESIGN.md`.
+2. Add failing bUnit/source tests for header/progress/main/aside/footer semantics, conditional step count, mobile summary disclosure, RTL order, and secure exit/resume.
+3. Task 9.2: implement the display-only workspace primitive before integrating pages.
+4. Integrate pre-auth/OIDC and post-auth pages incrementally through Tasks 9.3-9.5, then run Task 10.1 reference-fidelity QA.
 
 ### ⚠️ BLOCKERS
 
@@ -84,27 +99,33 @@ Last Updated: 2026-07-12 Europe/Brussels
 1. Read `onboarding-ux-refactor-plan.md`.
 2. Read `onboarding-ux-refactor-tasks.md`.
 3. Review current `git status` without modifying unrelated managed-control-plane work or introducing `.codex` changes.
-4. Start with open Tasks 6.3, 8.1, and 8.2; core implementation and canonical docs are complete.
-5. Fresh authorization browser QA is still required. Do not use browser tooling for file exploration.
+4. Start with Task 9.1. The July backend/provider/task-list foundation is complete, but the prototype-informed workspace is not.
+5. Treat supplied current screenshots as the visual baseline and the prototype as the layout/interaction reference. Do not claim the shared `SetupLayout` already satisfies it.
 
 ## Key Files And Responsibilities
 
 | Path | Existing/New | Layer | Purpose | Notes |
 |---|---|---|---|---|
 | `src/Explore.Blazor.Client/Routes.razor` | Existing | Blazor Client | Central route table | Preserve focused routes unless approved otherwise. |
-| `src/Explore.Blazor.Client/Pages/Setup.razor` | Existing | Blazor Client | Setup-secret gateway and auth handoff | Separate pre-auth flow. |
+| `src/Explore.Blazor.Client/Layout/SetupLayout.razor` | Existing, planned modification | Blazor Client | Trust-neutral onboarding outer layout | Keep theme/language/main landmark; coordinate with workspace header without owning business state. |
+| `src/Explore.Blazor.Client/Pages/Setup.razor` | Existing, planned modification | Blazor Client | Setup-secret access gate and auth handoff | Access remains outside numbered progress; validated flow enters the workspace. |
 | `src/Explore.Blazor.Client/Pages/Onboarding/StartupGate.razor` | Existing | Blazor Client | Server-derived startup routing | Must distinguish platform completion from tenant onboarding. |
 | `src/Explore.Blazor.Client/Pages/Onboarding/InstanceOnboarding.razor` | Existing, refactored | Blazor Client | Instance setup overview and launch | Composes authoritative reads and HAL actions. |
 | `src/Explore.Blazor.Client/Pages/Onboarding/AuthProviderConfiguration.razor` | Existing | Blazor Client | Focused authentication-provider task | Reuse; do not expose provider secrets. |
 | `src/Explore.Blazor.Client/Pages/Onboarding/AuthorizationProviderConfiguration.razor` | Existing, refactored | Blazor Client | Single-column Local default, advanced Cerbos configuration, and failed deployment remediation | Deployment pending/ready bypasses the choice page; failure is locked and retry-only. |
 | `src/Explore.Blazor.Client/Pages/Onboarding/TenantOnboarding.razor` | Existing, refactored | Blazor Client | Tenant-scoped onboarding | Optional after MultiTenant platform launch; tenant drift fails closed. |
 | `src/Explore.Blazor.Client/Pages/Onboarding/Components/OnboardingTaskList.razor` | New, implemented | Blazor Client | Minimal accessible display component | No authority/business logic. |
+| `src/Explore.Blazor.Client/Pages/Onboarding/Components/OnboardingWorkspace.razor` | Planned new | Blazor Client | Header/progress/main/summary/help/footer composition | Display/navigation only; no API, role, provider, or completion authority. |
+| `docs/DESIGN.md` | Existing, planned modification | Design contract | Canonical workspace primitive and states | Must be updated before component code. |
 | `src/Explore.Blazor.Client/Pages/Admin/Instance/InstanceAdminSettings.razor` | Existing | Blazor Client | Post-launch instance editor | Reuse/link from tasks. |
 | `src/Explore.Blazor.Client/Pages/Admin/Tenant/TenantAdminSettings.razor` | Existing | Blazor Client | Post-launch tenant editor | Reuse/link from tenant tasks. |
 | `src/Explore.Blazor/Extensions/BffSetupSecretEndpoints.cs` | Existing | BFF | Setup-secret session endpoints | Trusted server boundary. |
 | `src/Explore.Blazor/Services/SetupSecretResolver.cs` | Existing | BFF | Resolves trusted secret source | Browser never owns value. |
 | `src/Explore.Blazor/Services/SetupSecretForwardingHandler.cs` | Existing | BFF | Strips/replaces privileged header | Security regression target. |
 | `src/Explore.API/Controllers/InstanceOnboardingController.cs` | Existing | API | Setup/status/provider/completion API | Thin controller contract. |
+| `src/Explore.Application/Features/InstanceOnboarding/Requests/Commands/SaveInstanceOnboardingProfileCommand.cs` | Planned new | Application | Non-secret pre-launch profile draft command | Returns `BaseCommandResponse<Guid>`; manual validation; no generic wizard state. |
+| `src/Explore.Application/Features/InstanceOnboarding/Handlers/Commands/SaveInstanceOnboardingProfileCommandHandler.cs` | Planned new | Application | Persists existing profile setting keys before launch | Repeated PATCH converges; completion remains final authority. |
+| `src/Explore.API/Hateoas/Policies/InstanceOnboardingStatusLinkPolicy.cs` | Existing, planned modification | API HAL | Adds setup/auth-scoped `save-profile` affordance | Omit unless setup active and caller authenticated. |
 | `src/Explore.API/Controllers/SystemController.cs` | Existing | API | Public/system onboarding status and preflight | Compose existing read state. |
 | `src/Explore.API/Controllers/TenantOnboardingController.cs` | Existing | API | Tenant status/settings/progress/completion | Needs explicit integration coverage. |
 | `src/Explore.API/Controllers/InstanceSettingsController.cs` | Existing | API | Post-launch authz/settings/sync/package endpoints | Deployment mode remains immutable here. |
@@ -122,7 +143,7 @@ Last Updated: 2026-07-12 Europe/Brussels
 ## Key Decisions
 
 1. `/setup` remains pre-auth and setup-secret protected; visual consistency does not merge authority.
-2. Post-auth onboarding becomes a single-column conditional task list driven by server state.
+2. After setup-secret validation, onboarding uses one route-aware workspace with a focused main step and responsive summary/help region; status remains server-derived.
 3. `DEPLOYMENT_MODE` and dedicated admin host are deployment/operator configuration and read-only context in UI.
 4. SingleTenant launches to events/settings; MultiTenant launches the platform/control plane first.
 5. First-tenant onboarding is optional, separate, and tenant-scoped.
@@ -134,6 +155,11 @@ Last Updated: 2026-07-12 Europe/Brussels
 11. Authentication-provider completion and ongoing manageability are separate: a configured task retains a HAL-authorized **Manage authentication** link to the focused setup page before launch and the admin provider editor after launch for Keycloak realm diagnosis, repair, or reconciliation; missing/error authoritative state still fails closed.
 12. Deployment/configured Keycloak credentials must never remove authentication-provider management. Detection may offer a fast continue action, but the operator retains the full setup editor before launch and the HAL-authorized admin provider editor after launch.
 13. Authorization provider intent is explicit: `local` and `cerbos` are deployment-owned; Local and pending/ready Cerbos bypass the choice page, while final failed Cerbos opens locked remediation. Blank/unset defaults the manual page to Local with Cerbos progressively disclosed. Endpoint/credential presence alone never selects Cerbos.
+14. Sharing `SetupLayout` is not sufficient. The missing workspace must add persistent orientation and navigation across focused routes.
+15. The prototype supplies layout grammar only. ISLAMU tokens, typography, wrappers, localization, and light/dark themes remain authoritative.
+16. Save and exit uses confirmed server persistence or explicit discard; no onboarding draft, setup secret, or provider secret is stored in browser storage.
+17. The access gate stays outside numbered progress; OIDC and setup-secret cookie transitions may hard reload while the same visual workspace resumes from authoritative state.
+18. Add one narrow profile-draft command/endpoint under authenticated + active setup-secret authority. Reuse `SelfHostOnboardingProfileDto`, its manual validator, and existing instance-setting persistence; add no generic wizard table or secret-bearing draft.
 
 ### Current Slice Evidence — 2026-07-12 Europe/Brussels
 
@@ -182,9 +208,15 @@ Final verification evidence on 2026-07-12:
 - Latest full Architecture: 263/268 passed, four failed, one governed skip.
 - Focused provider source 9/9, redacted endpoint mapping 1/1, and setup-layout source 1/1: passed.
 - Current authorization slice: configuration/options 13/13, provider/single-flight 19/19, policy-package target isolation 22/22, runtime provider 23/23, boot runner 4/4, authorization page 13/13, instance onboarding service 34/34, admin provider layout 10/10, Setup 9/9, and authentication source 10/10 passed. Client/API/Infrastructure Release builds have zero errors.
-- Final browser base and detected runs: exit zero. The independent visual gate is `PASS`; only pre-existing CSP meta/inline-script console warnings remain.
+- Foundation browser base and detected runs exited zero. That independent visual gate predates the unified-workspace target and is baseline evidence only; pre-existing CSP meta/inline-script console warnings remain.
 - The prior `.slnx` and migration blockers are resolved. The last real stack ran API, Blazor, Keycloak, database, cache, and Cerbos; `/health` remained `503` because S3 storage was unhealthy. A fresh current-source replay is pending.
 - Post-refresh DocumentationQuality passes 4/4, AgentContextLink passes 8/8, and AgentContextSchema passes 9/9.
+
+Planning re-baseline verification on 2026-07-29:
+
+- `git diff --check -- dev/active/onboarding-ux-refactor` passed.
+- `dotnet build --configuration Release --verbosity quiet` passed with 0 errors and 82 existing NuGet/AOT warnings.
+- `Event.Architecture.Tests` could not start because unrelated concurrent edits in `GetActorsByTenantRequestHandler.cs` do not compile: the new code references `Actor` and `StorageObject` without resolvable imports. The file is outside this planning pass and was left untouched.
 
 ## Current Known Risks / Unknowns
 
@@ -196,6 +228,8 @@ Final verification evidence on 2026-07-12:
 - **Open / Task 8.2:** Responsive, keyboard, focus, RTL, dark/light, and long-text browser checks pass; authenticated postlaunch and assisted screen-reader journeys still require a healthy real stack.
 - **Open / Task 8.1:** Eight API and four Architecture failures prevent a fully green required-project baseline until they are attributed or fixed.
 - **Open / all work:** Unrelated managed-control-plane changes must remain isolated from any future commit or diagnosis; `.codex/config.toml` currently has no diff.
+- **Open / Tasks 9.1-9.5:** The unified workspace shown by the prototype is entirely unimplemented. Existing screenshot/visual evidence is baseline evidence, not completion evidence.
+- **Open / Task 9.1:** Finalize conditional step names/order and responsive rail behavior in `docs/DESIGN.md`; the plan defaults to Access gate → Authentication → Site profile → Authorization → Readiness → Launch, with deployment-managed skips projected from server state.
 
 ## Overlap And Supersession
 
@@ -213,3 +247,12 @@ Final verification evidence on 2026-07-12:
 - **Documentation impact:** Canonical configuration, secrets, self-hosting, troubleshooting, deployment-mode, Blazor, API changelog, and API inventory documentation now match implemented behavior.
 - **Risks:** Environment-detected Keycloak is production-proven at the service/API boundary but not through a real browser login/realm-management deployment journey; authenticated and assisted screen-reader journeys remain open; unrelated workspace changes can contaminate broad test results.
 - **Notes for next contributor/agent:** Do not mark Tasks 8.1/8.2 complete without direct green evidence. Do not implement a snapshot, Cerbos inventory, decision-test API, tenant invitation, lifecycle, or self-service flow without explicit reclassification and evidence.
+
+### Corrected Planning Handoff — 2026-07-29 Europe/Brussels
+
+- **Current state:** Backend/provider/HAL behavior is implemented; the screenshot-demonstrated UI is still fragmented. The prototype-informed unified workspace is planned, not implemented.
+- **Next action:** Task 9.1, updating `docs/DESIGN.md` and writing failing workspace contract tests.
+- **Design:** desktop main + tonal summary/help rail; mobile in-flow summary disclosure; persistent progress and footer; existing focused pages remain route/business owners.
+- **Security:** access gate remains setup-secret protected; OIDC/BFF hard transitions remain; HAL and server status drive steps/actions; browser draft storage is forbidden for secrets and unsaved configuration.
+- **Validation:** prior visual `PASS` is not valid for Phase 9. Fresh reference-fidelity evidence is required after implementation.
+- **Workspace caution:** preserve unrelated concurrent changes, including the compile-blocking `GetActorsByTenantRequestHandler.cs` edits observed during planning verification.

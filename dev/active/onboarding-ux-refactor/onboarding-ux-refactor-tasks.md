@@ -1,23 +1,25 @@
-<!-- ABOUTME: Tactical implementation checklist for the onboarding UX refactor workstream. -->
-<!-- ABOUTME: Sequences tests, accessible task-list UI, authority-safe journeys, recovery, docs, and verification. -->
+<!-- ABOUTME: Tactical implementation checklist for the onboarding foundation and unified workspace refactor. -->
+<!-- ABOUTME: Sequences design contract, shared shell, secure route integration, authority-safe journeys, and reference-fidelity QA. -->
 
 # Onboarding UX Refactor — Task Checklist
 
-> **Current status (2026-07-12):** Keycloak producer work is complete. Authorization-provider deployment intent, bounded background Cerbos reconciliation, server-authoritative skips, the single-column Local-default UX, and canonical docs are implemented with focused green tests; live visual QA, required suites, and authenticated runtime verification remain open.
-> **Progress:** 12/16 tasks complete. Tasks 6.3, 8.1, 8.2, and 8.3 remain unchecked.
-> **Current priority:** Finish Task 6.3 real Aspire/browser evidence, then rerun required and final-review gates.
-> **Final review gate:** Fresh goal, QA, code-quality, security, and context review is pending after the authorization-provider slice.
+> **Current status (2026-07-29):** The backend/provider/HAL/task-list foundation is implemented. The screenshots prove the unified onboarding workspace is not; Phase 9 is planned and unstarted.
+> **Progress:** 12/22 unconditional tasks complete. Tasks 6.3, 8.1-8.3, 9.1-9.5, and 10.1 remain unchecked; conditional Task 6.2 remains deferred.
+> **Current priority:** Task 9.1 — codify the prototype-informed workspace in `docs/DESIGN.md` and add failing state/structure tests.
+> **Final review gate:** Fresh reference-fidelity, goal, QA, code-quality, security, and context review is required after Phase 9.
+> **Corrected re-baseline:** Sharing `SetupLayout` does not equal a unified experience. The missing header/progress/main/summary/help/footer workspace is now explicit implementation scope.
 
-Last Updated: 2026-07-12 Europe/Brussels
+Last Updated: 2026-07-29 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Authorization-provider implementation, focused tests, and canonical docs are complete; live QA, required-suite, and authenticated runtime verification remain open
-- **Checklist completed:** 12/16 unconditional tasks; conditional Task 6.2 remains deferred
-- **Planning completed:** Repository evidence, decisions, phases, context, and checklist created
-- **Current priority:** Task 6.3 — finish live visual/runtime proof for the implemented deployment automation and one-column page
-- **Next recommended slice:** Verify the regenerated API contract, then run Aspire/browser and required project gates
-- **Implementation has started:** Yes — Keycloak and task-overview work is complete; authorization-provider automation/UI and final verification remain open
+- **Overall status:** Behavioral foundation implemented; unified workspace not started
+- **Checklist completed:** 12/22 unconditional tasks; conditional Task 6.2 remains deferred
+- **Planning completed:** Corrected repository/screenshot/prototype re-baseline is complete
+- **Current priority:** Task 9.1 — design contract and failing workspace tests
+- **Next recommended slice:** Task 9.2 shared display/navigation primitive after Task 9.1 acceptance
+- **Implementation has started:** Prior foundation yes; Phase 9 no
+- **Planning re-baseline:** Complete — new workspace scope added without runtime edits
 
 ## Implementation Maintenance Rules
 
@@ -139,7 +141,7 @@ Last Updated: 2026-07-12 Europe/Brussels
 
 - [ ] **6.3 Reconcile deployment-selected authorization and simplify its onboarding surface**
   - **Files:** API configuration compatibility and existing Cerbos boot-sync worker; shared authorization-provider configuration/runtime services and DTO; AppHost/Compose/env examples; `Setup.razor`, `AuthProviderConfiguration.razor`, `AuthorizationProviderConfiguration.razor` plus scoped CSS; focused API/Infrastructure/Application/Client tests; canonical configuration/secrets/self-hosting docs.
-  - **Acceptance:** `AUTHORIZATION_PROVIDER=local` selects deployment-managed Local and skips authorization onboarding without any Cerbos call; `cerbos` keeps runtime fail-closed, verifies the configured PDP, publishes the bundled policies server-side, never sends the automatic journey through the provider-choice page, and is considered configured only after both checks succeed; blank/unset does not infer intent from Cerbos endpoints or credentials and renders Local by default with Cerbos behind native progressive disclosure; invalid explicit values fail startup; deployment-managed values cannot be overridden by browser DTO flags; failure is visible as safe remediation from the instance task without secrets; the page is one responsive column with no step rail, side summary, nested provider cards, or mouse-only choice controls.
+  - **Acceptance:** `AUTHORIZATION_PROVIDER=local` selects deployment-managed Local and skips authorization onboarding without any Cerbos call; `cerbos` keeps runtime fail-closed, verifies the configured PDP, publishes the bundled policies server-side, never sends the automatic journey through the provider-choice page, and is considered configured only after both checks succeed; blank/unset does not infer intent from Cerbos endpoints or credentials and renders Local by default with Cerbos behind native progressive disclosure; invalid explicit values fail startup; deployment-managed values cannot be overridden by browser DTO flags; failure is visible as safe remediation from the instance task without secrets; provider controls remain one content column without nested cards or mouse-only choices. Phase 9 supplies the single shared journey rail/summary around that content.
   - **Validation:** focused compatibility, service, runtime-provider, boot-sync, navigation, and bUnit tests; Release build; Client/API/Architecture gates; Compose validation; real Aspire Local/Cerbos readiness and browser QA at desktop/mobile, LTR/RTL, light/dark, keyboard, focus, and long text.
   - **Evidence:** Implementation and canonical docs are complete; live Aspire/browser QA remains. Added validated `AUTHORIZATION_PROVIDER` compatibility mapping and deployment precedence shared by onboarding and `RuntimeAuthorizationProvider`. The background runner makes Local ready without Cerbos, or verifies the instance PDP before publishing only to the instance Admin API; it uses bounded retries and singleton single-flight state so startup/admin attempts cannot double-publish or overwrite ready state. Deployment-managed writes fail closed, pending/ready providers bypass the choice page, and final Cerbos failure exposes locked retry-only remediation. The Blazor page is one centered column with a real Local radio default and native Cerbos `<details>` disclosure; failed routing and post-launch retry refresh are server-authoritative, while Keycloak management remains available. Focused evidence passes: configuration mapping/options 13/13, provider service/single-flight 19/19, policy package target isolation 22/22, runtime provider 23/23, boot runner 4/4, authorization page 13/13, instance onboarding service 34/34, admin provider layout 10/10, Setup 9/9, authentication source 10/10, and Client/API/Infrastructure Release builds with zero errors.
   - **Effort:** L
@@ -155,13 +157,13 @@ Last Updated: 2026-07-12 Europe/Brussels
   - **Effort:** M
   - **Dependencies:** 5.1, 6.1 or 6.2
 
-## Phase 8: Verification And Handoff ⏳ IN PROGRESS — VISUAL GATE PASSED
+## Phase 8: Foundation Verification And Re-baseline ⏳ IN PROGRESS
 
 - [ ] **8.1 Run diagnostics and required project tests individually**
   - **Files:** all modified files
   - **Acceptance:** clean diagnostics and all five intent minimum test projects pass; no solution-level `dotnet test`.
   - **Validation:** exact commands from plan §14 recorded in context.
-  - **Evidence (in progress):** The latest broad Release build passed with zero errors. `Event.Application.UnitTests` passed 2,205/2,205; serialized `Explore.Blazor.Client.Tests` passed 1,618 with one governed skip; and `Explore.Blazor.IntegrationTests` passed 241/241. `Event.API.IntegrationTests` completed with 1,722/1,733 passed, eight failed, and three skipped; `Event.Architecture.Tests` completed with 263/268 passed, four failed, and one governed skip. Those failures still require attribution before Task 8.1 can close. Compose configuration passed. Current authorization focused coverage is green at 13 configuration/options, 19 provider/single-flight, 22 policy-package target-isolation, 23 runtime-provider, four boot-runner, 13 page, 34 client-service, ten admin-layout, nine Setup, and ten authentication-source tests. Current Client/API/Infrastructure Release builds have zero errors; post-change broad reruns remain pending.
+  - **Evidence (in progress):** The latest broad Release build passed with zero errors. `Event.Application.UnitTests` passed 2,205/2,205; serialized `Explore.Blazor.Client.Tests` passed 1,618 with one governed skip; and `Explore.Blazor.IntegrationTests` passed 241/241. `Event.API.IntegrationTests` completed with 1,722/1,733 passed, eight failed, and three skipped; `Event.Architecture.Tests` completed with 263/268 passed, four failed, and one governed skip. Those failures still require attribution before Task 8.1 can close. Compose configuration passed. Current authorization focused coverage is green at 13 configuration/options, 19 provider/single-flight, 22 policy-package target-isolation, 23 runtime-provider, four boot-runner, 13 page, 34 client-service, ten admin-layout, nine Setup, and ten authentication-source tests. Current Client/API/Infrastructure Release builds have zero errors. The 2026-07-29 planning pass repeated the full Release build successfully, but the architecture project could not start after unrelated concurrent edits made `GetActorsByTenantRequestHandler.cs` fail compilation on unresolved `Actor` and `StorageObject` types; post-change broad reruns remain pending.
   - **Effort:** L
   - **Dependencies:** 7.1
 
@@ -177,9 +179,55 @@ Last Updated: 2026-07-12 Europe/Brussels
   - **Files:** this plan/context/tasks
   - **Acceptance:** completed boxes, decisions, changed files, validation, risks, remaining/deferred work, and next action match reality.
   - **Validation:** cold-agent resume review.
-  - **Evidence:** plan, context, and checklist are refreshed at each verification checkpoint. They now record pre-producer broad-suite results separately from current focused producer/API results, unrelated-work ownership, final visual `PASS`, redacted-read hardening, Aspire/runtime limitations, and open Tasks 8.1/8.2. The earlier goal/code review `FAIL` identified the producer gap that this slice resolves; a new final review is required before claiming pass. The previous post-refresh DocumentationQuality passes 4/4, AgentContextLink passes 8/8, and AgentContextSchema passes 9/9; post-change reruns remain pending during host `EMFILE`.
+  - **Evidence:** plan, context, and checklist are refreshed at each verification checkpoint. They record pre-producer broad-suite results separately from focused producer/API results, unrelated-work ownership, the foundation-only visual pass, redacted-read hardening, Aspire/runtime limitations, and open Tasks 8.1/8.2. The supplied prototype now supersedes that visual pass for Phase 9; a new final review is required. The previous post-refresh DocumentationQuality passes 4/4, AgentContextLink passes 8/8, and AgentContextSchema passes 9/9.
   - **Effort:** S
   - **Dependencies:** 8.2 (performed early so the blocked verification handoff remains accurate)
+
+## Phase 9: Unified Onboarding Workspace ⏳ NOT STARTED
+
+- [ ] **9.1 Define the workspace visual and state contract before component code**
+  - **Files:** `docs/DESIGN.md`; focused component/source test files; supplied current/prototype screenshot evidence
+  - **Acceptance:** user approval explicitly widens the current intent allow-list to `docs/DESIGN.md`, `*.razor.css`, and focused Blazor tests; `OnboardingWorkspace` documents desktop main/summary grid, tablet/mobile summary disclosure, header, conditional segmented progress, focused main step, contextual help, footer actions, loading/error/locked/skipped/complete/dirty states, RTL, themes, forced colors, reduced motion, and long-copy behavior. Access is outside numbered progress; the default instance journey is Authentication → Site profile → Authorization → Readiness/Launch, with visible-count recomputation for deployment-managed omission.
+  - **Validation:** design-system review and failing bUnit/source tests for the declared structure/state matrix.
+  - **Effort:** M
+  - **Dependencies:** corrected plan approval
+
+- [ ] **9.2 Implement the shared display/navigation workspace primitive**
+  - **Files:** likely new `src/Explore.Blazor.Client/Pages/Onboarding/Components/OnboardingWorkspace.razor` and isolated CSS; minimal step descriptor/model; `SetupLayout.razor` only where outer chrome changes; reuse/adapt `OnboardingTaskList` where appropriate
+  - **Acceptance:** semantic header/nav/section/aside/footer inside `SetupLayout`'s existing `main#main-content`; `aria-current="step"`; native controls; one page h1; server-supplied status; project tokens/wrappers; no API/provider/role logic; no nested `main` or full-page card; no viewport overflow at 375/768/1280px.
+  - **Validation:** bUnit state matrix plus component visual harness across LTR/RTL and light/dark.
+  - **Effort:** L
+  - **Dependencies:** 9.1
+
+- [ ] **9.3 Integrate setup access, authentication provider, and OIDC handoff**
+  - **Files:** `Setup.razor`, `AuthProviderConfiguration.razor`, CSS/tests, `Routes.razor`, `SetupLayout`, existing BFF setup-secret tests
+  - **Acceptance:** access remains setup-secret gated and outside numbered progress; provider setup renders as the first workspace step; detected/manual Keycloak paths share the shell; required hard reloads remain; Save and exit stores no secrets/browser drafts; dirty discard and authoritative resume are explicit.
+  - **Validation:** setup/provider component tests, BFF forwarding/session tests, route/focus/dirty-exit/resume tests.
+  - **Effort:** L
+  - **Dependencies:** 9.2
+
+- [ ] **9.4 Add profile draft persistence and integrate site profile, authorization, readiness, and launch**
+  - **Files:** reuse `SelfHostOnboardingProfileDto`/validator; new `SaveInstanceOnboardingProfileCommand`/handler; `InstanceOnboardingController`, `RouteNames`, instance-status HAL policy, generated client; `InstanceOnboarding.razor`, `AuthorizationProviderConfiguration.razor`, `StartupGate.razor`, `InstanceOnboardingService.cs`, CSS/tests
+  - **Acceptance:** `PATCH /api/instance-onboarding/profile` is `[Authorize]`, `[SetupSecretRequired]`, setup-rate-limited, manually validated, audited, RFC-7807-safe, and exposed only through `save-profile` HAL while setup is active and the caller authenticated; it persists only non-secret profile settings and no generic route history. The UI calls it only when HAL permits, then shows truthful saved/resumable status. One authoritative conditional step projection drives stable Back/Continue/Review/Launch; mode is read-only; Local/Cerbos skip/remediation, warnings, completion confirmation, and SingleTenant/MultiTenant-zero-tenant handoffs remain correct.
+  - **Validation:** command/validator/API/HAL/generated-client tests, bUnit state permutations/request counts, completion/preflight tests, mode journey tests, reference screenshots.
+  - **Effort:** XL
+  - **Dependencies:** 9.3
+
+- [ ] **9.5 Reuse the workspace for separate optional tenant onboarding**
+  - **Files:** `TenantOnboarding.razor`, CSS/service/tests, shared step projection
+  - **Acceptance:** tenant context is visible and trusted; tenant progress never appears in instance-launch progress; first tenant remains optional; locked settings, HAL actions, tenant drift, completion confirmation, and control-plane handoff remain server-authoritative.
+  - **Validation:** tenant page/service/API tests plus desktop/mobile/RTL visual states.
+  - **Effort:** L
+  - **Dependencies:** 9.4
+
+## Phase 10: Reference-Fidelity Verification And Final Handoff ⏳ NOT STARTED
+
+- [ ] **10.1 Run final UX, security, test, docs, and review gates**
+  - **Files:** all Phase 9 files, `docs/DESIGN.md`, affected canonical docs, and these three workstream files
+  - **Acceptance:** `/visual-qa` reference-fidelity pass at 375/768/1280px for access, provider, instance, readiness, authorization remediation, and tenant states; keyboard/screen-reader/RTL/theme/forced-colors/long-copy checks; no secret/HAL/tenant/completion/recovery regression; required projects and Release build pass or unrelated blockers are attributed.
+  - **Validation:** exact plan §14 commands, real-stack mode journeys, dual-review visual QA, final handoff refresh.
+  - **Effort:** L
+  - **Dependencies:** 9.5 and remaining Phase 8 gates
 
 ## Verification Checklist
 
@@ -202,11 +250,16 @@ Last Updated: 2026-07-12 Europe/Brussels
 - [x] Platform-admin and tenant-admin HAL denial/isolation tests pass.
 - [x] Completed authentication-provider state retains **Manage authentication** only when the authoritative HAL affordance is present; missing/error state fails closed.
 - [ ] Manual SingleTenant and MultiTenant journeys pass.
-- [ ] Keyboard, focus/live regions, screen reader, contrast, RTL, dark/light, and localization checks pass (browser keyboard/focus/contrast/RTL/theme/long-text evidence and visual gate pass; assisted screen-reader coverage remains open).
+- [ ] Keyboard, focus/live regions, screen reader, contrast, RTL, dark/light, and localization checks pass (foundation browser evidence exists; Phase 9 workspace and assisted-screen-reader coverage remain open).
 - [x] Docs updated for behavior/configuration/operations/API changes; documentation verification remains open.
 - [ ] `docker compose config` and Aspire smoke pass if deployment files changed (`docker compose config` passed; fresh post-change Aspire reconciliation and UI evidence remain).
 - [ ] Dev docs receive their final refresh after live QA, broad suites, and the final five-lane review (this interim checkpoint is current).
 - [x] Unrelated working-tree changes remain untouched.
+- [ ] `docs/DESIGN.md` defines the `OnboardingWorkspace` primitive and complete state matrix before UI implementation.
+- [ ] Shared workspace header/progress/main/summary/help/footer semantics pass bUnit tests.
+- [ ] Conditional step count, skipped/deployment-managed state, revisits, and `aria-current` are server-derived and tested.
+- [ ] Save and exit/resume is tested without browser storage for setup/provider secrets or unsaved configuration.
+- [ ] Reference-fidelity visual QA passes at 375/768/1280px; prior fragmented screenshots are baseline only.
 
 ## Remaining / Deferred Work
 
@@ -216,4 +269,4 @@ Last Updated: 2026-07-12 Europe/Brussels
 - Cerbos inventory and arbitrary policy decision-test APIs are deferred without an accepted operator workflow and threat model.
 - Aggregate onboarding snapshot is deferred unless Task 6.1 proves an escalation trigger.
 - Federation-specific onboarding is not part of this workstream.
-- Core implementation is complete; Tasks 8.1 and 8.2 remain open until full-suite and live-runtime evidence is green.
+- The behavioral foundation is complete; Phase 9 unified workspace implementation and Phase 10 verification are not started.

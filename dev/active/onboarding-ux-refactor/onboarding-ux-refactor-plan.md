@@ -1,24 +1,25 @@
-<!-- ABOUTME: Repository-grounded implementation plan for coherent single-tenant and multi-tenant administrator onboarding. -->
-<!-- ABOUTME: Preserves setup and authorization boundaries while replacing fragmented post-auth flows with an authoritative task list. -->
+<!-- ABOUTME: Repository-grounded implementation plan for a unified single-tenant and multi-tenant onboarding workspace. -->
+<!-- ABOUTME: Preserves setup and authorization boundaries while unifying fragmented route-specific pages into one guided experience. -->
 
 # Onboarding UX Refactor — Implementation Plan
 
-> **Implementation update (2026-07-12):** Production Keycloak management remains reachable with deployment secrets. Explicit authorization-provider intent, bounded instance-only Local/Cerbos reconciliation, runtime precedence, server-authoritative route skipping, the single-column Local-default UI, and canonical docs are implemented with focused green coverage. Tasks 6.3, 8.1, 8.2, and 8.3 remain open for live QA, required suites, and final handoff.
+> **Implemented foundation (2026-07-12):** Production Keycloak management, Local/Cerbos reconciliation, server-authoritative route skipping, HAL-gated task actions, and mode-specific launch handoffs exist with focused coverage. This foundation is behaviorally valuable but does not provide the unified onboarding workspace shown in the user prototype.
 > **Scope expansion recorded:** The production fixes necessarily touch shared Application/Infrastructure provider services, API configuration and background reconciliation, AppHost/Compose propagation, generated contracts, and focused tests in addition to the original Blazor-first paths. This is the smallest shared-source change that makes both detected-provider behaviors authoritative.
+> **Corrected planning re-baseline (2026-07-29):** The supplied current-state screenshots prove the presentation remains fragmented: pages share only a minimal layout, not a persistent journey model. The prototype establishes the missing target: one route-aware workspace with progress, focused step content, setup summary/help, and consistent navigation. Phase 9 plans that implementation; no runtime code changed during this planning pass.
 
-Last Updated: 2026-07-12 Europe/Brussels
+Last Updated: 2026-07-29 Europe/Brussels
 
 ## 0. Planning Metadata
 
-- **Request:** Implement the user-approved coherent administrator launch journey for SingleTenant and MultiTenant deployments and keep its three persistent workstream documents synchronized.
+- **Request:** Refactor the current route-specific instance onboarding pages into the unified onboarding experience demonstrated by the supplied prototype while preserving SingleTenant/MultiTenant behavior and security boundaries.
 - **Task directory:** `dev/active/onboarding-ux-refactor/`
-- **Planning status:** User-approved — implementation, focused tests, and canonical docs are complete; live authorization QA, required suites, authenticated runtime verification, and final handoff remain open
+- **Planning status:** Corrected and re-baselined — prototype direction is user-confirmed; unified workspace implementation has not started
 - **Primary matched intent:** `external-infrastructure-bootstrap` — Automate external infrastructure bootstrap or onboarding
-- **Relevant skills loaded:** `senior-cto-feedback`, `auth-patterns`, `blazor-bff-patterns`, `clean-architecture-rules`, `blazor-ui-conventions`, `accessibility`, `ponytail`
+- **Relevant skills loaded:** `implementation-plan`, `shared/frontend` (`design/README.md`, `image-to-code-skill.md`, `redesign-skill.md`), `design-system`, `blazor-ui-conventions`, `blazor-css-isolation`, `auth-patterns`, `blazor-bff-patterns`, `clean-architecture-rules`, `accessibility`, `visual-qa`, `ponytail`
 - **Relevant rules loaded:** `.claude/rules/api-controllers.md`, `.claude/rules/api-hateoas.md`, `.claude/rules/application-layer.md`, `.claude/rules/blazor-server.md`, `.claude/rules/blazor-client.md`, `.claude/rules/tests.md`
-- **Layers touched:** API HAL/controllers/background services/configuration, Application, Infrastructure, Blazor BFF, Blazor Client, AppHost/Compose deployment configuration, generated OpenAPI client/contracts, Tests, Docs, and dev workstream records. Domain and Persistence are unchanged.
-- **Estimated complexity:** XL. The visual refactor is moderate, but the work crosses a pre-auth setup-secret boundary, authenticated platform and tenant authority scopes, two deployment modes, Cerbos/local authorization, generated API contracts, BFF forwarding, accessibility, operator documentation, and five mandatory test projects.
-- **Implementation boundary:** The user approved full implementation on 2026-07-12. The baseline Release build passed before product edits; unrelated managed-control-plane work and any `.codex` changes remain outside this workstream.
+- **Layers touched by the new slice:** Application onboarding DTO/command/validator, API onboarding controller/route/HAL policy, generated client, Blazor Client layout/components/pages/services, Blazor BFF navigation boundaries, focused tests, `docs/DESIGN.md`, canonical Blazor/operator docs, and dev workstream records. Infrastructure/Persistence remain unchanged unless implementation proves the existing instance-settings repository cannot persist the non-secret profile draft.
+- **Estimated complexity:** XL. The visual work is substantial and the prototype's honest save/resume contract requires one narrow server write across the pre-auth setup-secret → OIDC → authenticated administrator boundaries.
+- **Implementation boundary:** Preserve all July behavior and tests. Do not redesign deployment-mode ownership, provider reconciliation, completion handlers, or tenant authority. Unrelated working-tree changes remain outside this workstream.
 
 ### 0.1 Primary Intent Contract
 
@@ -41,27 +42,37 @@ The implementation audit activated the following conditional contracts on 2026-0
 - `blazor-component-affordance`: active because onboarding action visibility is implemented in Blazor. Scope remains `src/Explore.Blazor.Client/**/*.razor`; minimum test project is `Explore.Blazor.Client.Tests`; mutation affordances must be gated by HAL link presence.
 - `add-hal-link`: active because the existing instance and tenant onboarding status responses do not expose the accepted management/completion affordances. Scope is API HATEOAS policy/assembler code plus Blazor consumers; minimum test projects are `Event.API.IntegrationTests` and `Explore.Blazor.Client.Tests`; policies remain separate and use `yield return`, permission checks, and fail-closed omission.
 - `openapi-contract-change`: active because the existing status responses became explicit HAL resources and the generated client preserves `_links`. Scope is the affected controllers, `docs/API_CHANGELOG.md`, generated OpenAPI/client artifacts, and contract tests; the user explicitly approved breaking pre-v1 development changes.
+- `add-write-endpoint`: active for `PATCH /api/instance-onboarding/profile`; requires `[Authorize]`, setup-secret rate limiting, HAL exposure, idempotency consideration, `Event.API.IntegrationTests`, `Event.Architecture.Tests`, and `docs/API_CHANGELOG.md`.
+- `add-cqrs-handler`: active for `SaveInstanceOnboardingProfileCommand`; scope stays in `Features/InstanceOnboarding`, returns `BaseCommandResponse<Guid>`, manually instantiates the profile validator, passes cancellation, avoids cross-feature internals, and requires Application plus Architecture tests.
 
 The following conditional intents remain deferred unless later evidence activates them:
 
-- `add-get-endpoint` and `add-cqrs-handler`: activate only if the evidence threshold for an aggregate onboarding snapshot is met.
-- `add-write-endpoint`: activates only if an existing completion/configuration endpoint cannot safely support an accepted task.
+- `add-get-endpoint`: activates only if the evidence threshold for an aggregate onboarding snapshot is met.
+- `add-write-endpoint` and `add-cqrs-handler`: activated for the accepted Save and exit/resume contract. Current profile fields persist only during final completion, while the post-launch branding write requires instance-admin authority that does not exist before launch. Add one onboarding-scoped, non-secret profile-draft write protected by `[Authorize]`, `[SetupSecretRequired]`, setup rate limiting, validation, and audit.
 - `cerbos-policy-change`: activates only if policy semantics change; Cerbos configuration or package sync alone does not imply a policy change.
+
+### 0.3 Re-baseline Classification — 2026-07-29
+
+The corrected request activates a new `blazor-component-affordance` presentation slice plus one `add-write-endpoint`/`add-cqrs-handler` profile-draft slice under the existing `external-infrastructure-bootstrap` workstream. Existing backend authority is otherwise sufficient; the primary missing behavior is a cohesive journey shell and route-aware step navigation. The planning pass edits only `dev/active/onboarding-ux-refactor/`.
+
+Before implementation, approval of this corrected plan must explicitly widen the current intent allow-list to the required visual paths: `docs/DESIGN.md`, existing/new `*.razor.css`, and focused Blazor test files. No existing intent fully describes a broad onboarding redesign; do not silently treat `blazor-component-affordance`'s `.razor` allow-list as CSS/design-doc authorization.
 
 ## 1. Executive Summary
 
-The platform already has the secure and authoritative backend pieces needed for launch: a setup-secret BFF boundary, authentication and authorization provider configuration, instance status and preflight queries, idempotent completion handlers, tenant onboarding state, post-launch settings editors, RFC 7807 errors, and Cerbos/local authorization support. The main problem is orchestration and presentation: setup, provider configuration, instance onboarding, tenant onboarding, and post-launch administration appear as separate route-specific experiences whose relationship is difficult for operators to understand.
+The platform already has the secure and authoritative backend pieces needed for launch: a setup-secret BFF boundary, authentication and authorization provider configuration, instance status and preflight queries, idempotent completion handlers, tenant onboarding state, post-launch settings editors, RFC 7807 errors, and Cerbos/local authorization support. The screenshots show the remaining product problem: each route renders as an isolated page with different density and hierarchy, large unused canvas, no persistent progress, no stable Back/Continue model, and no contextual summary explaining where the operator is in the overall launch. The repository trace also found one functional gap implied by the prototype: site-profile input is persisted only by final completion, so pre-launch Save and exit/resume needs a narrow onboarding draft write.
 
-The target is one conceptual launch journey with two security contexts:
+The target is one visually continuous workspace spanning two security contexts without merging them:
 
-1. `/setup` remains a separate pre-auth operator gateway protected by the setup secret.
-2. After authentication, administrators see a single-column conditional task list derived from server-authoritative state.
+1. `/setup` remains the pre-auth access gate protected by the setup secret.
+2. After validation, authentication-provider setup enters the shared workspace under setup-secret authority.
+3. OIDC performs the existing hard navigation and creates the BFF-authenticated session.
+4. The same workspace presentation resumes post-auth for site profile, authorization, readiness review, and launch.
 
 SingleTenant launch completes the instance and default-tenant setup, then hands off to events or existing settings. MultiTenant launch completes the platform first and hands off to the control plane; creating or onboarding a first tenant is a separate optional task with tenant-scoped authority. `DEPLOYMENT_MODE` and the dedicated admin host remain operator-owned deployment configuration, not onboarding choices.
 
-The implementation should compose existing endpoints initially. A new aggregate snapshot endpoint is deliberately deferred unless tests or traces demonstrate inconsistent multi-call state, a reproducible race, or unacceptable request amplification. Cerbos inventory and policy decision-test endpoints are also deferred because no current operator contract or implementation supports them.
+The workspace composes existing status/provider/preflight endpoints and adds only `PATCH /api/instance-onboarding/profile` for non-secret profile draft persistence. A new aggregate snapshot endpoint remains deferred unless tests or traces demonstrate inconsistent multi-call state, a reproducible race, or unacceptable request amplification. Cerbos inventory and policy decision-test endpoints remain deferred.
 
-### 1.1 Implemented Outcome — 2026-07-12
+### 1.1 Implemented Foundation — 2026-07-12
 
 - Instance and tenant onboarding now use one semantic, responsive, display-only task-list component while parent pages retain state and workflow ownership.
 - Existing instance and tenant status endpoints are HAL resources. Server policies emit permission/setup-secret-checked `complete` and management relations; Blazor exposes actions only when those relations are present.
@@ -71,6 +82,25 @@ The implementation should compose existing endpoints initially. A new aggregate 
 - Completion remains server-authoritative: both pages submit through existing commands, re-fetch status, and reject unconfirmed completion or tenant drift.
 - The BFF always removes browser-controlled setup-secret headers and forwards the trusted server/session secret only to exact or slash-delimited instance-onboarding endpoint paths; query-string and near-route lookalikes fail closed.
 - Endpoint composition was retained after request-count and overlapping-refresh tests reproduced no snapshot escalation trigger.
+- `SetupLayout` supplies language/theme controls and a main landmark, but it does not supply the prototype's journey header, step progress, summary/help rail, or shared navigation footer.
+- Provider, authorization, overview, and readiness content still render as separate page compositions; `OnboardingTaskList` is an overview, not the persistent cross-route workspace shown in the prototype.
+
+### 1.2 Prototype Reconciliation — 2026-07-29
+
+| Proposal | Decision | Repository-grounded reason |
+|---|---|---|
+| Present one coherent, recoverable launch journey with clear progress and task status. | Implement | Current pages expose authoritative state but do not present a persistent journey across routes. |
+| Give SingleTenant and MultiTenant distinct completion handoffs. | Retain | `StartupGate.razor` and completion routing already send SingleTenant to events/settings and MultiTenant to the control plane. |
+| Keep provider setup manageable after initial completion. | Retain | HAL-gated authentication and authorization management routes remain available before and after launch. |
+| Use one persistent workspace with header, segmented progress, focused main step, setup summary/help rail, and footer navigation. | Implement | `SetupLayout` is only minimal chrome. Sharing a layout type does not create the prototype's information architecture or continuity. |
+| Let the browser choose deployment mode during onboarding. | Reject | `DeploymentModeProvider` and canonical deployment docs make mode operator-controlled configuration; the UI may display it only as read-only context. |
+| Require a first tenant before a MultiTenant instance can launch. | Reject | Platform readiness and tenant readiness use different authority scopes; zero-tenant MultiTenant launch is intentionally supported. |
+| Add provider-intent or Local/Cerbos bootstrap machinery as part of this refactor. | Reject as already implemented | Validated deployment intent, bounded reconciliation, runtime precedence, safe remediation, and server-authoritative route skipping already exist. |
+| Use guided step navigation while preserving recovery and direct revisits. | Implement with constraints | The progress/summary UI is a server-derived navigation projection, not a second completion store. Existing focused routes remain addressable, completed steps remain revisitable when HAL permits, and failures do not reset prior work. |
+| Add onboarding-only settings editors or an aggregate snapshot pre-emptively. | Reject | Existing editors and endpoints are reused; request-count and refresh tests did not meet the snapshot escalation threshold. |
+| Show “Draft saved / Save and exit / resumes here.” | Implement with one narrow write | Current final completion is the only pre-launch profile persistence path. Reuse `SelfHostOnboardingProfileDto` and existing instance-setting storage through an onboarding-scoped command; never persist secrets or generic client wizard state. |
+
+Result: the visual/navigation proposal is valid and missing. Phase 9 implements it on top of the existing route and authority contracts; provider, deployment-mode, tenant, and completion behavior remain unchanged.
 
 ### Explicitly Out Of Scope
 
@@ -87,6 +117,8 @@ The implementation should compose existing endpoints initially. A new aggregate 
 
 | Claim | Evidence | Confidence | Notes |
 |---|---|---:|---|
+| The current experience is not unified despite sharing `SetupLayout`. | User-supplied current screenshots of setup access, authentication configuration/detected state, setup overview/profile/readiness, and authorization | High | Pages have inconsistent geometry and action placement with no persistent progress or summary/help rail. |
+| The desired workspace geometry is explicit. | User-supplied prototype screenshot | High | Use header + saved/resume action, segmented progress, focused main step, setup summary/about rail, and stable footer navigation as layout grammar; do not copy branding or fixed domain steps. |
 | Setup, startup, provider, instance, tenant, login, logout, and settings routes already exist. | Verified: `src/Explore.Blazor.Client/Routes.razor` | High | Route orchestration should be simplified, not rebuilt. |
 | Setup secret is resolved and forwarded by trusted server code rather than browser code. | Verified: `src/Explore.Blazor/Extensions/BffSetupSecretEndpoints.cs`; `src/Explore.Blazor/Services/SetupSecretResolver.cs`; `src/Explore.Blazor/Services/SetupSecretForwardingHandler.cs` | High | Preserve this trust boundary. |
 | Current post-auth onboarding is split across instance, auth provider, authz provider, and tenant pages. | Verified: `src/Explore.Blazor.Client/Pages/Onboarding/InstanceOnboarding.razor`; `AuthProviderConfiguration.razor`; `AuthorizationProviderConfiguration.razor`; `TenantOnboarding.razor` | High | These become task destinations or focused task pages. |
@@ -95,6 +127,7 @@ The implementation should compose existing endpoints initially. A new aggregate 
 | Deployment mode is operator-controlled and persisted at completion; the client value is not authoritative. | Verified: `src/Explore.Infrastructure/Services/DeploymentModeProvider.cs`; `src/Explore.Application/Features/InstanceOnboarding/Handlers/Commands/CompleteInstanceOnboardingCommandHandler.cs`; `docs/DEPLOYMENT_MODES.md` | High | Never render it as a chooser. |
 | Instance preflight already distinguishes blockers and operational warnings. | Verified: `src/Explore.Application/Features/InstanceOnboarding/Handlers/Queries/GetOnboardingPreflightQueryHandler.cs` | High | Map blockers to required tasks and warnings to remediation/optional tasks. |
 | Instance completion creates required bootstrap state, users/admin grants, and default tenant behavior. | Verified: `src/Explore.Application/Features/InstanceOnboarding/Handlers/Commands/CompleteInstanceOnboardingCommandHandler.cs` | High | Do not duplicate orchestration in the client. |
+| Pre-launch site-profile edits have no independent save contract. | Verified: `InstanceOnboarding.razor` submits its `EditForm` only through `CompleteOnboardingAsync`; `InstanceSettingsController.UpdateBrandingSettings` requires the instance-admin authority granted only at completion. | High | Activates the narrow profile-draft write required for truthful Save and exit/resume. |
 | Tenant onboarding has status, settings, progress, and completion operations. | Verified: `src/Explore.API/Controllers/TenantOnboardingController.cs`; tenant onboarding command/query handlers | High | UI should reuse these contracts. |
 | Existing post-launch settings pages can be task destinations. | Verified: `src/Explore.Blazor.Client/Pages/Admin/Instance/InstanceAdminSettings.razor`; `Pages/Admin/Tenant/TenantAdminSettings.razor`; `Pages/Admin/Organization/OrganizationAdminSettings.razor` | High | Avoid parallel editors. |
 | Cerbos/local selection, reachability, readiness, package download, and sync exist. | Verified: `src/Explore.Infrastructure/Services/AuthorizationProviderConfigurationService.cs`; `CerbosConfigResolver.cs`; `RuntimeAuthorizationProvider.cs`; `CerbosPolicyPackageService.cs`; `src/Explore.API/Controllers/InstanceSettingsController.cs` | High | Keep scope to existing operator workflows. |
@@ -172,14 +205,17 @@ No dedicated onboarding, bootstrap, authorization-provider onboarding, Cerbos in
 
 ### 2.5 Current Pain Points / Improvement Areas
 
-1. **Fragmented journey:** Existing routes are valid individually but do not explain the complete launch sequence or what remains.
-2. **Mode ambiguity:** A UI that treats deployment mode as form input would conflict with the operator-owned source of truth and produce misleading state.
-3. **Scope ambiguity in MultiTenant:** Platform readiness and first-tenant readiness are separate outcomes; coupling them would block the control plane and blur authorities.
-4. **Duplicate editor risk:** Building onboarding-only settings forms would drift from post-launch editors and validation contracts.
-5. **Local authority risk:** Deriving tasks from claims or client assumptions would violate HAL and tenant fail-closed rules.
-6. **Recovery discoverability:** Existing backend retry/idempotency support is stronger than the current UX explanation of failures, reruns, and partially completed provider setup.
-7. **Test gap:** Page tests do not yet encode the target cross-route journey and authority matrix.
-8. **Stale planning overlap:** The paused enterprise tenant workstream still describes a wizard and stale backend gaps; an implementation agent could accidentally absorb that scope.
+1. **Fragmented journey:** Existing routes are valid individually but render as disconnected pages with no persistent progress, summary, or navigation model.
+2. **Weak visual continuity:** Sharing `SetupLayout` provides theme/language controls, not the prototype's workspace. Page width, density, hierarchy, action placement, and contextual guidance change substantially between setup, provider, authorization, overview, and readiness screens.
+3. **Poor use of viewport:** The provider pages occupy a narrow card or form inside a mostly empty desktop canvas, while overview/readiness pages become long undifferentiated documents.
+4. **No durable orientation:** Operators cannot see completed/current/upcoming work, step count, why the current step matters, or where Back/Continue will lead.
+5. **Inconsistent exit/resume semantics:** Existing route navigation can resume from authoritative status, but the UI does not expose a clear Save and exit/Exit contract or warn about unsaved sensitive form input.
+6. **Mode ambiguity:** A UI that treats deployment mode as form input would conflict with the operator-owned source of truth and produce misleading state.
+7. **Scope ambiguity in MultiTenant:** Platform readiness and first-tenant readiness are separate outcomes; coupling them would block the control plane and blur authorities.
+8. **Duplicate editor risk:** Building onboarding-only settings forms would drift from post-launch editors and validation contracts.
+9. **Local authority risk:** Deriving steps or actions from route history, claims, or browser state would violate HAL and tenant fail-closed rules.
+10. **Recovery discoverability:** Existing backend retry/idempotency support is stronger than the current UX explanation of failures, reruns, and partially completed provider setup.
+11. **Test gap:** Page tests protect individual routes but do not prove a responsive cross-route workspace, summary state, focus flow, or secure exit/resume behavior.
 
 ### 2.6 Unknowns After Investigation
 
@@ -200,15 +236,16 @@ Operator deployment configuration
   DEPLOYMENT_MODE + admin host + secrets
                     |
                     v
-/setup (pre-auth, setup-secret authority, separate shell)
-  validate setup -> configure/verify auth provider -> create first administrator
+/setup access gate (pre-auth, setup-secret authority)
+  validate setup secret
                     |
                     v
-OIDC login (BFF cookie; tokens never reach browser)
+Unified onboarding workspace
+  authentication provider -> OIDC handoff
                     |
                     v
-Post-auth Setup Overview (server-derived conditional task list)
-  site profile -> authorization provider -> preflight -> review/launch
+BFF-authenticated workspace resumes from authoritative state
+  site profile -> authorization -> readiness review -> launch
                     |
           +---------+----------+
           |                    |
@@ -219,21 +256,51 @@ Post-auth Setup Overview (server-derived conditional task list)
                                    (new tenant context and tenant authority)
 ```
 
-### 3.2 Task-List Semantics
+### 3.2 Unified Workspace Contract
 
-- One responsive column; no competing stepper, side panel, or progress model.
-- Every item has title, concise description, required/optional label, status, action/remediation, and authority scope.
-- Status is derived from API state, not route history or local completion flags.
-- A blocking preflight result prevents launch; warnings remain visible but do not masquerade as blockers.
-- Refresh/retry always re-fetches authoritative state.
-- Completion is safe to retry through existing idempotency and handler behavior.
-- Errors render RFC 7807 detail and field validation without exposing credentials.
-- Actions appear only when the server contract/HAL affordance permits them.
-- Completion status does not remove an independently authorized ongoing-management action. In particular, a configured authentication-provider task keeps a HAL-authorized **Manage authentication** affordance to the focused setup page before launch and the admin provider editor after launch so operators can diagnose, repair, or reconcile the Keycloak realm; missing or failed authoritative state still fails closed.
-- Authentication configuration or secret presence never removes the provider-management surface. A detected Keycloak fast path retains the full setup editor, and postlaunch management remains the HAL-authorized admin editor.
-- Authorization uses separate semantics: explicit deployment intent bypasses the provider-choice page, while blank/unset intent renders the Local default and advanced Cerbos disclosure. Failed deployment-managed Cerbos remains reachable as locked remediation from the authoritative instance task.
+Desktop layout follows the prototype's information architecture while using ISLAMU Event tokens, typography, wrappers, and copy:
 
-### 3.3 Authority Matrix
+- **Outer layout:** `SetupLayout` remains the trust-neutral page layout and owns theme/language controls plus the main landmark.
+- **Workspace header:** product identity at inline-start; authoritative saved/resumable status and Save and exit/Exit action at inline-end.
+- **Progress header:** current step label, `Step n of m`, and a segmented progress indicator. The visible step set is derived from deployment mode, provider ownership, current authority, and server status; it is not hard-coded to the prototype's eight steps.
+- **Main step:** one structural `h1`, concise explanation, the existing focused form/status content, inline validation, and no full-page card around the entire form.
+- **Summary rail:** a complementary desktop `aside` with completed/current/upcoming steps and an About this step explanation. Step links render only when revisiting/navigating is safe and authorized.
+- **Footer navigation:** stable Back and primary Continue/Review/Launch positions. Actions remain real buttons/links and use existing page commands and HAL relations.
+
+Responsive behavior:
+
+- At wide desktop, main content and summary rail form a two-region CSS Grid; the rail uses tonal separation rather than heavy elevation.
+- At tablet/mobile, the rail becomes an in-flow `details`/drawer-like summary after the progress header, the main step becomes full width, and footer actions remain reachable without covering validation or the on-screen keyboard.
+- The segmented indicator may compress visually, but current step text and `n of m` remain visible and no horizontal page overflow is allowed.
+- Logical CSS properties, RTL order, 24px minimum targets, visible focus, forced-colors, long translations, and reduced motion are mandatory.
+
+State semantics:
+
+- Step status is derived from API/HAL state, never route history or a browser-only completion store.
+- The access gate is visually related but outside the numbered journey until the setup secret is valid.
+- OIDC and setup-secret cookie transitions may hard-reload; visual continuity must not turn them into client-only navigation.
+- Save and exit never stores setup secrets, provider secrets, or unsaved form fields in local/session storage. A page may save through its existing server endpoint before exit; otherwise dirty input requires explicit discard confirmation.
+- Resume uses `StartupGate`/`StartupRoutingService` plus authoritative status to choose the earliest incomplete or failed-remediation step.
+- Deployment-managed skipped steps are shown as completed/configured or omitted according to the journey definition; they are never marked complete from route visits.
+- A blocking preflight result prevents launch; warnings remain visible and nonblocking. Retry re-fetches authoritative state.
+- Errors reuse RFC 7807 and accessibility announcements without exposing credentials.
+- Completion status does not remove independently authorized provider-management actions.
+
+### 3.3 Instance Journey Step Projection
+
+| Surface | Counted step | Existing route/source | Authority and projection rule |
+|---|---:|---|---|
+| Setup access | No | `/setup`; BFF setup-secret session | Pre-auth gate only. After validation, enter the workspace; never show the secret or count the gate as completed journey work. |
+| Authentication provider | 1 | `/onboarding/auth-provider`; auth-provider status/configuration | Setup-secret authority before OIDC. Deployment-detected configuration may render complete with a manage/reconcile path. |
+| OIDC handoff | No | `/auth/login` → `/startup` | Hard browser/session transition. Resume the same visual journey post-auth; do not persist client wizard state through it. |
+| Site profile | 2 | `/onboarding/instance`; existing branding read plus planned `PATCH /api/instance-onboarding/profile` | `[Authorize]` + active setup-secret authority. Persist only `SelfHostOnboardingProfileDto` through the onboarding command; show read-only deployment context nearby, never as input. |
+| Authorization | 3 | `/onboarding/authz-provider`; authz status/configuration | Explicit Local/Cerbos deployment state may auto-complete/skip. Failed managed Cerbos remains a reachable remediation state. |
+| Readiness review and launch | 4 | `/onboarding/instance`; preflight plus `complete` HAL action | Required checks block; warnings do not. Launch is the primary action inside the final step and is confirmed by a fresh status read. |
+| Tenant onboarding | Separate journey | `/onboarding/tenant`; tenant status/settings/progress | Never part of instance `n of m`. Available after MultiTenant platform launch only under trusted tenant authority. |
+
+The summary rail may display completed and upcoming steps, but only the four counted instance steps contribute to progress. If a deployment-owned step is omitted rather than displayed as configured, `n of m` is recomputed from the visible journey definition and tested for consistency.
+
+### 3.4 Authority Matrix
 
 | Task family | Endpoint family | Authority | Tenant context | Modes | HAL/RFC 7807 expectations |
 |---|---|---|---|---|---|
@@ -267,20 +334,20 @@ Post-auth Setup Overview (server-derived conditional task list)
 
 ## 5. Architecture And Design Decisions
 
-### D1 — Preserve Two Security Contexts In One Conceptual Journey
+### D1 — Preserve Security Boundaries Inside One Visual Workspace
 
-- **Decision:** Keep `/setup` pre-auth and setup-secret protected; begin the unified task-list shell only after OIDC authentication.
-- **Why:** A visually unified flow must not collapse operator bootstrap and authenticated administration authorities.
-- **Alternatives:** A single route/shell carrying the setup secret; rejected because it expands browser exposure and confuses authority.
-- **Consequences:** Shared visual language is allowed, but session state and actions remain separate.
+- **Decision:** Keep `/setup` pre-auth and setup-secret protected, then use the same workspace presentation for provider setup and post-auth administrator steps while preserving the existing hard OIDC/cookie transitions.
+- **Why:** The user needs continuity, not merged credentials. Visual structure can persist across routes even when authority and browser sessions change.
+- **Alternatives:** Keep the current split-screen access page plus isolated centered forms; rejected because the screenshots show that shared theme controls alone do not communicate one journey. A client-only wizard carrying setup state across OIDC is also rejected because it expands browser ownership and breaks the BFF boundary.
+- **Consequences:** The access gate remains outside numbered progress. The provider step can render inside the workspace under setup-secret authority; post-auth steps rebuild the same journey model from server state.
 - **Files/layers:** Setup page, BFF setup endpoints/services, startup gate, onboarding client pages, tests.
 
-### D2 — Conditional Task List, Not A Stepper
+### D2 — Guided Workspace, Not A Monolithic Client Wizard
 
-- **Decision:** Use a single-column task list with focused task routes/pages.
-- **Why:** Existing tasks can be completed or revisited independently, warnings are not linear steps, and MultiTenant adds conditional tasks.
-- **Alternatives:** One giant wizard or competing side navigation; rejected due to duplicated state and poor recovery.
-- **Consequences:** The task component is display-only; backend state determines status.
+- **Decision:** Add a persistent route-aware progress header, focused step body, summary/help rail, and stable footer around the existing focused routes.
+- **Why:** The prototype provides orientation and consistent action placement without requiring one giant form. Existing routes remain the recovery and deep-link boundaries.
+- **Alternatives:** The current overview plus disconnected forms is rejected as visually fragmented. One monolithic component with local step state is rejected because provider, OIDC, platform, and tenant authorities differ.
+- **Consequences:** A shared display component receives a server-derived journey projection; pages retain business logic. `OnboardingTaskList` may be adapted for the summary projection or retired if the new shell makes it redundant, but there is only one visible progress model.
 
 ### D3 — Deployment Mode Is Read-Only Context
 
@@ -318,6 +385,18 @@ Post-auth Setup Overview (server-derived conditional task list)
 
 - **Decision:** Every task can reload authoritative status, show safe RFC 7807 failures, and offer retry/remediation without resetting completed work.
 - **Why:** External provider and DNS/configuration steps fail independently; restarting an entire wizard is unsafe.
+
+### D9 — Save And Exit Means Server Persistence Or Explicit Discard
+
+- **Decision:** Do not add browser draft persistence. Add `PATCH /api/instance-onboarding/profile` (`RouteNames.SaveInstanceOnboardingProfile`) and a manually validated `SaveInstanceOnboardingProfileCommand` to persist only `SelfHostOnboardingProfileDto` under `[Authorize]` + `[SetupSecretRequired]`. `InstanceOnboardingStatusLinkPolicy` emits `save-profile` only while setup is active and the caller is authenticated. Other steps use their existing server commands; otherwise Exit confirms discarding dirty input.
+- **Why:** The prototype's resume affordance is valuable, but setup/provider secrets and stale deployment data must not be stored in browser storage.
+- **Consequences:** The command reuses current instance-setting keys and the existing profile DTO/validator; it adds no schema or generic wizard-state table. Repeating the same PATCH converges to the same values, and successful writes invalidate the existing public-experience shell cache. Completion remains authoritative and receives/finalizes the profile again. Resume reads current branding/profile values plus status. Tests pin profile-field parity between draft save and completion. The header may say progress is saved only after a confirmed server write.
+
+### D10 — Prototype Layout Grammar, ISLAMU Design System
+
+- **Decision:** Follow the prototype's workspace geometry and hierarchy, not its Oppworx branding, fixed eight-step copy, colors, or domain-specific controls.
+- **Why:** The reference demonstrates the missing experience; `docs/DESIGN.md`, MudBlazor v9 wrappers, and `--isl-*` tokens remain the implementation source of truth.
+- **Consequences:** Update `docs/DESIGN.md` with the `OnboardingWorkspace` primitive and all states before component implementation. Reference-fidelity QA judges structure, proportions, hierarchy, and responsive intent alongside project theming.
 
 ## 6. Implementation Phases
 
@@ -524,9 +603,9 @@ Post-auth Setup Overview (server-derived conditional task list)
 - **Effort:** M
 - **Validation:** architecture agent-context link/schema tests.
 
-### Phase 8: Final Verification And Handoff
+### Phase 8: Foundation Verification And Re-baseline
 
-- **Goal:** Prove the refactor, docs, boundaries, and operational path are complete.
+- **Goal:** Preserve and finish verification of the implemented backend/provider/task-list foundation before final workspace handoff.
 - **Depends on:** All prior phases.
 - **Acceptance:** Definition of Done passes; all three dev docs reflect actual implementation.
 - **Rollback:** Revert by atomic phase while preserving tested backend authority.
@@ -541,6 +620,80 @@ Post-auth Setup Overview (server-derived conditional task list)
 - **Effort:** L
 - **Validation:** exact command output summarized in context.
 
+### Phase 9: Unified Onboarding Workspace
+
+- **Goal:** Replace the disconnected route-specific presentation shown in the current screenshots with the prototype-informed workspace while retaining existing routes, commands, BFF transitions, and HAL authority.
+- **Depends on:** Corrected plan approval and the implemented Phase 1-7 behavioral foundation. Phase 8 runtime blockers do not prevent TDD/component work, but must close before final handoff.
+- **Relevant files:** `docs/DESIGN.md`; `SetupLayout.razor` and CSS; existing onboarding pages and CSS; `OnboardingTaskList`; new shared workspace component/model only where reuse is proven; existing client services and focused tests.
+- **Acceptance:** Desktop and mobile render one coherent journey with authoritative progress, focused step content, summary/help, stable navigation, secure exit/resume, and mode-specific launch outcomes.
+- **Rollback:** Shared workspace integration can be reverted route by route while preserving all server/provider behavior.
+
+#### Task 9.1 — Freeze The Visual And State Contract
+- **Type:** design/test/docs
+- **Layer:** Blazor Client/Design System
+- **Files:** `docs/DESIGN.md`; new component test/state harness; current/prototype screenshot evidence
+- **Description:** Document `OnboardingWorkspace` geometry, tokens, responsive states, step projection, status vocabulary, dirty/exit behavior, and reference-fidelity expectations before implementation.
+- **Acceptance Criteria:** desktop, tablet, mobile, LTR, RTL, light, dark, long-copy, loading, error, locked, skipped, complete, and dirty states are named; setup access is outside numbered progress; visible steps are conditional, not fixed at eight.
+- **Dependencies:** corrected plan approval
+- **Effort:** M
+- **Validation:** design-system review plus failing component/source tests for the new contract.
+
+#### Task 9.2 — Build The Shared Workspace Primitive
+- **Type:** create/test
+- **Layer:** Blazor Client
+- **Files:** likely new `Pages/Onboarding/Components/OnboardingWorkspace.razor` and isolated CSS; minimal step descriptor/model; `SetupLayout` only for outer-chrome changes; reuse `OnboardingTaskList` where its semantics fit
+- **Description:** Implement the header, progress, main slot, summary/help rail, responsive disclosure, and footer slots as a display/navigation component with no API, role, or provider business logic.
+- **Acceptance Criteria:** semantic header/nav/section/aside/footer inside `SetupLayout`'s existing `main#main-content` landmark; one page `h1`; current step uses `aria-current="step"`; status is not color-only; footer actions are native controls; focus order matches visual order; no nested `main` or full-page card shell; project tokens/wrappers only.
+- **Dependencies:** 9.1
+- **Effort:** L
+- **Validation:** bUnit semantics/state matrix and component visual harness at 375/768/1280px.
+
+#### Task 9.3 — Integrate Setup Access, Authentication, And OIDC Handoff
+- **Type:** modify/test
+- **Layer:** Blazor Client/BFF boundary
+- **Files:** `Setup.razor`, `AuthProviderConfiguration.razor`, their CSS/tests, `Routes.razor`, `SetupLayout`, existing BFF setup-secret tests
+- **Description:** Keep the access gate secure, then render provider configuration as the first workspace step and preserve hard reloads where HttpOnly setup-secret/OIDC state changes.
+- **Acceptance Criteria:** setup secret never enters journey state or browser storage; detected/manual provider paths share the workspace; Save and exit never persists secrets locally; login returns through `StartupGate`; invalid/expired secret and provider failure retain focused remediation.
+- **Dependencies:** 9.2
+- **Effort:** L
+- **Validation:** existing setup/provider/BFF tests plus new route, focus, dirty-exit, and resume tests.
+
+#### Task 9.4 — Add Profile Draft Persistence And Integrate Post-Auth Steps
+- **Type:** modify/test
+- **Layer:** Blazor Client
+- **Files:** `SelfHostOnboardingProfileDto` and validator reuse; new `SaveInstanceOnboardingProfileCommand`/handler; `InstanceOnboardingController`, `RouteNames`, status HAL policy, generated client; `InstanceOnboarding.razor`, `AuthorizationProviderConfiguration.razor`, `StartupGate.razor`, `InstanceOnboardingService.cs`, CSS/tests
+- **Description:** Add the narrow profile-draft write and project site profile, authorization, readiness, warnings, and launch into focused workspace steps with one authoritative summary and stable Back/Continue/Review/Launch positions.
+- **Acceptance Criteria:** `PATCH /api/instance-onboarding/profile` requires authentication, active setup-secret authority, setup rate limiting, manual validation, safe RFC 7807, audit, and `save-profile` HAL; it persists no secret or generic route history. UI saves only when the HAL relation exists; status/HAL drives step completion/navigation; deployment mode is read-only; Local/Cerbos skip/remediation survives; warnings remain nonblocking; completion re-fetches server state before handoff.
+- **Dependencies:** 9.3
+- **Effort:** XL
+- **Validation:** bUnit state permutations, request-count/deduplication tests, Application/API completion tests, SingleTenant and MultiTenant-zero-tenant journeys.
+
+#### Task 9.5 — Reuse The Workspace For Optional Tenant Onboarding
+- **Type:** modify/test
+- **Layer:** Blazor Client
+- **Files:** `TenantOnboarding.razor`, CSS/service/tests, shared workspace step definition
+- **Description:** Apply the same workspace grammar to the separate tenant-scoped journey after MultiTenant platform launch without adding it to instance-launch progress.
+- **Acceptance Criteria:** trusted tenant context is always visible; platform and tenant summaries are not mixed; tenant drift fails closed; locked settings and HAL actions remain authoritative; first tenant stays optional.
+- **Dependencies:** 9.4
+- **Effort:** L
+- **Validation:** tenant page/service/API tests and desktop/mobile/RTL visual states.
+
+### Phase 10: Reference-Fidelity Verification And Handoff
+
+- **Goal:** Prove the unified experience against the supplied prototype and repository quality gates.
+- **Depends on:** Phase 9.
+- **Acceptance:** `/visual-qa` passes in reference-fidelity mode at 375/768/1280px for representative access, provider, instance, readiness, authorization-remediation, and tenant states; required tests/build/docs pass or unrelated blockers are attributed.
+
+#### Task 10.1 — Run Final UX, Security, Test, And Documentation Gates
+- **Type:** test/ops/docs/review
+- **Layer:** All touched layers
+- **Files:** all Phase 9 files plus `docs/DESIGN.md`, `docs/BLAZOR.md`, operator docs only where visible behavior changes, and all three workstream docs
+- **Description:** Run component/BFF/API/Application/Architecture gates, real-stack mode journeys, assisted accessibility where available, and dual-review visual QA; then refresh the handoff.
+- **Acceptance Criteria:** no reference-fidelity, responsive, focus, secret, HAL, tenant, completion, or recovery regression remains; visual evidence is fresh and not inherited from the pre-workspace UI.
+- **Dependencies:** 9.5
+- **Effort:** L
+- **Validation:** Section 14 plus `/visual-qa` and final structured review.
+
 ## 7. Testing Strategy
 
 | Requirement | Test level | Project/files |
@@ -554,14 +707,17 @@ Post-auth Setup Overview (server-derived conditional task list)
 | RFC 7807 rendering | API integration + bUnit | ProblemDetails contract and validation UI tests |
 | HAL affordance behavior | architecture/API/client tests | authorization parity and component tests, including a completed authentication-provider task that retains **Manage authentication** only when its authoritative affordance is present |
 | Cerbos/local behavior | Infrastructure/Application/API tests | current provider/config/sync/readiness tests |
-| Accessibility/localization | bUnit + manual | headings, roles, live regions, keyboard, screen reader, RTL, dark/light, long translations |
+| Workspace information architecture | bUnit + reference-fidelity visual QA | header/progress/main/aside/footer structure, current-step state, conditional visible-step count, desktop/mobile geometry |
+| Cross-route resume/exit | Application/API/BFF/client tests | setup-secret handoff, OIDC return, profile draft write and `save-profile` HAL, authoritative earliest-incomplete routing, dirty discard, no browser secret persistence |
+| Accessibility/localization | bUnit + manual | headings, landmarks, `aria-current`, live regions, keyboard, screen reader, RTL, dark/light, forced colors, long translations |
 | Architecture and docs contracts | architecture tests | `Event.Architecture.Tests` |
 
 No test may be deleted to pass. Integration tests use real infrastructure according to repository policy. If the API contract changes, regenerate NSwag as a discrete step and test the generated client; never hand-edit it.
 
 ## 8. Documentation, Configuration, And Operations Impact
 
-- Required intent docs: `docs/CONFIGURATION.md`, `docs/SECRETS.md`, `docs/SELF_HOSTING.md`, `docs/TROUBLESHOOTING.md`.
+- Required design contract: update `docs/DESIGN.md` with the `OnboardingWorkspace` primitive, states, geometry, responsive behavior, motion, and accessibility rules before UI code.
+- Required intent docs: `docs/CONFIGURATION.md`, `docs/SECRETS.md`, `docs/SELF_HOSTING.md`, `docs/TROUBLESHOOTING.md` only where operator-visible workflow text changes.
 - Also expected: `docs/DEPLOYMENT_MODES.md`, `docs/BLAZOR.md`; `docs/API_CHANGELOG.md` only for a contract change.
 - `docker-compose.yml`, `docker/**`, and `src/Explore.AppHost/AppHost.cs` should remain unchanged unless the final UX exposes a verified configuration omission. If changed, validate `docker compose config` and Aspire topology.
 - Document `DEPLOYMENT_MODE`, `CONTROL_PLANE_PUBLIC_ORIGIN`/admin host behavior, setup-secret source/rotation, Cerbos endpoints and sync, backup of persisted bootstrap/settings state, and failure recovery.
@@ -619,6 +775,11 @@ No test may be deleted to pass. Integration tests use real infrastructure accord
 | Local claims replace HAL/API authority | Medium | High | Ban role-derived affordances; parity tests | Button visible without link or API denies expected action | 1.2, 3.1, 4.1 |
 | Duplicate onboarding and post-launch forms drift | Medium | Medium | Link/reuse existing editors | Same setting has two validators or contracts | 2.1, 3.1, 4.1 |
 | Accessibility/RTL regresses in custom task list | Medium | High | Semantic component and manual QA | Failed keyboard, screen reader, contrast, or RTL check | 2.2, 8.2 |
+| Workspace becomes a client-side source of truth | Medium | Critical | Display-only journey projection; route/API status and HAL remain authoritative | Step marked complete after visit or action shown without link | 9.1-9.5 |
+| Fixed prototype step count breaks deployment-managed skips | Medium | High | Compute visible steps and `n of m` from current mode/state | Progress count disagrees with reachable steps | 9.1, 9.4 |
+| Save and exit leaks secrets or implies unsaved data was persisted | Medium | Critical | Server-save only; no local/session storage; dirty discard confirmation | Secret/draft key in browser storage or false saved message | 9.1, 9.3 |
+| Desktop summary rail overwhelms mobile or RTL | Medium | High | Responsive in-flow disclosure, logical CSS, 375/768/1280 visual QA | overflow, obscured footer, wrong reading/focus order | 9.2, 10.1 |
+| Prototype is copied literally and conflicts with ISLAMU tokens/brand | Low | Medium | Use geometry/hierarchy only; update `docs/DESIGN.md`; token audit | Oppworx copy/colors/fixed eight steps appear | 9.1, 9.2 |
 | Cerbos scope expands into unsupported diagnostics | Low | Medium | Explicit deferred list and decision gate | New inventory/decision route appears without intent | 7.1 |
 | Stale paused plan redirects implementation | Medium | Medium | Cross-reference and supersession statement | Agent starts invitation/lifecycle/wizard task | 0.1, all docs |
 | Unrelated dirty working-tree changes contaminate verification | High currently | High | Isolate paths, capture status, never revert user work | Diff includes managed-control-plane or `.codex` files | 0.1, 8.1 |
@@ -627,7 +788,9 @@ No test may be deleted to pass. Integration tests use real infrastructure accord
 
 Functional:
 
-- SingleTenant and MultiTenant administrators can identify all required launch work from one post-auth task list.
+- SingleTenant and MultiTenant administrators experience one visually continuous, route-aware workspace after setup-secret validation.
+- Every step shows persistent journey orientation: current step, conditional progress, completed/upcoming summary, contextual explanation, and stable navigation.
+- Desktop uses the prototype-informed main/summary layout; tablet/mobile use an accessible in-flow summary without viewport overflow or hidden actions.
 - `/setup` remains separately protected and no privileged credential reaches browser ownership.
 - SingleTenant launches to events/settings.
 - MultiTenant launches the platform/control plane without requiring a tenant; first-tenant onboarding is optional and tenant-scoped.
@@ -636,6 +799,7 @@ Functional:
 - Deployment-only Keycloak produces sanitized detected/enabled/authority/client-ID state and configured status without returning its client secret; the operator can still enter the full provider editor.
 - Existing Cerbos/local configuration and post-launch editors are reused.
 - Explicit Local skips authorization setup with zero Cerbos calls; explicit Cerbos is ready only after instance PDP verification and instance Admin API policy publication, while Keycloak management remains independently reachable.
+- Exit/resume is honest and secure: only confirmed server writes are called saved, dirty unsaved input is confirmed before discard, and secrets never enter browser draft storage.
 
 Quality gates:
 
@@ -648,9 +812,9 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 dotnet build --configuration Release --verbosity quiet
 ```
 
-Also required: clean diagnostics on modified files; docs/context tests; manual keyboard, screen-reader, RTL, dark/light, refresh/retry, SingleTenant, MultiTenant-zero-tenant, first-tenant, and provider-failure smoke tests. Run `docker compose config` and an Aspire smoke only if deployment configuration changes.
+Also required: clean diagnostics on modified files; docs/context tests; manual keyboard, screen-reader, RTL, dark/light, forced-colors, long-copy, refresh/retry, dirty-exit, SingleTenant, MultiTenant-zero-tenant, first-tenant, and provider-failure smoke tests. Run `/visual-qa` in reference-fidelity mode at 375/768/1280px. Run `docker compose config` and an Aspire smoke only if deployment configuration changes.
 
-Current evidence: the latest broad Release build passed with zero errors; Application passed 2,205/2,205; serialized Client passed 1,618 with one governed skip; and Blazor Integration passed 241/241. API passed 1,722/1,733 with eight failures and three skips; Architecture passed 263/268 with four failures and one governed skip. Current authorization-focused coverage passes 13 configuration/options, 19 provider/single-flight, 22 policy-package target-isolation, 23 runtime-provider, four boot-runner, 13 page, 34 client-service, ten admin-layout, nine Setup, and ten authentication-source tests; Client/API/Infrastructure Release builds have zero errors. Keycloak producer/service/TestServer coverage also remains green and proves secret-free reads plus persistent management access. Previous browser-focused desktop/mobile/RTL/dark/long-text/focus/disclosure checks passed with an independent `PASS`, but fresh authorization-page real-stack QA is still required. The prior `EMFILE`, `.slnx`, and migration blockers are resolved; remaining runtime issues are S3 readiness, unavailable assisted screen-reader tooling, and incomplete authenticated journeys.
+Current evidence applies only to the implemented foundation, not the missing unified workspace. The latest broad Release build passed with zero errors; Application passed 2,205/2,205; serialized Client passed 1,618 with one governed skip; and Blazor Integration passed 241/241. API passed 1,722/1,733 with eight failures and three skips; Architecture passed 263/268 with four failures and one governed skip. Existing provider/security coverage remains valuable. Previous browser screenshots and visual `PASS` describe the fragmented pre-Phase-9 UI and cannot satisfy the new reference-fidelity gate.
 
 ## 15. Implementation Agent Contract — KEEP DEV DOCS CURRENT
 
