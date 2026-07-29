@@ -9,6 +9,7 @@ using Explore.Application.DTOs.EventSeries.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSeries.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -19,13 +20,16 @@ namespace Explore.Application.Features.EventSeries.Handlers.Commands;
 public class UpdateEventSeriesCommandHandler : IRequestHandler<UpdateEventSeriesCommand, BaseCommandResponse<Guid>>
 {
     private readonly IEventSeriesRepository _eventSeriesRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly HybridCache _cache;
 
     public UpdateEventSeriesCommandHandler(
         IEventSeriesRepository eventSeriesRepository,
+        IStorageObjectRepository storageObjectRepository,
         HybridCache cache)
     {
         _eventSeriesRepository = eventSeriesRepository;
+        _storageObjectRepository = storageObjectRepository;
         _cache = cache;
     }
 
@@ -65,6 +69,22 @@ public class UpdateEventSeriesCommandHandler : IRequestHandler<UpdateEventSeries
                 "The event series was modified by another request. Reload and retry.",
                 nameof(DomainEventSeries),
                 series.Id.ToString());
+        }
+
+        Guid? featuredImageId = request.EventSeriesDto.FeaturedImage?.Value.HasValue == true
+            ? request.EventSeriesDto.FeaturedImage.Value.Value
+            : null;
+        if (!await ImageReferenceEligibility.AreEligibleAsync(
+                _storageObjectRepository,
+                series.TenantId,
+                featuredImageId))
+        {
+            return new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Event series update failed due to validation errors.",
+                Errors = ["Featured image must be an active public safe-raster object in the current tenant."]
+            };
         }
 
         ApplyTitle(series, request.EventSeriesDto.Title);

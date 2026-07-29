@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSeries.Validators;
 using Explore.Application.Features.EventSeries.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using MediatR;
 
 namespace Explore.Application.Features.EventSeries.Handlers.Commands;
@@ -17,15 +18,18 @@ public class CreateEventSeriesCommandHandler : IRequestHandler<CreateEventSeries
 {
     private readonly IEventSeriesRepository _eventSeriesRepository;
     private readonly ITenantContext _tenantContext;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IMapper _mapper;
 
     public CreateEventSeriesCommandHandler(
         IEventSeriesRepository eventSeriesRepository,
         ITenantContext tenantContext,
+        IStorageObjectRepository storageObjectRepository,
         IMapper mapper)
     {
         _eventSeriesRepository = eventSeriesRepository;
         _tenantContext = tenantContext;
+        _storageObjectRepository = storageObjectRepository;
         _mapper = mapper;
     }
 
@@ -40,6 +44,19 @@ public class CreateEventSeriesCommandHandler : IRequestHandler<CreateEventSeries
                 Success = false,
                 Message = "Event series creation failed due to validation errors.",
                 Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList()
+            };
+        }
+
+        if (!await ImageReferenceEligibility.AreEligibleAsync(
+                _storageObjectRepository,
+                _tenantContext.TenantId,
+                request.EventSeriesDto.FeaturedImageId))
+        {
+            return new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Event series creation failed due to validation errors.",
+                Errors = ["Featured image must be an active public safe-raster object in the current tenant."]
             };
         }
 

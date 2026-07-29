@@ -20,12 +20,16 @@ namespace Event.Application.UnitTests.Features.EventSeries.Commands;
 public class UpdateEventSeriesCommandHandlerTests
 {
     private readonly IEventSeriesRepository _eventSeriesRepository = Substitute.For<IEventSeriesRepository>();
+    private readonly IStorageObjectRepository _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
     private readonly UpdateEventSeriesCommandHandler _handler;
 
     public UpdateEventSeriesCommandHandlerTests()
     {
-        _handler = new UpdateEventSeriesCommandHandler(_eventSeriesRepository, _cache);
+        _handler = new UpdateEventSeriesCommandHandler(
+            _eventSeriesRepository,
+            _storageObjectRepository,
+            _cache);
     }
 
     [Test]
@@ -139,6 +143,22 @@ public class UpdateEventSeriesCommandHandlerTests
         var series = CreateEventSeries(seriesId, tenantId);
         series.ConcurrencyStamp = stamp;
         _eventSeriesRepository.GetEventSeriesWithEvents(seriesId).Returns(series);
+        _storageObjectRepository.GetById(featuredImageId).Returns(new StorageObject
+        {
+            Id = featuredImageId,
+            TenantId = tenantId,
+            Tenant = null!,
+            FileType = null!,
+            Uri = "storage://series",
+            Provider = "local",
+            FullName = "series.png",
+            SafeDisplayName = "series.png",
+            Extension = "png",
+            ContentType = "image/png",
+            Purpose = StorageObjectPurposes.EventImage,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            LifecycleState = StorageObjectLifecycleStates.Active
+        });
 
         var command = new UpdateEventSeriesCommand
         {
