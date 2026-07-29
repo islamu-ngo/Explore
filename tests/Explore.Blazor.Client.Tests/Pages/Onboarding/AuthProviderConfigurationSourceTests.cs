@@ -72,8 +72,8 @@ public class AuthProviderConfigurationSourceTests
     {
         var source = await ReadAuthProviderConfigurationAsync();
 
-        await Assert.That(source).Contains("<div class=\"auth-provider-configuration\" dir=\"auto\">");
-        await Assert.That(source).Contains("<MudContainer MaxWidth=\"MaxWidth.Small\" Class=\"py-8\">");
+        await Assert.That(source).Contains("class=\"auth-provider-configuration\" dir=\"auto\"");
+        await Assert.That(source).Contains("<MudContainer MaxWidth=\"MaxWidth.Small\">");
     }
 
     [Test]
@@ -136,6 +136,29 @@ public class AuthProviderConfigurationSourceTests
         await Assert.That(source).Contains("id=\"keycloak-provider-summary\"");
         await Assert.That(source).Contains("FocusByIdAsync(\"keycloak-provider-summary\")");
         await Assert.That(source).Contains("AnnouncePoliteAsync(\"Authentication provider configuration opened.\")");
+    }
+
+    [Test]
+    public async Task AuthProviderConfiguration_ShouldPreserveHardReloadAfterSchemeRefresh()
+    {
+        var source = await ReadAuthProviderConfigurationAsync();
+
+        await Assert.That(source).Contains("RefreshSchemesAsync(CancellationToken.None)");
+        await Assert.That(source).Contains("forceLoad: true");
+    }
+
+    [Test]
+    public async Task AuthProviderConfiguration_ShouldProjectWorkspaceAndConfirmDirtyExitWithoutBrowserStorage()
+    {
+        var source = await ReadAuthProviderConfigurationAsync();
+
+        await Assert.That(source).Contains("<OnboardingWorkspace");
+        await Assert.That(source).Contains("WorkspaceSteps");
+        await Assert.That(source).Contains("role=\"alertdialog\"");
+        await Assert.That(source).Contains("SaveFocusAsync()");
+        await Assert.That(source).Contains("RestoreFocusAsync(\"#onboarding-exit\")");
+        await Assert.That(source).DoesNotContain("localStorage");
+        await Assert.That(source).DoesNotContain("sessionStorage");
     }
 
     private static async Task<string> ReadAuthProviderConfigurationAsync()

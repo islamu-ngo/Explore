@@ -5,6 +5,22 @@
     unicode-bidi: isolate;
 }
 
+.auth-provider-configuration__discard {
+    display: grid;
+    gap: var(--isl-space-3, 0.75rem);
+    position: fixed;
+    z-index: var(--mud-zindex-dialog, 1400);
+    inset-block-start: 50%;
+    inset-inline-start: 50%;
+    inline-size: min(calc(100% - var(--isl-space-8, 2rem)), 32rem);
+    padding: var(--isl-space-6, 1.5rem);
+    border: 1px solid var(--isl-color-warning);
+    border-radius: var(--isl-radius-card, 0.5rem);
+    background: var(--isl-color-surface);
+    color: var(--isl-color-text);
+    transform: translate(-50%, -50%);
+}
+
 .auth-provider-configuration__providers {
     margin-block-end: var(--isl-space-4, 1rem);
     overflow: clip;

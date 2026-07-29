@@ -120,6 +120,26 @@ public class StartupGateTests : IDisposable
     }
 
     [Test]
+    public async Task StartupGate_WhenAuthenticatedProviderIsConfigured_ResumesAuthorizationFromAuthoritativeState()
+    {
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
+        {
+            IsCompleted = false,
+            IsAuthenticated = true
+        });
+        _instanceOnboardingService.GetAuthProviderConfiguredStateAsync().Returns(true);
+        _instanceOnboardingService.ShouldSkipAuthorizationProviderStepAsync().Returns(false);
+
+        _nav.NavigateTo("/startup");
+        var cut = _ctx.RenderMudComponent<StartupGate>();
+
+        cut.WaitForAssertion(() => AssertUriEndsWith("/onboarding/authz-provider"));
+
+        await _instanceOnboardingService.Received(1).GetAuthProviderConfiguredStateAsync();
+        await _instanceOnboardingService.Received(1).ShouldSkipAuthorizationProviderStepAsync();
+    }
+
+    [Test]
     public async Task StartupGate_WhenCompletedDeploymentModeIsBlank_RemainsFailClosedAndShowsError()
     {
         // Arrange
