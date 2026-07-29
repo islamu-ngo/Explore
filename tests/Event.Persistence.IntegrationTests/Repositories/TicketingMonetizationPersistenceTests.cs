@@ -2,6 +2,7 @@
 // ABOUTME: Uses design-time Npgsql metadata and InMemory repositories without Docker or Testcontainers.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
@@ -9,8 +10,10 @@ using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Npgsql;
 using DomainEvent = Explore.Domain.Event;
 
 namespace Event.Persistence.IntegrationTests.Repositories;
@@ -224,6 +227,61 @@ public sealed class TicketingMonetizationPersistenceTests
         await Assert.That(source.Contains("PublishDraftReplacingCurrentAsync", StringComparison.Ordinal)).IsFalse();
     }
 
+    [Test]
+    public async Task TicketRepository_TranslatesOptimisticConcurrencyFailures()
+    {
+        await using var context = CreateInMemoryContext(
+            "ticketing-concurrency-translation",
+            new ThrowingSaveChangesInterceptor(
+                () => new DbUpdateConcurrencyException("Simulated optimistic concurrency failure.")));
+        var repository = new EventTicketCatalogRepository(context);
+
+        ConcurrencyConflictException exception = await Assert.ThrowsAsync<ConcurrencyConflictException>(
+            () => repository.SaveChangesAsync(CancellationToken.None));
+
+        await Assert.That(exception.Code).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
+    }
+
+    [Test]
+    [Arguments("ix_event_ticket_catalog_versions_tenant_id_event_id")]
+    [Arguments("ix_event_capacity_pools_tenant_id_event_id_name")]
+    public async Task TicketRepository_TranslatesRecognizedUniqueRaces(string constraintName)
+    {
+        await using var context = CreateInMemoryContext(
+            "ticketing-unique-translation",
+            new ThrowingSaveChangesInterceptor(() => CreateUniqueViolation(constraintName)));
+        var repository = new EventTicketCatalogRepository(context);
+
+        ConcurrencyConflictException exception = await Assert.ThrowsAsync<ConcurrencyConflictException>(
+            () => repository.SaveChangesAsync(CancellationToken.None));
+
+        await Assert.That(exception.Code).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
+    }
+
+    [Test]
+    public async Task TicketRepository_LeavesUnrecognizedUniqueFailuresUntranslated()
+    {
+        DbUpdateException expected = CreateUniqueViolation("ix_unrelated_constraint");
+        await using var context = CreateInMemoryContext(
+            "ticketing-unrelated-translation",
+            new ThrowingSaveChangesInterceptor(() => expected));
+        var repository = new EventTicketCatalogRepository(context);
+
+        DbUpdateException exception = await Assert.ThrowsAsync<DbUpdateException>(
+            () => repository.SaveChangesAsync(CancellationToken.None));
+
+        await Assert.That(exception).IsSameReferenceAs(expected);
+    }
+
+    private static DbUpdateException CreateUniqueViolation(string constraintName) => new(
+        $"Simulated unique violation for {constraintName}.",
+        new PostgresException(
+            "duplicate key value violates unique constraint",
+            "ERROR",
+            "ERROR",
+            PostgresErrorCodes.UniqueViolation,
+            constraintName: constraintName));
+
     private static EventTicketCatalogVersion CreatePublishedCatalog(Guid tenantId, Guid eventId, int versionNumber)
     {
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(tenantId, eventId, "USD", versionNumber);
@@ -242,10 +300,28 @@ public sealed class TicketingMonetizationPersistenceTests
         .UseNpgsql("Host=localhost;Database=ticketing_model;Username=unused;Password=unused")
         .UseSnakeCaseNamingConvention().Options);
 
-    private static TicketingTestDbContext CreateInMemoryContext(string name) => new(new DbContextOptionsBuilder<ExploreDbContext>()
-        .UseInMemoryDatabase($"{name}-{Guid.NewGuid():N}").Options);
+    private static TicketingTestDbContext CreateInMemoryContext(string name, SaveChangesInterceptor? interceptor = null)
+    {
+        var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseInMemoryDatabase($"{name}-{Guid.NewGuid():N}");
+        if (interceptor is not null)
+        {
+            optionsBuilder.AddInterceptors(interceptor);
+        }
+
+        return new(optionsBuilder.Options);
+    }
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
+
+    private sealed class ThrowingSaveChangesInterceptor(Func<Exception> exceptionFactory) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default) =>
+            throw exceptionFactory();
+    }
 
     private sealed class TicketingTestDbContext(DbContextOptions<ExploreDbContext> options) : ExploreDbContext(options)
     {

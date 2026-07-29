@@ -2,14 +2,19 @@
 // ABOUTME: Applies exact event and tenant predicates so child IDs cannot cross event boundaries.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Npgsql;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
 
 public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : IEventTicketCatalogRepository
 {
+    private const string PublishedCatalogUniqueIndexName = "ix_event_ticket_catalog_versions_tenant_id_event_id";
+    private const string CapacityPoolNameUniqueIndexName = "ix_event_capacity_pools_tenant_id_event_id_name";
+
     public Task<EventTicketCatalogVersion?> GetManagementCatalogAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken) =>
         ManagementGraph()
             .Where(catalog => catalog.EventId == eventId
@@ -48,28 +53,53 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
     public async Task AddAsync(EventTicketCatalogVersion catalog, CancellationToken cancellationToken)
     {
         await dbContext.EventTicketCatalogVersions.AddAsync(catalog, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await SaveChangesAsync(cancellationToken);
     }
 
     public async Task UpdateAsync(EventTicketCatalogVersion catalog, CancellationToken cancellationToken)
     {
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await SaveChangesAsync(cancellationToken);
     }
 
     public async Task AddCapacityPoolAsync(EventCapacityPool pool, CancellationToken cancellationToken)
     {
         await dbContext.EventCapacityPools.AddAsync(pool, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await SaveChangesAsync(cancellationToken);
     }
 
     public async Task UpdateCapacityPoolAsync(EventCapacityPool pool, CancellationToken cancellationToken)
     {
         dbContext.EventCapacityPools.Update(pool);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await SaveChangesAsync(cancellationToken);
     }
 
-    public Task SaveChangesAsync(CancellationToken cancellationToken) =>
-        dbContext.SaveChangesAsync(cancellationToken);
+    public async Task SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            throw CreateConcurrencyConflictException(exception);
+        }
+        catch (DbUpdateException exception) when (IsRecognizedUniqueViolation(exception))
+        {
+            throw CreateConcurrencyConflictException(exception);
+        }
+    }
+
+    private static ConcurrencyConflictException CreateConcurrencyConflictException(Exception exception) => new(
+        ConcurrencyConflictException.ConcurrentUpdate,
+        "Ticketing data was modified by another request. Reload and retry.",
+        innerException: exception);
+
+    private static bool IsRecognizedUniqueViolation(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: PublishedCatalogUniqueIndexName or CapacityPoolNameUniqueIndexName
+        };
 
     private IQueryable<EventTicketCatalogVersion> CatalogDetailsQuery() =>
         ManagementGraph().AsNoTracking();
