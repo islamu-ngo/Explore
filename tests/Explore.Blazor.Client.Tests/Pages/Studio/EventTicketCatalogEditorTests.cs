@@ -28,8 +28,8 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
         _announcer = _ctx.AddMockService<IAccessibilityAnnouncerService>();
         _focusService = _ctx.AddMockService<IAccessibilityFocusService>();
         _ctx.Services.AddSingleton(_dialogService);
-        _eventDayService.GetDaysByEventAsync(Arg.Any<Guid>(), true).Returns([]);
-        _eventService.GetSessionsByEventAsync(Arg.Any<Guid>(), true).Returns([]);
+        _eventDayService.GetDaysByEventAsync(Arg.Any<Guid>(), true, Arg.Any<CancellationToken>()).Returns([]);
+        _eventService.GetSessionsByEventAsync(Arg.Any<Guid>(), true, Arg.Any<CancellationToken>()).Returns([]);
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -38,7 +38,7 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
     public async Task RenderWithoutMutationLinksKeepsCatalogReadOnly()
     {
         var eventId = Guid.CreateVersion7();
-        _ticketingService.GetCatalogAsync(eventId).Returns(CreateCatalog(eventId));
+        _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateCatalog(eventId));
 
         var cut = _ctx.RenderMudComponent<EventTicketCatalogEditor>(parameters => parameters
             .Add(component => component.EventId, eventId)
@@ -56,7 +56,7 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
     public async Task RenderShowsOnlyControlsBackedByExactCatalogLinks()
     {
         var eventId = Guid.CreateVersion7();
-        _ticketingService.GetCatalogAsync(eventId).Returns(CreateCatalog(eventId, "create-type", "publish"));
+        _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateCatalog(eventId, "create-type", "publish"));
 
         var cut = _ctx.RenderMudComponent<EventTicketCatalogEditor>(parameters => parameters
             .Add(component => component.EventId, eventId)
@@ -74,8 +74,8 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
         var eventId = Guid.CreateVersion7();
         var initial = CreateCatalog(eventId, "create-draft");
         var created = CreateCatalog(eventId, "create-type", "create-pool", "publish");
-        _ticketingService.GetCatalogAsync(eventId).Returns(initial, created);
-        _ticketingService.CreateDraftAsync(eventId, Arg.Any<CreateEventTicketCatalogDraftCommand>())
+        _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(initial, created);
+        _ticketingService.CreateDraftAsync(eventId, Arg.Any<CreateEventTicketCatalogDraftCommand>(), Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponseOfGuid { Success = true });
 
         var cut = _ctx.RenderMudComponent<EventTicketCatalogEditor>(parameters => parameters
@@ -87,7 +87,8 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
 
         await _ticketingService.Received(1).CreateDraftAsync(
             eventId,
-            Arg.Is<CreateEventTicketCatalogDraftCommand>(request => request.EventId == eventId && request.CurrencyCode == "USD"));
+            Arg.Is<CreateEventTicketCatalogDraftCommand>(request => request.EventId == eventId && request.CurrencyCode == "USD"),
+            Arg.Any<CancellationToken>());
         await Assert.That(cut.FindAll("[data-testid='add-capacity-pool']").Count).IsEqualTo(1);
         await _announcer.Received(1).AnnouncePoliteAsync("Draft created.");
     }
@@ -103,7 +104,7 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
         int expectedPoolControls)
     {
         var eventId = Guid.CreateVersion7();
-        _ticketingService.GetCatalogAsync(eventId).Returns(CreateCatalog(eventId, "create-type", "create-pool"));
+        _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateCatalog(eventId, "create-type", "create-pool"));
 
         var cut = _ctx.RenderMudComponent<EventTicketCatalogEditor>(parameters => parameters
             .Add(component => component.EventId, eventId)
@@ -122,9 +123,9 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
         var eventId = Guid.CreateVersion7();
         var dayId = Guid.CreateVersion7();
         var sessionId = Guid.CreateVersion7();
-        _ticketingService.GetCatalogAsync(eventId).Returns(CreateCatalog(eventId, "create-type"));
-        _eventDayService.GetDaysByEventAsync(eventId, true).Returns([new EventDayListDto { Id = dayId, Label = "Friday" }]);
-        _eventService.GetSessionsByEventAsync(eventId, true).Returns([new EventSessionListDto { Id = sessionId, EventTitle = "Event", Title = "Opening" }]);
+        _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateCatalog(eventId, "create-type"));
+        _eventDayService.GetDaysByEventAsync(eventId, true, Arg.Any<CancellationToken>()).Returns([new EventDayListDto { Id = dayId, Label = "Friday" }]);
+        _eventService.GetSessionsByEventAsync(eventId, true, Arg.Any<CancellationToken>()).Returns([new EventSessionListDto { Id = sessionId, EventTitle = "Event", Title = "Opening" }]);
 
         var cut = _ctx.RenderMudComponent<EventTicketCatalogEditor>(parameters => parameters
             .Add(component => component.EventId, eventId)
@@ -138,10 +139,85 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
     }
 
     [Test]
+    public async Task Dispose_DuringPendingLoad_CancelsRequestWithoutShowingError()
+    {
+        var eventId = Guid.CreateVersion7();
+        var completion = new TaskCompletionSource<EventTicketCatalogState?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken observedToken = default;
+        _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            observedToken = call.ArgAt<CancellationToken>(1);
+            return completion.Task;
+        });
+        var cut = _ctx.RenderMudComponent<EventTicketCatalogEditor>(parameters => parameters
+            .Add(component => component.EventId, eventId));
+        cut.WaitForState(() => observedToken.CanBeCanceled);
+        await Assert.That(observedToken.CanBeCanceled).IsTrue();
+        await Assert.That(cut.FindAll("[role='alert']")).IsEmpty();
+
+        cut.Instance.Dispose();
+        cut.Dispose();
+
+        await Assert.That(observedToken.IsCancellationRequested).IsTrue();
+        await _announcer.DidNotReceive().AnnounceAssertiveAsync(Arg.Any<string>());
+        completion.TrySetCanceled(observedToken);
+    }
+
+    [Test]
+    public async Task EventIdChange_CancelsPendingRequestsAndIgnoresStaleResults()
+    {
+        var firstEventId = Guid.CreateVersion7();
+        var secondEventId = Guid.CreateVersion7();
+        var catalogCompletion = new TaskCompletionSource<EventTicketCatalogState?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var daysCompletion = new TaskCompletionSource<ICollection<EventDayListDto>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sessionsCompletion = new TaskCompletionSource<ICollection<EventSessionListDto>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken catalogToken = default;
+        CancellationToken daysToken = default;
+        CancellationToken sessionsToken = default;
+        _ticketingService.GetCatalogAsync(firstEventId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            catalogToken = call.ArgAt<CancellationToken>(1);
+            return catalogCompletion.Task;
+        });
+        _eventDayService.GetDaysByEventAsync(firstEventId, true, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            daysToken = call.ArgAt<CancellationToken>(2);
+            return daysCompletion.Task;
+        });
+        _eventService.GetSessionsByEventAsync(firstEventId, true, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            sessionsToken = call.ArgAt<CancellationToken>(2);
+            return sessionsCompletion.Task;
+        });
+        _ticketingService.GetCatalogAsync(secondEventId, Arg.Any<CancellationToken>()).Returns(CreateCatalog(secondEventId, "publish"));
+
+        var cut = _ctx.RenderMudComponent<EventTicketCatalogEditor>(parameters => parameters
+            .Add(component => component.EventId, firstEventId));
+        cut.WaitForState(() => catalogToken.CanBeCanceled && daysToken.CanBeCanceled && sessionsToken.CanBeCanceled);
+
+        cut.Render(parameters => parameters.Add(component => component.EventId, secondEventId));
+        cut.WaitForElement("[data-testid='publish-ticket-catalog']");
+        await Assert.That(catalogToken.IsCancellationRequested).IsTrue();
+        await Assert.That(daysToken.IsCancellationRequested).IsTrue();
+        await Assert.That(sessionsToken.IsCancellationRequested).IsTrue();
+
+        catalogCompletion.SetResult(CreateCatalog(firstEventId, "create-type"));
+        daysCompletion.SetResult([new EventDayListDto { Id = Guid.CreateVersion7(), Label = "Stale day" }]);
+        sessionsCompletion.SetResult([new EventSessionListDto { Id = Guid.CreateVersion7(), EventTitle = "Stale event", Title = "Stale session" }]);
+        await cut.InvokeAsync(() => Task.CompletedTask);
+
+        await Assert.That(cut.FindAll("[data-testid='publish-ticket-catalog']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='add-ticket-type']")).IsEmpty();
+        await _announcer.Received(1).AnnouncePoliteAsync("Ticket catalog loaded: 0 ticket types and 0 capacity pools.");
+        await _announcer.DidNotReceive().AnnounceAssertiveAsync(Arg.Any<string>());
+    }
+
+    [Test]
     public async Task PublishCancellationRestoresFocusAndPerformsNoMutation()
     {
         var eventId = Guid.CreateVersion7();
-        _ticketingService.GetCatalogAsync(eventId).Returns(CreateCatalog(eventId, "publish"));
+        _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateCatalog(eventId, "publish"));
         _dialogService.ShowMessageBoxAsync(
                 Arg.Any<string>(),
                 Arg.Any<string>(),
@@ -157,15 +233,15 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
         cut.WaitForElement("[data-testid='publish-ticket-catalog']").Click();
         await _focusService.Received(1).SaveFocusAsync();
         await _focusService.Received(1).RestoreFocusAsync();
-        await _ticketingService.DidNotReceive().PublishAsync(eventId);
+        await _ticketingService.DidNotReceive().PublishAsync(eventId, Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task MutationFailureIsAnnouncedAssertively()
     {
         var eventId = Guid.CreateVersion7();
-        _ticketingService.GetCatalogAsync(eventId).Returns(CreateCatalog(eventId, "create-draft"));
-        _ticketingService.CreateDraftAsync(eventId, Arg.Any<CreateEventTicketCatalogDraftCommand>())
+        _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateCatalog(eventId, "create-draft"));
+        _ticketingService.CreateDraftAsync(eventId, Arg.Any<CreateEventTicketCatalogDraftCommand>(), Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponseOfGuid { Success = false, Message = "Catalog is locked." });
 
         var cut = _ctx.RenderMudComponent<EventTicketCatalogEditor>(parameters => parameters

@@ -92,7 +92,10 @@ public interface IEventService
     Task<ICollection<EventTypeListDto>> GetEventTypesAsync();
     Task<ICollection<EventFormatListDto>> GetEventFormatsAsync();
     Task<ICollection<EventSessionListDto>> GetAllSessionsAsync();
-    Task<ICollection<EventSessionListDto>> GetSessionsByEventAsync(Guid eventId, bool includeManagedSessions = false);
+    Task<ICollection<EventSessionListDto>> GetSessionsByEventAsync(
+        Guid eventId,
+        bool includeManagedSessions = false,
+        CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> CreateSessionAsync(CreateEventSessionDto session);
     Task<BaseCommandResponseOfGuid> UpdateSessionAsync(
         Guid sessionId,
@@ -820,18 +823,25 @@ public partial class EventService : IEventService
         return result?.GetItems() ?? new List<EventSessionListDto>();
     }
 
-    public async Task<ICollection<EventSessionListDto>> GetSessionsByEventAsync(Guid eventId, bool includeManagedSessions = false)
+    public async Task<ICollection<EventSessionListDto>> GetSessionsByEventAsync(
+        Guid eventId,
+        bool includeManagedSessions = false,
+        CancellationToken cancellationToken = default)
     {
-        var publicSessions = await GetPublicSessionsByEventAsync(eventId);
+        var publicSessions = await GetPublicSessionsByEventAsync(eventId, cancellationToken);
 
         if (!includeManagedSessions)
             return publicSessions;
 
         try
         {
-            var result = await _apiClient.GetManagedEventSessionsByEventAsync(eventId);
+            var result = await _apiClient.GetManagedEventSessionsByEventAsync(eventId, cancellationToken: cancellationToken);
             var managedSessions = result?.GetItems() ?? new List<EventSessionListDto>();
             return MergeEventSessions(publicSessions, managedSessions);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (ApiException ex) when (ex.StatusCode is 401 or 403 or 404)
         {
@@ -848,12 +858,18 @@ public partial class EventService : IEventService
         }
     }
 
-    private async Task<ICollection<EventSessionListDto>> GetPublicSessionsByEventAsync(Guid eventId)
+    private async Task<ICollection<EventSessionListDto>> GetPublicSessionsByEventAsync(
+        Guid eventId,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var result = await _apiClient.GetEventSessionsAsync(eventId);
+            var result = await _apiClient.GetEventSessionsAsync(eventId, cancellationToken: cancellationToken);
             return result?.GetItems() ?? new List<EventSessionListDto>();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (ApiException ex) when (ex.StatusCode is 401 or 403 or 404)
         {

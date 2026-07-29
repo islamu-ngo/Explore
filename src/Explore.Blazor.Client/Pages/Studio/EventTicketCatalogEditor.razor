@@ -3,6 +3,7 @@
 @using Explore.Blazor.Client.Contracts.Services.Events
 @using Explore.Blazor.Client.Contracts.Services.Accessibility
 @using Explore.Blazor.Client.Clients
+@implements IDisposable
 @inject IEventTicketingService TicketingService
 @inject IEventDayService EventDayService
 @inject IEventService EventService
@@ -174,29 +175,58 @@
     private IReadOnlyList<EventDayListDto> _eventDays = [];
     private IReadOnlyList<EventSessionListDto> _eventSessions = [];
     private bool _supportDataUnavailable;
+    private CancellationTokenSource? _requestCancellation;
+    private bool _disposed;
 
     protected override async Task OnParametersSetAsync()
     {
-        if (EventId == Guid.Empty || EventId == _loadedEventId)
+        if (_disposed || EventId == _loadedEventId)
         {
             return;
         }
 
+        CancelPendingRequests();
         _loadedEventId = EventId;
-        await Task.WhenAll(LoadAsync(), LoadSupportDataAsync());
+        _catalog = null;
+        _errorMessage = null;
+        _statusMessage = null;
+        _editingTicketType = null;
+        _editingCapacityPool = null;
+        _eventDays = [];
+        _eventSessions = [];
+        _supportDataUnavailable = false;
+        _isLoading = EventId != Guid.Empty;
+        _isMutating = false;
+
+        if (EventId == Guid.Empty)
+        {
+            return;
+        }
+
+        var requestCancellation = new CancellationTokenSource();
+        _requestCancellation = requestCancellation;
+        var eventId = EventId;
+        await Task.WhenAll(
+            LoadAsync(eventId, requestCancellation.Token),
+            LoadSupportDataAsync(eventId, requestCancellation.Token));
     }
 
-    private async Task LoadAsync()
+    private async Task LoadAsync(Guid eventId, CancellationToken cancellationToken)
     {
-        _isLoading = true;
-        _errorMessage = null;
         try
         {
-            _catalog = await TicketingService.GetCatalogAsync(EventId);
-            if (_catalog is not null)
+            EventTicketCatalogState? catalog = await TicketingService.GetCatalogAsync(eventId, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCurrentRequest(eventId, cancellationToken))
             {
-                _currencyCode = _catalog.CurrencyCode;
-                await Announcer.AnnouncePoliteAsync($"Ticket catalog loaded: {_catalog.TicketTypes.Count} ticket types and {_catalog.CapacityPools.Count} capacity pools.");
+                return;
+            }
+
+            _catalog = catalog;
+            if (catalog is not null)
+            {
+                _currencyCode = catalog.CurrencyCode;
+                await Announcer.AnnouncePoliteAsync($"Ticket catalog loaded: {catalog.TicketTypes.Count} ticket types and {catalog.CapacityPools.Count} capacity pools.");
             }
             else
             {
@@ -204,30 +234,59 @@
                 await Announcer.AnnounceAssertiveAsync(_errorMessage);
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
         catch (Exception)
         {
+            if (!IsCurrentRequest(eventId, cancellationToken))
+            {
+                return;
+            }
+
             _catalog = null;
             _errorMessage = "The ticket catalog could not be loaded.";
             await Announcer.AnnounceAssertiveAsync(_errorMessage);
         }
         finally
         {
-            _isLoading = false;
+            if (IsCurrentRequest(eventId, cancellationToken))
+            {
+                _isLoading = false;
+            }
         }
     }
 
-    private async Task LoadSupportDataAsync()
+    private async Task LoadSupportDataAsync(Guid eventId, CancellationToken cancellationToken)
     {
         try
         {
-            var daysTask = EventDayService.GetDaysByEventAsync(EventId, includeManaged: true);
-            var sessionsTask = EventService.GetSessionsByEventAsync(EventId, includeManagedSessions: true);
+            var daysTask = EventDayService.GetDaysByEventAsync(eventId, includeManaged: true, cancellationToken);
+            var sessionsTask = EventService.GetSessionsByEventAsync(eventId, includeManagedSessions: true, cancellationToken);
             await Task.WhenAll(daysTask, sessionsTask);
-            _eventDays = (await daysTask).Where(item => item.Id is not null).OrderBy(item => item.SortOrder).ToArray();
-            _eventSessions = (await sessionsTask).Where(item => item.Id is not null).OrderBy(item => item.StartTime).ToArray();
+            IReadOnlyList<EventDayListDto> eventDays = (await daysTask).Where(item => item.Id is not null).OrderBy(item => item.SortOrder).ToArray();
+            IReadOnlyList<EventSessionListDto> eventSessions = (await sessionsTask).Where(item => item.Id is not null).OrderBy(item => item.StartTime).ToArray();
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCurrentRequest(eventId, cancellationToken))
+            {
+                return;
+            }
+
+            _eventDays = eventDays;
+            _eventSessions = eventSessions;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
         }
         catch (Exception)
         {
+            if (!IsCurrentRequest(eventId, cancellationToken))
+            {
+                return;
+            }
+
             _supportDataUnavailable = true;
             _eventDays = [];
             _eventSessions = [];
@@ -245,30 +304,30 @@
     private void CancelCapacityPoolEdit() => _editingCapacityPool = null;
 
     private Task CreateDraftAsync() => MutateAsync(
-        () => TicketingService.CreateDraftAsync(EventId, new CreateEventTicketCatalogDraftCommand { EventId = EventId, CurrencyCode = _currencyCode.Trim().ToUpperInvariant() }),
+        (eventId, cancellationToken) => TicketingService.CreateDraftAsync(eventId, new CreateEventTicketCatalogDraftCommand { EventId = eventId, CurrencyCode = _currencyCode.Trim().ToUpperInvariant() }, cancellationToken),
         "Draft created.");
 
     private async Task CloneDraftAsync()
     {
         if (await ConfirmAsync("Create ticket catalog draft", "Create a new draft from the published catalog?", "Create draft"))
         {
-            await MutateAsync(() => TicketingService.CloneDraftAsync(EventId), "Draft created from the published catalog.");
+            await MutateAsync((eventId, cancellationToken) => TicketingService.CloneDraftAsync(eventId, cancellationToken), "Draft created from the published catalog.");
         }
     }
     private async Task PublishAsync()
     {
         if (await ConfirmAsync("Publish ticket catalog", "Publish this catalog for attendee use?", "Publish"))
         {
-            await MutateAsync(() => TicketingService.PublishAsync(EventId), "Ticket catalog published.");
+            await MutateAsync((eventId, cancellationToken) => TicketingService.PublishAsync(eventId, cancellationToken), "Ticket catalog published.");
         }
     }
 
     private async Task SaveTicketTypeAsync(TicketTypeEditModel model)
     {
         await MutateAsync(
-            () => model.Id is { } id
-                ? TicketingService.UpdateTicketTypeAsync(EventId, id, model.ToRequest())
-                : TicketingService.CreateTicketTypeAsync(EventId, model.ToRequest()),
+            (eventId, cancellationToken) => model.Id is { } id
+                ? TicketingService.UpdateTicketTypeAsync(eventId, id, model.ToRequest(), cancellationToken)
+                : TicketingService.CreateTicketTypeAsync(eventId, model.ToRequest(), cancellationToken),
             model.Id is null ? "Ticket type created." : "Ticket type updated.");
         if (_errorMessage is null)
         {
@@ -280,16 +339,16 @@
     {
         if (await ConfirmAsync("Delete ticket type", "Delete this ticket type?", "Delete"))
         {
-            await MutateAsync(() => TicketingService.DeleteTicketTypeAsync(EventId, ticketTypeId), "Ticket type deleted.");
+            await MutateAsync((eventId, cancellationToken) => TicketingService.DeleteTicketTypeAsync(eventId, ticketTypeId, cancellationToken), "Ticket type deleted.");
         }
     }
 
     private async Task SaveCapacityPoolAsync(CapacityPoolEditModel model)
     {
         await MutateAsync(
-            () => model.Id is { } id
-                ? TicketingService.UpdateCapacityPoolAsync(EventId, id, model.ToRequest())
-                : TicketingService.CreateCapacityPoolAsync(EventId, model.ToRequest()),
+            (eventId, cancellationToken) => model.Id is { } id
+                ? TicketingService.UpdateCapacityPoolAsync(eventId, id, model.ToRequest(), cancellationToken)
+                : TicketingService.CreateCapacityPoolAsync(eventId, model.ToRequest(), cancellationToken),
             model.Id is null ? "Capacity pool created." : "Capacity pool updated.");
         if (_errorMessage is null)
         {
@@ -301,18 +360,31 @@
     {
         if (await ConfirmAsync("Delete capacity pool", "Delete this shared capacity pool?", "Delete"))
         {
-            await MutateAsync(() => TicketingService.DeleteCapacityPoolAsync(EventId, capacityPoolId), "Capacity pool deleted.");
+            await MutateAsync((eventId, cancellationToken) => TicketingService.DeleteCapacityPoolAsync(eventId, capacityPoolId, cancellationToken), "Capacity pool deleted.");
         }
     }
 
-    private async Task MutateAsync(Func<Task<BaseCommandResponseOfGuid>> mutation, string successMessage)
+    private async Task MutateAsync(Func<Guid, CancellationToken, Task<BaseCommandResponseOfGuid>> mutation, string successMessage)
     {
+        CancellationToken cancellationToken = _requestCancellation?.Token ?? default;
+        var eventId = EventId;
+        if (!IsCurrentRequest(eventId, cancellationToken))
+        {
+            return;
+        }
+
         _isMutating = true;
         _errorMessage = null;
         _statusMessage = null;
         try
         {
-            BaseCommandResponseOfGuid response = await mutation();
+            BaseCommandResponseOfGuid response = await mutation(eventId, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCurrentRequest(eventId, cancellationToken))
+            {
+                return;
+            }
+
             if (response.Success != true)
             {
                 _errorMessage = response.Message ?? "The ticket catalog change could not be saved.";
@@ -321,17 +393,46 @@
             }
             _statusMessage = successMessage;
             await Announcer.AnnouncePoliteAsync(successMessage);
-            _catalog = await TicketingService.GetCatalogAsync(EventId);
+            cancellationToken.ThrowIfCancellationRequested();
+            EventTicketCatalogState? catalog = await TicketingService.GetCatalogAsync(eventId, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (IsCurrentRequest(eventId, cancellationToken))
+            {
+                _catalog = catalog;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
         }
         catch (Exception)
         {
+            if (!IsCurrentRequest(eventId, cancellationToken))
+            {
+                return;
+            }
+
             _errorMessage = "The ticket catalog change could not be saved.";
             await Announcer.AnnounceAssertiveAsync(_errorMessage);
         }
         finally
         {
-            _isMutating = false;
+            if (IsCurrentRequest(eventId, cancellationToken))
+            {
+                _isMutating = false;
+            }
         }
+    }
+
+    private bool IsCurrentRequest(Guid eventId, CancellationToken cancellationToken) =>
+        !_disposed && !cancellationToken.IsCancellationRequested && eventId == EventId;
+
+    private void CancelPendingRequests()
+    {
+        CancellationTokenSource? requestCancellation = _requestCancellation;
+        _requestCancellation = null;
+        requestCancellation?.Cancel();
+        requestCancellation?.Dispose();
     }
 
     private async Task<bool> ConfirmAsync(string title, string message, string yesText)
@@ -351,5 +452,16 @@
         {
             await FocusService.RestoreFocusAsync();
         }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        CancelPendingRequests();
     }
 }

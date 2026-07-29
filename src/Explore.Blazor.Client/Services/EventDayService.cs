@@ -19,14 +19,21 @@ public class EventDayService : IEventDayService
         _logger = logger;
     }
 
-    public async Task<ICollection<EventDayListDto>> GetDaysByEventAsync(Guid eventId, bool includeManaged = false)
+    public async Task<ICollection<EventDayListDto>> GetDaysByEventAsync(
+        Guid eventId,
+        bool includeManaged = false,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             var result = includeManaged
-                ? await _client.GetManagedEventDaysByEventAsync(eventId)
-                : await _client.GetEventDaysByEventAsync(eventId);
+                ? await _client.GetManagedEventDaysByEventAsync(eventId, cancellationToken: cancellationToken)
+                : await _client.GetEventDaysByEventAsync(eventId, cancellationToken: cancellationToken);
             return result?.GetItems() ?? new List<EventDayListDto>();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

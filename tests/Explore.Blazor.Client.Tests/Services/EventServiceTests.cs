@@ -1284,6 +1284,21 @@ public class EventServiceTests
         await Assert.That(result.Single().Title).IsEqualTo("Public session");
     }
 
+    [Test]
+    public async Task GetSessionsByEventAsync_WhenCancelled_PropagatesCancellation()
+    {
+        var eventId = Guid.NewGuid();
+        using var source = new CancellationTokenSource();
+        source.Cancel();
+        _apiClient.GetEventSessionsAsync(eventId, null, null, source.Token)
+            .Returns(CreateHalSessionCollectionResponse([]));
+        _apiClient.GetManagedEventSessionsByEventAsync(eventId, null, null, source.Token)
+            .Returns<Task<HalCollectionResourceOfEventSessionListDto>>(_ => throw new OperationCanceledException(source.Token));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await _service.GetSessionsByEventAsync(eventId, includeManagedSessions: true, source.Token));
+    }
+
     #endregion
 
     #region UpdateEventAsync Tests

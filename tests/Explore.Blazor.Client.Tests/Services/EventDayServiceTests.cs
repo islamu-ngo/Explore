@@ -62,6 +62,19 @@ public class EventDayServiceTests
     }
 
     [Test]
+    public async Task GetDaysByEventAsync_WhenCancelled_PropagatesCancellation()
+    {
+        var eventId = Guid.NewGuid();
+        using var source = new CancellationTokenSource();
+        source.Cancel();
+        _apiClient.GetManagedEventDaysByEventAsync(eventId, null, null, source.Token)
+            .Returns<Task<HalCollectionResourceOfEventDayListDto>>(_ => throw new OperationCanceledException(source.Token));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await _service.GetDaysByEventAsync(eventId, includeManaged: true, source.Token));
+    }
+
+    [Test]
     public async Task GetDaysByEventAsync_ReturnsEmptyList_WhenApiThrows()
     {
         _apiClient.GetEventDaysByEventAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
