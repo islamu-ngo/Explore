@@ -10,6 +10,7 @@ using Explore.Application.Features.Actors.Requests.Commands;
 using Explore.Application.Models.Common;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
@@ -186,7 +187,9 @@ public class UpdateActorCommandHandlerTests
     public async Task Handle_WhenProfileImageIsSet_UpdatesActorAndLinksTrackedStorageWithSingleActorSave()
     {
         var actor = CreateTestActor();
-        var storageObject = CreateStorageObject();
+        var tenantId = Guid.CreateVersion7();
+        var storageObject = CreateStorageObject(tenantId);
+        _tenantContext.TenantId.Returns(tenantId);
         _actorRepository.GetById(actor.Id).Returns(actor);
         _storageObjectRepository.Exists(storageObject.Id).Returns(true);
         _storageObjectRepository.GetById(storageObject.Id).Returns(storageObject);
@@ -209,6 +212,35 @@ public class UpdateActorCommandHandlerTests
         await Assert.That(storageObject.ActorId).IsEqualTo(actor.Id);
         await _actorRepository.Received(1).Update(actor);
         await _storageObjectRepository.DidNotReceive().Update(Arg.Any<StorageObject>());
+    }
+
+    [Test]
+    public async Task Handle_WhenProfileImageIsCrossTenant_ReturnsFailureWithoutMutation()
+    {
+        var actor = CreateTestActor();
+        var storageObject = CreateStorageObject(Guid.CreateVersion7());
+        _tenantContext.TenantId.Returns(Guid.CreateVersion7());
+        _actorRepository.GetById(actor.Id).Returns(actor);
+        _storageObjectRepository.Exists(storageObject.Id).Returns(true);
+        _storageObjectRepository.GetById(storageObject.Id).Returns(storageObject);
+
+        var result = await _handler.Handle(new UpdateActorCommand
+        {
+            ActorId = actor.Id,
+            ExpectedConcurrencyStamp = actor.ConcurrencyStamp,
+            UpdateActorDto = new UpdateActorDto
+            {
+                ProfileImage = new UpdateActorProfileImageDto
+                {
+                    ProfilePictureId = OptionalUpdate<Guid?>.Set(storageObject.Id)
+                }
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(actor.ProfilePictureUri).IsNull();
+        await Assert.That(storageObject.ActorId).IsNull();
+        await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
     }
 
     [Test]
@@ -246,19 +278,21 @@ public class UpdateActorCommandHandlerTests
         };
     }
 
-    private static StorageObject CreateStorageObject() =>
+    private static StorageObject CreateStorageObject(Guid tenantId) =>
         new()
         {
             Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
             FileType = null!,
             Uri = "https://cdn.example.test/actor.png",
             Provider = "local",
             FullName = "actor.png",
             SafeDisplayName = "actor.png",
-            Extension = ".png",
-            Visibility = "public",
-            Purpose = "actor-profile",
-            LifecycleState = "active",
+            Extension = "png",
+            ContentType = "image/png",
+            Visibility = StorageObjectVisibilities.PublicImage,
+            Purpose = StorageObjectPurposes.ProfileImage,
+            LifecycleState = StorageObjectLifecycleStates.Active,
             Tenant = null!
         };
 }

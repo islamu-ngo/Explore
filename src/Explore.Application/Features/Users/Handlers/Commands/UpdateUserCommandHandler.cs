@@ -3,11 +3,13 @@
 
 using System.Linq;
 using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.User.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -19,6 +21,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
     private readonly IActorRepository _actorRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository;
+    private readonly ITenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
@@ -28,6 +31,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
         IActorRepository actorRepository,
         IStorageObjectRepository storageObjectRepository,
         IPrivacyErasureStateRepository privacyErasureStateRepository,
+        ITenantContext tenantContext,
         IUnitOfWork unitOfWork,
         IMapper mapper,
         HybridCache cache)
@@ -36,6 +40,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
         _actorRepository = actorRepository;
         _storageObjectRepository = storageObjectRepository;
         _privacyErasureStateRepository = privacyErasureStateRepository;
+        _tenantContext = tenantContext;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _cache = cache;
@@ -95,6 +100,13 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
                 if (actor != null)
                 {
                     var storageObject = await _storageObjectRepository.GetById(request.UpdateUserDto.ProfileImage.ProfilePictureId);
+                    if (!SafeRasterContentPolicy.IsEligibleImageReference(storageObject, _tenantContext.TenantId))
+                    {
+                        response.Success = false;
+                        response.Message = "Profile image must be an active public safe-raster object in the current tenant.";
+                        return response;
+                    }
+
                     if (storageObject != null)
                     {
                         storageObject.ActorId = actor.Id;

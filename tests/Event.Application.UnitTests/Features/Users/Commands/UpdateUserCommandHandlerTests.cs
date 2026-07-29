@@ -2,6 +2,7 @@
 // ABOUTME: Verifies privacy fencing, concurrency, transactional updates, and cache invalidation.
 
 using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.User;
 using Explore.Application.Exceptions;
@@ -23,6 +24,7 @@ public sealed class UpdateUserCommandHandlerTests
     private readonly IStorageObjectRepository _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
     private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository =
         Substitute.For<IPrivacyErasureStateRepository>();
+    private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
     private readonly UpdateUserCommandHandler _handler;
@@ -50,6 +52,7 @@ public sealed class UpdateUserCommandHandlerTests
             _actorRepository,
             _storageObjectRepository,
             _privacyErasureStateRepository,
+            _tenantContext,
             _unitOfWork,
             mapper,
             _cache);
@@ -134,19 +137,23 @@ public sealed class UpdateUserCommandHandlerTests
     {
         var user = CreateUser(actorId: Guid.CreateVersion7());
         Actor actor = user.Actor!;
+        var tenantId = Guid.CreateVersion7();
+        _tenantContext.TenantId.Returns(tenantId);
         var storageObject = new StorageObject
         {
             Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
             FileType = null!,
             Uri = "https://cdn.example.test/profiles/user.png",
             ObjectKey = "profiles/user.png",
             Provider = "local",
             FullName = "user.png",
             SafeDisplayName = "user.png",
-            Extension = ".png",
-            Visibility = "public",
-            Purpose = "profile",
-            LifecycleState = "active",
+            Extension = "png",
+            ContentType = "image/png",
+            Visibility = StorageObjectVisibilities.PublicImage,
+            Purpose = StorageObjectPurposes.ProfileImage,
+            LifecycleState = StorageObjectLifecycleStates.Active,
             Tenant = null!
         };
 

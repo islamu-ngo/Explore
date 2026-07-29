@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Actor.Validators;
 using Explore.Application.Features.Actors.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using MediatR;
 
@@ -65,6 +66,18 @@ public class CreateActorCommandHandler : IRequestHandler<CreateActorCommand, Bas
             response.Success = false;
             response.Message = "Actor creation failed.";
             response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
+        if (!await ImageReferenceEligibility.AreEligibleAsync(
+                _storageObjectRepository,
+                _tenantContext.TenantId,
+                request.ActorDto.ProfilePictureId,
+                request.ActorDto.BannerPictureId))
+        {
+            response.Success = false;
+            response.Message = "Actor creation failed.";
+            response.Errors = ["Every image must be an active public safe-raster object in the current tenant."];
             return response;
         }
 

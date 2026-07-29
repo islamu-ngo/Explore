@@ -11,6 +11,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.Actors.Requests.Commands;
 using Explore.Application.Models.Common;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -193,7 +194,10 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
         }
 
         var storageObject = await _storageObjectRepository.GetById(profilePictureId);
-        if (storageObject is null || storageObject.TenantId != _tenantContext.TenantId)
+        if (storageObject is null
+            || !SafeRasterContentPolicy.IsEligibleImageReference(
+                storageObject,
+                _tenantContext.TenantId))
         {
             return false;
         }
