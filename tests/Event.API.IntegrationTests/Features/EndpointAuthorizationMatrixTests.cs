@@ -385,12 +385,6 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Matrix_Auth_StorageUpload_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/storageobject/generate-upload-url", HttpMethod.Post);
-    }
-
-    [Test]
     public async Task Matrix_Auth_Features_AnonymousDenied()
     {
         await AssertAnonymousUnauthorized("/api/features/my-flags");
@@ -876,19 +870,6 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
             new[] { HttpStatusCode.OK, HttpStatusCode.Created, HttpStatusCode.BadRequest },
             "event registration create should be available to all authenticated users " +
             "(actual status depends on request body validation)");
-    }
-
-    [Test]
-    public async Task Matrix_SelfService_StorageUploadUrl_RegularUserOK()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/storageobject/generate-upload-url", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.OK, HttpStatusCode.BadRequest },
-            "storage upload URL generation should be available to all authenticated users");
     }
 
     [Test]

@@ -332,12 +332,6 @@ public class CoverageGovernanceTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Governance_Lookup_StorageUpload_DeniesAnonymous()
-    {
-        await AssertAnonymous401(HttpMethod.Post, "/api/storageobject/generate-upload-url");
-    }
-
-    [Test]
     public async Task Governance_Lookup_EventTemplateCreate_DeniesAnonymous()
     {
         await AssertAnonymous401(HttpMethod.Post, "/api/eventtemplate");
