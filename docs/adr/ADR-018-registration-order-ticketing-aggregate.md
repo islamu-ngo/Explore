@@ -25,7 +25,7 @@ Hi.Events validates the product need for reservation-first checkout, commercial 
 
 1. `RegistrationOrder` replaces and deletes `EventRegistrationIntent`. It records nullable account linkage, booking-party type, guest capability hash, one currency, and pinned participation, workflow, and ticket-catalog versions.
 2. Purchaser PII lives in `RegistrationOrderPii`. Participants and participant PII are separate entities. A participant need not be a User, and one purchaser may manage several independently consenting participants.
-3. Each `RegistrationOrderLine` references one ticket type and snapshots every fact needed to interpret the purchase, including name, currency, pricing mode, chosen unit amount, bounds, applicable catalog version, and non-zero platform-fee policy version.
+3. Each `RegistrationOrderLine` references one ticket type and snapshots every fact needed to interpret the purchase, including name, currency, pricing mode, chosen unit amount in integer minor units, bounds, applicable catalog version, and non-zero platform-fee policy version.
 4. Ticket assignments reference a concrete order line. Database and domain rules prevent assignments from exceeding that line's quantity.
 5. `EventRegistration` remains the materialized per-session admission row, linked to a participant rather than requiring a User. A future `AdmissionTicket` owns admission credentials and check-in; display IDs never authorize access or admission.
 
@@ -38,9 +38,9 @@ Hi.Events validates the product need for reservation-first checkout, commercial 
    - `DONATION`: buyer-chosen organizer-directed amount, with an optional minimum; zero is valid only when the minimum is zero.
    - `PAY_WHAT_YOU_CAN`: buyer-chosen amount with optional minimum and suggested amount.
    - `SLIDING_SCALE`: required minimum and suggested amounts with exact “You pay” and “Organizer earns” transparency.
-3. Buyer-chosen amounts are decimal, validated server-side against the pinned catalog, rounded by explicit currency rules, and snapshotted on the order line. Client calculations are display-only.
-4. `PlatformFeePolicy` is versioned instance-scoped configuration with fixed and percentage components. It defaults to zero and is managed only by instance administrators.
-5. `PlatformContributionSetting` is a separate versioned, instance-scoped, default-off contribution to the instance operator. Its heading, body, and percentage options are DB-stored; zero is preselected. A positive selection is snapshotted separately and never enters organizer earnings, ticket price, capacity, or organizer export totals.
+3. Persisted and API monetary amounts use integer minor units in `long ...Minor` fields. Percentages use integer basis points, where `10_000 = 100%`. Server calculations convert with explicit currency metadata and decimal rounding rules before returning to minor units; client calculations are display-only.
+4. `PlatformFeePolicy` is versioned instance-scoped configuration with fixed minor-unit charges and basis-point components. It defaults to zero and is managed only by instance administrators.
+5. `PlatformContributionSetting` is a separate versioned, instance-scoped, default-off contribution to the instance operator. Its heading, body, and basis-point options are DB-stored; zero is preselected. A positive selection is snapshotted separately and never enters organizer earnings, ticket price, capacity, or organizer export totals.
 6. Tenant administrators and organizers cannot enable or modify platform monetization.
 
 ### Capacity and lifecycle
@@ -90,7 +90,7 @@ Also rejected are attendee-as-ticket modeling, mutable published prices, floatin
 - Registration, HAL, Cerbos, API contracts, generated clients, and Blazor checkout receive an intentional development-mode breaking replacement; no compatibility shims or dual writes remain.
 - More entities are required, but purchaser, participant, assignment, admission, PII, consent, inventory, and commercial facts gain independent lifecycles.
 - Real PostgreSQL concurrency tests are mandatory for sibling ticket types competing for the final shared-pool capacity and for finalization-versus-expiry races.
-- All commercial amounts remain decimal and interpretable from pinned snapshots.
+- All persisted and API commercial amounts remain integer minor units, with explicit currency-aware decimal conversion and rounding at calculation boundaries, and stay interpretable from pinned snapshots.
 - Self-hosted instances remain zero-fee and contribution-disabled by default.
 - Payment remains a named future dependency rather than leaking provider concerns into the stable order aggregate.
 

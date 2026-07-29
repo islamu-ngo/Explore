@@ -6,8 +6,8 @@ ABOUTME: Maps implemented admin UI surfaces to roles, entry points, dangerous op
 > **Audience:** Admins | Operators | Contributors
 > **Status:** Mixed
 > **Owner:** Product/Admin
-> **Last Verified:** 2026-07-05
-> **Source Anchors:** `Explore.Blazor.Client/Pages/Admin/`, `Explore.Blazor.Client/Pages/Admin/Instance/ControlPlane/`, `Explore.API/Controllers/ControlPlaneController.cs`, `docs/ADMIN_HIERARCHY.md`, `docs/AUTHORIZATION.md`, `docs/AUTHORIZATION_PATTERNS.md`
+> **Last Verified:** 2026-07-29
+> **Source Anchors:** `Explore.Blazor.Client/Pages/Admin/`, `Explore.Blazor.Client/Pages/Admin/Instance/Components/InstanceMonetizationSection.razor`, `Explore.Blazor.Client/Pages/Admin/Instance/ControlPlane/`, `Explore.API/Controllers/ControlPlaneController.cs`, `Explore.API/Controllers/PlatformMonetizationSettingsController.cs`, `docs/ADMIN_HIERARCHY.md`, `docs/AUTHORIZATION.md`, `docs/AUTHORIZATION_PATTERNS.md`
 
 ## Scope
 
@@ -39,10 +39,20 @@ Instance settings are the platform-control surface for static/default policy. Us
 - Module, domain, branding, and localization settings.
 - Provider-neutral storage policy, quotas, delegation, optional S3-compatible settings, and SMTP settings.
 - Analytics and privacy settings.
+- Versioned platform fee and optional contribution settings. Both default disabled or zero and are available only to instance administrators.
 - Footer governance and platform API keys.
 - Tenant management in multi-tenant deployments now lives in the Instance Console. The console is suppressed in single-tenant mode and its API endpoints return `403 Multi-tenant required` through `[RequireMultiTenant]`.
 
 Configured admin hosts from `Bff:AdminHosts` can render the embedded Instance Console shell in the existing Blazor BFF, while public and tenant hosts keep the public shell. This host classification selects the shell only; instance-admin authorization and API/HAL checks still decide access and action availability.
+
+### Platform Monetization
+
+Open `/admin/instance/settings` and select **Monetization**. The section manages two independent versioned records:
+
+- the platform fee policy, with an enable switch, integer basis points, and optional fixed charges entered per currency in minor units;
+- the optional platform contribution, with an enable switch, DB-stored heading/body text, and ordered basis-point choices whose default must be zero.
+
+The page is read-only unless the API returns the `edit` HAL relation. Saving sends the displayed fee and contribution version numbers together, so a concurrent operator update returns a conflict instead of overwriting a newer revision. Tenant administrators, organizers, and curators cannot use this management surface. Contributions remain separate from organizer earnings and do not add payment capture behavior.
 
 Tenant lifecycle buttons must be driven by HAL `_links`, not by local role guesses. Destructive purge scheduling requires an operator reason and exact tenant-slug confirmation before an archived tenant can move to `Purged`; no tenant data is physically deleted in the request path. Overview and operations warnings include remediation text so operators can see the next corrective action beside the warning.
 

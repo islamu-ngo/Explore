@@ -6,7 +6,7 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 > **Audience:** Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** API
-> **Last Verified:** 2026-07-27
+> **Last Verified:** 2026-07-29
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`, `Explore.API/Authentication/`, `Explore.API/Extensions/`, `Explore.API/OpenApi/`, `Explore.API/Explore.API.csproj`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs`, `Event.API.IntegrationTests/Features/OpenApiParityTests.cs`
 
 ## Scope
@@ -228,7 +228,7 @@ Authenticated event-scoped ticket catalog versions, draft authoring, ticket type
 
 | Route | Route Name | Auth | Purpose |
 |---|---|---|---|
-| `GET /api/events/{eventId}/ticketing` | `GetEventTicketCatalogManagement` | `[Authorize]` | Returns full ticket catalog management DTO (versions, ticket types, capacity pools, monetization settings). |
+| `GET /api/events/{eventId}/ticketing` | `GetEventTicketCatalogManagement` | `[Authorize]` | Returns the event ticket catalog management DTO with catalog version, ticket types, capacity pools, normalized lookup metadata, and HAL affordances. Instance monetization is not embedded. |
 | `POST /api/events/{eventId}/ticketing/draft` | `CreateEventTicketCatalogDraft` | `[Authorize]` | Creates a new draft catalog version with currency code. |
 | `POST /api/events/{eventId}/ticketing/draft:clone` | `CloneEventTicketCatalogDraft` | `[Authorize]` | Clones active published catalog version into a working draft version. |
 | `POST /api/events/{eventId}/ticketing/ticket-types` | `CreateEventTicketType` | `[Authorize]` | Adds a new ticket type (pricing mode, price, capacity pool assignment) to draft catalog. |
@@ -238,6 +238,19 @@ Authenticated event-scoped ticket catalog versions, draft authoring, ticket type
 | `PUT /api/events/{eventId}/ticketing/capacity-pools/{capacityPoolId}` | `UpdateEventCapacityPool` | `[Authorize]` | Updates capacity pool limits and oversell policy. |
 | `DELETE /api/events/{eventId}/ticketing/capacity-pools/{capacityPoolId}` | `DeleteEventCapacityPool` | `[Authorize]` | Deletes a capacity pool. |
 | `POST /api/events/{eventId}/ticketing/publish` | `PublishEventTicketCatalog` | `[Authorize]` | Promotes draft catalog version to published status and archives former version. |
+
+Ticketing money fields use integer minor units in `long ...Minor` properties. Percentages use integer basis points, where `10_000 = 100%`. Catalog, ticket-type, and capacity-pool mutations must follow the exact relation on the returned HAL resource, including `create-draft`, `clone-draft`, `create-type`, `create-pool`, `publish`, `edit`, and `delete`.
+
+### Instance Platform Monetization Endpoints
+
+Platform fees and optional instance contributions are a separate versioned settings resource:
+
+| Route | Route Name | Auth | Purpose |
+|---|---|---|---|
+| `GET /api/instance/settings/platform-monetization` | `GetInstancePlatformMonetizationSettings` | `[Authorize]`, Admin classification | Returns the active fee and contribution revisions as a HAL resource. |
+| `PUT /api/instance/settings/platform-monetization` | `UpdateInstancePlatformMonetizationSettings` | `[Authorize]`, Admin classification, `Write` rate limit | Creates replacement fee and contribution revisions after expected-version checks. |
+
+Both Application handlers recheck instance-administrator authority before repository access. Fresh defaults are fee disabled with zero basis points and no fixed charges, plus contribution disabled with a zero default option. The response emits `edit` only when the caller may update the `platform-monetization` instance setting. Tenant administrators, organizers, and curators have no monetization management path.
 
 ---
 

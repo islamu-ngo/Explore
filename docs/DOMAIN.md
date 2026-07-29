@@ -129,6 +129,14 @@ Domain rules reject illegal combinations. Information-only and walk-in require a
 
 External participation destinations are reviewed `EventPublicAction` records, not fields on the event. Public HAL synthesis may emit one stored-ID redirect only when the participation mode permits that action. Native workflow authorization is permitted only for `PLATFORM_MANAGED`; a click or redirect is engagement, never proof of registration.
 
+### Ticketing And Instance Monetization
+
+`EventTicketCatalogVersion` owns immutable published catalog revisions. Drafts contain `EventTicketType` rows with one of five normalized pricing modes, optional shared `EventCapacityPool` references, and `TicketTypeEntitlement` rows targeting the Event, a day, or a session. Published edits clone to a new draft. Ticket and capacity rows are tenant-scoped, concurrency-protected, and soft-deletable where their lifecycle permits it.
+
+Persisted and API monetary amounts use `long` integer minor units, named with the `...Minor` suffix. Percentage values use integer basis points, where `10_000 = 100%`. Currency metadata controls decimal conversion and rounding, and overflow-checked minor-unit arithmetic returns persisted integer values. Floating-point money is not part of the model.
+
+`PlatformFeePolicy` and `PlatformContributionSetting` are separate versioned instance aggregates. Fee policies contain basis points and per-currency fixed minor-unit charges. Contribution settings contain DB-stored heading/body text and ordered basis-point options with exactly one zero default. Both start disabled or zero. A platform contribution is instance-directed and never enters organizer earnings, ticket price, capacity, or organizer export totals.
+
 ### 5) Event Reporting And Moderation Review
 
 `EventReport` is the tenant-scoped aggregate for user-facing event reports. It references the reported event, optional reporter user/actor identity, reason code, report status, priority, severity hint, duplicate grouping, reporter contact consent, and hashed reporter fingerprints. Reporter IP/User-Agent fingerprints are hashed at the API boundary before the command leaves the controller.

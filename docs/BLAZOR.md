@@ -6,8 +6,8 @@ ABOUTME: Keeps token handling, proxying, render policy, service state, and clien
 > **Audience:** Contributors | Frontend | AI agents
 > **Status:** Implemented
 > **Owner:** Frontend
-> **Last Verified:** 2026-07-16
-> **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Extensions/`, `Explore.Blazor/Components/ControlPlane/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Components/Discovery/`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `Explore.Blazor.Client/Pages/Admin/Instance/ControlPlane/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
+> **Last Verified:** 2026-07-29
+> **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Extensions/`, `Explore.Blazor/Components/ControlPlane/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Components/Discovery/`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `Explore.Blazor.Client/Pages/Studio/`, `Explore.Blazor.Client/Pages/Admin/Instance/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
 
 ## Scope
 
@@ -255,6 +255,16 @@ Blazor registration flows must classify that command response through `EventList
 Studio participation configuration lives at `/studio/events/{eventId}/registration`. Both the sidebar entry and direct route fail closed unless the event resource contains `configure-participation`. The editor preserves the participation resource's own concurrency stamp, submits through `IEventService`, and keeps dependent mode, obligation, identity-access, and recovery choices within the Domain-valid combinations. Attendee-facing participation links never authorize the Studio route.
 
 Create Event collects participation handling explicitly and defaults only to `INFORMATION_ONLY + NOT_APPLICABLE`. Registration policy remains an independent scope/admission choice and never implies platform-managed, guest, or recovery behavior.
+
+### Studio Ticket Catalog Management
+
+Studio ticket authoring lives at `/studio/events/{eventId}/tickets`. Navigation and direct-route availability use an OR gate: the event must contain `manage-ticket-types` or `manage-capacity-pools`. The two relations do not imply each other. Ticket-type create/edit/delete controls require ticket authority plus the exact catalog or item HAL relation, while capacity-pool controls require pool authority plus their own exact relation.
+
+`EventTicketCatalogEditor` loads through `IEventTicketingService` and keeps the generated API client behind that scoped service. Catalog lifecycle buttons come from `create-draft`, `clone-draft`, and `publish`; item controls come from `create-type`, `create-pool`, `edit`, and `delete`. Pricing uses integer minor-unit contracts and normalized lookup metadata. The client does not infer authority from roles, event provenance, catalog status alone, or local DTO booleans.
+
+### Instance Monetization Administration
+
+The instance settings layout includes a Monetization section backed by `IPlatformMonetizationService` and the separate `GET|PUT /api/instance/settings/platform-monetization` resource. It displays fee and contribution revisions read-only when HAL omits `edit`, and enables save controls only when that exact relation exists. Fee and contribution defaults remain disabled and zero. Contribution heading, body, and basis-point options come from the API and are not hardcoded client authority or checkout values.
 
 ### Community Event Provenance And Claims
 
