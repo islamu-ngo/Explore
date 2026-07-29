@@ -9,25 +9,15 @@ namespace Explore.Application.DTOs.StorageObject.Validators;
 
 public class UpdateStorageObjectDtoValidator : AbstractValidator<UpdateStorageObjectDto>
 {
-    private readonly IFileTypeRepository _fileTypeRepository;
     private readonly IActorRepository _actorRepository;
 
-    public UpdateStorageObjectDtoValidator(
-        IFileTypeRepository fileTypeRepository,
-        IActorRepository actorRepository)
+    public UpdateStorageObjectDtoValidator(IActorRepository actorRepository)
     {
-        _fileTypeRepository = fileTypeRepository;
         _actorRepository = actorRepository;
 
         RuleFor(x => x)
             .Must(x => x.Metadata is not null || x.Access is not null || x.Ownership is not null)
             .WithMessage("At least one update group is required");
-
-        RuleFor(x => x.Metadata!.FileTypeId)
-            .NotEmpty().WithMessage("{PropertyName} is required")
-            .MustAsync(FileTypeExists)
-            .WithMessage("{PropertyName} not found")
-            .When(x => x.Metadata is not null);
 
         RuleFor(x => x.Metadata!.FullName)
             .NotEmpty().WithMessage("{PropertyName} is required")
@@ -52,27 +42,6 @@ public class UpdateStorageObjectDtoValidator : AbstractValidator<UpdateStorageOb
             .WithMessage("{PropertyName} must be a simple file name")
             .Must(StorageObjectMetadataValidation.NotBeReservedFileName)
             .WithMessage("{PropertyName} must not be a reserved file name")
-            .When(x => x.Metadata is not null);
-
-        RuleFor(x => x.Metadata!.Extension)
-            .NotEmpty().WithMessage("{PropertyName} is required")
-            .MaximumLength(50).WithMessage("{PropertyName} must not exceed 50 characters")
-            .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
-            .WithMessage("{PropertyName} must not contain control characters")
-            .Must(StorageObjectMetadataValidation.NotContainPathSeparators)
-            .WithMessage("{PropertyName} must not contain path separators")
-            .Must(StorageObjectMetadataValidation.NotBeDotSegment)
-            .WithMessage("{PropertyName} must be a simple extension")
-            .Must(StorageObjectMetadataValidation.BeValidExtension)
-            .WithMessage("{PropertyName} contains unsupported characters")
-            .When(x => x.Metadata is not null);
-
-        RuleFor(x => x.Metadata!.ContentType)
-            .MaximumLength(255).WithMessage("{PropertyName} must not exceed 255 characters")
-            .Must(StorageObjectMetadataValidation.NotContainControlCharacters)
-            .WithMessage("{PropertyName} must not contain control characters")
-            .Must(StorageObjectMetadataValidation.BeValidOptionalContentType)
-            .WithMessage("{PropertyName} must be a valid MIME type")
             .When(x => x.Metadata is not null);
 
         RuleFor(x => x.Access!.Visibility)
@@ -105,11 +74,6 @@ public class UpdateStorageObjectDtoValidator : AbstractValidator<UpdateStorageOb
             .MustAsync(ActorExists)
             .When(x => x.Ownership?.ActorId.HasValue == true)
             .WithMessage("{PropertyName} not found");
-    }
-
-    private async Task<bool> FileTypeExists(int fileTypeId, CancellationToken cancellationToken)
-    {
-        return await _fileTypeRepository.Exists(fileTypeId);
     }
 
     private async Task<bool> ActorExists(Guid? actorId, CancellationToken cancellationToken)

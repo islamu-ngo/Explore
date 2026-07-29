@@ -104,6 +104,35 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
     }
 
     [Test]
+    public async Task CreateHandle_WithUnsafePublicImageMetadata_FailsBeforePolicyOrQuotaWork()
+    {
+        var result = await CreateCreateHandler().Handle(
+            new CreateStorageUploadSessionCommand
+            {
+                UploadSessionDto = CreateUploadDto(
+                    originalFileName: "payload.html",
+                    purpose: StorageObjectPurposes.EventImage,
+                    visibility: StorageObjectVisibilities.PublicImage,
+                    contentType: "text/html")
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _storagePolicyResolver.DidNotReceive().ResolveAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<StoragePolicyIntent>(),
+            Arg.Any<CancellationToken>());
+        await _unitOfWork.DidNotReceive().ExecuteSerializableAsync(
+            Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<StorageUploadSessionDto>>>>(),
+            Arg.Any<CancellationToken>());
+        await _usageCounterRepository.DidNotReceive().GetOrCreateAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await _uploadSessionRepository.DidNotReceive().Create(Arg.Any<StorageUploadSession>());
+    }
+
+    [Test]
     public async Task CreateHandle_WhenFenceAppearsBeforeReservationDoesNotReserveQuotaOrCreateSession()
     {
         DateTime nowUtc = DateTime.UtcNow;
@@ -1084,7 +1113,8 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
         => $"tenants/{session.TenantId:N}/uploads/{session.Id:N}.{session.Extension}";
 
     private static byte[] ValidPngBytes()
-        => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4];
+        => Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAEElEQVR4nGP8ywACLGCSAQANEQED1LYyQAAAAABJRU5ErkJggg==");
 
     private sealed class NonSeekableReadStream : Stream
     {

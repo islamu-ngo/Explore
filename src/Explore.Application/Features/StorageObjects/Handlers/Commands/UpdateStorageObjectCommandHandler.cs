@@ -6,6 +6,7 @@ using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.StorageObject.Validators;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using MediatR;
 
 namespace Explore.Application.Features.StorageObjects.Handlers.Commands;
@@ -13,18 +14,15 @@ namespace Explore.Application.Features.StorageObjects.Handlers.Commands;
 public class UpdateStorageObjectCommandHandler : IRequestHandler<UpdateStorageObjectCommand, BaseCommandResponse<Guid>>
 {
     private readonly IStorageObjectRepository _storageObjectRepository;
-    private readonly IFileTypeRepository _fileTypeRepository;
     private readonly IActorRepository _actorRepository;
     private readonly ITenantContext _tenantContext;
 
     public UpdateStorageObjectCommandHandler(
         IStorageObjectRepository storageObjectRepository,
-        IFileTypeRepository fileTypeRepository,
         IActorRepository actorRepository,
         ITenantContext tenantContext)
     {
         _storageObjectRepository = storageObjectRepository;
-        _fileTypeRepository = fileTypeRepository;
         _actorRepository = actorRepository;
         _tenantContext = tenantContext;
     }
@@ -42,13 +40,21 @@ public class UpdateStorageObjectCommandHandler : IRequestHandler<UpdateStorageOb
             return response;
         }
 
-        var validator = new UpdateStorageObjectDtoValidator(_fileTypeRepository, _actorRepository);
+        var validator = new UpdateStorageObjectDtoValidator(_actorRepository);
         var validationResult = await validator.ValidateAsync(request.StorageObjectDto, cancellationToken);
         if (!validationResult.IsValid)
         {
             response.Success = false;
             response.Message = "Storage object update failed.";
             response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
+        if (!HasValidMergedAccess(entity, request.StorageObjectDto))
+        {
+            response.Success = false;
+            response.Message = "Storage object update failed.";
+            response.Errors = ["The resulting storage visibility and purpose are not eligible for the stored content."];
             return response;
         }
 
@@ -66,13 +72,10 @@ public class UpdateStorageObjectCommandHandler : IRequestHandler<UpdateStorageOb
     {
         if (dto.Metadata is { } metadata)
         {
-            entity.FileTypeId = metadata.FileTypeId;
             entity.FullName = metadata.FullName;
             entity.SafeDisplayName = string.IsNullOrWhiteSpace(metadata.SafeDisplayName)
                 ? metadata.FullName
                 : metadata.SafeDisplayName;
-            entity.Extension = metadata.Extension;
-            entity.ContentType = metadata.ContentType;
         }
 
         if (dto.Access is { } access)
@@ -88,4 +91,11 @@ public class UpdateStorageObjectCommandHandler : IRequestHandler<UpdateStorageOb
             entity.ActorId = ownership.ActorId;
         }
     }
+
+    private static bool HasValidMergedAccess(Domain.StorageObject entity, UpdateStorageObjectDto dto) =>
+        SafeRasterContentPolicy.IsValidAccessMetadata(
+            entity.ContentType,
+            entity.Extension,
+            dto.Access?.Purpose ?? entity.Purpose,
+            dto.Access?.Visibility ?? entity.Visibility);
 }

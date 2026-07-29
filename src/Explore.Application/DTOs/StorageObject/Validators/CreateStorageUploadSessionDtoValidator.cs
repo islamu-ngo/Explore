@@ -2,6 +2,7 @@
 // ABOUTME: Validates metadata, quota-safe byte counts, and idempotency before handlers mutate counters.
 
 using System.Net.Http.Headers;
+using Explore.Application.Services;
 using Explore.Domain;
 using FluentValidation;
 
@@ -56,6 +57,10 @@ public class CreateStorageUploadSessionDtoValidator : AbstractValidator<CreateSt
             .NotEmpty().WithMessage("{PropertyName} is required")
             .Must(value => StorageObjectVisibilities.All.Contains(value))
             .WithMessage("{PropertyName} must be a supported storage visibility");
+
+        RuleFor(x => x)
+            .Must(HaveValidAccessMetadata)
+            .WithMessage("Purpose, Visibility, ContentType, and Extension must describe an eligible storage object.");
 
         RuleFor(x => x.OwningResourceKind)
             .MaximumLength(MaxResourceKindLength).WithMessage("{PropertyName} must not exceed 100 characters")
@@ -124,6 +129,27 @@ public class CreateStorageUploadSessionDtoValidator : AbstractValidator<CreateSt
             : candidate;
         return extension.Length > 0 &&
             extension.All(character => char.IsLetterOrDigit(character) || character is '_' or '-');
+    }
+
+    private static bool HaveValidAccessMetadata(CreateStorageUploadSessionDto dto) =>
+        SafeRasterContentPolicy.IsValidAccessMetadata(
+            dto.ContentType,
+            ResolveExtension(dto),
+            dto.Purpose,
+            dto.Visibility);
+
+    private static string? ResolveExtension(CreateStorageUploadSessionDto dto)
+    {
+        if (!string.IsNullOrWhiteSpace(dto.Extension))
+        {
+            return dto.Extension;
+        }
+
+        string? fileName = dto.OriginalFileName?.Trim();
+        int dotIndex = fileName?.LastIndexOf('.') ?? -1;
+        return dotIndex >= 0 && dotIndex < fileName!.Length - 1
+            ? fileName[(dotIndex + 1)..]
+            : null;
     }
 
     private static readonly string[] ReservedFileNames =

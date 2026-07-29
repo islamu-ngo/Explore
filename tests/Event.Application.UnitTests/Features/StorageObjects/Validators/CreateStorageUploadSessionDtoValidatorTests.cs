@@ -20,6 +20,48 @@ public sealed class CreateStorageUploadSessionDtoValidatorTests
     }
 
     [Test]
+    [Arguments("image/jpeg", "jpg")]
+    [Arguments("image/png", "png")]
+    [Arguments("image/gif", "gif")]
+    [Arguments("image/webp", "webp")]
+    [Arguments("image/avif", "avif")]
+    public async Task Validate_WithSafePublicRasterMetadata_IsValid(string contentType, string extension)
+    {
+        var result = await _validator.ValidateAsync(CreateDto(
+            contentType: contentType,
+            originalFileName: $"image.{extension}",
+            safeDisplayName: $"image.{extension}",
+            extension: extension,
+            purpose: StorageObjectPurposes.EventImage,
+            visibility: StorageObjectVisibilities.PublicImage));
+
+        await Assert.That(result.IsValid).IsTrue();
+    }
+
+    [Test]
+    [Arguments("text/html", "html", StorageObjectPurposes.EventImage, StorageObjectVisibilities.PublicImage)]
+    [Arguments("image/svg+xml", "svg", StorageObjectPurposes.EventImage, StorageObjectVisibilities.PublicImage)]
+    [Arguments("image/png", "jpg", StorageObjectPurposes.EventImage, StorageObjectVisibilities.PublicImage)]
+    [Arguments("image/png", "png", StorageObjectPurposes.Attachment, StorageObjectVisibilities.PublicImage)]
+    [Arguments("application/pdf", "pdf", StorageObjectPurposes.ProfileImage, StorageObjectVisibilities.PrivateOwner)]
+    public async Task Validate_WithUnsafeRasterAccessMetadata_IsInvalid(
+        string contentType,
+        string extension,
+        string purpose,
+        string visibility)
+    {
+        var result = await _validator.ValidateAsync(CreateDto(
+            contentType: contentType,
+            originalFileName: $"file.{extension}",
+            safeDisplayName: $"file.{extension}",
+            extension: extension,
+            purpose: purpose,
+            visibility: visibility));
+
+        await Assert.That(result.IsValid).IsFalse();
+    }
+
+    [Test]
     [Arguments("not-a-media-type")]
     [Arguments("image/*")]
     [Arguments("*/png")]
@@ -88,7 +130,9 @@ public sealed class CreateStorageUploadSessionDtoValidatorTests
         string contentType = "application/pdf",
         string? originalFileName = "report.pdf",
         string? safeDisplayName = "Quarterly report.pdf",
-        string? extension = "pdf") =>
+        string? extension = "pdf",
+        string purpose = StorageObjectPurposes.Document,
+        string visibility = StorageObjectVisibilities.PrivateOwner) =>
         new()
         {
             ExpectedSizeBytes = 42,
@@ -96,8 +140,8 @@ public sealed class CreateStorageUploadSessionDtoValidatorTests
             OriginalFileName = originalFileName,
             SafeDisplayName = safeDisplayName,
             Extension = extension,
-            Purpose = StorageObjectPurposes.Document,
-            Visibility = StorageObjectVisibilities.PrivateOwner,
+            Purpose = purpose,
+            Visibility = visibility,
             IdempotencyKey = "upload-session-test"
         };
 }

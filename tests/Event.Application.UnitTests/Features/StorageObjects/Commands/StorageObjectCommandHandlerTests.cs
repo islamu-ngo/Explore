@@ -87,8 +87,8 @@ public sealed class StorageObjectCommandHandlerTests
         await Assert.That(entity.Provider).IsEqualTo(StorageProviders.Local);
         await Assert.That(entity.FullName).IsEqualTo(dto.Metadata!.FullName);
         await Assert.That(entity.SafeDisplayName).IsEqualTo(dto.Metadata.FullName);
-        await Assert.That(entity.Extension).IsEqualTo(dto.Metadata.Extension);
-        await Assert.That(entity.ContentType).IsEqualTo(dto.Metadata.ContentType);
+        await Assert.That(entity.Extension).IsEqualTo("png");
+        await Assert.That(entity.ContentType).IsEqualTo("image/png");
         await Assert.That(entity.Size).IsEqualTo(1024);
         await Assert.That(entity.Visibility).IsEqualTo(dto.Access!.Visibility);
         await Assert.That(entity.Purpose).IsEqualTo(dto.Access.Purpose);
@@ -123,8 +123,50 @@ public sealed class StorageObjectCommandHandlerTests
         await _storageObjectRepository.DidNotReceiveWithAnyArgs().Update(default!);
     }
 
+    [Test]
+    public async Task UpdateContract_DoesNotExposeByteIdentityFields()
+    {
+        string[] forbiddenProperties = ["FileTypeId", "Extension", "ContentType", "Size", "Sha256Checksum", "ObjectKey", "Provider"];
+        var properties = typeof(StorageObjectMetadataUpdateDto).GetProperties().Select(property => property.Name);
+
+        foreach (string property in forbiddenProperties)
+        {
+            await Assert.That(properties).DoesNotContain(property);
+        }
+    }
+
+    [Test]
+    public async Task UpdateHandle_WhenMergedAccessWouldPromoteUnsafeBytes_ReturnsFailureWithoutUpdate()
+    {
+        var storageObjectId = Guid.CreateVersion7();
+        var entity = CreateStorageObject(storageObjectId, _tenantId);
+        entity.ContentType = "application/pdf";
+        entity.Extension = "pdf";
+        entity.Purpose = StorageObjectPurposes.Document;
+        entity.Visibility = StorageObjectVisibilities.PrivateOwner;
+        _storageObjectRepository.GetById(storageObjectId).Returns(entity);
+
+        var result = await CreateUpdateHandler().Handle(
+            new UpdateStorageObjectCommand
+            {
+                StorageObjectId = storageObjectId,
+                StorageObjectDto = new UpdateStorageObjectDto
+                {
+                    Access = new StorageObjectAccessUpdateDto
+                    {
+                        Visibility = StorageObjectVisibilities.PublicImage,
+                        Purpose = StorageObjectPurposes.EventImage
+                    }
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _storageObjectRepository.DidNotReceive().Update(Arg.Any<StorageObject>());
+    }
+
     private UpdateStorageObjectCommandHandler CreateUpdateHandler()
-        => new(_storageObjectRepository, _fileTypeRepository, _actorRepository, _tenantContext);
+        => new(_storageObjectRepository, _actorRepository, _tenantContext);
 
     private static CreateStorageObjectDto CreateCreateDto(Guid tenantId) =>
         new()
@@ -154,11 +196,8 @@ public sealed class StorageObjectCommandHandlerTests
         {
             Metadata = new StorageObjectMetadataUpdateDto
             {
-                FileTypeId = 1,
                 FullName = "updated-file.pdf",
-                SafeDisplayName = safeDisplayName,
-                Extension = "pdf",
-                ContentType = "application/pdf"
+                SafeDisplayName = safeDisplayName
             },
             Access = new StorageObjectAccessUpdateDto
             {

@@ -104,18 +104,11 @@ public sealed class StorageObjectMetadataDtoValidatorTests
     }
 
     [Test]
-    [Arguments("not-a-media-type")]
-    [Arguments("image/*")]
-    [Arguments("*/png")]
-    [Arguments("application/pdf/extra")]
-    [Arguments("text/plain\u0000")]
-    public async Task UpdateValidate_WithMalformedOrWildcardContentType_IsInvalid(string contentType)
+    public async Task UpdateContract_DoesNotExposeContentType()
     {
-        var result = await UpdateValidator().ValidateAsync(UpdateDto(contentType: contentType));
+        var property = typeof(StorageObjectMetadataUpdateDto).GetProperty("ContentType");
 
-        await Assert.That(result.IsValid).IsFalse();
-        await Assert.That(result.Errors.Any(error =>
-            error.PropertyName.EndsWith(nameof(StorageObjectMetadataUpdateDto.ContentType), StringComparison.Ordinal))).IsTrue();
+        await Assert.That(property).IsNull();
     }
 
     [Test]
@@ -142,7 +135,7 @@ public sealed class StorageObjectMetadataDtoValidatorTests
         => new(_fileTypeRepository, _actorRepository);
 
     private UpdateStorageObjectDtoValidator UpdateValidator()
-        => new(_fileTypeRepository, _actorRepository);
+        => new(_actorRepository);
 
     private static CreateStorageObjectDto CreateDto(
         string uri = "/api/storageobject/018f0000-0000-7000-8000-000000000001/content",
@@ -176,19 +169,14 @@ public sealed class StorageObjectMetadataDtoValidatorTests
     private static UpdateStorageObjectDto UpdateDto(
         string fullName = "file.png",
         string? safeDisplayName = "file.png",
-        string extension = "png",
-        string? contentType = "image/png",
         string? owningResourceKind = null,
         Guid? owningResourceId = null) =>
         new()
         {
             Metadata = new StorageObjectMetadataUpdateDto
             {
-                FileTypeId = 1,
                 FullName = fullName,
-                SafeDisplayName = safeDisplayName,
-                Extension = extension,
-                ContentType = contentType
+                SafeDisplayName = safeDisplayName
             },
             Access = new StorageObjectAccessUpdateDto
             {

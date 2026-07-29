@@ -12,11 +12,8 @@ public sealed class UpdateStorageObjectDto
 
 public sealed class StorageObjectMetadataUpdateDto
 {
-    public int FileTypeId { get; init; }
     public required string FullName { get; init; }
     public string? SafeDisplayName { get; init; }
-    public required string Extension { get; init; }
-    public string? ContentType { get; init; }
 }
 
 public sealed class StorageObjectAccessUpdateDto
