@@ -561,7 +561,7 @@ public sealed class EventCollectionLinkPolicy : ICollectionLinkPolicy<EventListD
         // Self link for item
         yield return new LinkDefinition(
             LinkRelations.Self,
-            RouteNames.GetEventById,
+            dto.IsManagementView ? RouteNames.GetEventManagementDetails : RouteNames.GetEventById,
             new { id = dto.Id },
             "GET",
             dto.Title);
@@ -571,7 +571,7 @@ public sealed class EventCollectionLinkPolicy : ICollectionLinkPolicy<EventListD
         {
             yield return new LinkDefinition(
                 "sessions",
-                RouteNames.GetEventSessions,
+                dto.IsManagementView ? RouteNames.GetManagedEventSessionsByEvent : RouteNames.GetEventSessions,
                 new { eventId = dto.Id },
                 "GET",
                 $"{dto.SessionCount} sessions");
@@ -586,7 +586,8 @@ public sealed class EventCollectionLinkPolicy : ICollectionLinkPolicy<EventListD
             "GET",
             dto.ActorDisplayName);
 
-        if (dto.EventStatusId == (int)EventStatusEnum.Published
+        if (!dto.IsManagementView
+            && dto.EventStatusId == (int)EventStatusEnum.Published
             && dto.VisibilityTypeId == (int)VisibilityTypeEnum.Public)
         {
             yield return new LinkDefinition(

@@ -59,6 +59,7 @@ public class GetManagedEventsByActorRequestHandler : IRequestHandler<GetManagedE
 
         foreach (var dto in pageItems)
         {
+            dto.IsManagementView = true;
             dto.FeaturedImageUri = await ResolveImageUrl(dto.FeaturedImageUri);
             dto.ActorProfilePictureUri = await ResolveImageUrl(dto.ActorProfilePictureUri);
         }

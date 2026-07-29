@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.Event;
 
@@ -87,6 +88,9 @@ public class EventListDto
     public Guid? AtprotoRecordId { get; set; }
     public string? AtprotoDeliveryStatus { get; set; }
     public string? AtprotoDeliveryFailureCode { get; set; }
+
+    [JsonIgnore]
+    public bool IsManagementView { get; set; }
 
     // Tenant
     public Guid TenantId { get; set; }

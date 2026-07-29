@@ -18,6 +18,39 @@ using TUnit.Core;
 public sealed class EventLinkPolicyTests
 {
     [Test]
+    public async Task ManagedCollectionItem_UsesManagementRoutesAndOmitsPublicReports()
+    {
+        var dto = new EventListDto
+        {
+            Id = Guid.NewGuid(),
+            Title = "Managed event",
+            EventTypeFullName = "Conference",
+            AudienceGenderFullName = "All",
+            AudienceAgeFullName = "All",
+            ActorId = Guid.NewGuid(),
+            ActorDisplayName = "Organizer",
+            ActorTypeFullName = "Organization",
+            EventStatusId = (int)EventStatusEnum.Published,
+            EventStatusFullName = "Published",
+            VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+            VisibilityTypeFullName = "Public",
+            EventFormatFullName = "In person",
+            SessionCount = 1,
+            IsManagementView = true
+        };
+        var links = new EventCollectionLinkPolicy()
+            .GetItemLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        await Assert.That(links.Single(link => link.Rel == LinkRelations.Self).RouteName)
+            .IsEqualTo(RouteNames.GetEventManagementDetails);
+        await Assert.That(links.Single(link => link.Rel == "sessions").RouteName)
+            .IsEqualTo(RouteNames.GetManagedEventSessionsByEvent);
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.EventReportOptions)).IsFalse();
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.ReportEvent)).IsFalse();
+    }
+
+    [Test]
     public async Task AspectLinks_TransitionFromCreateToEditWhenAspectExists()
     {
         var dto = CreateEventDto(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());

@@ -306,7 +306,7 @@ public partial class EventDetail : ComponentBase, IDisposable
                 var aspectsTask = NeedsAspectFallbackLoad()
                     ? LoadEventAspectsAsync()
                     : Task.CompletedTask;
-                var daysTask = EventDayService.GetDaysByEventAsync(EventId);
+                var daysTask = EventDayService.GetDaysByEventAsync(EventId, CanRequestManagedSessions);
                 var eventAgendaTask = EventAgendaItemService.GetAgendaItemsByEventAsync(EventId);
                 var agendaTask = _primarySession?.Id != null && _primarySession.Id != Guid.Empty
                     ? AgendaItemService.GetAgendaItemsBySessionAsync(_primarySession.Id.Value)
@@ -467,7 +467,7 @@ public partial class EventDetail : ComponentBase, IDisposable
         {
             try
             {
-                _islamicAspect = await EventAspectService.GetIslamicAspectAsync(EventId);
+                _islamicAspect = await EventAspectService.GetIslamicAspectAsync(EventId, CanRequestManagedSessions);
             }
             catch (Exception ex)
             {
@@ -479,7 +479,7 @@ public partial class EventDetail : ComponentBase, IDisposable
         {
             try
             {
-                _techAspect = await EventAspectService.GetTechAspectAsync(EventId);
+                _techAspect = await EventAspectService.GetTechAspectAsync(EventId, CanRequestManagedSessions);
             }
             catch (Exception ex)
             {
@@ -495,7 +495,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     {
         try
         {
-            var daysTask = EventDayService.GetDaysByEventAsync(EventId);
+            var daysTask = EventDayService.GetDaysByEventAsync(EventId, CanRequestManagedSessions);
             var itemsTask = EventAgendaItemService.GetAgendaItemsByEventAsync(EventId);
             await Task.WhenAll(daysTask, itemsTask);
             _eventDays = await daysTask;
@@ -1934,7 +1934,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     {
         try
         {
-            _islamicAspect = await EventAspectService.GetIslamicAspectAsync(EventId);
+            _islamicAspect = await EventAspectService.GetIslamicAspectAsync(EventId, includeManaged: true);
         }
         catch (Exception ex)
         {
@@ -1949,7 +1949,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     {
         try
         {
-            _techAspect = await EventAspectService.GetTechAspectAsync(EventId);
+            _techAspect = await EventAspectService.GetTechAspectAsync(EventId, includeManaged: true);
         }
         catch (Exception ex)
         {
