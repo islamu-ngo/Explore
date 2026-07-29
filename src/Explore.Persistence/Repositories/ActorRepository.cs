@@ -1,6 +1,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -40,6 +41,22 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
     }
 
+    public Task<Actor?> GetPublicActorProfileAsync(
+        Guid id,
+        CancellationToken cancellationToken = default) =>
+        PublicActorProfiles()
+            .FirstOrDefaultAsync(actor => actor.Id == id, cancellationToken);
+
+    public Task<Actor?> GetLocallyDiscoverableSubscriptionTargetAsync(
+        Guid tenantId,
+        Guid actorId,
+        CancellationToken cancellationToken = default) =>
+        PublicActorProfiles()
+            .Where(actor => actor.ActorTypeId == (int)ActorTypeEnum.Organization
+                || actor.ActorTypeId == (int)ActorTypeEnum.Group)
+            .WhereLocallyDiscoverable(_dbContext, tenantId)
+            .FirstOrDefaultAsync(actor => actor.Id == actorId, cancellationToken);
+
     public async Task<Actor?> GetActorByDid(string did)
     {
         return await _dbContext.Actors
@@ -62,20 +79,24 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
 
     public async Task<List<Actor>> GetActorsByTenant(Guid tenantId)
     {
-        return await _dbContext.Actors
-            .AsNoTracking()
-            .Include(a => a.Pii)
-            .Include(a => a.ActorType)
-            .Where(actor => _dbContext.TenantUsers.Any(participation =>
-                    participation.TenantId == tenantId && participation.ActorId == actor.Id)
-                || _dbContext.OrganizationTenants.Any(participation =>
+        return await PublicActorProfiles()
+            .Include(actor => actor.Organization)
+                .ThenInclude(organization => organization!.TenantParticipations.Where(participation =>
                     participation.TenantId == tenantId
-                    && participation.Organization.Actor != null
-                    && participation.Organization.Actor.Id == actor.Id)
-                || _dbContext.GroupTenants.Any(participation =>
+                    && participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                    && participation.IsVisible
+                    && !participation.IsSuspended
+                    && !participation.IsDeleted))
+                .ThenInclude(participation => participation.ProfilePicture)
+            .Include(actor => actor.Group)
+                .ThenInclude(group => group!.TenantParticipations.Where(participation =>
                     participation.TenantId == tenantId
-                    && participation.Group.Actor != null
-                    && participation.Group.Actor.Id == actor.Id))
+                    && participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                    && participation.IsVisible
+                    && !participation.IsSuspended
+                    && !participation.IsDeleted))
+                .ThenInclude(participation => participation.ProfilePicture)
+            .WhereLocallyDiscoverable(_dbContext, tenantId)
             .ToListAsync();
     }
 
@@ -193,4 +214,16 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .Where(p => p.ActorId == actorId)
             .ExecuteDeleteAsync();
     }
+
+    private IQueryable<Actor> PublicActorProfiles() =>
+        _dbContext.Actors
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(actor => actor.Pii)
+            .Include(actor => actor.ActorType)
+            .Include(actor => actor.AtprotoIdentities.Where(identity =>
+                identity.IsActive
+                && !identity.IsSuspended
+                && !identity.IsDeleted))
+            .Where(actor => !actor.IsDeleted && !actor.IsSuspended);
 }

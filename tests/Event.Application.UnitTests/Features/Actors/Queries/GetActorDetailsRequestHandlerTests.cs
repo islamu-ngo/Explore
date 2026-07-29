@@ -61,7 +61,7 @@ public class GetActorDetailsRequestHandlerTests
             Did = "did:plc:test123"
         };
 
-        _actorRepository.GetActorWithDetails(actorId).Returns(actor);
+        _actorRepository.GetPublicActorProfileAsync(actorId).Returns(actor);
         _mapper.Map<ActorDto>(actor).Returns(expectedDto);
 
         // Act
@@ -81,7 +81,7 @@ public class GetActorDetailsRequestHandlerTests
         var actorId = Guid.NewGuid();
         var request = new GetActorDetailsRequest { Id = actorId };
 
-        _actorRepository.GetActorWithDetails(actorId).Returns((Actor?)null);
+        _actorRepository.GetPublicActorProfileAsync(actorId).Returns((Actor?)null);
         _mapper.Map<ActorDto>(Arg.Any<Actor?>()).Returns((ActorDto?)null);
 
         // Act
@@ -108,7 +108,7 @@ public class GetActorDetailsRequestHandlerTests
             ProfilePictureUri = "https://storage.example.com/image.jpg"
         };
 
-        _actorRepository.GetActorWithDetails(actorId).Returns(actor);
+        _actorRepository.GetPublicActorProfileAsync(actorId).Returns(actor);
         _mapper.Map<ActorDto>(actor).Returns(expectedDto);
         // Mock presigned URL generation (extracts object key and generates URL)
         _objectStorageService.GeneratePresignedDownloadUrl(Arg.Any<string>(), Arg.Any<int>())
@@ -142,7 +142,7 @@ public class GetActorDetailsRequestHandlerTests
             ActorTypeFullName = "User"
         };
 
-        _actorRepository.GetActorWithDetails(actorId).Returns(actor);
+        _actorRepository.GetPublicActorProfileAsync(actorId).Returns(actor);
         _mapper.Map<ActorDto>(actor).Returns(expectedDto);
 
         // Act

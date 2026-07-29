@@ -2,6 +2,7 @@
 // ABOUTME: Carries lightweight actor display, federation, appearance, and concurrency metadata.
 
 using System;
+using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.Actor;
 
@@ -19,6 +20,7 @@ public class ActorListDto
     public string? ActorTypeMasterCode { get; set; } // For i18n with Tolgee
     public string? ActorTypeFullName { get; set; } // Fallback default
 
+    [JsonIgnore]
     public Guid TenantId { get; set; }
 
     public string DisplayName { get; set; } = string.Empty;
@@ -33,6 +35,7 @@ public class ActorListDto
     public string? DidCustodyTypeFullName { get; set; } // Fallback default
 
     // ProfilePicture
+    [JsonIgnore]
     public Guid? ProfilePictureId { get; set; }
     public string? ProfilePictureUri { get; set; }
 
@@ -40,8 +43,10 @@ public class ActorListDto
     public string? BackgroundColor { get; set; }
     public string? BackgroundEffect { get; set; }
     public string? BannerColor { get; set; }
+    [JsonIgnore]
     public Guid? BannerPictureId { get; set; }
     public string? BannerPictureUri { get; set; }
+    [JsonIgnore]
     public Guid? BackgroundImageId { get; set; }
     public string? BackgroundImageUri { get; set; }
 

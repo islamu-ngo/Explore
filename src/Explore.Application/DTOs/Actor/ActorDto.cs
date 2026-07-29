@@ -2,6 +2,7 @@
 // ABOUTME: Includes concurrency metadata needed for PATCH If-Match updates.
 
 using System;
+using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.Actor;
 
@@ -19,11 +20,13 @@ public class ActorDto
     public string? ActorTypeMasterCode { get; set; } // For i18n with Tolgee
     public string? ActorTypeFullName { get; set; } // Fallback default
 
+    [JsonIgnore]
     public Guid TenantId { get; set; }
 
     /// <summary>
     /// The User ID this Actor belongs to (if User actor).
     /// </summary>
+    [JsonIgnore]
     public Guid? UserId { get; set; }
 
     /// <summary>
@@ -31,9 +34,12 @@ public class ActorDto
     /// </summary>
     public Guid? OrganizationId { get; set; }
 
+    public Guid? GroupId { get; set; }
+
     public string DisplayName { get; set; } = string.Empty;
 
     // ProfilePicture relationship (optional)
+    [JsonIgnore]
     public Guid? ProfilePictureId { get; set; }
     public string? ProfilePictureCid { get; set; }
     public string? ProfilePictureUri { get; set; }
@@ -51,8 +57,10 @@ public class ActorDto
     public string? BackgroundColor { get; set; }
     public string? BackgroundEffect { get; set; }
     public string? BannerColor { get; set; }
+    [JsonIgnore]
     public Guid? BannerPictureId { get; set; }
     public string? BannerPictureUri { get; set; }
+    [JsonIgnore]
     public Guid? BackgroundImageId { get; set; }
     public string? BackgroundImageUri { get; set; }
 

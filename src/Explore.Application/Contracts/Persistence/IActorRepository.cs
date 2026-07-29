@@ -5,6 +5,11 @@ namespace Explore.Application.Contracts.Persistence;
 public interface IActorRepository : IGenericRepository<Actor, Guid>
 {
     Task<Actor?> GetActorWithDetails(Guid id, CancellationToken cancellationToken = default);
+    Task<Actor?> GetPublicActorProfileAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Actor?> GetLocallyDiscoverableSubscriptionTargetAsync(
+        Guid tenantId,
+        Guid actorId,
+        CancellationToken cancellationToken = default);
     Task<Actor?> GetActorByDid(string did);
     Task<Actor?> GetActorByHandle(string handle);
     Task<List<Actor>> GetActorsByTenant(Guid tenantId);
