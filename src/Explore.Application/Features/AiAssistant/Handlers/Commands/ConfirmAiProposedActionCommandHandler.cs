@@ -9,6 +9,7 @@ using Explore.Application.Features.AiAssistant.Actions;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Ai;
 using Explore.Domain.Constants;
@@ -142,7 +143,7 @@ public sealed class ConfirmAiProposedActionCommandHandler(
         }
 
         var mediaType = image.MediaType.Trim();
-        if (!mediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        if (!SafeRasterContentPolicy.IsBrowserImageMimeType(mediaType))
         {
             return CreateEventDraftAiFeaturedImageResolutionResult.Failure(
                 "invalid_ai_image_attachment",
@@ -156,7 +157,9 @@ public sealed class ConfirmAiProposedActionCommandHandler(
                 "AI event draft image attachment contains invalid base64 data.");
         }
 
-        if (imageBytes.Length == 0 || imageBytes.Length > AiMessageImageAttachmentSerializer.MaxImageBytes)
+        if (imageBytes.Length == 0
+            || imageBytes.Length > AiMessageImageAttachmentSerializer.MaxImageBytes
+            || image.SizeBytes is { } declaredSize && declaredSize != imageBytes.LongLength)
         {
             return CreateEventDraftAiFeaturedImageResolutionResult.Failure(
                 "invalid_ai_image_attachment",
@@ -165,6 +168,14 @@ public sealed class ConfirmAiProposedActionCommandHandler(
 
         var fileName = ResolveImageFileName(image);
         var extension = ResolveImageExtension(mediaType, fileName);
+        if (!SafeRasterContentPolicy.MatchesExtension(mediaType, extension)
+            || !SafeRasterContentPolicy.MatchesContainer(imageBytes, mediaType))
+        {
+            return CreateEventDraftAiFeaturedImageResolutionResult.Failure(
+                "invalid_ai_image_attachment",
+                "AI event draft image bytes do not match the declared image metadata.");
+        }
+
         var uploadSession = await mediator.Send(new CreateStorageUploadSessionCommand
         {
             TenantId = action.TenantId,
@@ -293,29 +304,15 @@ public sealed class ConfirmAiProposedActionCommandHandler(
             return extension.TrimStart('.').ToLowerInvariant();
         }
 
-        var normalizedMediaType = mediaType.Split(';', 2)[0].Trim().ToLowerInvariant();
+        var normalizedMediaType = mediaType.Trim().ToLowerInvariant();
         return normalizedMediaType switch
         {
             "image/jpeg" => "jpg",
             "image/png" => "png",
             "image/webp" => "webp",
             "image/gif" => "gif",
-            "image/bmp" => "bmp",
-            "image/svg+xml" => "svg",
-            _ when normalizedMediaType.StartsWith("image/", StringComparison.Ordinal)
-                => NormalizeImageSubtypeExtension(normalizedMediaType["image/".Length..]),
             _ => "img"
         };
-    }
-
-    private static string NormalizeImageSubtypeExtension(string subtype)
-    {
-        var extension = new string(subtype
-            .Split('+', 2)[0]
-            .Where(char.IsLetterOrDigit)
-            .Take(50)
-            .ToArray());
-        return string.IsNullOrWhiteSpace(extension) ? "img" : extension;
     }
 
     private async Task<ActorMappingContextResult> CreateMappingContextAsync(

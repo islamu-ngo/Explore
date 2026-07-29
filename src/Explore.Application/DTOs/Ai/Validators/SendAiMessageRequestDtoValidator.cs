@@ -2,6 +2,7 @@
 // ABOUTME: Keeps prompt-sized user input and idempotency keys bounded at the Application boundary.
 
 using Explore.Application.DTOs.Ai;
+using Explore.Application.Services;
 using Explore.Domain.Ai;
 using FluentValidation;
 
@@ -37,8 +38,8 @@ public sealed class SendAiMessageRequestDtoValidator : AbstractValidator<SendAiM
                 image.RuleFor(value => value.MediaType)
                     .NotEmpty()
                     .MaximumLength(MaxMediaTypeLength)
-                    .Must(IsImageMediaType)
-                    .WithMessage("AI message image media type must start with 'image/'.");
+                    .Must(SafeRasterContentPolicy.IsBrowserImageMimeType)
+                    .WithMessage("AI message images must use JPEG, PNG, GIF, or WebP.");
 
                 image.RuleFor(value => value.Data)
                     .NotEmpty()
@@ -99,10 +100,6 @@ public sealed class SendAiMessageRequestDtoValidator : AbstractValidator<SendAiM
             .WithMessage("AI assistant mode must be 'ask' or 'build'.");
     }
 
-    private static bool IsImageMediaType(string? mediaType) =>
-        !string.IsNullOrWhiteSpace(mediaType)
-        && mediaType.Trim().StartsWith("image/", StringComparison.OrdinalIgnoreCase);
-
     private static bool IsSupportedReferenceKind(string? kind) =>
         !string.IsNullOrWhiteSpace(kind)
         && Enum.TryParse<AiReferenceKind>(kind.Trim(), ignoreCase: true, out _);
@@ -121,13 +118,6 @@ public sealed class SendAiMessageRequestDtoValidator : AbstractValidator<SendAiM
             return false;
         }
 
-        try
-        {
-            return Convert.FromBase64String(value).LongLength <= AiMessageImageAttachmentSerializer.MaxImageBytes;
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
+        return value.Length <= MaxBase64Characters;
     }
 }

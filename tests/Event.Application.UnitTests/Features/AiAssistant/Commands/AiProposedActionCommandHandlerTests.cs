@@ -117,10 +117,10 @@ public sealed class AiProposedActionCommandHandlerTests
     {
         var uploadSessionId = Guid.CreateVersion7();
         var storageObjectId = Guid.CreateVersion7();
-        var imageBytes = new byte[] { 1, 2, 3, 4 };
+        var imageBytes = ValidPngBytes();
         var imageAttachmentsJson = "[{\"mediaType\":\"image/png\",\"data\":\""
             + Convert.ToBase64String(imageBytes)
-            + "\",\"fileName\":\"poster.png\",\"sizeBytes\":4}]";
+            + "\",\"fileName\":\"poster.png\",\"sizeBytes\":" + imageBytes.LongLength + "}]";
         AiProposedAction action = CreateProposedAction(
             payloadJson: "{\"title\":\"Poster Event\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}",
             sourceImageAttachmentsJson: imageAttachmentsJson);
@@ -170,6 +170,35 @@ public sealed class AiProposedActionCommandHandlerTests
         await Assert.That(sentCommand).IsNotNull();
         await Assert.That(sentCommand!.Request.FeaturedImageId).IsEqualTo(storageObjectId);
         await Assert.That(sentCommand.Request.Title).IsEqualTo("Poster Event");
+    }
+
+    [Test]
+    public async Task Confirm_WhenImageBytesDoNotMatchMime_RejectsBeforeMaterialization()
+    {
+        var imageAttachmentsJson = "[{\"mediaType\":\"image/png\",\"data\":\""
+            + Convert.ToBase64String("<svg></svg>"u8.ToArray())
+            + "\",\"fileName\":\"poster.png\",\"sizeBytes\":11}]";
+        AiProposedAction action = CreateProposedAction(
+            payloadJson: "{\"title\":\"Poster Event\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}",
+            sourceImageAttachmentsJson: imageAttachmentsJson);
+        _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>())
+            .Returns(action);
+
+        BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(
+            CreateConfirmCommand(),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("invalid_ai_image_attachment");
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<CreateStorageUploadSessionCommand>(),
+            Arg.Any<CancellationToken>());
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<FinalizeStorageUploadSessionCommand>(),
+            Arg.Any<CancellationToken>());
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<CreateEventCommand>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -472,6 +501,9 @@ public sealed class AiProposedActionCommandHandlerTests
             _tenantContext,
             _currentUserService,
             _mediator);
+
+    private static byte[] ValidPngBytes() => Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
 
     private RejectAiProposedActionCommandHandler CreateRejectHandler()
         => new(_conversationRepository, _tenantContext, _currentUserService);

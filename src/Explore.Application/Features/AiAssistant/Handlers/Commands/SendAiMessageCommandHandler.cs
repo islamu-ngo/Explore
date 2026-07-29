@@ -78,9 +78,19 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
             return Failure("AI messages require an authenticated user.", ["User is not authenticated."], "unauthenticated");
         }
 
+        if (!AiMessageImageAttachmentSerializer.TrySerializeValidated(
+                request.Message.Images,
+                out string? imageAttachmentsJson,
+                out string? imageValidationError))
+        {
+            return Failure(
+                "AI message send failed.",
+                [imageValidationError ?? "AI message image validation failed."],
+                "invalid_ai_image_attachment");
+        }
+
         var tenantId = _tenantContext.TenantId;
         var content = request.Message.Content?.Trim() ?? string.Empty;
-        var imageAttachmentsJson = AiMessageImageAttachmentSerializer.SerializeForStorage(request.Message.Images);
         var idempotencyKey = request.Message.IdempotencyKey.Trim();
         var interactionMode = AiAssistantInteractionModes.Normalize(request.Message.Mode);
         var requestTarget = $"ai/conversations/{request.ConversationId:N}/messages";

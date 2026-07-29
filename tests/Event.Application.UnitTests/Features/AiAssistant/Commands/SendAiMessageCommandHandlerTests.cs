@@ -296,15 +296,16 @@ public sealed class SendAiMessageCommandHandlerTests
     {
         var conversation = CreateConversation();
         IdempotencyRecord? savedIdempotency = null;
-        var imageData = Convert.ToBase64String(new byte[] { 1, 2, 3 });
+        byte[] imageBytes = ValidPngBytes();
+        var imageData = Convert.ToBase64String(imageBytes);
         var images = new List<AiMessageImageInputDto>
         {
             new()
             {
-                MediaType = "image/jpeg",
+                MediaType = "image/png",
                 Data = imageData,
-                FileName = "csharp.jpg",
-                SizeBytes = 3
+                FileName = "csharp.png",
+                SizeBytes = imageBytes.LongLength
             }
         };
 
@@ -319,7 +320,7 @@ public sealed class SendAiMessageCommandHandlerTests
         var message = conversation.Messages.Single();
         await Assert.That(message.Content).IsEqualTo("Describe this picture:");
         await Assert.That(message.ImageAttachmentsJson).IsNotNull();
-        await Assert.That(message.ImageAttachmentsJson!).Contains("\"mediaType\":\"image/jpeg\"");
+        await Assert.That(message.ImageAttachmentsJson!).Contains("\"mediaType\":\"image/png\"");
         await Assert.That(message.ImageAttachmentsJson!).Contains($"\"data\":\"{imageData}\"");
         await Assert.That(savedIdempotency).IsNotNull();
         await Assert.That(savedIdempotency!.RequestBodyHash).IsEqualTo(
@@ -330,6 +331,119 @@ public sealed class SendAiMessageCommandHandlerTests
                 null,
                 AiProviderDefaults.FakeModelId,
                 AiAssistantInteractionModes.Build));
+    }
+
+    [Test]
+    public async Task Handle_WhenImageBytesDoNotMatchMime_RejectsBeforeProviderOrPersistence()
+    {
+        var conversation = CreateConversation();
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+        IReadOnlyList<AiMessageImageInputDto> images =
+        [
+            new()
+            {
+                MediaType = "image/png",
+                Data = Convert.ToBase64String("<svg></svg>"u8.ToArray()),
+                FileName = "poster.png",
+                SizeBytes = 11
+            }
+        ];
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(content: "Use this poster", images: images),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("invalid_ai_image_attachment");
+        await Assert.That(conversation.Messages).IsEmpty();
+        await _settingsResolver.DidNotReceive().ResolveGroupAsync<AiAssistantSettingGroup>(
+            Arg.Any<SettingContext>(),
+            Arg.Any<CancellationToken>());
+        await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
+        await _idempotencyRepository.DidNotReceive().SaveAsync(
+            Arg.Any<IdempotencyRecord>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenImageMimeIsNotBrowserSafe_RejectsBeforeProviderOrPersistence()
+    {
+        IReadOnlyList<AiMessageImageInputDto> images =
+        [
+            new()
+            {
+                MediaType = "image/svg+xml",
+                Data = Convert.ToBase64String("<svg></svg>"u8.ToArray()),
+                FileName = "poster.svg",
+                SizeBytes = 11
+            }
+        ];
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(content: "Use this poster", images: images),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("validation_failed");
+        await _settingsResolver.DidNotReceive().ResolveGroupAsync<AiAssistantSettingGroup>(
+            Arg.Any<SettingContext>(),
+            Arg.Any<CancellationToken>());
+        await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
+    }
+
+    [Test]
+    public async Task Handle_WhenImageExtensionDoesNotMatchMime_RejectsBeforeProviderOrPersistence()
+    {
+        byte[] pngBytes = ValidPngBytes();
+        IReadOnlyList<AiMessageImageInputDto> images =
+        [
+            new()
+            {
+                MediaType = "image/png",
+                Data = Convert.ToBase64String(pngBytes),
+                FileName = "poster.jpg",
+                SizeBytes = pngBytes.LongLength
+            }
+        ];
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(content: "Use this poster", images: images),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("invalid_ai_image_attachment");
+        await _settingsResolver.DidNotReceive().ResolveGroupAsync<AiAssistantSettingGroup>(
+            Arg.Any<SettingContext>(),
+            Arg.Any<CancellationToken>());
+        await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
+    }
+
+    [Test]
+    public async Task Handle_WhenDeclaredImageSizeDoesNotMatchBytes_RejectsBeforeProviderOrPersistence()
+    {
+        byte[] pngBytes = ValidPngBytes();
+        IReadOnlyList<AiMessageImageInputDto> images =
+        [
+            new()
+            {
+                MediaType = "image/png",
+                Data = Convert.ToBase64String(pngBytes),
+                FileName = "poster.png",
+                SizeBytes = pngBytes.LongLength + 1
+            }
+        ];
+
+        var result = await CreateHandler().Handle(
+            CreateCommand(content: "Use this poster", images: images),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("invalid_ai_image_attachment");
+        await _settingsResolver.DidNotReceive().ResolveGroupAsync<AiAssistantSettingGroup>(
+            Arg.Any<SettingContext>(),
+            Arg.Any<CancellationToken>());
+        await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
 
     [Test]
@@ -380,9 +494,9 @@ public sealed class SendAiMessageCommandHandlerTests
             new()
             {
                 MediaType = "image/png",
-                Data = Convert.ToBase64String(new byte[] { 9, 8, 7 }),
+                Data = Convert.ToBase64String(ValidPngBytes()),
                 FileName = "diagram.png",
-                SizeBytes = 3
+                SizeBytes = ValidPngBytes().LongLength
             }
         };
 
@@ -585,4 +699,7 @@ public sealed class SendAiMessageCommandHandlerTests
     private static string ComputePrincipalFingerprint(Guid userId)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(userId.ToString("N", CultureInfo.InvariantCulture))))
             .ToLowerInvariant();
+
+    private static byte[] ValidPngBytes() => Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
 }
