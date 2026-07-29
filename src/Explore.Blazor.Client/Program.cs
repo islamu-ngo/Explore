@@ -101,17 +101,6 @@ builder.Services.AddScoped<IAnalyticsInterop, AnalyticsInterop>();
 builder.Services.AddScoped<ICookieConsentInterop, CookieConsentInterop>();
 builder.Services.AddScoped<CookieConsentStateService>();
 
-// Register message handler for direct provider upload URLs issued by the server.
-builder.Services.AddTransient<DirectStorageUploadMessageHandler>();
-
-// Register named HTTP client for direct storage-provider uploads.
-// Browser upload flows should use the BFF upload-session/proxy path; this remains for trusted server-issued URLs.
-builder.Services.AddHttpClient(StorageHttpClientNames.DirectUpload, client =>
-{
-    client.Timeout = TimeSpan.FromMinutes(5); // Allow large file uploads
-})
-.AddHttpMessageHandler<DirectStorageUploadMessageHandler>();
-
 builder.Services.AddScoped<Explore.Blazor.Client.Services.Http.BffClient>();
 builder.Services.AddScoped<Explore.Blazor.Client.Services.Http.IBffClient>(sp =>
     sp.GetRequiredService<Explore.Blazor.Client.Services.Http.BffClient>());

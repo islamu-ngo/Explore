@@ -91,7 +91,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IImagePreviewService, ImagePreviewService>();
         services.AddScoped<IStorageObjectUrlResolver, StorageObjectUrlResolver>();
         services.AddScoped<IImageUploadClient, ImageUploadClient>();
-        services.AddScoped<IImageStorageRecordClient, ImageStorageRecordClient>();
         services.AddScoped<IImageStorageService, ImageStorageService>();
 
         // Lookup / reference data services

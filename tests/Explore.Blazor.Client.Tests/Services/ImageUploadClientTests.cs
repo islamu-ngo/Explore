@@ -1,5 +1,5 @@
 // ABOUTME: Focused tests for the image upload transport client seam.
-// ABOUTME: Verifies BFF upload-session fallback and isolated raw upload HTTP behavior.
+// ABOUTME: Verifies provider-neutral BFF upload-session and proxy behavior.
 
 using System.Net;
 using System.Net.Http.Json;
@@ -9,41 +9,13 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class ImageUploadClientTests
 {
-    private readonly IEventApiClient _apiClient = Substitute.For<IEventApiClient>();
     private readonly System.Net.Http.IHttpClientFactory _httpClientFactory = Substitute.For<System.Net.Http.IHttpClientFactory>();
     private readonly ILogger<ImageUploadClient> _logger = Substitute.For<ILogger<ImageUploadClient>>();
 
     [Test]
-    public async Task GetUploadUrlAsync_WhenBffSessionUnavailable_FallsBackToGeneratedApiClient()
-    {
-        _apiClient.GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>())
-            .Returns(new UploadUrlResponseDto
-            {
-                UploadUrl = "https://upload.example.com/object",
-                ObjectKey = "images/test.jpg",
-                ViewUrl = "https://cdn.example.com/images/test.jpg",
-                ExpiresInMinutes = 30
-            });
-
-        var client = new ImageUploadClient(
-            _apiClient,
-            _httpClientFactory,
-            _logger,
-            apiClientExecutor: new FailingExecutor());
-
-        var result = await client.GetUploadUrlAsync("test.jpg", "image/jpeg");
-
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.UploadUrl).IsEqualTo("https://upload.example.com/object");
-        await Assert.That(result.ObjectKey).IsEqualTo("images/test.jpg");
-        await Assert.That(result.ViewUrl).IsEqualTo("https://cdn.example.com/images/test.jpg");
-    }
-
-    [Test]
-    public async Task GetUploadUrlAsync_WhenSizedBffSessionUnavailable_ReturnsNullWithoutDirectFallback()
+    public async Task GetUploadUrlAsync_WhenBffSessionUnavailable_ReturnsNullWithoutDirectFallback()
     {
         var client = new ImageUploadClient(
-            _apiClient,
             _httpClientFactory,
             _logger,
             apiClientExecutor: new FailingExecutor());
@@ -51,14 +23,12 @@ public sealed class ImageUploadClientTests
         var result = await client.GetUploadUrlAsync("test.jpg", "image/jpeg", expectedSizeBytes: 3);
 
         await Assert.That(result).IsNull();
-        await _apiClient.DidNotReceive().GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>());
     }
 
     [Test]
     public async Task GetUploadUrlAsync_WhenBffSessionSucceedsOutsideBrowser_ReturnsUploadSession()
     {
         var client = new ImageUploadClient(
-            _apiClient,
             _httpClientFactory,
             _logger,
             apiClientExecutor: new SuccessfulSessionExecutor());
@@ -69,27 +39,6 @@ public sealed class ImageUploadClientTests
         await Assert.That(result!.UploadSessionId).IsEqualTo("session-1");
         await Assert.That(result.UploadUrl).IsEmpty();
         await Assert.That(result.ObjectKey).IsEmpty();
-        await _apiClient.DidNotReceive().GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>());
-    }
-
-    [Test]
-    public async Task UploadImageFromBytesAsync_UsesDirectStorageUploadClientAndReturnsTrue_WhenUploadSucceeds()
-    {
-        var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
-        _httpClientFactory.CreateClient(StorageHttpClientNames.DirectUpload).Returns(new HttpClient(handler));
-        var client = CreateClient();
-        var fileData = new FileUploadData
-        {
-            Content = [1, 2, 3],
-            FileName = "test.jpg",
-            ContentType = "image/jpeg"
-        };
-
-        var result = await client.UploadImageFromBytesAsync("https://upload.example.com/object", fileData);
-
-        await Assert.That(result).IsTrue();
-        await Assert.That(handler.LastRequest?.Method).IsEqualTo(HttpMethod.Put);
-        await Assert.That(handler.LastRequest?.RequestUri?.AbsoluteUri).IsEqualTo("https://upload.example.com/object");
     }
 
     [Test]
@@ -164,7 +113,7 @@ public sealed class ImageUploadClientTests
 
     private ImageUploadClient CreateClient()
     {
-        return new ImageUploadClient(_apiClient, _httpClientFactory, _logger, apiClientExecutor: new FailingExecutor());
+        return new ImageUploadClient(_httpClientFactory, _logger, apiClientExecutor: new FailingExecutor());
     }
 
     private sealed class FailingExecutor : IApiClientExecutor

@@ -1,26 +1,24 @@
-// ABOUTME: Unit tests for image storage orchestration around upload sessions, records, and previews.
-// ABOUTME: Covers trusted direct uploads plus metadata-backed public image URL helpers.
+// ABOUTME: Unit tests for image storage orchestration around BFF upload sessions and previews.
+// ABOUTME: Covers provider-neutral proxy uploads plus metadata-backed public image URL helpers.
 
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Json;
 using Microsoft.AspNetCore.Components.Forms;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
 public class ImageStorageServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private static readonly byte[] ValidJpeg = Convert.FromBase64String(
+        "/9j/4AAQSkZJRgABAgAAAQABAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgEBAQEBAUFBQUFBQYGBgYGBgYGBgYGBgYHBwcICAgHBwcGBgcHCAgICAkJCQgICAgJCQoKCgwMCwsODg4RERT/xABMAAEBAAAAAAAAAAAAAAAAAAAABgEBAQAAAAAAAAAAAAAAAAAABgcQAQAAAAAAAAAAAAAAAAAAAAARAQAAAAAAAAAAAAAAAAAAAAD/wAARCAACAAIDASIAAhEAAxEA/9oADAMBAAIRAxEAPwCLAE1/f//Z");
+
     private readonly System.Net.Http.IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ImageStorageService> _logger;
     private readonly ImageStorageService _service;
 
     public ImageStorageServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
         _httpClientFactory = Substitute.For<System.Net.Http.IHttpClientFactory>();
         _logger = Substitute.For<ILogger<ImageStorageService>>();
-        _service = new ImageStorageService(_apiClient, _httpClientFactory, _logger);
+        _service = new ImageStorageService(_httpClientFactory, _logger);
     }
 
     #region ReadFileAsync
@@ -29,10 +27,10 @@ public class ImageStorageServiceTests
     public async Task ReadFileAsync_ReturnsFileData_WhenFileIsValid()
     {
         // Arrange
-        var bytes = new byte[] { 1, 2, 3 };
+        var bytes = ValidJpeg;
         var file = Substitute.For<IBrowserFile>();
         file.Name.Returns("test.jpg");
-        file.Size.Returns(3L);
+        file.Size.Returns(bytes.LongLength);
         file.ContentType.Returns("image/jpeg");
         file.OpenReadStream(Arg.Any<long>()).Returns(_ => new MemoryStream(bytes));
 
@@ -74,176 +72,11 @@ public class ImageStorageServiceTests
 
     #endregion
 
-    #region GetUploadUrlAsync
-
-    [Test]
-    public async Task GetUploadUrlAsync_ReturnsResponse_WhenApiSucceeds()
-    {
-        // Arrange
-        _apiClient.GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>())
-            .Returns(new UploadUrlResponseDto
-            {
-                UploadUrl = "https://upload.example.com/object",
-                ObjectKey = "images/test.jpg",
-                ViewUrl = "https://cdn.example.com/images/test.jpg",
-                ExpiresInMinutes = 30
-            });
-
-        // Act
-        var result = await _service.GetUploadUrlAsync("test.jpg", "image/jpeg");
-
-        // Assert
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.UploadUrl).IsEqualTo("https://upload.example.com/object");
-        await Assert.That(result.ObjectKey).IsEqualTo("images/test.jpg");
-        await Assert.That(result.ViewUrl).IsEqualTo("https://cdn.example.com/images/test.jpg");
-        await Assert.That(result.ExpiresInMinutes).IsEqualTo(30);
-    }
-
-    [Test]
-    public async Task GetUploadUrlAsync_ReturnsNull_WhenApiReturnsNull()
-    {
-        // Arrange
-        _apiClient.GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>())
-            .Returns((UploadUrlResponseDto?)null);
-
-        // Act
-        var result = await _service.GetUploadUrlAsync("test.jpg", "image/jpeg");
-
-        // Assert
-        await Assert.That(result).IsNull();
-    }
-
-    [Test]
-    public async Task GetUploadUrlAsync_ReturnsNull_WhenApiThrows()
-    {
-        // Arrange
-        _apiClient.GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>())
-            .ThrowsAsync(new ApiException("Error", 500, null, null, null));
-
-        // Act
-        var result = await _service.GetUploadUrlAsync("test.jpg", "image/jpeg");
-
-        // Assert
-        await Assert.That(result).IsNull();
-    }
-
-    #endregion
-
-    #region UploadImageFromBytesAsync
-
-    [Test]
-    public async Task UploadImageFromBytesAsync_ReturnsTrue_WhenUploadSucceeds()
-    {
-        // Arrange
-        _httpClientFactory.CreateClient(StorageHttpClientNames.DirectUpload)
-            .Returns(CreateHttpClient(new HttpResponseMessage(HttpStatusCode.OK)));
-
-        var fileData = new FileUploadData
-        {
-            Content = new byte[] { 1, 2, 3 },
-            FileName = "test.jpg",
-            ContentType = "image/jpeg"
-        };
-
-        // Act
-        var result = await _service.UploadImageFromBytesAsync("https://upload.example.com/object", fileData);
-
-        // Assert
-        await Assert.That(result).IsTrue();
-    }
-
-    [Test]
-    public async Task UploadImageFromBytesAsync_ReturnsFalse_WhenUploadFails()
-    {
-        // Arrange
-        _httpClientFactory.CreateClient(StorageHttpClientNames.DirectUpload)
-            .Returns(CreateHttpClient(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
-
-        var fileData = new FileUploadData
-        {
-            Content = new byte[] { 1, 2, 3 },
-            FileName = "test.jpg",
-            ContentType = "image/jpeg"
-        };
-
-        // Act
-        var result = await _service.UploadImageFromBytesAsync("https://upload.example.com/object", fileData);
-
-        // Assert
-        await Assert.That(result).IsFalse();
-    }
-
-    [Test]
-    public async Task UploadImageFromBytesAsync_ReturnsFalse_WhenUrlIsEmpty()
-    {
-        // Arrange
-        var fileData = new FileUploadData
-        {
-            Content = new byte[] { 1, 2, 3 },
-            FileName = "test.jpg",
-            ContentType = "image/jpeg"
-        };
-
-        // Act
-        var result = await _service.UploadImageFromBytesAsync(string.Empty, fileData);
-
-        // Assert
-        await Assert.That(result).IsFalse();
-    }
-
-    [Test]
-    public async Task UploadImageFromBytesAsync_ReturnsFalse_WhenFileDataIsNull()
-    {
-        // Act
-        var result = await _service.UploadImageFromBytesAsync("https://upload.example.com/object", null!);
-
-        // Assert
-        await Assert.That(result).IsFalse();
-    }
-
-    #endregion
-
     #region UploadAndCreateRecordFromBytesAsync
 
     [Test]
     public async Task UploadAndCreateRecordFromBytesAsync_ReturnsFailure_WhenBffSessionMissing()
     {
-        // Arrange
-        _apiClient.GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>())
-            .Returns(new UploadUrlResponseDto
-            {
-                UploadUrl = "https://upload.example.com/object",
-                ObjectKey = "images/test.jpg",
-                ViewUrl = "https://cdn.example.com/images/test.jpg",
-                ExpiresInMinutes = 30
-            });
-
-        var fileData = new FileUploadData
-        {
-            Content = new byte[] { 10, 20, 30 },
-            FileName = "test.jpg",
-            ContentType = "image/jpeg"
-        };
-
-        // Act
-        var result = await _service.UploadAndCreateRecordFromBytesAsync(fileData);
-
-        // Assert
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Success).IsFalse();
-        await Assert.That(result.ErrorMessage).Contains("Failed to get an upload session");
-        _httpClientFactory.DidNotReceive().CreateClient(StorageHttpClientNames.DirectUpload);
-        await _apiClient.DidNotReceive().CreateStorageObjectAsync(Arg.Any<CreateStorageObjectDto>());
-    }
-
-    [Test]
-    public async Task UploadAndCreateRecordFromBytesAsync_ReturnsFailure_WhenUploadUrlFails()
-    {
-        // Arrange
-        _apiClient.GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>())
-            .Returns((UploadUrlResponseDto?)null);
-
         var fileData = new FileUploadData
         {
             Content = new byte[] { 10, 20, 30 },
@@ -285,7 +118,6 @@ public class ImageStorageServiceTests
                 ViewUrl = $"/api/storageobject/{storageId}/public"
             });
         var service = new ImageStorageService(
-            _apiClient,
             _httpClientFactory,
             _logger,
             uploadClient: uploadClient);
@@ -296,7 +128,6 @@ public class ImageStorageServiceTests
         await Assert.That(result!.Success).IsTrue();
         await Assert.That(result.StorageObjectId).IsEqualTo(storageId);
         await uploadClient.Received(1).UploadViaBffProxyAsync("session-1", fileData);
-        await uploadClient.DidNotReceive().UploadImageFromBytesAsync(Arg.Any<string>(), Arg.Any<FileUploadData>());
     }
 
     [Test]
@@ -322,7 +153,6 @@ public class ImageStorageServiceTests
                 ErrorMessage = "provider secret body https://upload.example.com/object?signature=abc"
             });
         var service = new ImageStorageService(
-            _apiClient,
             _httpClientFactory,
             _logger,
             uploadClient: uploadClient);
@@ -419,27 +249,4 @@ public class ImageStorageServiceTests
 
     #endregion
 
-    private static HttpClient CreateHttpClient(HttpResponseMessage response)
-    {
-        var handler = new MockHttpMessageHandler(_ => response);
-        return new HttpClient(handler)
-        {
-            BaseAddress = new Uri("https://test.local")
-        };
-    }
-
-    private sealed class MockHttpMessageHandler : HttpMessageHandler
-    {
-        private readonly Func<HttpRequestMessage, HttpResponseMessage> _responseFactory;
-
-        public MockHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)
-        {
-            _responseFactory = responseFactory;
-        }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(_responseFactory(request));
-        }
-    }
 }

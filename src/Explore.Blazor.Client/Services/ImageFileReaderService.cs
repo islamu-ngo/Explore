@@ -41,7 +41,18 @@ public sealed class ImageFileReaderService(ILogger<ImageFileReaderService> logge
             using var memoryStream = new MemoryStream();
             await stream.CopyToAsync(memoryStream);
             var bytes = memoryStream.ToArray();
-            var contentType = ImageUploadClientPolicy.DetectImageContentType(bytes) ?? file.ContentType;
+            if (!ImageUploadClientPolicy.TryValidateImageFile(
+                    file.Name,
+                    file.ContentType,
+                    bytes,
+                    out var contentType))
+            {
+                logger.LogWarning(
+                    "Selected image declaration did not match its extension and detected bytes. ContentTypeBucket={ContentTypeBucket}",
+                    ImageUploadClientPolicy.GetContentTypeBucket(file.ContentType));
+                return null;
+            }
+
             var safeFileName = ImageUploadClientPolicy.BuildSafeFileName(file.Name, contentType);
 
             logger.LogDebug(

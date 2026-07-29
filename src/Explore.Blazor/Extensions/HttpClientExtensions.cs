@@ -42,14 +42,6 @@ public static class HttpClientExtensions
             .AddHttpMessageHandler<BffCookieForwardingHandler>()
             .ConfigureDevCertBypass(environment, allowAutoRedirect: false);
 
-        // Named direct storage upload client — used only for trusted server-issued provider upload URLs.
-        services.AddHttpClient(StorageHttpClientNames.DirectUpload, client =>
-        {
-            client.Timeout = TimeSpan.FromMinutes(5);
-        })
-        .ConfigureDevCertBypass(environment)
-        .AddBackgroundResilience();
-
         // Typed NSwag-generated API client
         services.AddTypedApiClient<IEventApiClient, EventApiClient>(apiBaseUrl, environment)
             .AddInteractiveResilience();

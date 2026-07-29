@@ -1,13 +1,11 @@
-// ABOUTME: Image upload transport client for BFF upload sessions, upload proxy, and trusted direct provider uploads.
+// ABOUTME: Image upload transport client for provider-neutral BFF upload sessions and proxy forwarding.
 // ABOUTME: Keeps upload-specific raw multipart/streaming HTTP isolated from ImageStorageService orchestration.
 
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Services.Http;
-using Microsoft.AspNetCore.Components.Forms;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -15,17 +13,10 @@ public interface IImageUploadClient
 {
     Task<ImageUploadTarget?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null);
 
-    Task<bool> UploadImageAsync(string uploadUrl, IBrowserFile file);
-
-    Task<bool> UploadImageFromBytesAsync(string uploadUrl, FileUploadData fileData);
-
     Task<ImageUploadResult?> UploadViaBffProxyAsync(string uploadSessionId, FileUploadData fileData);
-
-    Task<ImageUploadResult?> UploadViaBffProxyAsync(string uploadSessionId, IBrowserFile file);
 }
 
 public sealed class ImageUploadClient(
-    IEventApiClient apiClient,
     IHttpClientFactory httpClientFactory,
     ILogger<ImageUploadClient> logger,
     BffClient? bffClient = null,
@@ -33,8 +24,6 @@ public sealed class ImageUploadClient(
 {
     private const string GenerateUploadSessionPath = "/bff/storage/upload-session";
     private const string UploadProxyPath = "/bff/storage/upload-proxy";
-    private const long DefaultMaxFileSize = 10 * 1024 * 1024;
-
     private readonly IApiClientExecutor _apiClientExecutor = apiClientExecutor ?? new ApiClientExecutor();
 
     public async Task<ImageUploadTarget?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null)
@@ -47,62 +36,22 @@ public sealed class ImageUploadClient(
                 ImageUploadClientPolicy.GetContentTypeBucket(contentType),
                 expectedSizeBytes.HasValue ? ImageUploadClientPolicy.GetSizeBucket(expectedSizeBytes.Value) : "unknown");
 
-            var request = new UploadRequestDto
+            if (!expectedSizeBytes.HasValue || expectedSizeBytes.Value <= 0)
             {
-                FileName = safeFileName,
-                ContentType = contentType
-            };
+                logger.LogWarning("BFF upload session requires the selected image size.");
+                return null;
+            }
 
-            var isBrowser = OperatingSystem.IsBrowser();
-            var bffUploadSession = expectedSizeBytes.HasValue
-                ? await GetUploadSessionViaBffAsync(safeFileName, contentType, expectedSizeBytes.Value)
-                : null;
+            var bffUploadSession = await GetUploadSessionViaBffAsync(
+                safeFileName,
+                contentType,
+                expectedSizeBytes.Value);
             if (bffUploadSession != null)
             {
                 return bffUploadSession;
             }
 
-            if (isBrowser)
-            {
-                logger.LogWarning("BFF upload session request returned no usable response in browser runtime.");
-                return null;
-            }
-
-            if (expectedSizeBytes.HasValue)
-            {
-                logger.LogWarning("BFF upload session request returned no usable response for sized upload. Direct provider fallback is disabled for browser-originated image uploads.");
-                return null;
-            }
-
-            var response = await apiClient.GenerateStorageObjectUploadUrlAsync(request);
-
-            if (response == null)
-            {
-                logger.LogWarning("GenerateUploadUrlAsync returned null response");
-                return null;
-            }
-
-            if (string.IsNullOrWhiteSpace(response.UploadUrl))
-            {
-                logger.LogWarning("UploadUrl is null or empty. Check server storage provider configuration.");
-                return null;
-            }
-
-            logger.LogDebug("Got trusted direct upload URL response for content type {ContentType}", contentType);
-            return new ImageUploadTarget
-            {
-                UploadUrl = response.UploadUrl ?? string.Empty,
-                ObjectKey = response.ObjectKey ?? string.Empty,
-                ViewUrl = response.ViewUrl ?? string.Empty,
-                ExpiresInMinutes = response.ExpiresInMinutes ?? 60
-            };
-        }
-        catch (ApiException ex)
-        {
-            logger.LogWarning(
-                "API error getting upload URL. StatusCode={StatusCode}, FailureType={FailureType}",
-                ex.StatusCode,
-                ImageUploadClientPolicy.GetFailureType(ex));
+            logger.LogWarning("BFF upload session request returned no usable response.");
             return null;
         }
         catch (Exception ex)
@@ -158,212 +107,6 @@ public sealed class ImageUploadClient(
                 ImageUploadClientPolicy.GetFailureType(ex),
                 ImageUploadClientPolicy.GetSizeBucket(fileData.Size));
             return null;
-        }
-    }
-
-    public async Task<ImageUploadResult?> UploadViaBffProxyAsync(string uploadSessionId, IBrowserFile file)
-    {
-        try
-        {
-            var safeFileName = ImageUploadClientPolicy.BuildSafeFileName(file.Name, file.ContentType);
-            using var form = new MultipartFormDataContent();
-            using var uploadSessionContent = new StringContent(uploadSessionId);
-            using var contentTypeContent = new StringContent(file.ContentType);
-            form.Add(uploadSessionContent, "uploadSessionId");
-            form.Add(contentTypeContent, "contentType");
-
-            await using var stream = file.OpenReadStream(maxAllowedSize: file.Size);
-            using var fileContent = new StreamContent(stream);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-            form.Add(fileContent, "file", safeFileName);
-
-            using var response = bffClient is not null
-                ? await bffClient.PostMultipartAsync(UploadProxyPath, form)
-                : await httpClientFactory.CreateClient("BffClient").PostAsync(UploadProxyPath, form);
-
-            if (response.IsSuccessStatusCode)
-            {
-                logger.LogInformation(
-                    "BFF upload proxy completed successfully. SizeBucket={SizeBucket}, ContentTypeBucket={ContentTypeBucket}",
-                    ImageUploadClientPolicy.GetSizeBucket(file.Size),
-                    ImageUploadClientPolicy.GetContentTypeBucket(file.ContentType));
-                var uploadResult = await response.ReadJsonOrDefaultAsync<BffStorageUploadProxyResponse>();
-                return MapBffUploadResult(uploadResult);
-            }
-
-            var hasBody = response.Content.Headers.ContentLength.GetValueOrDefault() > 0;
-            logger.LogWarning(
-                "BFF upload proxy failed. Status={StatusCode}, HasBody={HasBody}, SizeBucket={SizeBucket}",
-                (int)response.StatusCode,
-                hasBody,
-                ImageUploadClientPolicy.GetSizeBucket(file.Size));
-            return null;
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(
-                "BFF upload proxy request failed. FailureType={FailureType}, SizeBucket={SizeBucket}",
-                ImageUploadClientPolicy.GetFailureType(ex),
-                ImageUploadClientPolicy.GetSizeBucket(file.Size));
-            return null;
-        }
-    }
-
-    public async Task<bool> UploadImageAsync(string uploadUrl, IBrowserFile file)
-    {
-        if (string.IsNullOrWhiteSpace(uploadUrl))
-        {
-            logger.LogWarning("Invalid upload URL (empty/null) - aborting upload");
-            return false;
-        }
-
-        if (!Uri.TryCreate(uploadUrl, UriKind.Absolute, out var validatedUri))
-        {
-            logger.LogWarning("Invalid upload URL format - aborting upload.");
-            return false;
-        }
-
-        try
-        {
-            logger.LogInformation(
-                "Uploading directly to storage provider. SizeBucket={SizeBucket}, ContentTypeBucket={ContentTypeBucket}, Host={Host}",
-                ImageUploadClientPolicy.GetSizeBucket(file.Size),
-                ImageUploadClientPolicy.GetContentTypeBucket(file.ContentType),
-                validatedUri.Host);
-
-            using var directUploadClient = httpClientFactory.CreateClient(StorageHttpClientNames.DirectUpload);
-            await using var stream = file.OpenReadStream(maxAllowedSize: DefaultMaxFileSize);
-            using var content = new StreamContent(stream);
-            content.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-
-            logger.LogDebug("Sending PUT request to direct storage provider URL.");
-            var response = await directUploadClient.PutAsync(validatedUri, content);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var hasBody = response.Content.Headers.ContentLength.GetValueOrDefault() > 0;
-                logger.LogWarning(
-                    "Direct storage upload failed. StatusCode={StatusCode}, HasBody={HasBody}",
-                    (int)response.StatusCode,
-                    hasBody);
-
-                if (response.StatusCode == HttpStatusCode.Forbidden)
-                {
-                    logger.LogWarning("Direct upload 403 Forbidden - check provider CORS, URL expiry, and Content-Type match.");
-                }
-                else if (response.StatusCode == HttpStatusCode.BadRequest)
-                {
-                    logger.LogWarning("Direct upload 400 Bad Request - check provider URL and request headers.");
-                }
-            }
-            else
-            {
-                var etag = response.Headers.ETag?.Tag ?? "no-etag";
-                logger.LogInformation("Direct storage upload successful. ETag: {ETag}", etag);
-            }
-
-            return response.IsSuccessStatusCode;
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(
-                "HTTP request error during direct storage upload. FailureType={FailureType}",
-                ImageUploadClientPolicy.GetFailureType(ex));
-            return false;
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(
-                "Error uploading image to direct storage provider. FailureType={FailureType}",
-                ImageUploadClientPolicy.GetFailureType(ex));
-            return false;
-        }
-    }
-
-    public async Task<bool> UploadImageFromBytesAsync(string uploadUrl, FileUploadData fileData)
-    {
-        if (string.IsNullOrWhiteSpace(uploadUrl))
-        {
-            logger.LogWarning("Invalid upload URL (empty/null) - aborting upload");
-            return false;
-        }
-
-        if (fileData == null || fileData.Content.Length == 0)
-        {
-            logger.LogWarning("Invalid file data (null or empty) - aborting upload");
-            return false;
-        }
-
-        if (!Uri.TryCreate(uploadUrl, UriKind.Absolute, out var validatedUri))
-        {
-            logger.LogWarning("Invalid upload URL format - aborting upload.");
-            return false;
-        }
-
-        if (OperatingSystem.IsBrowser())
-        {
-            logger.LogWarning("Browser runtime requires a server-issued upload session for selected image.");
-            return false;
-        }
-
-        try
-        {
-            logger.LogInformation(
-                "Uploading directly to storage provider. SizeBucket={SizeBucket}, ContentTypeBucket={ContentTypeBucket}, Host={Host}",
-                ImageUploadClientPolicy.GetSizeBucket(fileData.Size),
-                ImageUploadClientPolicy.GetContentTypeBucket(fileData.ContentType),
-                validatedUri.Host);
-
-            using var directUploadClient = httpClientFactory.CreateClient(StorageHttpClientNames.DirectUpload);
-            using var content = new ByteArrayContent(fileData.Content);
-            content.Headers.ContentType = new MediaTypeHeaderValue(fileData.ContentType);
-
-            logger.LogDebug("Sending PUT request to direct storage provider URL with ByteArrayContent ({Size} bytes).", fileData.Size);
-            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
-            var response = await directUploadClient.PutAsync(validatedUri, content, cts.Token);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var hasBody = response.Content.Headers.ContentLength.GetValueOrDefault() > 0;
-                logger.LogWarning(
-                    "Direct storage upload failed. StatusCode={StatusCode}, HasBody={HasBody}",
-                    (int)response.StatusCode,
-                    hasBody);
-
-                if (response.StatusCode == HttpStatusCode.Forbidden)
-                {
-                    logger.LogWarning("Direct upload 403 Forbidden - check provider CORS, URL expiry, and Content-Type match.");
-                }
-                else if (response.StatusCode == HttpStatusCode.BadRequest)
-                {
-                    logger.LogWarning("Direct upload 400 Bad Request - check provider URL and request headers.");
-                }
-
-                return false;
-            }
-
-            var etag = response.Headers.ETag?.Tag ?? "no-etag";
-            logger.LogInformation("Direct storage upload successful. ETag: {ETag}, Size: {Size} bytes", etag, fileData.Size);
-            return true;
-        }
-        catch (OperationCanceledException)
-        {
-            logger.LogWarning("Direct storage upload timed out after 3 minutes.");
-            return false;
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(
-                "HTTP request error during direct storage upload. FailureType={FailureType}",
-                ImageUploadClientPolicy.GetFailureType(ex));
-            return false;
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(
-                "Unexpected error uploading image to direct storage provider. FailureType={FailureType}",
-                ImageUploadClientPolicy.GetFailureType(ex));
-            return false;
         }
     }
 

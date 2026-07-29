@@ -1,7 +1,6 @@
-// ABOUTME: Image storage orchestration service for upload sessions, metadata records, and previews.
+// ABOUTME: Image storage orchestration service for provider-neutral upload sessions and previews.
 // ABOUTME: Requires browser-originated record uploads to use server-issued BFF sessions and proxy upload.
 
-using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Services.Http;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
@@ -33,27 +32,9 @@ public interface IImageStorageService
     Task<FileUploadData?> ReadFileAsync(IBrowserFile file, long maxFileSize = 10 * 1024 * 1024);
 
     /// <summary>
-    /// Get a server-issued upload session or trusted pre-signed URL for uploading an image.
+    /// Get a server-issued upload session for uploading an image.
     /// </summary>
     Task<ImageUploadTarget?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null);
-
-    /// <summary>
-    /// Upload an image file using a pre-signed URL (legacy - uses IBrowserFile).
-    /// Prefer UploadImageFromBytesAsync for reliable WASM uploads.
-    /// </summary>
-    Task<bool> UploadImageAsync(string uploadUrl, IBrowserFile file);
-
-    /// <summary>
-    /// Upload image bytes using a pre-signed URL.
-    /// Uses ByteArrayContent for reliable WASM uploads (avoids stream timing issues).
-    /// </summary>
-    Task<bool> UploadImageFromBytesAsync(string uploadUrl, FileUploadData fileData);
-
-    /// <summary>
-    /// Upload an image and create a StorageObject record, returning the storage object ID.
-    /// Legacy method using IBrowserFile - prefer UploadAndCreateRecordFromBytesAsync.
-    /// </summary>
-    Task<ImageUploadResult?> UploadImageAndCreateRecordAsync(IBrowserFile file);
 
     /// <summary>
     /// Upload image bytes and create a StorageObject record.
@@ -132,7 +113,6 @@ public class ImageUploadResult
 /// </summary>
 public class ImageStorageService : IImageStorageService
 {
-    private readonly IEventApiClient _apiClient;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ImageStorageService> _logger;
     private readonly BffClient? _bffClient;
@@ -140,41 +120,30 @@ public class ImageStorageService : IImageStorageService
     private readonly IImageFileReaderService _fileReader;
     private readonly IImagePreviewService _previewService;
     private readonly IImageUploadClient _uploadClient;
-    private readonly IImageStorageRecordClient _storageRecordClient;
     private readonly IStorageObjectUrlResolver _storageObjectUrlResolver;
     private const long DefaultMaxFileSize = 10 * 1024 * 1024; // 10MB
 
     public ImageStorageService(
-        IEventApiClient apiClient,
         IHttpClientFactory httpClientFactory,
         ILogger<ImageStorageService> logger,
         BffClient? bffClient = null,
         IApiClientExecutor? apiClientExecutor = null,
         IImageFileReaderService? fileReader = null,
         IImagePreviewService? previewService = null,
-        IImageContentClassifier? contentClassifier = null,
         IImageUploadClient? uploadClient = null,
-        IImageStorageRecordClient? storageRecordClient = null,
         IStorageObjectUrlResolver? storageObjectUrlResolver = null)
     {
-        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _bffClient = bffClient;
         _apiClientExecutor = apiClientExecutor ?? new ApiClientExecutor();
         _fileReader = fileReader ?? new ImageFileReaderService(NullLogger<ImageFileReaderService>.Instance);
         _previewService = previewService ?? new ImagePreviewService(NullLogger<ImagePreviewService>.Instance);
-        var classifier = contentClassifier ?? new ImageContentClassifier();
         _uploadClient = uploadClient ?? new ImageUploadClient(
-            _apiClient,
             _httpClientFactory,
             NullLogger<ImageUploadClient>.Instance,
             _bffClient,
             _apiClientExecutor);
-        _storageRecordClient = storageRecordClient ?? new ImageStorageRecordClient(
-            _apiClient,
-            classifier,
-            NullLogger<ImageStorageRecordClient>.Instance);
         _storageObjectUrlResolver = storageObjectUrlResolver ?? new StorageObjectUrlResolver();
     }
 
@@ -188,18 +157,6 @@ public class ImageStorageService : IImageStorageService
     public async Task<ImageUploadTarget?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null)
     {
         return await _uploadClient.GetUploadUrlAsync(fileName, contentType, expectedSizeBytes);
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> UploadImageAsync(string uploadUrl, IBrowserFile file)
-    {
-        return await _uploadClient.UploadImageAsync(uploadUrl, file);
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> UploadImageFromBytesAsync(string uploadUrl, FileUploadData fileData)
-    {
-        return await _uploadClient.UploadImageFromBytesAsync(uploadUrl, fileData);
     }
 
     /// <inheritdoc />
@@ -257,90 +214,10 @@ public class ImageStorageService : IImageStorageService
                 ErrorMessage = ImageUploadClientPolicy.UploadSessionUnavailableMessage
             };
         }
-        catch (ApiException ex)
-        {
-            _logger.LogWarning(
-                "API error during selected image upload. StatusCode={StatusCode}, FailureType={FailureType}",
-                ex.StatusCode,
-                ImageUploadClientPolicy.GetFailureType(ex));
-            return new ImageUploadResult
-            {
-                Success = false,
-                ErrorMessage = ImageUploadClientPolicy.GenericUploadFailureMessage
-            };
-        }
         catch (Exception ex)
         {
             _logger.LogWarning(
                 "Unexpected error during selected image upload. FailureType={FailureType}",
-                ImageUploadClientPolicy.GetFailureType(ex));
-            return new ImageUploadResult
-            {
-                Success = false,
-                ErrorMessage = ImageUploadClientPolicy.GenericUploadFailureMessage
-            };
-        }
-    }
-
-    /// <inheritdoc />
-    public async Task<ImageUploadResult?> UploadImageAndCreateRecordAsync(IBrowserFile file)
-    {
-        try
-        {
-            var safeFileName = ImageUploadClientPolicy.BuildSafeFileName(file.Name, file.ContentType);
-            _logger.LogInformation(
-                "Starting legacy browser image upload. SizeBucket={SizeBucket}, ContentTypeBucket={ContentTypeBucket}",
-                ImageUploadClientPolicy.GetSizeBucket(file.Size),
-                ImageUploadClientPolicy.GetContentTypeBucket(file.ContentType));
-
-            var uploadResponse = await GetUploadUrlAsync(safeFileName, file.ContentType, file.Size);
-            if (uploadResponse == null)
-            {
-                return new ImageUploadResult
-                {
-                    Success = false,
-                    ErrorMessage = ImageUploadClientPolicy.UploadSessionUnavailableMessage
-                };
-            }
-
-            if (!string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId))
-            {
-                var bffUploadResult = await _uploadClient.UploadViaBffProxyAsync(uploadResponse.UploadSessionId, file);
-                if (bffUploadResult?.Success == true)
-                {
-                    return bffUploadResult;
-                }
-
-                return new ImageUploadResult
-                {
-                    Success = false,
-                    ErrorMessage = ImageUploadClientPolicy.ToUserSafeUploadError(bffUploadResult?.ErrorMessage)
-                };
-            }
-
-            _logger.LogWarning("Upload session response for selected image did not include a BFF upload session.");
-            return new ImageUploadResult
-            {
-                Success = false,
-                ErrorMessage = ImageUploadClientPolicy.UploadSessionUnavailableMessage
-            };
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogWarning(
-                "API error during legacy browser image upload. StatusCode={StatusCode}, FailureType={FailureType}",
-                ex.StatusCode,
-                ImageUploadClientPolicy.GetFailureType(ex));
-            return new ImageUploadResult
-            {
-                Success = false,
-                ErrorMessage = ImageUploadClientPolicy.GenericUploadFailureMessage
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                "Unexpected error during legacy browser image upload. FailureType={FailureType}",
                 ImageUploadClientPolicy.GetFailureType(ex));
             return new ImageUploadResult
             {
