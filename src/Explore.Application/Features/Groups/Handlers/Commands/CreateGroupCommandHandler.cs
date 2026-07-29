@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Group.Validators;
 using Explore.Application.Features.Groups.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -23,6 +24,7 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
     private readonly IOrganizationTenantRepository _organizationTenantRepository;
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IActorRepository _actorRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly IMapper _mapper;
     private readonly ITenantContext _tenantContext;
@@ -35,6 +37,7 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
         IOrganizationTenantRepository organizationTenantRepository,
         IGroupMemberRepository groupMemberRepository,
         IActorRepository actorRepository,
+        IStorageObjectRepository storageObjectRepository,
         IAdminCacheInvalidator adminCacheInvalidator,
         IMapper mapper,
         ITenantContext tenantContext,
@@ -46,6 +49,7 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
         _organizationTenantRepository = organizationTenantRepository;
         _groupMemberRepository = groupMemberRepository;
         _actorRepository = actorRepository;
+        _storageObjectRepository = storageObjectRepository;
         _adminCacheInvalidator = adminCacheInvalidator;
         _mapper = mapper;
         _tenantContext = tenantContext;
@@ -64,6 +68,17 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
             response.Success = false;
             response.Message = "Validation failed.";
             response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
+        if (!await ImageReferenceEligibility.AreEligibleAsync(
+                _storageObjectRepository,
+                _tenantContext.TenantId,
+                request.GroupDto.ProfilePictureId))
+        {
+            response.Success = false;
+            response.Message = "Validation failed.";
+            response.Errors = ["Profile picture must be an active public safe-raster object in the current tenant."];
             return response;
         }
 

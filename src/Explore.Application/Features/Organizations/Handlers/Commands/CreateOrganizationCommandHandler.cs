@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Organization.Validators;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -23,6 +24,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
     private readonly IOrganizationTenantRepository _organizationTenantRepository;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly IActorRepository _actorRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IAdminContext _adminContext;
     private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly IMapper _mapper;
@@ -36,6 +38,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         IOrganizationTenantRepository organizationTenantRepository,
         IOrganizationMemberRepository organizationMemberRepository,
         IActorRepository actorRepository,
+        IStorageObjectRepository storageObjectRepository,
         IAdminContext adminContext,
         IAdminCacheInvalidator adminCacheInvalidator,
         IMapper mapper,
@@ -48,6 +51,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         _organizationTenantRepository = organizationTenantRepository;
         _organizationMemberRepository = organizationMemberRepository;
         _actorRepository = actorRepository;
+        _storageObjectRepository = storageObjectRepository;
         _adminContext = adminContext;
         _adminCacheInvalidator = adminCacheInvalidator;
         _mapper = mapper;
@@ -68,6 +72,17 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
             response.Success = false;
             response.Message = "Organization creation failed due to validation errors.";
             response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
+        if (!await ImageReferenceEligibility.AreEligibleAsync(
+                _storageObjectRepository,
+                _tenantContext.TenantId,
+                request.OrganizationDto.ProfilePictureId))
+        {
+            response.Success = false;
+            response.Message = "Organization creation failed due to validation errors.";
+            response.Errors = ["Profile picture must be an active public safe-raster object in the current tenant."];
             return response;
         }
 

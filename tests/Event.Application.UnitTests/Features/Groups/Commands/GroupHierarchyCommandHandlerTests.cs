@@ -454,6 +454,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
             _organizationTenantRepository,
             _groupMemberRepository,
             _actorRepository,
+            Substitute.For<IStorageObjectRepository>(),
             _adminCacheInvalidator,
             _mapper,
             _tenantContext,

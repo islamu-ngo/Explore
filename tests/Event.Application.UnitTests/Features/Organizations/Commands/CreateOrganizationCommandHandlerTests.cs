@@ -63,6 +63,7 @@ public class CreateOrganizationCommandHandlerTests
             _organizationTenantRepository,
             _organizationMemberRepository,
             _actorRepository,
+            Substitute.For<IStorageObjectRepository>(),
             _adminContext,
             _adminCacheInvalidator,
             _mapper,
