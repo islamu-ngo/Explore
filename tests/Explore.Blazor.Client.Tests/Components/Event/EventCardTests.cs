@@ -12,6 +12,7 @@ public class EventCardTests : IDisposable
     private static readonly DateTimeOffset TestDate = new(DateTimeOffset.Now.Year, 7, 25, 17, 0, 0, TimeSpan.Zero);
     private static readonly string ExpectedDetailedDate =
         $"{TestDate.ToString("ddd", CultureInfo.InvariantCulture)}, {TestDate.ToString("MMM", CultureInfo.InvariantCulture).ToUpperInvariant()} {TestDate:dd}, {TestDate.ToString("h:mm tt", CultureInfo.InvariantCulture)}";
+    private const string LongestTicketPriceSummary = "Free and other ticket options";
 
     public EventCardTests()
     {
@@ -37,6 +38,24 @@ public class EventCardTests : IDisposable
         AudienceGenderFullName = "All",
         AudienceAgeFullName = "Adults",
         VisibilityTypeFullName = "Public"
+    };
+
+    private static EventListDto CreateTestEventWithLongestTicketPriceSummary()
+    {
+        var eventDto = CreateTestEvent();
+        eventDto.TicketPriceSummary = new EventTicketPriceSummaryDto
+        {
+            SummaryCode = "MIXED_WITH_FREE"
+        };
+        return eventDto;
+    }
+
+    private static string GetPriceSummarySelector(LayoutMode layout) => layout switch
+    {
+        LayoutMode.CompactGrid => ".event-card__hover-reveal .event-card__hover-item--price",
+        LayoutMode.DetailedList => ".event-card__dl-chips .event-card__price-summary",
+        LayoutMode.SingleRow => ".event-card__sr-chips .event-card__price-summary",
+        _ => throw new ArgumentOutOfRangeException(nameof(layout), layout, null)
     };
 
     [Test]
@@ -126,6 +145,54 @@ public class EventCardTests : IDisposable
         // All fields visible by default when CardFieldVisibility is null
         await Assert.That(cut.Markup).Contains(ExpectedDetailedDate);
         await Assert.That(cut.Markup).Contains("Test Organization");
+    }
+
+    [Test]
+    [Arguments(LayoutMode.CompactGrid)]
+    [Arguments(LayoutMode.DetailedList)]
+    [Arguments(LayoutMode.SingleRow)]
+    public async Task EventCard_LongestTicketPriceSummary_RendersInLayoutPriceStructure(LayoutMode layout)
+    {
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
+            .Add(component => component.Event, CreateTestEventWithLongestTicketPriceSummary())
+            .Add(component => component.Layout, layout));
+
+        var summary = cut.Find(GetPriceSummarySelector(layout));
+
+        await Assert.That(summary.TextContent).Contains(LongestTicketPriceSummary);
+    }
+
+    [Test]
+    [Arguments(LayoutMode.CompactGrid)]
+    [Arguments(LayoutMode.DetailedList)]
+    [Arguments(LayoutMode.SingleRow)]
+    public async Task EventCard_NullTicketPriceSummary_OmitsPriceStructure(LayoutMode layout)
+    {
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
+            .Add(component => component.Event, CreateTestEvent())
+            .Add(component => component.Layout, layout));
+
+        await Assert.That(cut.FindAll(GetPriceSummarySelector(layout))).IsEmpty();
+        await Assert.That(cut.Markup).DoesNotContain(LongestTicketPriceSummary);
+    }
+
+    [Test]
+    [Arguments(LayoutMode.CompactGrid)]
+    [Arguments(LayoutMode.DetailedList)]
+    [Arguments(LayoutMode.SingleRow)]
+    public async Task EventCard_DisabledPriceVisibility_HidesTicketPriceSummary(LayoutMode layout)
+    {
+        var visibility = new Dictionary<string, bool>
+        {
+            ["event_list.card.show_price"] = false
+        };
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
+            .Add(component => component.Event, CreateTestEventWithLongestTicketPriceSummary())
+            .Add(component => component.Layout, layout)
+            .Add(component => component.CardFieldVisibility, visibility));
+
+        await Assert.That(cut.FindAll(GetPriceSummarySelector(layout))).IsEmpty();
+        await Assert.That(cut.Markup).DoesNotContain(LongestTicketPriceSummary);
     }
 
     [Test]

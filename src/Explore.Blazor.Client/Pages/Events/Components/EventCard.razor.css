@@ -590,18 +590,37 @@
 }
 
 @container (max-width: 359.98px) {
+    ::deep .event-card--DetailedList,
+    ::deep .event-card--SingleRow {
+        height: auto !important;
+        min-height: 280px;
+        overflow: visible;
+    }
+
+    ::deep .event-card__horizontal,
+    ::deep .event-card__full-row {
+        height: auto;
+        min-height: 280px;
+        align-items: stretch;
+    }
+
     ::deep .event-card__horizontal-image,
     ::deep .event-card__full-row-image {
         flex-basis: calc(50% - 1px);
         max-width: calc(50% - 1px);
         min-width: 80px;
+        height: auto;
+        min-height: 280px;
+        align-self: stretch;
     }
 
     ::deep .event-card__horizontal-content,
     ::deep .event-card__full-row-content {
         flex-basis: calc(50% + 1px);
         min-width: calc(50% + 1px);
+        min-height: 280px;
         padding-inline: 12px;
+        overflow: visible;
     }
 }
 
