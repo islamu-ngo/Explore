@@ -14,7 +14,7 @@ Last Updated: 2026-07-29 Europe/Brussels
 - **Licensing correction (2026-07-21):** ISLAMU Event operates under a CLA that enables dual-licensing (offering the software under a non-AGPLv3 license to recipients who cannot use AGPLv3). Therefore **zero code may be copied from the Hi.Events repository** — copying AGPLv3-licensed third-party code would contaminate the codebase and destroy the dual-licensing capability. Hi.Events remains a *behavior, design, and data-model* reference only; the report's §10 code-reuse permission is explicitly overridden by this workstream (see §4.13, D19).
 - **Studio integration re-baseline (2026-07-26):** Treat the implemented workspace shell from `dev/active/dynamic-event-management-ui/` as current architecture. Organizer ticketing, orders, attendees, registration forms, and provider operations extend the existing Studio workspace and its single contextual sidebar; they do not create a parallel `/events/manage` navigation system. Public and guest checkout remains outside Studio.
 - **Task directory:** `dev/active/registration-data-collection/`
-- **Planning status:** Approved by the user on 2026-07-26; re-baselined through Phase 4 on 2026-07-29. Tasks 2.1 through 2.5, 3.1 through 3.3, and 4.1 through 4.5 are source complete, for 22/88 implementation tasks. Phase 2 still lacks its owned, ordered migration, and broad Phase 4 gates remain blocked by unrelated/environment failures. Oracle review is next. No Phase 5 endpoint or persistence work exists.
+- **Planning status:** Approved by the user on 2026-07-26; re-baselined after the Phase 4 Oracle findings on 2026-07-29. The task ledger has 22/88 implementation-task boxes checked, but this is a checkbox count only. Oracle initially returned FAIL; corrected source and verification execution are recorded. Owned focused lanes are green, broad projects are not globally green, and final Oracle no-High/PASS re-review remains pending. Commit `ff30795a2` owns the participation/ticketing migration artifact; generated `20260729183118_RemoveLegacyEventPricing` removes legacy pricing schema and EF reports no pending model changes. Database application/runtime rollout is not evidenced. No Phase 5 endpoint or persistence work exists.
 - **Matched intent:** `registration-data-collection`, the dedicated cross-cutting intent created in Phase 0. Its related granular intents remain `add-write-endpoint`, `add-get-endpoint`, `add-hal-link`, `add-cqrs-handler`, `add-ef-migration`, `update-repository-query`, `blazor-component-affordance`, `cerbos-policy-change`, and `openapi-contract-change`.
 - **Relevant skills:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, `outbox-pattern`, `auth-patterns`, `blazor-bff-patterns`, `blazor-ui-conventions`, `error-tracking`.
 - **Relevant rules:** `.claude/rules/domain.md`, `application-layer.md`, `efcore-persistence.md`, `efcore-migrations.md`, `api-controllers.md`, `api-hateoas.md`, `blazor-server.md`, `blazor-client.md`, `tests.md`.
@@ -90,7 +90,7 @@ A deep research pass over Hi.Events (`hi-events-report.md`, pinned commit `9de88
 | Public participation has three distinct HAL relations | Verified: `LinkRelations.StartRegistration`, `SignInToRegister`, and `ExternalRegistration`; `EventLinkPolicy` emits them by participation mode and authentication state | High | Studio uses only `configure-participation`; attendee relations never authorize Studio |
 | Public-action filtering is shared by API and federation output | Verified: `EventMappingProfile` filters `EventDto.PublicActions` through `EventAuthorityRules.IsPublicActionAllowed`; `AtprotoEventPublicationSnapshotFactory.BuildUris` applies the same rule before emitting a registration URI | High | Stale or mode-incompatible external registration actions do not leak through either output |
 | Guest recovery is a string enum contract | Verified: `GuestRecoveryPolicyEnum`; `ContractInvariantsTests.OpenApiDocument_PublicEnumSchemasUseStringValues`; `InstanceOnboardingOpenApiContractTests.GeneratedClient_MustUse_GuestRecoveryPolicyEnum_Contract` | High | Exact literals are `VerifiedEmailRequired`, `UnverifiedEmailAccepted`, `EmailOptional`, `CapabilityLinkOnly`, and `NoRecovery` |
-| No dedicated ordered participation migration exists | Verified 2026-07-28: working-tree diff for `20260727174857_EnforceLookupRelationshipUniqueness` and its designer/snapshot | High | That migration is owned elsewhere and is contaminated by participation schema plus legacy `ExternalRegistrationUrl`/`IsRegistrationRequired` removal state; registration must not edit or stage it |
+| Participation/ticketing migration artifact is committed | Verified from commit `ff30795a2 feat(persistence/ticketing): add participation schema` | High | Owns `20260728152646_AddParticipationHandlingModes.cs`, its designer, and the snapshot; contains participation, catalog/type/entitlement/pool, fee/fixed-charge, and contribution setting/option schema. Database application/runtime rollout is not evidenced |
 
 ### 2.2 Existing Implementation (by owning layer)
 
@@ -133,7 +133,7 @@ A deep research pass over Hi.Events (`hi-events-report.md`, pinned commit `9de88
 
 | Unknown | What was searched/read | Resolving task |
 |---|---|---|
-| Which owner and exact order will produce the dedicated participation migration | Current migration tree and working-tree diff for `20260727174857_EnforceLookupRelationshipUniqueness`; no clean participation migration found | External migration owner must resolve ordering before Phase 2 can close; do not edit or stage the contaminated migration in this workstream |
+| Whether the committed participation/ticketing migration has been applied to a database | Commit `ff30795a2` proves only the source artifact, designer, and snapshot | Require explicit database application/runtime rollout evidence before making an operational claim |
 | Whether `Event.ActorId` should be renamed to `PublishedByActorId` or kept with documented semantics | `Event.cs`, usage breadth not fully enumerated | Task 1.1 (bounded investigation inside the slice) |
 | Cerbos resource shape for claims/orders/exports (attribute names, derived roles) | `cerbos/policies/*.yaml`, `derived_roles.yaml` read; no target policies exist | Tasks 1.6, 5.7, 13.4 |
 | File-upload malware scanning/quarantine capability | `StorageObject` exists; no scanner found (searched `rg -i "malware|clamav|quarantine" src`) | Task 8.8 (File field type gated behind investigation) |
@@ -214,11 +214,11 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 7. Controller authoring standard: explicit template, `Name = RouteNames.X`, endpoint classification, `[ProducesResponseType]`, operation-ID naming (`{Controller}_{Action}`); OpenAPI/NSwag regeneration is a discrete governed step.
 8. Blazor isolation: client consumes only the generated `IEventApiClient`; no backend project references.
 9. Logs/metrics/traces/ProblemDetails must never contain answers, emails, guest tokens, provider payloads, or unbounded labels (consultation NFR-09/10 + repo telemetry pattern).
-10. **Migration-baseline coordination:** the three privacy-erasure-owned init lanes exist, but no ordered dedicated participation migration exists. `20260727174857_EnforceLookupRelationshipUniqueness` is not the participation migration and is currently contaminated by participation schema and legacy-field removals. Never edit or stage that migration in this workstream. Registration schema may land only through a separately owned, ordered additive migration after ownership is resolved.
+10. **Migration-baseline coordination:** the privacy-erasure-owned init lanes remain the baseline. Commit `ff30795a2` owns the later additive `20260728152646_AddParticipationHandlingModes` migration, designer, and snapshot. Treat this as a committed artifact only; do not infer database application or runtime rollout.
 11. Consultation anti-pattern lists (§24 Report 1, §33 Report 2) are binding forbidden-moves for every phase.
 12. Dev-mode waiver: backward compatibility, dual writes, and compatibility shims are **forbidden**, not merely unnecessary — replaced members are deleted.
 13. **Hi.Events reuse rule (research-derived, D19 — NO CODE COPY):** Hi.Events is a behavior catalog, never an architecture authority and **never a code source**. Because ISLAMU Event uses a CLA to enable dual-licensing (offering the software under a non-AGPLv3 license to recipients who cannot accept AGPLv3), **copying any code, file, snippet, migration, SQL, or verbatim asset from the Hi.Events repository is forbidden** — third-party AGPLv3 code would contaminate the codebase and break the dual-licensing capability, and its authors are not ISLAMU CLA signatories. All implementation is clean-room: agents may read the *report* (`hi-events-report.md`) for behavior, design, and data-model lessons, but must not open, transcribe, or paraphrase-translate Hi.Events source files into ISLAMU code. This supersedes the report's §10 code-reuse permission. Independently, the reject-list (report §9.3) remains binding: no mutable published prices, no JSON canonical answers, no public/display IDs as authorization, no cache-only idempotency, no float money, no inventory release derived from attendee rows, no external calls inside business transactions, no local status/role authorization in the UI. The "Powered by Hi.Events" branding must obviously never appear in ISLAMU Event.
-14. **Money is decimal, explicit, and instance-fair:** all amounts use decimal value objects with explicit per-currency rounding rules; platform fee and platform contribution default to zero/off on every self-hosted instance; monetization configuration is instance-admin-only (D18) — tenant-level enablement is a forbidden move.
+14. **Money is decimal, explicit, and instance-fair:** persisted/API amounts use integer minor units. Calculations convert decimal major units to integer minor units within the same currency using explicit deterministic rounding. No foreign-exchange conversion exists. Platform fee and platform contribution default to zero/off on every self-hosted instance; monetization configuration is instance-admin-only (D18) — tenant-level enablement is a forbidden move.
 15. **Studio is the organizer UI boundary:** organizer pages use canonical `/studio/**` routes and the existing `StudioWorkspaceNavigation` / `StudioEventNavigation` replacement model. Event sections come only from the loaded event `_links`; cross-event sections come only from `StudioContextDto._links`. No local role checks, dead sidebar placeholders, third sidebar, or parallel `/events/manage` navigation tree.
 
 ---
@@ -287,7 +287,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Files/layers:** Domain/Persistence/API/Cerbos/Blazor (Phase 1).
 
 ### D10 — Typed participation configuration; prices move to the ticket catalog
-- **Decision:** `EventParticipationConfiguration` (1:1 with Event) carries `ParticipationHandlingModeId` (`INFORMATION_ONLY/WALK_IN/EXTERNAL_MANAGED/PLATFORM_MANAGED`), `AdvanceRegistrationObligationId` (`NOT_APPLICABLE/OPTIONAL/REQUIRED`), `IdentityAccessModeId` (`ACCOUNT_REQUIRED/GUEST_ALLOWED/CAPABILITY_TOKEN_ALLOWED`) plus guest-recovery policy; admission decisions keep using the existing `RegistrationMode` lookup. `Event.IsRegistrationRequired` is deleted in Phase 2; `Event.Price`/`CurrencyCode` and `EventSession.Price` are deleted in Phase 4 once the default `GENERAL_ADMISSION` ticket type exists (display price derives from active catalog).
+- **Decision:** `EventParticipationConfiguration` (1:1 with Event) carries `ParticipationHandlingModeId` (`INFORMATION_ONLY/WALK_IN/EXTERNAL_MANAGED/PLATFORM_MANAGED`), `AdvanceRegistrationObligationId` (`NOT_APPLICABLE/OPTIONAL/REQUIRED`), `IdentityAccessModeId` (`ACCOUNT_REQUIRED/GUEST_ALLOWED/CAPABILITY_TOKEN_ALLOWED`) plus guest-recovery policy; admission decisions keep using the existing `RegistrationMode` lookup. `Event.IsRegistrationRequired` is deleted in Phase 2; `Event.Price`/`CurrencyCode` and `EventSession.Price` are deleted in Phase 4, and display price is derived from the published ticket catalog.
 - **Why:** Report 2 §4/§13.4; one registration engine, not two.
 - **Consequences:** Every event gets a participation configuration (seeded default `PLATFORM_MANAGED`-equivalent is **not** assumed — creation flows must set it explicitly per "no implicit business defaults" rule; event create/update commands gain required configuration input).
 - **Files/layers:** Domain/Persistence/Application/API/Blazor (Phases 2, 4).
@@ -304,9 +304,9 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Files/layers:** Domain/Application/API (Phases 8, 13).
 
 ### D13 — Clean-baseline schema strategy (no data migrations)
-- **Decision:** The privacy-erasure workstream's three generated init lanes are the baseline. This workstream ships **model + configuration + seeder** changes and generates only later additive migrations. No legacy-data backfills exist anywhere in this plan; consultation §30.1 migration defaults are recorded as N/A for the clean baseline.
+- **Decision:** The privacy-erasure workstream's three generated init lanes are the baseline. Later model/configuration/seeder changes use additive migrations. Commit `ff30795a2` contains the committed participation/ticketing artifact. No legacy-data backfills exist anywhere in this plan; consultation §30.1 migration defaults are recorded as N/A for the clean baseline.
 - **Why:** The generated init migrations and snapshots exist; `platform-privacy-erasure` forbids restoring old migration IDs and mandates generated migrations only.
-- **Consequences:** Registration never owns baseline regeneration or history rewriting. A persistence phase may generate an additive migration only after the external migration owner establishes the exact order and assigns ownership; model completion alone is insufficient.
+- **Consequences:** Registration never owns baseline regeneration or history rewriting. A committed migration artifact does not prove it was applied to a database.
 - **Files/layers:** Persistence (all phases).
 
 ### D14 — Trust levels and sync modes govern finalization
@@ -334,7 +334,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
   The buyer-chosen unit price is validated **server-side** against the pinned catalog version's mode bounds and snapshotted per order line (`ChosenUnitPriceAmountSnapshot`); a zero-total order follows the free confirmation path; any positive total stops at `AwaitingPayment` (charging is the payment workstream's job).
 - **Why:** User requirement to exceed Hi.Events' paid/free/donation breadth (report §4.3 proves market demand for `DONATION` with minimum, but its prices are mutable in place and become PHP floats — both rejected). Sliding-scale transparency strengthens both community trust and the ISLAMU SaaS story.
 - **Alternatives considered:** Hi.Events-style mutable `ProductPrice` rows — rejected (violates immutable catalogs); one generic "flexible price" mode with UI hints — rejected (the five modes have genuinely different validation and UX semantics); modeling donation as a separate general product — rejected (dilutes admission vocabulary, report §4.1 lesson).
-- **Consequences:** Mode-specific widgets in checkout (numeric input, dual sliders); per-currency decimal rounding rules must be explicit and tested; `TicketPricingRules` becomes part of publish preflight; tier-style multi-price options can later map onto multiple ticket types without a new mechanism.
+- **Consequences:** Mode-specific widgets in checkout (numeric input, dual sliders); same-currency decimal major-unit to integer minor-unit rounding rules must be explicit and tested, with no foreign-exchange conversion; `TicketPricingRules` becomes part of publish preflight; tier-style multi-price options can later map onto multiple ticket types without a new mechanism.
 - **Files/layers:** Domain/Persistence (Phase 4), Application/API/Blazor (Phase 5).
 
 ### D18 — Instance-scoped platform monetization: fee transparency + optional platform contribution
@@ -475,7 +475,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Type:** create/modify
 - **Layer:** Persistence
 - **Files:** new `src/Explore.Persistence/Configurations/Entities/{EventPublicActionConfiguration,EventOrganizerClaimConfiguration,EventProvenanceTypeConfiguration,EventPublicActionKindConfiguration,EventPublicActionHealthStateConfiguration,EventOrganizerClaimStatusConfiguration}.cs`; existing `ExploreDbContext.DbSets.cs`, `ExploreDbContext.QueryFilters.cs`, `Seed/LookupTableSeeder.cs`, `schemas/islamu-event.md`; repository contracts/implementations move to Task 1.5 when real access paths exist.
-- **Description:** Tenant + soft-delete filters, stable lookup IDs in the seeder (document ID ranges in `schemas/islamu-event.md`), unique index one-primary-action-per-event (filtered). Do not add speculative repositories before Application consumers exist. Leave the model ready but do not generate a migration until the external migration owner establishes the exact order and assigns a dedicated additive migration. Never fold this work into `20260727174857_EnforceLookupRelationshipUniqueness`.
+- **Description:** Tenant + soft-delete filters, stable lookup IDs in the seeder (document ID ranges in `schemas/islamu-event.md`), unique index one-primary-action-per-event (filtered). Do not add speculative repositories before Application consumers exist. Commit `ff30795a2` owns the additive `20260728152646_AddParticipationHandlingModes` migration, designer, and snapshot. Preserve migration history and never rewrite committed migration artifacts; the commit does not prove database application.
 - **Acceptance Criteria:**
   - [ ] Lookup seeder parity (enum ↔ seeded rows) covered by existing seeder-parity test pattern
   - [ ] Query filters verified by a persistence test for cross-tenant invisibility
@@ -519,7 +519,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 ---
 
 ### Phase 2: Typed Participation Configuration And HAL Participation Actions
-- **Status:** Tasks 2.1 through 2.5 are source and contract complete. Phase 2 remains blocked because no ordered dedicated participation migration exists, the canonical solution build is blocked by 17 externally owned `ProgramSectionsDialogTests.cs` compiler errors, and the selected API project has two externally owned EventSessionSpeaker failures.
+- **Status:** Tasks 2.1 through 2.5 have checked implementation boxes. Commit `ff30795a2` supplies the participation/ticketing migration artifact. Corrected verification has executed; broad API remains non-green from environment/shared failures, and database application/runtime rollout remains unproved.
 - **Goal:** Replace `IsRegistrationRequired` with the typed participation model, make the API author every participation CTA (zero-action events valid, external-managed first-class), and make Studio Registration the canonical organizer configuration surface.
 - **Depends on:** Phase 1.
 - **Relevant files:** existing — `src/Explore.Domain/Event.cs`, `Features/Events/**`, `EventLinkPolicy.cs`, seeder, Cerbos event policy, Blazor event detail, `src/Explore.Blazor.Client/Pages/Studio/StudioEventShell.razor`, `Components/Shell/Workspaces/StudioEventNavigation.razor`, `Routes.razor`; new — `src/Explore.Domain/EventParticipationConfiguration.cs`, `ParticipationHandlingMode.cs` + enum, `AdvanceRegistrationObligation.cs` + enum, `IdentityAccessMode.cs` + enum, configuration/feature/policy files per task.
@@ -543,13 +543,14 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Effort:** M
 
 #### Task 2.2: Persistence + seeding for participation lookups
-- **Status:** Source complete; focused Persistence integration checks pass 4/4. Migration rollout remains blocked.
+- **Status:** Source and committed migration artifact exist. Corrected verification has executed, EF reports no pending model changes after the additive legacy-pricing migration, and database application/runtime rollout remains unproved.
 - **Type:** create/modify
 - **Layer:** Persistence
 - **Files:** new configurations for the four entities; existing DbSets/QueryFilters/LookupTableSeeder; additive migration per 0.4 gate
 - **Acceptance Criteria:**
   - [x] Stable IDs documented; seeder parity green
-  - [ ] A dedicated participation migration is generated in the approved order by the migration owner; `20260727174857_EnforceLookupRelationshipUniqueness` must not be edited or staged here
+  - [x] Commit `ff30795a2` owns `20260728152646_AddParticipationHandlingModes.cs`, its designer, and the snapshot
+  - [ ] Database application/runtime rollout is evidenced separately
 - **Dependencies:** 2.1
 - **Effort:** M
 
@@ -592,7 +593,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 ---
 
 ### Phase 3: Guest Transaction Security Foundation (`PublicTransactional`)
-- **Status:** Tasks 3.1 through 3.3 are source complete. Focused implementation checks pass, but the canonical build and full Architecture gate are externally blocked. This does not complete Phase 2 migration rollout, Phase 3 verification, or any Phase 5 product endpoint/persistence work.
+- **Status:** Tasks 3.1 through 3.3 are source complete and verification has executed. The canonical build has 0 errors and 5,162 worktree-wide warnings; Architecture is 330/340 passed, 9 unrelated failed, 1 skipped, so the phase gate is not globally green. The Phase 2 migration artifact exists in commit `ff30795a2`, but database application is not evidenced. No Phase 5 product endpoint/persistence work is complete.
 - **Goal:** Introduce the governed anonymous-mutation endpoint class and the reusable guest capability-token primitives before any guest-facing endpoint exists.
 - **Depends on:** Phase 0 (ADR-017); independent of Phases 1–2 code but sequenced after them to keep one schema stream.
 - **Relevant files:** `src/Explore.API/Attributes/EndpointClass.cs`, `EndpointClassificationAttribute.cs`, `src/Explore.API/OpenApi/EndpointClassificationTransformer.cs`, `src/Explore.API/Extensions/RateLimitingExtensions.cs` (policy), `src/Explore.API/Program.cs` (middleware order), `src/Explore.Application/Contracts/Services/IGuestCapabilityTokenService.cs` (contract), `src/Explore.Infrastructure/Services/GuestCapabilityTokenService.cs` (implementation), `src/Explore.Infrastructure/InfrastructureServicesRegistration.cs` (DI), `src/Explore.Domain/ValueObjects/CapabilityTokenHash.cs`, `tests/Event.Architecture.Tests/EndpointClassificationArchitectureTests.cs`, `docs/GOVERNANCE.md`, `docs/QUICK_REFERENCE.md`, `docs/SECURITY-MODEL.md`.
@@ -637,51 +638,54 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Dependencies:** 3.1
 - **Effort:** M
 
-#### Phase 3 verification evidence
+#### Phase 3 historical verification checkpoint (superseded by the current corrected matrix)
 - The focused PublicTransactional governance, endpoint-classification implementation pass, idempotency, BFF proxy, Domain capability, and Infrastructure capability checks pass 6/6, 4/4, 6/6, 20/20, 3/3, and 5/5 respectively.
 - Oracle follow-up result: **PASS**, with no Critical or High issues. The governance metadata-bypass and secret-formatting findings were fixed.
-- The new rate-policy test exists, but its fresh project build stops before discovery on six unrelated `CustomPropertyDefinitionControllerTests` errors caused by missing DTO members.
-- The canonical Release build is not green. It reports 12 unrelated errors: six in that API test and six in Blazor client custom-property generated-contract call sites.
-- Full Architecture executes 315 tests: 304 pass, 10 unrelated tests fail, and 1 is skipped. The new `PublicTransactional` checks aren't among the failures.
-- **Next slice:** Phase 4 source has since landed under explicit user direction. Its focused evidence is green, broad gates remain blocked, and Oracle review is next. The Phase 2 migration blocker remains independently open.
+- At that checkpoint, the new rate-policy test stopped before discovery on six unrelated `CustomPropertyDefinitionControllerTests` errors caused by missing DTO members.
+- At that checkpoint, the canonical Release build reported 12 unrelated errors: six in that API test and six in Blazor client custom-property generated-contract call sites.
+- At that checkpoint, full Architecture executed 315 tests: 304 passed, 10 unrelated tests failed, and 1 was skipped. The new `PublicTransactional` checks weren't among the failures.
+- **Superseded next slice:** Phase 4 later received an Oracle FAIL and source corrections. The current corrected verification matrix supersedes this checkpoint; final Oracle re-review remains pending. Commit `ff30795a2` supersedes the earlier missing-migration claim.
 
 ---
 
 ### Phase 4: Ticket Catalog, Capacity Pools, Entitlements, And Instance Monetization
-- **Status:** SOURCE COMPLETE / FULL GATES BLOCKED. Tasks 4.1 through 4.5 are checked and focused Phase 4 evidence is green. Broad Application, Architecture, Persistence, API, and Blazor Client gates retain unrelated or environment failures, so Phase 4 is not fully complete. Oracle review is next.
+- **Status:** CORRECTED VERIFICATION EXECUTED / ORACLE PENDING. The ledger has checked Tasks 4.1 through 4.5, but Phase 4 is not declared complete. Oracle initially returned FAIL; corrected verification is recorded below. Owned focused lanes are green, broad projects are not globally green, and final Oracle no-High/PASS re-review remains pending.
 - **Goal:** Versioned admission products with five pricing modes (D17), shared capacity pools and session/day entitlements; Studio Ticketing authoring; instance-admin-only monetization configuration (D18); delete decorative prices.
 - **Depends on:** Phases 1–2 (organizer authority + participation config).
 - **Relevant files:** existing — `Event.cs`, `EventSession.cs` (Price removal), seeder, DbContext partials, event manage API, `Routes.razor`, `StudioEventNavigation.razor`, `StudioEventShell.razor`; new — `src/Explore.Domain/EventTicketCatalogVersion.cs`, `EventTicketType.cs`, `TicketTypeEntitlement.cs`, `EventCapacityPool.cs`, `PlatformFeePolicy.cs`, `PlatformContributionSetting.cs`, `PlatformContributionOption.cs`, lookups `TicketCatalogStatus`, `TicketPricingMode`, `ParticipantDataCollectionMode`, `EntitlementScopeType`, `EntitlementSelectionRule`, `CapacityOversellPolicy` (+ enums), `Services/Registration/TicketPricingRules.cs`, configurations, `Features/EventTicketing/**`, `Features/PlatformMonetization/**`, `EventTicketTypeController.cs` etc., HAL policies, Cerbos `islamuevent_event_ticket_type.yaml`, Studio ticketing page/components.
 - **Related skills/rules:** as Phase 1 + `efcore-migrations.md`.
-- **Acceptance criteria:** FR-TICKET-01/02/08/09/13 (authoring side); published versions immutable (edit → new version, domain-enforced); all five D17 pricing modes authorable with mode-specific validation; default `GENERAL_ADMISSION` (`FREE` mode) created for platform-managed events without explicit catalog; one currency per active catalog enforced; explicit per-currency decimal rounding rules; hidden/cross-event ticket identifiers produce generic not-found (report §11.2); monetization settings instance-admin-only and default off/zero; `Event.Price`/`CurrencyCode`/`EventSession.Price` deleted with display price derived.
+- **Acceptance criteria:** FR-TICKET-01/02/08/09/13 (authoring side); published versions immutable (edit → new version, domain-enforced); all five D17 pricing modes authorable with mode-specific validation; new platform-managed Events create no bootstrap ticket catalog; Studio creates an explicit currency-selected draft that supports all five pricing modes; no `XXX` bootstrap catalog; one currency per active catalog enforced; same-currency decimal major-unit to integer minor-unit conversion uses explicit deterministic rounding with no FX conversion; hidden/cross-event ticket identifiers produce generic not-found (report §11.2); monetization settings instance-admin-only and default off/zero; `Event.Price`/`CurrencyCode`/`EventSession.Price` deleted with display price derived from the published catalog.
 - **Phase-end verification (run once after all tasks):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** Price deletion is the phase's final task; all read models (list/detail/SEO/AT Proto lexicon projections if any reference price — enumerate via `rg "\.Price" src/`) must compile against derived display price before deletion commits.
 
 #### Phase 4 verification evidence
-- Release build: 0 errors and 551 existing warnings.
-- Focused green evidence: Domain 600/600; Phase 4 Application classes 53/53; EventTicketing layout Architecture 5/5; ticketing/monetization Persistence 7/7; Phase 4 API cluster 17/17; focused ticketing Blazor 57/57; monetization Blazor 9/9; Explore.Infrastructure 1149/1149; Secrets 205/205; Blazor Integration 376/376.
-- Broad non-green evidence: Application 3312/3315 with three unrelated failures; Architecture 320/330 with nine unrelated failures and one skip; Persistence 91/688 with 597 Docker/Testcontainers failures; API 1557/2099 with 542 environment/shared failures; Blazor Client 2206/2209 with two unrelated failures and one skip.
-- The unrelated Application failures are in `PublishEventCommandHandlerTests.Handle_WithEnabledAtproto_StagesEventOutboxAfterLocalSaveInsideTransactionWithoutPdsCall`, `UpdateOrganizationCommandHandlerTests.Handle_WhenRequesterIsNotOrgAdmin_ReturnsAuthorizationFailureAndDoesNotSave`, and `EventLocationDisclosureContractTests.Contracts_AreImmutableRecordsAndDoNotReuseGenericLocationDto`. The unrelated Blazor failures are `LaunchAccessibilitySourceTests.LaunchCriticalPages_ShouldPreserveAccessibilityContracts` and `SetupTests.Setup_AfterValidation_ResumesSafeReturnUrl`.
-- Stale `EventTicketingLinkPolicyTests` relation literals were corrected to `LinkRelations.CreateDraft`, `LinkRelations.CreateTicketType`, and `LinkRelations.CreateCapacityPool`: RED 1/3, then GREEN 3/3. Production/runtime/client contracts were already correct.
-- Browser visual QA, Docker, Aspire, and native pinned Cerbos execution are unavailable. Focused bUnit and architecture results are the UI evidence, not a browser claim.
+- Oracle session `ses_052476c4cffeqCboMjdwpnB2xM` initially returned **FAIL**.
+- Corrected mechanisms: legacy Event/EventSession prices removed; price summary sourced from the published catalog; no `XXX` bootstrap catalog; published plus draft/management pool reference guard; non-public ticket child mutators; EF conflict translation bounded to concurrency and named published-catalog/capacity-pool unique constraints; Studio editor request cancellation.
+- Release build: 0 errors and 5,162 worktree-wide warnings.
+- Current focused evidence: pricing 19 + 10 + 11 + 19 + 13 + 36; pool 4 + 13 + 5 architecture; persistence 11 + 2 architecture; Studio 12 + 14 + 76.
+- Corrected project execution: Domain 602/602; Application 3,374/3,377 after fixing two stale removed-price AI assertions, with exactly three unrelated failures; Architecture 330/340 passed, 9 failed, 1 skipped; Secrets 205/205; Infrastructure non-runtime 1,151/1,151; Persistence 96/698 passed and 602 environment/provider-heavy failures, with focused ticketing 11/11; API 1,571/2,114 passed and 543 environment/shared failures, with all seven focused ticketing/monetization classes 23/23; Blazor Integration 398/398; Blazor Client 2,250/2,252 passed, 1 unrelated failure, 1 skipped.
+- The three unrelated Application failures are `PublishEventCommandHandlerTests.Handle_WithEnabledAtproto_StagesEventOutboxAfterLocalSaveInsideTransactionWithoutPdsCall`, `UpdateOrganizationCommandHandlerTests.Handle_WhenRequesterIsNotOrgAdmin_ReturnsAuthorizationFailureAndDoesNotSave`, and `EventLocationDisclosureContractTests.Contracts_AreImmutableRecordsAndDoNotReuseGenericLocationDto`. The Blazor Client failure is `LaunchAccessibilitySourceTests.LaunchCriticalPages_ShouldPreserveAccessibilityContracts`.
+- Generated additive `src/Explore.Persistence/Migrations/20260729183118_RemoveLegacyEventPricing.cs`, its designer, and the snapshot drop the two nonnegative-price checks and Event/EventSession `price`/`currency_code`. `dotnet ef migrations has-pending-model-changes` reports no changes. Database application remains unproved.
+- Verification execution is complete, but the broad matrix is not globally green. Final Oracle re-review is pending.
+- Phase 5 remains blocked until Oracle returns no High findings plus PASS; Task 5.4 atomic idempotency remains a separate prerequisite.
 
 #### Task 4.1: Catalog domain model with immutable publication and five pricing modes
-- **Status:** Source complete; Domain 600/600 passes.
+- **Status:** Source complete; Domain 602/602 passes.
 - **Type:** create
 - **Layer:** Domain
 - **Files:** new entities/lookups listed above; new `Services/Registration/TicketCatalogRules.cs`; new `Services/Registration/TicketPricingRules.cs`; new `src/Explore.Domain/TicketPricingMode.cs` + `Enums/TicketPricingModeEnum.cs`
-- **Description:** Catalog version states `Draft/Published/Retired`; publication freezes; mutation of published members throws; new-version cloning; eligibility typed fields (`MinimumAge`, `MaximumAge`, `RequiresGuardian`, `RequiresApproval`); quantity-limit fields (`PerOrder/PerAccount/PerVerifiedContact/PerBookingParty`); entitlements per §15 with selection rules `AllIncluded/FixedSelection/ChooseOne/ChooseUpToN`; one-currency rule across a version. Pricing per D17: `TicketPricingModeId` (`FIXED/FREE/DONATION/PAY_WHAT_YOU_CAN/SLIDING_SCALE`) with `PriceAmount`, `MinimumPriceAmount`, `SuggestedPriceAmount` and `TicketPricingRules` enforcing per-mode field consistency (FIXED requires price; FREE forbids amounts; DONATION/PWYC allow minimum ≥ 0 with 0-input semantics; SLIDING_SCALE requires minimum + suggested ≥ minimum) plus chosen-price bounds validation used later by order handlers; explicit per-currency decimal rounding rules as a value object.
+- **Description:** Catalog version states `Draft/Published/Retired`; publication freezes; mutation of published members throws; new-version cloning; eligibility typed fields (`MinimumAge`, `MaximumAge`, `RequiresGuardian`, `RequiresApproval`); quantity-limit fields (`PerOrder/PerAccount/PerVerifiedContact/PerBookingParty`); entitlements per §15 with selection rules `AllIncluded/FixedSelection/ChooseOne/ChooseUpToN`; one-currency rule across a version. Pricing per D17: `TicketPricingModeId` (`FIXED/FREE/DONATION/PAY_WHAT_YOU_CAN/SLIDING_SCALE`) with `PriceAmount`, `MinimumPriceAmount`, `SuggestedPriceAmount` and `TicketPricingRules` enforcing per-mode field consistency (FIXED requires price; FREE forbids amounts; DONATION/PWYC allow minimum ≥ 0 with 0-input semantics; SLIDING_SCALE requires minimum + suggested ≥ minimum) plus chosen-price bounds validation used later by order handlers; same-currency decimal major-unit to integer minor-unit conversion uses deterministic rounding and never performs foreign exchange.
 - **Acceptance Criteria:**
   - [x] Domain unit tests: publish-freeze, clone-to-draft, currency uniformity, entitlement legality vs Event/Day/Session references
   - [x] Pricing-mode validation matrix unit-tested (each of the five modes × valid/invalid/boundary amounts, incl. 0-allowed cases)
-  - [x] Persisted/API money uses `long ...Minor`, percentages use integer basis points (`10_000 = 100%`), and currency-aware conversion/rounding is explicit and deterministic
+  - [x] Persisted/API money uses `long ...Minor`, percentages use integer basis points (`10_000 = 100%`), and same-currency major/minor-unit conversion uses explicit deterministic rounding with no FX conversion
 - **Dependencies:** Phase 2
 - **Effort:** L
 
 #### Task 4.2: Persistence + seeding
-- **Status:** Source complete; focused ticketing/monetization Persistence 7/7 passes. Full Persistence remains Docker/Testcontainers-blocked at 91/688.
+- **Status:** Source complete; focused ticketing Persistence passes 11/11. Broad Persistence is 96/698 passed with 602 environment/provider-heavy failures, so the project is not globally green.
 - **Type:** create/modify
 - **Layer:** Persistence
 - **Files:** new configurations + repositories (`IEventTicketCatalogRepository` etc.); existing DbSets/QueryFilters/seeder; additive migration per gate
@@ -693,7 +697,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Effort:** L
 
 #### Task 4.3: Authoring Application + API + Cerbos + HAL
-- **Status:** Source complete; focused Application 53/53, EventTicketing layout Architecture 5/5, and API 17/17 pass.
+- **Status:** Source complete; all seven focused ticketing/monetization API classes pass 23/23. Broad Application and API remain non-green only for the current unrelated/environment results recorded above.
 - **Type:** create
 - **Layer:** Application + API
 - **Files:** new `Features/EventTicketing/**` (catalog/ticket/pool/entitlement commands+queries, DTOs, validators), new controllers + link policies, `RouteNames`/`LinkRelations` additions (`manage-ticket-types`, `manage-capacity-pools`), new Cerbos policy + schema
@@ -706,7 +710,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Effort:** L
 
 #### Task 4.4: Studio ticket authoring + price display migration + field deletion
-- **Status:** Source complete; focused ticketing Blazor 57/57 passes. Browser visual QA is unavailable.
+- **Status:** Source complete; Studio focused lanes pass 12 + 14 + 76. Broad Blazor Client is 2,250/2,252 passed with one unrelated failure and one skip; browser visual QA is not claimed.
 - **Type:** create/modify/delete
 - **Layer:** Blazor + Domain
 - **Files:** new `Pages/Studio/StudioEventTicketing.razor` (+ scoped CSS and child editors under `Components/Studio/Ticketing/`); modify `Routes.razor`, `StudioEventNavigation.razor`, existing event display components; final commit deletes `Event.Price`, `Event.CurrencyCode`, `EventSession.Price` and updates every reader
@@ -718,7 +722,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Effort:** L
 
 #### Task 4.5: Instance monetization configuration (fee policy + platform contribution)
-- **Status:** Source complete; monetization Blazor 9/9 passes. The API is the separate Admin-class `GET|PUT /api/instance/settings/platform-monetization` resource.
+- **Status:** Corrected source and completed verification evidence are recorded. The UI lives at `/settings/instance`; the API is the separate Admin-class `GET|PUT /api/instance/settings/platform-monetization` resource. Final Oracle re-review remains pending.
 - **Type:** create
 - **Layer:** Domain + Persistence + Application + API + Blazor
 - **Files:** new `src/Explore.Domain/PlatformFeePolicy.cs`, `PlatformContributionSetting.cs`, `PlatformContributionOption.cs` (typed option rows: percentage + sort order — no JSON blob); new configurations + DbSets; new `Features/PlatformMonetization/{Requests,Handlers}/**`; new Admin controller actions (`EndpointClass.Admin`, instance-admin authorization) + `RouteNames`; new Blazor instance-admin settings page; `docs/CONFIGURATION.md` + `docs/ADMIN_GUIDE.md` sections
@@ -1454,7 +1458,7 @@ Contract-mandated projects not selected above are recorded as contract requireme
 - **Authorization:** Cerbos policy-per-resource with provenance/organizer attributes; four authorities never implied by each other; contributor matrix (§23) enforced server-side and tested; HAL links are the only client affordance/navigation authority; fail-closed on ambiguous organizer authority (NFR-02). The Studio context endpoint revalidates the optional actor hint against the principal, returns `PrivateNoStore`, and exposes relations rather than roles or tenant-wide event data.
 - **Privacy:** PII split entities (order/participant PII, sensitive answer ciphertext); field-level classification/purpose/retention/visibility/exportability governance (§18); consent immutable evidence with typed subjects; third-party processing disclosure before external-form launch; completion-only mode stores zero answers; logs/metrics/traces/ProblemDetails free of answers/emails/tokens/payloads (NFR-09) — asserted by tests in P8/P9.
 - **Abuse:** `public_transactional` rate policy, idempotency, antiforgery, quotas per verified contact, best-effort-only honesty for anonymous limits (§19.5), link-reporting + moderation path, file quarantine default.
-- **Monetization:** platform fee policy and platform-contribution enablement are instance-admin-only `Admin`-class surfaces — tenant admins, organizers, and curators fail closed (D18); all money is decimal with explicit rounding; buyer-chosen prices validated server-side against pinned catalog bounds (D17); contribution money is segregated from organizer earnings in every DTO, export, and future payment split; display/public identifiers never authorize (Hi.Events §7.8 counter-example); monetization content is DB-stored, so no hardcoded solicitation text ships in the product.
+- **Monetization:** platform fee policy and platform-contribution enablement are instance-admin-only `Admin`-class surfaces — tenant admins, organizers, and curators fail closed (D18); decimal major-unit calculations convert to integer minor units within the same currency using deterministic rounding, never FX conversion; buyer-chosen prices are validated server-side against pinned catalog bounds (D17); contribution money is segregated from organizer earnings in every DTO, export, and future payment split; display/public identifiers never authorize (Hi.Events §7.8 counter-example); monetization content is DB-stored, so no hardcoded solicitation text ships in the product.
 
 ## 10. Multi-Tenancy, Federation, Localization, Accessibility, And Product Considerations
 
@@ -1472,14 +1476,14 @@ Bounded metrics only (`provider`, `operation`, `outcome`, `trust_level`, `comple
 
 ## 12. Migration And Compatibility Plan
 
-Clean-baseline strategy per D13: **no data migrations, no shims, and no dual writes anywhere**. The privacy-erasure workstream's three generated init lanes are the baseline, but no ordered dedicated participation migration exists yet. `20260727174857_EnforceLookupRelationshipUniqueness` is owned outside this workstream and is contaminated by participation schema and legacy `ExternalRegistrationUrl`/`IsRegistrationRequired` removals. Do not edit or stage it here. Registration schema lands only through a separately owned, ordered additive migration after ownership is resolved. Breaking changes remain sanctioned: `Event.IsUserReported`/`EventUrl` deleted (P1); `Event.IsRegistrationRequired` deleted in source/contracts (P2); `Event.Price`/`CurrencyCode`/`EventSession.Price` deleted (P4); `EventRegistrationIntent` deleted and `EventRegistration`/`EventContactShareConsent` rewired (P5/P6/P13). Deployment cannot proceed until schema, API, generated client, and Blazor order is backed by the dedicated migration.
+Clean-baseline strategy per D13: **no data migrations, no shims, and no dual writes anywhere**. The privacy-erasure workstream's three generated init lanes are the baseline. Commit `ff30795a2` adds the ordered additive `20260728152646_AddParticipationHandlingModes` migration, designer, and snapshot for participation, ticketing, and instance monetization. Generated additive `20260729183118_RemoveLegacyEventPricing` plus its designer/snapshot drops the two nonnegative-price checks and Event/EventSession `price`/`currency_code`; `dotnet ef migrations has-pending-model-changes` reports no changes. These artifacts do not prove database application or runtime rollout. Breaking changes remain sanctioned: `Event.IsUserReported`/`EventUrl` deleted (P1); `Event.IsRegistrationRequired` deleted in source/contracts (P2); `Event.Price`/`CurrencyCode`/`EventSession.Price` deleted (P4); `EventRegistrationIntent` deleted and `EventRegistration`/`EventContactShareConsent` rewired (P5/P6/P13). Deployment cannot be claimed until migration application and runtime rollout are evidenced.
 
 ## 13. Risk Register
 
 | Risk | Likelihood | Impact | Mitigation | Detection Signal | Owner/Task |
 |---|---|---|---|---|---|
 | Registration accidentally rewrites the privacy-erasure-owned baseline | Low | High — corrupts migration history | Additive generated migrations only; no baseline regeneration or hand-edited snapshots | Any registration change to an existing init migration or snapshot | Every persistence phase |
-| Participation source ships without an owned, ordered migration | High | High | Keep Phase 2 and Phase 3 blocked; require a dedicated migration from the owning workstream; forbid editing/staging `20260727174857_EnforceLookupRelationshipUniqueness` | No clean participation migration; contaminated lookup migration or snapshot diff | External migration owner, then Task 2.2 |
+| Committed migration artifacts are mistaken for database rollout | Medium | High | Treat `ff30795a2`, `20260729183118_RemoveLegacyEventPricing`, and the no-pending-model result as artifact/model evidence only; require explicit database-application and runtime-rollout evidence before deployment claims | Ledger or release note claims schema is applied without deployment evidence | Task 2.2 / release owner |
 | Phase 5 aggregate replacement ripples wider than mapped (AT Proto, emails, notifications) | High | High | In-phase dependents sweep (5.9); delete-last sequencing; `rg` gates in acceptance | Build breaks on delete commits | 5.6/5.9 |
 | Capacity race bugs under multi-replica load | Medium | High — oversell | Explicit locking in one transaction; persistence race tests; hold sweeper fencing | Race test flakes; pool counter drift | 5.3 |
 | Scope explosion (15 phases erode) | High | Medium | Phases 10–12 parallelizable + independently shippable; P14 fully deferrable; per-phase DoD | tasks.md drift vs plan | all |
