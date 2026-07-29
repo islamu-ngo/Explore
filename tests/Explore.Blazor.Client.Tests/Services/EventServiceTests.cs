@@ -2013,24 +2013,23 @@ public class EventServiceTests
     }
 
     [Test]
-    public async Task GetRegistrationEventsByActorAsync_UsesUserActorRegistrations()
+    public async Task GetRegistrationEventsByActorAsync_DoesNotInferPrivateUserIdentity()
     {
         var actorId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
-        _apiClient.GetActorByIdAsync(actorId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(new HalResourceOfActorDto
-            {
-                Id = actorId,
-                UserId = userId
-            });
-        _apiClient.GetRegistrationsByUserAsync(userId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns([]);
 
         var result = await _service.GetRegistrationEventsByActorAsync(actorId);
 
         await Assert.That(result).IsEmpty();
-        await _apiClient.Received(1).GetActorByIdAsync(actorId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _apiClient.Received(1).GetRegistrationsByUserAsync(userId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _apiClient.DidNotReceive().GetActorByIdAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        await _apiClient.DidNotReceive().GetRegistrationsByUserAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     #endregion

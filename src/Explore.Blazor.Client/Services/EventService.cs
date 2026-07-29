@@ -1150,28 +1150,8 @@ public partial class EventService : IEventService
         }
     }
 
-    public async Task<ICollection<EventListDto>> GetRegistrationEventsByActorAsync(Guid actorId)
-    {
-        try
-        {
-            var actor = (await _apiClient.GetActorByIdAsync(actorId))?.ToDto();
-            if (actor?.UserId is not Guid userId)
-            {
-                return new List<EventListDto>();
-            }
-
-            return await GetRegistrationEventsByUserAsync(userId);
-        }
-        catch (ApiException ex) when (ex.StatusCode is 401 or 403 or 404)
-        {
-            return new List<EventListDto>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error fetching registration events for actor {ActorId}", actorId);
-            return new List<EventListDto>();
-        }
-    }
+    public Task<ICollection<EventListDto>> GetRegistrationEventsByActorAsync(Guid actorId) =>
+        Task.FromResult<ICollection<EventListDto>>([]);
 
     private static Guid GetRegistrationEventGroupKey(EventRegistrationListDto registration)
     {
