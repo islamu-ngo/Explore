@@ -136,6 +136,26 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
             }
 
             var update = request.UpdateEventDto;
+            Guid? featuredImageId = update.FeaturedImage?.Value.HasValue == true
+                ? update.FeaturedImage.Value.Value
+                : null;
+            Guid? backgroundImageId = update.BackgroundImage?.Value.HasValue == true
+                ? update.BackgroundImage.Value.Value
+                : null;
+            if (!await ImageReferenceEligibility.AreEligibleAsync(
+                    _storageObjectRepository,
+                    eventEntity.TenantId,
+                    featuredImageId,
+                    backgroundImageId))
+            {
+                return new BaseCommandResponse<Guid>
+                {
+                    Success = false,
+                    Message = "Event update failed.",
+                    Errors = ["Every image must be an active public safe-raster object in the current tenant."]
+                };
+            }
+
             string previousTitle = eventEntity.Title;
             string previousTimezone = eventEntity.GetEffectiveScheduleTimeZoneId();
             bool timezoneRequested = TryResolveRequestedTimezone(

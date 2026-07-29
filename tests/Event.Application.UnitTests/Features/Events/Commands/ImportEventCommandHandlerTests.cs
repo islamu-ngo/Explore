@@ -33,6 +33,7 @@ public sealed class ImportEventCommandHandlerTests
             .Returns(callInfo => callInfo.Arg<Explore.Domain.Event>());
         var handler = new ImportEventCommandHandler(
             eventRepository,
+            Substitute.For<IStorageObjectRepository>(),
             unitOfWork,
             cache,
             policyProvider,
@@ -64,6 +65,7 @@ public sealed class ImportEventCommandHandlerTests
         var eventRepository = Substitute.For<IEventRepository>();
         var handler = new ImportEventCommandHandler(
             eventRepository,
+            Substitute.For<IStorageObjectRepository>(),
             CreateUnitOfWork(),
             Substitute.For<HybridCache>(),
             Substitute.For<IEventLifecyclePolicyProvider>(),
@@ -89,6 +91,7 @@ public sealed class ImportEventCommandHandlerTests
             .Returns(CreateImpossibleImportPolicy());
         var handler = new ImportEventCommandHandler(
             eventRepository,
+            Substitute.For<IStorageObjectRepository>(),
             CreateUnitOfWork(),
             Substitute.For<HybridCache>(),
             policyProvider,

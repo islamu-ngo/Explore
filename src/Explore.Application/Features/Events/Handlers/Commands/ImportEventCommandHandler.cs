@@ -7,6 +7,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Application.Services.Lifecycle;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -17,6 +18,7 @@ namespace Explore.Application.Features.Events.Handlers.Commands;
 
 public sealed class ImportEventCommandHandler(
     IEventRepository eventRepository,
+    IStorageObjectRepository storageObjectRepository,
     IUnitOfWork unitOfWork,
     HybridCache cache,
     IEventLifecyclePolicyProvider policyProvider,
@@ -35,6 +37,18 @@ public sealed class ImportEventCommandHandler(
         }
 
         ImportEventRequestDto request = command.Request;
+
+        if (!await ImageReferenceEligibility.AreEligibleAsync(
+                storageObjectRepository,
+                request.TenantId,
+                request.FeaturedImageId))
+        {
+            return Failure(
+                Guid.Empty,
+                "Event import failed validation.",
+                ["Every image must be an active public safe-raster object in the current tenant."],
+                ValidationFailedCode);
+        }
 
         return await unitOfWork.ExecuteInTransactionAsync(async token =>
         {

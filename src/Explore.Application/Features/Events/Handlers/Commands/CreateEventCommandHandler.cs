@@ -201,6 +201,24 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             return response;
         }
 
+        Guid?[] imageIds =
+        [
+            dto.FeaturedImageId,
+            dto.BackgroundImageId,
+            .. dto.Sessions.Select(session => session.FeaturedImageId),
+            .. dto.Days.Select(day => day.BannerImageId)
+        ];
+        if (!await ImageReferenceEligibility.AreEligibleAsync(
+                _storageObjectRepository,
+                _tenantContext.TenantId,
+                imageIds))
+        {
+            response.Success = false;
+            response.Message = "Event creation failed due to validation errors.";
+            response.Errors = ["Every image must be an active public safe-raster object in the current tenant."];
+            return response;
+        }
+
         var actorResult = await ResolvePublisherActorAsync(dto, currentUserId, cancellationToken);
         if (!actorResult.Succeeded)
         {

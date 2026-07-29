@@ -11,6 +11,7 @@ using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
@@ -100,6 +101,18 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
                 "The event draft changed since it was loaded. Refresh the event and try again.",
                 "event",
                 eventEntity.Id.ToString());
+        }
+
+        if (!await ImageReferenceEligibility.AreEligibleAsync(
+                _storageObjectRepository,
+                eventEntity.TenantId,
+                request.Draft.FeaturedImageId,
+                request.Draft.BackgroundImageId))
+        {
+            response.Success = false;
+            response.Message = "Event draft update failed.";
+            response.Errors = ["Every image must be an active public safe-raster object in the current tenant."];
+            return response;
         }
 
         EventParticipationConfiguration? participationConfiguration =
