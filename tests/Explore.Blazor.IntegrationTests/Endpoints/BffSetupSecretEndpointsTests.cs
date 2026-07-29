@@ -151,6 +151,24 @@ public sealed class BffSetupSecretEndpointsTests
     }
 
     [Test]
+    public async Task SetupSecret_Post_WhenValid_DoesNotReflectTheSubmittedSecret()
+    {
+        using var handler = new ValidateSecretHandler(HttpStatusCode.OK, """{\"valid\":true}""");
+        await using var app = await CreateAppAsync(handler);
+
+        const string submittedSecret = "candidate-secret";
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost/bff/setup-secret")
+        {
+            Content = JsonContent.Create(new { secret = submittedSecret })
+        };
+        using var response = await app.Client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().NotContain(submittedSecret);
+    }
+
+    [Test]
     public async Task SetupSecret_Get_WhenPersistedSecretIsValid_RefreshesRollingCookies()
     {
         using var handler = new ValidateSecretHandler(HttpStatusCode.OK, """{"valid":true}""");

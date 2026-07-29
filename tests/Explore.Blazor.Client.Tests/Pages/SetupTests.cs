@@ -340,7 +340,7 @@ public class SetupTests : IDisposable
             parameters.Add(x => x.Type, GetPageComponentType("Setup")));
         cut.WaitForAssertion(() => cut.Find("form"));
 
-        cut.Find("input").Change("candidate-secret");
+        cut.Find("input").Input("candidate-secret");
         cut.Find("form").Submit();
 
         cut.WaitForAssertion(() =>

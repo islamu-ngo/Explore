@@ -14,6 +14,26 @@ public class SetupSourceTests
         await Assert.That(source).Contains("Force a fresh request so BFF self-clients can forward the new HttpOnly cookie.");
     }
 
+    [Test]
+    public async Task Setup_ShouldPersistTheValidatedSecretBeforeItsHardNavigation()
+    {
+        var source = await ReadSetupSourceAsync();
+
+        await Assert.That(source).Contains("persistSetupSecret");
+        await Assert.That(source).Contains("Navigation.NavigateTo(\"/onboarding/auth-provider\", forceLoad: true);");
+    }
+
+    [Test]
+    public async Task Setup_ShouldProjectAccessThroughTheWorkspaceWithoutBrowserStorage()
+    {
+        var source = await ReadSetupSourceAsync();
+
+        await Assert.That(source).Contains("<OnboardingWorkspace");
+        await Assert.That(source).Contains("AccessSteps");
+        await Assert.That(source).DoesNotContain("localStorage");
+        await Assert.That(source).DoesNotContain("sessionStorage");
+    }
+
     private static async Task<string> ReadSetupSourceAsync()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

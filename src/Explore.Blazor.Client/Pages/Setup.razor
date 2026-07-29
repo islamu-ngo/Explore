@@ -12,57 +12,30 @@
 @using Microsoft.JSInterop
 @using Microsoft.Extensions.Logging
 @using Explore.Blazor.Client.Models.Responses
+@using Explore.Blazor.Client.Pages.Onboarding.Components
 
 <PageTitle>Setup Access</PageTitle>
 
-<div class="setup-page">
-    @* Left branding panel *@
-    <div class="setup-left-panel">
-        <div class="setup-left-content">
-            <MudText Typo="Typo.h3" Class="setup-title mb-2">Welcome to</MudText>
-            <MudText Typo="Typo.h2" Class="setup-title-brand mb-6">Event Platform</MudText>
-            <MudText Typo="Typo.h6" Class="setup-subtitle mb-6">Event Platform & Management System</MudText>
-
-            <MudDivider Class="setup-divider mb-6" />
-
-            <MudStack Spacing="3">
-                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
-                    <MudIcon Icon="@Icons.Material.Filled.Rocket" Class="setup-feature-icon" />
-                    <MudText Class="setup-feature-text">
-                        Self-hostable, decentralized, multi-tenant event platform for any community or industry
-                    </MudText>
-                </MudStack>
-                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
-                    <MudIcon Icon="@Icons.Material.Filled.Palette" Class="setup-feature-icon" />
-                    <MudText Class="setup-feature-text">
-                        Fully white-label — rebrand and customize for your specific use case
-                    </MudText>
-                </MudStack>
-                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
-                    <MudIcon Icon="@Icons.Material.Filled.Security" Class="setup-feature-icon" />
-                    <MudText Class="setup-feature-text">
-                        Security-first with BFF pattern, verified organizations, and enterprise architecture
-                    </MudText>
-                </MudStack>
-                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
-                    <MudIcon Icon="@Icons.Material.Filled.Public" Class="setup-feature-icon" />
-                    <MudText Class="setup-feature-text">
-                        Federation-ready with ATProto data models and open-source AGPL-3.0 license
-                    </MudText>
-                </MudStack>
-            </MudStack>
-        </div>
-    </div>
-
-    @* Right form panel *@
-    <div class="setup-right-panel">
-        <div class="setup-form-container">
-            <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Class="setup-form-icon mb-4" />
-            <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-1">Setup Access</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
-                Authenticate to begin instance configuration
-            </MudText>
-
+<OnboardingWorkspace Steps="@AccessSteps"
+                     ProgressLabel="Setup progress"
+                     StepPositionFormatter="FormatStepPosition"
+                     HeadingId="setup-access-heading"
+                     SummaryLabel="About setup access"
+                     ActionsLabel="Setup access actions"
+                     StatusText="@AccessStatusText"
+                     State="@AccessState">
+    <HeaderContent>
+        <MudText Typo="Typo.overline">Event Platform</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Secure instance onboarding</MudText>
+    </HeaderContent>
+    <HeadingContent>
+        <MudText Id="setup-access-heading" Typo="Typo.h4" HtmlTag="h1">Setup Access</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Authenticate to begin instance configuration.
+        </MudText>
+    </HeadingContent>
+    <ChildContent>
+        <div class="setup-page">
             @if (_isLoading)
             {
                 <MudStack Spacing="2" Class="setup-form-width">
@@ -92,24 +65,18 @@
 
                     @if (_isAuthenticated && _hasStoredSecret)
                     {
-                        @* Authenticated + validated: show success + continue to onboarding only *@
                         <MudAlert Severity="Severity.Success" Class="mb-4">
                             Setup secret is validated and your session is authenticated.
                         </MudAlert>
 
                         <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" FullWidth="true"
                                    Size="Size.Large"
-                                   OnClick="ContinueToOnboardingAsync"
-                                   Class="mb-2">
+                                   OnClick="ContinueToOnboardingAsync">
                             Continue Setup
-                        </MudButton>
-                        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" FullWidth="true" OnClick="ClearStoredSecretAsync">
-                            Clear Secret
                         </MudButton>
                     }
                     else if (_validationSucceeded)
                     {
-                        @* Validated but not yet authenticated: show success + provider/auth buttons *@
                         <MudAlert Severity="Severity.Success" Class="mb-3">
                             Secret validated successfully.
                         </MudAlert>
@@ -135,7 +102,6 @@
                     }
                     else
                     {
-                        @* Not yet validated: show secret input + validate button *@
                         <form @onsubmit="ValidateAsync" @onsubmit:preventDefault="true">
                             <MudTextField T="string"
                                           Label="Setup Secret"
@@ -153,8 +119,7 @@
                             <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" FullWidth="true"
                                        ButtonType="ButtonType.Submit"
                                        Size="Size.Large"
-                                       Disabled="_isValidating || string.IsNullOrWhiteSpace(_secret)"
-                                       Class="mb-3">
+                                       Disabled="_isValidating || string.IsNullOrWhiteSpace(_secret)">
                                 @if (_isValidating)
                                 {
                                     <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -166,8 +131,22 @@
                 </div>
             }
         </div>
-    </div>
-</div>
+    </ChildContent>
+    <SummaryContent>
+        <p>Setup access verifies the server-owned setup secret before numbered onboarding begins.</p>
+    </SummaryContent>
+    <HelpContent>
+        <p>Use the setup secret configured for this deployment. It is never stored in browser storage.</p>
+    </HelpContent>
+    <ActionsContent>
+        @if (_hasStoredSecret)
+        {
+            <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="ClearStoredSecretAsync">
+                Clear Secret
+            </MudButton>
+        }
+    </ActionsContent>
+</OnboardingWorkspace>
 
 @code {
     private bool _isLoading = true;
@@ -184,6 +163,13 @@
     private bool _hasAttemptedAuthenticatedSecretSync;
     private bool _isDetectingProviders;
     private List<AuthProviderQuickAction> _detectedProviders = [];
+    private static IReadOnlyList<OnboardingWorkspace.StepDescriptor> AccessSteps { get; } = [];
+    private static string FormatStepPosition(int current, int total) => $"Step {current} of {total}";
+    private OnboardingWorkspace.PresentationState AccessState =>
+        _isLoading ? OnboardingWorkspace.PresentationState.Loading : OnboardingWorkspace.PresentationState.Current;
+    private string AccessStatusText => _isLoading
+        ? "Checking setup access"
+        : _validationSucceeded ? "Setup access validated" : "Setup access required";
 
     [SupplyParameterFromQuery(Name = "returnUrl")]
     public string? ReturnUrl { get; set; }
