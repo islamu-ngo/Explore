@@ -11,7 +11,8 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionLanguages.Handlers.Queries;
 
-public class GetLanguagesBySessionRequestHandler : IRequestHandler<GetLanguagesBySessionRequest, List<EventSessionLanguageListDto>>
+public class GetLanguagesBySessionRequestHandler :
+    IRequestHandler<GetLanguagesBySessionRequest, List<EventSessionLanguageListDto>>
 {
     private readonly IEventSessionLanguageRepository _repository;
     private readonly IEventSessionRepository _eventSessionRepository;
@@ -29,13 +30,52 @@ public class GetLanguagesBySessionRequestHandler : IRequestHandler<GetLanguagesB
 
     public async Task<List<EventSessionLanguageListDto>> Handle(GetLanguagesBySessionRequest request, CancellationToken cancellationToken)
     {
-        var eventSessionLanguages = await _repository.GetBySession(request.EventSessionId, cancellationToken);
-        var eventSession = await _eventSessionRepository.GetById(request.EventSessionId);
+        var eventSession = await _eventSessionRepository.GetPublicSessionWithDetailsAsync(
+            request.EventSessionId,
+            cancellationToken);
+        if (eventSession is null)
+            return [];
+
+        return await MapLanguagesAsync(eventSession, request.EventSessionId, cancellationToken);
+    }
+
+    private async Task<List<EventSessionLanguageListDto>> MapLanguagesAsync(
+        Explore.Domain.EventSession eventSession,
+        Guid eventSessionId,
+        CancellationToken cancellationToken)
+    {
+        var eventSessionLanguages = await _repository.GetBySession(eventSessionId, cancellationToken);
         var dtos = _mapper.Map<List<EventSessionLanguageListDto>>(eventSessionLanguages);
         foreach (var dto in dtos)
         {
-            dto.EventId = eventSession?.EventId ?? Guid.Empty;
-            dto.TenantId = eventSession?.TenantId ?? Guid.Empty;
+            dto.EventId = eventSession.EventId;
+            dto.TenantId = eventSession.TenantId;
+        }
+
+        return dtos;
+    }
+}
+
+public sealed class GetManagedLanguagesBySessionRequestHandler(
+    IEventSessionLanguageRepository repository,
+    IEventSessionRepository eventSessionRepository,
+    IMapper mapper)
+    : IRequestHandler<GetManagedLanguagesBySessionRequest, List<EventSessionLanguageListDto>>
+{
+    public async Task<List<EventSessionLanguageListDto>> Handle(
+        GetManagedLanguagesBySessionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var eventSession = await eventSessionRepository.GetSessionWithDetails(request.EventSessionId);
+        if (eventSession is null || eventSession.EventId != request.EventId)
+            return [];
+
+        var assignments = await repository.GetBySession(request.EventSessionId, cancellationToken);
+        var dtos = mapper.Map<List<EventSessionLanguageListDto>>(assignments);
+        foreach (var dto in dtos)
+        {
+            dto.EventId = eventSession.EventId;
+            dto.TenantId = eventSession.TenantId;
         }
 
         return dtos;

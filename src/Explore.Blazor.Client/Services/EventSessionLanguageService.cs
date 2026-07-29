@@ -24,7 +24,20 @@ public sealed class EventSessionLanguageService : IEventSessionLanguageService
         return response.GetItems();
     }
 
+    public async Task<ICollection<EventSessionLanguageListDto>> GetManagedLanguagesBySessionAsync(
+        Guid eventId,
+        Guid sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _client.GetManagedEventSessionLanguagesAsync(
+            eventId,
+            sessionId,
+            cancellationToken: cancellationToken);
+        return response.GetItems();
+    }
+
     public async Task<bool> SyncLanguagesForSessionAsync(
+        Guid eventId,
         Guid sessionId,
         IEnumerable<int> languageIds,
         CancellationToken cancellationToken = default)
@@ -35,7 +48,7 @@ public sealed class EventSessionLanguageService : IEventSessionLanguageService
                 .Where(id => id > 0)
                 .ToHashSet();
 
-            var existingAssignments = await GetLanguagesBySessionAsync(sessionId, cancellationToken);
+            var existingAssignments = await GetManagedLanguagesBySessionAsync(eventId, sessionId, cancellationToken);
             var existingByLanguageId = existingAssignments
                 .Where(assignment => assignment.LanguageId.HasValue && assignment.Id.HasValue)
                 .ToDictionary(assignment => assignment.LanguageId!.Value, assignment => assignment.Id!.Value);

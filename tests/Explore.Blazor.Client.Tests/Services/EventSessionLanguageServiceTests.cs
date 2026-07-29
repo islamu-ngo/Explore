@@ -32,10 +32,30 @@ public class EventSessionLanguageServiceTests
     }
 
     [Test]
+    public async Task GetManagedLanguagesBySessionAsync_ForwardsEventAndSessionIds()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        _apiClient.GetManagedEventSessionLanguagesAsync(
+                eventId,
+                sessionId,
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(ToHalCollection([])));
+
+        await _service.GetManagedLanguagesBySessionAsync(eventId, sessionId);
+
+        await _apiClient.Received(1).GetManagedEventSessionLanguagesAsync(
+            eventId,
+            sessionId,
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task SyncLanguagesForSessionAsync_CreatesMissingAndDeletesRemovedLanguages()
     {
+        var eventId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        _apiClient.GetEventSessionLanguagesAsync(sessionId, cancellationToken: Arg.Any<CancellationToken>())
+        _apiClient.GetManagedEventSessionLanguagesAsync(eventId, sessionId, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(ToHalCollection(new List<EventSessionLanguageListDto>
             {
                 new() { Id = 10, EventSessionId = sessionId, LanguageId = 1 },
@@ -46,7 +66,7 @@ public class EventSessionLanguageServiceTests
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponseOfint { Success = true, Id = 12 });
 
-        var result = await _service.SyncLanguagesForSessionAsync(sessionId, [1, 2]);
+        var result = await _service.SyncLanguagesForSessionAsync(eventId, sessionId, [1, 2]);
 
         await Assert.That(result).IsTrue();
         await _apiClient.Received(1).CreateEventSessionLanguageAsync(
@@ -59,15 +79,16 @@ public class EventSessionLanguageServiceTests
     [Test]
     public async Task SyncLanguagesForSessionAsync_ReturnsFalse_WhenCreateFails()
     {
+        var eventId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        _apiClient.GetEventSessionLanguagesAsync(sessionId, cancellationToken: Arg.Any<CancellationToken>())
+        _apiClient.GetManagedEventSessionLanguagesAsync(eventId, sessionId, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(ToHalCollection([])));
         _apiClient.CreateEventSessionLanguageAsync(
                 Arg.Any<CreateEventSessionLanguageDto>(),
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponseOfint { Success = false, Message = "Nope" });
 
-        var result = await _service.SyncLanguagesForSessionAsync(sessionId, [2]);
+        var result = await _service.SyncLanguagesForSessionAsync(eventId, sessionId, [2]);
 
         await Assert.That(result).IsFalse();
     }
@@ -75,8 +96,9 @@ public class EventSessionLanguageServiceTests
     [Test]
     public async Task SyncLanguagesForSessionAsync_ReturnsFalse_WhenDeleteApiFails()
     {
+        var eventId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        _apiClient.GetEventSessionLanguagesAsync(sessionId, cancellationToken: Arg.Any<CancellationToken>())
+        _apiClient.GetManagedEventSessionLanguagesAsync(eventId, sessionId, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(ToHalCollection(new List<EventSessionLanguageListDto>
             {
                 new() { Id = 11, EventSessionId = sessionId, LanguageId = 3 }
@@ -89,7 +111,7 @@ public class EventSessionLanguageServiceTests
                 new Dictionary<string, IEnumerable<string>>(),
                 null));
 
-        var result = await _service.SyncLanguagesForSessionAsync(sessionId, []);
+        var result = await _service.SyncLanguagesForSessionAsync(eventId, sessionId, []);
 
         await Assert.That(result).IsFalse();
     }

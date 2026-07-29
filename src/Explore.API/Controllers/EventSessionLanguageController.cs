@@ -82,6 +82,35 @@ public class EventSessionLanguageController : ControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet(
+        "management/by-event/{eventId:guid}/by-session/{eventSessionId:guid}",
+        Name = RouteNames.GetManagedEventSessionLanguages)]
+    [EndpointSummary("Get managed languages by event session")]
+    [EndpointDescription("Get language assignments after view-management authorization on the parent event.")]
+    [ProducesResponseType(typeof(HalCollectionResource<EventSessionLanguageListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<HalCollectionResource<EventSessionLanguageListDto>>> GetManagedBySession(
+        Guid eventId,
+        Guid eventSessionId,
+        CancellationToken cancellationToken = default)
+    {
+        var languages = await _mediator.Send(new GetManagedLanguagesBySessionRequest
+        {
+            EventId = eventId,
+            EventSessionId = eventSessionId
+        }, cancellationToken);
+
+        var resource = await _resourceAssembler.ToCollectionResource(
+            new PaginatedResult<EventSessionLanguageListDto>(languages, languages.Count, 1, Math.Max(languages.Count, 1)),
+            RouteNames.GetManagedEventSessionLanguages,
+            new { eventId, eventSessionId },
+            HttpContext);
+        return Ok(resource);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateEventSessionLanguage)]
     [EndpointSummary("Add language to event session")]
     [EndpointDescription("Assign a language to an event session.")]

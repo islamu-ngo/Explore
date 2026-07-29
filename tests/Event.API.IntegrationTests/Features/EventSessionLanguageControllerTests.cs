@@ -1,10 +1,16 @@
 // ABOUTME: API contract tests for event-session language update behavior.
 // ABOUTME: Verifies PATCH If-Match validation and route-ID command forwarding.
 
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
+using Explore.API.Controllers;
+using Explore.API.Hateoas;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.Features.EventSessionLanguages.Requests.Commands;
 using Explore.Application.Features.EventSessionLanguages.Requests.Queries;
@@ -14,11 +20,30 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Reflection;
 
 namespace Event.Api.IntegrationTests.Features;
 
 public sealed class EventSessionLanguageControllerTests
 {
+    [Test]
+    public async Task ManagedReadRoute_UsesAuthenticatedViewManagementContract()
+    {
+        var action = typeof(EventSessionLanguageController).GetMethod(
+            nameof(EventSessionLanguageController.GetManagedBySession))!;
+        var route = action.GetCustomAttribute<HttpGetAttribute>()!;
+        var authorization = typeof(GetManagedLanguagesBySessionRequest)
+            .GetCustomAttribute<AuthorizeResourceAttribute>()!;
+
+        await Assert.That(route.Template)
+            .IsEqualTo("management/by-event/{eventId:guid}/by-session/{eventSessionId:guid}");
+        await Assert.That(route.Name).IsEqualTo(RouteNames.GetManagedEventSessionLanguages);
+        await Assert.That(action.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        await Assert.That(action.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull();
+        await Assert.That(authorization.Resource).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(authorization.Action).IsEqualTo(AuthorizationActions.Events.ViewManagement);
+    }
+
     [Test]
     public async Task Update_WhenIfMatchIsMissing_ReturnsValidationProblemDetails()
     {
