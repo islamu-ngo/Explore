@@ -139,15 +139,19 @@ Support-access routes live under `/api/support-access` and require authenticatio
 
 All session and audit responses are HAL resources or HAL collections. Link policies decide start/stop/force-stop/audit affordances; clients must not recreate those decisions from roles, claims, or cached support state.
 
-### Storage Object Read Endpoints
+### Storage Object Delivery And Upload Endpoints
 
 Storage object metadata and general download routes are authenticated, resource-protected contracts because metadata can include provider object keys, storage provider labels, lifecycle state, and tenant-owned file details.
 
 - `GET /api/storageobject` and `GET /api/storageobject/{id}` require authentication plus `islamuevent_storage_object:view`.
-- `GET /api/storageobject/{id}/content` requires authentication plus `islamuevent_storage_object:download`; the content reader still enforces lifecycle and visibility before opening the server-owned provider key.
-- `GET /api/storageobject/{id}/presigned-url` requires authentication plus `islamuevent_storage_object:presigned_download`, returns no provider object key, and is marked no-store. Do not place output-cache metadata on presigned URL routes.
-- `GET /api/storageobject/{id}/public` is the only anonymous storage content route. It serves active `public_image` objects by storage object ID and never accepts provider object keys, filesystem paths, or arbitrary URLs from the browser.
+- `GET /api/storageobject/{id}/content` requires authentication plus `islamuevent_storage_object:download`; safe raster content is served inline, while SVG, HTML, documents, and other general content use a sanitized attachment disposition. The content reader enforces lifecycle and visibility before opening the server-owned provider key.
+- `GET /api/storageobject/{id}/presigned-url` requires authentication plus `islamuevent_storage_object:presigned_download`, returns no provider object key, forces an attachment disposition at the provider, and is marked no-store. Browser image presentation does not use presigned URLs.
+- `GET /api/storageobject/{id}/public` is the only anonymous storage content route. It serves only active safe public raster images by storage object ID and never accepts provider object keys, filesystem paths, or arbitrary URLs from the browser.
+- Public writes use provider-neutral upload sessions: `POST /api/storageobject/upload-sessions`, `PUT /api/storageobject/upload-sessions/{uploadSessionId}/content`, and `DELETE /api/storageobject/upload-sessions/{uploadSessionId}`. Browser clients reach this flow only through the authenticated same-origin BFF session/proxy contract.
+- The legacy direct-upload `POST /api/storageobject/generate-upload-url` operation and caller-authored `POST /api/storageobject` metadata creation are removed. There is no compatibility route, DTO, generated-client method, or fallback path before v1.0.
 - Clients must discover `content`, `presigned-download`, and `public-image` affordances from HAL `_links`; local role/claim checks are not authoritative.
+
+`SafeRasterContentPolicy` in Application is the single metadata and container authority for storage finalization, image references, AI image ingress, public delivery, and ATProto thumbnail validation. Browser and AI inputs accept exact JPEG, PNG, GIF, and WebP; server and ATProto paths additionally accept AVIF. All five server formats require matching MIME/extension metadata and a structurally complete container through exact EOF, so truncated content and bytes appended after the active container are rejected. This policy does not claim pixel decoding, sanitization, full codec validity, content moderation, or malware scanning.
 
 ### Email Dispatch Admin Endpoints
 
@@ -858,10 +862,17 @@ Gates onboarding endpoints behind the setup secret:
 | `GET /api/event` | Anonymous HAL collection of `EventDiscoveryItemDto`. Each item is either the existing local `EventListDto` projection or a bounded `FederatedEventDto`; the federated projection does not return raw provider payloads, credentials, DIDs, record keys, or external source URLs. |
 | `GET /api/event/federated/{atprotoRecordId}/source` | Anonymous, globally rate-limited `302` to the current tenant-visible normalized HTTPS source. Disabled capability, missing/tombstoned/cross-tenant records, and unsafe targets all return `404`. |
 | `GET /api/settings/instance/atproto-federation`; keyed `/api/settings/instance/atproto-federation/{key}` and `/api/settings/instance/atproto-federation/{key}/lock` mutations | Instance-admin HAL surface for the exact capability and validation-profile keys. Update and lock affordances are server-produced. |
+| `GET /api/actor`, `GET /api/actor/{id}`, `GET /api/actor/by-did/{did}` | Anonymous canonical global Actor reads. Responses omit tenant participation IDs, private User ownership, and tenant storage-object identifiers. |
+| `GET /api/actor/by-tenant/{tenantId}` | Anonymous tenant-contextual Actor collection containing only locally discoverable Actors, with safe approved participation overrides and tenant-local subscription affordances. |
+| `GET /api/actor/by-tenant/{tenantId}/{id}` | Anonymous exact tenant-contextual Actor detail. Hidden or cross-tenant targets return `404`; safe approved participation overrides and tenant-local HAL affordances are composed server-side. |
 | `POST /api/actor/{actorId}/moderation/suspend` | Suspend the global Actor. The body contains only `reasonCode`; the route selects `Suspend`. |
 | `POST /api/actor/{actorId}/moderation/reinstate` | Reinstate the global Actor. The body contains only `reasonCode`; the route selects `Reinstate`. |
 | `POST /api/actor/atproto-identities/{identityId}/moderation/suspend` | Suspend one exact global ATProto identity credential. The body contains only `reasonCode`; the route selects `Suspend`. |
 | `POST /api/actor/atproto-identities/{identityId}/moderation/reinstate` | Reinstate one exact global ATProto identity credential without changing `IsActive`. The body contains only `reasonCode`; the route selects `Reinstate`. |
+| `GET /api/organizations/{organizationId}/legitimacy-evidence` | Authenticated HAL collection of safe retained evidence metadata for the current tenant participation. |
+| `POST /api/organizations/{organizationId}/legitimacy-evidence/upload-session` | Organization-admin creation of a server-bound, private PDF Document upload session owned by the pending participation. |
+| `POST /api/organizations/{organizationId}/legitimacy-evidence` | Attach the finalized eligible Document as retained participation evidence. |
+| `POST /api/organizations/{organizationId}/legitimacy-evidence/{evidenceId}/review` | Tenant-admin approve/reject decision for one pending evidence row; this does not approve the participation. |
 
 `federation.atproto_events_enabled` is the single capability for tenant presentation of inbound community events and eligible outbound event/RSVP enqueue. `federation.atproto_event_validation_profile=community_lexicon` relaxes only the required local business fields for publication; it does not relax supplied-value validation, authorization, privacy, projection completeness, or record validation. Outbound publication additionally requires the owner's self-scoped `federation.atproto_publish_my_events` consent and one exact linked encrypted ATProto session.
 
@@ -876,6 +887,8 @@ Public Event reads require a published, public, non-deleted Event and active Act
 Inbound projection discovery keeps public Draft, Cancelled, and Completed projections, deduplicates Published projections to the local Event branch, and hides Moderated, Archived, deleted, non-public, tombstoned, stale-presentation, or identity-ineligible projections. The exact source redirect applies the same base gate. Outbound planning skips an ungrounded ineligible Create, converts a grounded ineligible Update to a fenced Delete, and rechecks identity, session, source version, ownership, record key, and CID fences at delivery. RSVP behavior is unchanged.
 
 The removed raw `/api/atprotorecord`, `/api/indexeddid`, `/api/userexternallogin`, `/api/actorkeystore`, and `/api/syncstate` surfaces have no compatibility aliases. Clients cannot assert provider, DID, PDS, key, tenant, user, encrypted signing material, or ingestion cursor state through generic CRUD. Authenticated session-metadata reads and idempotent local session deletion remain credential-free; verified authentication, fenced Jetstream ingestion, and other dedicated federation internals are the only authorities over linked identity and provider-owned state. The checked-in OpenAPI contract and [API Contract Inventory](API_CONTRACT_INVENTORY.md) are the route/schema authority.
+
+Generic Actor `POST`, `PATCH`, and `DELETE` routes are also absent. Actor creation, promotion, identity linking, and retirement are dedicated verified onboarding, federation, moderation, or consolidation workflows rather than browser-authored identity CRUD.
 
 ---
 

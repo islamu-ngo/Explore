@@ -133,7 +133,7 @@ External participation destinations are reviewed `EventPublicAction` records, no
 
 `EventTicketCatalogVersion` owns immutable published catalog revisions. Drafts contain `EventTicketType` rows with one of five normalized pricing modes, optional shared `EventCapacityPool` references, and `TicketTypeEntitlement` rows targeting the Event, a day, or a session. Published edits clone to a new draft. Ticket and capacity rows are tenant-scoped, concurrency-protected, and soft-deletable where their lifecycle permits it.
 
-Persisted and API monetary amounts use `long` integer minor units, named with the `...Minor` suffix. Percentage values use integer basis points, where `10_000 = 100%`. Currency metadata controls decimal conversion and rounding, and overflow-checked minor-unit arithmetic returns persisted integer values. Floating-point money is not part of the model.
+Persisted and API monetary amounts use `long` integer minor units, named with the `...Minor` suffix. Percentage values use integer basis points, where `10_000 = 100%`. Currency metadata controls deterministic conversion from decimal major units to integer minor units within the same currency, and overflow-checked minor-unit arithmetic returns persisted integer values. The model performs no foreign-exchange conversion and uses no floating-point money.
 
 `PlatformFeePolicy` and `PlatformContributionSetting` are separate versioned instance aggregates. Fee policies contain basis points and per-currency fixed minor-unit charges. Contribution settings contain DB-stored heading/body text and ordered basis-point options with exactly one zero default. Both start disabled or zero. A platform contribution is instance-directed and never enters organizer earnings, ticket price, capacity, or organizer export totals.
 
@@ -250,6 +250,8 @@ Moderation is split by authority and effect:
 Actor and identity suspend or reinstate transitions append immutable `ActorModerationRecord` or `AtprotoIdentityModerationRecord` rows only when state changes. A retry requesting the current state succeeds without adding another record or persisting another transition.
 
 Event creation eligibility and public visibility are separate rules. Creation requires an active Actor plus an active local `TenantUser`, or an approved, organizer-eligible, unsuspended Organization or Group participation. Public visibility requires a published, public, non-deleted Event and active Actor. A local User Event also requires an active `TenantUser`. A local Organization or Group Event requires approved, visible, unsuspended participation, but does not require organizer eligibility after creation. Outbound-owned ATProto records stay on this local branch. Inbound federated Events instead require a non-tombstoned record, its current visible tenant presentation, and an exact active, unsuspended, non-deleted DID identity owned by the Event Actor.
+
+`OrganizationTenantEvidence` retains one private tenant-owned Document against a concrete Organization participation. It transitions once from pending to approved or rejected with reviewer audit and concurrency control. The review state is evidence workflow state only: it never changes the participation approval state automatically.
 
 ### 13) Actor Subscriptions And Notification Fanout
 

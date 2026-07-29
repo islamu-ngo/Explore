@@ -44,7 +44,7 @@ Control-plane UI primitives live under `Explore.Blazor.Client/Components/Control
 
 The embedded instance console owns the public tenant-plan workflows. `/admin/instance/plans` creates structured plan drafts and `/admin/instance/plans/{key}` creates or edits version drafts, validates drafts, previews setting diffs, publishes or archives versions with typed confirmation, and clones published versions. Version lifecycle relations live on each `versions[]` resource, never on the root plan. `/admin/instance/tenants/{tenantId}/configuration` switches published plan assignments and applies or rolls them back with typed confirmation; rollback uses the separately returned eligible previous assignment. Every mutation is exposed only from the matching server-emitted HAL relation and matches the resource identifier in the advertised link before rendering or dispatch.
 
-Domain inventory remains an Event-owned read model. The domain page follows its HAL `settings` or `edit` relation into `/admin/instance/settings?section=domain`; DNS-provider verification and certificate probing are operator-managed because Event does not expose verification, test, or retry endpoints for that resource.
+Domain inventory remains an Event-owned read model. The domain page follows its HAL `settings` or `edit` relation into `/settings/instance?section=domain`; DNS-provider verification and certificate probing are operator-managed because Event does not expose verification, test, or retry endpoints for that resource.
 
 ## Public Home Discovery Boundary
 
@@ -122,7 +122,7 @@ When debugging onboarding, check both BFF setup-secret endpoints and API setup-s
 Contributor rules:
 
 1. The task list and completion state are server-derived. Refresh/retry calls the services again; components do not persist a competing workflow state machine in browser storage.
-2. The reusable task component is display-only. It renders server status, warnings, blockers, remediation, and links; it does not calculate authorization, deployment mode, provider readiness, or completion. Completed tasks may retain management links: when the server exposes `manage-authentication`, the configured authentication-provider task opens `/onboarding/auth-provider` before launch and `/admin/instance/settings?section=auth-providers` after launch so operators can diagnose, repair, or reconcile the Keycloak realm.
+2. The reusable task component is display-only. It renders server status, warnings, blockers, remediation, and links; it does not calculate authorization, deployment mode, provider readiness, or completion. Completed tasks may retain management links: when the server exposes `manage-authentication`, the configured authentication-provider task opens `/onboarding/auth-provider` before launch and `/settings/instance?section=auth-providers` after launch so operators can diagnose, repair, or reconcile the Keycloak realm.
 3. Deployment mode and dedicated BFF admin hosts are read-only deployment facts in this UI. They are not controls or onboarding choices.
 4. Blocking preflight items disable launch. Ordinary warnings do not; a server-classified serious warning may expose an explicit acknowledgement control. The completion request remains idempotent and server-guarded.
 5. On successful single-tenant launch, follow the server-confirmed events/instance-settings handoff. On multi-tenant platform launch, navigate to `/admin/instance`; do not require or synthesize a tenant. First-tenant creation/onboarding is a separate tenant-scoped flow.
@@ -194,11 +194,15 @@ Cookie-authenticated BFF mutations use a double-submit-style antiforgery contrac
 Browser-mediated storage uploads use BFF-owned upload sessions rather than caller-supplied destination URLs:
 
 1. The browser asks `/bff/storage/upload-session` for an upload session. The BFF calls the provider-neutral API upload-session endpoint server-side and stores the approved session metadata in distributed cache.
-2. The browser receives an opaque `uploadSessionId`, metadata-backed view URL, and expiry. It does not receive a raw provider object key, local path, or trusted upload destination.
-3. The browser uploads bytes to `/bff/storage/upload-proxy` with `uploadSessionId`, `contentType`, and `file`. The proxy resolves the session, verifies the authenticated user, content type, and expected size, then streams bytes to the API upload-session content endpoint.
-4. `/bff/storage/upload-proxy` rejects arbitrary HTTPS URLs, local filesystem paths, provider object keys, or presigned-looking values because client-provided destinations are not trusted.
-5. Upload sessions are short-lived, user-bound, content-type-bound, and consumed after successful proxy upload. Both storage BFF endpoints remain protected by authorization and antiforgery validation.
-6. Non-browser/server paths may still use direct provider upload URLs where the server code owns the trusted URL; browser paths must use the BFF upload-session flow.
+2. The BFF accepts only exact, parameter-free `image/jpeg`, `image/png`, `image/gif`, or `image/webp` declarations with a matching simple `.jpg`/`.jpeg`, `.png`, `.gif`, or `.webp` file extension.
+3. The browser receives an opaque `uploadSessionId` and expiry. It does not receive a raw provider object key, local path, or trusted upload destination.
+4. The browser uploads bytes to `/bff/storage/upload-proxy` with `uploadSessionId`, `contentType`, and `file`. The proxy rechecks the form declaration, multipart file declaration, extension, authenticated user, reserved content type, expected size, and consumed state before streaming bytes to the API upload-session content endpoint.
+5. `/bff/storage/upload-proxy` rejects SVG, BMP, AVIF, MIME parameters, MIME/extension mismatches, arbitrary HTTPS URLs, local filesystem paths, provider object keys, and presigned-looking values before forwarding.
+6. Upload sessions are short-lived, user-bound, content-type-bound, and consumed after successful proxy upload. Both storage BFF endpoints remain protected by authorization and antiforgery validation.
+7. Event images, User profile pictures, and Organization logos use this provider-neutral session/proxy path exclusively. Browser code has no direct provider PUT or caller-authored storage-record fallback.
+8. The AI composer advertises the same four formats and requires the browser MIME, simple extension, and detected byte signature to agree before base64 encoding. The API remains authoritative for complete raster validation.
+
+The Application boundary and ATProto importer additionally accept AVIF, but AVIF is not part of the current browser/AI chooser contract. Rejecting uploaded SVG does not remove deliberate static SVG presentation assets such as trusted application icons and illustrations; those packaged assets are not user-controlled storage content.
 
 ## Auth-State Serialization Boundary
 
@@ -336,13 +340,20 @@ Source-grounded examples:
 | Control plane & admin settings | `InstanceOnboardingService`, `TenantPublicExperienceAdminService`, `TenantBrandingSettingsAdminService`, `AtprotoFederationSettingsService`, `CustomPropertyAdminService`, `FooterAdminService`, `ListmonkIntegrationSettingsService`, `TenantStorageSettingsAdminService` |
 | Support access management | `SupportAccessClientService`, `SupportAccessConsoleSection.razor`, `TenantSupportAccessEvidenceSection.razor` |
 | Localization & accessibility | `LocalizationAdminService`, `TranslationService`, `LanguagePreferenceService`, `AccessibilityAnnouncerService`, `AccessibilityFocusService` |
-| Image storage & upload handling | `ImageUploadClient`, `ImageStorageService`, `ImageStorageRecordClient`, `ImagePreviewService` |
+| Image storage & upload handling | `ImageUploadClient`, `ImageStorageService`, `ImageFileReaderService`, `ImagePreviewService` |
 | Web push & interop | `NotificationService`, `WebPushBrowserInterop`, `BrowserActionInterop`, `AnalyticsInterop`, `CookieConsentInterop` |
 | Cross-component event bridge | `CookieConsentStateService`, `AppearanceState`, `TenantNavLinksState` |
 | Public-experience & lookup cache | `PublicExperienceService`, `HomeDiscoveryService`, `LookupCacheService` |
 | Render & routing decisions | `RuntimeRenderPolicyService`, `StartupRoutingService` |
 
 Keep component lifecycle async and cancellation-aware for long-running loads. UI authorization is for affordance and navigation clarity only; API authorization remains authoritative.
+
+### Actor profiles and organization evidence
+
+- `/actors/{actorId}` renders the canonical global Actor profile; `/t/{tenantId}/actors/{actorId}` renders the tenant-contextual projection and links back to the canonical URL.
+- `ActorProfile` obtains data through `IActorService`. It does not inspect roles or claims; subscribe controls come only from item/detail HAL.
+- `OrganizationTenantEvidencePanel` is present only when the organization detail HAL contains `legitimacy-evidence`. Upload requires both `prepare-evidence-upload` and `submit-evidence`; item review and protected document actions require `review-evidence` and `document`.
+- Browser PDF upload starts through the organization-specific BFF route. The UI never receives or submits the tenant participation storage owner.
 
 ### Workspace shell contract
 

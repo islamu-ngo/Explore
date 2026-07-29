@@ -6,21 +6,21 @@ ABOUTME: Covers local-first runtime storage, optional S3-compatible mode, reconc
 > **Audience:** Operators | Admins | Contributors
 > **Status:** Mixed
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-24
+> **Last Verified:** 2026-07-29
 > **Source Anchors:** `Explore.Infrastructure/Storage/`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `Explore.Infrastructure/Services/ObjectStorageService.cs`, `Explore.API/Controllers/StorageObjectController.cs`, `Explore.API/Controllers/TenantStorageSettingsController.cs`, `Explore.Blazor.Client/Services/ImageStorageService.cs`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
-Storage is moving to a local-first, provider-neutral model. New upload/read flows use metadata-backed `StorageObject` records and the selected `IFileStorageProvider`; S3-compatible storage remains optional for instances that select and configure it.
+Storage is moving to a local-first, provider-neutral model. New upload/read flows use metadata-backed `StorageObject` records and the selected `IFileStorageProvider`; S3-compatible storage remains optional for instances that select and configure it. S3-compatible presigned downloads are ID-bound and are not an upload path.
 
 ## What Is Implemented
 
 | Area | Implemented Behavior |
 |---|---|
-| Runtime storage | Provider-neutral upload sessions and metadata-backed reads are implemented for local-first storage; `ObjectStorageService` remains only for legacy S3-compatible presigned flows. |
+| Runtime storage | Provider-neutral upload sessions and metadata-backed reads are implemented for local-first storage; `ObjectStorageService` supports only ID-authorized S3-compatible presigned downloads and server-side reads. |
 | Configuration resolution | `S3ConfigResolver` resolves tenant-aware settings from persisted settings first, then `IConfiguration`, with a five-minute cache. |
 | Public reads | `StorageObjectController` streams file content by `StorageObject.Id`; public images use the same metadata reader with public-image visibility checks. Caller-supplied object-key read and presign routes are removed. |
-| Authenticated writes | Upload URL generation requires authentication; `StorageObject` create/update/delete operations require authentication and `storage_object` resource authorization. |
+| Authenticated writes | Upload-session creation, content finalization, and cancellation require authentication; storage-object updates/deletes require authentication and `storage_object` resource authorization. Successful finalization creates the storage metadata. |
 | Admin settings | Instance admins can read/update provider policy, quotas, max-upload ceilings, delegation lock, usage, and redacted optional S3 settings through instance settings endpoints. Provider test and usage recalculation actions are API-backed. Tenant admins read effective tenant policy, usage, lock state, and redacted optional S3 overrides through `GET /api/tenant/settings/storage`, then patch supplied `policy` or `s3` leaves through `PATCH /api/tenant/settings/storage`. Writes are accepted only when instance delegation is unlocked and values stay within instance ceilings and allowed providers. |
-| Blazor client boundary | Browser uploads use BFF upload sessions and proxy streaming. Trusted direct provider uploads use a provider-neutral `DirectStorageUpload` client only when the server issued the destination URL. Public image/content display resolves from `StorageObject.Id` or existing `/api/storageobject/...` API paths, not raw provider object keys. |
+| Blazor client boundary | Browser uploads use BFF upload sessions and proxy streaming. The browser never receives or submits a provider destination URL. Public image/content display resolves from `StorageObject.Id` or existing `/api/storageobject/...` API paths, not raw provider object keys. |
 | Blazor admin UI | Instance and tenant storage dashboards consume service models mapped from HAL settings resources. The tenant dashboard autosaves isolated `policy` and `s3` patches only when `_links.edit` is present. Action buttons are driven by `_links` and read-only state, not client-side role checks. |
 | Local self-hosting | Docker Compose mounts a durable `local_storage_data` volume for local-first storage by default. MinIO remains optional through the `storage` profile for instances that select S3-compatible storage. |
 | Reconciliation | API hosts a dry-run-first reconciliation worker that checks metadata/object drift, reports missing backing objects and local orphan files, and performs quarantine/delete mutations only when explicit policy flags are enabled. |
@@ -85,11 +85,11 @@ Destructive cleanup requires both `DryRun=false` and the specific mutation flag.
 2. The BFF calls the provider-neutral API upload-session endpoint. The API resolves tenant policy, max upload size, provider, quota, and reservation state.
 3. The BFF stores only the API upload-session id, owner, content type, expected size, and expiry in distributed cache, then returns an opaque `uploadSessionId` to the browser.
 4. Browser uploads send `uploadSessionId`, `contentType`, and `file` to `/bff/storage/upload-proxy`; the proxy rejects raw destination fields, enforces session owner/content type/exact size, and streams bytes to `/api/storageobject/upload-sessions/{id}/content`.
-5. Server/non-browser helper paths may still upload directly to a trusted provider URL generated for that request while older S3-compatible flows remain.
-6. The application stores or updates `StorageObject` metadata through authenticated write endpoints.
-7. Readers use metadata-backed content endpoints (`/api/storageobject/{id}/content`), public image endpoints (`/api/storageobject/{id}/public`), or the ID-based S3-compatible presigned download endpoint depending on the caller path.
+5. The API finalizer replays and validates the bytes against the reserved MIME type, extension, exact size, and full container signature before writing to the server-selected provider and committing active `StorageObject` metadata.
+6. Authenticated callers may update or delete existing metadata through the ID-bound API; there is no caller-authored storage-object creation route.
+7. Readers use metadata-backed content endpoints (`/api/storageobject/{id}/content`), public image endpoints (`/api/storageobject/{id}/public`), or the ID-based S3-compatible presigned download endpoint depending on the caller path. Public delivery is limited to active safe-raster image metadata; unsafe or non-image content is forced to attachment download, with `nosniff` and a restrictive sandbox policy on streamed responses.
 
-`GetFileStream` translates S3 404 responses into `KeyNotFoundException`, which is useful when diagnosing broken metadata-to-object references.
+The internal S3 server-side `GetFileStream` helper translates provider 404 responses into `KeyNotFoundException`, which is useful when diagnosing broken metadata-to-object references; browser callers never supply its object key.
 
 Direct object-key read routes are not part of the local-first contract. The removed `file/{fileKey}` and `presigned-url-by-key/{objectKey}` endpoints bypassed metadata visibility and owner checks; clients must carry a `StorageObject.Id` instead of raw provider keys.
 
@@ -97,7 +97,7 @@ Direct object-key read routes are not part of the local-first contract. The remo
 
 The Blazor client must treat metadata-backed API URLs as the display contract. `StorageObjectUrlResolver` accepts a storage object `Guid`, an existing `/api/storageobject/...` path, or an absolute application URL whose path is already metadata-backed. It rejects provider object keys such as bucket-relative paths because those bypass storage metadata, lifecycle, and visibility decisions.
 
-`DirectStorageUploadMessageHandler` configures cross-origin browser requests for trusted server-issued provider URLs with CORS mode and credentials omitted. Browser-first upload UI should still use `/bff/storage/upload-session` and `/bff/storage/upload-proxy`; direct provider PUTs are compatibility helpers, not the default browser upload contract.
+Browser-first upload UI uses `/bff/storage/upload-session` and `/bff/storage/upload-proxy`. The BFF keeps the API session binding server-side, rejects raw destination fields, and proxies the bytes to the API finalizer; no direct-provider PUT compatibility path remains.
 
 `StorageImage` is the provider-neutral display component for metadata-backed images. It resolves a stable storage-object id or existing API path through `ImageStorageService`, renders explicit loading/error states, and never requires raw S3/provider object keys. `ImageUpload` accepts caller-provided content-type, accepted-format, and max-size policy inputs, validates browser file metadata before opening the stream, and still relies on `IBrowserFile.OpenReadStream(maxFileSize)` through the storage service for the hard read limit.
 
@@ -111,14 +111,14 @@ Autosave keeps `policy` and non-credential `s3` changes separate. Discrete choic
 
 | Endpoint Group | Authentication Boundary |
 |---|---|
-| List/read storage objects | Public read behavior is implemented in `StorageObjectController`. |
-| Get file/public image/presigned download URL | Public file and image reads resolve by `StorageObject.Id`; arbitrary object-key read/presign endpoints are removed. |
-| Generate upload URL | Requires authentication. |
-| Create/update/delete storage object metadata | Requires authentication and `storage_object` resource authorization. |
+| List/read storage objects | Authenticated, tenant-scoped metadata reads are implemented in `StorageObjectController`. |
+| File content/public image/presigned download | File content is authenticated and ID-bound; public images are active safe rasters only; presigned downloads are ID-bound, no-store, and attachment-safe. Arbitrary object-key read/presign endpoints are removed. |
+| Upload-session lifecycle (create/content/cancel) | Requires authentication; the API selects the provider and destination, and no upload-URL endpoint is exposed. |
+| Update/delete storage object metadata | Requires authentication and `storage_object` resource authorization; metadata creation occurs only during successful upload-session finalization. |
 | Instance storage settings read/update/test/recalculate | Instance-admin/setup-secret boundaries are handled by instance settings endpoints. Read responses redact S3 secrets and expose configured flags instead. |
 | Tenant storage settings read/patch | Requires tenant-admin or instance-admin authority for the current tenant. `GET /api/tenant/settings/storage` returns effective policy, read-only lock state, usage, and redacted optional S3 overrides. `PATCH /api/tenant/settings/storage` changes only supplied `policy` or `s3` leaves and rejects the whole request while delegation is locked or when merged max-upload, quota, route, provider, or S3 validation fails. |
 
-HAL links are the client source of truth for storage UI affordances. Storage object collection/detail responses expose public read links (`content`, `public-image`, `presigned-download`) only for active objects and expose mutation links (`create`, `create-upload-session`, `edit`, `delete`) through server-side authorization metadata. Instance storage settings expose `edit`, `provider-test`, and `recalculate-usage` affordances for authorized instance administrators. Tenant storage settings expose `edit` only when instance delegation allows tenant overrides and the effective policy is not read-only. Link presence controls client affordances, but direct API writes still pass server-side authorization, lock, validation, transaction, and cache-invalidation checks.
+HAL links are the client source of truth for storage UI affordances. Storage object collection/detail responses expose ID-bound read links (`content`, `public-image`, and, on detail resources, `presigned-download`) only for active objects and expose the upload-session and metadata mutation links (`create-upload-session`, `edit`, `delete`) through server-side authorization metadata. Instance storage settings expose `edit`, `provider-test`, and `recalculate-usage` affordances for authorized instance administrators. Tenant storage settings expose `edit` only when instance delegation allows tenant overrides and the effective policy is not read-only. Link presence controls client affordances, but direct API writes still pass server-side authorization, lock, validation, transaction, and cache-invalidation checks.
 
 ## Backup And Restore Impact
 
@@ -155,7 +155,7 @@ Operational evidence for this path must remain bounded. Logs and metrics may inc
 
 | Symptom | First Checks |
 |---|---|
-| Upload session or direct URL generation fails | Confirm selected storage provider policy, local provider readiness, and optional S3 settings when the instance selected S3-compatible storage. |
+| Upload session or proxy upload fails | Confirm selected storage provider policy, local provider readiness, and optional S3 settings when the instance selected S3-compatible storage. |
 | Reads return missing-object behavior | Check whether `StorageObject` metadata points to a backing object that exists in the selected provider. |
 | Local uploads fail or readiness is unhealthy | Verify the API process can create/write to `Storage:Local:RootPath` or the Compose `local_storage_data` volume. Do not expose the host path through admin settings. |
 | Reconciliation reports drift but does not mutate | Confirm `StorageReconciliation:DryRun=false` and the specific mutation flag are set; dry-run is the default. Verify backups before enabling destructive flags. |

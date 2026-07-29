@@ -117,6 +117,14 @@ Actor suspension blocks the represented subject instance-wide. Identity suspensi
 
 Every accepted moderation request invalidates Event list, detail, and discovery data in both `HybridCache` and the ASP.NET Core output-cache tags on the handling replica. The default output-cache store is process-local; `HybridCache`/`IDistributedCache` does not distribute output-cache tag eviction, so other replicas may serve stale discovery, detail, home, or sitemap output until the policy TTL expires. Cross-replica output-cache invalidation is deferred. The public query still rechecks current Actor, participation, presentation, record, and exact DID identity state, so cache invalidation is not the authorization boundary.
 
+### Organization participation evidence
+
+Legitimacy evidence belongs to `OrganizationTenant`, never the global Organization or Actor. An organization administrator can reserve and upload only an `application/pdf` private-owner Document through the organization-specific BFF session route. The server binds the upload session to the ambient tenant and exact pending participation; the browser supplies only the global Organization ID and file metadata, never a participation ID, storage owner ID, provider, object key, or destination.
+
+Submission accepts only a finalized active private Document with the exact tenant, participation owner kind, participation owner ID, purpose, file type, and content type. Evidence rows use composite tenant foreign keys and retain the document against storage update, deletion, and orphan reconciliation. Tenant administrators review evidence separately; an evidence approval never mutates or auto-approves the participation.
+
+Evidence API and HAL representations expose bounded document display metadata, review state, timestamps, and concurrency only. Protected document download and review actions exist only as authorized HAL links. Provider keys, object URIs, reviewer identity, tenant IDs, participation IDs, and document content are excluded from DTOs, logs, metrics, ProblemDetails, OpenAPI browser inputs, and generated clients.
+
 ## Auth Diagnostic Safety
 
 OIDC and BFF challenge failures must expose only safe diagnostic handles:
@@ -270,19 +278,22 @@ The Blazor BFF upload proxy is an SSRF-sensitive boundary because browser upload
 - Upload sessions are short-lived, user-bound, content-type-bound, and consumed after successful upload. This keeps the browser path bound to a server-issued upload intent without duplicating tenant storage policy in the UI layer.
 - Upload-session reservation rejects incoherent access metadata before storage-policy resolution or quota reservation. `public_image` requires a safe-raster MIME/extension pair and an image purpose; image purposes cannot be paired with non-raster metadata.
 - Raster upload finalization accepts only exact, parameter-free `image/jpeg`, `image/png`, `image/gif`, `image/webp`, or `image/avif` declarations with matching extensions. The complete bounded container must match its declaration and be structurally framed through exact EOF before provider storage; non-raster signature checks retain prefix streaming.
+- `SafeRasterContentPolicy` in Application is the one shared authority used by upload finalization, safe image-reference checks, AI image ingress, public delivery eligibility, the ATProto gateway, and PostgreSQL thumbnail materialization. Browser/AI paths use its JPEG/PNG/GIF/WebP subset; server/ATProto paths may additionally accept AVIF.
 - Storage metadata updates cannot change byte identity: file type, MIME, extension, size, checksum, provider, and object key remain server-owned. Access updates are evaluated as the merged existing-plus-requested state so separate update groups cannot promote unsafe bytes into a public image.
 - This structural guarantee does not mean the raster is decoded, sanitized, fully codec-valid, or malware-free. Pixel dimensions, decompression behavior, content moderation, and malware scanning remain outside this policy; existing upload-byte limits remain authoritative.
 - BFF/API storage logs must not include raw upstream response bodies, presigned URLs, signatures, tokens, object keys, filesystem paths, filenames, or object secrets. Use safe fields such as status code, presence booleans, bounded provider labels, and session failure code.
 
-Server-side/non-browser code paths may still use direct provider upload URLs when the server owns the trusted URL. Browser-facing upload proxy paths must use the upload-session contract.
+Server-owned internal finalization, download, deletion, and reconciliation code may call a provider directly after applying its trust-boundary checks. No provider upload URL or destination is exposed to browser upload code; browser-facing paths use only the upload-session contract.
+
+The untrusted upload allowlist deliberately excludes SVG and other active document formats. Trusted, packaged static SVG icons and illustrations remain valid presentation assets because they do not cross the storage upload boundary.
 
 ## Storage Object Download Boundary
 
 Storage download access uses stable storage object IDs, never browser-supplied provider keys or local paths. Metadata/list/detail routes are authenticated and authorized with `islamuevent_storage_object:view`; content streaming uses `download`; presigned URL generation uses `presigned_download`. The dedicated anonymous route is `GET /api/storageobject/{id}/public`, which is limited by the storage content reader to active, non-deleted `public_image` objects with an image purpose and an exact safe-raster MIME/extension pair. Eligibility is checked before a provider is resolved or opened.
 
-Authenticated content reads and presigned-download decisions retain lifecycle, tenant-filter, authentication, and owner checks. Application results carry a bounded safe display name plus an attachment decision: structurally eligible raster metadata may be presented inline, while non-raster content is marked for attachment delivery. API/provider response-header enforcement is a separate delivery-layer responsibility.
+Authenticated content reads and presigned-download decisions retain lifecycle, tenant-filter, authentication, and owner checks. Structurally eligible raster metadata may be presented inline through the API; authenticated non-raster content is returned with a sanitized attachment disposition. Streamed responses preserve range processing, Last-Modified, checksum ETags, `nosniff`, and restrictive CSP headers.
 
-Presigned URLs are bearer credentials. API responses containing them must not be output-cached, must send no-store cache metadata, and must not log the URL, signature, token, object key, bucket path, or raw provider error. The presigned response intentionally keeps `ObjectKey` empty; consumers must treat the returned URL as short-lived secret material.
+Presigned URLs are bearer credentials. API responses containing them must not be output-cached, must send no-store cache metadata, and must not log the URL, signature, token, object key, bucket path, or raw provider error. The presigned response intentionally keeps `ObjectKey` empty, and the provider request forces an attachment response-content-disposition using the sanitized display name. Browser image projections never sign raw object keys; metadata-backed storage images use the stable `/api/storageobject/{id}/public` route, while explicitly external URLs remain external. Consumers must treat a returned presigned URL as short-lived secret material.
 
 ## Email Dispatch Operator Boundary
 

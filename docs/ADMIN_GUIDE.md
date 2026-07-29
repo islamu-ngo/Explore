@@ -19,10 +19,10 @@ Each workflow below states the required role, the UI entry point, and the recove
 
 | Scope | Typical role | UI entry point | Boundary |
 |---|---|---|---|
-| Instance | Instance administrator | Multi-tenant: `/admin/instance`, `/admin/instance/tenants`, `/admin/instance/domains`; single-tenant settings: `/admin/instance/settings` | Platform-wide settings, tenant lifecycle, domain/admin-host guidance, platform API keys, global provider settings. |
-| Tenant | Tenant administrator | `/admin/tenant/settings` and tenant admin sub-pages | Tenant policies, public experience, lookup tables, tenant API keys, navigation, footer, templates, custom properties. |
-| Organization | Organization administrator | `/admin/organization/{OrganizationId}/settings` | Organization profile, members, verification state, organization API keys. |
-| Group | Group administrator | `/admin/group/{GroupId}/settings` | Group profile, branding, members, group API keys. |
+| Instance | Instance administrator | Multi-tenant: `/admin/instance`, `/admin/instance/tenants`, `/admin/instance/domains`; instance settings: `/settings/instance` | Platform-wide settings, tenant lifecycle, domain/admin-host guidance, platform API keys, global provider settings. |
+| Tenant | Tenant administrator | `/settings/admin` and tenant admin sub-pages | Tenant policies, public experience, lookup tables, tenant API keys, navigation, footer, templates, custom properties. |
+| Organization | Organization administrator | `/settings/organization/{OrganizationId}` | Organization profile, members, verification state, organization API keys. |
+| Group | Group administrator | `/settings/group/{GroupId}` | Group profile, branding, members, group API keys. |
 
 Admin pages require authentication. Editability is still checked at runtime by role helpers and admin-state services, so a visible page does not imply write permission.
 
@@ -30,7 +30,7 @@ Admin pages require authentication. Editability is still checked at runtime by r
 
 **Required role:** Instance administrator.
 
-**UI entry points:** `/admin/instance/settings` in single-tenant or legacy settings flows; `/admin/instance`, `/admin/instance/tenants`, and `/admin/instance/domains` for the multi-tenant Instance Console.
+**UI entry points:** `/settings/instance` for instance settings; `/admin/instance`, `/admin/instance/tenants`, and `/admin/instance/domains` for the multi-tenant Instance Console.
 
 Instance settings are the platform-control surface for static/default policy. Use them for:
 
@@ -47,7 +47,7 @@ Configured admin hosts from `Bff:AdminHosts` can render the embedded Instance Co
 
 ### Platform Monetization
 
-Open `/admin/instance/settings` and select **Monetization**. The section manages two independent versioned records:
+Open `/settings/instance` and select **Monetization**. The section manages two independent versioned records:
 
 - the platform fee policy, with an enable switch, integer basis points, and optional fixed charges entered per currency in minor units;
 - the optional platform contribution, with an enable switch, DB-stored heading/body text, and ordered basis-point choices whose default must be zero.

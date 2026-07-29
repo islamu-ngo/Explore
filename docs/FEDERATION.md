@@ -40,6 +40,10 @@ Local discoverability requires an active global Actor plus either an approved vi
 
 The API computes a request-local, non-serialized discoverability marker for Actor HAL assembly. Organization and Group resources advertise `subscribe` and `subscription` only when that marker is true and the normal authorization pipeline also allows the operation. Global collections do not advertise tenant-local subscription actions; clients must use `_links` rather than infer them from Actor kind, participation, roles, or claims.
 
+Blazor renders `/actors/{actorId}` from the canonical detail read and `/t/{tenantId}/actors/{actorId}` from the exact `GET /api/actor/by-tenant/{tenantId}/{id}` contextual read. The contextual endpoint applies the same fail-closed discoverability predicate as the collection, can show approved public participation overrides, and returns `404` for hidden or cross-tenant targets. Subscription controls still appear only when the detail HAL contains `subscribe` or `subscription`; the canonical link always points back to the global URL.
+
+Organization legitimacy evidence is not global identity evidence. It is retained private `OrganizationTenant` review input in one tenant, attached through a server-bound PDF upload session and reviewed by tenant authority without changing the global Actor, global Organization, exact DID identity, or any other tenant participation.
+
 ### ATProto/PDS Account Email Ownership
 
 ATProto OAuth login is implemented, while PDS account hosting is not. Identity lifecycle email remains PDS/account-authority owned:
@@ -228,9 +232,11 @@ The command handler fetches and stages the optional image before opening the EF 
 3. Fetch `com.atproto.sync.getBlob` with the DID and CID.
 4. Require successful status, exact allowlisted MIME type, exact declared/actual byte count, the configured maximum size, a constant-time SHA-256/CID match, and bounded whole-container structural validation through the exact end of a coherent JPEG, PNG, GIF87a/GIF89a, RIFF/WEBP, or AVIF file.
 5. Write through the registered provider-neutral `IFileStorageProvider`.
-6. Inside the fenced database transaction, create a tenant-owned public-image `StorageObject` and set `Event.FeaturedImageId`.
+6. Inside the fenced database transaction, recheck the staged provider result against the candidate's exact MIME type, size, and CID-bound SHA-256 checksum; derive the extension through the shared safe-raster policy; then create a tenant-owned public-image `StorageObject` and set `Event.FeaturedImageId`.
 
 Missing, unknown, active-content, malformed-container, or MIME/container-mismatched optional media fails soft: the event still imports and the complete original media metadata remains in `RecordJson`, but no image is staged or linked. If the database apply is rejected or throws, staged but unconsumed bytes are deleted. Replacement marks the previous image for lifecycle deletion; a record tombstone clears the featured image and requests deletion of owned storage objects.
+
+The gateway and PostgreSQL materialization boundary both consume the Application-owned `SafeRasterContentPolicy`; Infrastructure does not keep a second raster parser or SVG fallback. Persistence revalidates the staged MIME, declared and actual size, provider metadata, and CID-bound SHA-256 checksum before creating storage metadata. Rejecting an optional image never rewrites the accepted canonical `RecordJson`, local Event/EventSession graph, or ingestion cursor settlement.
 
 ### Atomicity, Replay, And Tombstones
 
