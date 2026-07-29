@@ -1,7 +1,7 @@
 interface:
   display_name: "HTML"
   short_description: "Create effective standalone HTML artifacts"
-  default_prompt: "Use $html to create a polished standalone HTML artifact."
+  default_prompt: "Use $html to create a polished standalone HTML artifact in dev/report/visuals/."
 
 policy:
   allow_implicit_invocation: false
