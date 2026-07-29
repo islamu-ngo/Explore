@@ -32,12 +32,12 @@ public sealed class GetEventTicketCatalogManagementQueryHandler(
 
         if (catalog is null)
         {
-            return new EventTicketCatalogManagementDto { EventId = request.EventId };
+            return CreateBaseDto(eventTarget);
         }
 
         Event? eventWithDetails = await events.GetEventWithDetails(request.EventId);
         EventCapacityPool[] pools = eventWithDetails?.CapacityPools.Where(pool => !pool.IsDeleted).ToArray() ?? [];
-        return Map(catalog, pools);
+        return Map(catalog, pools, eventTarget);
     }
 
     private static bool IsPlatformManaged(Event? eventTarget, Guid tenantId) =>
@@ -46,14 +46,26 @@ public sealed class GetEventTicketCatalogManagementQueryHandler(
 
     private static EventTicketCatalogManagementDto Map(
         EventTicketCatalogVersion catalog,
-        IReadOnlyList<EventCapacityPool> pools) =>
+        IReadOnlyList<EventCapacityPool> pools,
+        Event eventTarget) =>
         new()
         {
+            TenantId = eventTarget.TenantId,
             EventId = catalog.EventId,
+            ActorId = eventTarget.ActorId,
+            ActorUserId = eventTarget.Actor?.UserId,
+            ActorOrganizationId = eventTarget.Actor?.OrganizationId,
+            ActorGroupId = eventTarget.Actor?.GroupId,
+            OrganizerActorId = eventTarget.OrganizerActorId,
+            OrganizerUserId = eventTarget.OrganizerActor?.UserId,
+            OrganizerOrganizationId = eventTarget.OrganizerActor?.OrganizationId,
+            OrganizerGroupId = eventTarget.OrganizerActor?.GroupId,
             CatalogId = catalog.Id,
             VersionNumber = catalog.VersionNumber,
             CurrencyCode = catalog.CurrencyCode,
-            StatusId = catalog.TicketCatalogStatusId,
+             StatusId = catalog.TicketCatalogStatusId,
+             StatusCode = catalog.TicketCatalogStatus?.MasterCode,
+             StatusName = catalog.TicketCatalogStatus?.FullName,
             TicketTypes = catalog.TicketTypes
                 .Where(ticketType => !ticketType.IsDeleted)
                 .Select(Map)
@@ -61,15 +73,33 @@ public sealed class GetEventTicketCatalogManagementQueryHandler(
             CapacityPools = pools.Select(Map).ToArray()
         };
 
+    private static EventTicketCatalogManagementDto CreateBaseDto(Event eventTarget) => new()
+    {
+        TenantId = eventTarget.TenantId,
+        EventId = eventTarget.Id,
+        ActorId = eventTarget.ActorId,
+        ActorUserId = eventTarget.Actor?.UserId,
+        ActorOrganizationId = eventTarget.Actor?.OrganizationId,
+        ActorGroupId = eventTarget.Actor?.GroupId,
+        OrganizerActorId = eventTarget.OrganizerActorId,
+        OrganizerUserId = eventTarget.OrganizerActor?.UserId,
+        OrganizerOrganizationId = eventTarget.OrganizerActor?.OrganizationId,
+        OrganizerGroupId = eventTarget.OrganizerActor?.GroupId
+    };
+
     private static EventTicketTypeDto Map(EventTicketType ticketType) => new()
     {
         Id = ticketType.Id,
         Name = ticketType.Name,
-        TicketPricingModeId = ticketType.TicketPricingModeId,
+         TicketPricingModeId = ticketType.TicketPricingModeId,
+         TicketPricingModeCode = ticketType.TicketPricingMode?.MasterCode,
+         TicketPricingModeName = ticketType.TicketPricingMode?.FullName,
         FixedPriceMinor = ticketType.FixedPriceMinor,
         MinimumPriceMinor = ticketType.MinimumPriceMinor,
         SuggestedPriceMinor = ticketType.SuggestedPriceMinor,
-        ParticipantDataCollectionModeId = ticketType.ParticipantDataCollectionModeId,
+         ParticipantDataCollectionModeId = ticketType.ParticipantDataCollectionModeId,
+         ParticipantDataCollectionModeCode = ticketType.ParticipantDataCollectionMode?.MasterCode,
+         ParticipantDataCollectionModeName = ticketType.ParticipantDataCollectionMode?.FullName,
         CapacityPoolId = ticketType.CapacityPoolId,
         MinimumAge = ticketType.MinimumAge,
         MaximumAge = ticketType.MaximumAge,
@@ -82,10 +112,14 @@ public sealed class GetEventTicketCatalogManagementQueryHandler(
         Entitlements = ticketType.Entitlements.Select(entitlement => new TicketTypeEntitlementDto
         {
             EntitlementScopeTypeId = entitlement.EntitlementScopeTypeId,
+            EntitlementScopeTypeCode = entitlement.EntitlementScopeType?.MasterCode,
+            EntitlementScopeTypeName = entitlement.EntitlementScopeType?.FullName,
             EventDayId = entitlement.EventDayId,
             EventSessionId = entitlement.EventSessionId,
             IncludedQuantity = entitlement.IncludedQuantity,
-            EntitlementSelectionRuleId = entitlement.EntitlementSelectionRuleId
+            EntitlementSelectionRuleId = entitlement.EntitlementSelectionRuleId,
+            EntitlementSelectionRuleCode = entitlement.EntitlementSelectionRule?.MasterCode,
+            EntitlementSelectionRuleName = entitlement.EntitlementSelectionRule?.FullName
         }).ToArray()
     };
 
@@ -95,7 +129,9 @@ public sealed class GetEventTicketCatalogManagementQueryHandler(
         Name = pool.Name,
         MaximumQuantity = pool.MaximumQuantity,
         HoldDurationSeconds = pool.HoldDurationSeconds,
-        CapacityOversellPolicyId = pool.CapacityOversellPolicyId,
+         CapacityOversellPolicyId = pool.CapacityOversellPolicyId,
+         CapacityOversellPolicyCode = pool.CapacityOversellPolicy?.MasterCode,
+         CapacityOversellPolicyName = pool.CapacityOversellPolicy?.FullName,
         IsActive = pool.IsActive
     };
 }

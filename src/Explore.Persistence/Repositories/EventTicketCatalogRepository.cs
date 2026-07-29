@@ -76,6 +76,15 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
 
     private IQueryable<EventTicketCatalogVersion> ManagementGraph() =>
         dbContext.EventTicketCatalogVersions
+            .Include(catalog => catalog.TicketCatalogStatus)
             .Include(catalog => catalog.TicketTypes)
-            .ThenInclude(ticketType => ticketType.Entitlements);
+            .ThenInclude(ticketType => ticketType.TicketPricingMode)
+            .Include(catalog => catalog.TicketTypes)
+            .ThenInclude(ticketType => ticketType.ParticipantDataCollectionMode)
+            .Include(catalog => catalog.TicketTypes)
+            .ThenInclude(ticketType => ticketType.Entitlements)
+            .ThenInclude(entitlement => entitlement.EntitlementScopeType)
+            .Include(catalog => catalog.TicketTypes)
+            .ThenInclude(ticketType => ticketType.Entitlements)
+            .ThenInclude(entitlement => entitlement.EntitlementSelectionRule);
 }

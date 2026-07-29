@@ -119,6 +119,7 @@ public sealed class TicketingMonetizationPersistenceTests
     public async Task ManagementCatalog_TracksAndPersistsAddedTicketTypesAndEntitlements()
     {
         await using var context = CreateInMemoryContext("ticketing-management");
+        await LookupTableSeeder.SeedTicketingLookupsAsync(context, CancellationToken.None);
         Guid tenantId = Guid.CreateVersion7();
         Guid eventId = Guid.CreateVersion7();
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(tenantId, eventId, "USD", 1);
@@ -144,9 +145,40 @@ public sealed class TicketingMonetizationPersistenceTests
     }
 
     [Test]
+    public async Task ManagementCatalog_LoadsNormalizedTicketingLookupNavigations()
+    {
+        await using var context = CreateInMemoryContext("ticketing-management-lookups");
+        await LookupTableSeeder.SeedTicketingLookupsAsync(context, CancellationToken.None);
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(tenantId, eventId, "USD", 1);
+        EventTicketType ticket = CreateFreeTicket(catalog, "General");
+        catalog.AddTicketType(ticket, null);
+        catalog.AddEntitlement(ticket, TicketTypeEntitlement.CreateForEvent(ticket.Id, tenantId, eventId, 1));
+        context.EnableTenantFilterBypass("Seeds ticketing lookup-navigation test rows.");
+        context.Add(catalog);
+        await context.SaveChangesAsync();
+        context.ClearTenantFilterBypass();
+        context.ChangeTracker.Clear();
+        context.TenantContext = new TestTenantContext(tenantId);
+
+        EventTicketCatalogVersion loaded = (await new EventTicketCatalogRepository(context)
+            .GetManagementCatalogAsync(eventId, tenantId, CancellationToken.None))!;
+        EventTicketType loadedTicket = loaded.TicketTypes.Single();
+        TicketTypeEntitlement loadedEntitlement = loadedTicket.Entitlements.Single();
+
+        await Assert.That(loaded.TicketCatalogStatus?.MasterCode).IsEqualTo("DRAFT");
+        await Assert.That(loadedTicket.TicketPricingMode?.MasterCode).IsEqualTo("FREE");
+        await Assert.That(loadedTicket.ParticipantDataCollectionMode?.MasterCode).IsEqualTo("NONE");
+        await Assert.That(loadedEntitlement.EntitlementScopeType?.MasterCode).IsEqualTo("EVENT");
+        await Assert.That(loadedEntitlement.EntitlementSelectionRule?.MasterCode).IsEqualTo("ALL_INCLUDED");
+    }
+
+    [Test]
     public async Task CatalogReads_SelectLatestNonRetiredManagementGraphAndTrackStatusSpecificUpdateGraphs()
     {
         await using var context = CreateInMemoryContext("ticketing-catalog-reads");
+        await LookupTableSeeder.SeedTicketingLookupsAsync(context, CancellationToken.None);
         Guid tenantId = Guid.CreateVersion7();
         Guid eventId = Guid.CreateVersion7();
         EventTicketCatalogVersion draft = EventTicketCatalogVersion.Create(tenantId, eventId, "USD", 1);

@@ -9,5 +9,7 @@ public sealed class EventCapacityPoolDto
     public int? MaximumQuantity { get; init; }
     public int HoldDurationSeconds { get; init; }
     public int CapacityOversellPolicyId { get; init; }
+    public string? CapacityOversellPolicyCode { get; init; }
+    public string? CapacityOversellPolicyName { get; init; }
     public bool IsActive { get; init; }
 }

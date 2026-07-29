@@ -44,6 +44,8 @@ public sealed class TicketTypeEntitlement : ITenantEntity
 
     public int EntitlementScopeTypeId { get; private set; }
 
+    public EntitlementScopeType? EntitlementScopeType { get; private set; }
+
     public Guid? EventDayId { get; private set; }
 
     public Guid? EventSessionId { get; private set; }
@@ -51,6 +53,8 @@ public sealed class TicketTypeEntitlement : ITenantEntity
     public int IncludedQuantity { get; private set; }
 
     public int EntitlementSelectionRuleId { get; private set; }
+
+    public EntitlementSelectionRule? EntitlementSelectionRule { get; private set; }
 
     public static TicketTypeEntitlement CreateForEvent(
         Guid ticketTypeId,

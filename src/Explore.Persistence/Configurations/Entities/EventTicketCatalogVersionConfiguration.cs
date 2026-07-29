@@ -23,7 +23,7 @@ public sealed class EventTicketCatalogVersionConfiguration : IEntityTypeConfigur
         builder.HasOne<Event>().WithMany(@event => @event.TicketCatalogVersions)
             .HasForeignKey(catalog => new { catalog.TenantId, catalog.EventId })
             .HasPrincipalKey(@event => new { @event.TenantId, @event.Id }).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<TicketCatalogStatus>().WithMany().HasForeignKey(catalog => catalog.TicketCatalogStatusId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(catalog => catalog.TicketCatalogStatus).WithMany().HasForeignKey(catalog => catalog.TicketCatalogStatusId).OnDelete(DeleteBehavior.Restrict);
         builder.HasMany(catalog => catalog.TicketTypes).WithOne()
             .HasForeignKey(ticketType => new { ticketType.TenantId, ticketType.CatalogId })
             .HasPrincipalKey(catalog => new { catalog.TenantId, catalog.Id }).OnDelete(DeleteBehavior.Restrict);

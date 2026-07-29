@@ -1,5 +1,7 @@
 // ABOUTME: Management read model for an event ticket catalog.
 // ABOUTME: Contains catalog, ticket type, and capacity pool read projections.
+using System.Text.Json.Serialization;
+
 namespace Explore.Application.DTOs.EventTicketing;
 
 public sealed class EventTicketCatalogManagementDto
@@ -9,6 +11,29 @@ public sealed class EventTicketCatalogManagementDto
     public int? VersionNumber { get; init; }
     public string CurrencyCode { get; init; } = string.Empty;
     public int? StatusId { get; init; }
+    public string? StatusCode { get; init; }
+    public string? StatusName { get; init; }
+    [JsonIgnore]
     public IReadOnlyList<EventTicketTypeDto> TicketTypes { get; init; } = [];
+    [JsonIgnore]
     public IReadOnlyList<EventCapacityPoolDto> CapacityPools { get; init; } = [];
+
+    [JsonIgnore]
+    public Guid TenantId { get; init; }
+    [JsonIgnore]
+    public Guid ActorId { get; init; }
+    [JsonIgnore]
+    public Guid? ActorUserId { get; init; }
+    [JsonIgnore]
+    public Guid? ActorOrganizationId { get; init; }
+    [JsonIgnore]
+    public Guid? ActorGroupId { get; init; }
+    [JsonIgnore]
+    public Guid? OrganizerActorId { get; init; }
+    [JsonIgnore]
+    public Guid? OrganizerUserId { get; init; }
+    [JsonIgnore]
+    public Guid? OrganizerOrganizationId { get; init; }
+    [JsonIgnore]
+    public Guid? OrganizerGroupId { get; init; }
 }

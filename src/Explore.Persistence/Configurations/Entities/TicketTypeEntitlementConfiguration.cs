@@ -22,7 +22,7 @@ public sealed class TicketTypeEntitlementConfiguration : IEntityTypeConfiguratio
             .HasPrincipalKey(day => new { day.TenantId, day.EventId, day.Id }).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<EventSession>().WithMany().HasForeignKey(entitlement => new { entitlement.TenantId, entitlement.TargetEventId, entitlement.EventSessionId })
             .HasPrincipalKey(session => new { session.TenantId, session.EventId, session.Id }).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<EntitlementScopeType>().WithMany().HasForeignKey(entitlement => entitlement.EntitlementScopeTypeId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<EntitlementSelectionRule>().WithMany().HasForeignKey(entitlement => entitlement.EntitlementSelectionRuleId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(entitlement => entitlement.EntitlementScopeType).WithMany().HasForeignKey(entitlement => entitlement.EntitlementScopeTypeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(entitlement => entitlement.EntitlementSelectionRule).WithMany().HasForeignKey(entitlement => entitlement.EntitlementSelectionRuleId).OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -29,8 +29,8 @@ public sealed class EventTicketTypeConfiguration : IEntityTypeConfiguration<Even
         builder.HasOne<EventCapacityPool>().WithMany()
             .HasForeignKey(ticketType => new { ticketType.TenantId, ticketType.CapacityPoolId })
             .HasPrincipalKey(pool => new { pool.TenantId, pool.Id }).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<TicketPricingMode>().WithMany().HasForeignKey(ticketType => ticketType.TicketPricingModeId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<ParticipantDataCollectionMode>().WithMany().HasForeignKey(ticketType => ticketType.ParticipantDataCollectionModeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(ticketType => ticketType.TicketPricingMode).WithMany().HasForeignKey(ticketType => ticketType.TicketPricingModeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(ticketType => ticketType.ParticipantDataCollectionMode).WithMany().HasForeignKey(ticketType => ticketType.ParticipantDataCollectionModeId).OnDelete(DeleteBehavior.Restrict);
         builder.HasMany(ticketType => ticketType.Entitlements).WithOne()
             .HasForeignKey(entitlement => new { entitlement.TenantId, entitlement.TicketTypeId })
             .HasPrincipalKey(ticketType => new { ticketType.TenantId, ticketType.Id }).OnDelete(DeleteBehavior.Restrict);

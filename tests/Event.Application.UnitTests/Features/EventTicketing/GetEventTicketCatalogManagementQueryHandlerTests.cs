@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.EventTicketing;
 using Explore.Application.Features.EventTicketing.Handlers.Queries;
 using Explore.Application.Features.EventTicketing.Requests.Queries;
 using Explore.Domain;
@@ -113,7 +114,54 @@ public sealed class GetEventTicketCatalogManagementQueryHandlerTests
         await Assert.That(result.StatusId).IsEqualTo((int)TicketCatalogStatusEnum.Published);
     }
 
+    [Test]
+    public async Task Handle_WhenLookupNavigationsAreLoaded_MapsNormalizedTriples()
+    {
+        EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(_tenantId, _eventId, "USD", 1);
+        EventTicketType ticket = EventTicketType.Create(
+            _tenantId, catalog.Id, "General", "USD", TicketPricingModeEnum.Free,
+            null, null, null, ParticipantDataCollectionModeEnum.None, null,
+            null, null, false, false, null, null, null, null);
+        TicketTypeEntitlement entitlement = TicketTypeEntitlement.CreateForEvent(
+            ticket.Id, _tenantId, _eventId, 1);
+        catalog.AddTicketType(ticket, null);
+        catalog.AddEntitlement(ticket, entitlement);
+        SetNavigation(catalog, nameof(EventTicketCatalogVersion.TicketCatalogStatus),
+            new TicketCatalogStatus { Id = 1, MasterCode = "DRAFT", FullName = "Draft" });
+        SetNavigation(ticket, nameof(EventTicketType.TicketPricingMode),
+            new TicketPricingMode { Id = 2, MasterCode = "FREE", FullName = "Free" });
+        SetNavigation(ticket, nameof(EventTicketType.ParticipantDataCollectionMode),
+            new ParticipantDataCollectionMode { Id = 1, MasterCode = "NONE", FullName = "None" });
+        SetNavigation(entitlement, nameof(TicketTypeEntitlement.EntitlementScopeType),
+            new EntitlementScopeType { Id = 1, MasterCode = "EVENT", FullName = "Event" });
+        SetNavigation(entitlement, nameof(TicketTypeEntitlement.EntitlementSelectionRule),
+            new EntitlementSelectionRule { Id = 1, MasterCode = "ALL_INCLUDED", FullName = "All included" });
+        DomainEvent eventTarget = CreatePlatformEvent(_tenantId, _eventId);
+        _events.GetAuthorizationTargetByIdAsync(_eventId, Arg.Any<CancellationToken>()).Returns(eventTarget);
+        _events.GetEventWithDetails(_eventId).Returns(eventTarget);
+        _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+
+        var result = await CreateHandler().Handle(
+            new GetEventTicketCatalogManagementQuery(_eventId),
+            CancellationToken.None);
+        EventTicketTypeDto mappedTicket = result!.TicketTypes.Single();
+        TicketTypeEntitlementDto mappedEntitlement = mappedTicket.Entitlements.Single();
+
+        await Assert.That(result.StatusCode).IsEqualTo("DRAFT");
+        await Assert.That(result.StatusName).IsEqualTo("Draft");
+        await Assert.That(mappedTicket.TicketPricingModeCode).IsEqualTo("FREE");
+        await Assert.That(mappedTicket.TicketPricingModeName).IsEqualTo("Free");
+        await Assert.That(mappedTicket.ParticipantDataCollectionModeCode).IsEqualTo("NONE");
+        await Assert.That(mappedEntitlement.EntitlementScopeTypeCode).IsEqualTo("EVENT");
+        await Assert.That(mappedEntitlement.EntitlementScopeTypeName).IsEqualTo("Event");
+        await Assert.That(mappedEntitlement.EntitlementSelectionRuleCode).IsEqualTo("ALL_INCLUDED");
+        await Assert.That(mappedEntitlement.EntitlementSelectionRuleName).IsEqualTo("All included");
+    }
+
     private GetEventTicketCatalogManagementQueryHandler CreateHandler() => new(_events, _catalogs, _tenant);
+
+    private static void SetNavigation<TTarget>(object source, string propertyName, TTarget value) where TTarget : class =>
+        source.GetType().GetProperty(propertyName)!.SetValue(source, value);
 
     private EventTicketCatalogVersion CreatePublishedCatalog()
     {
