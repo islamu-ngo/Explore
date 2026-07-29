@@ -36,6 +36,9 @@ public class ActorDto
 
     public Guid? GroupId { get; set; }
 
+    [JsonIgnore]
+    public bool IsLocallyDiscoverable { get; set; }
+
     public string DisplayName { get; set; } = string.Empty;
 
     // ProfilePicture relationship (optional)

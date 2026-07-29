@@ -10,11 +10,14 @@ public interface IActorRepository : IGenericRepository<Actor, Guid>
         Guid tenantId,
         Guid actorId,
         CancellationToken cancellationToken = default);
-    Task<Actor?> GetActorByDid(string did);
-    Task<Actor?> GetActorByHandle(string handle);
-    Task<List<Actor>> GetActorsByTenant(Guid tenantId);
+    Task<Actor?> GetActorByDid(string did, CancellationToken cancellationToken = default);
+    Task<Actor?> GetActorByHandle(string handle, CancellationToken cancellationToken = default);
+    Task<List<Actor>> GetActorsByTenant(Guid tenantId, CancellationToken cancellationToken = default);
     Task<bool> DidExists(string did);
-    Task<(List<Actor> Items, int TotalCount)> GetActorsWithDetailsPaged(int pageNumber, int pageSize);
+    Task<(List<Actor> Items, int TotalCount)> GetActorsWithDetailsPaged(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Actor>> SearchAiReferenceActorsAsync(
         string searchTerm,

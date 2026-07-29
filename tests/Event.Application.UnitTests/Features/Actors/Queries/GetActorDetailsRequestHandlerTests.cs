@@ -16,6 +16,7 @@ namespace Event.Application.UnitTests.Features.Actors.Queries;
 public class GetActorDetailsRequestHandlerTests
 {
     private readonly IActorRepository _actorRepository;
+    private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
     private readonly IObjectStorageService _objectStorageService;
     private readonly ILogger<GetActorDetailsRequestHandler> _logger;
@@ -24,15 +25,42 @@ public class GetActorDetailsRequestHandlerTests
     public GetActorDetailsRequestHandlerTests()
     {
         _actorRepository = Substitute.For<IActorRepository>();
+        _tenantContext = Substitute.For<ITenantContext>();
         _mapper = Substitute.For<IMapper>();
         _objectStorageService = Substitute.For<IObjectStorageService>();
         _logger = Substitute.For<ILogger<GetActorDetailsRequestHandler>>();
 
         _handler = new GetActorDetailsRequestHandler(
             _actorRepository,
+            _tenantContext,
             _mapper,
             _objectStorageService,
             _logger);
+    }
+
+    [Test]
+    public async Task Handle_WithLocallyDiscoverableActor_SetsRequestLocalAffordanceState()
+    {
+        var tenantId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var actor = DataBuilder.Actor.Generate();
+        actor.Id = actorId;
+        var dto = new ActorDto { Id = actorId };
+
+        _tenantContext.TenantId.Returns(tenantId);
+        _actorRepository.GetPublicActorProfileAsync(actorId).Returns(actor);
+        _actorRepository.GetLocallyDiscoverableSubscriptionTargetAsync(
+                tenantId,
+                actorId,
+                Arg.Any<CancellationToken>())
+            .Returns(actor);
+        _mapper.Map<ActorDto>(actor).Returns(dto);
+
+        var result = await _handler.Handle(
+            new GetActorDetailsRequest { Id = actorId },
+            CancellationToken.None);
+
+        await Assert.That(result.IsLocallyDiscoverable).IsTrue();
     }
 
     [Test]

@@ -95,6 +95,32 @@ public class SubscribeToActorCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WithTargetOutsideCurrentTenant_ReturnsFailure()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var targetActorId = Guid.NewGuid();
+        var tenantUser = CreateTenantUser(tenantId, userId);
+
+        _tenantContext.TenantId.Returns(tenantId);
+        _currentUserService.UserId.Returns(userId);
+        _tenantUserRepository.GetByTenantAndUserAsync(tenantId, userId, Arg.Any<CancellationToken>()).Returns(tenantUser);
+        _actorRepository.GetLocallyDiscoverableSubscriptionTargetAsync(
+                tenantId,
+                targetActorId,
+                Arg.Any<CancellationToken>())
+            .Returns((Actor?)null);
+
+        var result = await _handler.Handle(
+            new SubscribeToActorCommand { Subscription = new SubscribeToActorDto { TargetActorId = targetActorId } },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("Target actor must be an organization or group in the current tenant.");
+        await _actorSubscriptionRepository.DidNotReceive().Create(Arg.Any<ActorSubscription>());
+    }
+
+    [Test]
     public async Task Handle_WithUnsubscribedExistingRow_ReactivatesSameSubscription()
     {
         var tenantId = Guid.NewGuid();

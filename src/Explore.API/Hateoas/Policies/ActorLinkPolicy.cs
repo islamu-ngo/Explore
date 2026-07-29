@@ -1,5 +1,5 @@
 // ABOUTME: HATEOAS link policies for actor detail and collection resources.
-// ABOUTME: Adds public navigation plus authenticated subscription affordances for organization and group actors.
+// ABOUTME: Adds public navigation plus locally discoverable subscription affordances for organization and group actors.
 
 namespace Explore.API.Hateoas.Policies;
 
@@ -57,7 +57,7 @@ public sealed class ActorDetailLinkPolicy : ILinkPolicy<ActorDto>
                 "Organization");
         }
 
-        if (CanSubscribe(dto.ActorTypeId))
+        if (dto.IsLocallyDiscoverable && CanSubscribe(dto.ActorTypeId))
         {
             yield return new LinkDefinition(
                 "subscription",
@@ -109,7 +109,7 @@ public sealed class ActorCollectionLinkPolicy : ICollectionLinkPolicy<ActorListD
             "GET",
             dto.DisplayName);
 
-        if (CanSubscribe(dto.ActorTypeId))
+        if (dto.IsLocallyDiscoverable && CanSubscribe(dto.ActorTypeId))
         {
             yield return new LinkDefinition(
                 "subscription",

@@ -34,7 +34,10 @@ public class GetActorListRequestHandler : IRequestHandler<GetActorListRequest, P
     public async Task<PaginatedResult<ActorListDto>> Handle(GetActorListRequest request, CancellationToken cancellationToken)
     {
         var (pageNumber, pageSize) = PaginatedResult<ActorListDto>.NormalizeParameters(request.PageNumber, request.PageSize);
-        var (actors, totalCount) = await _actorRepository.GetActorsWithDetailsPaged(pageNumber, pageSize);
+        var (actors, totalCount) = await _actorRepository.GetActorsWithDetailsPaged(
+            pageNumber,
+            pageSize,
+            cancellationToken);
         var dtos = _mapper.Map<List<ActorListDto>>(actors);
 
         // Resolve presigned URLs for profile pictures

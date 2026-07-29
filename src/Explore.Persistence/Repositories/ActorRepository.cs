@@ -57,27 +57,29 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .WhereLocallyDiscoverable(_dbContext, tenantId)
             .FirstOrDefaultAsync(actor => actor.Id == actorId, cancellationToken);
 
-    public async Task<Actor?> GetActorByDid(string did)
+    public Task<Actor?> GetActorByDid(string did, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Actors
-            .AsNoTracking()
-            .Include(a => a.Pii)
-            .Include(a => a.ActorType)
-            .Include(a => a.AtprotoIdentities)
-            .FirstOrDefaultAsync(a => a.AtprotoIdentities.Any(identity => identity.Did == did));
+        return PublicActorProfiles()
+            .FirstOrDefaultAsync(actor => actor.AtprotoIdentities.Any(identity =>
+                identity.Did == did
+                && identity.IsActive
+                && !identity.IsSuspended
+                && !identity.IsDeleted), cancellationToken);
     }
 
-    public async Task<Actor?> GetActorByHandle(string handle)
+    public Task<Actor?> GetActorByHandle(string handle, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Actors
-            .AsNoTracking()
-            .Include(a => a.Pii)
-            .Include(a => a.ActorType)
-            .Include(a => a.AtprotoIdentities)
-            .FirstOrDefaultAsync(a => a.AtprotoIdentities.Any(identity => identity.Handle == handle));
+        return PublicActorProfiles()
+            .FirstOrDefaultAsync(actor => actor.AtprotoIdentities.Any(identity =>
+                identity.Handle == handle
+                && identity.IsActive
+                && !identity.IsSuspended
+                && !identity.IsDeleted), cancellationToken);
     }
 
-    public async Task<List<Actor>> GetActorsByTenant(Guid tenantId)
+    public async Task<List<Actor>> GetActorsByTenant(
+        Guid tenantId,
+        CancellationToken cancellationToken = default)
     {
         return await PublicActorProfiles()
             .Include(actor => actor.Organization)
@@ -97,7 +99,7 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
                     && !participation.IsDeleted))
                 .ThenInclude(participation => participation.ProfilePicture)
             .WhereLocallyDiscoverable(_dbContext, tenantId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<bool> DidExists(string did)
@@ -157,21 +159,19 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .FirstOrDefaultAsync(a => a.GroupId == groupId);
     }
 
-    public async Task<(List<Actor> Items, int TotalCount)> GetActorsWithDetailsPaged(int pageNumber, int pageSize)
+    public async Task<(List<Actor> Items, int TotalCount)> GetActorsWithDetailsPaged(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.Actors
-            .AsNoTracking()
-            .AsSplitQuery()
-            .Include(a => a.Pii)
-            .Include(a => a.ActorType)
-            .Include(a => a.AtprotoIdentities)
+        var query = PublicActorProfiles()
             .OrderByDescending(a => a.UpdatedAt ?? a.CreatedAt);
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(cancellationToken);
         var items = await query
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return (items, totalCount);
     }

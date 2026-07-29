@@ -33,13 +33,14 @@ public class GetActorsByTenantRequestHandler : IRequestHandler<GetActorsByTenant
 
     public async Task<List<ActorListDto>> Handle(GetActorsByTenantRequest request, CancellationToken cancellationToken)
     {
-        var actors = await _actorRepository.GetActorsByTenant(request.TenantId);
+        var actors = await _actorRepository.GetActorsByTenant(request.TenantId, cancellationToken);
         var dtos = _mapper.Map<List<ActorListDto>>(actors);
 
         // Resolve presigned URLs for profile pictures
         foreach (var dto in dtos)
         {
             var actor = actors.First(candidate => candidate.Id == dto.Id);
+            dto.IsLocallyDiscoverable = true;
             ApplyPublicParticipationOverrides(actor, dto, request.TenantId);
             dto.ProfilePictureUri = await ResolveImageUrl(dto.ProfilePictureUri);
         }

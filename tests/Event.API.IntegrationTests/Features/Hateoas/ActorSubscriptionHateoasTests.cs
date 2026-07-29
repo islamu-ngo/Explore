@@ -123,6 +123,98 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
     }
 
     [Test]
+    public async Task SubscribeToActor_WithHiddenCurrentTenantTarget_ReturnsBadRequestAndDoesNotPersistSubscription()
+    {
+        var scenario = await SeedSubscriptionScenarioAsync(targetIsVisible: false);
+
+        var subscribeResponse = await PostSubscribeAsync(scenario);
+
+        await Assert.That(subscribeResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await AssertNoSubscriptionAsync(scenario);
+    }
+
+    [Test]
+    public async Task SubscribeToActor_WithOnlyCrossTenantParticipation_ReturnsBadRequestAndDoesNotPersistSubscription()
+    {
+        var scenario = await SeedSubscriptionScenarioAsync(targetIsInCurrentTenant: false);
+
+        var subscribeResponse = await PostSubscribeAsync(scenario);
+
+        await Assert.That(subscribeResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await AssertNoSubscriptionAsync(scenario);
+    }
+
+    [Test]
+    public async Task ActorDetail_EmitsSubscriptionAffordancesOnlyForLocallyDiscoverableTarget()
+    {
+        var discoverable = await SeedSubscriptionScenarioAsync();
+        var hidden = await SeedSubscriptionScenarioAsync(targetIsVisible: false);
+
+        using var discoverableRequest = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            $"/api/actor/{discoverable.TargetActorId}",
+            discoverable.UserId);
+        using var hiddenRequest = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            $"/api/actor/{hidden.TargetActorId}",
+            hidden.UserId);
+
+        var discoverableResponse = await _fixture.Client.SendAsync(discoverableRequest);
+        var hiddenResponse = await _fixture.Client.SendAsync(hiddenRequest);
+
+        await Assert.That(discoverableResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(hiddenResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        using var discoverableJson = JsonDocument.Parse(await discoverableResponse.Content.ReadAsStringAsync());
+        using var hiddenJson = JsonDocument.Parse(await hiddenResponse.Content.ReadAsStringAsync());
+        var discoverableRoot = discoverableJson.RootElement;
+        var discoverableLinks = discoverableRoot.GetProperty("_links");
+        var hiddenLinks = hiddenJson.RootElement.GetProperty("_links");
+
+        await Assert.That(discoverableLinks.TryGetProperty("subscribe", out _)).IsTrue();
+        await Assert.That(discoverableLinks.TryGetProperty("subscription", out _)).IsTrue();
+        await Assert.That(hiddenLinks.TryGetProperty("subscribe", out _)).IsFalse();
+        await Assert.That(hiddenLinks.TryGetProperty("subscription", out _)).IsFalse();
+        await Assert.That(discoverableRoot.TryGetProperty("tenantId", out _)).IsFalse();
+        await Assert.That(discoverableRoot.TryGetProperty("userId", out _)).IsFalse();
+        await Assert.That(discoverableRoot.TryGetProperty("profilePictureId", out _)).IsFalse();
+        await Assert.That(discoverableRoot.TryGetProperty("bannerPictureId", out _)).IsFalse();
+        await Assert.That(discoverableRoot.TryGetProperty("backgroundImageId", out _)).IsFalse();
+        await Assert.That(discoverableRoot.TryGetProperty("isLocallyDiscoverable", out _)).IsFalse();
+    }
+
+    [Test]
+    public async Task ActorCollections_EmitSubscriptionAffordancesOnlyForTenantContext()
+    {
+        var scenario = await SeedSubscriptionScenarioAsync();
+
+        using var globalRequest = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            "/api/actor?pageNumber=1&pageSize=100",
+            scenario.UserId);
+        using var contextualRequest = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            $"/api/actor/by-tenant/{scenario.TenantId}?pageNumber=1&pageSize=100",
+            scenario.UserId);
+
+        var globalResponse = await _fixture.Client.SendAsync(globalRequest);
+        var contextualResponse = await _fixture.Client.SendAsync(contextualRequest);
+
+        await Assert.That(globalResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(contextualResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        using var globalJson = JsonDocument.Parse(await globalResponse.Content.ReadAsStringAsync());
+        using var contextualJson = JsonDocument.Parse(await contextualResponse.Content.ReadAsStringAsync());
+        var globalActor = FindActor(globalJson.RootElement, scenario.TargetActorId);
+        var contextualActor = FindActor(contextualJson.RootElement, scenario.TargetActorId);
+
+        await Assert.That(globalActor.GetProperty("_links").TryGetProperty("subscribe", out _)).IsFalse();
+        await Assert.That(contextualActor.GetProperty("_links").TryGetProperty("subscribe", out _)).IsTrue();
+        await Assert.That(contextualActor.TryGetProperty("tenantId", out _)).IsFalse();
+        await Assert.That(contextualActor.TryGetProperty("isLocallyDiscoverable", out _)).IsFalse();
+    }
+
+    [Test]
     public async Task NotificationLevelPatch_WithExpectedConcurrencyStamp_UpdatesSubscriptionLevel()
     {
         var scenario = await SeedSubscriptionScenarioAsync();
@@ -239,9 +331,28 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
         return subscription.ConcurrencyStamp;
     }
 
+    private async Task AssertNoSubscriptionAsync(SubscriptionScenario scenario)
+    {
+        await using var verifyScope = _fixture.Factory.Services.CreateAsyncScope();
+        var context = verifyScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var persisted = await context.ActorSubscriptions
+            .IgnoreQueryFilters()
+            .AnyAsync(row => row.SubscriberTenantUserId == scenario.TenantUserId
+                && row.TargetActorId == scenario.TargetActorId);
+        await Assert.That(persisted).IsFalse();
+    }
+
+    private static JsonElement FindActor(JsonElement root, Guid actorId) =>
+        root.GetProperty("_embedded")
+            .GetProperty("items")
+            .EnumerateArray()
+            .Single(item => item.GetProperty("id").GetGuid() == actorId);
+
     private async Task<SubscriptionScenario> SeedSubscriptionScenarioAsync(
         ActorTypeEnum targetActorType = ActorTypeEnum.Organization,
-        TenantUserStatusEnum tenantUserStatus = TenantUserStatusEnum.Active)
+        TenantUserStatusEnum tenantUserStatus = TenantUserStatusEnum.Active,
+        bool targetIsVisible = true,
+        bool targetIsInCurrentTenant = true)
     {
         await using var scope = _fixture.Factory.Services.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
@@ -257,6 +368,17 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
                 .WithSlug($"default-test-{Guid.NewGuid():N}")
                 .Build();
             context.Tenants.Add(tenant);
+        }
+
+        var targetTenant = tenant;
+        if (!targetIsInCurrentTenant)
+        {
+            targetTenant = new TenantBuilder()
+                .WithId(Guid.CreateVersion7())
+                .WithFullName("Other Subscription Tenant")
+                .WithSlug($"other-subscription-{Guid.NewGuid():N}")
+                .Build();
+            context.Tenants.Add(targetTenant);
         }
 
         var user = new UserBuilder().Build();
@@ -286,13 +408,13 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
             context.OrganizationTenants.Add(new OrganizationTenant
             {
                 Id = Guid.CreateVersion7(),
-                TenantId = tenant.Id,
-                Tenant = tenant,
+                TenantId = targetTenant.Id,
+                Tenant = targetTenant,
                 OrganizationId = organization.Id,
                 Organization = organization,
                 ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
                 ApprovalStatus = null!,
-                IsVisible = true
+                IsVisible = targetIsVisible
             });
         }
         else if (targetActorType == ActorTypeEnum.Group)
@@ -309,13 +431,13 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
             context.GroupTenants.Add(new GroupTenant
             {
                 Id = Guid.CreateVersion7(),
-                TenantId = tenant.Id,
-                Tenant = tenant,
+                TenantId = targetTenant.Id,
+                Tenant = targetTenant,
                 GroupId = group.Id,
                 Group = group,
                 ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
                 ApprovalStatus = null!,
-                IsVisible = true
+                IsVisible = targetIsVisible
             });
         }
 
