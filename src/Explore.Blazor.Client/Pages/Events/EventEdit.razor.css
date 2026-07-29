@@ -166,14 +166,6 @@
     max-inline-size: 18rem;
 }
 
-::deep .edit-event__price-input {
-    max-width: 7rem;
-}
-
-::deep .edit-event__currency-input {
-    max-width: 5rem;
-}
-
 /* --- Submit Button --- */
 ::deep .edit-event__submit-button {
     font-size: 1.1rem !important;

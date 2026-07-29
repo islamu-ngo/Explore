@@ -68,9 +68,7 @@ public class EventDto
     public string? SourcePublisherName { get; set; }
     public List<EventPublicActionDto> PublicActions { get; set; } = new();
 
-    // Pricing
-    public decimal? Price { get; set; }
-    public string? CurrencyCode { get; set; }
+    public EventTicketPriceSummaryDto? TicketPriceSummary { get; set; }
 
     // Featured Image
     public Guid FeaturedImageId { get; set; }

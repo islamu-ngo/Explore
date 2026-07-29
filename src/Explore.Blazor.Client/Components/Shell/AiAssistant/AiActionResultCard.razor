@@ -54,15 +54,6 @@
                                     </MudText>
                                 </div>
                             }
-                            @if (!string.IsNullOrWhiteSpace(PayloadPrice))
-                            {
-                                <div class="ai-rail__result-detail-row">
-                                    <MudIcon Icon="@Icons.Material.Outlined.Payments" Size="Size.Small" />
-                                    <MudText Typo="Typo.caption">
-                                        <strong>Price:</strong> @PayloadPrice
-                                    </MudText>
-                                </div>
-                            }
                             @if (!string.IsNullOrWhiteSpace(PayloadVisibility))
                             {
                                 <div class="ai-rail__result-detail-row">
@@ -165,21 +156,6 @@
 
     private string? PayloadFormat => MapFormatId(ReadInt("eventFormatId"));
 
-    private string? PayloadPrice
-    {
-        get
-        {
-            var price = ReadDecimal("price");
-            var currency = ReadString("currencyCode");
-            if (price is null || price == 0)
-            {
-                return "Free";
-            }
-
-            return $"{currency ?? "€"}{price:F2}";
-        }
-    }
-
     private string? PayloadVisibility => MapVisibilityId(ReadInt("visibilityTypeId"));
 
     private string? PayloadTimezone => ReadString("timezone") ?? ReadString("eventTimeZoneId");
@@ -187,7 +163,6 @@
     private bool HasPayloadDetails =>
         !string.IsNullOrWhiteSpace(PayloadDescription)
         || !string.IsNullOrWhiteSpace(PayloadFormat)
-        || !string.IsNullOrWhiteSpace(PayloadPrice)
         || !string.IsNullOrWhiteSpace(PayloadVisibility)
         || !string.IsNullOrWhiteSpace(PayloadTimezone);
 
@@ -213,21 +188,6 @@
         }
 
         return property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var value)
-            ? value
-            : null;
-    }
-
-    private decimal? ReadDecimal(string propertyName)
-    {
-        var doc = ParsedPayload;
-        if (doc is null) return null;
-
-        if (!doc.RootElement.TryGetProperty(propertyName, out var property))
-        {
-            return null;
-        }
-
-        return property.ValueKind == JsonValueKind.Number && property.TryGetDecimal(out var value)
             ? value
             : null;
     }

@@ -35,7 +35,6 @@ public static class EventHeavyRedactionApplicator
             session.Title = EventRedactionSentinelPolicy.DisplayText;
             session.Description = EventRedactionSentinelPolicy.DisplayText;
             session.Slug = Slug(session.Id, "event-session");
-            session.CurrencyCode = null;
             session.SourceTemplateKey = null;
             session.FeaturedImageId = null;
             session.FeaturedImage = null;
@@ -110,7 +109,6 @@ public static class EventHeavyRedactionApplicator
         @event.Description = EventRedactionSentinelPolicy.DisplayText;
         @event.Content = EventRedactionSentinelPolicy.DisplayText;
         @event.Slug = Slug(@event.Id, "event");
-        @event.CurrencyCode = null;
         @event.Timezone = null;
         @event.EventTimeZoneId = null;
         @event.SourceTemplateKey = null;

@@ -373,8 +373,6 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
             identityAccessModeId: null,
             guestRecoveryPolicy: null,
             DateTime.UtcNow);
-        eventEntity.Price = 12.50m;
-        eventEntity.CurrencyCode = "EUR";
         eventEntity.TotalViews = 42;
         eventEntity.SessionCount = 2;
         eventEntity.FirstSessionDate = new(2026, 7, 19);
@@ -546,8 +544,6 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
         sessionOne.RegistrationMode = new RegistrationMode { Id = 1, MasterCode = "OPEN", FullName = "Open mode canary" };
         sessionOne.MaxAudienceAttendees = 150;
         sessionOne.CurrentAudienceAttendees = 75;
-        sessionOne.Price = 3.50m;
-        sessionOne.CurrencyCode = "EUR";
         sessionOne.FeaturedImage = CreatePublicImage(tenantId, "session-image-canary");
         sessionOne.StartTime = new DateTimeOffset(2026, 7, 19, 9, 0, 0, TimeSpan.Zero);
         sessionOne.EndTime = sessionOne.StartTime.Value.AddHours(1);

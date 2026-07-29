@@ -2,6 +2,7 @@
 // ABOUTME: Only includes navigation properties — callers control tracking strategy (AsNoTracking, AsSplitQuery).
 
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Extensions;
@@ -42,6 +43,9 @@ internal static class EventQueryExtensions
             .Include(e => e.TechAspect)
             .Include(e => e.CapacityPools)
                 .ThenInclude(pool => pool.CapacityOversellPolicy)
+            .Include(e => e.TicketCatalogVersions.Where(catalog =>
+                !catalog.IsDeleted && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Published))
+                .ThenInclude(catalog => catalog.TicketTypes.Where(ticketType => !ticketType.IsDeleted))
             .Include(e => e.RegistrationPolicy);
     }
 }

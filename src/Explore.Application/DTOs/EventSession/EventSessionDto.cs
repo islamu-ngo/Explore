@@ -74,10 +74,6 @@ public class EventSessionDto
     public string? RegistrationModeFullName { get; set; }
     public string? RegistrationModeMasterCode { get; set; }
 
-    // Pricing
-    public decimal? Price { get; set; }
-    public string? CurrencyCode { get; set; }
-
     // Optional Islamic extension for this session
     public EventSessionIslamicAspectDto? IslamicAspect { get; set; }
 

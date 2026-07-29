@@ -3,8 +3,8 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.Events;
+using Explore.Blazor.Client.Models;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -555,8 +555,6 @@ public partial class EventService : IEventService
         EventType = new UpdateEventEventTypeDto { Value = OptionalInt(request.EventTypeId) },
         AudienceGender = new UpdateEventAudienceGenderDto { Value = OptionalInt(request.AudienceGenderId) },
         AudienceAge = new UpdateEventAudienceAgeDto { Value = OptionalInt(request.AudienceAgeId) },
-        Price = new UpdateEventPriceDto { Value = OptionalDecimal(request.Price) },
-        CurrencyCode = new UpdateEventCurrencyCodeDto { Value = OptionalString(request.CurrencyCode) },
         FeaturedImage = new UpdateEventFeaturedImageDto { Value = OptionalGuid(request.FeaturedImageId) },
         Visibility = new UpdateEventVisibilityDto { Value = request.VisibilityTypeId.GetValueOrDefault(1) },
         Format = new UpdateEventFormatDto { Value = request.EventFormatId.GetValueOrDefault(1) },
@@ -579,12 +577,6 @@ public partial class EventService : IEventService
     };
 
     private static OptionalUpdateOfint OptionalInt(int? value) => new()
-    {
-        HasValue = true,
-        Value = value
-    };
-
-    private static OptionalUpdateOfdecimal OptionalDecimal(double? value) => new()
     {
         HasValue = true,
         Value = value
@@ -1268,8 +1260,7 @@ public partial class EventService : IEventService
             ActorGroupId = eventDetails?.ActorGroupId,
             ActorProfilePictureId = eventDetails?.ActorProfilePictureId,
             ActorProfilePictureUri = eventDetails?.ActorProfilePictureUri,
-            Price = eventDetails?.Price,
-            CurrencyCode = eventDetails?.CurrencyCode,
+            TicketPriceSummary = ToEventListTicketPriceSummary(eventDetails?.TicketPriceSummary),
             FeaturedImageId = eventDetails?.FeaturedImageId,
             FeaturedImageUri = featuredImageUri,
             ParticipationConfiguration = ToEventListParticipationConfiguration(eventDetails?.ParticipationConfiguration),
@@ -1300,6 +1291,17 @@ public partial class EventService : IEventService
     {
         return referenceDate.HasValue && referenceDate.Value.Date < DateTimeOffset.UtcNow.Date;
     }
+
+    private static EventTicketPriceSummaryDto? ToEventListTicketPriceSummary(TicketPriceSummary? summary) =>
+        summary is null
+            ? null
+            : new EventTicketPriceSummaryDto
+            {
+                SummaryCode = summary.SummaryCode,
+                CurrencyCode = summary.CurrencyCode,
+                CurrencyMinorUnitDigits = summary.CurrencyMinorUnitDigits,
+                FromAmountMinor = summary.FromAmountMinor
+            };
 
     private static EventParticipationConfigurationDto? ToEventListParticipationConfiguration(ParticipationConfiguration? configuration) =>
         configuration is null

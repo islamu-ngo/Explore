@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Text;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -42,6 +43,10 @@ public class EventCategoriesRepository : GenericRepository<EventCategories, Guid
             .Include(e => e.VisibilityType)
             .Include(e => e.EventFormat)
             .Include(e => e.Madhab)
+            .Include(e => e.ParticipationConfiguration)
+            .Include(e => e.TicketCatalogVersions.Where(catalog =>
+                !catalog.IsDeleted && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Published))
+                .ThenInclude(catalog => catalog.TicketTypes.Where(ticketType => !ticketType.IsDeleted))
             .Where(e => eventIds.Contains(e.Id))
             .ToListAsync();
     }

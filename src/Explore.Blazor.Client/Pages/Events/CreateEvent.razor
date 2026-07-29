@@ -585,31 +585,6 @@
                             </div>
                         </EventOptionRow>
 
-                        <EventOptionRow Title="Pricing"
-                                        Icon="@Icons.Material.Filled.Payments"
-                                        Summary="@PricingSummary"
-                                        Description="Set event-level pricing. Individual program items can still override price later."
-                                        Disabled="@AreEventOptionsDisabled">
-                            <div class="create-event__option-editor-group">
-                                <MudNumericField T="double?" @bind-Value="createDto.Price"
-                                                 Variant="Variant.Text"
-                                                 Margin="Margin.Dense"
-                                                 Min="0"
-                                                 HideSpinButtons="true"
-                                                 Class="create-event__option-select create-event__price-input"
-                                                 Disabled="@AreEventOptionsDisabled"
-                                                 aria-label="Event price" />
-                                <MudTextField T="string" @bind-Value="createDto.CurrencyCode"
-                                              Variant="Variant.Text"
-                                              Margin="Margin.Dense"
-                                              Placeholder="EUR"
-                                              MaxLength="3"
-                                              Class="create-event__option-select create-event__currency-input"
-                                              Disabled="@AreEventOptionsDisabled"
-                                              aria-label="Currency code" />
-                            </div>
-                        </EventOptionRow>
-
                         <EventOptionRow Title="Event type"
                                         Icon="@Icons.Material.Filled.Category"
                                         Summary="@EventTypeSummary"

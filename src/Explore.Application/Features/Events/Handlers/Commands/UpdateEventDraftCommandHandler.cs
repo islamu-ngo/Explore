@@ -153,8 +153,6 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
         eventEntity.EventTypeId = draft.EventTypeId;
         eventEntity.AudienceGenderId = draft.AudienceGenderId;
         eventEntity.AudienceAgeId = draft.AudienceAgeId;
-        eventEntity.Price = draft.Price;
-        eventEntity.CurrencyCode = draft.CurrencyCode;
         eventEntity.FeaturedImageId = draft.FeaturedImageId;
         eventEntity.VisibilityTypeId = draft.VisibilityTypeId;
         eventEntity.EventFormatId = draft.EventFormatId;

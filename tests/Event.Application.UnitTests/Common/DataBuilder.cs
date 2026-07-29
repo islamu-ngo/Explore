@@ -28,8 +28,6 @@ public static class DataBuilder
         .RuleFor(e => e.VisibilityTypeId, f => f.Random.Int(1, 3))
         .RuleFor(e => e.EventStatusId, f => f.Random.Int(1, 4))
         .RuleFor(e => e.EventFormatId, f => f.Random.Int(1, 3))
-        .RuleFor(e => e.Price, f => f.Finance.Amount(0, 100))
-        .RuleFor(e => e.CurrencyCode, f => f.Finance.Currency().Code)
         .RuleFor(e => e.Slug, f => f.Lorem.Slug());
 
     public static Faker<EventSession> EventSession => new Faker<EventSession>()

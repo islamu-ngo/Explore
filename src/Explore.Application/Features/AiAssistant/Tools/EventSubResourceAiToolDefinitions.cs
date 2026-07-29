@@ -61,8 +61,6 @@ public static class EventSubResourceAiToolDefinitions
         ["slug"] = NullableShortText,
         ["maxAudienceAttendees"] = """{ "type": ["integer", "null"] }""",
         ["registrationModeId"] = """{ "type": ["integer", "null"] }""",
-        ["price"] = """{ "type": ["number", "null"], "minimum": 0 }""",
-        ["currencyCode"] = """{ "type": ["string", "null"], "maxLength": 3 }""",
         ["sessionTemplateId"] = NullableUuid
     };
 

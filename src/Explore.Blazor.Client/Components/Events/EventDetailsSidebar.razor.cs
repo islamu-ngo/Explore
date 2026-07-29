@@ -69,6 +69,12 @@ public partial class EventDetailsSidebar : ComponentBase
         && HasUsableFeaturedImage(SelectedEvent)
         && !DetailImageLoadFailed;
 
+    private string? TicketPriceSummaryText => TicketPriceSummaryFormatter.Format(SelectedEvent);
+    private Color TicketPriceSummaryColor =>
+        string.Equals(SelectedEvent?.TicketPriceSummary?.SummaryCode, "FREE", StringComparison.OrdinalIgnoreCase)
+            ? Color.Success
+            : Color.Primary;
+
     private bool ShouldShowDetailImageSkeleton => IsLoadingDetail || IsDetailImageLoading;
 
     private bool CanManageSelectedEvent => EventDetail?.HasHalLink("edit")

@@ -211,8 +211,6 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
                 ApplySlug(eventSession, request.EventSessionDto.Slug);
                 ApplyMaxAudienceAttendees(eventSession, request.EventSessionDto.MaxAudienceAttendees);
                 ApplyRegistrationMode(eventSession, request.EventSessionDto.RegistrationMode);
-                ApplyPrice(eventSession, request.EventSessionDto.Price);
-                ApplyCurrencyCode(eventSession, request.EventSessionDto.CurrencyCode);
                 await ApplyScheduleAsync(eventSession, parentEvent, eventChanged, request.EventSessionDto.Schedule, token);
                 await _eventSessionRepository.UpdateWithRoomOverlapGuardAsync(eventSession, token);
                 await ApplyIslamicAspectAsync(eventSession.Id, request.EventSessionDto.IslamicAspect, eventSession.EndTimeType, token);
@@ -608,22 +606,6 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         if (group?.Value.HasValue == true)
         {
             eventSession.RegistrationModeId = group.Value.Value;
-        }
-    }
-
-    private static void ApplyPrice(EventSession eventSession, UpdateEventSessionPriceDto? group)
-    {
-        if (group?.Value.HasValue == true)
-        {
-            eventSession.Price = group.Value.Value;
-        }
-    }
-
-    private static void ApplyCurrencyCode(EventSession eventSession, UpdateEventSessionCurrencyCodeDto? group)
-    {
-        if (group?.Value.HasValue == true)
-        {
-            eventSession.CurrencyCode = group.Value.Value;
         }
     }
 

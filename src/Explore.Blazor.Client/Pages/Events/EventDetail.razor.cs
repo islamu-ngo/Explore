@@ -1008,12 +1008,6 @@ public partial class EventDetail : ComponentBase, IDisposable
             data["organizer"] = organizer;
         }
 
-        var offer = BuildSchemaOffer();
-        if (offer is not null)
-        {
-            data["offers"] = offer;
-        }
-
         return JsonSerializer.Serialize(data, EventStructuredDataJsonOptions);
     }
 
@@ -1043,22 +1037,6 @@ public partial class EventDetail : ComponentBase, IDisposable
         }
 
         return organizer;
-    }
-
-    private Dictionary<string, object?>? BuildSchemaOffer()
-    {
-        if (_eventDetails?.Price is not > 0)
-        {
-            return null;
-        }
-
-        return new Dictionary<string, object?>
-        {
-            ["@type"] = "Offer",
-            ["price"] = _eventDetails.Price,
-            ["priceCurrency"] = string.IsNullOrWhiteSpace(_eventDetails.CurrencyCode) ? "EUR" : _eventDetails.CurrencyCode,
-            ["url"] = GetCanonicalUrl()
-        };
     }
 
     private static void AddIfNotBlank(Dictionary<string, object?> data, string key, string? value)
@@ -2184,15 +2162,7 @@ public partial class EventDetail : ComponentBase, IDisposable
         return $"{gender} · {age}";
     }
 
-    private string GetPriceDisplay()
-    {
-        if (_eventDetails?.Price is > 0)
-        {
-            return $"{_eventDetails.CurrencyCode ?? "EUR"} {_eventDetails.Price:0.##}";
-        }
-
-        return "Free";
-    }
+    private string? GetTicketPriceSummaryDisplay() => TicketPriceSummaryFormatter.Format(_eventDetails);
 
     private string GetRegistrationPolicyDisplay()
     {

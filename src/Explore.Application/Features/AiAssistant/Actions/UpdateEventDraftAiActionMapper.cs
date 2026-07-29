@@ -103,20 +103,12 @@ public sealed class UpdateEventDraftAiActionMapper
             || !ValidateLength(payload.Description, 150, "description", out lengthFailure)
             || !ValidateLength(payload.Content, 5000, "content", out lengthFailure)
             || !ValidateLength(payload.Slug, 500, "slug", out lengthFailure)
-            || !ValidateLength(payload.CurrencyCode, 3, "currencyCode", out lengthFailure)
             || !ValidateLength(payload.Timezone, 500, "timezone", out lengthFailure)
             || !ValidateLength(payload.EventTimeZoneId, 500, "eventTimeZoneId", out lengthFailure)
             || !ValidateLength(payload.BackgroundColor, 100, "backgroundColor", out lengthFailure)
             || !ValidateLength(payload.BackgroundEffect, 100, "backgroundEffect", out lengthFailure))
         {
             return lengthFailure!;
-        }
-
-        if (payload.Price < 0)
-        {
-            return UpdateEventDraftAiActionMappingResult.Failure(
-                "invalid_numeric_value",
-                "AI event draft update price cannot be negative.");
         }
 
         if (payload.SeriesOrder < 0)
@@ -156,8 +148,6 @@ public sealed class UpdateEventDraftAiActionMapper
             EventTypeId = payload.EventTypeId,
             AudienceGenderId = payload.AudienceGenderId,
             AudienceAgeId = payload.AudienceAgeId,
-            Price = payload.Price,
-            CurrencyCode = Normalize(payload.CurrencyCode),
             FeaturedImageId = payload.FeaturedImageId,
             ParticipationConfiguration = payload.ParticipationConfiguration,
             VisibilityTypeId = payload.VisibilityTypeId,

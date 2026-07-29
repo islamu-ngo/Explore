@@ -656,8 +656,6 @@ public sealed record EventMcpSessionSummaryDescriptor(
     int SortOrder,
     int? Capacity,
     string? RegistrationMode,
-    decimal? Price,
-    string? CurrencyCode,
     IReadOnlyList<string> SessionGroups,
     EventMcpLocationDescriptor? EventLocation,
     IReadOnlyList<string> TruncatedFields);

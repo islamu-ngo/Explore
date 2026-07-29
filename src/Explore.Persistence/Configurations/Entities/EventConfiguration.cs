@@ -29,13 +29,11 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Content).HasMaxLength(5000);
         builder.Property(e => e.Slug).HasMaxLength(200);
         builder.Property(e => e.PublicCode).HasMaxLength(12).IsRequired();
-        builder.Property(e => e.CurrencyCode).HasMaxLength(3);
         builder.Property(e => e.Timezone).HasMaxLength(100);
         builder.Property(e => e.EventTimeZoneId).HasMaxLength(100);
         builder.Property(e => e.ProvenanceSource).HasMaxLength(100);
         builder.Property(e => e.ProvenanceExternalId).HasMaxLength(200);
         builder.Property(e => e.SourcePublisherName).HasMaxLength(200);
-        builder.Property(e => e.Price).HasPrecision(19, 4);
 
         builder.HasOne(e => e.EventType)
             .WithMany()
@@ -168,9 +166,6 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 
         builder.ToTable(t =>
         {
-            t.HasCheckConstraint(
-                "CK_Event_NonNegativePrice",
-                "price IS NULL OR price >= 0");
             t.HasCheckConstraint(
                 "CK_Event_SessionDateRange",
                 "first_session_date IS NULL OR last_session_date IS NULL OR first_session_date <= last_session_date");

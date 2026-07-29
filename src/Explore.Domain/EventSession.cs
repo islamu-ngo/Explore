@@ -74,12 +74,6 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     public StorageObject? FeaturedImage { get; set; }
 
     /// <summary>
-    /// Optional session-level pricing override.
-    /// </summary>
-    public decimal? Price { get; set; }
-    public string? CurrencyCode { get; set; }
-
-    /// <summary>
     /// Optional Islamic extension stored in a dedicated vertical-partition table.
     /// </summary>
     public EventSessionIslamicAspect? IslamicAspect { get; set; }

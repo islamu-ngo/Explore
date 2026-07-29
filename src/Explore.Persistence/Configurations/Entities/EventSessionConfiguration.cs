@@ -17,12 +17,6 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
         builder.HasAlternateKey(e => new { e.TenantId, e.Id });
         builder.HasAlternateKey(e => new { e.TenantId, e.EventId, e.Id });
 
-        builder.Property(e => e.Price)
-            .HasPrecision(19, 4);
-
-        builder.Property(e => e.CurrencyCode)
-            .HasMaxLength(3);
-
         builder.Property(e => e.Title).HasMaxLength(500);
         builder.Property(e => e.Slug).HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
@@ -131,9 +125,6 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
 
         builder.ToTable(t =>
         {
-            t.HasCheckConstraint(
-                "CK_EventSession_NonNegativePrice",
-                "price IS NULL OR price >= 0");
             t.HasCheckConstraint(
                 "CK_EventSession_EndAfterStart",
                 "end_time IS NULL OR start_time IS NULL OR end_time > start_time");

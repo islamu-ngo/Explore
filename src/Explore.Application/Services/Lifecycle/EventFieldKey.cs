@@ -56,11 +56,6 @@ public enum EventFieldKey
     /// <summary>Physical location reference (optional for online events).</summary>
     Location,
 
-    /// <summary>Registration price (zero or positive).</summary>
-    Price,
-
-    /// <summary>Whether registration is required.</summary>
-
     /// <summary>Import/archive provenance source identifier.</summary>
     ProvenanceSource,
 

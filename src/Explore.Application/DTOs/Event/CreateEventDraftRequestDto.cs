@@ -17,8 +17,6 @@ public sealed class CreateEventDraftRequestDto
     public int? AudienceAgeId { get; set; }
     public Guid? OrganizationId { get; set; }
     public Guid? GroupId { get; set; }
-    public decimal? Price { get; set; }
-    public string? CurrencyCode { get; set; }
     public Guid? FeaturedImageId { get; set; }
     public required ConfigureEventParticipationDto ParticipationConfiguration { get; set; }
     public int VisibilityTypeId { get; set; } = 1;
@@ -55,8 +53,6 @@ public sealed class CreateEventDraftRequestDto
         AudienceAgeId = AudienceAgeId,
         OrganizationId = OrganizationId,
         GroupId = GroupId,
-        Price = Price,
-        CurrencyCode = CurrencyCode,
         FeaturedImageId = FeaturedImageId,
         ParticipationConfiguration = ParticipationConfiguration,
         EventStatusId = EventStatusId == 0 ? 1 : EventStatusId,

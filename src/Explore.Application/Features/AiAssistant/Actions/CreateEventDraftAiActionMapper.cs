@@ -92,18 +92,10 @@ public sealed class CreateEventDraftAiActionMapper
             || !ValidateLength(payload.Description, 150, "description", out lengthFailure)
             || !ValidateLength(payload.Content, 5000, "content", out lengthFailure)
             || !ValidateLength(payload.Slug, 500, "slug", out lengthFailure)
-            || !ValidateLength(payload.CurrencyCode, 3, "currencyCode", out lengthFailure)
             || !ValidateLength(payload.Timezone, 100, "timezone", out lengthFailure)
             || !ValidateLength(payload.EventTimeZoneId, 100, "eventTimeZoneId", out lengthFailure))
         {
             return lengthFailure!;
-        }
-
-        if (payload.Price < 0)
-        {
-            return CreateEventDraftAiActionMappingResult.Failure(
-                "invalid_numeric_value",
-                "AI event draft price cannot be negative.");
         }
 
         if (payload.ParticipationConfiguration is null)
@@ -168,8 +160,6 @@ public sealed class CreateEventDraftAiActionMapper
             AudienceAgeId = payload.AudienceAgeId,
             OrganizationId = organizationId,
             GroupId = groupId,
-            Price = payload.Price,
-            CurrencyCode = Normalize(payload.CurrencyCode),
             ParticipationConfiguration = payload.ParticipationConfiguration,
             VisibilityTypeId = payload.VisibilityTypeId == 0 ? 1 : payload.VisibilityTypeId,
             EventFormatId = payload.EventFormatId == 0 ? 1 : payload.EventFormatId,
@@ -288,8 +278,6 @@ public sealed class CreateEventDraftAiActionMapper
                 Slug = Normalize(session.Slug),
                 MaxAudienceAttendees = session.MaxAudienceAttendees,
                 RegistrationModeId = session.RegistrationModeId,
-                Price = session.Price,
-                CurrencyCode = Normalize(session.CurrencyCode),
                 IslamicAspect = NormalizeSessionIslamicAspect(session.IslamicAspect),
                 LanguageIds = session.LanguageIds.Distinct().ToList(),
                 SpeakerActorIds = session.SpeakerActorIds.Distinct().ToList()

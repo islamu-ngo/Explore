@@ -230,16 +230,6 @@ public partial class EventEdit : IDisposable
         return $"{policy} · Capacity set per session";
     }
 
-    private string BuildPricingSummary()
-    {
-        if (updateDto?.Price is > 0)
-        {
-            return $"{updateDto.CurrencyCode ?? "EUR"} {updateDto.Price:0.##}";
-        }
-
-        return "Free event";
-    }
-
     private static string? GetLookupName(IEnumerable<VisibilityTypeListDto>? items, int? selectedId) =>
         items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
 
@@ -336,7 +326,6 @@ public partial class EventEdit : IDisposable
     private string AudienceSummary => BuildAudienceSummary();
     private string RegistrationSummary => BuildRegistrationSummary();
     private string EventTypeSummary => GetLookupName(eventTypes, updateDto?.EventTypeId) ?? "Select event type";
-    private string PricingSummary => BuildPricingSummary();
     private string MadhabSummary => GetLookupName(madhabs, updateDto?.MadhabId) ?? "No madhab set";
     private List<string> SelectedCategoryNames => GetSelectedNames(allCategories, selectedCategoryIds);
     private List<string> SelectedTagNames => GetSelectedNames(allTags, selectedTagIds);
@@ -468,8 +457,6 @@ public partial class EventEdit : IDisposable
             Content = currentEvent.Content,
             AudienceGenderId = currentEvent.AudienceGenderId,
             AudienceAgeId = currentEvent.AudienceAgeId,
-            Price = currentEvent.Price,
-            CurrencyCode = currentEvent.CurrencyCode,
             FeaturedImageId = currentEvent.FeaturedImageId,
             ParticipationConfiguration = currentEvent.ParticipationConfiguration,
             RegistrationPolicyId = currentEvent.RegistrationPolicyId,

@@ -232,11 +232,11 @@ public sealed class CreateEventDraftAiActionMapperTests
     }
 
     [Test]
-    public async Task Map_WhenPriceIsNegative_ReturnsInvalidNumericValueFailure()
+    public async Task Map_WhenRemovedPriceFieldIsPresent_ReturnsUnsupportedPayloadFieldFailure()
     {
         var result = new CreateEventDraftAiActionMapper().Map("{\"title\":\"Draft\",\"price\":-1}");
 
         await Assert.That(result.Succeeded).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("invalid_numeric_value");
+        await Assert.That(result.FailureCode).IsEqualTo("unsupported_payload_field");
     }
 }

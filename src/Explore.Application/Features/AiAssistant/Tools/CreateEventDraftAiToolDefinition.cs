@@ -61,8 +61,6 @@ public static class CreateEventDraftAiToolDefinition
         "audienceAgeId",
         "organizationId",
         "groupId",
-        "price",
-        "currencyCode",
         "participationConfiguration",
         "visibilityTypeId",
         "eventFormatId",
@@ -115,8 +113,6 @@ public static class CreateEventDraftAiToolDefinition
             "audienceAgeId": { "type": "integer" },
             "organizationId": { "type": "string", "format": "uuid" },
             "groupId": { "type": "string", "format": "uuid" },
-            "price": { "type": "number", "minimum": 0 },
-            "currencyCode": { "type": "string", "maxLength": 3 },
             "participationConfiguration": {
               "type": "object",
               "additionalProperties": false,
@@ -187,8 +183,6 @@ public static class CreateEventDraftAiToolDefinition
                 "slug": { "type": "string", "maxLength": 500 },
                 "maxAudienceAttendees": { "type": "integer" },
                 "registrationModeId": { "type": "integer" },
-                "price": { "type": "number", "minimum": 0 },
-                "currencyCode": { "type": "string", "maxLength": 3 },
                 "islamicAspect": {
                   "type": "object",
                   "additionalProperties": false,

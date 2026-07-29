@@ -147,7 +147,20 @@ public sealed class EventFilter : IFilterSpecification<Event>
     /// at the repository level using DbContext-aware subqueries via <see cref="EventSubqueryFilter"/>.
     /// </remarks>
     public static EventFilter Free() =>
-        new(EventFilterType.Free, e => e.Price == null || e.Price == 0);
+        new(EventFilterType.Free, e =>
+            e.ParticipationConfiguration != null
+            && e.ParticipationConfiguration.ParticipationHandlingModeId == (int)ParticipationHandlingModeEnum.PlatformManaged
+            && e.TicketCatalogVersions.Any(catalog =>
+                !catalog.IsDeleted
+                && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Published
+                && catalog.TicketTypes.Any(ticketType =>
+                    !ticketType.IsDeleted
+                    && (ticketType.TicketPricingModeId == (int)TicketPricingModeEnum.Free
+                        || ((ticketType.TicketPricingModeId == (int)TicketPricingModeEnum.Donation
+                                || ticketType.TicketPricingModeId == (int)TicketPricingModeEnum.PayWhatYouCan)
+                            && (!ticketType.MinimumPriceMinor.HasValue || ticketType.MinimumPriceMinor == 0))
+                        || (ticketType.TicketPricingModeId == (int)TicketPricingModeEnum.SlidingScale
+                            && ticketType.MinimumPriceMinor == 0)))));
 
     /// <summary>
     /// Filters events to only those publicly visible in discovery listings.

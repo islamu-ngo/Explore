@@ -24,7 +24,7 @@ public sealed class AiActionResultCardTests : IDisposable
             Kind = "CreateEventDraft",
             Status = "Executed",
             ResultResourceId = resultId,
-            PayloadJson = """{"title":"Weekly Islamic Study Session","description":"Join us for a weekly session to deepen your understanding of the Quran and Sunnah.","eventFormatId":1,"price":0,"visibilityTypeId":1,"timezone":"Europe/Berlin"}"""
+            PayloadJson = """{"title":"Weekly Islamic Study Session","description":"Join us for a weekly session to deepen your understanding of the Quran and Sunnah.","eventFormatId":1,"visibilityTypeId":1,"timezone":"Europe/Berlin"}"""
         };
 
         var cut = _ctx.RenderMudComponent<AiActionResultCard>(parameters => parameters
@@ -38,7 +38,6 @@ public sealed class AiActionResultCardTests : IDisposable
         await Assert.That(cut.Markup).Contains("Weekly Islamic Study Session");
         await Assert.That(cut.Markup).Contains("Join us for a weekly session");
         await Assert.That(cut.Markup).Contains("In-Person (Local)");
-        await Assert.That(cut.Markup).Contains("Free");
         await Assert.That(cut.Markup).Contains("Public");
         await Assert.That(cut.Markup).Contains("Europe/Berlin");
     }
@@ -118,25 +117,6 @@ public sealed class AiActionResultCardTests : IDisposable
 
         await Assert.That(cut.FindAll("[data-testid='ai-result-event-card']")).IsEmpty();
         await Assert.That(cut.Markup).Contains("Insufficient permissions.");
-    }
-
-    [Test]
-    public async Task Render_WhenPriceIsNonZero_ShowsFormattedPrice()
-    {
-        var resultId = Guid.CreateVersion7();
-        var action = new ProposedActions2
-        {
-            Id = Guid.CreateVersion7(),
-            Kind = "CreateEventDraft",
-            Status = "Executed",
-            ResultResourceId = resultId,
-            PayloadJson = """{"title":"Premium Workshop","price":49.99,"currencyCode":"USD"}"""
-        };
-
-        var cut = _ctx.RenderMudComponent<AiActionResultCard>(parameters => parameters
-            .Add(component => component.Action, action));
-
-        await Assert.That(cut.Markup).Contains("USD49.99");
     }
 
     [Test]

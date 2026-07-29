@@ -35,8 +35,6 @@ public class AgendaScheduleEntryDto
     public int? CurrentAudienceAttendees { get; set; }
     public int? RegistrationModeId { get; set; }
     public string? RegistrationModeFullName { get; set; }
-    public decimal? Price { get; set; }
-    public string? CurrencyCode { get; set; }
 
     // AgendaItem-specific fields (null for sessions)
     public int? KindId { get; set; }

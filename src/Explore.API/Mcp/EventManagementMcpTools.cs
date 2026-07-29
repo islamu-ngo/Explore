@@ -2132,8 +2132,6 @@ public sealed class EventManagementMcpTools(
             dto.SortOrder,
             dto.MaxAudienceAttendees,
             TrimToNull(dto.RegistrationModeFullName, MaxShortTextLength, truncatedFields, nameof(dto.RegistrationModeFullName)),
-            dto.Price,
-            TrimToNull(dto.CurrencyCode, MaxShortTextLength, truncatedFields, nameof(dto.CurrencyCode)),
             dto.SessionGroups
                 .OrderByDescending(group => group.IsPrimary)
                 .ThenBy(group => group.SortOrder)

@@ -443,7 +443,6 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
         ActorTypeId = 2,
         ActorTypeFullName = Noise(seed + 9_000, 100),
         ActorProfilePictureUri = $"https://images.example/{Noise(seed + 10_000, 470)}",
-        CurrencyCode = "EUR",
         FeaturedImageId = Guid.NewGuid(),
         FeaturedImageUri = $"https://images.example/{Noise(seed + 11_000, 470)}",
         EventStatusId = 2,

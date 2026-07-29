@@ -18,8 +18,6 @@ public sealed class EventDraftEditModel
     public int? AudienceAgeId { get; set; }
     public Guid? OrganizationId { get; set; }
     public Guid? GroupId { get; set; }
-    public double? Price { get; set; }
-    public string? CurrencyCode { get; set; }
     public Guid? FeaturedImageId { get; set; }
     public ParticipationConfiguration? ParticipationConfiguration { get; set; }
     public int? VisibilityTypeId { get; set; } = 1;

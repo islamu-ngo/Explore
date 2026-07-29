@@ -16,8 +16,6 @@ public class UpdateEventDto
     public UpdateEventEventTypeDto? EventType { get; set; }
     public UpdateEventAudienceGenderDto? AudienceGender { get; set; }
     public UpdateEventAudienceAgeDto? AudienceAge { get; set; }
-    public UpdateEventPriceDto? Price { get; set; }
-    public UpdateEventCurrencyCodeDto? CurrencyCode { get; set; }
     public UpdateEventFeaturedImageDto? FeaturedImage { get; set; }
     public UpdateEventVisibilityDto? Visibility { get; set; }
     public UpdateEventFormatDto? Format { get; set; }
@@ -71,16 +69,6 @@ public class UpdateEventAudienceGenderDto
 public class UpdateEventAudienceAgeDto
 {
     public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
-}
-
-public class UpdateEventPriceDto
-{
-    public OptionalUpdate<decimal?> Value { get; set; } = OptionalUpdate<decimal?>.Unspecified();
-}
-
-public class UpdateEventCurrencyCodeDto
-{
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
 }
 
 public class UpdateEventFeaturedImageDto

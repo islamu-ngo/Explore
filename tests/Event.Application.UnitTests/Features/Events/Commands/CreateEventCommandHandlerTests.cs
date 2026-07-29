@@ -75,7 +75,6 @@ public class CreateEventCommandHandlerTests
     private readonly HybridCache _cache;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOutboxRepository _outboxRepository;
-    private readonly IEventTicketCatalogRepository _ticketCatalogRepository;
     private readonly CreateEventCommandHandler _handler;
 
     public CreateEventCommandHandlerTests()
@@ -126,7 +125,6 @@ public class CreateEventCommandHandlerTests
         _cache = Substitute.For<HybridCache>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
         _outboxRepository = Substitute.For<IOutboxRepository>();
-        _ticketCatalogRepository = Substitute.For<IEventTicketCatalogRepository>();
 
         _eventRepository.Create(Arg.Any<Explore.Domain.Event>()).Returns(callInfo =>
         {
@@ -225,8 +223,7 @@ public class CreateEventCommandHandlerTests
             _lifecyclePolicyProvider,
             _lifecycleReadinessEvaluator,
             eventLocationAttachmentService,
-            AtprotoPublicationPlannerTestFactory.Disabled(),
-            _ticketCatalogRepository
+            AtprotoPublicationPlannerTestFactory.Disabled()
         );
     }
 
@@ -461,31 +458,6 @@ public class CreateEventCommandHandlerTests
             Arg.Any<Explore.Domain.Event>(),
             ValidationProfile.EventPublishCommunityLexicon,
             Arg.Any<EventLifecyclePolicy>());
-    }
-
-    [Test]
-    public async Task Handle_WithCommunityProfileAndInvalidSuppliedValue_RejectsBeforePolicyResolution()
-    {
-        var command = new CreateEventCommand
-        {
-            Request = new CreateEventRequest
-            {
-                Title = "Invalid community event",
-                ParticipationConfiguration = CreateParticipationConfiguration(),
-                Price = -1,
-                EventStatusId = (int)EventStatusEnum.Published
-            }
-        };
-
-        _userContext.GetRequiredUserId().Returns(Guid.NewGuid());
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Errors).Contains(error => error.Contains("greater than or equal to '0'", StringComparison.Ordinal));
-        await _lifecyclePolicyProvider.DidNotReceiveWithAnyArgs()
-            .GetEffectivePolicyAsync(default, default, default);
-        await _eventRepository.DidNotReceiveWithAnyArgs().Create(default!);
     }
 
     [Test]
@@ -954,18 +926,11 @@ public class CreateEventCommandHandlerTests
 
     [Test]
     [Category("Phase43Ticketing")]
-    public async Task Handle_WithPlatformManagedParticipation_CreatesDefaultFreeTicketCatalog()
+    public async Task PlatformManagedEventCreation_ShouldNotAutoPersistAnXxxFreeTicketCatalog()
     {
         var userId = Guid.CreateVersion7();
         var actorId = Guid.CreateVersion7();
         var tenantId = Guid.CreateVersion7();
-        EventTicketCatalogVersion? addedCatalog = null;
-        _ticketCatalogRepository.AddAsync(Arg.Any<EventTicketCatalogVersion>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                addedCatalog = call.Arg<EventTicketCatalogVersion>();
-                return Task.CompletedTask;
-            });
         _userContext.GetRequiredUserId().Returns(userId);
         _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
@@ -981,16 +946,11 @@ public class CreateEventCommandHandlerTests
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await Assert.That(addedCatalog).IsNotNull();
-        EventTicketType ticket = addedCatalog!.TicketTypes.Single();
-        await Assert.That(addedCatalog.TicketCatalogStatusId).IsEqualTo((int)TicketCatalogStatusEnum.Draft);
-        await Assert.That(addedCatalog.CurrencyCode).IsEqualTo("XXX");
-        await Assert.That(ticket.Name).IsEqualTo("General admission");
-        await Assert.That(ticket.CurrencyCode).IsEqualTo("XXX");
-        await Assert.That(ticket.TicketPricingModeId).IsEqualTo((int)TicketPricingModeEnum.Free);
-        await Assert.That(ticket.Entitlements).Count().IsEqualTo(1);
-        await Assert.That(ticket.Entitlements.Single().TargetEventId).IsEqualTo(result.Id);
-        await Assert.That(ticket.Entitlements.Single().EntitlementScopeTypeId).IsEqualTo((int)EntitlementScopeTypeEnum.Event);
+        await Assert.That(typeof(CreateEventCommandHandler)
+            .GetConstructors()
+            .SelectMany(constructor => constructor.GetParameters())
+            .Any(parameter => parameter.ParameterType == typeof(IEventTicketCatalogRepository)))
+            .IsFalse();
     }
 
     [Test]
@@ -1013,7 +973,6 @@ public class CreateEventCommandHandlerTests
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _ticketCatalogRepository.DidNotReceive().AddAsync(Arg.Any<EventTicketCatalogVersion>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -1036,7 +995,6 @@ public class CreateEventCommandHandlerTests
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _ticketCatalogRepository.DidNotReceive().AddAsync(Arg.Any<EventTicketCatalogVersion>(), Arg.Any<CancellationToken>());
     }
 
     private static ConfigureEventParticipationDto CreateParticipationConfiguration() => new()

@@ -209,10 +209,13 @@
                             <span>Registration</span>
                             <strong>@GetRegistrationPolicyDisplay()</strong>
                         </div>
-                        <div class="event-detail-side-panel__row">
-                            <span>Price</span>
-                            <strong>@GetPriceDisplay()</strong>
-                        </div>
+                        @if (GetTicketPriceSummaryDisplay() is { } overviewPriceSummary)
+                        {
+                            <div class="event-detail-side-panel__row">
+                                <span>Price</span>
+                                <strong>@overviewPriceSummary</strong>
+                            </div>
+                        }
                         @if (!string.IsNullOrWhiteSpace(_eventDetails.Timezone))
                         {
                             <div class="event-detail-side-panel__row">
@@ -440,17 +443,10 @@
                             {
                                 <div class="d-flex flex-column flex-sm-row justify-space-between align-sm-center gap-4 mb-4">
                                     <div>
-                                        @if (_eventDetails.Price.HasValue && _eventDetails.Price > 0)
+                                        <MudText Typo="Typo.body1" Style="font-weight: 600;">Welcome! To join the event, please register below.</MudText>
+                                        @if (GetTicketPriceSummaryDisplay() is { } registrationPriceSummary)
                                         {
-                                            <MudText Typo="Typo.h5" Style="font-weight: 800;">
-                                                @($"{_eventDetails.CurrencyCode ?? "€"}{_eventDetails.Price:F2}")
-                                            </MudText>
-                                            <MudText Typo="Typo.body2" Color="Color.Secondary">per person</MudText>
-                                        }
-                                        else
-                                        {
-                                            <MudText Typo="Typo.body1" Style="font-weight: 600;">Welcome! To join the event, please register below.</MudText>
-                                            <MudText Typo="Typo.body2" Color="Color.Success" Style="font-weight: 700;">Free Registration</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary" Style="font-weight: 700;">@registrationPriceSummary</MudText>
                                         }
                                         <MudText Typo="Typo.caption" Color="Color.Secondary">
                                             @GetRegistrationPolicyDisplay()
@@ -585,15 +581,18 @@
                                 </div>
                             </MudItem>
 
-                            <MudItem xs="12" sm="6">
-                                <div class="d-flex align-center gap-3">
-                                    <MudIcon Icon="@Icons.Material.Outlined.Payments" Color="Color.Secondary" />
-                                    <div>
-                                        <MudText Typo="Typo.body2" Color="Color.Secondary">Pricing</MudText>
-                                        <MudText Typo="Typo.body1" Style="font-weight: 600;">@GetPriceDisplay()</MudText>
+                            @if (GetTicketPriceSummaryDisplay() is { } detailPriceSummary)
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <div class="d-flex align-center gap-3">
+                                        <MudIcon Icon="@Icons.Material.Outlined.Payments" Color="Color.Secondary" />
+                                        <div>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Pricing</MudText>
+                                            <MudText Typo="Typo.body1" Style="font-weight: 600;">@detailPriceSummary</MudText>
+                                        </div>
                                     </div>
-                                </div>
-                            </MudItem>
+                                </MudItem>
+                            }
                             
                             @if (!string.IsNullOrEmpty(_eventDetails.MadhabFullName) || (_islamicAspect != null && !string.IsNullOrEmpty(_islamicAspect.MadhabName)))
                             {

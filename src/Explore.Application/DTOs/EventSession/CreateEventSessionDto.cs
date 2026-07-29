@@ -37,10 +37,6 @@ public class CreateEventSessionDto
     // Registration
     public int? RegistrationModeId { get; set; }
 
-    // Pricing
-    public decimal? Price { get; set; }
-    public string? CurrencyCode { get; set; }
-
     /// Optional: Session template to instantiate custom property definitions from.
     /// If provided, the template must be published and active.
     public Guid? SessionTemplateId { get; set; }

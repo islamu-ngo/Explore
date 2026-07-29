@@ -200,13 +200,6 @@ public sealed class EventLifecycleReadinessEvaluator : IEventLifecycleReadinessE
                 }
                 break;
 
-            case EventFieldKey.Price:
-                if (@event.Price is null)
-                {
-                    errors.Add(MissingField(profile, EventFieldKey.Price, "price", "price_required", "Event price is required."));
-                }
-                break;
-
             case EventFieldKey.ProvenanceSource:
                 if (string.IsNullOrWhiteSpace(@event.ProvenanceSource))
                 {

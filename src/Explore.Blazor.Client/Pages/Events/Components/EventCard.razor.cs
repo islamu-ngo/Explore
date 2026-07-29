@@ -127,6 +127,11 @@ public partial class EventCard : ComponentBase
 
     private string TruncatedDescription => StringHelper.TruncateDescription(Event.Description);
     private string FormattedEventDate => FormatEventDate(Event.FirstSessionDate);
+    private string? TicketPriceSummaryText => TicketPriceSummaryFormatter.Format(Event);
+    private Color TicketPriceSummaryColor =>
+        string.Equals(Event.TicketPriceSummary?.SummaryCode, "FREE", StringComparison.OrdinalIgnoreCase)
+            ? Color.Success
+            : Color.Warning;
     private string? ExternalEventUrl => IsFederated ? FederatedSourceHref : null;
     private string ExternalEventLinkLabel => $"Open {Event.Title} on its external platform in a new tab";
 
@@ -230,7 +235,7 @@ public partial class EventCard : ComponentBase
             var count = 0;
             if (IsFieldVisible("event_list.card.show_location")) count++;
             if (IsFieldVisible("event_list.card.show_organizer")) count++;
-            if (IsFieldVisible("event_list.card.show_price")) count++;
+            if (IsFieldVisible("event_list.card.show_price") && TicketPriceSummaryText is not null) count++;
             if (IsFieldVisible("event_list.card.show_status")) count++;
             if (IsFieldVisible("event_list.card.show_description")) count++;
             return count;

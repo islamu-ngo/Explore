@@ -2,6 +2,7 @@
 // ABOUTME: Compares source-generated System.Text.Json metadata against reflection-based serialization.
 
 using System.Text.Json;
+
 using BenchmarkDotNet.Attributes;
 using Event.Benchmarks.Configuration;
 using Explore.Application.DTOs.Event;
@@ -40,8 +41,13 @@ public class SerializationBenchmarks
             ActorTypeFullName = "Organization",
             ActorProfilePictureId = Guid.NewGuid(),
             ActorProfilePictureUri = "https://cdn.openislamu.org/actors/engineering.png",
-            Price = 49.99m,
-            CurrencyCode = "EUR",
+            TicketPriceSummary = new EventTicketPriceSummaryDto
+            {
+                SummaryCode = "FIXED",
+                CurrencyCode = "EUR",
+                CurrencyMinorUnitDigits = 2,
+                FromAmountMinor = 4_999
+            },
             FeaturedImageId = Guid.NewGuid(),
             FeaturedImageUri = "https://cdn.openislamu.org/events/summit-2026.jpg",
             ParticipationConfiguration = new EventParticipationConfigurationDto

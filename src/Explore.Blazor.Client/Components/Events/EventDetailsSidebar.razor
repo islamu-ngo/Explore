@@ -209,23 +209,16 @@
                     </div>
                 </div>
 
-                <div class="d-flex gap-3 align-center">
-                    <MudIcon Icon="@((SelectedEvent.Price ?? 0) > 0 ? Icons.Material.Outlined.Payments : Icons.Material.Outlined.Payments)"
-                             Color="@((SelectedEvent.Price ?? 0) > 0 ? Color.Primary : Color.Success)" Size="Size.Small" />
-                    <div>
-                        <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Price</MudText>
-                        @if (SelectedEvent.Price.HasValue && SelectedEvent.Price > 0)
-                        {
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                @($"{SelectedEvent.CurrencyCode ?? "€"}{SelectedEvent.Price:F2}")
-                            </MudText>
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.body2" Color="Color.Success">Free</MudText>
-                        }
+                @if (TicketPriceSummaryText is { } ticketPriceSummary)
+                {
+                    <div class="d-flex gap-3 align-center">
+                        <MudIcon Icon="@Icons.Material.Outlined.Payments" Color="@TicketPriceSummaryColor" Size="Size.Small" />
+                        <div>
+                            <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Price</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@ticketPriceSummary</MudText>
+                        </div>
                     </div>
-                </div>
+                }
 
                 @if (IsLoadingDetail)
                 {
@@ -529,12 +522,6 @@
                                             @(session.CurrentAudienceAttendees ?? 0) / @session.MaxAudienceAttendees attendees
                                         </MudText>
                                     </div>
-                                }
-                                @if (session.Price > 0)
-                                {
-                                    <MudText Typo="Typo.caption" Class="mt-1" Color="Color.Primary">
-                                        @($"{session.CurrencyCode ?? "€"}{session.Price:F2}")
-                                    </MudText>
                                 }
                             </MudPaper>
                         }

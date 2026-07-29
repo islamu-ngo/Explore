@@ -52,9 +52,6 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
 
     public string? SourcePublisherName { get; set; }
 
-    public decimal? Price { get; set; }
-    public string? CurrencyCode { get; set; }
-
     [ForeignKey("FeaturedImage")]
     public Guid? FeaturedImageId { get; set; }
     public StorageObject? FeaturedImage { get; set; }

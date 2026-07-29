@@ -42,9 +42,7 @@ public class EventListDto
 
     public string? ProvenanceTypeCode { get; set; }
 
-    // Pricing
-    public decimal? Price { get; set; }
-    public string? CurrencyCode { get; set; }
+    public EventTicketPriceSummaryDto? TicketPriceSummary { get; set; }
 
     // Featured Image
     public Guid FeaturedImageId { get; set; }

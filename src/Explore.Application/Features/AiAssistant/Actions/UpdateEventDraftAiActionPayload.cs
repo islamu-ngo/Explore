@@ -28,10 +28,6 @@ public sealed class UpdateEventDraftAiActionPayload
 
     public int? AudienceAgeId { get; init; }
 
-    public decimal? Price { get; init; }
-
-    public string? CurrencyCode { get; init; }
-
     public Guid? FeaturedImageId { get; init; }
 
     public ConfigureEventParticipationDto? ParticipationConfiguration { get; init; }

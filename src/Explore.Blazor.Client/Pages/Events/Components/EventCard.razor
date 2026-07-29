@@ -147,18 +147,11 @@
                 @if (CompactExtraFieldCount > 0)
                 {
                     <div class="event-card__hover-reveal">
-                        @if (IsFieldVisible("event_list.card.show_price"))
+                        @if (IsFieldVisible("event_list.card.show_price") && TicketPriceSummaryText is { } compactPriceSummary)
                         {
                             <span class="event-card__hover-item">
                                 <MudIcon Icon="@Icons.Material.Outlined.Sell" Size="Size.Small" />
-                                @if ((Event.Price ?? 0) == 0)
-                                {
-                                    <span>Free</span>
-                                }
-                                else
-                                {
-                                    <span>@($"{Event.CurrencyCode ?? "€"}{Event.Price:F2}")</span>
-                                }
+                                <span>@compactPriceSummary</span>
                             </span>
                         }
                         @if (IsFieldVisible("event_list.card.show_status"))
@@ -309,16 +302,9 @@
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@Event.EventStatusFullName</MudChip>
                         }
-                        @if (IsFieldVisible("event_list.card.show_price"))
+                        @if (IsFieldVisible("event_list.card.show_price") && TicketPriceSummaryText is { } detailedPriceSummary)
                         {
-                            @if ((Event.Price ?? 0) == 0)
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="px-1">Free</MudChip>
-                            }
-                            else
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">@($"{Event.CurrencyCode ?? "€"}{Event.Price:F2}")</MudChip>
-                            }
+                            <MudChip T="string" Size="Size.Small" Color="@TicketPriceSummaryColor" Variant="Variant.Text">@detailedPriceSummary</MudChip>
                         }
                     </div>
 
@@ -486,16 +472,9 @@
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@Event.EventStatusFullName</MudChip>
                         }
-                        @if (IsFieldVisible("event_list.card.show_price"))
+                        @if (IsFieldVisible("event_list.card.show_price") && TicketPriceSummaryText is { } rowPriceSummary)
                         {
-                            @if ((Event.Price ?? 0) == 0)
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="px-1">Free</MudChip>
-                            }
-                            else
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">@($"{Event.CurrencyCode ?? "€"}{Event.Price:F2}")</MudChip>
-                            }
+                            <MudChip T="string" Size="Size.Small" Color="@TicketPriceSummaryColor" Variant="Variant.Text">@rowPriceSummary</MudChip>
                         }
                         @if (!string.IsNullOrEmpty(Event.MadhabFullName))
                         {

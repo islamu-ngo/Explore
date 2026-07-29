@@ -63,14 +63,6 @@ public sealed class UpdateEventDraftRequestDtoValidator : AbstractValidator<Upda
             .MustAsync(async (id, _) => await eventFormatRepository.Exists(id))
             .WithMessage("{PropertyName} does not exist.");
 
-        RuleFor(request => request.Price)
-            .GreaterThanOrEqualTo(0).When(request => request.Price.HasValue)
-            .WithMessage("{PropertyName} must be greater than or equal to 0.");
-
-        RuleFor(request => request.CurrencyCode)
-            .MaximumLength(3).When(request => !string.IsNullOrEmpty(request.CurrencyCode))
-            .WithMessage("{PropertyName} must be a valid 3-letter currency code.");
-
         RuleFor(request => request.FeaturedImageId)
             .MustAsync(async (id, _) => !id.HasValue || await storageObjectRepository.Exists(id.Value))
             .WithMessage("{PropertyName} does not exist.");

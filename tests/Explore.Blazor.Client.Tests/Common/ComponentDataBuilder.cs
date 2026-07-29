@@ -17,7 +17,6 @@ namespace Explore.Blazor.Client.Tests.Common;
 /// <para>
 /// Key type mappings (verified from API client):
 /// - FirstSessionDate, LastSessionDate: DateTimeOffset? (not DateOnly)
-/// - Price: double? (not decimal)
 /// - CreateOrganizationDto.Postcode: int (not string)
 /// - OrganizationListDto.Postcode: string
 /// - Property names use FullName suffix (e.g., EventTypeFullName, not EventTypeName)
@@ -73,9 +72,6 @@ public static class ComponentDataBuilder
         // Visibility
         .RuleFor(e => e.VisibilityTypeId, f => f.Random.Int(1, 3))
         .RuleFor(e => e.VisibilityTypeFullName, f => f.PickRandom("Public", "Private", "Unlisted"))
-        // Price (double? - verified from API)
-        .RuleFor(e => e.Price, f => f.Random.Bool() ? (double?)f.Random.Double(0, 100) : null)
-        .RuleFor(e => e.CurrencyCode, f => f.Finance.Currency().Code)
         // Featured Image
         .RuleFor(e => e.FeaturedImageId, f => Guid.NewGuid())
         .RuleFor(e => e.FeaturedImageUri, f => f.Internet.Url())
@@ -110,9 +106,6 @@ public static class ComponentDataBuilder
             ParticipationHandlingModeId = 1,
             AdvanceRegistrationObligationId = 1
         })
-        // Price is double? (verified from API line 24545)
-        .RuleFor(e => e.Price, f => f.Random.Bool() ? (double?)f.Random.Double(0, 100) : null)
-        .RuleFor(e => e.CurrencyCode, f => f.Finance.Currency().Code)
         // DateTimeOffset? for dates (verified from API)
         .RuleFor(e => e.FirstSessionDate, f => f.Date.FutureOffset(1))
         .RuleFor(e => e.LastSessionDate, (f, e) => e.FirstSessionDate?.AddDays(f.Random.Int(0, 7)))

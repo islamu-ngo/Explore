@@ -65,8 +65,6 @@ public static class UpdateEventDraftAiToolDefinition
         "eventTypeId",
         "audienceGenderId",
         "audienceAgeId",
-        "price",
-        "currencyCode",
         "featuredImageId",
         "participationConfiguration",
         "visibilityTypeId",
@@ -145,8 +143,6 @@ public static class UpdateEventDraftAiToolDefinition
             "eventTypeId": { "type": "integer" },
             "audienceGenderId": { "type": "integer" },
             "audienceAgeId": { "type": "integer" },
-            "price": { "type": "number", "minimum": 0 },
-            "currencyCode": { "type": "string", "maxLength": 3 },
             "featuredImageId": { "type": "string", "format": "uuid" },
             "participationConfiguration": {
               "type": "object",

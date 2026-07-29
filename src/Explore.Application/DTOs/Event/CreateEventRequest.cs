@@ -21,8 +21,6 @@ public class CreateEventRequest
     public int? AudienceAgeId { get; set; }
     public Guid? OrganizationId { get; set; }
     public Guid? GroupId { get; set; }
-    public decimal? Price { get; set; }
-    public string? CurrencyCode { get; set; }
     public Guid? FeaturedImageId { get; set; }
     public required ConfigureEventParticipationDto ParticipationConfiguration { get; set; }
     public int EventStatusId { get; set; } = 1;
@@ -67,8 +65,6 @@ public class CreateEventSessionRequest
     public string? Slug { get; set; }
     public int? MaxAudienceAttendees { get; set; }
     public int? RegistrationModeId { get; set; }
-    public decimal? Price { get; set; }
-    public string? CurrencyCode { get; set; }
     public Guid? SessionTemplateId { get; set; }
     public EventSessionIslamicAspectDto? IslamicAspect { get; set; }
     public List<int> LanguageIds { get; set; } = new();

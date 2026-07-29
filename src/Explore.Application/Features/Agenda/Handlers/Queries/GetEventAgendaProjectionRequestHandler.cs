@@ -99,8 +99,6 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
                 CurrentAudienceAttendees = session.CurrentAudienceAttendees,
                 RegistrationModeId = session.RegistrationModeId,
                 RegistrationModeFullName = session.RegistrationMode?.FullName,
-                Price = session.Price,
-                CurrencyCode = session.CurrencyCode,
                 SortOrder = session.SortOrder
             });
         }

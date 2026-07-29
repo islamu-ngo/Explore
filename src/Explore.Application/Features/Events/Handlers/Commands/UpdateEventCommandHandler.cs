@@ -176,8 +176,6 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
             ApplyEventType(eventEntity, update.EventType);
             ApplyAudienceGender(eventEntity, update.AudienceGender);
             ApplyAudienceAge(eventEntity, update.AudienceAge);
-            ApplyPrice(eventEntity, update.Price);
-            ApplyCurrencyCode(eventEntity, update.CurrencyCode);
             ApplyFeaturedImage(eventEntity, update.FeaturedImage);
             ApplyVisibility(eventEntity, update.Visibility);
             ApplyFormat(eventEntity, update.Format);
@@ -408,22 +406,6 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         if (update?.Value.HasValue == true)
         {
             eventEntity.AudienceAgeId = update.Value.Value;
-        }
-    }
-
-    private static void ApplyPrice(Explore.Domain.Event eventEntity, UpdateEventPriceDto? update)
-    {
-        if (update?.Value.HasValue == true)
-        {
-            eventEntity.Price = update.Value.Value;
-        }
-    }
-
-    private static void ApplyCurrencyCode(Explore.Domain.Event eventEntity, UpdateEventCurrencyCodeDto? update)
-    {
-        if (update?.Value.HasValue == true)
-        {
-            eventEntity.CurrencyCode = update.Value.Value;
         }
     }
 

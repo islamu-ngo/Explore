@@ -59,8 +59,6 @@ internal static class EventSessionFormModelMapper
         session.Slug = new UpdateEventSessionSlugDto { Value = OptionalString(sourceSession.Slug) };
         session.MaxAudienceAttendees = new UpdateEventSessionMaxAudienceAttendeesDto { Value = OptionalInt(sourceSession.MaxAudienceAttendees) };
         session.RegistrationMode = new UpdateEventSessionRegistrationModeDto { Value = OptionalInt(sourceSession.RegistrationModeId) };
-        session.Price = new UpdateEventSessionPriceDto { Value = OptionalDecimal(sourceSession.Price) };
-        session.CurrencyCode = new UpdateEventSessionCurrencyCodeDto { Value = OptionalString(sourceSession.CurrencyCode) };
         session.IslamicAspect = new UpdateEventSessionIslamicAspectUpdateDto
         {
             Value = OptionalEventSessionIslamicAspect(sourceSession.IslamicAspect)
@@ -281,12 +279,6 @@ internal static class EventSessionFormModelMapper
     };
 
     private static OptionalUpdateOfint OptionalInt(int? value) => new()
-    {
-        HasValue = true,
-        Value = value
-    };
-
-    private static OptionalUpdateOfdecimal OptionalDecimal(double? value) => new()
     {
         HasValue = true,
         Value = value

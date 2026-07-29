@@ -56,14 +56,6 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
             .SetValidator(new OptionalLookupValueValidator<UpdateEventAudienceAgeDto>("AudienceAge", dto => dto.Value, audienceAgeRepository.Exists))
             .When(dto => dto.AudienceAge is not null);
 
-        RuleFor(dto => dto.Price!)
-            .SetValidator(new UpdateEventPriceDtoValidator())
-            .When(dto => dto.Price is not null);
-
-        RuleFor(dto => dto.CurrencyCode!)
-            .SetValidator(new OptionalStringValueValidator<UpdateEventCurrencyCodeDto>("CurrencyCode", 3, dto => dto.Value))
-            .When(dto => dto.CurrencyCode is not null);
-
         RuleFor(dto => dto.FeaturedImage!)
             .SetValidator(new OptionalGuidLookupValueValidator<UpdateEventFeaturedImageDto>("FeaturedImage", dto => dto.Value, storageObjectRepository.Exists))
             .When(dto => dto.FeaturedImage is not null);
@@ -129,9 +121,7 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
         dto.Slug is not null ||
         dto.EventType is not null ||
         dto.AudienceGender is not null ||
-        dto.AudienceAge is not null ||
-        dto.Price is not null ||
-        dto.CurrencyCode is not null ||
+         dto.AudienceAge is not null ||
         dto.FeaturedImage is not null ||
         dto.Visibility is not null ||
         dto.Format is not null ||
@@ -175,21 +165,6 @@ public class UpdateEventTitleDtoValidator : AbstractValidator<UpdateEventTitleDt
         RuleFor(dto => dto.Value)
             .NotEmpty().WithMessage("Title is required.")
             .MaximumLength(500).WithMessage("Title must not exceed 500 characters.");
-    }
-}
-
-public class UpdateEventPriceDtoValidator : AbstractValidator<UpdateEventPriceDto>
-{
-    public UpdateEventPriceDtoValidator()
-    {
-        RuleFor(dto => dto)
-            .Must(dto => dto.Value.HasValue)
-            .WithMessage("Price group must include Value.");
-
-        RuleFor(dto => dto.Value.Value)
-            .GreaterThanOrEqualTo(0)
-            .When(dto => dto.Value.HasValue && dto.Value.Value.HasValue)
-            .WithMessage("Price must be greater than or equal to 0.");
     }
 }
 

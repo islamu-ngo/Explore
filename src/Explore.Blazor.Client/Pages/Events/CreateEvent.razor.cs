@@ -157,7 +157,6 @@ public partial class CreateEvent : IDisposable
     private string AudienceSummary => BuildAudienceSummary();
     private string RegistrationSummary => BuildRegistrationSummary();
     private string EventTypeSummary => GetLookupName(eventTypes, createDto.EventTypeId) ?? "Select event type";
-    private string PricingSummary => BuildPricingSummary();
     private string MadhabSummary => GetLookupName(madhabs, selectedMadhabId) ?? "No madhab set";
     private List<string> SelectedCategoryNames => GetSelectedNames(allCategories, selectedCategoryIds);
     private List<string> SelectedTagNames => GetSelectedNames(allTags, selectedTagIds);
@@ -377,16 +376,6 @@ public partial class CreateEvent : IDisposable
                 },
             _ => false
         };
-    }
-
-    private string BuildPricingSummary()
-    {
-        if (createDto.Price is > 0)
-        {
-            return $"{createDto.CurrencyCode ?? "EUR"} {createDto.Price:0.##}";
-        }
-
-        return "Free event";
     }
 
     private static string? GetLookupName(IEnumerable<VisibilityTypeListDto>? items, int? selectedId) =>
@@ -1577,16 +1566,5 @@ public partial class CreateEvent : IDisposable
         createDto.Rooms ??= new List<CreateEventRoomRequest>();
         createDto.AgendaItems ??= new List<CreateEventAgendaItemRequest>();
 
-        if (createDto.Price is > 0)
-        {
-            createDto.CurrencyCode = string.IsNullOrWhiteSpace(createDto.CurrencyCode)
-                ? "EUR"
-                : createDto.CurrencyCode.Trim().ToUpperInvariant();
-        }
-        else
-        {
-            createDto.Price = null;
-            createDto.CurrencyCode = null;
-        }
     }
 }

@@ -61,14 +61,6 @@ public class UpdateEventSessionDtoValidator : AbstractValidator<UpdateEventSessi
             .SetValidator(new UpdateEventSessionRegistrationModeDtoValidator(registrationModeRepository))
             .When(dto => dto.RegistrationMode is not null);
 
-        RuleFor(dto => dto.Price!)
-            .SetValidator(new UpdateEventSessionPriceDtoValidator())
-            .When(dto => dto.Price is not null);
-
-        RuleFor(dto => dto.CurrencyCode!)
-            .SetValidator(new UpdateEventSessionCurrencyCodeDtoValidator())
-            .When(dto => dto.CurrencyCode is not null);
-
         RuleFor(dto => dto.IslamicAspect!)
             .SetValidator(new UpdateEventSessionIslamicAspectUpdateDtoValidator())
             .When(dto => dto.IslamicAspect is not null);
@@ -96,9 +88,7 @@ public class UpdateEventSessionDtoValidator : AbstractValidator<UpdateEventSessi
         dto.Description is not null ||
         dto.Slug is not null ||
         dto.MaxAudienceAttendees is not null ||
-        dto.RegistrationMode is not null ||
-        dto.Price is not null ||
-        dto.CurrencyCode is not null ||
+         dto.RegistrationMode is not null ||
         dto.IslamicAspect is not null;
 }
 
@@ -276,36 +266,6 @@ public class UpdateEventSessionRegistrationModeDtoValidator : AbstractValidator<
             .MustAsync(async (id, cancellationToken) => !id.HasValue || await registrationModeRepository.Exists(id.Value))
             .When(dto => dto.Value.HasValue)
             .WithMessage("Registration mode does not exist.");
-    }
-}
-
-public class UpdateEventSessionPriceDtoValidator : AbstractValidator<UpdateEventSessionPriceDto>
-{
-    public UpdateEventSessionPriceDtoValidator()
-    {
-        RuleFor(dto => dto)
-            .Must(dto => dto.Value.HasValue)
-            .WithMessage("Price group must include Value.");
-
-        RuleFor(dto => dto.Value.Value)
-            .GreaterThanOrEqualTo(0)
-            .When(dto => dto.Value.HasValue && dto.Value.Value.HasValue)
-            .WithMessage("Price must be greater than or equal to 0.");
-    }
-}
-
-public class UpdateEventSessionCurrencyCodeDtoValidator : AbstractValidator<UpdateEventSessionCurrencyCodeDto>
-{
-    public UpdateEventSessionCurrencyCodeDtoValidator()
-    {
-        RuleFor(dto => dto)
-            .Must(dto => dto.Value.HasValue)
-            .WithMessage("CurrencyCode group must include Value.");
-
-        RuleFor(dto => dto.Value.Value)
-            .MaximumLength(3)
-            .When(dto => dto.Value.HasValue && !string.IsNullOrWhiteSpace(dto.Value.Value))
-            .WithMessage("CurrencyCode must be a valid 3-letter currency code.");
     }
 }
 

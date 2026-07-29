@@ -29,10 +29,6 @@ public sealed class CreateEventDraftAiActionPayload
 
     public Guid? GroupId { get; init; }
 
-    public decimal? Price { get; init; }
-
-    public string? CurrencyCode { get; init; }
-
     public ConfigureEventParticipationDto? ParticipationConfiguration { get; init; }
 
     public int VisibilityTypeId { get; init; } = 1;
@@ -106,10 +102,6 @@ public sealed class CreateEventDraftSessionPayload
     public int? MaxAudienceAttendees { get; init; }
 
     public int? RegistrationModeId { get; init; }
-
-    public decimal? Price { get; init; }
-
-    public string? CurrencyCode { get; init; }
 
     public EventSessionIslamicAspectDto? IslamicAspect { get; init; }
 

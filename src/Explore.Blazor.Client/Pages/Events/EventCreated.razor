@@ -76,12 +76,13 @@
                     <MudText Typo="Typo.body1" Class="mb-3">@eventDetails.AudienceGenderFullName, @eventDetails.AudienceAgeFullName</MudText>
                 </MudItem>
 
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Price</MudText>
-                    <MudText Typo="Typo.body1" Class="mb-3">
-                        @(eventDetails.Price > 0 ? $"{eventDetails.CurrencyCode} {eventDetails.Price:N2}" : "Free")
-                    </MudText>
-                </MudItem>
+                @if (TicketPriceSummaryFormatter.Format(eventDetails) is { } ticketPriceSummary)
+                {
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">Price</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-3">@ticketPriceSummary</MudText>
+                    </MudItem>
+                }
 
                 <MudItem xs="12" sm="6">
                     <MudText Typo="Typo.subtitle2" Color="Color.Primary">Participation</MudText>

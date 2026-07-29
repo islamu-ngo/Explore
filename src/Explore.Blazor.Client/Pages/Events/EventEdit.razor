@@ -339,28 +339,6 @@
                             </MudSelect>
                         </EventOptionRow>
 
-                        <EventOptionRow Title="Pricing"
-                                        Icon="@Icons.Material.Filled.Payments"
-                                        Summary="@PricingSummary"
-                                        Description="Set event-level pricing. Individual program items can still override price later.">
-                            <div class="edit-event__option-editor-group">
-                                <MudNumericField T="double?" @bind-Value="updateDto.Price"
-                                                 Variant="Variant.Text"
-                                                 Margin="Margin.Dense"
-                                                 Min="0"
-                                                 HideSpinButtons="true"
-                                                 Class="edit-event__option-select edit-event__price-input"
-                                                 aria-label="Event price" />
-                                <MudTextField T="string" @bind-Value="updateDto.CurrencyCode"
-                                              Variant="Variant.Text"
-                                              Margin="Margin.Dense"
-                                              Placeholder="EUR"
-                                              MaxLength="3"
-                                              Class="edit-event__option-select edit-event__currency-input"
-                                              aria-label="Currency code" />
-                            </div>
-                        </EventOptionRow>
-
                         <EventOptionRow Title="Event type"
                                         Icon="@Icons.Material.Filled.Category"
                                         Summary="@EventTypeSummary"

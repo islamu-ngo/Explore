@@ -36,8 +36,7 @@ public class EventCardTests : IDisposable
         EventFormatFullName = "In-Person",
         AudienceGenderFullName = "All",
         AudienceAgeFullName = "Adults",
-        VisibilityTypeFullName = "Public",
-        Price = 0
+        VisibilityTypeFullName = "Public"
     };
 
     [Test]
@@ -127,7 +126,6 @@ public class EventCardTests : IDisposable
         // All fields visible by default when CardFieldVisibility is null
         await Assert.That(cut.Markup).Contains(ExpectedDetailedDate);
         await Assert.That(cut.Markup).Contains("Test Organization");
-        await Assert.That(cut.Markup).Contains("Free");
     }
 
     [Test]
@@ -192,23 +190,6 @@ public class EventCardTests : IDisposable
             .Add(x => x.CardFieldVisibility, visibility));
 
         await Assert.That(cut.Markup).DoesNotContain("Test Organization");
-        await Assert.That(cut.Markup).Contains("Test Blazor Conference");
-    }
-
-    [Test]
-    public async Task EventCard_HidesPriceField_WhenVisibilityDisabled()
-    {
-        var visibility = new Dictionary<string, bool>
-        {
-            ["event_list.card.show_price"] = false
-        };
-
-        var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
-            .Add(x => x.Event, CreateTestEvent())
-            .Add(x => x.Layout, LayoutMode.DetailedList)
-            .Add(x => x.CardFieldVisibility, visibility));
-
-        await Assert.That(cut.Markup).DoesNotContain("Free");
         await Assert.That(cut.Markup).Contains("Test Blazor Conference");
     }
 

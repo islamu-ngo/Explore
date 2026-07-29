@@ -207,12 +207,11 @@ public sealed class AiEvaluationReportGenerator
     {
         var categoryId = Guid.CreateVersion7();
         var mapper = new CreateEventDraftAiActionMapper();
-        var result = mapper.Map($"{{\"title\":\"  Community Iftar  \",\"price\":0,\"categoryIds\":[\"{categoryId}\",\"{categoryId}\"]}}");
+        var result = mapper.Map($"{{\"title\":\"  Community Iftar  \",\"categoryIds\":[\"{categoryId}\",\"{categoryId}\"],\"participationConfiguration\":{{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}}}");
 
         if (result.Succeeded &&
             result.Draft is not null &&
             result.Draft.Title == "Community Iftar" &&
-            result.Draft.Price == 0 &&
             result.Draft.CategoryIds.Count == 1 &&
             result.Draft.CategoryIds[0] == categoryId)
         {

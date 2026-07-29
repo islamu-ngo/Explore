@@ -287,14 +287,6 @@
     max-width: 16rem;
 }
 
-::deep .create-event__price-input {
-    max-width: 7rem;
-}
-
-::deep .create-event__currency-input {
-    max-width: 5rem;
-}
-
 ::deep .create-event__template-preview {
     padding: var(--isl-space-3) var(--isl-space-4);
     border-bottom: 1px solid var(--mud-palette-lines-default);

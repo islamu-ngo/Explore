@@ -63,14 +63,12 @@ public class EventTests
     }
 
     [Test]
-    public async Task NullableTextAndMoneyProperties_DefaultValue_IsExpected()
+    public async Task NullableTextProperties_DefaultValue_IsExpected()
     {
         var entity = CreateEvent();
 
         await Assert.That(entity.Subtitle).IsNull();
         await Assert.That(entity.Description).IsNull();
-        await Assert.That(entity.Price).IsNull();
-        await Assert.That(entity.CurrencyCode).IsNull();
         await Assert.That(entity.Slug).IsNull();
         await Assert.That(entity.Timezone).IsNull();
         await Assert.That(entity.BackgroundColor).IsNull();
@@ -128,6 +126,18 @@ public class EventTests
 
         await Assert.That(eventType.GetProperty("IsRegistrationRequired")).IsNull();
         await Assert.That(eventType.GetProperty("ExternalRegistrationUrl")).IsNull();
+    }
+
+    [Test]
+    public async Task LegacyEventAndSessionPriceAndCurrencyCodeProperties_ShouldBeAbsent()
+    {
+        var eventType = typeof(global::Explore.Domain.Event);
+        var sessionType = typeof(global::Explore.Domain.EventSession);
+
+        await Assert.That(eventType.GetProperty("Price")).IsNull();
+        await Assert.That(eventType.GetProperty("CurrencyCode")).IsNull();
+        await Assert.That(sessionType.GetProperty("Price")).IsNull();
+        await Assert.That(sessionType.GetProperty("CurrencyCode")).IsNull();
     }
 
     [Test]

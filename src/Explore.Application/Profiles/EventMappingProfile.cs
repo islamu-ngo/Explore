@@ -13,6 +13,7 @@ using Explore.Application.DTOs.EventOrganizerClaim;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventTags;
 using Explore.Application.DTOs.EventType;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
@@ -73,6 +74,7 @@ public class EventMappingProfile : Profile
         // Event → EventDto
         CreateMap<Event, EventDto>()
             .ForMember(dest => dest.ParticipationConfiguration, opt => opt.MapFrom(src => src.ParticipationConfiguration))
+            .ForMember(dest => dest.TicketPriceSummary, opt => opt.MapFrom(src => EventTicketPriceSummaryMapper.Map(src)))
             .ForMember(dest => dest.ProvenanceTypeId, opt => opt.MapFrom(src => src.EventProvenanceTypeId))
             .ForMember(dest => dest.ProvenanceTypeCode, opt => opt.MapFrom(src => src.EventProvenanceType != null ? src.EventProvenanceType.MasterCode : null))
             .ForMember(dest => dest.ProvenanceTypeName, opt => opt.MapFrom(src => src.EventProvenanceType != null ? src.EventProvenanceType.FullName : null))
@@ -139,6 +141,7 @@ public class EventMappingProfile : Profile
         // Event → EventListDto
         CreateMap<Event, EventListDto>()
             .ForMember(dest => dest.ParticipationConfiguration, opt => opt.MapFrom(src => src.ParticipationConfiguration))
+            .ForMember(dest => dest.TicketPriceSummary, opt => opt.MapFrom(src => EventTicketPriceSummaryMapper.Map(src)))
             .ForMember(dest => dest.EventTypeFullName, opt => opt.MapFrom(src => src.EventType != null ? src.EventType.FullName : null))
             .ForMember(dest => dest.AudienceGenderFullName, opt => opt.MapFrom(src => src.AudienceGender != null ? src.AudienceGender.FullName : null))
             .ForMember(dest => dest.AudienceAgeFullName, opt => opt.MapFrom(src => src.AudienceAge != null ? src.AudienceAge.FullName : null))

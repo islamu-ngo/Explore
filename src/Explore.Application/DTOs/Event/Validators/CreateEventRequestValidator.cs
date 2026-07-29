@@ -45,7 +45,6 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
         RuleFor(p => p.Description).MaximumLength(150).When(p => !string.IsNullOrWhiteSpace(p.Description));
         RuleFor(p => p.Content).MaximumLength(5000).When(p => !string.IsNullOrWhiteSpace(p.Content));
         RuleFor(p => p.Slug).MaximumLength(500).When(p => !string.IsNullOrWhiteSpace(p.Slug));
-        RuleFor(p => p.CurrencyCode).MaximumLength(3).When(p => !string.IsNullOrWhiteSpace(p.CurrencyCode));
         RuleFor(p => p.ParticipationConfiguration)
             .NotNull().WithMessage("ParticipationConfiguration is required.")
             .SetValidator(new ConfigureEventParticipationDtoValidator());
@@ -59,7 +58,6 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
             .WithMessage("EventTimeZoneId and Timezone must match when both are provided.");
         RuleFor(p => p.BackgroundColor).MaximumLength(32).When(p => !string.IsNullOrWhiteSpace(p.BackgroundColor));
         RuleFor(p => p.BackgroundEffect).MaximumLength(64).When(p => !string.IsNullOrWhiteSpace(p.BackgroundEffect));
-        RuleFor(p => p.Price).GreaterThanOrEqualTo(0).When(p => p.Price.HasValue);
         RuleFor(p => p.SeriesOrder).GreaterThanOrEqualTo(0).When(p => p.SeriesOrder.HasValue);
 
         RuleFor(p => p.IslamicAspect!.PrayerTimeOffset)
@@ -144,8 +142,6 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
                 .When(s => s.EndTime.HasValue)
                 .WithMessage("Session end time must be after start time.");
             session.RuleFor(s => s.MaxAudienceAttendees).GreaterThan(0).When(s => s.MaxAudienceAttendees.HasValue);
-            session.RuleFor(s => s.Price).GreaterThanOrEqualTo(0).When(s => s.Price.HasValue);
-            session.RuleFor(s => s.CurrencyCode).MaximumLength(3).When(s => !string.IsNullOrWhiteSpace(s.CurrencyCode));
             session.RuleFor(s => s.FeaturedImageId)
                 .MustAsync(async (id, _) => !id.HasValue || await storageObjectRepository.Exists(id.Value))
                 .WithMessage("Session featured image does not exist.");

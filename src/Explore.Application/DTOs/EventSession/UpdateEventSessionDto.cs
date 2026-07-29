@@ -20,8 +20,6 @@ public class UpdateEventSessionDto
     public UpdateEventSessionSlugDto? Slug { get; set; }
     public UpdateEventSessionMaxAudienceAttendeesDto? MaxAudienceAttendees { get; set; }
     public UpdateEventSessionRegistrationModeDto? RegistrationMode { get; set; }
-    public UpdateEventSessionPriceDto? Price { get; set; }
-    public UpdateEventSessionCurrencyCodeDto? CurrencyCode { get; set; }
     public UpdateEventSessionIslamicAspectUpdateDto? IslamicAspect { get; set; }
 }
 
@@ -85,16 +83,6 @@ public class UpdateEventSessionMaxAudienceAttendeesDto
 public class UpdateEventSessionRegistrationModeDto
 {
     public OptionalUpdate<int?> Value { get; set; } = OptionalUpdate<int?>.Unspecified();
-}
-
-public class UpdateEventSessionPriceDto
-{
-    public OptionalUpdate<decimal?> Value { get; set; } = OptionalUpdate<decimal?>.Unspecified();
-}
-
-public class UpdateEventSessionCurrencyCodeDto
-{
-    public OptionalUpdate<string?> Value { get; set; } = OptionalUpdate<string?>.Unspecified();
 }
 
 public class UpdateEventSessionIslamicAspectUpdateDto

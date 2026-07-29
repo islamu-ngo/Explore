@@ -23,8 +23,6 @@ public sealed class UpdateEventDraftRequestDto
     public Guid? OrganizationId { get; set; }
     public Guid? GroupId { get; set; }
 
-    public decimal? Price { get; set; }
-    public string? CurrencyCode { get; set; }
     public Guid? FeaturedImageId { get; set; }
 
     public required ConfigureEventParticipationDto ParticipationConfiguration { get; set; }

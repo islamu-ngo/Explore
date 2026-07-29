@@ -70,7 +70,6 @@ public sealed class ImportEventCommandHandler(
                 EventFormatId = request.EventFormatId ?? (int)EventFormatEnum.Local,
                 EventFormat = null!,
                 Timezone = request.Timezone,
-                Price = request.Price,
                 FeaturedImageId = request.FeaturedImageId,
                 EventStatusId = (int)EventStatusEnum.Draft,
                 EventStatus = null!,
