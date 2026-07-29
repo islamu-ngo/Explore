@@ -1,7 +1,6 @@
 // ABOUTME: Storage BFF endpoints issue upload sessions and proxy files to server-approved destinations.
 // ABOUTME: Requires antiforgery or a protected same-process self-call token before accepting upload mutations.
 
-using System.Net.Http.Headers;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Preferences;
@@ -15,6 +14,23 @@ public static class BffStorageEndpoints
     private const int UploadSessionIdLength = 32;
     private const string LegacyImagePurpose = "legacy_image";
     private const string PublicImageVisibility = "public_image";
+    private const string PdfContentType = "application/pdf";
+    private static readonly HashSet<string> RawDestinationFieldNames =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "uploadUrl",
+            "objectKey",
+            "destination",
+            "path"
+        };
+    private static readonly IReadOnlyDictionary<string, string[]> AllowedImageExtensions =
+        new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["image/jpeg"] = [".jpg", ".jpeg"],
+            ["image/png"] = [".png"],
+            ["image/gif"] = [".gif"],
+            ["image/webp"] = [".webp"]
+        };
     private static readonly HashSet<string> ReservedFileNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "CON",
@@ -47,6 +63,13 @@ public static class BffStorageEndpoints
     public static WebApplication MapStorageEndpoints(this WebApplication app)
     {
         app.MapPost("/bff/storage/upload-session", HandleStorageUploadSessionAsync)
+            .RequireAuthorization()
+            .ValidateAntiforgery()
+            .ExcludeFromDescription();
+
+        app.MapPost(
+                "/bff/organizations/{organizationId:guid}/legitimacy-evidence/upload-session",
+                HandleOrganizationEvidenceUploadSessionAsync)
             .RequireAuthorization()
             .ValidateAntiforgery()
             .ExcludeFromDescription();
@@ -118,6 +141,70 @@ public static class BffStorageEndpoints
             issueResult.ExpiresInMinutes));
     }
 
+    private static async Task<IResult> HandleOrganizationEvidenceUploadSessionAsync(
+        Guid organizationId,
+        StorageUploadSessionRequest? request,
+        HttpContext ctx,
+        IEventApiClient apiClient,
+        IStorageUploadSessionStore sessionStore,
+        ILoggerFactory loggerFactory,
+        CancellationToken cancellationToken)
+    {
+        var logger = loggerFactory.CreateLogger("OrganizationEvidenceUploadSession");
+        var validationProblem = ValidateEvidenceUploadSessionRequest(request, out var normalizedRequest);
+        if (validationProblem is not null)
+        {
+            return validationProblem;
+        }
+
+        BaseCommandResponseOfStorageUploadSessionDto uploadResponse;
+        try
+        {
+            uploadResponse = await apiClient.CreateOrganizationTenantEvidenceUploadSessionAsync(
+                organizationId,
+                normalizedRequest,
+                cancellationToken: cancellationToken);
+        }
+        catch (ApiException ex)
+        {
+            logger.LogWarning(
+                "Organization evidence upload session generation failed. Status={StatusCode}",
+                ex.StatusCode);
+            return BffForwardingResults.Problem(
+                ex,
+                "Failed to create an Organization evidence upload session.",
+                "Organization evidence upload session failed");
+        }
+
+        if (uploadResponse.Success != true || uploadResponse.Id is null)
+        {
+            return Results.Problem(
+                detail: "Storage service returned an invalid upload session response.",
+                statusCode: StatusCodes.Status502BadGateway);
+        }
+
+        var issueResult = await sessionStore.IssueAsync(
+            ctx.User,
+            uploadResponse.Id,
+            PdfContentType,
+            cancellationToken);
+        if (!issueResult.Success || string.IsNullOrWhiteSpace(issueResult.SessionId))
+        {
+            logger.LogWarning(
+                "Rejected Organization evidence upload session response. FailureCode={FailureCode}",
+                issueResult.FailureCode);
+            return Results.Problem(
+                detail: "Storage service returned an invalid upload session.",
+                statusCode: StatusCodes.Status502BadGateway);
+        }
+
+        return Results.Ok(new StorageUploadSessionResponse(
+            issueResult.SessionId,
+            string.Empty,
+            string.Empty,
+            issueResult.ExpiresInMinutes));
+    }
+
     private static async Task<IResult> HandleStorageUploadProxyAsync(
         HttpContext ctx,
         IEventApiClient apiClient,
@@ -148,7 +235,7 @@ public static class BffStorageEndpoints
             return InvalidStorageUploadRequest("Multipart upload request is invalid.");
         }
 
-        if (form.ContainsKey("uploadUrl"))
+        if (form.Keys.Any(RawDestinationFieldNames.Contains))
         {
             return InvalidStorageUploadRequest("Raw upload destinations are not accepted.");
         }
@@ -174,19 +261,13 @@ public static class BffStorageEndpoints
         }
 
         var declaredContentType = form["contentType"].ToString();
-        var candidateContentType = string.IsNullOrWhiteSpace(declaredContentType)
-            ? file.ContentType
-            : declaredContentType;
-
-        if (!TryNormalizeContentType(candidateContentType, out var contentType, out var contentTypeProblem))
+        if (!TryValidateSupportedDeclaration(file.FileName, declaredContentType, out var contentType, out var contentTypeProblem))
         {
             return InvalidStorageUploadRequest(contentTypeProblem);
         }
 
-        if (!string.IsNullOrWhiteSpace(declaredContentType) &&
-            !string.IsNullOrWhiteSpace(file.ContentType) &&
-            (!TryNormalizeContentType(file.ContentType, out var fileContentType, out contentTypeProblem) ||
-                !string.Equals(contentType, fileContentType, StringComparison.OrdinalIgnoreCase)))
+        if (!TryValidateSupportedDeclaration(file.FileName, file.ContentType, out var fileContentType, out contentTypeProblem) ||
+            !string.Equals(contentType, fileContentType, StringComparison.OrdinalIgnoreCase))
         {
             return InvalidStorageUploadRequest("File content type must match declared content type.");
         }
@@ -290,7 +371,11 @@ public static class BffStorageEndpoints
             return InvalidStorageUploadRequest(fileNameProblem);
         }
 
-        if (!TryNormalizeContentType(normalizedRequest.ContentType, out var contentType, out var contentTypeProblem))
+        if (!TryValidateImageDeclaration(
+                normalizedRequest.OriginalFileName,
+                normalizedRequest.ContentType,
+                out var contentType,
+                out var contentTypeProblem))
         {
             return InvalidStorageUploadRequest(contentTypeProblem);
         }
@@ -299,15 +384,86 @@ public static class BffStorageEndpoints
         return null;
     }
 
-    private static bool TryNormalizeContentType(
-        string? value,
+    private static IResult? ValidateEvidenceUploadSessionRequest(
+        StorageUploadSessionRequest? request,
+        out CreateOrganizationTenantEvidenceUploadSessionDto normalizedRequest)
+    {
+        normalizedRequest = new CreateOrganizationTenantEvidenceUploadSessionDto
+        {
+            ExpectedSizeBytes = request?.ExpectedSizeBytes ?? 0,
+            ContentType = request?.ContentType?.Trim() ?? string.Empty,
+            FileName = request?.FileName?.Trim() ?? string.Empty
+        };
+
+        if (request is null)
+        {
+            return InvalidStorageUploadRequest("Upload session request body is required.");
+        }
+
+        if (normalizedRequest.ExpectedSizeBytes <= 0)
+        {
+            return InvalidStorageUploadRequest("Expected file size must be greater than zero.");
+        }
+
+        if (!TryValidateEvidenceDeclaration(
+                normalizedRequest.FileName,
+                normalizedRequest.ContentType,
+                out var contentType,
+                out var problem))
+        {
+            return InvalidStorageUploadRequest(problem);
+        }
+
+        normalizedRequest.ContentType = contentType;
+        return null;
+    }
+
+    private static bool TryValidateSupportedDeclaration(
+        string? fileName,
+        string? contentTypeValue,
+        out string contentType,
+        out string problem)
+    {
+        return string.Equals(contentTypeValue?.Trim(), PdfContentType, StringComparison.OrdinalIgnoreCase)
+            ? TryValidateEvidenceDeclaration(fileName, contentTypeValue, out contentType, out problem)
+            : TryValidateImageDeclaration(fileName, contentTypeValue, out contentType, out problem);
+    }
+
+    private static bool TryValidateEvidenceDeclaration(
+        string? fileName,
+        string? contentTypeValue,
+        out string contentType,
+        out string problem)
+    {
+        contentType = contentTypeValue?.Trim() ?? string.Empty;
+        problem = string.Empty;
+
+        if (!IsSafeBrowserFileName(fileName, out problem))
+        {
+            return false;
+        }
+
+        if (!string.Equals(contentType, PdfContentType, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(Path.GetExtension(fileName), ".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            problem = "Evidence documents must be PDF files.";
+            return false;
+        }
+
+        contentType = PdfContentType;
+        return true;
+    }
+
+    private static bool TryValidateImageDeclaration(
+        string? fileName,
+        string? contentTypeValue,
         out string contentType,
         out string problem)
     {
         contentType = string.Empty;
         problem = string.Empty;
 
-        var candidate = value?.Trim() ?? string.Empty;
+        var candidate = contentTypeValue?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(candidate))
         {
             problem = "Content type is required.";
@@ -321,17 +477,22 @@ public static class BffStorageEndpoints
         }
 
         if (ContainsControlCharacters(candidate) ||
-            candidate.Count(static character => character == '/') != 1 ||
-            !MediaTypeHeaderValue.TryParse(candidate, out var mediaTypeHeader) ||
-            string.IsNullOrWhiteSpace(mediaTypeHeader.MediaType) ||
-            mediaTypeHeader.MediaType.Count(static character => character == '/') != 1 ||
-            mediaTypeHeader.MediaType.Contains('*', StringComparison.Ordinal))
+            !AllowedImageExtensions.TryGetValue(candidate, out var allowedExtensions))
         {
-            problem = "Content type must be a valid MIME type.";
+            problem = "Content type must be JPEG, PNG, GIF, or WebP without parameters.";
             return false;
         }
 
-        contentType = mediaTypeHeader.ToString();
+        var extension = Path.GetExtension(fileName);
+        if (string.IsNullOrWhiteSpace(extension) ||
+            !allowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        {
+            problem = "File extension must match the declared image content type.";
+            return false;
+        }
+
+        contentType = AllowedImageExtensions.Keys.First(key =>
+            string.Equals(key, candidate, StringComparison.OrdinalIgnoreCase));
         return true;
     }
 

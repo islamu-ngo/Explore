@@ -119,9 +119,13 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task UploadProxy_WithArbitraryPresignedLookingHttpsUrl_ReturnsBadRequest()
+    [Arguments("uploadUrl")]
+    [Arguments("objectKey")]
+    [Arguments("destination")]
+    [Arguments("path")]
+    public async Task UploadProxy_WithRawDestinationField_ReturnsBadRequest(string fieldName)
     {
-        using var request = CreateUploadRequest();
+        using var request = CreateUploadRequest(fieldName);
 
         using var response = await _client.SendAsync(request);
 
@@ -166,7 +170,32 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("valid MIME type");
+        body.Should().Contain("JPEG, PNG, GIF, or WebP without parameters");
+        _apiHandler.CallCount.Should().Be(0);
+    }
+
+    [Test]
+    public async Task OrganizationEvidenceUploadSession_WithPdf_CallsBoundEvidenceApi()
+    {
+        var organizationId = Guid.CreateVersion7();
+        using var request = CreateEvidenceUploadSessionRequest(organizationId);
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        _apiHandler.EvidenceReserveCallCount.Should().Be(1);
+        _apiHandler.CapturedReserveRequestBody.Should().Contain("\"contentType\":\"application/pdf\"");
+        _apiHandler.CapturedReserveRequestBody.Should().NotContain("owningResourceId");
+    }
+
+    [Test]
+    public async Task GenericUploadSession_WithPdf_RemainsRejected()
+    {
+        using var request = CreateUploadSessionRequest("evidence.pdf", "application/pdf");
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         _apiHandler.CallCount.Should().Be(0);
     }
 
@@ -179,7 +208,26 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("valid MIME type");
+        body.Should().Contain("JPEG, PNG, GIF, or WebP without parameters");
+        _apiHandler.CallCount.Should().Be(0);
+    }
+
+    [Test]
+    [Arguments("image/svg+xml", "probe.svg")]
+    [Arguments("image/bmp", "probe.bmp")]
+    [Arguments("image/avif", "probe.avif")]
+    [Arguments("image/png; charset=binary", "probe.png")]
+    [Arguments("image/png", "probe.jpg")]
+    [Arguments("image/jpeg", "probe.png")]
+    public async Task UploadSession_WithUnsupportedOrMismatchedImageDeclaration_ReturnsBadRequestWithoutCallingApi(
+        string contentType,
+        string fileName)
+    {
+        using var request = CreateUploadSessionRequest(fileName, contentType);
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         _apiHandler.CallCount.Should().Be(0);
     }
 
@@ -210,6 +258,25 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
         body.Should().Contain("content type must match");
+        _apiHandler.FinalizeCallCount.Should().Be(0);
+    }
+
+    [Test]
+    [Arguments("image/svg+xml", "probe.svg")]
+    [Arguments("image/bmp", "probe.bmp")]
+    [Arguments("image/avif", "probe.avif")]
+    [Arguments("image/png; charset=binary", "probe.png")]
+    [Arguments("image/png", "probe.jpg")]
+    public async Task UploadProxy_WithUnsupportedOrMismatchedImageDeclaration_ReturnsBadRequestWithoutUploading(
+        string contentType,
+        string fileName)
+    {
+        var uploadSessionId = await IssueUploadSessionAsync();
+        using var request = CreateUploadProxyRequest(uploadSessionId, contentType, contentType, fileName: fileName);
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         _apiHandler.FinalizeCallCount.Should().Be(0);
     }
 
@@ -314,13 +381,30 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         _apiHandler.CapturedReserveRequestBody.ToLowerInvariant().Should().NotContain("objectkey");
     }
 
+    [Test]
+    [Arguments("photo.jpg", "image/jpeg")]
+    [Arguments("photo.jpeg", "image/jpeg")]
+    [Arguments("photo.png", "image/png")]
+    [Arguments("photo.gif", "image/gif")]
+    [Arguments("photo.webp", "image/webp")]
+    public async Task UploadSession_WithSafeMatchingImageDeclaration_ReturnsOk(
+        string fileName,
+        string contentType)
+    {
+        using var request = CreateUploadSessionRequest(fileName, contentType);
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     public async ValueTask DisposeAsync()
     {
         _client.Dispose();
         await _factory.DisposeAsync();
     }
 
-    private HttpRequestMessage CreateUploadRequest()
+    private HttpRequestMessage CreateUploadRequest(string fieldName)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "/bff/storage/upload-proxy");
         AddBffHeaders(request);
@@ -328,7 +412,7 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         var uploadUrl = "https://127.0.0.1:1/bucket/key?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=fake";
         var form = new MultipartFormDataContent();
         var uploadUrlContent = new StringContent(uploadUrl);
-        form.Add(uploadUrlContent, "uploadUrl");
+        form.Add(uploadUrlContent, fieldName);
         var contentTypeContent = new StringContent("image/png");
         form.Add(contentTypeContent, "contentType");
 
@@ -364,6 +448,22 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         return request;
     }
 
+    private HttpRequestMessage CreateEvidenceUploadSessionRequest(Guid organizationId)
+    {
+        var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/bff/organizations/{organizationId:D}/legitimacy-evidence/upload-session");
+        AddBffHeaders(request);
+        request.Content = JsonContent.Create(new
+        {
+            fileName = "evidence.pdf",
+            contentType = "application/pdf",
+            expectedSizeBytes = 4L
+        });
+
+        return request;
+    }
+
     private HttpRequestMessage CreateBoundaryUploadSessionRequest()
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "/bff/storage/upload-session");
@@ -393,7 +493,7 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         form.Add(new StringContent(declaredContentType), "contentType");
 
         var fileContent = new ByteArrayContent([0x89, 0x50, 0x4E, 0x47]);
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue(fileContentType);
+        fileContent.Headers.TryAddWithoutValidation("Content-Type", fileContentType);
         form.Add(fileContent, "file", fileName);
         request.Content = form;
 
@@ -493,6 +593,7 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         private DateTime? _nextReserveExpiresAtUtc;
         public int CallCount { get; private set; }
         public int ReserveCallCount { get; private set; }
+        public int EvidenceReserveCallCount { get; private set; }
         public int FinalizeCallCount { get; private set; }
         public string? CapturedReserveRequestBody { get; private set; }
         public Guid ApiUploadSessionId => _uploadSessionId;
@@ -520,6 +621,23 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
                 _nextReserveExpiresAtUtc = null;
 
                 return JsonResponse(CreateSessionResponse(_uploadSessionId, null, "reserved", expiresAtUtc));
+            }
+
+            if (request.Method == HttpMethod.Post
+                && request.RequestUri?.AbsolutePath.EndsWith(
+                    "/legitimacy-evidence/upload-session",
+                    StringComparison.Ordinal) == true)
+            {
+                EvidenceReserveCallCount++;
+                CapturedReserveRequestBody = request.Content is null
+                    ? null
+                    : await request.Content.ReadAsStringAsync(cancellationToken);
+
+                return JsonResponse(CreateSessionResponse(
+                    _uploadSessionId,
+                    null,
+                    "reserved",
+                    DateTime.UtcNow.AddMinutes(15)));
             }
 
             if (request.Method == HttpMethod.Put &&
