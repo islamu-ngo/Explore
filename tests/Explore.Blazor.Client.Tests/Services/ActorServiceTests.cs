@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for ActorService covering HAL-based actor reads and conversion behavior.
-// Verifies pagination-based list retrieval, HAL mapping, null handling, and exception propagation.
+// ABOUTME: Verifies global/contextual retrieval, HAL mapping, null handling, and exception propagation.
 
 using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
@@ -123,6 +123,31 @@ public class ActorServiceTests
 
     #endregion
 
+    [Test]
+    public async Task GetActorByTenantAsync_ReturnsOnlyRequestedContextualActor()
+    {
+        var tenantId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var response = ToActorResource(new ActorDto
+        {
+            Id = actorId,
+            DisplayName = "Local override"
+        });
+        _apiClient.GetActorByTenantAsync(
+                tenantId,
+                actorId,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        var result = await _service.GetActorByTenantAsync(tenantId, actorId);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Id).IsEqualTo(actorId);
+        await Assert.That(result.DisplayName).IsEqualTo("Local override");
+    }
+
     // ========== HAL Response Helpers ==========
 
     #region HAL Response Helpers
@@ -143,6 +168,13 @@ public class ActorServiceTests
         var json = System.Text.Json.JsonSerializer.Serialize(item);
         return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfActorListDto>(json)
                ?? new HalResourceOfActorListDto();
+    }
+
+    private static HalResourceOfActorDto ToActorResource(ActorDto item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfActorDto>(json)
+               ?? new HalResourceOfActorDto();
     }
 
     #endregion

@@ -15,6 +15,7 @@
 @using Explore.Blazor.Client.Pages.Errors
 @using Explore.Blazor.Client.Pages.User
 @using Explore.Blazor.Client.Pages.Organizations
+@using Explore.Blazor.Client.Pages.Actors
 @using Explore.Blazor.Client.Pages.Admin
 @using Explore.Blazor.Client.Pages.Admin.Instance
 @using Explore.Blazor.Client.Pages.Admin.Tenant
@@ -64,6 +65,8 @@
             // NOTE: literal/specific routes MUST come before parameterized routes at the same depth
             new RouteConfig { Path = "/", Component = typeof(HomeStart), Transition = RouteTransition.Fade, EnableCache = false },
             new RouteConfig { Path = "/events", Component = typeof(EventList), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/actors/:id", Component = typeof(ActorProfile), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/t/:tenantId/actors/:id", Component = typeof(ActorProfile), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/home", Component = typeof(Home), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/errors/404", Component = typeof(NotFound), Transition = RouteTransition.Fade, EnableCache = false },
             new RouteConfig { Path = "/errors/403", Component = typeof(Unauthorized), Transition = RouteTransition.Fade, EnableCache = false },

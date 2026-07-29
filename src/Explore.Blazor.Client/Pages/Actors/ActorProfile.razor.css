@@ -1,0 +1,77 @@
+/* ABOUTME: Scoped styling for canonical and tenant-contextual Actor profiles. */
+/* ABOUTME: Provides responsive identity, metadata, and action layout with logical properties. */
+
+.actor-profile {
+    padding-block: var(--space-8, 2rem);
+}
+
+.actor-profile__state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3, 0.75rem);
+    min-block-size: 16rem;
+}
+
+.actor-profile__card {
+    overflow: hidden;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--radius-lg, 0.75rem);
+    background: var(--mud-palette-surface);
+}
+
+.actor-profile__banner {
+    min-block-size: 8rem;
+}
+
+.actor-profile__body {
+    display: grid;
+    gap: var(--space-5, 1.25rem);
+    padding: var(--space-6, 1.5rem);
+}
+
+.actor-profile__identity {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-4, 1rem);
+}
+
+.actor-profile__metadata {
+    display: grid;
+    gap: var(--space-3, 0.75rem);
+    margin: 0;
+}
+
+.actor-profile__metadata > div {
+    display: grid;
+    grid-template-columns: minmax(8rem, 12rem) minmax(0, 1fr);
+    gap: var(--space-3, 0.75rem);
+}
+
+.actor-profile__metadata dt {
+    color: var(--mud-palette-text-secondary);
+}
+
+.actor-profile__metadata dd {
+    margin: 0;
+}
+
+.actor-profile__did {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+    .actor-profile__identity {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .actor-profile__subscribe {
+        grid-column: 1 / -1;
+    }
+
+    .actor-profile__metadata > div {
+        grid-template-columns: 1fr;
+        gap: var(--space-1, 0.25rem);
+    }
+}

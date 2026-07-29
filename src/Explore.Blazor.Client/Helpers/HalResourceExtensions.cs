@@ -934,6 +934,12 @@ public static class HalResourceExtensions
     public static bool HasHalLink(this ActorSubscriptionListDto dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
+    public static bool HasHalLink(this ActorDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    public static bool HasHalLink(this ActorListDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
     public static bool HasHalLink(this EventTeamMemberDto dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 

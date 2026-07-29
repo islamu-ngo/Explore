@@ -1,4 +1,5 @@
 // ABOUTME: Service for managing actor-related operations.
+// ABOUTME: Reads canonical and tenant-contextual Actor HAL resources from the API.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Constants;
@@ -25,6 +26,12 @@ public class ActorService : IActorService
     public async Task<ActorDto?> GetActorByIdAsync(Guid id)
     {
         var result = await _client.GetActorByIdAsync(id);
+        return result?.ToDto();
+    }
+
+    public async Task<ActorDto?> GetActorByTenantAsync(Guid tenantId, Guid actorId)
+    {
+        var result = await _client.GetActorByTenantAsync(tenantId, actorId);
         return result?.ToDto();
     }
 }

@@ -1,0 +1,174 @@
+@* ABOUTME: Public canonical and tenant-contextual Actor profile page. *@
+@* ABOUTME: Renders subscription actions only from server-provided HAL affordances. *@
+
+@using Blazouter.Services
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Contracts.Services.Lookup
+@using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Shared
+@using MudBlazor
+@attribute [StreamRendering]
+@inject IActorService ActorService
+@inject ITranslationService Translation
+@inject RouterStateService RouterState
+@inject NavigationManager Navigation
+
+<PageTitle>@(DisplayName ?? T("ui.actor.profile.title", "Actor profile"))</PageTitle>
+<HeadContent>
+    <link rel="canonical" href="@CanonicalUrlHelper.Build(Navigation, ActorId == Guid.Empty ? null : $"/actors/{ActorId:D}")" />
+</HeadContent>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="actor-profile">
+    @if (_loading)
+    {
+        <div class="actor-profile__state" role="status">
+            <MudProgressCircular Indeterminate="true" />
+            <span>@T("ui.actor.profile.loading", "Loading actor…")</span>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_error) || DisplayName is null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">
+            @(_error ?? T("ui.actor.profile.not_found", "Actor not found."))
+        </MudAlert>
+    }
+    else
+    {
+        <article class="actor-profile__card">
+            <div class="actor-profile__banner" style="@BannerStyle"></div>
+            <div class="actor-profile__body">
+                <div class="actor-profile__identity">
+                    <MudAvatar Size="Size.Large"
+                               Image="@ProfilePictureUri"
+                               Color="Color.Primary"
+                               aria-label="@DisplayName">
+                        @if (string.IsNullOrWhiteSpace(ProfilePictureUri))
+                        {
+                            <span>@DisplayName[..1].ToUpperInvariant()</span>
+                        }
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.h4" HtmlTag="h1">@DisplayName</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @(IsTenantContext
+                                ? T("ui.actor.profile.tenant_context", "Tenant profile")
+                                : T("ui.actor.profile.global_context", "Canonical global profile"))
+                        </MudText>
+                    </div>
+                    <ActorSubscriptionButton TargetActorId="@ActorId"
+                                             TargetName="@DisplayName"
+                                             CanSubscribe="@HasAffordance("subscribe")"
+                                             CanViewSubscription="@HasAffordance("subscription")"
+                                             CssClass="actor-profile__subscribe" />
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Handle))
+                {
+                    <MudText Typo="Typo.body1" Color="Color.Primary">@@@Handle</MudText>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Description))
+                {
+                    <MudText Typo="Typo.body1">@Description</MudText>
+                }
+
+                <dl class="actor-profile__metadata">
+                    <div>
+                        <dt>@T("ui.actor.profile.type", "Type")</dt>
+                        <dd>@(ActorType ?? T("ui.actor.profile.type_unknown", "Actor"))</dd>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Did))
+                    {
+                        <div>
+                            <dt>@T("ui.actor.profile.did", "DID")</dt>
+                            <dd class="actor-profile__did">@Did</dd>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(PdsHost))
+                    {
+                        <div>
+                            <dt>@T("ui.actor.profile.pds", "Personal data server")</dt>
+                            <dd>@PdsHost</dd>
+                        </div>
+                    }
+                </dl>
+
+                @if (IsTenantContext)
+                {
+                    <AppButton Variant="Variant.Text" Href="@($"/actors/{ActorId:D}")">
+                        @T("ui.actor.profile.view_canonical", "View canonical profile")
+                    </AppButton>
+                }
+            </div>
+        </article>
+    }
+</MudContainer>
+
+@code {
+    private Guid ActorId { get; set; }
+    private Guid? TenantId { get; set; }
+    private ActorDto? _actor;
+    private bool _loading = true;
+    private string? _error;
+
+    private bool IsTenantContext => TenantId.HasValue;
+    private string? DisplayName => _actor?.DisplayName;
+    private string? Handle => _actor?.Handle;
+    private string? Did => _actor?.Did;
+    private string? ActorType => _actor?.ActorTypeFullName;
+    private string? ProfilePictureUri => _actor?.ProfilePictureUri;
+    private string? Description => _actor?.Description;
+    private string? PdsHost => _actor?.PdsHost;
+    private string BannerStyle =>
+        $"background-color: {SafeColor(_actor?.BannerColor)};";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Guid.TryParse(RouterState.GetParam("id"), out var actorId);
+        ActorId = actorId;
+        if (Guid.TryParse(RouterState.GetParam("tenantId"), out var tenantId))
+        {
+            TenantId = tenantId;
+        }
+
+        if (ActorId == Guid.Empty)
+        {
+            _error = T("ui.actor.profile.not_found", "Actor not found.");
+            _loading = false;
+            return;
+        }
+
+        try
+        {
+            if (TenantId is { } contextualTenantId)
+            {
+                _actor = await ActorService.GetActorByTenantAsync(contextualTenantId, ActorId);
+            }
+            else
+            {
+                _actor = await ActorService.GetActorByIdAsync(ActorId);
+            }
+        }
+        catch
+        {
+            _error = T("ui.actor.profile.load_error", "Actor profile could not be loaded.");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private bool HasAffordance(string rel) =>
+        _actor?.HasHalLink(rel) == true;
+
+    private static string SafeColor(string? color) =>
+        color is { Length: 7 } &&
+        color[0] == '#' &&
+        color[1..].All(Uri.IsHexDigit)
+            ? color
+            : "#1f6feb";
+
+    private string T(string key, string fallback) => Translation.T(key, fallback);
+}

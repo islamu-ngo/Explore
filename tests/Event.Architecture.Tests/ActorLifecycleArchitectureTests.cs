@@ -105,6 +105,38 @@ public class ActorLifecycleArchitectureTests
         await Assert.That(groupTenant.GetProperty("ParentGroupTenantId")).IsNotNull();
     }
 
+    [Test]
+    public async Task GenericActorPresenceAndCompositeEventActorOwnership_RemainAbsent()
+    {
+        await Assert.That(typeof(Actor).Assembly.GetType("Explore.Domain.ActorTenantPresence")).IsNull();
+        await Assert.That(typeof(Explore.Domain.Event).GetProperty("ActorId")?.PropertyType).IsEqualTo(typeof(Guid));
+        await Assert.That(typeof(Explore.Domain.Event).GetProperty("Actor")?.PropertyType).IsEqualTo(typeof(Actor));
+        await Assert.That(typeof(Explore.Domain.Event).GetProperty("TenantActorId")).IsNull();
+    }
+
+    [Test]
+    public async Task ActorProfileAffordances_RemainHalDriven()
+    {
+        var profile = await File.ReadAllTextAsync(ContextSystemHelpers.RepoPath(
+            "src",
+            "Explore.Blazor.Client",
+            "Pages",
+            "Actors",
+            "ActorProfile.razor"));
+        var routes = await File.ReadAllTextAsync(ContextSystemHelpers.RepoPath(
+            "src",
+            "Explore.Blazor.Client",
+            "Routes.razor"));
+
+        await Assert.That(profile).Contains("HasHalLink");
+        await Assert.That(profile).DoesNotContain("ClaimsPrincipal");
+        await Assert.That(profile).DoesNotContain("ClaimTypes");
+        await Assert.That(profile).DoesNotContain("IsInRole");
+        await Assert.That(profile).DoesNotContain("CurrentUserRoleId");
+        await Assert.That(routes).Contains("/actors/:id");
+        await Assert.That(routes).Contains("/t/:tenantId/actors/:id");
+    }
+
     private static Type RequiredDomainType(string typeName) =>
         typeof(Actor).Assembly.GetType($"Explore.Domain.{typeName}")
         ?? throw new InvalidOperationException($"Missing domain type Explore.Domain.{typeName}.");
