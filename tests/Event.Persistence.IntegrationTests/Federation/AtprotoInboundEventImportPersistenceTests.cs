@@ -46,12 +46,50 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
     private const string RecordKey = "3msnapshota22";
     private const string Service = "https://jetstream.example/import";
     private const string ThumbnailCid = "bafkreibm6jg3ux5quca3po4nukm4m6xkfxzq4bgxjucfd4g6yuk3z7q7di";
-    private const string ReplacementThumbnailCid = "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    private const string ThumbnailChecksum = "86d11a5d50f6f68ad9fce8c0c5f992ae147f14f3290b28e14926c90da71e5d1a";
+    private const string ReplacementThumbnailCid = "bafkreievoe7jzpor37fs2qeayjjx6qmnipfa3is7bv6wmmpu67exxco4i4";
+    private const string ThumbnailChecksum = "2cf24dba5fb0a081b7bb8da299c67aea2df30e04d74d0451f0dec515bcfe1f1a";
+    private const string ReplacementThumbnailChecksum =
+        "95713e9cbdd1dfcb2d4080c2537f418d43ca0da25f0d7d6631f4f7c97b89dc47";
     private static readonly byte[] RealPipelineImageBytes = Convert.FromBase64String(
         "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAEElEQVR4nGP8ywACLGCSAQANEQED1LYyQAAAAABJRU5ErkJggg==");
     private static readonly string RealPipelineThumbnailCid =
         ATCid.FromSha256Hash(SHA256.HashData(RealPipelineImageBytes)).Value;
+    private static readonly byte[] ReplacementPipelineImageBytes = Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+    private static readonly string ReplacementPipelineThumbnailCid =
+        ATCid.FromSha256Hash(SHA256.HashData(ReplacementPipelineImageBytes)).Value;
+    private static readonly (string Name, string MimeType, string Extension, byte[] Bytes)[] RasterPipelineCases =
+    [
+        (
+            "jpeg",
+            "image/jpeg",
+            ".jpg",
+            Convert.FromBase64String(
+                "/9j/4AAQSkZJRgABAgAAAQABAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgEBAQEBAUFBQUFBQYGBgYGBgYGBgYGBgYHBwcICAgHBwcGBgcHCAgICAkJCQgICAgJCQoKCgwMCwsODg4RERT/xABMAAEBAAAAAAAAAAAAAAAAAAAABgEBAQAAAAAAAAAAAAAAAAAABgcQAQAAAAAAAAAAAAAAAAAAAAARAQAAAAAAAAAAAAAAAAAAAAD/wAARCAACAAIDASIAAhEAAxEA/9oADAMBAAIRAxEAPwCLAE1/f//Z")),
+        ("png", "image/png", ".png", RealPipelineImageBytes),
+        (
+            "gif",
+            "image/gif",
+            ".gif",
+            Convert.FromBase64String("R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==")),
+        (
+            "webp-still",
+            "image/webp",
+            ".webp",
+            Convert.FromBase64String("UklGRhwAAABXRUJQVlA4TA8AAAAvAUAAAAcQ9Y/+ByKi/wEA")),
+        (
+            "webp-animated",
+            "image/webp",
+            ".webp",
+            Convert.FromBase64String(
+                "UklGRsAAAABXRUJQVlA4WAoAAAACAAAAAQAAAQAAQU5JTQYAAAD/////AABBTk1GSAAAAAAAAAAAAAEAAAEAAGQAAAJWUDggMAAAANABAJ0BKgIAAgACADQloAJ0ugH4AAOwAP7wxAv/ILlhdcjX/yA/5Af8gP/48gAAAEFOTUZEAAAAAAAAAAAAAQAAAQAAZAAAAFZQOCAsAAAAlAEAnQEqAgACAAAANCWgAnS6AAOYAP75k2//kB//kB//kB//ID/iF3sgMAA=")),
+        (
+            "avif",
+            "image/avif",
+            ".avif",
+            Convert.FromBase64String(
+                "AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUIAAAD5bWV0YQAAAAAAAAAvaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAFBpY3R1cmVIYW5kbGVyAAAAAA5waXRtAAAAAAABAAAAHmlsb2MAAAAARAAAAQABAAAAAQAAASEAAAAbAAAAKGlpbmYAAAAAAAEAAAAaaW5mZQIAAAAAAQAAYXYwMUNvbG9yAAAAAGppcHJwAAAAS2lwY28AAAAUaXNwZQAAAAAAAAACAAAAAgAAABBwaXhpAAAAAAMICAgAAAAMYXYxQ4EADAAAAAATY29scm5jbHgAAgACAAIAAAAAF2lwbWEAAAAAAAAAAQABBAECgwQAAAAjbWRhdAoFGAA2wCAyEhgAAABQAABAA1Lt5xf080WmIA=="))
+    ];
 
     [Test]
     public async Task InboundRequestValidation_RejectsMalformedAndOversizedOptionalFields()
@@ -295,6 +333,212 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
     }
 
     [Test]
+    [Arguments("image/jpeg", ".jpg")]
+    [Arguments("image/png", ".png")]
+    [Arguments("image/gif", ".gif")]
+    [Arguments("image/webp", ".webp")]
+    [Arguments("image/avif", ".avif")]
+    public async Task JetstreamApply_SafeRasterStagedMetadataCreatesExactPublicImage(
+        string mimeType,
+        string expectedExtension)
+    {
+        await fixture.ResetAsync();
+        ImportScope scope = await SeedScopeAsync($"atproto-import-task24-safe-{expectedExtension[1..]}");
+        await using ExploreDbContext context = fixture.CreateDbContext();
+        var repository = new AtprotoJetstreamRepository(context);
+        DateTime observedAt = CurrentUtc();
+        AtprotoJetstreamClaim claim = await ClaimAsync(repository, observedAt);
+        AtprotoRecord record = Record(
+            1,
+            observedAt,
+            $"Safe {mimeType} event",
+            $"https://events.example/safe-{expectedExtension[1..]}");
+        AtprotoJetstreamApplyRequest request = ApplyRequest(
+            claim,
+            0,
+            1,
+            record,
+            scope.TenantId,
+            $"Safe {mimeType} event",
+            $"https://events.example/safe-{expectedExtension[1..]}",
+            observedAt);
+        request = WithStagedThumbnail(
+            request,
+            StagedThumbnail($"safe-{expectedExtension[1..]}", mimeType: mimeType),
+            mimeType: mimeType);
+
+        AtprotoPersistenceApplyResult result =
+            await repository.TryApplyAndAdvanceWithResultAsync(request);
+
+        context.ChangeTracker.Clear();
+        Explore.Domain.Event imported = await context.Events.AsNoTracking().SingleAsync();
+        StorageObject image = await context.StorageObjects.AsNoTracking().SingleAsync();
+        await Assert.That(result.Applied).IsTrue();
+        await Assert.That(result.ConsumedStagedThumbnails).IsEquivalentTo([request.EventImports.Single().StagedThumbnail!]);
+        await Assert.That(imported.FeaturedImageId).IsEqualTo(image.Id);
+        await Assert.That(image.ContentType).IsEqualTo(mimeType);
+        await Assert.That(image.Extension).IsEqualTo(expectedExtension);
+        await Assert.That(image.FullName).IsEqualTo($"{ThumbnailCid}{expectedExtension}");
+        await Assert.That(image.Visibility).IsEqualTo(StorageObjectVisibilities.PublicImage);
+        await Assert.That(image.Purpose).IsEqualTo(StorageObjectPurposes.EventImage);
+        await Assert.That(image.LifecycleState).IsEqualTo(StorageObjectLifecycleStates.Active);
+        await Assert.That(SafeRasterContentPolicy.IsSafePublicImageMetadata(image)).IsTrue();
+    }
+
+    [Test]
+    [Arguments("image/svg+xml", "image/svg+xml", 8L, ThumbnailChecksum, ThumbnailCid, StorageProviders.Local, "atproto/rejected")]
+    [Arguments("image/png; charset=utf-8", "image/png; charset=utf-8", 8L, ThumbnailChecksum, ThumbnailCid, StorageProviders.Local, "atproto/rejected")]
+    [Arguments("image/png", "image/jpeg", 8L, ThumbnailChecksum, ThumbnailCid, StorageProviders.Local, "atproto/rejected")]
+    [Arguments("image/png", "image/png", 9L, ThumbnailChecksum, ThumbnailCid, StorageProviders.Local, "atproto/rejected")]
+    [Arguments("image/png", "image/png", 8L, ReplacementThumbnailChecksum, ThumbnailCid, StorageProviders.Local, "atproto/rejected")]
+    [Arguments("image/png", "image/png", 8L, ThumbnailChecksum, ReplacementThumbnailCid, StorageProviders.Local, "atproto/rejected")]
+    [Arguments("image/png", "image/png", 8L, ThumbnailChecksum, ThumbnailCid, "", "atproto/rejected")]
+    [Arguments("image/png", "image/png", 8L, ThumbnailChecksum, ThumbnailCid, "   ", "atproto/rejected")]
+    [Arguments("image/png", "image/png", 8L, ThumbnailChecksum, ThumbnailCid, StorageProviders.Local, "")]
+    [Arguments("image/png", "image/png", 8L, ThumbnailChecksum, ThumbnailCid, StorageProviders.Local, "   ")]
+    public async Task JetstreamApply_UnsafeOrMismatchedStagedThumbnailPreservesCanonicalGraphWithoutImage(
+        string candidateMimeType,
+        string stagedMimeType,
+        long stagedSize,
+        string stagedChecksum,
+        string candidateCid,
+        string stagedProvider,
+        string stagedObjectKey)
+    {
+        await fixture.ResetAsync();
+        ImportScope scope = await SeedScopeAsync("atproto-import-task24-reject-staged");
+        await using ExploreDbContext context = fixture.CreateDbContext();
+        var repository = new AtprotoJetstreamRepository(context);
+        DateTime observedAt = CurrentUtc();
+        AtprotoJetstreamClaim claim = await ClaimAsync(repository, observedAt);
+        AtprotoRecord record = Record(
+            1,
+            observedAt,
+            "Rejected thumbnail event",
+            "https://events.example/rejected-thumbnail");
+        record.RecordJson = ExtensibleRecordJson(
+            "Rejected thumbnail event",
+            candidateCid,
+            candidateMimeType,
+            8);
+        string expectedJson = record.RecordJson;
+        AtprotoJetstreamApplyRequest request = ApplyRequest(
+            claim,
+            0,
+            1,
+            record,
+            scope.TenantId,
+            "Rejected thumbnail event",
+            "https://events.example/rejected-thumbnail",
+            observedAt);
+        FileStorageWriteResult staged = StagedThumbnail(
+                "rejected",
+                sizeBytes: stagedSize,
+                mimeType: stagedMimeType,
+                checksum: stagedChecksum) with
+            {
+                Provider = stagedProvider,
+                ObjectKey = stagedObjectKey
+            };
+        request = WithStagedThumbnail(
+            request,
+            staged,
+            thumbnailCid: candidateCid,
+            mimeType: candidateMimeType);
+
+        AtprotoPersistenceApplyResult result =
+            await repository.TryApplyAndAdvanceWithResultAsync(request);
+
+        context.ChangeTracker.Clear();
+        AtprotoRecord canonical = await context.AtprotoRecords.AsNoTracking().SingleAsync();
+        Explore.Domain.Event imported = await context.Events.AsNoTracking().SingleAsync();
+        EventSession session = await context.EventSessions.AsNoTracking().SingleAsync();
+        await Assert.That(result.Applied).IsTrue();
+        await Assert.That(result.ConsumedStagedThumbnails.Count).IsEqualTo(0);
+        await Assert.That(JsonNode.DeepEquals(
+            JsonNode.Parse(canonical.RecordJson!),
+            JsonNode.Parse(expectedJson))).IsTrue();
+        await Assert.That(imported.AtprotoRecordId).IsEqualTo(canonical.Id);
+        await Assert.That(session.EventId).IsEqualTo(imported.Id);
+        await Assert.That(imported.FeaturedImageId).IsNull();
+        await Assert.That(await context.StorageObjects.CountAsync()).IsEqualTo(0);
+        await Assert.That(await context.PdsSyncOutbox.CountAsync()).IsEqualTo(0);
+    }
+
+    [Test]
+    [Arguments(StorageProviders.Local, "atproto/cleanup", "image/jpeg")]
+    [Arguments("", "atproto/cleanup", "image/png")]
+    [Arguments("   ", "atproto/cleanup", "image/png")]
+    [Arguments(StorageProviders.Local, "", "image/png")]
+    [Arguments(StorageProviders.Local, "   ", "image/png")]
+    public async Task JetstreamHandler_RepositoryRejectedStageIsCleanedWhileCanonicalImportSucceeds(
+        string stagedProvider,
+        string stagedObjectKey,
+        string stagedMimeType)
+    {
+        await fixture.ResetAsync();
+        ImportScope scope = await SeedScopeAsync("atproto-import-task24-cleanup");
+        await using ExploreDbContext context = fixture.CreateDbContext();
+        var repository = new AtprotoJetstreamRepository(context);
+        DateTime observedAt = CurrentUtc();
+        AtprotoJetstreamClaim claim = await ClaimAsync(repository, observedAt);
+        AtprotoRecord record = Record(
+            1,
+            observedAt,
+            "Clean rejected stage",
+            "https://events.example/clean-rejected-stage");
+        record.RecordJson = ExtensibleRecordJson(
+            "Clean rejected stage",
+            ThumbnailCid,
+            "image/png",
+            8);
+        string expectedJson = record.RecordJson;
+        var request = new AtprotoJetstreamApplyRequest(
+            claim,
+            ExpectedCursor: 0,
+            NextCursor: 1,
+            record,
+            [Presentation(scope.TenantId)],
+            Quarantine: null,
+            observedAt,
+            EventProjection: Projection(
+                record,
+                "Clean rejected stage",
+                UtcOffset(10),
+                UtcOffset(13),
+                UtcOffset(14),
+                "https://events.example/clean-rejected-stage",
+                observedAt));
+        FileStorageWriteResult staged = StagedThumbnail("cleanup", mimeType: stagedMimeType) with
+        {
+            Provider = stagedProvider,
+            ObjectKey = stagedObjectKey
+        };
+        var gateway = new DeterministicStagedThumbnailGateway(staged);
+        var handler = new ImportAtprotoFederatedEventCommandHandler(repository, gateway);
+
+        bool applied = await handler.Handle(
+            new ImportAtprotoFederatedEventCommand(request),
+            CancellationToken.None);
+
+        context.ChangeTracker.Clear();
+        AtprotoRecord canonical = await context.AtprotoRecords.AsNoTracking().SingleAsync();
+        Explore.Domain.Event imported = await context.Events.AsNoTracking().SingleAsync();
+        EventSession session = await context.EventSessions.AsNoTracking().SingleAsync();
+        await Assert.That(applied).IsTrue();
+        await Assert.That(gateway.FetchCount).IsEqualTo(1);
+        await Assert.That(gateway.CleanupCount).IsEqualTo(1);
+        await Assert.That(gateway.CleanedStage).IsEqualTo(staged);
+        await Assert.That(JsonNode.DeepEquals(
+            JsonNode.Parse(canonical.RecordJson!),
+            JsonNode.Parse(expectedJson))).IsTrue();
+        await Assert.That(session.EventId).IsEqualTo(imported.Id);
+        await Assert.That(imported.FeaturedImageId).IsNull();
+        await Assert.That(await context.StorageObjects.CountAsync()).IsEqualTo(0);
+        await Assert.That(await context.PdsSyncOutbox.CountAsync()).IsEqualTo(0);
+    }
+
+    [Test]
     public async Task JetstreamApply_ReplaysAndReplacementPreserveIdsWithoutDuplicateOrOrphanedImages()
     {
         await fixture.ResetAsync();
@@ -356,7 +600,7 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
                 "Replacement event",
                 "https://events.example/replacement",
                 observedAt.AddSeconds(3)),
-            StagedThumbnail("thumbnail-b"),
+            StagedThumbnail("thumbnail-b", checksum: ReplacementThumbnailChecksum),
             ReplacementThumbnailCid));
 
         context.ChangeTracker.Clear();
@@ -1342,6 +1586,182 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
     }
 
     [Test]
+    public async Task JetstreamHandler_SafeRasterContainerMatrixPersistsExactPublicImages()
+    {
+        foreach ((string name, string mimeType, string extension, byte[] bytes) in RasterPipelineCases)
+        {
+            await fixture.ResetAsync();
+            ImportScope scope = await SeedScopeAsync($"atproto-import-task24-real-{name}");
+            string cid = ATCid.FromSha256Hash(SHA256.HashData(bytes)).Value;
+            string storageRoot = Path.Combine(
+                Path.GetTempPath(),
+                $"event-task24-{name}-storage-{Guid.CreateVersion7():N}");
+            try
+            {
+                var storage = new LocalFileStorageProvider(
+                    Options.Create(new LocalFileStorageOptions { RootPath = storageRoot }),
+                    NullLogger<LocalFileStorageProvider>.Instance);
+                var transport = new DeterministicThumbnailTransport(bytes, mimeType);
+                var gateway = new AtprotoThumbnailBlobGateway(
+                    transport.CreatePrimaryHandler,
+                    storage,
+                    maximumBytes: bytes.Length,
+                    requestTimeout: TimeSpan.FromSeconds(5));
+                await using ExploreDbContext context = fixture.CreateDbContext();
+                var repository = new AtprotoJetstreamRepository(context);
+                DateTime observedAt = CurrentUtc();
+                AtprotoJetstreamClaim claim = await ClaimAsync(repository, observedAt);
+                AtprotoRecord record = Record(
+                    1,
+                    observedAt,
+                    $"Safe {name} event",
+                    $"https://events.example/safe-{name}");
+                record.RecordJson = ExtensibleRecordJson(
+                    $"Safe {name} event",
+                    cid,
+                    mimeType,
+                    bytes.Length);
+                string expectedJson = record.RecordJson;
+                var request = new AtprotoJetstreamApplyRequest(
+                    claim,
+                    ExpectedCursor: 0,
+                    NextCursor: 1,
+                    record,
+                    [Presentation(scope.TenantId)],
+                    Quarantine: null,
+                    observedAt,
+                    EventProjection: Projection(
+                        record,
+                        $"Safe {name} event",
+                        UtcOffset(10),
+                        UtcOffset(13),
+                        UtcOffset(14),
+                        $"https://events.example/safe-{name}",
+                        observedAt));
+                var handler = new ImportAtprotoFederatedEventCommandHandler(repository, gateway);
+
+                bool applied = await handler.Handle(
+                    new ImportAtprotoFederatedEventCommand(request),
+                    CancellationToken.None);
+
+                context.ChangeTracker.Clear();
+                AtprotoRecord canonical = await context.AtprotoRecords.AsNoTracking().SingleAsync();
+                Explore.Domain.Event imported = await context.Events.AsNoTracking().SingleAsync();
+                EventSession session = await context.EventSessions.AsNoTracking().SingleAsync();
+                StorageObject image = await context.StorageObjects.AsNoTracking().SingleAsync();
+                await Assert.That(applied).IsTrue();
+                await Assert.That(JsonNode.DeepEquals(
+                    JsonNode.Parse(canonical.RecordJson!),
+                    JsonNode.Parse(expectedJson))).IsTrue();
+                await Assert.That(session.EventId).IsEqualTo(imported.Id);
+                await Assert.That(imported.FeaturedImageId).IsEqualTo(image.Id);
+                await Assert.That(image.ContentType).IsEqualTo(mimeType);
+                await Assert.That(image.Extension).IsEqualTo(extension);
+                await Assert.That(image.Size).IsEqualTo(bytes.Length);
+                await Assert.That(image.Sha256Checksum)
+                    .IsEqualTo(Convert.ToHexStringLower(SHA256.HashData(bytes)));
+                await Assert.That(SafeRasterContentPolicy.IsSafePublicImageMetadata(image)).IsTrue();
+                await Assert.That(await context.PdsSyncOutbox.CountAsync()).IsEqualTo(0);
+            }
+            finally
+            {
+                if (Directory.Exists(storageRoot))
+                {
+                    Directory.Delete(storageRoot, recursive: true);
+                }
+            }
+        }
+    }
+
+    [Test]
+    public async Task JetstreamHandler_ActiveTailMatrixPreservesCanonicalGraphWithoutImage()
+    {
+        byte[] activeTail = Encoding.UTF8.GetBytes(
+            """<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>""");
+        foreach ((string name, string mimeType, _, byte[] safeBytes) in RasterPipelineCases)
+        {
+            await fixture.ResetAsync();
+            ImportScope scope = await SeedScopeAsync($"atproto-import-task24-tail-{name}");
+            byte[] bytes = [.. safeBytes, .. activeTail];
+            string cid = ATCid.FromSha256Hash(SHA256.HashData(bytes)).Value;
+            string storageRoot = Path.Combine(
+                Path.GetTempPath(),
+                $"event-task24-tail-{name}-{Guid.CreateVersion7():N}");
+            try
+            {
+                var storage = new LocalFileStorageProvider(
+                    Options.Create(new LocalFileStorageOptions { RootPath = storageRoot }),
+                    NullLogger<LocalFileStorageProvider>.Instance);
+                var transport = new DeterministicThumbnailTransport(bytes, mimeType);
+                var gateway = new AtprotoThumbnailBlobGateway(
+                    transport.CreatePrimaryHandler,
+                    storage,
+                    maximumBytes: bytes.Length,
+                    requestTimeout: TimeSpan.FromSeconds(5));
+                await using ExploreDbContext context = fixture.CreateDbContext();
+                var repository = new AtprotoJetstreamRepository(context);
+                DateTime observedAt = CurrentUtc();
+                AtprotoJetstreamClaim claim = await ClaimAsync(repository, observedAt);
+                AtprotoRecord record = Record(
+                    1,
+                    observedAt,
+                    $"Active tail {name}",
+                    $"https://events.example/active-tail-{name}");
+                record.RecordJson = ExtensibleRecordJson(
+                    $"Active tail {name}",
+                    cid,
+                    mimeType,
+                    bytes.Length);
+                string expectedJson = record.RecordJson;
+                var request = new AtprotoJetstreamApplyRequest(
+                    claim,
+                    ExpectedCursor: 0,
+                    NextCursor: 1,
+                    record,
+                    [Presentation(scope.TenantId)],
+                    Quarantine: null,
+                    observedAt,
+                    EventProjection: Projection(
+                        record,
+                        $"Active tail {name}",
+                        UtcOffset(10),
+                        UtcOffset(13),
+                        UtcOffset(14),
+                        $"https://events.example/active-tail-{name}",
+                        observedAt));
+                var handler = new ImportAtprotoFederatedEventCommandHandler(repository, gateway);
+
+                bool applied = await handler.Handle(
+                    new ImportAtprotoFederatedEventCommand(request),
+                    CancellationToken.None);
+
+                context.ChangeTracker.Clear();
+                AtprotoRecord canonical = await context.AtprotoRecords.AsNoTracking().SingleAsync();
+                Explore.Domain.Event imported = await context.Events.AsNoTracking().SingleAsync();
+                EventSession session = await context.EventSessions.AsNoTracking().SingleAsync();
+                await Assert.That(applied).IsTrue();
+                await Assert.That(JsonNode.DeepEquals(
+                    JsonNode.Parse(canonical.RecordJson!),
+                    JsonNode.Parse(expectedJson))).IsTrue();
+                await Assert.That(session.EventId).IsEqualTo(imported.Id);
+                await Assert.That(imported.FeaturedImageId).IsNull();
+                await Assert.That(await context.StorageObjects.CountAsync()).IsEqualTo(0);
+                await Assert.That(await context.PdsSyncOutbox.CountAsync()).IsEqualTo(0);
+                await Assert.That(Directory.Exists(storageRoot)
+                    ? Directory.EnumerateFiles(storageRoot, "*", SearchOption.AllDirectories).Any()
+                    : false).IsFalse();
+            }
+            finally
+            {
+                if (Directory.Exists(storageRoot))
+                {
+                    Directory.Delete(storageRoot, recursive: true);
+                }
+            }
+        }
+    }
+
+    [Test]
     public async Task JetstreamHandler_PngHeaderFollowedBySvgPreservesCanonicalImportWithoutStorageOrFeaturedImage()
     {
         await fixture.ResetAsync();
@@ -1464,9 +1884,9 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
             AtprotoRecord record = Record(0, observedAt, "Recovered event", source);
             record.RecordJson = ExtensibleRecordJson(
                 "Recovered event",
-                ThumbnailCid,
+                RealPipelineThumbnailCid,
                 "image/png",
-                8);
+                RealPipelineImageBytes.Length);
             string initialJson = record.RecordJson;
             AtprotoEventProjection projection = Projection(
                 record,
@@ -1481,14 +1901,14 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
                 projection,
                 [scope.TenantId],
                 CancellationToken.None)).Single();
-            byte[] initialBytes = [137, 80, 78, 71, 13, 10, 26, 10];
+            byte[] initialBytes = RealPipelineImageBytes;
             await using var initialContent = new MemoryStream(initialBytes, writable: false);
             FileStorageWriteResult initialStage = await storage.WriteAsync(
                 new FileStorageWriteInput(
                     scope.TenantId,
                     initialContent,
                     "image/png",
-                    ThumbnailCid,
+                    RealPipelineThumbnailCid,
                     Extension: null,
                     ExpectedSizeBytes: initialBytes.Length,
                     MaxSizeBytes: initialBytes.Length),
@@ -1570,9 +1990,9 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
                 "https://events.example/snapshot-updated");
             replacementRecord.RecordJson = ExtensibleRecordJson(
                 "Recovered event updated",
-                ReplacementThumbnailCid,
+                ReplacementPipelineThumbnailCid,
                 "image/png",
-                8);
+                ReplacementPipelineImageBytes.Length);
             string replacementJson = replacementRecord.RecordJson;
             AtprotoEventProjection replacementProjection = Projection(
                 replacementRecord,
@@ -1588,14 +2008,14 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
                     replacementProjection,
                     [scope.TenantId],
                     CancellationToken.None)).Single();
-            byte[] replacementBytes = [137, 80, 78, 71, 13, 10, 26, 11];
+            byte[] replacementBytes = ReplacementPipelineImageBytes;
             await using var replacementContent = new MemoryStream(replacementBytes, writable: false);
             FileStorageWriteResult replacementStage = await storage.WriteAsync(
                 new FileStorageWriteInput(
                     scope.TenantId,
                     replacementContent,
                     "image/png",
-                    ReplacementThumbnailCid,
+                    ReplacementPipelineThumbnailCid,
                     Extension: null,
                     ExpectedSizeBytes: replacementBytes.Length,
                     MaxSizeBytes: replacementBytes.Length),
@@ -1643,13 +2063,13 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
             await Assert.That(session.LocalStartTime).IsEqualTo(new TimeOnly(17, 0));
             await Assert.That(session.LocalEndTime).IsEqualTo(new TimeOnly(18, 0));
             await Assert.That(images.Length).IsEqualTo(2);
-            await Assert.That(retiredImage.Uri.Contains(ThumbnailCid, StringComparison.Ordinal)).IsTrue();
+            await Assert.That(retiredImage.Uri.Contains(RealPipelineThumbnailCid, StringComparison.Ordinal)).IsTrue();
             await Assert.That(retiredImage.Provider).IsEqualTo(initialStage.Provider);
             await Assert.That(retiredImage.ObjectKey).IsEqualTo(initialStage.ObjectKey);
             await Assert.That(retiredImage.LifecycleState).IsEqualTo(StorageObjectLifecycleStates.DeleteRequested);
             await Assert.That(replacementImage.Id).IsNotEqualTo(initialImageId);
             await Assert.That(replacementImage.LifecycleState).IsEqualTo(StorageObjectLifecycleStates.Active);
-            await Assert.That(replacementImage.Uri.Contains(ReplacementThumbnailCid, StringComparison.Ordinal))
+            await Assert.That(replacementImage.Uri.Contains(ReplacementPipelineThumbnailCid, StringComparison.Ordinal))
                 .IsTrue();
             await Assert.That(replacementImage.Provider).IsEqualTo(replacementStage.Provider);
             await Assert.That(replacementImage.ObjectKey).IsEqualTo(replacementStage.ObjectKey);
@@ -1962,7 +2382,8 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
     private static AtprotoJetstreamApplyRequest WithStagedThumbnail(
         AtprotoJetstreamApplyRequest request,
         FileStorageWriteResult stagedThumbnail,
-        string thumbnailCid = ThumbnailCid) => request with
+        string thumbnailCid = ThumbnailCid,
+        string mimeType = "image/png") => request with
         {
             EventImports =
             [
@@ -1972,19 +2393,23 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
                     Thumbnail = new AtprotoThumbnailBlobCandidate(
                         Did,
                         thumbnailCid,
-                        "image/png",
+                        mimeType,
                         8),
                     StagedThumbnail = stagedThumbnail
                 }
             ]
         };
 
-    private static FileStorageWriteResult StagedThumbnail(string suffix) => new(
+    private static FileStorageWriteResult StagedThumbnail(
+        string suffix,
+        long sizeBytes = 8,
+        string mimeType = "image/png",
+        string checksum = ThumbnailChecksum) => new(
         Provider: StorageProviders.Local,
         ObjectKey: $"atproto/{suffix}",
-        SizeBytes: 8,
-        ContentType: "image/png",
-        Sha256Checksum: ThumbnailChecksum);
+        SizeBytes: sizeBytes,
+        ContentType: mimeType,
+        Sha256Checksum: checksum);
 
     private static string ExtensibleRecordJson(string name, string cid, string mimeType, long size) => $$"""
         {
@@ -2061,6 +2486,34 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
+    }
+
+    private sealed class DeterministicStagedThumbnailGateway(FileStorageWriteResult staged)
+        : IAtprotoThumbnailBlobGateway
+    {
+        public int FetchCount { get; private set; }
+        public int CleanupCount { get; private set; }
+        public FileStorageWriteResult? CleanedStage { get; private set; }
+
+        public Task<FileStorageWriteResult?> FetchAndStageAsync(
+            AtprotoThumbnailBlobCandidate? candidate,
+            Guid tenantId,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            FetchCount++;
+            return Task.FromResult<FileStorageWriteResult?>(staged);
+        }
+
+        public Task CleanupAsync(
+            FileStorageWriteResult value,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CleanupCount++;
+            CleanedStage = value;
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class DeterministicHandler(

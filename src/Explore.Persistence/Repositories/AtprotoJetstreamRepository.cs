@@ -22,6 +22,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
     private const string EventCollection = "community.lexicon.calendar.event";
     private const string RsvpCollection = "community.lexicon.calendar.rsvp";
     private const string TidAlphabet = "234567abcdefghijklmnopqrstuvwxyz";
+    private static readonly string[] SafeRasterExtensions = [".jpg", ".png", ".gif", ".webp", ".avif"];
     private static readonly EventScheduleProjectionCalculator ScheduleProjectionCalculator = new();
     private readonly ExploreDbContext _dbContext;
 
@@ -1200,6 +1201,12 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             return;
         }
 
+        FileStorageWriteResult staged = import.StagedThumbnail;
+        if (!TryValidateStagedThumbnail(import.Thumbnail, staged, out string? mimeType, out string? extension))
+        {
+            return;
+        }
+
         string provenanceUri = $"at://{import.Thumbnail.Did}/blob/{import.Thumbnail.Cid}";
         if (existing is not null
             && existing.LifecycleState == StorageObjectLifecycleStates.Active
@@ -1214,9 +1221,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             existing.UpdatedAt = observedAt;
         }
 
-        string extension = ImageExtension(import.Thumbnail.MimeType);
         string displayName = $"{import.Thumbnail.Cid}{extension}";
-        FileStorageWriteResult staged = import.StagedThumbnail;
         var image = new StorageObject
         {
             Id = Guid.CreateVersion7(),
@@ -1228,7 +1233,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             FullName = displayName,
             SafeDisplayName = displayName,
             Extension = extension,
-            ContentType = import.Thumbnail.MimeType,
+            ContentType = mimeType,
             Sha256Checksum = staged.Sha256Checksum,
             Size = staged.SizeBytes,
             Visibility = StorageObjectVisibilities.PublicImage,
@@ -1242,22 +1247,103 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             Actor = actor,
             CreatedAt = observedAt
         };
+        if (!SafeRasterContentPolicy.IsSafePublicImageMetadata(image))
+        {
+            return;
+        }
+
         await _dbContext.StorageObjects.AddAsync(image, cancellationToken);
         importedEvent.FeaturedImageId = image.Id;
         consumed.Add(staged);
     }
 
-    private static string ImageExtension(string mimeType) =>
-        mimeType.ToLowerInvariant() switch
+    private static bool TryValidateStagedThumbnail(
+        AtprotoThumbnailBlobCandidate thumbnail,
+        FileStorageWriteResult staged,
+        out string? mimeType,
+        out string? extension)
+    {
+        mimeType = null;
+        extension = null;
+        if (!SafeRasterContentPolicy.TryNormalizeMimeType(thumbnail.MimeType, out string? normalizedMimeType)
+            || !string.Equals(thumbnail.MimeType, normalizedMimeType, StringComparison.Ordinal)
+            || !string.Equals(staged.ContentType, normalizedMimeType, StringComparison.Ordinal)
+            || thumbnail.Size <= 0
+            || staged.SizeBytes != thumbnail.Size
+            || string.IsNullOrWhiteSpace(staged.Provider)
+            || string.IsNullOrWhiteSpace(staged.ObjectKey)
+            || !TryReadSha256Checksum(thumbnail.Cid, out string? expectedChecksum)
+            || !string.Equals(staged.Sha256Checksum, expectedChecksum, StringComparison.OrdinalIgnoreCase))
         {
-            "image/jpeg" => ".jpg",
-            "image/png" => ".png",
-            "image/webp" => ".webp",
-            "image/gif" => ".gif",
-            "image/avif" => ".avif",
-            "image/svg+xml" => ".svg",
-            _ => ".img"
-        };
+            return false;
+        }
+
+        extension = SafeRasterExtensions.FirstOrDefault(candidate =>
+            SafeRasterContentPolicy.MatchesExtension(normalizedMimeType, candidate));
+        if (extension is null)
+        {
+            return false;
+        }
+
+        mimeType = normalizedMimeType;
+        return true;
+    }
+
+    private static bool TryReadSha256Checksum(string cid, out string? checksum)
+    {
+        checksum = null;
+        if (cid.Length != 59 || cid[0] != 'b')
+        {
+            return false;
+        }
+
+        Span<byte> decoded = stackalloc byte[36];
+        int decodedLength = 0;
+        int bitBuffer = 0;
+        int bitCount = 0;
+        foreach (char character in cid.AsSpan(1))
+        {
+            int value = character switch
+            {
+                >= 'a' and <= 'z' => character - 'a',
+                >= '2' and <= '7' => character - '2' + 26,
+                _ => -1
+            };
+            if (value < 0)
+            {
+                return false;
+            }
+
+            bitBuffer = (bitBuffer << 5) | value;
+            bitCount += 5;
+            if (bitCount < 8)
+            {
+                continue;
+            }
+
+            bitCount -= 8;
+            if (decodedLength >= decoded.Length)
+            {
+                return false;
+            }
+
+            decoded[decodedLength++] = (byte)(bitBuffer >> bitCount);
+            bitBuffer &= (1 << bitCount) - 1;
+        }
+
+        if (decodedLength != decoded.Length
+            || bitBuffer != 0
+            || decoded[0] != 0x01
+            || decoded[1] is not (0x55 or 0x71)
+            || decoded[2] != 0x12
+            || decoded[3] != 0x20)
+        {
+            return false;
+        }
+
+        checksum = Convert.ToHexStringLower(decoded[4..]);
+        return true;
+    }
 
     private static int MapEventFormat(string? mode) =>
         mode switch

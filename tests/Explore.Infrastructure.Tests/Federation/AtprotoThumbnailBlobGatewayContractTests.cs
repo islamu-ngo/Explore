@@ -1,7 +1,6 @@
 // ABOUTME: Defines the RED contract for provider-neutral ATProto thumbnail blob acquisition and staging.
 // ABOUTME: Requires fresh DID/PDS resolution, bounded image validation, and observable staged-object cleanup.
 
-using System.Buffers.Binary;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -29,6 +28,8 @@ public sealed class AtprotoThumbnailBlobGatewayContractTests
     private static readonly byte[] ImageBytes = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
     private static readonly byte[] ValidPngBytes = Convert.FromBase64String(
         "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAEElEQVR4nGP8ywACLGCSAQANEQED1LYyQAAAAABJRU5ErkJggg==");
+    private static readonly byte[] ProgressiveJpegBytes = Convert.FromBase64String(
+        "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2wBDAQMDAwQDBAgEBAgQCwkLEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/wgARCAACAAIDAREAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAAB//EABUBAQEAAAAAAAAAAAAAAAAAAAYI/9oADAMBAAIQAxAAAAE5C1T/AP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAQUCf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQMBAT8Bf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQIBAT8Bf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEABj8Cf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8hf//aAAwDAQACAAMAAAAQ/wD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/EH//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/EH//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/EH//2Q==");
 
     [Test]
     public async Task FetchAndStageAsync_ValidBlob_UsesCurrentVerifiedPdsAndStagesExactBytes()
@@ -141,6 +142,7 @@ public sealed class AtprotoThumbnailBlobGatewayContractTests
     [Arguments("image/gif", false)]
     [Arguments("IMAGE/GIF", true)]
     [Arguments("image/webp", false)]
+    [Arguments("IMAGE/WEBP", true)]
     [Arguments("image/avif", false)]
     [Arguments("IMAGE/AVIF", true)]
     public async Task FetchAndStageAsync_AllowlistedRasterMimeStagesMatchingBytesCaseInsensitively(
@@ -501,19 +503,21 @@ public sealed class AtprotoThumbnailBlobGatewayContractTests
     private static string CidFor(byte[] bytes) =>
         ATCid.FromSha256Hash(SHA256.HashData(bytes)).Value;
 
-    // 1x1/2x2 fixtures were generated with FFmpeg 8.1.2 and independently decoded by ffprobe.
+    // Static fixtures use FFmpeg 8.1.2; the progressive JPEG and two-frame animated WebP use
+    // ImageMagick 7.1.2-27 and were independently identified/decoded before being committed.
     private static byte[] ValidRasterBytes(string mimeType, bool alternateSignature) =>
         mimeType.ToLowerInvariant() switch
         {
-            "image/jpeg" => Convert.FromBase64String(
-                "/9j/4AAQSkZJRgABAgAAAQABAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgEBAQEBAUFBQUFBQYGBgYGBgYGBgYGBgYHBwcICAgHBwcGBgcHCAgICAkJCQgICAgJCQoKCgwMCwsODg4RERT/xABMAAEBAAAAAAAAAAAAAAAAAAAABgEBAQAAAAAAAAAAAAAAAAAABgcQAQAAAAAAAAAAAAAAAAAAAAARAQAAAAAAAAAAAAAAAAAAAAD/wAARCAACAAIDASIAAhEAAxEA/9oADAMBAAIRAxEAPwCLAE1/f//Z"),
+            "image/jpeg" => ProgressiveJpegBytes,
             "image/png" => ValidPngBytes,
             "image/gif" => Convert.FromBase64String(
                 alternateSignature
                     ? "R0lGODdhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
                     : "R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="),
             "image/webp" => Convert.FromBase64String(
-                "UklGRhwAAABXRUJQVlA4TA8AAAAvAUAAAAcQ9Y/+ByKi/wEA"),
+                alternateSignature
+                    ? "UklGRsAAAABXRUJQVlA4WAoAAAACAAAAAQAAAQAAQU5JTQYAAAD/////AABBTk1GSAAAAAAAAAAAAAEAAAEAAGQAAAJWUDggMAAAANABAJ0BKgIAAgACADQloAJ0ugH4AAOwAP7wxAv/ILlhdcjX/yA/5Af8gP/48gAAAEFOTUZEAAAAAAAAAAAAAQAAAQAAZAAAAFZQOCAsAAAAlAEAnQEqAgACAAAANCWgAnS6AAOYAP75k2//kB//kB//kB//ID/iF3sgMAA="
+                    : "UklGRhwAAABXRUJQVlA4TA8AAAAvAUAAAAcQ9Y/+ByKi/wEA"),
             "image/avif" => AvifFixture(alternateSignature),
             _ => throw new ArgumentOutOfRangeException(nameof(mimeType))
         };
@@ -534,29 +538,7 @@ public sealed class AtprotoThumbnailBlobGatewayContractTests
     {
         byte[] activeContent = Encoding.UTF8.GetBytes(
             """<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>""");
-        return mimeType switch
-        {
-            "image/jpeg" => [0xff, 0xd8, 0xff, 0xe0, .. activeContent],
-            "image/png" => [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, .. activeContent],
-            "image/gif" => [.. "GIF89a"u8, .. activeContent],
-            "image/webp" => WebpActiveContent(activeContent),
-            "image/avif" =>
-            [
-                0x00, 0x00, 0x00, 0x10,
-                0x66, 0x74, 0x79, 0x70,
-                0x61, 0x76, 0x69, 0x66,
-                0x00, 0x00, 0x00, 0x00,
-                .. activeContent
-            ],
-            _ => throw new ArgumentOutOfRangeException(nameof(mimeType))
-        };
-    }
-
-    private static byte[] WebpActiveContent(byte[] activeContent)
-    {
-        byte[] bytes = [.. "RIFF"u8, 0, 0, 0, 0, .. "WEBP"u8, .. activeContent];
-        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(4, 4), checked((uint)bytes.Length - 8));
-        return bytes;
+        return [.. ValidRasterBytes(mimeType, alternateSignature: false), .. activeContent];
     }
 
     private sealed class Fixture
