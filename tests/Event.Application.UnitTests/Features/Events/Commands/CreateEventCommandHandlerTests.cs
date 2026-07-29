@@ -270,6 +270,67 @@ public class CreateEventCommandHandlerTests
     }
 
     [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task Handle_WhenNestedImageReferenceIsCrossTenant_RejectsBeforeAggregateMutation(
+        bool useSessionImage)
+    {
+        var imageId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        CreateEventSessionRequest session = CreateSessionRequest();
+        session.FeaturedImageId = useSessionImage ? imageId : null;
+        var command = new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Unsafe nested image",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
+                Sessions = [session],
+                Days = useSessionImage
+                    ? []
+                    :
+                    [
+                        new CreateEventDayRequest
+                        {
+                            LocalDate = DateOnly.FromDateTime(session.StartTime.UtcDateTime),
+                            BannerImageId = imageId
+                        }
+                    ]
+            }
+        };
+        _tenantContext.TenantId.Returns(tenantId);
+        _storageObjectRepository.Exists(imageId).Returns(true);
+        _storageObjectRepository.GetById(imageId).Returns(new StorageObject
+        {
+            Id = imageId,
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            FileType = null!,
+            Uri = "storage://unsafe.png",
+            Provider = "local",
+            FullName = "unsafe.png",
+            SafeDisplayName = "unsafe.png",
+            Extension = "png",
+            ContentType = "image/png",
+            Purpose = StorageObjectPurposes.EventImage,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            LifecycleState = StorageObjectLifecycleStates.Active
+        });
+
+        BaseCommandResponse<Guid> result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _actorResolver.DidNotReceiveWithAnyArgs().ResolveAsync(
+            default,
+            default,
+            default,
+            default);
+        await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
+        await _eventSessionRepository.DidNotReceive().Create(Arg.Any<EventSession>());
+        await _eventDayRepository.DidNotReceive().Create(Arg.Any<EventDay>());
+    }
+
+    [Test]
     public async Task Handle_WithOptionalFieldsNull_ReturnsSuccessResponse()
     {
         var userId = Guid.NewGuid();
