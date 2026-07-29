@@ -1,6 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
+// ABOUTME: Response contract for metadata-authorized presigned storage downloads.
+// ABOUTME: Carries the short-lived URL plus safe presentation metadata without exposing provider keys.
 
 namespace Explore.Application.DTOs.StorageObject;
 
@@ -23,4 +22,8 @@ public class PresignedDownloadUrlResponseDto
     /// The expiration time of the pre-signed URL in minutes
     /// </summary>
     public int ExpiresInMinutes { get; set; }
+
+    public string SafeDisplayName { get; set; } = "download";
+
+    public bool ShouldDownloadAsAttachment { get; set; }
 }

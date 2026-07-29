@@ -43,8 +43,32 @@ public sealed class GetPresignedDownloadUrlRequestHandlerTests
         await Assert.That(result!.PresignedUrl).IsEqualTo("https://storage.example.test/presigned");
         await Assert.That(result.ObjectKey).IsEqualTo(string.Empty);
         await Assert.That(result.ExpiresInMinutes).IsEqualTo(15);
+        await Assert.That(result.SafeDisplayName).IsEqualTo("object.png");
+        await Assert.That(result.ShouldDownloadAsAttachment).IsFalse();
         await _objectStorageService.Received(1).GeneratePresignedDownloadUrl(
             "tenants/example/object.png",
+            15);
+    }
+
+    [Test]
+    public async Task Handle_WithAuthenticatedDocument_ReturnsSanitizedAttachmentMetadata()
+    {
+        _currentUserService.IsAuthenticated.Returns(true);
+        var storageObject = CreateStorageObject(StorageObjectVisibilities.AuthenticatedTenant, _ownerId);
+        storageObject.ContentType = "application/pdf";
+        storageObject.Extension = "pdf";
+        storageObject.Purpose = StorageObjectPurposes.Document;
+        storageObject.SafeDisplayName = "../unsafe.pdf";
+        _storageObjectRepository.GetById(_storageObjectId).Returns(storageObject);
+        var handler = CreateHandler();
+
+        var result = await handler.Handle(CreateRequest(), CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.SafeDisplayName).IsEqualTo("download");
+        await Assert.That(result.ShouldDownloadAsAttachment).IsTrue();
+        await _objectStorageService.Received(1).GeneratePresignedDownloadUrl(
+            storageObject.ObjectKey!,
             15);
     }
 
@@ -87,6 +111,23 @@ public sealed class GetPresignedDownloadUrlRequestHandlerTests
     {
         var storageObject = CreateStorageObject(StorageObjectVisibilities.PublicImage, createdBy: null);
         storageObject.ObjectKey = null;
+        _storageObjectRepository.GetById(_storageObjectId).Returns(storageObject);
+        var handler = CreateHandler();
+
+        var result = await handler.Handle(CreateRequest(), CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await _objectStorageService.DidNotReceive().GeneratePresignedDownloadUrl(
+            Arg.Any<string>(),
+            Arg.Any<int>());
+    }
+
+    [Test]
+    public async Task Handle_WithUnsafePublicImageMetadata_ReturnsNullWithoutSigning()
+    {
+        var storageObject = CreateStorageObject(StorageObjectVisibilities.PublicImage, createdBy: null);
+        storageObject.ContentType = "text/html";
+        storageObject.Extension = "html";
         _storageObjectRepository.GetById(_storageObjectId).Returns(storageObject);
         var handler = CreateHandler();
 

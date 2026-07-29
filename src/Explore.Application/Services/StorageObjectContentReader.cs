@@ -94,10 +94,14 @@ public sealed class StorageObjectContentReader : IStorageObjectContentReader
 
             return new StorageObjectContentResult(
                 readResult.Content,
-                storageObject.ContentType,
+                storageObject.ContentType ?? "application/octet-stream",
                 readResult.Length,
                 readResult.LastModified,
-                storageObject.Sha256Checksum);
+                storageObject.Sha256Checksum,
+                ResolveSafeDisplayName(storageObject),
+                !SafeRasterContentPolicy.IsSafeRasterMetadata(
+                    storageObject.ContentType,
+                    storageObject.Extension));
         }
         catch (FileNotFoundException)
         {
@@ -139,12 +143,12 @@ public sealed class StorageObjectContentReader : IStorageObjectContentReader
 
         if (publicImagesOnly)
         {
-            return string.Equals(storageObject.Visibility, StorageObjectVisibilities.PublicImage, StringComparison.Ordinal);
+            return SafeRasterContentPolicy.IsSafePublicImageMetadata(storageObject);
         }
 
         if (string.Equals(storageObject.Visibility, StorageObjectVisibilities.PublicImage, StringComparison.Ordinal))
         {
-            return true;
+            return SafeRasterContentPolicy.IsSafePublicImageMetadata(storageObject);
         }
 
         if (string.Equals(storageObject.Visibility, StorageObjectVisibilities.AuthenticatedTenant, StringComparison.Ordinal))
@@ -158,5 +162,21 @@ public sealed class StorageObjectContentReader : IStorageObjectContentReader
         }
 
         return false;
+    }
+
+    private static string ResolveSafeDisplayName(StorageObject storageObject)
+    {
+        string candidate = string.IsNullOrWhiteSpace(storageObject.SafeDisplayName)
+            ? storageObject.FullName
+            : storageObject.SafeDisplayName;
+        candidate = candidate.Trim();
+
+        return candidate.Length is > 0 and <= 255
+            && candidate is not "." and not ".."
+            && !candidate.Any(char.IsControl)
+            && !candidate.Contains('/', StringComparison.Ordinal)
+            && !candidate.Contains('\\', StringComparison.Ordinal)
+                ? candidate
+                : "download";
     }
 }

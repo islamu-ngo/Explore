@@ -7,16 +7,11 @@ namespace Explore.Application.Services;
 
 public static class StorageContentSignaturePolicy
 {
-    private static readonly byte[] PngHeader = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
     private static readonly byte[] OleCompoundDocumentHeader = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
 
     private static readonly IReadOnlyDictionary<string, ContentSignatureRule> Rules =
         new Dictionary<string, ContentSignatureRule>(StringComparer.OrdinalIgnoreCase)
         {
-            ["image/jpeg"] = new(["jpg", "jpeg", "jpe"], 3, MatchesJpeg),
-            ["image/png"] = new(["png"], 8, MatchesPng),
-            ["image/gif"] = new(["gif"], 6, MatchesGif),
-            ["image/webp"] = new(["webp"], 12, MatchesWebp),
             ["application/pdf"] = new(["pdf"], 5, MatchesPdf),
             ["application/rtf"] = new(["rtf"], 5, MatchesRtf),
             ["text/rtf"] = new(["rtf"], 5, MatchesRtf),
@@ -44,16 +39,19 @@ public static class StorageContentSignaturePolicy
     {
         ArgumentNullException.ThrowIfNull(content);
 
+        if (contentType.TrimStart().StartsWith("image", StringComparison.OrdinalIgnoreCase))
+        {
+            return await InspectRasterAsync(
+                content,
+                contentType,
+                extension,
+                expectedSizeBytes,
+                cancellationToken);
+        }
+
         var normalizedContentType = NormalizeContentType(contentType);
         if (!Rules.TryGetValue(normalizedContentType, out var rule))
         {
-            if (normalizedContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            {
-                return StorageContentInspectionResult.Failed(
-                    content,
-                    ["Reserved image content type is not allowed for upload."]);
-            }
-
             return StorageContentInspectionResult.Succeeded(content);
         }
 
@@ -86,6 +84,49 @@ public static class StorageContentSignaturePolicy
         return errors.Count == 0
             ? StorageContentInspectionResult.Succeeded(inspectedContent)
             : StorageContentInspectionResult.Failed(inspectedContent, errors);
+    }
+
+    private static async Task<StorageContentInspectionResult> InspectRasterAsync(
+        Stream content,
+        string contentType,
+        string? extension,
+        long expectedSizeBytes,
+        CancellationToken cancellationToken)
+    {
+        var errors = new List<string>();
+        if (!SafeRasterContentPolicy.TryNormalizeMimeType(contentType, out string? normalizedContentType))
+        {
+            errors.Add("Reserved image content type is not allowed for upload.");
+        }
+        else if (!SafeRasterContentPolicy.MatchesExtension(normalizedContentType, extension))
+        {
+            errors.Add("File extension did not match the reserved content type.");
+        }
+
+        if (expectedSizeBytes <= 0 || expectedSizeBytes > int.MaxValue)
+        {
+            errors.Add("Upload bytes did not match the reserved content type signature.");
+            return StorageContentInspectionResult.Failed(content, errors);
+        }
+
+        byte[] bytes = new byte[(int)expectedSizeBytes];
+        int bytesRead = await ReadPrefixAsync(content, bytes, cancellationToken);
+        byte[] sentinel = new byte[1];
+        bool overflow = bytesRead == bytes.Length
+            && await content.ReadAsync(sentinel, cancellationToken) != 0;
+        var replayableContent = new MemoryStream(bytes, 0, bytesRead, writable: false, publiclyVisible: false);
+
+        if (normalizedContentType is null
+            || bytesRead != bytes.Length
+            || overflow
+            || !SafeRasterContentPolicy.MatchesContainer(bytes.AsSpan(0, bytesRead), normalizedContentType))
+        {
+            errors.Add("Upload bytes did not match the reserved content type signature.");
+        }
+
+        return errors.Count == 0
+            ? StorageContentInspectionResult.Succeeded(replayableContent)
+            : StorageContentInspectionResult.Failed(replayableContent, errors);
     }
 
     private static async Task<int> ReadPrefixAsync(
@@ -122,23 +163,6 @@ public static class StorageContentSignaturePolicy
             ? null
             : candidate.TrimStart('.').ToLowerInvariant();
     }
-
-    private static bool MatchesJpeg(ReadOnlySpan<byte> header)
-        => header.Length >= 3 &&
-           header[0] == 0xFF &&
-           header[1] == 0xD8 &&
-           header[2] == 0xFF;
-
-    private static bool MatchesPng(ReadOnlySpan<byte> header)
-        => header.StartsWith(PngHeader);
-
-    private static bool MatchesGif(ReadOnlySpan<byte> header)
-        => header.StartsWith("GIF87a"u8) || header.StartsWith("GIF89a"u8);
-
-    private static bool MatchesWebp(ReadOnlySpan<byte> header)
-        => header.Length >= 12 &&
-           header[..4].SequenceEqual("RIFF"u8) &&
-           header[8..12].SequenceEqual("WEBP"u8);
 
     private static bool MatchesPdf(ReadOnlySpan<byte> header)
         => header.StartsWith("%PDF-"u8);

@@ -8,4 +8,6 @@ public sealed record StorageObjectContentResult(
     string ContentType,
     long Length,
     DateTimeOffset? LastModified,
-    string? Sha256Checksum);
+    string? Sha256Checksum,
+    string SafeDisplayName = "download",
+    bool ShouldDownloadAsAttachment = true);

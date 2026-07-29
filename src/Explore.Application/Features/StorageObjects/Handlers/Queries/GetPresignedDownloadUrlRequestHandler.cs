@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Features.StorageObjects.Requests.Queries;
+using Explore.Application.Services;
 using Explore.Domain;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -90,7 +91,11 @@ public class GetPresignedDownloadUrlRequestHandler : IRequestHandler<GetPresigne
             {
                 PresignedUrl = presignedUrl,
                 ObjectKey = string.Empty,
-                ExpiresInMinutes = request.ExpirationMinutes
+                ExpiresInMinutes = request.ExpirationMinutes,
+                SafeDisplayName = ResolveSafeDisplayName(storageObject),
+                ShouldDownloadAsAttachment = !SafeRasterContentPolicy.IsSafeRasterMetadata(
+                    storageObject.ContentType,
+                    storageObject.Extension)
             };
         }
         catch (Exception ex)
@@ -112,7 +117,7 @@ public class GetPresignedDownloadUrlRequestHandler : IRequestHandler<GetPresigne
 
         if (string.Equals(storageObject.Visibility, StorageObjectVisibilities.PublicImage, StringComparison.Ordinal))
         {
-            return true;
+            return SafeRasterContentPolicy.IsSafePublicImageMetadata(storageObject);
         }
 
         if (string.Equals(storageObject.Visibility, StorageObjectVisibilities.AuthenticatedTenant, StringComparison.Ordinal))
@@ -123,6 +128,22 @@ public class GetPresignedDownloadUrlRequestHandler : IRequestHandler<GetPresigne
         return string.Equals(storageObject.Visibility, StorageObjectVisibilities.PrivateOwner, StringComparison.Ordinal) &&
                _currentUserService.UserId.HasValue &&
                storageObject.CreatedBy == _currentUserService.UserId;
+    }
+
+    private static string ResolveSafeDisplayName(StorageObject storageObject)
+    {
+        string candidate = string.IsNullOrWhiteSpace(storageObject.SafeDisplayName)
+            ? storageObject.FullName
+            : storageObject.SafeDisplayName;
+        candidate = candidate.Trim();
+
+        return candidate.Length is > 0 and <= 255
+            && candidate is not "." and not ".."
+            && !candidate.Any(char.IsControl)
+            && !candidate.Contains('/', StringComparison.Ordinal)
+            && !candidate.Contains('\\', StringComparison.Ordinal)
+                ? candidate
+                : "download";
     }
 
     private static string CategorizeSigningFailure(Exception exception) =>
