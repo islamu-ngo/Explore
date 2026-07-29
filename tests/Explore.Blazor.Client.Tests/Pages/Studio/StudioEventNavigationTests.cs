@@ -58,6 +58,46 @@ public sealed class StudioEventNavigationTests : IDisposable
     }
 
     [Test]
+    public async Task Render_WithLegacyTicketingRelation_OmitsTicketsSection()
+    {
+        var resource = CreateEvent("ticketing");
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+
+        var cut = _ctx.RenderMudComponent<StudioEventNavigation>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForAssertion(() => cut.Find("[data-testid='studio-event-navigation']"));
+        await Assert.That(cut.FindAll("[data-event-section='tickets']")).IsEmpty();
+        await Assert.That(cut.Markup).DoesNotContain("Tickets");
+    }
+
+    [Test]
+    [Arguments("manage-ticket-types")]
+    [Arguments("manage-capacity-pools")]
+    public async Task Render_TicketsSectionAcceptsEitherEventManagementRelation(string relation)
+    {
+        var resource = CreateEvent(relation);
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        var cut = _ctx.RenderMudComponent<StudioEventNavigation>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-event-section='tickets']");
+        await Assert.That(cut.FindAll("[data-event-section='tickets']").Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Render_TicketsSectionRequiresAtLeastOneEventManagementRelation()
+    {
+        var resource = CreateEvent();
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        var cut = _ctx.RenderMudComponent<StudioEventNavigation>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='studio-event-navigation']");
+        await Assert.That(cut.FindAll("[data-event-section='tickets']")).IsEmpty();
+    }
+
+    [Test]
     public async Task Render_TeamSection_UsesCanonicalPublicEventRouteInsteadOfRawGuidRoute()
     {
         var resource = CreateEvent("team");
@@ -70,7 +110,7 @@ public sealed class StudioEventNavigationTests : IDisposable
         await Assert.That(cut.FindAll("a[href='/events/community-gathering-EVT123']").Count).IsEqualTo(1);
     }
 
-    private static EventDto CreateEvent(string relation)
+    private static EventDto CreateEvent(params string[] relations)
     {
         var eventId = Guid.CreateVersion7();
         var resource = new EventDto
@@ -81,11 +121,15 @@ public sealed class StudioEventNavigationTests : IDisposable
             PublicCode = "EVT123",
             EventStatusFullName = "Draft"
         };
-        resource.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(
-            new Dictionary<string, object>
-            {
-                [relation] = new { href = $"/api/event/{eventId}", method = "GET" }
-            });
+        SetRelations(resource, relations);
         return resource;
+    }
+
+    private static void SetRelations(EventDto resource, params string[] relations)
+    {
+        resource.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(
+            relations.ToDictionary(
+                relation => relation,
+                relation => (object)new { href = $"/api/event/{resource.Id}", method = "GET" }));
     }
 }

@@ -44,6 +44,12 @@
                     Registration
                 </MudNavLink>
             }
+            @if (Resource.HasHalLink("manage-ticket-types") || Resource.HasHalLink("manage-capacity-pools"))
+            {
+                <MudNavLink Href="@($"{StudioRoute}/tickets")" Icon="@Icons.Material.Outlined.ConfirmationNumber" Match="NavLinkMatch.All" data-event-section="tickets">
+                    Tickets
+                </MudNavLink>
+            }
             @if (Resource.HasHalLink("publish-readiness"))
             {
                 <MudNavLink Href="@($"{StudioRoute}/publication")" Icon="@Icons.Material.Outlined.Publish" Match="NavLinkMatch.All" data-event-section="publication">

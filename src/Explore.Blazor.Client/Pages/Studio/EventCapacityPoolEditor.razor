@@ -1,0 +1,27 @@
+@* ABOUTME: Inline Studio form for shared ticket capacity, hold duration, and oversell policy. *@
+@* ABOUTME: Validates pool write fields before handing generated DTO conversion to the parent editor. *@
+
+<div class="capacity-pool-editor" data-testid="capacity-pool-editor">
+    <MudTextField T="string" Label="Name" @bind-Value="Model.Name" Required="true" Variant="Variant.Outlined" Disabled="IsSaving" data-testid="capacity-pool-name" />
+    <MudNumericField T="int?" Label="Maximum quantity" @bind-Value="Model.MaximumQuantity" Min="1" Variant="Variant.Outlined" Disabled="IsSaving" data-testid="capacity-pool-quantity" />
+    <MudNumericField T="int" Label="Hold duration (seconds)" @bind-Value="Model.HoldDurationSeconds" Min="1" Variant="Variant.Outlined" Disabled="IsSaving" data-testid="capacity-pool-hold-duration" />
+    <MudSelect T="int" Label="Oversell policy" @bind-Value="Model.OversellPolicyId" Variant="Variant.Outlined" Disabled="IsSaving" data-testid="capacity-pool-oversell-policy">
+        <MudSelectItem T="int" Value="1">Disallow overselling</MudSelectItem>
+        <MudSelectItem T="int" Value="2">Allow overselling</MudSelectItem>
+    </MudSelect>
+    <MudCheckBox T="bool" Label="Active" @bind-Value="Model.IsActive" Disabled="IsSaving" />
+    <div class="capacity-pool-editor__actions">
+        <AppButton OnClick="SaveAsync" Disabled="@(!Model.IsValid || IsSaving)" data-testid="save-capacity-pool">@(IsSaving ? "Saving…" : "Save capacity pool")</AppButton>
+        <AppButton OnClick="CancelAsync" Disabled="IsSaving" Variant="Variant.Text">Cancel</AppButton>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public CapacityPoolEditModel Model { get; set; } = null!;
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public EventCallback<CapacityPoolEditModel> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private Task SaveAsync() => OnSave.InvokeAsync(Model);
+    private Task CancelAsync() => OnCancel.InvokeAsync();
+}

@@ -1,0 +1,131 @@
+@* ABOUTME: Inline Studio form for ticket pricing, limits, collection mode, and admission entitlements. *@
+@* ABOUTME: Enforces lookup-specific field combinations before emitting generated API write models. *@
+
+<div class="ticket-type-editor" data-testid="ticket-type-editor">
+    <MudTextField T="string" Label="Name" @bind-Value="Model.Name" Required="true" Variant="Variant.Outlined" Disabled="IsSaving" data-testid="ticket-type-name" />
+    <MudSelect T="int" Label="Pricing mode" Value="Model.PricingModeId" ValueChanged="OnPricingModeChanged" Variant="Variant.Outlined" Disabled="IsSaving" data-testid="ticket-pricing-mode">
+        <MudSelectItem T="int" Value="1">Fixed</MudSelectItem>
+        <MudSelectItem T="int" Value="2">Free</MudSelectItem>
+        <MudSelectItem T="int" Value="3">Donation</MudSelectItem>
+        <MudSelectItem T="int" Value="4">Pay what you can</MudSelectItem>
+        <MudSelectItem T="int" Value="5">Sliding scale</MudSelectItem>
+    </MudSelect>
+    @if (Model.PricingModeId == 1)
+    {
+        <MudNumericField T="long?" Label="Fixed price (minor units)" @bind-Value="Model.FixedPriceMinor" Min="1" Variant="Variant.Outlined" Disabled="IsSaving" data-testid="ticket-fixed-price" />
+    }
+    @if (Model.PricingModeId is 3 or 4 or 5)
+    {
+        <MudNumericField T="long?" Label="Minimum price (minor units)" @bind-Value="Model.MinimumPriceMinor" Min="0" Variant="Variant.Outlined" Disabled="IsSaving" data-testid="ticket-minimum-price" />
+    }
+    @if (Model.PricingModeId is 4 or 5)
+    {
+        <MudNumericField T="long?" Label="Suggested price (minor units)" @bind-Value="Model.SuggestedPriceMinor" Min="0" Variant="Variant.Outlined" Disabled="IsSaving" data-testid="ticket-suggested-price" />
+    }
+    <MudSelect T="int" Label="Participant details" @bind-Value="Model.DataCollectionModeId" Variant="Variant.Outlined" Disabled="IsSaving" data-testid="ticket-data-collection-mode">
+        <MudSelectItem T="int" Value="1">None</MudSelectItem>
+        <MudSelectItem T="int" Value="2">Lead booker only</MudSelectItem>
+        <MudSelectItem T="int" Value="3">Per ticket optional</MudSelectItem>
+        <MudSelectItem T="int" Value="4">Per ticket required</MudSelectItem>
+        <MudSelectItem T="int" Value="5">Deferred assignment</MudSelectItem>
+    </MudSelect>
+    <MudSelect T="Guid?" Label="Shared capacity pool" @bind-Value="Model.CapacityPoolId" Clearable="true" Variant="Variant.Outlined" Disabled="IsSaving" data-testid="ticket-capacity-pool">
+        @foreach (var pool in CapacityPools.Where(item => item.IsActive))
+        {
+            <MudSelectItem T="Guid?" Value="@((Guid?)pool.Id)">@pool.Name</MudSelectItem>
+        }
+    </MudSelect>
+    <div class="ticket-type-editor__grid">
+        <MudNumericField T="int?" Label="Minimum age" @bind-Value="Model.MinimumAge" Min="0" Variant="Variant.Outlined" Disabled="IsSaving" />
+        <MudNumericField T="int?" Label="Maximum age" @bind-Value="Model.MaximumAge" Min="0" Variant="Variant.Outlined" Disabled="IsSaving" />
+        <MudNumericField T="int?" Label="Per-order limit" @bind-Value="Model.PerOrderLimit" Min="1" Variant="Variant.Outlined" Disabled="IsSaving" />
+        <MudNumericField T="int?" Label="Per-account limit" @bind-Value="Model.PerAccountLimit" Min="1" Variant="Variant.Outlined" Disabled="IsSaving" />
+        <MudNumericField T="int?" Label="Per-contact limit" @bind-Value="Model.PerVerifiedContactLimit" Min="1" Variant="Variant.Outlined" Disabled="IsSaving" />
+        <MudNumericField T="int?" Label="Per-party limit" @bind-Value="Model.PerBookingPartyLimit" Min="1" Variant="Variant.Outlined" Disabled="IsSaving" />
+    </div>
+    <div class="ticket-type-editor__checks">
+        <MudCheckBox T="bool" Label="Requires guardian" @bind-Value="Model.RequiresGuardian" Disabled="IsSaving" />
+        <MudCheckBox T="bool" Label="Requires approval" @bind-Value="Model.RequiresApproval" Disabled="IsSaving" />
+    </div>
+
+    <div class="ticket-type-editor__section-header">
+        <MudText Typo="Typo.subtitle1">Entitlements</MudText>
+        <AppButton OnClick="AddEntitlement" Disabled="IsSaving" Variant="Variant.Text" data-testid="add-ticket-entitlement">Add entitlement</AppButton>
+    </div>
+    @foreach (var entitlement in Model.Entitlements.ToArray())
+    {
+        <div class="ticket-type-editor__entitlement" data-testid="ticket-entitlement-editor">
+            <MudSelect T="int" Label="Scope" Value="entitlement.ScopeTypeId" ValueChanged="@(value => SetScope(entitlement, value))" Variant="Variant.Outlined" Disabled="IsSaving">
+                <MudSelectItem T="int" Value="1">Whole event</MudSelectItem>
+                <MudSelectItem T="int" Value="2">Event day</MudSelectItem>
+                <MudSelectItem T="int" Value="3">Event session</MudSelectItem>
+            </MudSelect>
+            @if (entitlement.ScopeTypeId == 2)
+            {
+                <MudSelect T="Guid?" Label="Event day" @bind-Value="entitlement.EventDayId" Variant="Variant.Outlined" Disabled="@(IsSaving || EventDays.Count == 0)" data-testid="ticket-entitlement-day">
+                    @foreach (var day in EventDays)
+                    {
+                        <MudSelectItem T="Guid?" Value="day.Id">@DayLabel(day)</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            else if (entitlement.ScopeTypeId == 3)
+            {
+                <MudSelect T="Guid?" Label="Event session" @bind-Value="entitlement.EventSessionId" Variant="Variant.Outlined" Disabled="@(IsSaving || EventSessions.Count == 0)" data-testid="ticket-entitlement-session">
+                    @foreach (var session in EventSessions)
+                    {
+                        <MudSelectItem T="Guid?" Value="session.Id">@SessionLabel(session)</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            @if (entitlement.ScopeTypeId is 2 or 3 && ((entitlement.ScopeTypeId == 2 && EventDays.Count == 0) || (entitlement.ScopeTypeId == 3 && EventSessions.Count == 0)))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" data-testid="ticket-entitlement-support-guidance">
+                    @(SupportDataUnavailable ? "Day and session options are temporarily unavailable. Use whole-event admission or try again later." : "No matching event targets are available. Whole-event admission remains available.")
+                </MudText>
+            }
+            <MudNumericField T="int" Label="Included quantity" @bind-Value="entitlement.IncludedQuantity" Min="1" Variant="Variant.Outlined" Disabled="IsSaving" />
+            <MudSelect T="int" Label="Selection rule" @bind-Value="entitlement.SelectionRuleId" Variant="Variant.Outlined" Disabled="@(IsSaving || entitlement.ScopeTypeId == 1)">
+                <MudSelectItem T="int" Value="1">All included</MudSelectItem>
+                <MudSelectItem T="int" Value="2">Fixed selection</MudSelectItem>
+                @if (entitlement.ScopeTypeId == 3)
+                {
+                    <MudSelectItem T="int" Value="3">Choose one</MudSelectItem>
+                    <MudSelectItem T="int" Value="4">Choose up to N</MudSelectItem>
+                }
+            </MudSelect>
+            @if (Model.Entitlements.Count > 1)
+            {
+                <AppButton OnClick="@(() => RemoveEntitlement(entitlement))" Disabled="IsSaving" Variant="Variant.Text" Color="Color.Error">Remove</AppButton>
+            }
+        </div>
+    }
+    <div class="ticket-type-editor__actions">
+        <AppButton OnClick="SaveAsync" Disabled="@(!Model.IsValid || IsSaving)" data-testid="save-ticket-type">@(IsSaving ? "Saving…" : "Save ticket type")</AppButton>
+        <AppButton OnClick="CancelAsync" Disabled="IsSaving" Variant="Variant.Text">Cancel</AppButton>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public TicketTypeEditModel Model { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<EventCapacityPoolState> CapacityPools { get; set; } = [];
+    [Parameter] public IReadOnlyList<EventDayListDto> EventDays { get; set; } = [];
+    [Parameter] public IReadOnlyList<EventSessionListDto> EventSessions { get; set; } = [];
+    [Parameter] public bool SupportDataUnavailable { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public EventCallback<TicketTypeEditModel> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private void OnPricingModeChanged(int value) => Model.SetPricingMode(value);
+    private void AddEntitlement() => Model.Entitlements.Add(TicketEntitlementEditModel.Create());
+    private void RemoveEntitlement(TicketEntitlementEditModel value) => Model.Entitlements.Remove(value);
+    private void SetScope(TicketEntitlementEditModel entitlement, int value) => entitlement.SetScope(value);
+    private Task SaveAsync() => OnSave.InvokeAsync(Model);
+    private Task CancelAsync() => OnCancel.InvokeAsync();
+    private static string DayLabel(EventDayListDto day) => !string.IsNullOrWhiteSpace(day.Label)
+        ? day.Label
+        : day.LocalDate?.ToString("D") ?? "Event day";
+    private static string SessionLabel(EventSessionListDto session) => !string.IsNullOrWhiteSpace(session.Title)
+        ? session.Title
+        : session.StartTime?.ToString("g") ?? "Event session";
+}

@@ -1,11 +1,13 @@
-// ABOUTME: bUnit coverage for the event-scoped Studio participation route boundary.
-// ABOUTME: Proves direct registration navigation fails closed without its event HAL relation.
+// ABOUTME: bUnit coverage for event-scoped Studio participation and ticketing route boundaries.
+// ABOUTME: Proves direct navigation fails closed without each route's exact event HAL relation.
 
 using System.Text.Json;
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Pages.Studio;
 using Explore.Blazor.Client.Services;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Studio;
 
@@ -17,6 +19,11 @@ public sealed class StudioEventShellTests : IDisposable
     public StudioEventShellTests()
     {
         _eventService = _ctx.AddMockService<IEventService>();
+        _ctx.AddMockService<IEventTicketingService>();
+        _ctx.AddMockService<IEventDayService>();
+        _ctx.AddMockService<Explore.Blazor.Client.Contracts.Services.Accessibility.IAccessibilityAnnouncerService>();
+        _ctx.AddMockService<Explore.Blazor.Client.Contracts.Services.Accessibility.IAccessibilityFocusService>();
+        _ctx.Services.AddSingleton(Substitute.For<IDialogService>());
         _ctx.Services.AddScoped<RouterStateService>();
         _ctx.Services.AddScoped<StudioEventContextState>();
     }
@@ -55,7 +62,45 @@ public sealed class StudioEventShellTests : IDisposable
         await Assert.That(cut.FindAll("[data-testid='participation-route-unavailable']")).IsEmpty();
     }
 
-    private static EventDto CreateEvent(string? relation = null)
+    [Test]
+    public async Task TicketsRoute_WithoutEventManagementRelations_FailsClosed()
+    {
+        var resource = CreateEvent();
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        _ctx.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo($"/studio/events/{resource.Id}/tickets");
+
+        var cut = _ctx.RenderMudComponent<StudioEventShell>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='ticketing-route-unavailable']");
+        await Assert.That(cut.FindAll("[data-testid='event-ticket-catalog-editor']")).IsEmpty();
+    }
+
+    [Test]
+    [Arguments("manage-ticket-types", true, false)]
+    [Arguments("manage-capacity-pools", false, true)]
+    public async Task TicketsRoute_WithEitherEventManagementRelation_RendersEditor(
+        string relation,
+        bool canManageTicketTypes,
+        bool canManageCapacityPools)
+    {
+        var resource = CreateEvent(relation);
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        _ctx.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo($"/studio/events/{resource.Id}/tickets");
+
+        var cut = _ctx.RenderMudComponent<StudioEventShell>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='event-ticket-catalog-editor']");
+        await Assert.That(cut.FindAll("[data-testid='ticketing-route-unavailable']")).IsEmpty();
+        var editor = cut.FindComponent<EventTicketCatalogEditor>();
+        await Assert.That(editor.Instance.CanManageTicketTypes).IsEqualTo(canManageTicketTypes);
+        await Assert.That(editor.Instance.CanManageCapacityPools).IsEqualTo(canManageCapacityPools);
+    }
+
+    private static EventDto CreateEvent(params string[] relations)
     {
         var eventId = Guid.CreateVersion7();
         var resource = new EventDto
@@ -76,13 +121,12 @@ public sealed class StudioEventShellTests : IDisposable
             }
         };
 
-        if (relation is not null)
+        if (relations.Length > 0)
         {
             resource.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(
-                new Dictionary<string, object>
-                {
-                    [relation] = new { href = $"/api/events/{eventId}/participation", method = "PATCH" }
-                });
+                relations.ToDictionary(
+                    relation => relation,
+                    relation => (object)new { href = $"/api/events/{eventId}/{relation}", method = "GET" }));
         }
 
         return resource;

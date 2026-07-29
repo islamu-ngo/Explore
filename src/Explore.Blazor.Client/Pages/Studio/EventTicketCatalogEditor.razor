@@ -1,0 +1,355 @@
+@* ABOUTME: Event-scoped ticket catalog editor driven exclusively by catalog HAL affordances. *@
+@* ABOUTME: Loads typed presentation state through the ticketing adapter and preserves read-only visibility. *@
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Clients
+@inject IEventTicketingService TicketingService
+@inject IEventDayService EventDayService
+@inject IEventService EventService
+@inject IDialogService DialogService
+@inject IAccessibilityAnnouncerService Announcer
+@inject IAccessibilityFocusService FocusService
+
+<div class="event-ticket-catalog" data-testid="event-ticket-catalog-editor">
+    @if (_isLoading)
+    {
+        <div class="event-ticket-catalog__state" role="status">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body2">Loading ticket catalog…</MudText>
+        </div>
+    }
+    else if (_catalog is null)
+    {
+        <div class="event-ticket-catalog__state" role="alert">
+            @(_errorMessage ?? "The ticket catalog could not be loaded.")
+        </div>
+    }
+    else
+    {
+        <div class="event-ticket-catalog__header">
+            <div class="event-ticket-catalog__summary">
+                <MudText Typo="Typo.subtitle1">@(_catalog.StatusName ?? "Catalog")</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @_catalog.CurrencyCode · @_catalog.TicketTypes.Count ticket types · @_catalog.CapacityPools.Count capacity pools
+                </MudText>
+            </div>
+            <div class="event-ticket-catalog__actions">
+                @if (_catalog.HasLink("create-draft"))
+                {
+                    <MudTextField T="string" Label="Currency" @bind-Value="_currencyCode" Variant="Variant.Outlined" Disabled="_isMutating" data-testid="ticket-catalog-currency" />
+                    <AppButton OnClick="CreateDraftAsync" Disabled="@(_isMutating || string.IsNullOrWhiteSpace(_currencyCode))" data-testid="create-ticket-catalog-draft">Create draft</AppButton>
+                }
+                @if (_catalog.HasLink("clone-draft"))
+                {
+                    <AppButton OnClick="CloneDraftAsync" Disabled="_isMutating" Variant="Variant.Outlined" data-testid="clone-ticket-catalog-draft">Edit as new draft</AppButton>
+                }
+                @if (_catalog.HasLink("publish"))
+                {
+                    <AppButton OnClick="PublishAsync" Disabled="_isMutating" StartIcon="@Icons.Material.Filled.Publish" data-testid="publish-ticket-catalog">Publish</AppButton>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <div class="event-ticket-catalog__message" role="alert" data-testid="ticket-catalog-error">@_errorMessage</div>
+        }
+        else if (!string.IsNullOrWhiteSpace(_statusMessage))
+        {
+            <div class="event-ticket-catalog__message" role="status" data-testid="ticket-catalog-status">@_statusMessage</div>
+        }
+
+        <section class="event-ticket-catalog__section" aria-labelledby="ticket-types-title">
+            <div class="event-ticket-catalog__section-header">
+                <h3 id="ticket-types-title" class="mud-typography mud-typography-h6">Ticket types</h3>
+                @if (CanManageTicketTypes && _catalog.HasLink("create-type"))
+                {
+                    <AppButton OnClick="ShowNewTicketType" Disabled="_isMutating" StartIcon="@Icons.Material.Filled.Add" data-testid="add-ticket-type">Add ticket type</AppButton>
+                }
+            </div>
+            @if (_editingTicketType is not null)
+            {
+                <EventTicketTypeEditor Model="_editingTicketType"
+                                       CapacityPools="_catalog.CapacityPools"
+                                       EventDays="_eventDays"
+                                       EventSessions="_eventSessions"
+                                       SupportDataUnavailable="_supportDataUnavailable"
+                                       IsSaving="_isMutating"
+                                       OnSave="SaveTicketTypeAsync"
+                                       OnCancel="CancelTicketTypeEdit" />
+            }
+            @if (_catalog.TicketTypes.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">No ticket types yet.</MudText>
+            }
+            else
+            {
+                <div class="event-ticket-catalog__cards">
+                    @foreach (var ticketType in _catalog.TicketTypes)
+                    {
+                        <article class="event-ticket-catalog__card" data-testid="ticket-type-card">
+                            <div>
+                                <MudText Typo="Typo.subtitle1">@ticketType.Name</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@(ticketType.TicketPricingModeName ?? ticketType.TicketPricingModeCode ?? "Pricing") · @ticketType.Entitlements.Count entitlement(s)</MudText>
+                                @if (ticketType.CapacityPoolId is { } poolId)
+                                {
+                                    <MudText Typo="Typo.caption">Capacity: @(PoolName(poolId) ?? "Shared pool")</MudText>
+                                }
+                            </div>
+                            <div class="event-ticket-catalog__item-actions">
+                                @if (CanManageTicketTypes && ticketType.HasLink("edit"))
+                                {
+                                    <AppButton OnClick="@(() => EditTicketType(ticketType))" Disabled="_isMutating" Variant="Variant.Text" data-testid="edit-ticket-type">Edit</AppButton>
+                                }
+                                @if (CanManageTicketTypes && ticketType.HasLink("delete"))
+                                {
+                                    <AppButton OnClick="@(() => DeleteTicketTypeAsync(ticketType.Id))" Disabled="_isMutating" Variant="Variant.Text" Color="Color.Error" data-testid="delete-ticket-type">Delete</AppButton>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="event-ticket-catalog__section" aria-labelledby="capacity-pools-title">
+            <div class="event-ticket-catalog__section-header">
+                <h3 id="capacity-pools-title" class="mud-typography mud-typography-h6">Capacity pools</h3>
+                @if (CanManageCapacityPools && _catalog.HasLink("create-pool"))
+                {
+                    <AppButton OnClick="ShowNewCapacityPool" Disabled="_isMutating" StartIcon="@Icons.Material.Filled.Add" data-testid="add-capacity-pool">Add capacity pool</AppButton>
+                }
+            </div>
+            @if (_editingCapacityPool is not null)
+            {
+                <EventCapacityPoolEditor Model="_editingCapacityPool" IsSaving="_isMutating" OnSave="SaveCapacityPoolAsync" OnCancel="CancelCapacityPoolEdit" />
+            }
+            @if (_catalog.CapacityPools.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">No shared capacity pools.</MudText>
+            }
+            else
+            {
+                <div class="event-ticket-catalog__cards">
+                    @foreach (var pool in _catalog.CapacityPools)
+                    {
+                        <article class="event-ticket-catalog__card" data-testid="capacity-pool-card">
+                            <div>
+                                <MudText Typo="Typo.subtitle1">@pool.Name</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@(pool.MaximumQuantity?.ToString() ?? "Unlimited") places · @pool.HoldDurationSeconds second hold · @(pool.CapacityOversellPolicyName ?? pool.CapacityOversellPolicyCode)</MudText>
+                                <MudText Typo="Typo.caption">Used by @TicketTypeCount(pool.Id) ticket type(s)</MudText>
+                            </div>
+                            <div class="event-ticket-catalog__item-actions">
+                                @if (CanManageCapacityPools && pool.HasLink("edit"))
+                                {
+                                    <AppButton OnClick="@(() => EditCapacityPool(pool))" Disabled="_isMutating" Variant="Variant.Text" data-testid="edit-capacity-pool">Edit</AppButton>
+                                }
+                                @if (CanManageCapacityPools && pool.HasLink("delete"))
+                                {
+                                    <AppButton OnClick="@(() => DeleteCapacityPoolAsync(pool.Id))" Disabled="_isMutating" Variant="Variant.Text" Color="Color.Error" data-testid="delete-capacity-pool">Delete</AppButton>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+    [Parameter] public bool CanManageTicketTypes { get; set; }
+    [Parameter] public bool CanManageCapacityPools { get; set; }
+
+    private EventTicketCatalogState? _catalog;
+    private Guid _loadedEventId;
+    private bool _isLoading;
+    private bool _isMutating;
+    private string? _errorMessage;
+    private string? _statusMessage;
+    private string _currencyCode = "USD";
+    private TicketTypeEditModel? _editingTicketType;
+    private CapacityPoolEditModel? _editingCapacityPool;
+    private IReadOnlyList<EventDayListDto> _eventDays = [];
+    private IReadOnlyList<EventSessionListDto> _eventSessions = [];
+    private bool _supportDataUnavailable;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (EventId == Guid.Empty || EventId == _loadedEventId)
+        {
+            return;
+        }
+
+        _loadedEventId = EventId;
+        await Task.WhenAll(LoadAsync(), LoadSupportDataAsync());
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            _catalog = await TicketingService.GetCatalogAsync(EventId);
+            if (_catalog is not null)
+            {
+                _currencyCode = _catalog.CurrencyCode;
+                await Announcer.AnnouncePoliteAsync($"Ticket catalog loaded: {_catalog.TicketTypes.Count} ticket types and {_catalog.CapacityPools.Count} capacity pools.");
+            }
+            else
+            {
+                _errorMessage = "The ticket catalog could not be loaded.";
+                await Announcer.AnnounceAssertiveAsync(_errorMessage);
+            }
+        }
+        catch (Exception)
+        {
+            _catalog = null;
+            _errorMessage = "The ticket catalog could not be loaded.";
+            await Announcer.AnnounceAssertiveAsync(_errorMessage);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadSupportDataAsync()
+    {
+        try
+        {
+            var daysTask = EventDayService.GetDaysByEventAsync(EventId, includeManaged: true);
+            var sessionsTask = EventService.GetSessionsByEventAsync(EventId, includeManagedSessions: true);
+            await Task.WhenAll(daysTask, sessionsTask);
+            _eventDays = (await daysTask).Where(item => item.Id is not null).OrderBy(item => item.SortOrder).ToArray();
+            _eventSessions = (await sessionsTask).Where(item => item.Id is not null).OrderBy(item => item.StartTime).ToArray();
+        }
+        catch (Exception)
+        {
+            _supportDataUnavailable = true;
+            _eventDays = [];
+            _eventSessions = [];
+        }
+    }
+
+    private string? PoolName(Guid poolId) => _catalog?.CapacityPools.FirstOrDefault(pool => pool.Id == poolId)?.Name;
+    private int TicketTypeCount(Guid poolId) => _catalog?.TicketTypes.Count(ticket => ticket.CapacityPoolId == poolId) ?? 0;
+
+    private void ShowNewTicketType() => _editingTicketType = TicketTypeEditModel.Create();
+    private void EditTicketType(EventTicketTypeState ticketType) => _editingTicketType = TicketTypeEditModel.From(ticketType);
+    private void CancelTicketTypeEdit() => _editingTicketType = null;
+    private void ShowNewCapacityPool() => _editingCapacityPool = CapacityPoolEditModel.Create();
+    private void EditCapacityPool(EventCapacityPoolState pool) => _editingCapacityPool = CapacityPoolEditModel.From(pool);
+    private void CancelCapacityPoolEdit() => _editingCapacityPool = null;
+
+    private Task CreateDraftAsync() => MutateAsync(
+        () => TicketingService.CreateDraftAsync(EventId, new CreateEventTicketCatalogDraftCommand { EventId = EventId, CurrencyCode = _currencyCode.Trim().ToUpperInvariant() }),
+        "Draft created.");
+
+    private async Task CloneDraftAsync()
+    {
+        if (await ConfirmAsync("Create ticket catalog draft", "Create a new draft from the published catalog?", "Create draft"))
+        {
+            await MutateAsync(() => TicketingService.CloneDraftAsync(EventId), "Draft created from the published catalog.");
+        }
+    }
+    private async Task PublishAsync()
+    {
+        if (await ConfirmAsync("Publish ticket catalog", "Publish this catalog for attendee use?", "Publish"))
+        {
+            await MutateAsync(() => TicketingService.PublishAsync(EventId), "Ticket catalog published.");
+        }
+    }
+
+    private async Task SaveTicketTypeAsync(TicketTypeEditModel model)
+    {
+        await MutateAsync(
+            () => model.Id is { } id
+                ? TicketingService.UpdateTicketTypeAsync(EventId, id, model.ToRequest())
+                : TicketingService.CreateTicketTypeAsync(EventId, model.ToRequest()),
+            model.Id is null ? "Ticket type created." : "Ticket type updated.");
+        if (_errorMessage is null)
+        {
+            _editingTicketType = null;
+        }
+    }
+
+    private async Task DeleteTicketTypeAsync(Guid ticketTypeId)
+    {
+        if (await ConfirmAsync("Delete ticket type", "Delete this ticket type?", "Delete"))
+        {
+            await MutateAsync(() => TicketingService.DeleteTicketTypeAsync(EventId, ticketTypeId), "Ticket type deleted.");
+        }
+    }
+
+    private async Task SaveCapacityPoolAsync(CapacityPoolEditModel model)
+    {
+        await MutateAsync(
+            () => model.Id is { } id
+                ? TicketingService.UpdateCapacityPoolAsync(EventId, id, model.ToRequest())
+                : TicketingService.CreateCapacityPoolAsync(EventId, model.ToRequest()),
+            model.Id is null ? "Capacity pool created." : "Capacity pool updated.");
+        if (_errorMessage is null)
+        {
+            _editingCapacityPool = null;
+        }
+    }
+
+    private async Task DeleteCapacityPoolAsync(Guid capacityPoolId)
+    {
+        if (await ConfirmAsync("Delete capacity pool", "Delete this shared capacity pool?", "Delete"))
+        {
+            await MutateAsync(() => TicketingService.DeleteCapacityPoolAsync(EventId, capacityPoolId), "Capacity pool deleted.");
+        }
+    }
+
+    private async Task MutateAsync(Func<Task<BaseCommandResponseOfGuid>> mutation, string successMessage)
+    {
+        _isMutating = true;
+        _errorMessage = null;
+        _statusMessage = null;
+        try
+        {
+            BaseCommandResponseOfGuid response = await mutation();
+            if (response.Success != true)
+            {
+                _errorMessage = response.Message ?? "The ticket catalog change could not be saved.";
+                await Announcer.AnnounceAssertiveAsync(_errorMessage);
+                return;
+            }
+            _statusMessage = successMessage;
+            await Announcer.AnnouncePoliteAsync(successMessage);
+            _catalog = await TicketingService.GetCatalogAsync(EventId);
+        }
+        catch (Exception)
+        {
+            _errorMessage = "The ticket catalog change could not be saved.";
+            await Announcer.AnnounceAssertiveAsync(_errorMessage);
+        }
+        finally
+        {
+            _isMutating = false;
+        }
+    }
+
+    private async Task<bool> ConfirmAsync(string title, string message, string yesText)
+    {
+        await FocusService.SaveFocusAsync();
+        try
+        {
+            bool? confirmed = await DialogService.ShowMessageBoxAsync(
+                title,
+                message,
+                yesText: yesText,
+                cancelText: "Cancel",
+                options: DialogOptionsFactory.Confirmation());
+            return confirmed == true;
+        }
+        finally
+        {
+            await FocusService.RestoreFocusAsync();
+        }
+    }
+}

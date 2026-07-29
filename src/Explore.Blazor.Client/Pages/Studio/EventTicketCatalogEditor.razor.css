@@ -1,0 +1,56 @@
+/* ABOUTME: Scoped BEM layout for ticket catalog authoring and shared-capacity visualization. */
+/* ABOUTME: Uses shared design tokens with responsive, RTL-safe action and card layouts. */
+
+.event-ticket-catalog,
+.event-ticket-catalog__section,
+.event-ticket-catalog__cards {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.event-ticket-catalog__header,
+.event-ticket-catalog__section-header,
+.event-ticket-catalog__card,
+.event-ticket-catalog__actions,
+.event-ticket-catalog__item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-3);
+    align-items: center;
+    justify-content: space-between;
+}
+
+.event-ticket-catalog__summary {
+    display: grid;
+    gap: var(--isl-space-1);
+}
+
+.event-ticket-catalog__actions {
+    justify-content: flex-end;
+}
+
+.event-ticket-catalog__card,
+.event-ticket-catalog__message,
+.event-ticket-catalog__state {
+    padding: var(--isl-space-4);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.event-ticket-catalog__section {
+    padding-block-start: var(--isl-space-4);
+    border-block-start: var(--isl-card-border);
+}
+
+@media (max-width: 600px) {
+    .event-ticket-catalog__header,
+    .event-ticket-catalog__card {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .event-ticket-catalog__actions,
+    .event-ticket-catalog__item-actions {
+        justify-content: flex-start;
+    }
+}
