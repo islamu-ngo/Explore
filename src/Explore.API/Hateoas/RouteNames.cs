@@ -158,6 +158,7 @@ public static class RouteNames
     public const string UpdateEventSession = "UpdateEventSession";
     public const string DeleteEventSession = "DeleteEventSession";
     public const string GetEventSessionLanguages = "GetEventSessionLanguages";
+    public const string GetManagedEventSessionLanguages = "GetManagedEventSessionLanguages";
     public const string CreateEventSessionLanguage = "CreateEventSessionLanguage";
     public const string UpdateEventSessionLanguage = "UpdateEventSessionLanguage";
     public const string DeleteEventSessionLanguage = "DeleteEventSessionLanguage";
@@ -705,10 +706,12 @@ public static class RouteNames
     #region Event Aspect Routes
 
     public const string GetEventIslamicAspect = "GetEventIslamicAspect";
+    public const string GetManagedEventIslamicAspect = "GetManagedEventIslamicAspect";
     public const string CreateEventIslamicAspect = "CreateEventIslamicAspect";
     public const string UpdateEventIslamicAspect = "UpdateEventIslamicAspect";
     public const string DeleteEventIslamicAspect = "DeleteEventIslamicAspect";
     public const string GetEventTechAspect = "GetEventTechAspect";
+    public const string GetManagedEventTechAspect = "GetManagedEventTechAspect";
     public const string CreateEventTechAspect = "CreateEventTechAspect";
     public const string UpdateEventTechAspect = "UpdateEventTechAspect";
     public const string DeleteEventTechAspect = "DeleteEventTechAspect";
@@ -728,6 +731,7 @@ public static class RouteNames
     #region Event Day Routes
 
     public const string GetEventDaysByEvent = "GetEventDaysByEvent";
+    public const string GetManagedEventDaysByEvent = "GetManagedEventDaysByEvent";
     public const string GetEventDayById = "GetEventDayById";
     public const string CreateEventDay = "CreateEventDay";
     public const string UpdateEventDay = "UpdateEventDay";
@@ -811,6 +815,9 @@ public static class RouteNames
     #endregion
 
     #region Instance Settings Routes
+
+    public const string GetInstancePlatformMonetizationSettings = "GetInstancePlatformMonetizationSettings";
+    public const string UpdateInstancePlatformMonetizationSettings = "UpdateInstancePlatformMonetizationSettings";
 
     public const string GetControlPlaneOverview = "GetControlPlaneOverview";
     public const string GetControlPlaneDomains = "GetControlPlaneDomains";
