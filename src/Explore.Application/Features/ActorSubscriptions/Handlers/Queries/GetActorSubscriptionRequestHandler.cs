@@ -40,11 +40,11 @@ public class GetActorSubscriptionRequestHandler : IRequestHandler<GetActorSubscr
             return null;
         }
 
-        var subscription = await _actorSubscriptionRepository.GetBySubscriberAndTargetAsync(
+        var subscription = await _actorSubscriptionRepository.GetDiscoverableBySubscriberAndTargetAsync(
             _tenantContext.TenantId,
             tenantUser.Id,
             request.TargetActorId,
-            cancellationToken: cancellationToken);
+            cancellationToken);
 
         return subscription is null ? null : _mapper.Map<ActorSubscriptionDto>(subscription);
     }

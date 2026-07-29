@@ -50,7 +50,10 @@ public class SubscribeToActorCommandHandler : IRequestHandler<SubscribeToActorCo
             return Failure(response, "Actor subscription failed.", ["An active tenant-local user is required before subscribing."]);
         }
 
-        var targetActor = await GetSupportedTargetActorAsync(request.Subscription.TargetActorId);
+        var targetActor = await _actorRepository.GetLocallyDiscoverableSubscriptionTargetAsync(
+            _tenantContext.TenantId,
+            request.Subscription.TargetActorId,
+            cancellationToken);
         if (targetActor is null)
         {
             return Failure(response, "Actor subscription failed.", ["Target actor must be an organization or group in the current tenant."]);
@@ -124,20 +127,6 @@ public class SubscribeToActorCommandHandler : IRequestHandler<SubscribeToActorCo
             && tenantUser.StatusId == (int)TenantUserStatusEnum.Active
             && !tenantUser.IsDeleted
                 ? tenantUser
-                : null;
-    }
-
-    private async Task<Actor?> GetSupportedTargetActorAsync(Guid targetActorId)
-    {
-        var actor = await _actorRepository.GetActorWithDetails(targetActorId);
-        return actor is not null
-            && !actor.IsDeleted
-            && (actor.ActorTypeId == (int)ActorTypeEnum.Organization || actor.ActorTypeId == (int)ActorTypeEnum.Group)
-            && (actor.Organization?.TenantParticipations.Any(
-                    participation => participation.TenantId == _tenantContext.TenantId && !participation.IsDeleted) == true
-                || actor.Group?.TenantParticipations.Any(
-                    participation => participation.TenantId == _tenantContext.TenantId && !participation.IsDeleted) == true)
-                ? actor
                 : null;
     }
 

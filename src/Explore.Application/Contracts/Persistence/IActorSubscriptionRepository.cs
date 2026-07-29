@@ -14,6 +14,12 @@ public interface IActorSubscriptionRepository : IGenericRepository<ActorSubscrip
         bool trackChanges = false,
         CancellationToken cancellationToken = default);
 
+    Task<ActorSubscription?> GetDiscoverableBySubscriberAndTargetAsync(
+        Guid tenantId,
+        Guid subscriberTenantUserId,
+        Guid targetActorId,
+        CancellationToken cancellationToken = default);
+
     Task<(List<ActorSubscription> Items, int TotalCount)> GetBySubscriberPagedAsync(
         Guid tenantId,
         Guid subscriberTenantUserId,

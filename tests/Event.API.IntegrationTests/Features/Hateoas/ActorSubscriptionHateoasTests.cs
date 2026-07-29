@@ -271,6 +271,54 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
             .WithActorType(targetActorType)
             .WithDisplayName($"Subscription Target {Guid.NewGuid():N}")
             .Build();
+
+        if (targetActorType == ActorTypeEnum.Organization)
+        {
+            var organization = new Organization
+            {
+                Id = Guid.CreateVersion7(),
+                Pii = new OrganizationPii { FullName = "Subscription Target" },
+                Actor = organizationActor
+            };
+            organizationActor.OrganizationId = organization.Id;
+            organizationActor.Organization = organization;
+            context.Organizations.Add(organization);
+            context.OrganizationTenants.Add(new OrganizationTenant
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenant.Id,
+                Tenant = tenant,
+                OrganizationId = organization.Id,
+                Organization = organization,
+                ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+                ApprovalStatus = null!,
+                IsVisible = true
+            });
+        }
+        else if (targetActorType == ActorTypeEnum.Group)
+        {
+            var group = new Group
+            {
+                Id = Guid.CreateVersion7(),
+                FullName = "Subscription Target",
+                Actor = organizationActor
+            };
+            organizationActor.GroupId = group.Id;
+            organizationActor.Group = group;
+            context.Groups.Add(group);
+            context.GroupTenants.Add(new GroupTenant
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenant.Id,
+                Tenant = tenant,
+                GroupId = group.Id,
+                Group = group,
+                ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+                ApprovalStatus = null!,
+                IsVisible = true
+            });
+        }
+
         context.Actors.AddRange(userActor, organizationActor);
         await context.SaveChangesAsync();
 

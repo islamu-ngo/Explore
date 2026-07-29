@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Extensions;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,6 +36,21 @@ public class ActorSubscriptionRepository : GenericRepository<ActorSubscription, 
             cancellationToken);
     }
 
+    public Task<ActorSubscription?> GetDiscoverableBySubscriberAndTargetAsync(
+        Guid tenantId,
+        Guid subscriberTenantUserId,
+        Guid targetActorId,
+        CancellationToken cancellationToken = default) =>
+        WhereTargetIsLocallyDiscoverable(
+                SubscriptionDetailsQuery(trackChanges: false)
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate),
+                tenantId)
+            .FirstOrDefaultAsync(subscription =>
+                subscription.TenantId == tenantId
+                && subscription.SubscriberTenantUserId == subscriberTenantUserId
+                && subscription.TargetActorId == targetActorId,
+                cancellationToken);
+
     public async Task<(List<ActorSubscription> Items, int TotalCount)> GetBySubscriberPagedAsync(
         Guid tenantId,
         Guid subscriberTenantUserId,
@@ -42,8 +58,10 @@ public class ActorSubscriptionRepository : GenericRepository<ActorSubscription, 
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = SubscriptionDetailsQuery(trackChanges: false)
-            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+        var query = WhereTargetIsLocallyDiscoverable(
+                SubscriptionDetailsQuery(trackChanges: false)
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate),
+                tenantId)
             .Where(subscription => subscription.TenantId == tenantId
                 && subscription.SubscriberTenantUserId == subscriberTenantUserId)
             .OrderByDescending(subscription => subscription.SubscribedAt);
@@ -64,10 +82,12 @@ public class ActorSubscriptionRepository : GenericRepository<ActorSubscription, 
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        IQueryable<ActorSubscription> query = _dbContext.ActorSubscriptions
-            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
-            .AsNoTracking()
-            .Include(subscription => subscription.SubscriberTenantUser)
+        IQueryable<ActorSubscription> query = WhereTargetIsLocallyDiscoverable(
+                _dbContext.ActorSubscriptions
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                    .AsNoTracking()
+                    .Include(subscription => subscription.SubscriberTenantUser),
+                tenantId)
             .Where(subscription => subscription.TenantId == tenantId
                 && subscription.TargetActorId == targetActorId
                 && subscription.StatusId == (int)ActorSubscriptionStatusEnum.Active
@@ -96,5 +116,16 @@ public class ActorSubscriptionRepository : GenericRepository<ActorSubscription, 
             .Include(subscription => subscription.NotificationLevel);
 
         return trackChanges ? query : query.AsNoTracking();
+    }
+
+    private IQueryable<ActorSubscription> WhereTargetIsLocallyDiscoverable(
+        IQueryable<ActorSubscription> query,
+        Guid tenantId)
+    {
+        IQueryable<Guid> actorIds = _dbContext.Actors
+            .WhereLocallyDiscoverable(_dbContext, tenantId)
+            .Select(actor => actor.Id);
+
+        return query.Where(subscription => actorIds.Contains(subscription.TargetActorId));
     }
 }

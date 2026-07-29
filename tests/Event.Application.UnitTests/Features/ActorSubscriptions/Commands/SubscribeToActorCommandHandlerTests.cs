@@ -45,7 +45,11 @@ public class SubscribeToActorCommandHandlerTests
         _tenantContext.TenantId.Returns(tenantId);
         _currentUserService.UserId.Returns(userId);
         _tenantUserRepository.GetByTenantAndUserAsync(tenantId, userId, Arg.Any<CancellationToken>()).Returns(tenantUser);
-        _actorRepository.GetActorWithDetails(targetActor.Id).Returns(targetActor);
+        _actorRepository.GetLocallyDiscoverableSubscriptionTargetAsync(
+                tenantId,
+                targetActor.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(targetActor);
         _actorSubscriptionRepository.GetBySubscriberAndTargetAsync(tenantId, tenantUser.Id, targetActor.Id, true, Arg.Any<CancellationToken>())
             .Returns((ActorSubscription?)null);
         _actorSubscriptionRepository.Create(Arg.Any<ActorSubscription>()).Returns(callInfo =>
@@ -102,7 +106,11 @@ public class SubscribeToActorCommandHandlerTests
         _tenantContext.TenantId.Returns(tenantId);
         _currentUserService.UserId.Returns(userId);
         _tenantUserRepository.GetByTenantAndUserAsync(tenantId, userId, Arg.Any<CancellationToken>()).Returns(tenantUser);
-        _actorRepository.GetActorWithDetails(targetActor.Id).Returns(targetActor);
+        _actorRepository.GetLocallyDiscoverableSubscriptionTargetAsync(
+                tenantId,
+                targetActor.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(targetActor);
         _actorSubscriptionRepository.GetBySubscriberAndTargetAsync(tenantId, tenantUser.Id, targetActor.Id, true, Arg.Any<CancellationToken>())
             .Returns(existingSubscription);
 
