@@ -3,13 +3,13 @@
 
 # ATProto Federation Actor Lifecycle - Implementation Plan
 
-Last Updated: 2026-07-28 Europe/Brussels
+Last Updated: 2026-07-29 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** Complete the global-subject architecture consistently. `Actor`, `User`, `Organization`, `Group`, and unclassified external subjects are global. `TenantUser`, `OrganizationTenant`, and `GroupTenant` own tenant-specific participation, policy, moderation, hierarchy, settings, and profile overrides. ATProto registration classifies a verified global identity without duplicating subjects per tenant.
 - **Task directory:** `dev/active/atproto-federation-actor-lifecycle/`.
-- **Implementation status:** Phases 0-5 and Task 6.1 are complete. Contextual Actor reads, legitimacy evidence, and final contract/UI convergence in Tasks 6.2 and 7.1-7.2 remain open.
+- **Implementation status:** Complete. Phases 0-7 and Tasks 5.2, 6.1, 6.2, 7.1, and 7.2 are implemented and verified within the recorded environment limits.
 - **Superseded decisions:** Both `ActorTenantPresence` and the temporary return to tenant-scoped Actor are rejected. A generic presence row would duplicate concrete participation lifecycles.
 - **Predecessor:** `dev/active/atproto-auth/` remains authoritative for implemented OAuth/DPoP verification, canonical `AtprotoRecord`, Jetstream, outbox, recovery, Event/EventSession materialization, source metadata, and zero echo.
 - **Matched intents:** `add-ef-migration`, `update-repository-query`, `add-cqrs-handler`, `add-get-endpoint`, `add-write-endpoint`, `openapi-contract-change`, `add-hal-link`, `blazor-component-affordance`, and `bff-auth-bug`.
@@ -369,6 +369,9 @@ Actor-wide action requires instance authority. Tenant admins mutate concrete par
 - **Type/Layer:** modify; Application/API/HAL.
 - **Files:** Actor/profile DTOs/queries/controller/HAL, organization/group tenant views, ActorSubscription handlers/config, tests/docs.
 - **Acceptance:** Global URL exposes canonical safe data; tenant view composes local participation/content; private cross-tenant data never leaks; subscription remains tenant-contextual and requires local discoverability; no Actor presence row.
+- **Implemented:** Global list, ID, DID, and handle reads now expose active global Actors with active unsuspended ATProto identities only. Tenant collections and exact `GET /api/actor/by-tenant/{tenantId}/{id}` reads use approved visible unsuspended Organization/Group participation or eligible public federated Event evidence and apply only public participation overrides. A non-serialized request-local marker gates Actor detail and collection subscription HAL. Create, detail, list, and fanout share one tenant-local discoverability predicate; unsubscribe retains access to its durable row after the target becomes hidden.
+- **Contract impact:** Public Actor DTOs no longer serialize legacy tenant IDs, private User identity, tenant storage-object IDs, or the request-local discoverability marker. No compatibility field, Actor presence row, tenant Actor, or global-follow behavior remains. OpenAPI and the generated NSwag client converge on the safe Actor surface.
+- **Verification:** Canonical Release build passed with 0 errors. Focused Actor detail 6/6, subscribe handler 4/4, Actor subscription HAL/security 10/10, federated discoverability 1/1, and client private-identity regression 1/1 passed. Direct security/diff review passed. The final Architecture run is 324 passed, 9 unrelated failed, and 1 governed skip; PostgreSQL/Testcontainers is Docker-blocked.
 - **Dependencies/Effort:** 6.1; L.
 
 ### Phase 7: Evidence, Blazor, Contracts, And Canonical Docs
@@ -381,12 +384,17 @@ Actor-wide action requires instance authority. Tenant admins mutate concrete par
 - **Type/Layer:** create/modify; Domain/Application/Persistence/API/HAL/Blazor.
 - **Files:** evidence entity/config/repository/contracts/commands, existing upload sessions/storage checks, participation HAL/UI/tests/schema/docs.
 - **Acceptance:** Pending OrganizationTenant admins can update local/canonical fields according to authority and attach active private Document storage owned by that participation; tenant admin reviews separately; composite tenant FKs, retention, audit, and no content/key leakage are enforced.
+- **Implemented:** `OrganizationTenantEvidence` records a retained private Document attachment with tenant-safe composite foreign keys, a unique participation/document identity, immutable submission audit, review audit, and a concurrency token. Organization admins obtain a server-bound upload session and may idempotently attach only an active `PrivateOwner` Document whose tenant and `OrganizationTenant` owner match exactly. Tenant admins review separately through approve/reject commands; review never auto-approves the participation. Storage update, delete, resource cleanup, and reconciliation paths exclude retained evidence.
+- **Contract/UI:** Authenticated HAL collection/detail/submit/upload-session/review operations expose bounded evidence metadata but omit tenant participation IDs, submitter/reviewer identities, object keys, provider metadata, and document content. The Organization details page renders the HAL-gated evidence panel, and the Blazor BFF proxies PDF upload/download without exposing bearer credentials.
+- **Verification:** Focused evidence command-handler, Organization service, BFF storage-proxy, HAL, and retention checks passed. EF Core reports no pending model changes after `20260729141557_AddOrganizationTenantLegitimacyEvidence`. Direct security review passed.
 - **Dependencies/Effort:** 6.1; L.
 
 #### Task 7.2: Reconcile OpenAPI/client/UI/docs and architecture guardrails
 - **Type/Layer:** modify; API/Blazor/Docs/Tests.
 - **Files:** routes/HAL/OpenAPI/generated client/serializers/onboarding/profile components/localization, canonical docs/ADR/schema/contract inventory/architecture tests.
 - **Acceptance:** UI is HAL-driven; global and tenant URLs/states render; removed CRUD is absent; generated client converges; docs distinguish global subject from participation; tests forbid tenant Actor, tenant Organization/Group, ActorTenantPresence, composite Event-Actor FK, ActorPii DID authority, and client-side authorization inference.
+- **Implemented:** Regenerated OpenAPI and the NSwag client from source, including the exact contextual Actor route and string evidence-review enum. Removed generic Actor create/update/delete operations, switched the Actor profile page and service to the exact resource, added authenticated evidence HAL/UI/BFF flows, and synchronized canonical API/federation/security/domain/Blazor/schema/ADR/contract documentation and architecture guards.
+- **Verification:** Canonical Release build passed for 26 projects with 0 errors. Actor/evidence OpenAPI assertions and generic Actor CRUD absence checks passed; conflict scan and `git diff --check` are clean. The full Blazor client run is 2,231 passed, 2 unrelated failed, and 1 governed skip. The final Architecture run is 324 passed, 9 unrelated failed, and 1 governed skip.
 - **Dependencies/Effort:** 6.2, 7.1; XL.
 
 ## 7. Testing Strategy

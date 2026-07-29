@@ -7,10 +7,10 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Implementation in progress; Phases 0-5 and Task 6.1 are complete. Contextual reads, evidence, and final contract convergence remain in Tasks 6.2 and 7.
-- **Completed:** 11/14 implementation tasks. Phase verification is tracked separately.
-- **Current priority:** Start Task 6.2 global/contextual Actor reads and tenant-local subscription discoverability.
-- **Next recommended slice:** Implement the smallest safe global/contextual Actor read contract without adding a presence row or global-follow semantics.
+- **Overall status:** Complete; Phases 0-7 are implemented and verified within the recorded environment limits.
+- **Completed:** 12/14 implementation tasks. Phase verification is tracked separately.
+- **Current priority:** None. Tasks 5.2, 6.1, 6.2, 7.1, and 7.2 are complete.
+- **Next recommended slice:** Add private tenant-owned legitimacy evidence without changing global Actor identity or introducing a presence row.
 
 ## Maintenance Rules
 
@@ -134,7 +134,7 @@ Last Updated: 2026-07-29 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet` — 0 errors.
 - [x] `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet` — focused ATProto flow 20/20.
 
-## Phase 6: Moderation, Profiles, Authorization, Subscriptions - IN PROGRESS
+## Phase 6: Moderation, Profiles, Authorization, Subscriptions - COMPLETE
 
 - [x] **6.1 Implement four-level moderation and participation-aware Event authorization**
   - **Files:** Actor/identity/tenant moderation entities and commands, EventActorResolver, federation policy, public specifications, authorization/HAL/API tests/docs.
@@ -148,9 +148,12 @@ Last Updated: 2026-07-29 Europe/Brussels
   - **Effort:** XL.
   - **Dependencies:** 5.2.
 
-- [ ] **6.2 Add global/contextual Actor reads and preserve local subscriptions**
+- [x] **6.2 Add global/contextual Actor reads and preserve local subscriptions**
   - **Files:** Actor/profile DTOs/queries/controller/HAL, participation read models, ActorSubscription handlers/configuration, API tests/docs.
   - **Acceptance:** Global and tenant profile views do not leak local/private data; subscription remains tenant-contextual and requires local discoverability; no presence row.
+  - **Implementation evidence:** Global list, ID, DID, and handle reads return only active global Actors and active unsuspended ATProto identities. Tenant collections compose approved visible unsuspended Organization/Group participation or eligible public federated Event evidence, apply only public participation overrides, and serialize neither tenant participation/private User identity nor tenant storage IDs. A non-serialized request-local marker gates Actor detail and collection `subscribe`/`subscription` HAL links. Subscription create, detail, list, and fanout share the same tenant-local discoverability predicate; unsubscribe intentionally retains unrestricted access to an existing durable row after the target becomes hidden.
+  - **Verification:** Canonical Release build passed with 0 errors. Focused Actor detail 6/6, subscribe handler 4/4, Actor subscription HAL/security 10/10, federated discoverability 1/1, and private-client-identity regression 1/1 passed. OpenAPI and NSwag regeneration omit private/request-local Actor fields without additional Task 6.2 drift. The final Architecture run is 324 passed, 9 unrelated failed, and 1 governed skip; PostgreSQL/Testcontainers remains unavailable because no Docker socket is reachable.
+  - **Review:** Direct security/diff review passed. Shared discoverability is fail-closed for hidden and cross-tenant targets, federated evidence grants no participation, and no ActorTenantPresence or global-follow semantics were introduced.
   - **Effort:** L.
   - **Dependencies:** 6.1.
 
@@ -159,24 +162,31 @@ Last Updated: 2026-07-29 Europe/Brussels
 - [x] Focused Event API moderation command - 9/9 passed.
 - [x] Focused Event API cache command - 1/1 passed.
 - [x] Final direct review - passed after one-request-per-handler remediation. PostgreSQL remains Docker-blocked; architecture is 320/330 with the same nine failures outside the Task 6.1 runtime changes.
+- [x] Task 6.2 focused Actor detail, subscription, HAL/security, federated-evidence, and client-privacy lanes - 22/22 passed.
+- [x] Task 6.2 direct security/diff review - passed; the final Architecture run is 324 passed, 9 unrelated failed, and 1 governed skip.
 
-## Phase 7: Evidence, UI, Contracts, Canonical Docs - NOT STARTED
+## Phase 7: Evidence, UI, Contracts, Canonical Docs - COMPLETE
 
-- [ ] **7.1 Add OrganizationTenant legitimacy evidence**
+- [x] **7.1 Add OrganizationTenant legitimacy evidence**
   - **Files:** new evidence entity/config/repository/contracts/commands, existing upload-session/storage checks, participation HAL/UI, tests/schema/docs.
   - **Acceptance:** Pending participation admins attach active private tenant-owned Document storage; review remains tenant-local/separate; retention/audit/composite tenant FKs/no leakage are enforced.
+  - **Implementation evidence:** `OrganizationTenantEvidence` uses composite tenant foreign keys to the participation and retained Document, unique replay identity, review audit, and optimistic concurrency. Organization admins use a server-bound upload session and can attach only an active private Document owned by the exact pending participation. Tenant admins approve or reject evidence separately; the participation is never auto-approved. Storage update/delete/reconciliation excludes retained evidence.
+  - **Contract/UI evidence:** Authenticated HAL exposes only bounded evidence metadata and actions; tenant IDs, participation IDs, submitter/reviewer identities, object keys, provider metadata, and content remain private. The Organization details panel follows HAL affordances and uses the BFF PDF proxy.
+  - **Verification:** Focused command-handler, Organization service, BFF proxy, HAL, retention, and enum-contract checks passed. EF Core reports no pending model changes after migration `20260729141557_AddOrganizationTenantLegitimacyEvidence`.
   - **Effort:** L.
   - **Dependencies:** 6.1.
 
-- [ ] **7.2 Reconcile OpenAPI/client/UI/docs and architecture guardrails**
+- [x] **7.2 Reconcile OpenAPI/client/UI/docs and architecture guardrails**
   - **Files:** routes/HAL/OpenAPI/generated client/serializers/onboarding/profile components/localization, canonical docs/ADR/schema/contract inventory/architecture tests.
   - **Acceptance:** HAL-driven global/contextual UX and contracts converge; docs/schema/ADR match; tests forbid tenant Actor/Organization/Group, ActorTenantPresence, composite Event-Actor FK, ActorPii DID authority, public identity CRUD, and local authorization inference.
+  - **Implementation evidence:** OpenAPI and NSwag were regenerated from source; the exact contextual Actor resource, string evidence-review enum, authenticated evidence operations, serializers, UI, localization, canonical docs, ADR, schema, contract inventory, and architecture guardrails converge. Generic Actor create/update/delete operations and client methods are absent.
+  - **Verification:** Actor/evidence OpenAPI assertions passed; generated Actor CRUD absence, conflict scan, and `git diff --check` passed. The final Architecture run is 324 passed, 9 unrelated failed, and 1 governed skip.
   - **Effort:** XL.
   - **Dependencies:** 6.2, 7.1.
 
 ### Phase 7 Verification - RUN ONCE
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` - 26 projects, 0 errors; existing package advisories remain.
+- [x] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` - executed: 2,231 passed, 2 unrelated dirty-worktree failures, 1 governed skip.
 
 ## Remaining / Deferred Work
 

@@ -35,22 +35,28 @@ Last Updated: 2026-07-29 Europe/Brussels
 - Added `20260728143000_ClassifyExternalUnclassifiedActors`, lookup seeder parity for ID 6, DBML/domain/federation/security documentation, and an owner/type check constraint.
 - Completed Task 6.1 implementation across global Actor moderation, exact identity moderation, creation eligibility, public Event and anonymous child eligibility, federated projection lifecycle, management detail/HAL behavior, HybridCache and output-cache invalidation, and fenced outbound publication compensation.
 - Completed review remediation: transactional grounded `PdsSyncOutbox` Delete compensation covers settled ownership and pending/processing Event mutations; exact-identity moderation is DID-scoped; soft-deleted source Events remain selectable for cleanup; central eligibility gates public Event and child projections; local echoes require exact outbound ownership plus current local eligibility; Event-detail HybridCache and five process-local output-cache tags are invalidated without a cross-replica consistency claim; and moderation metadata plus secured management child reads are present in regenerated OpenAPI/client artifacts and adopted by MCP/Blazor.
+- Completed Task 6.2 global/contextual Actor reads and tenant-local subscription discoverability. Global profiles omit tenant participation, private User identity, and tenant storage IDs; contextual collections compose approved public participation overrides or eligible federated Event evidence. Subscription create/detail/list/fanout share one fail-closed local-discoverability predicate, unsubscribe retains its durable-row path, and Actor HAL uses a non-serialized request-local marker without client role/claim inference.
+- Added the exact contextual Actor resource at `GET /api/actor/by-tenant/{tenantId}/{id}`. It uses the shared local-discoverability boundary, composes only safe public participation overrides, emits contextual self/subscription HAL, and returns 404 for hidden or cross-tenant targets.
+- Verified Task 6.2 with a canonical Release build (0 errors), focused Actor detail 6/6, subscribe handler 4/4, Actor subscription HAL/security 10/10, federated discoverability 1/1, and client private-identity 1/1. OpenAPI and NSwag contracts converge without private/request-local Actor fields. Direct security/diff review passed.
+- Completed Task 7.1 OrganizationTenant legitimacy evidence. Organization admins use server-bound upload sessions and attach only active private Document storage owned by the exact pending participation; tenant admins review separately with optimistic concurrency. Composite tenant foreign keys, idempotent attachment, immutable audit, retention across update/delete/reconciliation, and fail-closed ownership checks are enforced.
+- Completed Task 7.1 HAL/UI/BFF delivery. Authenticated evidence resources expose bounded metadata and affordances without tenant participation IDs, submitter/reviewer identities, object keys, provider metadata, or document content. The Organization details evidence panel follows HAL links, and PDF transfer stays behind the credentialed Blazor BFF proxy.
+- Completed Task 7.2 contract and documentation convergence. OpenAPI/NSwag, serializers, the exact contextual Actor client, evidence string enums, UI/localization, canonical API/federation/security/domain/Blazor docs, ADR, DBML schema, contract inventory, and architecture guards now agree. Generic Actor create/update/delete operations remain absent.
+- Final verification: Release build 26 projects/0 errors; Architecture 324 passed/9 unrelated failed/1 governed skip; Blazor client 2,231 passed/2 unrelated failed/1 governed skip; EF migration parity clean; focused Actor/evidence/HAL/BFF/service lanes passed; OpenAPI privacy assertions, conflict scan, and `git diff --check` passed.
 
 ### IN PROGRESS
 
-- Task 6.2 global/contextual Actor reads and tenant-local subscription discoverability.
+- None. The requested workstream tasks are complete.
 
 ### NEXT
 
-1. Implement Task 6.2 global/contextual Actor reads without leaking participation-private data.
-2. Preserve ActorSubscription as tenant-contextual and require local discoverability without creating presence rows.
-3. Add OrganizationTenant legitimacy evidence in Task 7.1.
-4. Finish OpenAPI/client/UI/localization/doc regeneration and architecture guardrails only in the owning later task.
+1. Run the Docker-backed PostgreSQL/Testcontainers lanes when a Docker socket is available.
+2. Leave the recorded unrelated architecture and Blazor failures to their owning workstreams.
 
 ### BLOCKERS
 
 - Full Phase 0 API suite cannot complete in this environment because Docker/Testcontainers cannot connect to `/var/run/docker.sock` or the Docker Desktop socket. The run reached 1470 passed and 517 infrastructure failures after all code-related failures were fixed.
-- Architecture passed 320/330 with nine failures in privacy/cache registries, naming, generated-client, authorization-parity, update-inventory, and concurrent persistence/ticketing work; implementation must not hide them or claim suite success.
+- Architecture passed 324/334 with nine failures in privacy/cache registries, naming, generated-client, authorization-parity, update-inventory, and concurrent persistence/ticketing work; implementation does not hide them or claim suite success.
+- The full Blazor client run passed 2,231/2,234 with one governed skip. Its two unrelated dirty-worktree failures are the CreateEvent registration-policy accessibility source assertion and EventTicketCatalogEditor cancellation-on-dispose.
 - The current full Persistence run exposes 198 stale fixtures after the new required provenance FK and exact-one Actor owner constraint; focused lifecycle migration tests pass.
 - Task 5.2 PostgreSQL tests compile but Docker/Testcontainers cannot reach either configured socket.
 - Concurrent registration-data work owns current EF snapshot drift; the model probe contained only its Event participation tables/column removals.
@@ -68,11 +74,11 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 | Field | Value |
 |---|---|
-| Overall status | Implementation in progress |
-| Completed implementation tasks | 11/14 |
-| Current priority | Task 6.2 global/contextual Actor reads |
-| Runtime implementation | Phases 0-5 and Task 6.1 complete |
-| Verification | Task 6.1 Release build and focused lanes pass; public eligibility 3/3 passed in the full Persistence run; PostgreSQL is Docker-blocked; final architecture is 320/330 with the same nine recorded failures; direct review passed |
+| Overall status | Complete within recorded environment limits |
+| Completed implementation tasks | 14/14 |
+| Current priority | None |
+| Runtime implementation | Phases 0-7 complete |
+| Verification | Release build 0 errors; focused Actor/evidence lanes pass; Architecture 324 passed/9 unrelated failed/1 skip; Blazor 2,231 passed/2 unrelated failed/1 skip; PostgreSQL is Docker-blocked |
 
 ## Core Model
 
@@ -106,7 +112,7 @@ Last Updated: 2026-07-29 Europe/Brussels
 | `src/Explore.Domain/Actor.cs` | Global subject identity with exact-one concrete owner | Add command/policy behavior for remaining moderation and promotion phases. |
 | `ActorConfiguration.cs` | Global key, owner XOR/uniqueness, no tenant relation | Complete. |
 | `Organization.cs` / `Group.cs` | Global canonical subjects | Complete. |
-| `OrganizationTenant.cs` / `GroupTenant.cs` | Tenant approval/status/moderation/settings/profile/hierarchy | Add legitimacy evidence in Task 7.1. |
+| `OrganizationTenant.cs` / `GroupTenant.cs` | Tenant approval/status/moderation/settings/profile/hierarchy | OrganizationTenant legitimacy evidence complete; GroupTenant unchanged. |
 | `TenantUser.cs` | Existing user participation | Retain tenant roles/moderation/profile; preferred Actor stays local. |
 | member/setting entities | Tenant rows targeting subject | Target concrete participation. |
 | `EventConfiguration.cs` | Composite Actor FK | Simple global ActorId FK; business authorization checks participation. |
@@ -134,6 +140,9 @@ Last Updated: 2026-07-29 Europe/Brussels
 - Task 5.1 migration validation: `dotnet ef migrations has-pending-model-changes` reported no changes; the idempotent SQL widens provider keys, checks duplicates, creates the filtered unique index, and writes migration history in one transaction. The PostgreSQL test accepts a 2,048-character key and rejects the same provider/key in another tenant.
 - Task 5.2 validation: Application 17/17, EF retry tracking 1/1, BFF 20/20, Infrastructure 13/13, lifecycle architecture 4/4, diagnostics and diff checks clean, boundary API/Persistence/canonical Release builds 0 errors, migration discovered, idempotent SQL reviewed, and final Oracle review passed. The focused PostgreSQL suite compiled but its two tests could not start without Docker; a later concurrent `MinorUnitMath` edit now blocks a fresh repository build before Task 5.2.
 - Task 6.1 validation: canonical Release build passed with 0 errors; pre-existing package advisory warnings remain. Moderation compensation passed 17/17, public actions 10/10, local echo 3/3, Actor moderation API 9/9, cache invalidation 1/1, public eligibility 3/3, publication planning 49/49, managed child Application/API/Blazor lanes, and management collection HAL 23/23. The full Persistence run confirmed all three in-memory eligibility tests before 597 Docker/Testcontainers failures. Final architecture verification remained 320/330 with the same nine recorded non-runtime failures. Direct review passed after separating managed and public requests into one-request-per-handler classes; the remediation build, Application 4/4, API 2/2, diagnostics, conflict scan, and diff check passed.
+- Task 6.2 validation: canonical Release build passed with 0 errors; Actor detail 6/6, subscribe handler 4/4, Actor subscription HAL/security 10/10, eligible federated evidence 1/1, and client private-identity 1/1 passed. OpenAPI and the generated NSwag client omit tenant/private/request-local Actor fields. Direct review confirmed fail-closed local discoverability across create/detail/list/fanout and unrestricted durable-row access only for unsubscribe. Final Architecture is 324 passed, 9 unrelated failed, and 1 governed skip; PostgreSQL/Testcontainers remains Docker-blocked.
+- Task 7.1 validation: focused evidence command-handler, Organization service, BFF proxy, HAL, retention, and string-enum contract checks passed. EF Core reports no pending model changes after `20260729141557_AddOrganizationTenantLegitimacyEvidence`. Direct review confirmed exact tenant/participation/document ownership, separate tenant-admin review, optimistic concurrency, idempotent attachment, retention, and no document/provider/private-identity leakage.
+- Task 7.2 validation: canonical Release build passed for 26 projects with 0 errors. OpenAPI privacy assertions, exact contextual Actor operation, generated Actor CRUD absence, conflict scan, and `git diff --check` passed. The full Blazor run is 2,231 passed, 2 unrelated failed, and 1 governed skip. Runtime browser visual QA was not started because the active workstream contract prohibits starting live services/browser automation in this repository state.
 
 ## Risks
 
@@ -146,12 +155,12 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 ## Handoff Notes
 
-### Handoff - 2026-07-28 Europe/Brussels
+### Handoff - 2026-07-29 Europe/Brussels
 
-- **Current state:** Phases 0-5 and Task 6.1 are complete; 11/14 tasks complete. Task 6.2 is active.
-- **Next action:** Implement global/contextual Actor reads and tenant-local subscription discoverability without global follow or presence semantics.
-- **Blockers:** Docker-blocked PostgreSQL execution, architecture 320/330 with nine unrelated failures, 198 stale Persistence fixtures, and concurrent registration/ticketing model drift owned by other workstreams.
+- **Current state:** Phases 0-7 and all 14 implementation tasks are complete.
+- **Next action:** Run Docker-backed PostgreSQL/Testcontainers verification when infrastructure is available; no implementation action remains in this workstream.
+- **Blockers:** Docker-blocked PostgreSQL execution, Architecture 324/334 with nine unrelated failures, Blazor 2,231/2,234 with two unrelated failures and one skip, 198 stale Persistence fixtures, and concurrent registration/ticketing model drift owned by other workstreams.
 - **Modified files:** Runtime, persistence, migrations, tests, schema, and this active workstream; preserve unrelated dirty changes.
-- **Validation:** Task 5.2 evidence remains unchanged. Task 6.1 Release build passed with 0 errors; moderation compensation 17/17, public actions 10/10, local echo 3/3, Actor moderation API 9/9, cache invalidation 1/1, public eligibility 3/3, publication planning 49/49, managed child lanes, and management HAL passed. Final direct review and its remediation checks passed. PostgreSQL is Docker-blocked; architecture retains the same nine recorded failures.
-- **Documentation impact:** Federation, API Changelog, and this active workstream record Task 6.1 behavior. OpenAPI and the generated client were regenerated for moderation metadata and management child reads; MCP and Blazor adopted those secured reads. No schema, migration, or Cerbos policy changed.
+- **Validation:** Task 5.2 and 6.1 evidence remains unchanged. Task 6.2 has 22 focused checks green. Task 7.1 focused handler/service/BFF/HAL/retention checks and EF parity pass. Release build is green; Architecture is 324 passed/9 unrelated failed/1 skip; Blazor is 2,231 passed/2 unrelated failed/1 skip; direct security/diff review passed.
+- **Documentation impact:** Federation, API, API Changelog, security/domain/Blazor docs, ADR, DBML schema, contract inventory, OpenAPI/NSwag, and this active workstream record the completed global/contextual Actor and tenant-local evidence contracts without exposing private/request-local fields.
 - **Notes:** Never reintroduce tenant Actor or ActorTenantPresence. Do not merge Organizations/Groups by name. Preserve predecessor federation infrastructure.
