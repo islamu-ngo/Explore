@@ -1,6 +1,8 @@
 // ABOUTME: Covers immutable ticket catalog publication, cloning, capacity-pool scope, and entitlements.
 // ABOUTME: Proves Domain invariants before persistence, checkout, or inventory-hold behavior is introduced.
 
+using System.Reflection;
+
 using Explore.Domain.Enums;
 
 namespace Event.Domain.UnitTests.Entities;
@@ -88,6 +90,28 @@ public sealed class EventTicketCatalogVersionTests
     }
 
     [Test]
+    public async Task EventTicketTypeMutators_AreNonPublic_AndCatalogOwnsMutationSeam()
+    {
+        MethodInfo? update = typeof(EventTicketType).GetMethod(
+            "Update",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        MethodInfo? delete = typeof(EventTicketType).GetMethod(
+            "Delete",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        MethodInfo? aggregateUpdate = typeof(EventTicketCatalogVersion).GetMethod(
+            nameof(EventTicketCatalogVersion.UpdateTicketType),
+            BindingFlags.Instance | BindingFlags.Public);
+        MethodInfo? aggregateDelete = typeof(EventTicketCatalogVersion).GetMethod(
+            nameof(EventTicketCatalogVersion.DeleteTicketType),
+            BindingFlags.Instance | BindingFlags.Public);
+
+        await Assert.That(update?.IsPublic ?? true).IsFalse();
+        await Assert.That(delete?.IsPublic ?? true).IsFalse();
+        await Assert.That(aggregateUpdate?.IsPublic ?? false).IsTrue();
+        await Assert.That(aggregateDelete?.IsPublic ?? false).IsTrue();
+    }
+
+    [Test]
     public async Task DeleteTicketType_DelegatesExplicitIdempotentDeletion()
     {
         EventTicketCatalogVersion catalog = CreateCatalog();
@@ -119,8 +143,8 @@ public sealed class EventTicketCatalogVersionTests
             CapacityOversellPolicyEnum.Disallow,
             true);
 
-        await Assert.That(() => ticketType.Delete(default, Guid.CreateVersion7())).Throws<ArgumentException>();
-        await Assert.That(() => ticketType.Delete(DateTime.UtcNow, Guid.Empty)).Throws<ArgumentException>();
+        await Assert.That(() => catalog.DeleteTicketType(ticketType, default, Guid.CreateVersion7())).Throws<ArgumentException>();
+        await Assert.That(() => catalog.DeleteTicketType(ticketType, DateTime.UtcNow, Guid.Empty)).Throws<ArgumentException>();
         await Assert.That(() => pool.Delete(default, Guid.CreateVersion7())).Throws<ArgumentException>();
         await Assert.That(() => pool.Delete(DateTime.UtcNow, Guid.Empty)).Throws<ArgumentException>();
     }

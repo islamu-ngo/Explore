@@ -191,7 +191,7 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
         SuggestedPriceMinor = suggestedPriceMinor;
     }
 
-    public void Update(string name, TicketPricingModeEnum pricingMode, long? fixedPriceMinor, long? minimumPriceMinor, long? suggestedPriceMinor, ParticipantDataCollectionModeEnum participantDataCollectionMode, int? minimumAge, int? maximumAge, bool requiresGuardian, bool requiresApproval, int? perOrderLimit, int? perAccountLimit, int? perVerifiedContactLimit, int? perBookingPartyLimit)
+    internal void Update(string name, TicketPricingModeEnum pricingMode, long? fixedPriceMinor, long? minimumPriceMinor, long? suggestedPriceMinor, ParticipantDataCollectionModeEnum participantDataCollectionMode, int? minimumAge, int? maximumAge, bool requiresGuardian, bool requiresApproval, int? perOrderLimit, int? perAccountLimit, int? perVerifiedContactLimit, int? perBookingPartyLimit)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Ticket type name is required.", nameof(name));
         ValidateEligibility(minimumAge, maximumAge);
@@ -202,7 +202,7 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
         PerOrderLimit = perOrderLimit; PerAccountLimit = perAccountLimit; PerVerifiedContactLimit = perVerifiedContactLimit; PerBookingPartyLimit = perBookingPartyLimit;
     }
 
-    public void Delete(DateTime deletedAtUtc, Guid deletedBy)
+    internal void Delete(DateTime deletedAtUtc, Guid deletedBy)
     {
         if (deletedAtUtc == default)
         {
