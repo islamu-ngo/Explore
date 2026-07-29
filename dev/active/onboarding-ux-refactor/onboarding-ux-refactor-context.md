@@ -4,7 +4,7 @@
 # Onboarding UX Refactor — Context
 
 > **Implemented foundation (2026-07-12):** Production Keycloak manageability, authorization-provider reconciliation, HAL-gated task actions, and mode-specific completion behavior exist with focused regression coverage.
-> **Corrected re-baseline (2026-07-29):** The user's current-state screenshots and prototype prove the unified experience is not implemented. `SetupLayout` supplies minimal theme/language chrome only; current routes lack the prototype's persistent journey header, segmented progress, focused step layout, setup summary/help rail, and stable Back/Continue/Save-and-exit model. Phase 9 is now the primary implementation scope.
+> **Corrected re-baseline (2026-07-29):** The user's current-state screenshots prove the unified experience is not implemented. `SetupLayout` supplies minimal theme/language chrome only; current routes lack persistent journey orientation and consistent navigation. The unrelated-project prototype is contextual inspiration only, not the ISLAMU target design. Phase 9 is now the primary implementation scope.
 
 ## Production Detection Update
 
@@ -35,8 +35,8 @@ Last Updated: 2026-07-29 Europe/Brussels
 - Completed the earlier Keycloak-focused browser QA across base/detected, desktop/mobile, LTR/RTL, light/dark, long-text, disclosure-keyboard, focus, and provider-action states; that foundation-only gate passed but does not verify the Phase 9 unified workspace.
 - Implemented explicit blank/Local/Cerbos authorization intent, runtime precedence, deployment-owned writes, instance PDP verification, instance-only policy publication, bounded startup retries, singleton single-flight state, safe failure remediation, authoritative route skipping, post-launch retry refresh, and the one-column Local-first page.
 - Updated canonical configuration, secrets, self-hosting, troubleshooting, Blazor, and API change documentation for the authorization flow.
-- Corrected the earlier planning error that equated a shared Blazor layout with a unified user experience. The screenshots establish the fragmented baseline; the prototype establishes the missing workspace information architecture.
-- Re-baselined the plan around a prototype-informed `OnboardingWorkspace` while retaining mode-specific handoffs, HAL authority, recovery states, provider manageability, setup-secret/OIDC hard transitions, optional first-tenant scope, existing editors, and the no-snapshot decision.
+- Corrected the earlier planning error that equated a shared Blazor layout with a unified user experience. The current screenshots establish the fragmented baseline.
+- Re-baselined the plan around an ISLAMU-native `OnboardingWorkspace` while retaining mode-specific handoffs, HAL authority, recovery states, provider manageability, setup-secret/OIDC hard transitions, optional first-tenant scope, existing editors, and the no-snapshot decision.
 
 ### 🟡 IN PROGRESS
 
@@ -52,9 +52,9 @@ Last Updated: 2026-07-29 Europe/Brussels
 - **Current authentication setup:** either a narrow tall provider form or a small detected-provider card centered in a mostly empty viewport.
 - **Current overview/readiness:** a long single-column task list followed by profile fields, required checks, warnings, and launch action; it has no persistent step navigation or contextual side summary.
 - **Current authorization:** a long standalone Local/Cerbos page with its own hierarchy and action placement.
-- **Prototype target:** a persistent product header, saved/resumable state, segmented progress with `Step n of m`, a focused form body, right-side setup summary plus About this step context, and stable Back/Continue controls.
-- **Interpretation:** copy the layout grammar and orientation model, not Oppworx branding, fixed eight-step content, colors, or accounting-specific fields. ISLAMU tokens and MudBlazor wrappers remain authoritative.
-- **Persistence gap:** `InstanceOnboarding.razor` submits `SelfHostOnboardingProfileDto` only through final completion. `InstanceSettingsController.UpdateBrandingSettings` requires instance-admin authority, which the first operator does not receive until completion. Therefore honest pre-launch Save and exit/resume requires the planned onboarding-scoped `PATCH /api/instance-onboarding/profile` plus `save-profile` HAL relation; browser draft storage is forbidden.
+- **Contextual prototype:** illustrates what “one coherent journey” can feel like through persistent orientation and consistent actions. Its exact header, side rail, draft semantics, eight-step count, branding, colors, and controls are not requirements.
+- **ISLAMU target:** Task 9.1 defines the actual workspace from repository content, `docs/DESIGN.md`, MudBlazor wrappers, responsive/accessibility requirements, and the current authority model.
+- **Persistence boundary:** `InstanceOnboarding.razor` submits site-profile fields only through final completion. Phase 9 must use truthful Exit/dirty-discard behavior rather than copying the prototype's draft-saved message or inventing browser persistence.
 
 ### Implementation Evidence
 
@@ -82,10 +82,10 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 ### ⏭️ NEXT
 
-1. Task 9.1: add the workspace primitive, states, geometry, responsive behavior, and reference contract to `docs/DESIGN.md`.
+1. Task 9.1: add the ISLAMU workspace primitive, states, geometry, and responsive behavior to `docs/DESIGN.md`.
 2. Add failing bUnit/source tests for header/progress/main/aside/footer semantics, conditional step count, mobile summary disclosure, RTL order, and secure exit/resume.
 3. Task 9.2: implement the display-only workspace primitive before integrating pages.
-4. Integrate pre-auth/OIDC and post-auth pages incrementally through Tasks 9.3-9.5, then run Task 10.1 reference-fidelity QA.
+4. Integrate pre-auth/OIDC and post-auth pages incrementally through Tasks 9.3-9.5, then run Task 10.1 normal visual QA against `docs/DESIGN.md`.
 
 ### ⚠️ BLOCKERS
 
@@ -99,8 +99,8 @@ Last Updated: 2026-07-29 Europe/Brussels
 1. Read `onboarding-ux-refactor-plan.md`.
 2. Read `onboarding-ux-refactor-tasks.md`.
 3. Review current `git status` without modifying unrelated managed-control-plane work or introducing `.codex` changes.
-4. Start with Task 9.1. The July backend/provider/task-list foundation is complete, but the prototype-informed workspace is not.
-5. Treat supplied current screenshots as the visual baseline and the prototype as the layout/interaction reference. Do not claim the shared `SetupLayout` already satisfies it.
+4. Start with Task 9.1. The July backend/provider/task-list foundation is complete, but the ISLAMU unified workspace is not.
+5. Treat supplied current screenshots as the visual baseline. Do not claim the shared `SetupLayout` already creates a unified experience.
 
 ## Key Files And Responsibilities
 
@@ -115,7 +115,7 @@ Last Updated: 2026-07-29 Europe/Brussels
 | `src/Explore.Blazor.Client/Pages/Onboarding/AuthorizationProviderConfiguration.razor` | Existing, refactored | Blazor Client | Single-column Local default, advanced Cerbos configuration, and failed deployment remediation | Deployment pending/ready bypasses the choice page; failure is locked and retry-only. |
 | `src/Explore.Blazor.Client/Pages/Onboarding/TenantOnboarding.razor` | Existing, refactored | Blazor Client | Tenant-scoped onboarding | Optional after MultiTenant platform launch; tenant drift fails closed. |
 | `src/Explore.Blazor.Client/Pages/Onboarding/Components/OnboardingTaskList.razor` | New, implemented | Blazor Client | Minimal accessible display component | No authority/business logic. |
-| `src/Explore.Blazor.Client/Pages/Onboarding/Components/OnboardingWorkspace.razor` | Planned new | Blazor Client | Header/progress/main/summary/help/footer composition | Display/navigation only; no API, role, provider, or completion authority. |
+| `src/Explore.Blazor.Client/Pages/Onboarding/Components/OnboardingWorkspace.razor` | Planned new | Blazor Client | ISLAMU journey progress/content/context/action composition | Display/navigation only; no API, role, provider, or completion authority. |
 | `docs/DESIGN.md` | Existing, planned modification | Design contract | Canonical workspace primitive and states | Must be updated before component code. |
 | `src/Explore.Blazor.Client/Pages/Admin/Instance/InstanceAdminSettings.razor` | Existing | Blazor Client | Post-launch instance editor | Reuse/link from tasks. |
 | `src/Explore.Blazor.Client/Pages/Admin/Tenant/TenantAdminSettings.razor` | Existing | Blazor Client | Post-launch tenant editor | Reuse/link from tenant tasks. |
@@ -123,9 +123,6 @@ Last Updated: 2026-07-29 Europe/Brussels
 | `src/Explore.Blazor/Services/SetupSecretResolver.cs` | Existing | BFF | Resolves trusted secret source | Browser never owns value. |
 | `src/Explore.Blazor/Services/SetupSecretForwardingHandler.cs` | Existing | BFF | Strips/replaces privileged header | Security regression target. |
 | `src/Explore.API/Controllers/InstanceOnboardingController.cs` | Existing | API | Setup/status/provider/completion API | Thin controller contract. |
-| `src/Explore.Application/Features/InstanceOnboarding/Requests/Commands/SaveInstanceOnboardingProfileCommand.cs` | Planned new | Application | Non-secret pre-launch profile draft command | Returns `BaseCommandResponse<Guid>`; manual validation; no generic wizard state. |
-| `src/Explore.Application/Features/InstanceOnboarding/Handlers/Commands/SaveInstanceOnboardingProfileCommandHandler.cs` | Planned new | Application | Persists existing profile setting keys before launch | Repeated PATCH converges; completion remains final authority. |
-| `src/Explore.API/Hateoas/Policies/InstanceOnboardingStatusLinkPolicy.cs` | Existing, planned modification | API HAL | Adds setup/auth-scoped `save-profile` affordance | Omit unless setup active and caller authenticated. |
 | `src/Explore.API/Controllers/SystemController.cs` | Existing | API | Public/system onboarding status and preflight | Compose existing read state. |
 | `src/Explore.API/Controllers/TenantOnboardingController.cs` | Existing | API | Tenant status/settings/progress/completion | Needs explicit integration coverage. |
 | `src/Explore.API/Controllers/InstanceSettingsController.cs` | Existing | API | Post-launch authz/settings/sync/package endpoints | Deployment mode remains immutable here. |
@@ -143,7 +140,7 @@ Last Updated: 2026-07-29 Europe/Brussels
 ## Key Decisions
 
 1. `/setup` remains pre-auth and setup-secret protected; visual consistency does not merge authority.
-2. After setup-secret validation, onboarding uses one route-aware workspace with a focused main step and responsive summary/help region; status remains server-derived.
+2. After setup-secret validation, onboarding uses one route-aware ISLAMU workspace with a focused main step, persistent journey orientation, and responsive contextual navigation/status; state remains server-derived.
 3. `DEPLOYMENT_MODE` and dedicated admin host are deployment/operator configuration and read-only context in UI.
 4. SingleTenant launches to events/settings; MultiTenant launches the platform/control plane first.
 5. First-tenant onboarding is optional, separate, and tenant-scoped.
@@ -156,10 +153,10 @@ Last Updated: 2026-07-29 Europe/Brussels
 12. Deployment/configured Keycloak credentials must never remove authentication-provider management. Detection may offer a fast continue action, but the operator retains the full setup editor before launch and the HAL-authorized admin provider editor after launch.
 13. Authorization provider intent is explicit: `local` and `cerbos` are deployment-owned; Local and pending/ready Cerbos bypass the choice page, while final failed Cerbos opens locked remediation. Blank/unset defaults the manual page to Local with Cerbos progressively disclosed. Endpoint/credential presence alone never selects Cerbos.
 14. Sharing `SetupLayout` is not sufficient. The missing workspace must add persistent orientation and navigation across focused routes.
-15. The prototype supplies layout grammar only. ISLAMU tokens, typography, wrappers, localization, and light/dark themes remain authoritative.
-16. Save and exit uses confirmed server persistence or explicit discard; no onboarding draft, setup secret, or provider secret is stored in browser storage.
+15. `docs/DESIGN.md`, ISLAMU tokens, typography, wrappers, localization, and light/dark themes define the actual design.
+16. Exit uses confirmed existing server persistence or explicit discard; no onboarding draft, setup secret, or provider secret is stored in browser storage.
 17. The access gate stays outside numbered progress; OIDC and setup-secret cookie transitions may hard reload while the same visual workspace resumes from authoritative state.
-18. Add one narrow profile-draft command/endpoint under authenticated + active setup-secret authority. Reuse `SelfHostOnboardingProfileDto`, its manual validator, and existing instance-setting persistence; add no generic wizard table or secret-bearing draft.
+18. Use existing writes, server-derived resume state, and explicit dirty-discard behavior; reclassify separately if cross-session unsaved profile drafts become a real requirement.
 
 ### Current Slice Evidence — 2026-07-12 Europe/Brussels
 
@@ -215,8 +212,8 @@ Final verification evidence on 2026-07-12:
 Planning re-baseline verification on 2026-07-29:
 
 - `git diff --check -- dev/active/onboarding-ux-refactor` passed.
-- `dotnet build --configuration Release --verbosity quiet` passed with 0 errors and 82 existing NuGet/AOT warnings.
-- `Event.Architecture.Tests` could not start because unrelated concurrent edits in `GetActorsByTenantRequestHandler.cs` do not compile: the new code references `Actor` and `StorageObject` without resolvable imports. The file is outside this planning pass and was left untouched.
+- The final corrected-plan `dotnet build --configuration Release --verbosity quiet` passed with 0 errors and 13,735 existing package/analyzer warnings.
+- An earlier Architecture attempt was transiently blocked by concurrent `GetActorsByTenantRequestHandler.cs` edits; the later full build compiled that code successfully. The Architecture project was not rerun during this docs-only correction and remains open under Task 8.1.
 
 ## Current Known Risks / Unknowns
 
@@ -228,7 +225,7 @@ Planning re-baseline verification on 2026-07-29:
 - **Open / Task 8.2:** Responsive, keyboard, focus, RTL, dark/light, and long-text browser checks pass; authenticated postlaunch and assisted screen-reader journeys still require a healthy real stack.
 - **Open / Task 8.1:** Eight API and four Architecture failures prevent a fully green required-project baseline until they are attributed or fixed.
 - **Open / all work:** Unrelated managed-control-plane changes must remain isolated from any future commit or diagnosis; `.codex/config.toml` currently has no diff.
-- **Open / Tasks 9.1-9.5:** The unified workspace shown by the prototype is entirely unimplemented. Existing screenshot/visual evidence is baseline evidence, not completion evidence.
+- **Open / Tasks 9.1-9.5:** The requested ISLAMU unified workspace is entirely unimplemented. Existing screenshot/visual evidence is baseline evidence, not completion evidence.
 - **Open / Task 9.1:** Finalize conditional step names/order and responsive rail behavior in `docs/DESIGN.md`; the plan defaults to Access gate → Authentication → Site profile → Authorization → Readiness → Launch, with deployment-managed skips projected from server state.
 
 ## Overlap And Supersession
@@ -250,9 +247,9 @@ Planning re-baseline verification on 2026-07-29:
 
 ### Corrected Planning Handoff — 2026-07-29 Europe/Brussels
 
-- **Current state:** Backend/provider/HAL behavior is implemented; the screenshot-demonstrated UI is still fragmented. The prototype-informed unified workspace is planned, not implemented.
+- **Current state:** Backend/provider/HAL behavior is implemented; the screenshot-demonstrated UI is still fragmented. The ISLAMU-native unified workspace is planned, not implemented.
 - **Next action:** Task 9.1, updating `docs/DESIGN.md` and writing failing workspace contract tests.
-- **Design:** desktop main + tonal summary/help rail; mobile in-flow summary disclosure; persistent progress and footer; existing focused pages remain route/business owners.
+- **Design:** `docs/DESIGN.md` will define an ISLAMU-native desktop journey region and mobile in-flow orientation pattern; existing focused pages remain route/business owners.
 - **Security:** access gate remains setup-secret protected; OIDC/BFF hard transitions remain; HAL and server status drive steps/actions; browser draft storage is forbidden for secrets and unsaved configuration.
-- **Validation:** prior visual `PASS` is not valid for Phase 9. Fresh reference-fidelity evidence is required after implementation.
+- **Validation:** prior visual `PASS` is not valid for Phase 9. Fresh normal visual QA against the updated ISLAMU design contract is required after implementation.
 - **Workspace caution:** preserve unrelated concurrent changes, including the compile-blocking `GetActorsByTenantRequestHandler.cs` edits observed during planning verification.

@@ -5,9 +5,9 @@
 
 > **Current status (2026-07-29):** The backend/provider/HAL/task-list foundation is implemented. The screenshots prove the unified onboarding workspace is not; Phase 9 is planned and unstarted.
 > **Progress:** 12/22 unconditional tasks complete. Tasks 6.3, 8.1-8.3, 9.1-9.5, and 10.1 remain unchecked; conditional Task 6.2 remains deferred.
-> **Current priority:** Task 9.1 — codify the prototype-informed workspace in `docs/DESIGN.md` and add failing state/structure tests.
-> **Final review gate:** Fresh reference-fidelity, goal, QA, code-quality, security, and context review is required after Phase 9.
-> **Corrected re-baseline:** Sharing `SetupLayout` does not equal a unified experience. The missing header/progress/main/summary/help/footer workspace is now explicit implementation scope.
+> **Current priority:** Task 9.1 — codify the ISLAMU-native workspace in `docs/DESIGN.md` and add failing state/structure tests.
+> **Final review gate:** Fresh visual, goal, QA, code-quality, security, and context review is required after Phase 9.
+> **Corrected re-baseline:** Sharing `SetupLayout` does not equal a unified experience. Persistent journey orientation, focused step content, contextual navigation/status, and consistent actions are now explicit implementation scope.
 
 Last Updated: 2026-07-29 Europe/Brussels
 
@@ -15,7 +15,7 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 - **Overall status:** Behavioral foundation implemented; unified workspace not started
 - **Checklist completed:** 12/22 unconditional tasks; conditional Task 6.2 remains deferred
-- **Planning completed:** Corrected repository/screenshot/prototype re-baseline is complete
+- **Planning completed:** Corrected repository/current-screenshot re-baseline is complete
 - **Current priority:** Task 9.1 — design contract and failing workspace tests
 - **Next recommended slice:** Task 9.2 shared display/navigation primitive after Task 9.1 acceptance
 - **Implementation has started:** Prior foundation yes; Phase 9 no
@@ -147,7 +147,7 @@ Last Updated: 2026-07-29 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** 3.1, 5.1, 7.1
 
-## Phase 7: Documentation And Operations ⏳ UPDATE REQUIRED
+## Phase 7: Documentation And Operations ✅ FOUNDATION COMPLETE
 
 - [x] **7.1 Update operator and developer documentation**
   - **Files:** existing `docs/CONFIGURATION.md`, `docs/SECRETS.md`, `docs/SELF_HOSTING.md`, `docs/TROUBLESHOOTING.md`, `docs/DEPLOYMENT_MODES.md`, `docs/BLAZOR.md`; conditional `docs/API_CHANGELOG.md`
@@ -163,7 +163,7 @@ Last Updated: 2026-07-29 Europe/Brussels
   - **Files:** all modified files
   - **Acceptance:** clean diagnostics and all five intent minimum test projects pass; no solution-level `dotnet test`.
   - **Validation:** exact commands from plan §14 recorded in context.
-  - **Evidence (in progress):** The latest broad Release build passed with zero errors. `Event.Application.UnitTests` passed 2,205/2,205; serialized `Explore.Blazor.Client.Tests` passed 1,618 with one governed skip; and `Explore.Blazor.IntegrationTests` passed 241/241. `Event.API.IntegrationTests` completed with 1,722/1,733 passed, eight failed, and three skipped; `Event.Architecture.Tests` completed with 263/268 passed, four failed, and one governed skip. Those failures still require attribution before Task 8.1 can close. Compose configuration passed. Current authorization focused coverage is green at 13 configuration/options, 19 provider/single-flight, 22 policy-package target-isolation, 23 runtime-provider, four boot-runner, 13 page, 34 client-service, ten admin-layout, nine Setup, and ten authentication-source tests. Current Client/API/Infrastructure Release builds have zero errors. The 2026-07-29 planning pass repeated the full Release build successfully, but the architecture project could not start after unrelated concurrent edits made `GetActorsByTenantRequestHandler.cs` fail compilation on unresolved `Actor` and `StorageObject` types; post-change broad reruns remain pending.
+  - **Evidence (in progress):** The latest broad Release build passed with zero errors. `Event.Application.UnitTests` passed 2,205/2,205; serialized `Explore.Blazor.Client.Tests` passed 1,618 with one governed skip; and `Explore.Blazor.IntegrationTests` passed 241/241. `Event.API.IntegrationTests` completed with 1,722/1,733 passed, eight failed, and three skipped; `Event.Architecture.Tests` completed with 263/268 passed, four failed, and one governed skip. Those failures still require attribution before Task 8.1 can close. Compose configuration passed. Current authorization focused coverage is green at 13 configuration/options, 19 provider/single-flight, 22 policy-package target-isolation, 23 runtime-provider, four boot-runner, 13 page, 34 client-service, ten admin-layout, nine Setup, and ten authentication-source tests. The final corrected-plan Release build passed with zero errors and 13,735 existing warnings. An earlier transient compile blocker in unrelated Actor changes cleared before that build; the Architecture project was not rerun during the docs-only correction.
   - **Effort:** L
   - **Dependencies:** 7.1
 
@@ -175,18 +175,18 @@ Last Updated: 2026-07-29 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** 8.1
 
-- [ ] **8.3 Refresh dev docs and create final handoff**
+- [ ] **8.3 Refresh foundation dev docs and verification handoff**
   - **Files:** this plan/context/tasks
   - **Acceptance:** completed boxes, decisions, changed files, validation, risks, remaining/deferred work, and next action match reality.
   - **Validation:** cold-agent resume review.
-  - **Evidence:** plan, context, and checklist are refreshed at each verification checkpoint. They record pre-producer broad-suite results separately from focused producer/API results, unrelated-work ownership, the foundation-only visual pass, redacted-read hardening, Aspire/runtime limitations, and open Tasks 8.1/8.2. The supplied prototype now supersedes that visual pass for Phase 9; a new final review is required. The previous post-refresh DocumentationQuality passes 4/4, AgentContextLink passes 8/8, and AgentContextSchema passes 9/9.
+  - **Evidence:** plan, context, and checklist are refreshed at each verification checkpoint. They record pre-producer broad-suite results separately from focused producer/API results, unrelated-work ownership, the foundation-only visual pass, redacted-read hardening, Aspire/runtime limitations, and open Tasks 8.1/8.2. The newly confirmed unified-experience requirement supersedes that visual pass for Phase 9; a new final review is required. The previous post-refresh DocumentationQuality passes 4/4, AgentContextLink passes 8/8, and AgentContextSchema passes 9/9.
   - **Effort:** S
   - **Dependencies:** 8.2 (performed early so the blocked verification handoff remains accurate)
 
 ## Phase 9: Unified Onboarding Workspace ⏳ NOT STARTED
 
 - [ ] **9.1 Define the workspace visual and state contract before component code**
-  - **Files:** `docs/DESIGN.md`; focused component/source test files; supplied current/prototype screenshot evidence
+  - **Files:** `docs/DESIGN.md`; focused component/source test files; current screenshots as baseline
   - **Acceptance:** user approval explicitly widens the current intent allow-list to `docs/DESIGN.md`, `*.razor.css`, and focused Blazor tests; `OnboardingWorkspace` documents desktop main/summary grid, tablet/mobile summary disclosure, header, conditional segmented progress, focused main step, contextual help, footer actions, loading/error/locked/skipped/complete/dirty states, RTL, themes, forced colors, reduced motion, and long-copy behavior. Access is outside numbered progress; the default instance journey is Authentication → Site profile → Authorization → Readiness/Launch, with visible-count recomputation for deployment-managed omission.
   - **Validation:** design-system review and failing bUnit/source tests for the declared structure/state matrix.
   - **Effort:** M
@@ -201,7 +201,7 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 - [ ] **9.3 Integrate setup access, authentication provider, and OIDC handoff**
   - **Files:** `Setup.razor`, `AuthProviderConfiguration.razor`, CSS/tests, `Routes.razor`, `SetupLayout`, existing BFF setup-secret tests
-  - **Acceptance:** access remains setup-secret gated and outside numbered progress; provider setup renders as the first workspace step; detected/manual Keycloak paths share the shell; required hard reloads remain; Save and exit stores no secrets/browser drafts; dirty discard and authoritative resume are explicit.
+  - **Acceptance:** access remains setup-secret gated and outside numbered progress; provider setup renders as the first workspace step; detected/manual Keycloak paths share the shell; required hard reloads remain; Exit stores no secrets/browser drafts; dirty discard and authoritative resume from persisted state are explicit.
   - **Validation:** setup/provider component tests, BFF forwarding/session tests, route/focus/dirty-exit/resume tests.
   - **Effort:** L
   - **Dependencies:** 9.2
@@ -256,10 +256,10 @@ Last Updated: 2026-07-29 Europe/Brussels
 - [ ] Dev docs receive their final refresh after live QA, broad suites, and the final five-lane review (this interim checkpoint is current).
 - [x] Unrelated working-tree changes remain untouched.
 - [ ] `docs/DESIGN.md` defines the `OnboardingWorkspace` primitive and complete state matrix before UI implementation.
-- [ ] Shared workspace header/progress/main/summary/help/footer semantics pass bUnit tests.
+- [ ] Shared workspace progress/content/journey-navigation/action semantics pass bUnit tests.
 - [ ] Conditional step count, skipped/deployment-managed state, revisits, and `aria-current` are server-derived and tested.
-- [ ] Save and exit/resume is tested without browser storage for setup/provider secrets or unsaved configuration.
-- [ ] Reference-fidelity visual QA passes at 375/768/1280px; prior fragmented screenshots are baseline only.
+- [ ] Exit/resume is tested without browser storage for setup/provider secrets or unsaved configuration.
+- [ ] Normal visual QA against `docs/DESIGN.md` passes at 375/768/1280px; prior fragmented screenshots are baseline only.
 
 ## Remaining / Deferred Work
 
