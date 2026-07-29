@@ -571,3 +571,4 @@ event/
 
 *.json.bak
 opencode.jsonc
+dev/report/visuals/
