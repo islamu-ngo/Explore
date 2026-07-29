@@ -705,11 +705,8 @@ public class AuthorizationBehaviorTests
             {
                 Metadata = new StorageObjectMetadataUpdateDto
                 {
-                    FileTypeId = 1,
                     FullName = "file.png",
-                    SafeDisplayName = "file.png",
-                    Extension = "png",
-                    ContentType = "image/png"
+                    SafeDisplayName = "file.png"
                 }
             }
         };
