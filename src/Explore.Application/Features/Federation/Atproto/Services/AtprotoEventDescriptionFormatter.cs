@@ -38,7 +38,6 @@ public static class AtprotoEventDescriptionFormatter
         Field(output, "Event type", details.EventType);
         Field(output, "Audience gender", details.AudienceGender);
         Field(output, "Audience age", details.AudienceAge);
-        Field(output, "Price", Money(details.Price, details.CurrencyCode));
         Field(output, "Views", details.TotalViews.ToString(CultureInfo.InvariantCulture));
         Field(output, "Visibility", details.Visibility);
         Field(output, "Madhab", details.Madhab);
@@ -213,7 +212,6 @@ public static class AtprotoEventDescriptionFormatter
             Field(output, "Registration mode", session.RegistrationMode, 2);
             Field(output, "Maximum attendees", session.MaximumAttendees?.ToString(CultureInfo.InvariantCulture), 2);
             Field(output, "Current attendees", session.CurrentAttendees?.ToString(CultureInfo.InvariantCulture), 2);
-            Field(output, "Price", Money(session.Price, session.CurrencyCode), 2);
             Field(output, "Featured image", session.FeaturedImageUri, 2);
             Field(output, "Categories", Join(session.Categories), 2);
             Field(output, "Tags", Join(session.Tags), 2);

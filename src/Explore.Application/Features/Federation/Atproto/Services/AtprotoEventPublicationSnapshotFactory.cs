@@ -334,8 +334,6 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
             session.RegistrationMode is null ? null : LookupLabel(session.RegistrationMode.MasterCode, session.RegistrationMode.FullName, session.RegistrationMode.Description),
             session.MaxAudienceAttendees,
             session.CurrentAudienceAttendees,
-            session.Price,
-            Normalize(session.CurrencyCode),
             PublicStorageDescription(session.FeaturedImage),
             resolveLocation(session.EventLocationId, session.LocationId, session.RoomId),
             MapSessionIslamicAspect(session.IslamicAspect),
@@ -435,8 +433,6 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
                 eventEntity.AudienceAge.MinAge.HasValue ? $"Minimum age: {eventEntity.AudienceAge.MinAge.Value.ToString(CultureInfo.InvariantCulture)}" : null,
                 eventEntity.AudienceAge.MaxAge.HasValue ? $"Maximum age: {eventEntity.AudienceAge.MaxAge.Value.ToString(CultureInfo.InvariantCulture)}" : null
             }.Where(value => value is not null)),
-            eventEntity.Price,
-            Normalize(eventEntity.CurrencyCode),
             eventEntity.TotalViews,
             LookupLabel(eventEntity.VisibilityType.MasterCode, eventEntity.VisibilityType.FullName, eventEntity.VisibilityType.Description),
             eventEntity.Madhab is null ? null : LookupLabel(eventEntity.Madhab.MasterCode, eventEntity.Madhab.FullName, eventEntity.Madhab.Description),
