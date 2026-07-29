@@ -149,15 +149,17 @@ public sealed class AtprotoEventDiscoveryApiTests
     }
 
     [Test]
-    public async Task DiscoveryCacheInvalidatorEvictsListAndHomeTags()
+    public async Task DiscoveryCacheInvalidatorEvictsAllDiscoveryTags()
     {
         var store = Substitute.For<IOutputCacheStore>();
         var invalidator = new AtprotoDiscoveryCacheInvalidator(store);
 
         await invalidator.InvalidateAsync(CancellationToken.None);
 
+        await store.Received(5).EvictByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await store.Received(1).EvictByTagAsync("event-discovery", Arg.Any<CancellationToken>());
         await store.Received(1).EvictByTagAsync("public-home-discovery", Arg.Any<CancellationToken>());
+        await store.Received(1).EvictByTagAsync("list-data", Arg.Any<CancellationToken>());
         await store.Received(1).EvictByTagAsync("detail-data", Arg.Any<CancellationToken>());
         await store.Received(1).EvictByTagAsync("seo-sitemap", Arg.Any<CancellationToken>());
     }

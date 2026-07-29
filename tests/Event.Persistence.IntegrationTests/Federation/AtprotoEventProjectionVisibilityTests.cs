@@ -1,5 +1,5 @@
 // ABOUTME: PostgreSQL integration tests for public ATProto projection moderation and identity visibility.
-// ABOUTME: Proves discovery and source reads share the same tenant, record, Actor, and exact DID safeguards.
+// ABOUTME: Proves inbound safeguards remain intact while local owned echoes use central Event eligibility.
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
@@ -48,6 +48,78 @@ public sealed class AtprotoEventProjectionVisibilityTests(PostgreSqlContainerFix
                 deniedRecordId,
                 CancellationToken.None);
             await Assert.That(denied).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task VisibleQuery_UsesExactEventOwnershipAndCentralEligibilityForLocalEchoes()
+    {
+        await fixture.ResetAsync();
+        DateTime now = new(2026, 7, 28, 10, 0, 0, DateTimeKind.Utc);
+        var tenant = Tenant("local-echo");
+        await using (ExploreDbContext seedContext = fixture.CreateDbContext())
+        {
+            seedContext.Tenants.Add(tenant);
+            Guid eligible = AddOwnedLocalEcho(seedContext, tenant, "eligible", now, hasActiveTenantUser: true);
+            Guid inactiveParticipation = AddOwnedLocalEcho(
+                seedContext,
+                tenant,
+                "inactive-participation",
+                now,
+                hasActiveTenantUser: false);
+            Guid mismatchedSource = AddOwnedLocalEcho(
+                seedContext,
+                tenant,
+                "mismatched-source",
+                now,
+                hasActiveTenantUser: true,
+                ownershipMatchesEvent: false,
+                hasInboundEvidence: true);
+            await seedContext.SaveChangesAsync();
+
+            await using ExploreDbContext context =
+                fixture.CreateTenantFilteredDbContext(new StaticTenantContext(tenant.Id));
+            var repository = new AtprotoEventProjectionRepository(context);
+
+            (IReadOnlyList<AtprotoEventProjection> discovery, int totalCount) =
+                await repository.GetPublicWindowAsync(PublicQuery(), CancellationToken.None);
+            IReadOnlyList<AtprotoEventProjection> echoes = await repository.GetVisibleByRecordIdsAsync(
+                [eligible, inactiveParticipation, mismatchedSource],
+                CancellationToken.None);
+
+            await Assert.That(discovery).Count().IsEqualTo(0);
+            await Assert.That(totalCount).IsEqualTo(0);
+            await Assert.That(echoes).HasSingleItem();
+            await Assert.That(echoes[0].AtprotoRecordId).IsEqualTo(eligible);
+            await Assert.That(await repository.GetVisibleByRecordIdAsync(eligible, CancellationToken.None)).IsNotNull();
+            await Assert.That(await repository.GetVisibleByRecordIdAsync(inactiveParticipation, CancellationToken.None)).IsNull();
+            await Assert.That(await repository.GetVisibleByRecordIdAsync(mismatchedSource, CancellationToken.None)).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task VisibleQuery_ExcludesTombstonedOwnedLocalEchoes()
+    {
+        await fixture.ResetAsync();
+        DateTime now = new(2026, 7, 28, 10, 0, 0, DateTimeKind.Utc);
+        var tenant = Tenant("tombstoned-local-echo");
+        await using (ExploreDbContext seedContext = fixture.CreateDbContext())
+        {
+            seedContext.Tenants.Add(tenant);
+            Guid recordId = AddOwnedLocalEcho(seedContext, tenant, "tombstoned", now, hasActiveTenantUser: true);
+            seedContext.AtprotoRecords.Local.Single(record => record.Id == recordId).TombstonedAt = now;
+            await seedContext.SaveChangesAsync();
+
+            await using ExploreDbContext context =
+                fixture.CreateTenantFilteredDbContext(new StaticTenantContext(tenant.Id));
+            var repository = new AtprotoEventProjectionRepository(context);
+
+            IReadOnlyList<AtprotoEventProjection> visible = await repository.GetVisibleByRecordIdsAsync(
+                [recordId],
+                CancellationToken.None);
+
+            await Assert.That(visible).IsEmpty();
+            await Assert.That(await repository.GetVisibleByRecordIdAsync(recordId, CancellationToken.None)).IsNull();
         }
     }
 
@@ -259,6 +331,133 @@ public sealed class AtprotoEventProjectionVisibilityTests(PostgreSqlContainerFix
             ConcurrencyStamp = Guid.CreateVersion7()
         };
         context.AddRange(identity, projection, presentation, importedEvent);
+        return record.Id;
+    }
+
+    private static Guid AddOwnedLocalEcho(
+        ExploreDbContext context,
+        Tenant tenant,
+        string key,
+        DateTime now,
+        bool hasActiveTenantUser,
+        bool ownershipMatchesEvent = true,
+        bool hasInboundEvidence = false)
+    {
+        var user = new User
+        {
+            Id = Guid.CreateVersion7(),
+            Pii = new UserPii { Email = $"{key}@example.test", FirstName = "Local", LastName = "Owner" }
+        };
+        var actor = new Actor
+        {
+            Id = Guid.CreateVersion7(),
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = null!,
+            UserId = user.Id,
+            Pii = new ActorPii { DisplayName = $"local-owner-{key}" },
+            CreatedAt = now,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        var record = new AtprotoRecord
+        {
+            Id = Guid.CreateVersion7(),
+            Did = $"did:plc:local-{key}",
+            Collection = "community.lexicon.calendar.event",
+            RecordKey = $"local-{key}",
+            Cid = $"bafy-local-{key}",
+            Uri = $"at://did:plc:local-{key}/community.lexicon.calendar.event/local-{key}",
+            Direction = AtprotoRecordDirection.Inbound,
+            Provenance = AtprotoRecordProvenance.Jetstream,
+            SourceVersion = 2,
+            RecordJson = "{\"name\":\"Local echo visibility test\"}",
+            RecordHash = new string('b', 64),
+            IndexedAt = now,
+            UpdatedAt = now
+        };
+        var @event = new Explore.Domain.Event
+        {
+            Id = Guid.CreateVersion7(),
+            Title = $"Local echo {key}",
+            PublicCode = "ATPROTO",
+            ActorId = actor.Id,
+            Actor = actor,
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+            VisibilityType = null!,
+            EventStatusId = (int)EventStatusEnum.Published,
+            EventStatus = null!,
+            EventFormatId = (int)EventFormatEnum.Digital,
+            EventFormat = null!,
+            AtprotoRecordId = record.Id,
+            AtprotoRecord = record,
+            CreatedAt = now,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        var projection = new AtprotoEventProjection
+        {
+            AtprotoRecordId = record.Id,
+            Name = $"Local echo {key}",
+            CreatedAt = new DateTimeOffset(now),
+            StartsAt = new DateTimeOffset(now.AddDays(1)),
+            SourceVersion = 2,
+            MaterializedAt = now
+        };
+        var ownership = new AtprotoOutboundRecordOwnership
+        {
+            AtprotoRecordId = record.Id,
+            TenantId = tenant.Id,
+            UserId = user.Id,
+            SourceEntityType = "Event",
+            SourceEntityId = ownershipMatchesEvent ? @event.Id : Guid.CreateVersion7(),
+            SourceVersion = @event.ConcurrencyStamp,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        context.AddRange(user, actor, record, @event, projection, ownership);
+
+        if (hasInboundEvidence)
+        {
+            context.AddRange(
+                new AtprotoIdentity
+                {
+                    Id = Guid.CreateVersion7(),
+                    Did = record.Did,
+                    ActorId = actor.Id,
+                    Actor = actor,
+                    PdsHost = "https://pds.example.test",
+                    IsActive = true,
+                    LastResolvedAt = now,
+                    LastSeenAt = now,
+                    CreatedAt = now
+                },
+                new AtprotoRecordTenantPresentation
+                {
+                    TenantId = tenant.Id,
+                    Tenant = tenant,
+                    AtprotoRecordId = record.Id,
+                    AtprotoRecord = record,
+                    IsVisible = true,
+                    SourceVersion = record.SourceVersion,
+                    EvaluatedAt = now
+                });
+        }
+
+        if (hasActiveTenantUser)
+        {
+            context.TenantUsers.Add(new TenantUser
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenant.Id,
+                Tenant = tenant,
+                UserId = user.Id,
+                User = user,
+                ActorId = actor.Id,
+                Actor = actor,
+                StatusId = (int)TenantUserStatusEnum.Active
+            });
+        }
+
         return record.Id;
     }
 
