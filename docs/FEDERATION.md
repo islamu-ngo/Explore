@@ -7,7 +7,7 @@ ABOUTME: Covers DB-first PDS delivery, exhaustive projection, Jetstream discover
 > **Status:** Implemented AT Protocol integration; ActivityPub/PDS hosting remain roadmap
 > **Owner:** API
 > **Last Verified:** 2026-07-29
-> **Source Anchors:** `src/Explore.API/Controllers/AtprotoSessionController.cs`, `src/Explore.API/Controllers/EventController.cs`, `src/Explore.API/BackgroundServices/PdsSyncWorker.cs`, `src/Explore.Blazor/Authentication/AtprotoAuthenticationHandler.cs`, `src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamSubscriber.cs`, `src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamRuntimeStore.cs`, `src/Explore.Infrastructure/Services/Federation/AtprotoThumbnailBlobGateway.cs`, `src/Explore.Application/Features/Federation/Atproto/Handlers/Commands/ImportAtprotoFederatedEventCommandHandler.cs`, `src/Explore.Application/Features/Federation/Atproto/Services/AtprotoFederatedEventImportPlanFactory.cs`, `src/Explore.Persistence/Repositories/AtprotoJetstreamRepository.cs`, `docs/LEXICONS.md`, `docs/OUTBOX_PATTERN.md`
+> **Source Anchors:** `src/Explore.API/Controllers/ActorController.cs`, `src/Explore.API/Controllers/ActorSubscriptionController.cs`, `src/Explore.API/Controllers/AtprotoSessionController.cs`, `src/Explore.API/Controllers/EventController.cs`, `src/Explore.API/BackgroundServices/PdsSyncWorker.cs`, `src/Explore.Blazor/Authentication/AtprotoAuthenticationHandler.cs`, `src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamSubscriber.cs`, `src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamRuntimeStore.cs`, `src/Explore.Infrastructure/Services/Federation/AtprotoThumbnailBlobGateway.cs`, `src/Explore.Application/Features/Federation/Atproto/Handlers/Commands/ImportAtprotoFederatedEventCommandHandler.cs`, `src/Explore.Application/Features/Federation/Atproto/Services/AtprotoFederatedEventImportPlanFactory.cs`, `src/Explore.Persistence/Repositories/ActorRepository.cs`, `src/Explore.Persistence/Repositories/ActorSubscriptionRepository.cs`, `src/Explore.Persistence/Repositories/AtprotoJetstreamRepository.cs`, `docs/LEXICONS.md`, `docs/OUTBOX_PATTERN.md`
 
 ## Status
 
@@ -31,6 +31,14 @@ AT Protocol OAuth authentication is implemented for accounts that are already li
 - **Outbound delivery**: event lifecycle handlers atomically commit the local publication and immutable `PdsSyncOutbox` intent. A fenced worker rechecks capability, self-consent, linked session, source version, payload, and public-location privacy immediately before CarpaNet PDS I/O, then settles URI/CID and links the canonical record back to the committed local event.
 - **Client surfaces**: instance administrators manage defaults/locks, unlocked tenant administrators manage effective capability/profile, and users manage only their own publication consent. Federated cards and local delivery status use text plus color and render actions only from HAL.
 - **Authorization fallback**: local fallback authorization treats actor records as read-only for authenticated users and denies ATProto record/indexed DID writes except for instance-admin bypass.
+
+### Global Actor Profiles And Tenant-Local Subscriptions
+
+`Actor`, its concrete subject, and exact ATProto identities are global. Public Actor list, ID, and DID reads return only active global profile data. They do not serialize tenant participation IDs, private User ownership, or tenant storage-object IDs. The tenant Actor collection starts from current-tenant discoverability and may apply only approved, visible, unsuspended public Organization or Group profile overrides.
+
+Local discoverability requires an active global Actor plus either an approved visible unsuspended Organization/Group participation in the selected tenant or an eligible public federated Event in that tenant. Observation does not create participation or an Actor-presence row. `ActorSubscription` remains tenant-local: create, detail, list, and notification fanout use the same discoverability predicate, while unsubscribe retains access to its existing durable row if the target later becomes hidden.
+
+The API computes a request-local, non-serialized discoverability marker for Actor HAL assembly. Organization and Group resources advertise `subscribe` and `subscription` only when that marker is true and the normal authorization pipeline also allows the operation. Global collections do not advertise tenant-local subscription actions; clients must use `_links` rather than infer them from Actor kind, participation, roles, or claims.
 
 ### ATProto/PDS Account Email Ownership
 
@@ -163,7 +171,7 @@ Jetstream commit or bounded PDS snapshot
     -> optional thumbnail fetch/stage through the verified DID/PDS boundary
     -> AtprotoJetstreamRepository fenced transaction
        -> canonical record/projection/presentation
-       -> tenant Actor + Event + EventSession (+ StorageObject when valid)
+       -> global Actor + tenant Event + EventSession (+ StorageObject when valid)
        -> cursor or complete-snapshot settlement
 ```
 
@@ -202,7 +210,7 @@ Validators are instantiated inside the Application path, following the repositor
 | `media[]` thumbnail | Blob metadata remains in `RecordJson`; a validated candidate carries DID, CID, MIME type, and declared size | Verified bytes become a public event-image `StorageObject`, linked through `Event.FeaturedImageId` |
 | `theme`, `preferences`, `createdWith`, `bskyPostRef`, additional URIs/media, aspect ratios, and future producer extensions | Complete accepted values remain in `AtprotoRecord.RecordJson` | No unrelated relational field is invented; future mappings can be added without losing the original record |
 
-Imported events are public and owned by a tenant-local federated `Actor` keyed by the source DID. The actor uses the normal actor model, while protocol identity remains canonical in `AtprotoRecord`.
+Imported events reference one global external `Actor` keyed by the exact source DID, even when separate tenant Events materialize from the same publisher. Observation creates no tenant participation. Protocol record state remains canonical in `AtprotoRecord`, while `AtprotoIdentity` is the exact-DID identity authority for the represented Actor.
 
 ### Thumbnail Blob Boundary
 
