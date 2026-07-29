@@ -68,6 +68,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
     [Test]
     public async Task CreateHandle_WithValidRequest_ReservesQuotaAndCreatesSession()
     {
+        var owningResourceId = Guid.CreateVersion7();
         var counter = new StorageUsageCounter { TenantId = _tenantId, Provider = StorageProviders.Local, UsedBytes = 100 };
         _usageCounterRepository.GetOrCreateAsync(_tenantId, StorageProviders.Local, Arg.Any<CancellationToken>()).Returns(counter);
         _uploadSessionRepository.Create(Arg.Any<StorageUploadSession>()).Returns(call =>
@@ -77,10 +78,14 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             return session;
         });
 
+        var upload = CreateUploadDto(expectedSizeBytes: 42, originalFileName: "Report.PDF");
+        upload.OwningResourceKind = StorageOwningResourceKinds.OrganizationTenant;
+        upload.OwningResourceId = owningResourceId;
+
         var result = await CreateCreateHandler().Handle(
             new CreateStorageUploadSessionCommand
             {
-                UploadSessionDto = CreateUploadDto(expectedSizeBytes: 42, originalFileName: "Report.PDF")
+                UploadSessionDto = upload
             },
             CancellationToken.None);
 
@@ -100,7 +105,9 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             session.ContentType == "application/pdf" &&
             session.SafeDisplayName == "Report.PDF" &&
             session.ExpectedSizeBytes == 42 &&
-            session.ReservedBytes == 42));
+            session.ReservedBytes == 42 &&
+            session.OwningResourceKind == StorageOwningResourceKinds.OrganizationTenant &&
+            session.OwningResourceId == owningResourceId));
     }
 
     [Test]
@@ -325,6 +332,9 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
     public async Task FinalizeHandle_WithReservedSession_WritesProviderCreatesMetadataAndFinalizesUsage()
     {
         var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: 11);
+        var owningResourceId = Guid.CreateVersion7();
+        session.OwningResourceKind = StorageOwningResourceKinds.OrganizationTenant;
+        session.OwningResourceId = owningResourceId;
         var counter = new StorageUsageCounter { TenantId = _tenantId, Provider = StorageProviders.Local, ReservedBytes = 11 };
         var objectKey = ReservedObjectKey(session);
         var writeResult = CreateWriteResult(objectKey: objectKey);
@@ -363,7 +373,9 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             storageObject.Provider == StorageProviders.Local &&
             storageObject.ObjectKey == objectKey &&
             storageObject.Size == 11 &&
-            storageObject.ContentType == "text/plain"));
+            storageObject.ContentType == "text/plain" &&
+            storageObject.OwningResourceKind == StorageOwningResourceKinds.OrganizationTenant &&
+            storageObject.OwningResourceId == owningResourceId));
     }
 
     [Test]

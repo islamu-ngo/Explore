@@ -64,3 +64,8 @@ public static class StorageUploadSessionStates
 
     public static readonly string[] All = [Reserved, Uploading, Finalized, Canceled, Failed, Expired];
 }
+
+public static class StorageOwningResourceKinds
+{
+    public const string OrganizationTenant = "organization_tenant";
+}
