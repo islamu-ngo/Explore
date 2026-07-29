@@ -122,6 +122,9 @@ public class StorageObjectRepository : GenericRepository<StorageObject, Guid>, I
             .Where(storageObject =>
                 !storageObject.IsDeleted &&
                 storageObject.TenantId == tenantId &&
+                !_dbContext.OrganizationTenantEvidence
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.InstanceStorageAdministration)
+                    .Any(evidence => evidence.DocumentStorageObjectId == storageObject.Id) &&
                 storageObject.LifecycleState == StorageObjectLifecycleStates.DeleteRequested &&
                 (storageObject.Provider == StorageProviders.Local ||
                  storageObject.Provider == StorageProviders.S3Compatible) &&
@@ -154,12 +157,30 @@ public class StorageObjectRepository : GenericRepository<StorageObject, Guid>, I
             .ToListAsync(cancellationToken);
     }
 
+    public Task<StorageObject?> GetEvidenceDocumentAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return _dbContext.StorageObjects
+            .AsNoTracking()
+            .Include(storageObject => storageObject.FileType)
+            .FirstOrDefaultAsync(storageObject => storageObject.Id == id, cancellationToken);
+    }
+
+    public Task<bool> IsRetainedEvidenceAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return _dbContext.OrganizationTenantEvidence
+            .AsNoTracking()
+            .AnyAsync(evidence => evidence.DocumentStorageObjectId == id, cancellationToken);
+    }
+
     private IQueryable<StorageObject> BaseReconciliationQuery()
     {
         return _dbContext.StorageObjects
             .IgnoreTenantFilter(TenantFilterBypassReasons.InstanceStorageAdministration)
             .Where(storageObject =>
                 !storageObject.IsDeleted &&
+                !_dbContext.OrganizationTenantEvidence
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.InstanceStorageAdministration)
+                    .Any(evidence => evidence.DocumentStorageObjectId == storageObject.Id) &&
                 storageObject.ObjectKey != null &&
                 (storageObject.Provider == StorageProviders.Local ||
                  storageObject.Provider == StorageProviders.S3Compatible));

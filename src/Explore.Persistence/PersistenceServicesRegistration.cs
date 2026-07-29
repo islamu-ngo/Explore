@@ -225,6 +225,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IPlatformContributionSettingRepository, PlatformContributionSettingRepository>();
         services.AddScoped<IEventPublicActionRepository, EventPublicActionRepository>();
         services.AddScoped<IEventOrganizerClaimRepository, EventOrganizerClaimRepository>();
+        services.AddScoped<IOrganizationTenantEvidenceRepository, OrganizationTenantEvidenceRepository>();
         services.AddScoped<IEventHeavyRedactionRepository, EventHeavyRedactionRepository>();
         services.AddScoped<IEventModerationRecordRepository, EventModerationRecordRepository>();
         services.AddScoped<IEventReportRepository, EventReportRepository>();

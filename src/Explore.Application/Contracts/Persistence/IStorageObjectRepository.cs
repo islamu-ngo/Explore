@@ -32,4 +32,7 @@ public interface IStorageObjectRepository : IGenericRepository<StorageObject, Gu
         string provider,
         IReadOnlyCollection<string> objectKeys,
         CancellationToken cancellationToken);
+
+    Task<StorageObject?> GetEvidenceDocumentAsync(Guid id, CancellationToken cancellationToken);
+    Task<bool> IsRetainedEvidenceAsync(Guid id, CancellationToken cancellationToken);
 }

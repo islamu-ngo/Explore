@@ -87,6 +87,7 @@ public partial class ExploreDbContext
     // ===== Organizations =====
     public DbSet<Organization> Organizations { get; set; }
     public DbSet<OrganizationTenant> OrganizationTenants { get; set; }
+    public DbSet<OrganizationTenantEvidence> OrganizationTenantEvidence { get; set; }
     public DbSet<OrganizationPii> OrganizationPii { get; set; }
     public DbSet<OrganizationMember> OrganizationMembers { get; set; }
     public DbSet<OrganizationPosition> OrganizationPositions { get; set; }

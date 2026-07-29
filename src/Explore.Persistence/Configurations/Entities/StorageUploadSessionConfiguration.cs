@@ -23,6 +23,7 @@ public class StorageUploadSessionConfiguration : IEntityTypeConfiguration<Storag
         builder.Property(e => e.Extension).HasMaxLength(50);
         builder.Property(e => e.Purpose).HasMaxLength(100).IsRequired();
         builder.Property(e => e.Visibility).HasMaxLength(50).IsRequired();
+        builder.Property(e => e.OwningResourceKind).HasMaxLength(100);
         builder.Property(e => e.Status).HasMaxLength(50).IsRequired();
         builder.Property(e => e.ObjectKey).HasMaxLength(1024);
         builder.Property(e => e.Sha256Checksum).HasColumnName("sha256_checksum").HasMaxLength(64);
@@ -57,6 +58,10 @@ public class StorageUploadSessionConfiguration : IEntityTypeConfiguration<Storag
         builder.HasIndex(e => new { e.Provider, e.ObjectKey })
             .HasFilter("object_key IS NOT NULL")
             .HasDatabaseName("ix_storage_upload_sessions_provider_object_key");
+
+        builder.HasIndex(e => new { e.TenantId, e.OwningResourceKind, e.OwningResourceId })
+            .HasFilter("owning_resource_kind IS NOT NULL AND owning_resource_id IS NOT NULL")
+            .HasDatabaseName("ix_storage_upload_sessions_tenant_owner");
 
         builder.ToTable(t =>
         {

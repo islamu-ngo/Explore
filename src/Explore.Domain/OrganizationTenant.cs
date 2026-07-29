@@ -39,6 +39,7 @@ public class OrganizationTenant : ITenantEntity, IAuditableEntity, ISoftDeletabl
     public ICollection<OrganizationMember> Members { get; set; } = [];
     public ICollection<OrganizationSetting> Settings { get; set; } = [];
     public ICollection<GroupTenant> ChildGroups { get; set; } = [];
+    public ICollection<OrganizationTenantEvidence> LegitimacyEvidence { get; set; } = [];
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }

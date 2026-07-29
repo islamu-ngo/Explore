@@ -25,6 +25,8 @@ public class StorageUploadSession : ITenantEntity, IAuditableEntity, IConcurrenc
     public string? Extension { get; set; }
     public required string Purpose { get; set; }
     public required string Visibility { get; set; }
+    public string? OwningResourceKind { get; set; }
+    public Guid? OwningResourceId { get; set; }
     public required string Status { get; set; }
     public string? ObjectKey { get; set; }
     public string? Sha256Checksum { get; set; }
