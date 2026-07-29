@@ -37,7 +37,11 @@ public sealed class EditSessionTests : IDisposable
         _adminService.GetLanguagesAsync().Returns(CreateLanguages());
         _eventSessionLanguageService.GetLanguagesBySessionAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new List<EventSessionLanguageListDto>());
-        _eventSessionLanguageService.SyncLanguagesForSessionAsync(Arg.Any<Guid>(), Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+        _eventSessionLanguageService.SyncLanguagesForSessionAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<IEnumerable<int>>(),
+                Arg.Any<CancellationToken>())
             .Returns(true);
         _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
         _locationRoomService.GetRoomsByLocationAsync(Arg.Any<Guid>()).Returns(new List<LocationRoomListDto>());

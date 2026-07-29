@@ -104,6 +104,7 @@
             new RouteConfig { Path = "/studio/events", Component = typeof(StudioEvents), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/studio/events/:eventId/schedule", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/studio/events/:eventId/registration", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/studio/events/:eventId/tickets", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/studio/events/:eventId/publication", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/studio/events/:eventId", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
 

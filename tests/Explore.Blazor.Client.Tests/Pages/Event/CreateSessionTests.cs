@@ -36,7 +36,11 @@ public sealed class CreateSessionTests : IDisposable
         _adminService.GetRegistrationModesAsync().Returns(CreateRegistrationModes());
         _adminService.GetEventSessionKindsAsync().Returns(CreateSessionKinds());
         _adminService.GetLanguagesAsync().Returns(CreateLanguages());
-        _eventSessionLanguageService.SyncLanguagesForSessionAsync(Arg.Any<Guid>(), Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+        _eventSessionLanguageService.SyncLanguagesForSessionAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<IEnumerable<int>>(),
+                Arg.Any<CancellationToken>())
             .Returns(true);
         _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
         _locationRoomService.GetRoomsByLocationAsync(Arg.Any<Guid>()).Returns(new List<LocationRoomListDto>());
