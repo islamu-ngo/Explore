@@ -1,3 +1,6 @@
+// ABOUTME: Persistence contract for global Actor reads, identity lookups, and tenant-local discoverability.
+// ABOUTME: Returns Actor entities so Application handlers own safe canonical and contextual DTO mapping.
+
 using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence;
@@ -6,6 +9,10 @@ public interface IActorRepository : IGenericRepository<Actor, Guid>
 {
     Task<Actor?> GetActorWithDetails(Guid id, CancellationToken cancellationToken = default);
     Task<Actor?> GetPublicActorProfileAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Actor?> GetPublicActorProfileByTenantAsync(
+        Guid tenantId,
+        Guid actorId,
+        CancellationToken cancellationToken = default);
     Task<Actor?> GetLocallyDiscoverableSubscriptionTargetAsync(
         Guid tenantId,
         Guid actorId,

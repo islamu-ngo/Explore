@@ -1,10 +1,9 @@
-// ABOUTME: Integration tests for public Actor API routing and authorization behavior.
-// ABOUTME: Verifies read endpoints plus authenticated write route contracts.
+// ABOUTME: Integration tests for public Actor reads and dedicated moderation routes.
+// ABOUTME: Verifies generic identity CRUD stays absent from the HTTP surface.
 
 using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
-using Explore.Application.DTOs.Actor;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -78,20 +77,10 @@ public class ActorControllerTests
     #region POST Endpoints
 
     [Test]
-    public async Task Create_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task GenericCreateRoute_ShouldRemainAbsent()
     {
-        // Arrange
-        var createDto = new CreateActorDto
-        {
-            DisplayName = "Test Actor",
-            ActorTypeId = 1
-        };
-
-        // Act
-        var response = await _fixture.Client.PostAsJsonAsync(BaseUrl, createDto);
-
-        // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        var response = await _fixture.Client.PostAsJsonAsync(BaseUrl, new { displayName = "Test Actor" });
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
     }
 
     [Test]
@@ -139,65 +128,22 @@ public class ActorControllerTests
     #region PATCH Endpoints
 
     [Test]
-    public async Task Update_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task GenericPatchRoute_ShouldRemainAbsent()
     {
-        // Arrange
         var id = Guid.NewGuid();
-        var command = new UpdateActorDto
-        {
-            Profile = new UpdateActorProfileDto
-            {
-                DisplayName = "Updated Actor"
-            }
-        };
-
-        // Act
-        var response = await _fixture.Client.PatchAsJsonAsync($"{BaseUrl}/{id}", command);
-
-        // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        var response = await _fixture.Client.PatchAsJsonAsync(
+            $"{BaseUrl}/{id}",
+            new { profile = new { displayName = "Updated Actor" } });
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
     }
 
     [Test]
     public async Task UpdatePut_WhenUsingOldRoute_ShouldReturnMethodNotAllowed()
     {
         var id = Guid.NewGuid();
-        var command = new UpdateActorDto
-        {
-            Profile = new UpdateActorProfileDto
-            {
-                DisplayName = "Updated Actor"
-            }
-        };
-
-        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", command);
+        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", new { });
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
-    }
-
-    [Test]
-    public async Task UpdatePatch_WhenAuthenticatedWithoutIfMatch_ShouldReturnBadRequest()
-    {
-        await using var factory = new AuthenticatedWebApplicationFactory();
-        using var client = factory.CreateClient();
-        var actorId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
-        var command = new UpdateActorDto
-        {
-            Profile = new UpdateActorProfileDto
-            {
-                DisplayName = "Updated Actor"
-            }
-        };
-        using var request = new HttpRequestMessage(HttpMethod.Patch, $"{BaseUrl}/{actorId}")
-        {
-            Content = JsonContent.Create(command)
-        };
-        request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(userId));
-
-        var response = await client.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     #endregion
@@ -205,7 +151,7 @@ public class ActorControllerTests
     #region DELETE Endpoints
 
     [Test]
-    public async Task Delete_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task GenericDeleteRoute_ShouldRemainAbsent()
     {
         // Arrange
         var id = Guid.NewGuid();
@@ -214,7 +160,7 @@ public class ActorControllerTests
         var response = await _fixture.Client.DeleteAsync($"{BaseUrl}/{id}");
 
         // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
     }
 
     #endregion

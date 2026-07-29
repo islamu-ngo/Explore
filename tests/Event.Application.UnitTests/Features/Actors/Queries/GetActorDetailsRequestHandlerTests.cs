@@ -1,3 +1,6 @@
+// ABOUTME: Verifies canonical and tenant-contextual public Actor detail query behavior.
+// ABOUTME: Protects tenant discoverability, safe participation overrides, and storage presentation.
+
 using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Infrastructure;
@@ -18,7 +21,6 @@ public class GetActorDetailsRequestHandlerTests
     private readonly IActorRepository _actorRepository;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
-    private readonly IObjectStorageService _objectStorageService;
     private readonly ILogger<GetActorDetailsRequestHandler> _logger;
     private readonly GetActorDetailsRequestHandler _handler;
 
@@ -27,14 +29,12 @@ public class GetActorDetailsRequestHandlerTests
         _actorRepository = Substitute.For<IActorRepository>();
         _tenantContext = Substitute.For<ITenantContext>();
         _mapper = Substitute.For<IMapper>();
-        _objectStorageService = Substitute.For<IObjectStorageService>();
         _logger = Substitute.For<ILogger<GetActorDetailsRequestHandler>>();
 
         _handler = new GetActorDetailsRequestHandler(
             _actorRepository,
             _tenantContext,
             _mapper,
-            _objectStorageService,
             _logger);
     }
 
@@ -61,6 +61,60 @@ public class GetActorDetailsRequestHandlerTests
             CancellationToken.None);
 
         await Assert.That(result.IsLocallyDiscoverable).IsTrue();
+    }
+
+    [Test]
+    public async Task Handle_WithTenantContext_ReturnsExactDiscoverableActorWithPublicOverrides()
+    {
+        var tenantId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var actor = DataBuilder.Actor.Generate();
+        actor.Id = actorId;
+        var organization = DataBuilder.Organization.Generate();
+        organization.Actor = actor;
+        organization.TenantParticipations.Add(new OrganizationTenant
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            Tenant = null!,
+            OrganizationId = organization.Id,
+            Organization = organization,
+            ApprovalStatus = null!,
+            DisplayNameOverride = "Local organization",
+            DescriptionOverride = "Local public description",
+            BannerColor = "#123456"
+        });
+        actor.OrganizationId = organization.Id;
+        actor.Organization = organization;
+        var dto = new ActorDto
+        {
+            Id = actorId,
+            DisplayName = "Canonical organization",
+            Description = "Canonical description"
+        };
+        var cancellationToken = new CancellationTokenSource().Token;
+
+        _actorRepository.GetPublicActorProfileByTenantAsync(tenantId, actorId, cancellationToken)
+            .Returns(actor);
+        _mapper.Map<ActorDto>(actor).Returns(dto);
+
+        var result = await _handler.Handle(
+            new GetActorDetailsRequest { Id = actorId, TenantId = tenantId },
+            cancellationToken);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.TenantId).IsEqualTo(tenantId);
+        await Assert.That(result.IsLocallyDiscoverable).IsTrue();
+        await Assert.That(result.DisplayName).IsEqualTo("Local organization");
+        await Assert.That(result.Description).IsEqualTo("Local public description");
+        await Assert.That(result.BannerColor).IsEqualTo("#123456");
+        await _actorRepository.DidNotReceive()
+            .GetPublicActorProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _actorRepository.DidNotReceive()
+            .GetLocallyDiscoverableSubscriptionTargetAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -138,14 +192,8 @@ public class GetActorDetailsRequestHandlerTests
 
         _actorRepository.GetPublicActorProfileAsync(actorId).Returns(actor);
         _mapper.Map<ActorDto>(actor).Returns(expectedDto);
-        // Mock presigned URL generation (extracts object key and generates URL)
-        _objectStorageService.GeneratePresignedDownloadUrl(Arg.Any<string>(), Arg.Any<int>())
-            .Returns(Task.FromResult("https://storage.example.com/signed/image.jpg"));
-
-        // Act
         var result = await _handler.Handle(request, CancellationToken.None);
 
-        // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result.ProfilePictureUri).IsNotNull();
     }

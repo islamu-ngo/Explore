@@ -215,6 +215,39 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
     }
 
     [Test]
+    public async Task ContextualActorDetail_ReturnsExactLocalProfileAndRejectsHiddenTarget()
+    {
+        var discoverable = await SeedSubscriptionScenarioAsync();
+        var hidden = await SeedSubscriptionScenarioAsync(targetIsVisible: false);
+
+        using var discoverableRequest = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            $"/api/actor/by-tenant/{discoverable.TenantId}/{discoverable.TargetActorId}",
+            discoverable.UserId);
+        using var hiddenRequest = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            $"/api/actor/by-tenant/{hidden.TenantId}/{hidden.TargetActorId}",
+            hidden.UserId);
+
+        var discoverableResponse = await _fixture.Client.SendAsync(discoverableRequest);
+        var hiddenResponse = await _fixture.Client.SendAsync(hiddenRequest);
+
+        await Assert.That(discoverableResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(hiddenResponse.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+
+        using var json = JsonDocument.Parse(await discoverableResponse.Content.ReadAsStringAsync());
+        var root = json.RootElement;
+        var links = root.GetProperty("_links");
+        await Assert.That(root.GetProperty("displayName").GetString()).IsEqualTo("Tenant subscription target");
+        await Assert.That(links.GetProperty("self").GetProperty("href").GetString())
+            .Contains($"/api/actor/by-tenant/{discoverable.TenantId}/{discoverable.TargetActorId}");
+        await Assert.That(links.TryGetProperty("subscribe", out _)).IsTrue();
+        await Assert.That(root.TryGetProperty("tenantId", out _)).IsFalse();
+        await Assert.That(root.TryGetProperty("userId", out _)).IsFalse();
+        await Assert.That(root.TryGetProperty("isLocallyDiscoverable", out _)).IsFalse();
+    }
+
+    [Test]
     public async Task NotificationLevelPatch_WithExpectedConcurrencyStamp_UpdatesSubscriptionLevel()
     {
         var scenario = await SeedSubscriptionScenarioAsync();
@@ -414,7 +447,8 @@ public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
                 Organization = organization,
                 ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
                 ApprovalStatus = null!,
-                IsVisible = targetIsVisible
+                IsVisible = targetIsVisible,
+                DisplayNameOverride = "Tenant subscription target"
             });
         }
         else if (targetActorType == ActorTypeEnum.Group)

@@ -3,6 +3,8 @@
 
 namespace Event.Architecture.Tests;
 
+using System.Text.Json;
+
 public sealed class FederationGenericCrudAbsenceTests
 {
     [Test]
@@ -46,6 +48,24 @@ public sealed class FederationGenericCrudAbsenceTests
         await Assert.That(openApi).DoesNotContain("/api/syncstate");
         await Assert.That(openApi).DoesNotContain("/api/indexeddid");
         await Assert.That(openApi).DoesNotContain("/api/userexternallogin");
+
+        using var document = JsonDocument.Parse(openApi);
+        var paths = document.RootElement.GetProperty("paths");
+        var actorCollection = paths.GetProperty("/api/actor");
+        var actorDetail = paths.GetProperty("/api/actor/{id}");
+        await Assert.That(actorCollection.TryGetProperty("post", out _)).IsFalse();
+        await Assert.That(actorDetail.TryGetProperty("patch", out _)).IsFalse();
+        await Assert.That(actorDetail.TryGetProperty("delete", out _)).IsFalse();
+
+        var generatedClient = await File.ReadAllTextAsync(Path.Combine(
+            root,
+            "src",
+            "Explore.Blazor.Client",
+            "Clients",
+            "EventApiClient.g.cs"));
+        await Assert.That(generatedClient).DoesNotContain("CreateActorAsync(");
+        await Assert.That(generatedClient).DoesNotContain("UpdateActorAsync(");
+        await Assert.That(generatedClient).DoesNotContain("DeleteActorAsync(");
     }
 
     private static string ResolveRepositoryRoot()

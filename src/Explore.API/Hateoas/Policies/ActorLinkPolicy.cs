@@ -20,12 +20,19 @@ public sealed class ActorDetailLinkPolicy : ILinkPolicy<ActorDto>
     public IEnumerable<LinkDefinition> GetLinks(ActorDto dto, ClaimsPrincipal? user)
     {
         // Self link
-        yield return new LinkDefinition(
-            LinkRelations.Self,
-            RouteNames.GetActorById,
-            new { id = dto.Id },
-            "GET",
-            dto.DisplayName);
+        yield return dto.TenantId == Guid.Empty
+            ? new LinkDefinition(
+                LinkRelations.Self,
+                RouteNames.GetActorById,
+                new { id = dto.Id },
+                "GET",
+                dto.DisplayName)
+            : new LinkDefinition(
+                LinkRelations.Self,
+                RouteNames.GetActorByTenant,
+                new { tenantId = dto.TenantId, id = dto.Id },
+                "GET",
+                dto.DisplayName);
 
         // Collection link
         yield return new LinkDefinition(
@@ -35,26 +42,25 @@ public sealed class ActorDetailLinkPolicy : ILinkPolicy<ActorDto>
             "GET",
             "All actors");
 
-        yield return new LinkDefinition(
-            LinkRelations.Edit,
-            RouteNames.UpdateActor,
-            new { id = dto.Id },
-            "PATCH",
-            "Update actor",
-            RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Update,
-                ResourceKinds.Actor,
-                dto.Id.ToString());
-
         // Organization link (if organization actor)
         if (dto.OrganizationId.HasValue)
         {
             yield return new LinkDefinition(
-                "organization",
+                LinkRelations.Organization,
                 RouteNames.GetOrganizationById,
                 new { id = dto.OrganizationId },
                 "GET",
                 "Organization");
+        }
+
+        if (dto.GroupId.HasValue)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.Group,
+                RouteNames.GetGroupById,
+                new { id = dto.GroupId },
+                "GET",
+                "Group");
         }
 
         if (dto.IsLocallyDiscoverable && CanSubscribe(dto.ActorTypeId))

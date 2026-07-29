@@ -1,5 +1,5 @@
-// ABOUTME: REST API controller for actor (speaker/performer) CRUD operations with HATEOAS support.
-// ABOUTME: Manages speaker profiles, credentials, and associations with events and organizations.
+// ABOUTME: Public global and tenant-contextual Actor reads plus protected global moderation operations.
+// ABOUTME: Omits generic Actor mutations and returns HATEOAS affordances from server-side policy.
 
 using Asp.Versioning;
 using Explore.API.Attributes;
@@ -33,16 +33,6 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Public)]
 public class ActorController : ControllerBase
 {
-    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
-        "actor",
-        "Actor validation failed",
-        "Actor creation failed.");
-
-    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
-        "actor",
-        "Actor validation failed",
-        "Actor update failed.");
-
     private static readonly ApiNotFoundProblemDescriptor ActorNotFoundProblem = new(
         "Actor not found",
         "Actor not found.");
@@ -170,78 +160,29 @@ public class ActorController : ControllerBase
         return Ok(halResource);
     }
 
-    /// <summary>
-    /// Create a new actor.
-    /// </summary>
-    [HttpPost(Name = RouteNames.CreateActor)]
-    [EndpointSummary("Create Actor")]
-    [EndpointDescription("Create a new actor (user or organization profile).")]
-    [Authorize]
-    [EndpointClassification(EndpointClass.Authenticated)]
-    [Consumes("application/json")]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateActorDto dto, CancellationToken cancellationToken = default)
-    {
-        var command = new CreateActorCommand { ActorDto = dto };
-        var response = await _mediator.Send(command, cancellationToken);
-
-        if (!response.Success)
-        {
-            return this.ToCommandValidationProblem(response, CreateValidationProblem);
-        }
-
-        return CreatedAtRoute(
-            RouteNames.GetActorById,
-            new { id = response.Id },
-            response);
-    }
-
-    /// <summary>
-    /// Partially update an existing actor using nullable logical groups.
-    /// </summary>
-    [HttpPatch("{id:guid}", Name = RouteNames.UpdateActor)]
-    [EndpointSummary("Update Actor")]
-    [EndpointDescription("Partially update an existing actor. Route ID is authoritative and If-Match must contain the current actor concurrency stamp.")]
-    [Authorize]
-    [EndpointClassification(EndpointClass.Authenticated)]
-    [Consumes("application/json")]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [HttpGet("by-tenant/{tenantId:guid}/{id:guid}", Name = RouteNames.GetActorByTenant)]
+    [EndpointSummary("Get Actor by Tenant")]
+    [EndpointDescription("Get one locally discoverable actor with safe public participation overrides.")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(HalResource<ActorDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<HalResource<ActorDto>>> GetContextual(
+        Guid tenantId,
         Guid id,
-        [FromBody] UpdateActorDto dto,
-        [FromHeader(Name = "If-Match")] string? ifMatch,
         CancellationToken cancellationToken = default)
     {
-        if (!TryParseConcurrencyStamp(ifMatch, out var expectedConcurrencyStamp))
+        var actor = await _mediator.Send(new GetActorDetailsRequest
         {
-            return this.ToValidationProblem(
-                UpdateValidationProblem,
-                "If-Match header is required and must contain the current actor concurrency stamp.");
+            Id = id,
+            TenantId = tenantId
+        }, cancellationToken);
+        if (actor is null)
+        {
+            return this.ToNotFoundProblem(ActorNotFoundProblem);
         }
 
-        var command = new UpdateActorCommand
-        {
-            ActorId = id,
-            ExpectedConcurrencyStamp = expectedConcurrencyStamp,
-            UpdateActorDto = dto
-        };
-        var response = await _mediator.Send(command, cancellationToken);
-
-        if (!response.Success)
-        {
-            return string.Equals(response.Message, "Actor not found.", StringComparison.Ordinal)
-                ? this.ToNotFoundProblem(ActorNotFoundProblem)
-                : this.ToCommandValidationProblem(response, UpdateValidationProblem);
-        }
-
-        return Ok(response);
+        return Ok(await _resourceAssembler.ToResource(actor, HttpContext));
     }
 
     /// <summary>
@@ -336,26 +277,6 @@ public class ActorController : ControllerBase
         CancellationToken cancellationToken = default) =>
         ModerateAtprotoIdentity(identityId, GlobalModerationAction.Reinstate, request, cancellationToken);
 
-    /// <summary>
-    /// Delete an actor.
-    /// </summary>
-    [HttpDelete("{id:guid}", Name = RouteNames.DeleteActor)]
-    [EndpointSummary("Delete Actor")]
-    [EndpointDescription("Delete an actor. Admin only.")]
-    [Authorize]
-    [EndpointClassification(EndpointClass.Authenticated)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
-    {
-        var command = new DeleteActorCommand { Id = id };
-        await _mediator.Send(command, cancellationToken);
-
-        return NoContent();
-    }
-
     private async Task<ActionResult<BaseCommandResponse<Guid>>> ModerateActor(
         Guid actorId,
         GlobalModerationAction action,
@@ -414,21 +335,4 @@ public class ActorController : ControllerBase
             : this.ToCommandValidationProblem(response, GlobalModerationValidationProblem);
     }
 
-    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
-    {
-        concurrencyStamp = default;
-        if (string.IsNullOrWhiteSpace(ifMatch))
-        {
-            return false;
-        }
-
-        var value = ifMatch.Trim();
-        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        value = value.Trim('"');
-        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
-    }
 }

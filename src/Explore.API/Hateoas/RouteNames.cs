@@ -197,9 +197,7 @@ public static class RouteNames
     public const string GetActorById = "GetActorById";
     public const string GetActorByDid = "GetActorByDid";
     public const string GetActorsByTenant = "GetActorsByTenant";
-    public const string CreateActor = "CreateActor";
-    public const string UpdateActor = "UpdateActor";
-    public const string DeleteActor = "DeleteActor";
+    public const string GetActorByTenant = "GetActorByTenant";
     public const string SuspendActor = "SuspendActor";
     public const string ReinstateActor = "ReinstateActor";
     public const string SuspendAtprotoIdentity = "SuspendAtprotoIdentity";
@@ -917,10 +915,10 @@ public static class RouteNames
     #region Instance Onboarding Routes
 
     public const string GetInstanceOnboardingStatus = "GetInstanceOnboardingStatus";
+    public const string SaveInstanceOnboardingProfile = "SaveInstanceOnboardingProfile";
     public const string CompleteInstanceOnboarding = "CompleteInstanceOnboarding";
     public const string ValidateInstanceSetupSecret = "ValidateInstanceSetupSecret";
     public const string GetInstanceOnboardingAuthProviderConfiguration = "GetInstanceOnboardingAuthProviderConfiguration";
-    public const string SaveInstanceOnboardingProfile = "SaveInstanceOnboardingProfile";
     public const string GetInstanceOnboardingAuthProviderConfigurationInternal = "GetInstanceOnboardingAuthProviderConfigurationInternal";
     public const string BootstrapInstanceOnboardingKeycloakRealm = "BootstrapInstanceOnboardingKeycloakRealm";
     public const string GetInstanceOnboardingAuthorizationProviderConfigurationInternal = "GetInstanceOnboardingAuthorizationProviderConfigurationInternal";

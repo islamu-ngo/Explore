@@ -212,6 +212,11 @@ public static class LinkRelations
     public const string Organization = "organization";
 
     /// <summary>
+    /// Parent group.
+    /// </summary>
+    public const string Group = "group";
+
+    /// <summary>
     /// Parent event.
     /// </summary>
     public const string Event = "event";

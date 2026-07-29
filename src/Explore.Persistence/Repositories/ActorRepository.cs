@@ -1,3 +1,6 @@
+// ABOUTME: EF Core repository for global Actor identity and public profile reads.
+// ABOUTME: Composes tenant-local discoverability without creating tenant Actor or presence records.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -47,6 +50,13 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
         PublicActorProfiles()
             .FirstOrDefaultAsync(actor => actor.Id == id, cancellationToken);
 
+    public Task<Actor?> GetPublicActorProfileByTenantAsync(
+        Guid tenantId,
+        Guid actorId,
+        CancellationToken cancellationToken = default) =>
+        LocallyDiscoverableActorProfiles(tenantId)
+            .FirstOrDefaultAsync(actor => actor.Id == actorId, cancellationToken);
+
     public Task<Actor?> GetLocallyDiscoverableSubscriptionTargetAsync(
         Guid tenantId,
         Guid actorId,
@@ -81,9 +91,38 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
         Guid tenantId,
         CancellationToken cancellationToken = default)
     {
-        return await PublicActorProfiles()
+        return await LocallyDiscoverableActorProfiles(tenantId)
+            .ToListAsync(cancellationToken);
+    }
+
+    private IQueryable<Actor> LocallyDiscoverableActorProfiles(Guid tenantId) =>
+        PublicActorProfiles()
             .Include(actor => actor.Organization)
                 .ThenInclude(organization => organization!.TenantParticipations.Where(participation =>
+                    participation.TenantId == tenantId
+                    && participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                    && participation.IsVisible
+                    && !participation.IsSuspended
+                    && !participation.IsDeleted))
+                .ThenInclude(participation => participation.ProfilePicture)
+            .Include(actor => actor.Organization)
+                .ThenInclude(organization => organization!.TenantParticipations.Where(participation =>
+                    participation.TenantId == tenantId
+                    && participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                    && participation.IsVisible
+                    && !participation.IsSuspended
+                    && !participation.IsDeleted))
+                .ThenInclude(participation => participation.BannerPicture)
+            .Include(actor => actor.Organization)
+                .ThenInclude(organization => organization!.TenantParticipations.Where(participation =>
+                    participation.TenantId == tenantId
+                    && participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                    && participation.IsVisible
+                    && !participation.IsSuspended
+                    && !participation.IsDeleted))
+                .ThenInclude(participation => participation.BackgroundImage)
+            .Include(actor => actor.Group)
+                .ThenInclude(group => group!.TenantParticipations.Where(participation =>
                     participation.TenantId == tenantId
                     && participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
                     && participation.IsVisible
@@ -97,10 +136,17 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
                     && participation.IsVisible
                     && !participation.IsSuspended
                     && !participation.IsDeleted))
-                .ThenInclude(participation => participation.ProfilePicture)
+                .ThenInclude(participation => participation.BannerPicture)
+            .Include(actor => actor.Group)
+                .ThenInclude(group => group!.TenantParticipations.Where(participation =>
+                    participation.TenantId == tenantId
+                    && participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                    && participation.IsVisible
+                    && !participation.IsSuspended
+                    && !participation.IsDeleted))
+                .ThenInclude(participation => participation.BackgroundImage)
             .WhereLocallyDiscoverable(_dbContext, tenantId)
-            .ToListAsync(cancellationToken);
-    }
+            .AsQueryable();
 
     public async Task<bool> DidExists(string did)
     {
