@@ -40,6 +40,8 @@ internal static class EventQueryExtensions
             .Include(e => e.IslamicAspect)
                 .ThenInclude(a => a!.PrimaryLanguage)
             .Include(e => e.TechAspect)
+            .Include(e => e.CapacityPools)
+                .ThenInclude(pool => pool.CapacityOversellPolicy)
             .Include(e => e.RegistrationPolicy);
     }
 }
