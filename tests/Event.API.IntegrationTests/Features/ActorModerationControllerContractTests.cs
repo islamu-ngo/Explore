@@ -8,6 +8,7 @@ using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
 using Explore.API.Attributes;
 using Explore.API.Controllers;
+using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.Features.Actors.Requests.Commands;
@@ -62,6 +63,7 @@ public sealed class ActorModerationControllerContractTests
             var method = typeof(ActorController).GetMethod(expectedRoute.Key)!;
             var post = method.GetCustomAttribute<HttpPostAttribute>();
             var classification = method.GetCustomAttribute<EndpointClassificationAttribute>();
+            var rateLimit = method.GetCustomAttribute<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>();
             var responseTypes = method.GetCustomAttributes<ProducesResponseTypeAttribute>().ToArray();
 
             await Assert.That(post).IsNotNull();
@@ -76,6 +78,7 @@ public sealed class ActorModerationControllerContractTests
                 .Any(attribute => attribute.GetType().Name == "EndpointDescriptionAttribute")).IsTrue();
             await Assert.That(method.GetCustomAttribute<ConsumesAttribute>()?.ContentTypes)
                 .Contains("application/json");
+            await Assert.That(rateLimit?.PolicyName).IsEqualTo(RateLimitingExtensions.WritePolicy);
 
             await Assert.That(responseTypes.Any(response =>
                 response.StatusCode == StatusCodes.Status200OK &&
@@ -83,11 +86,12 @@ public sealed class ActorModerationControllerContractTests
             foreach (var expectedResponse in new[]
                      {
                          (StatusCode: StatusCodes.Status400BadRequest, Type: typeof(ValidationProblemDetails)),
-                         (StatusCode: StatusCodes.Status401Unauthorized, Type: typeof(ProblemDetails)),
-                         (StatusCode: StatusCodes.Status403Forbidden, Type: typeof(ProblemDetails)),
-                         (StatusCode: StatusCodes.Status404NotFound, Type: typeof(ProblemDetails)),
-                         (StatusCode: StatusCodes.Status409Conflict, Type: typeof(ProblemDetails))
-                     })
+                        (StatusCode: StatusCodes.Status401Unauthorized, Type: typeof(ProblemDetails)),
+                        (StatusCode: StatusCodes.Status403Forbidden, Type: typeof(ProblemDetails)),
+                        (StatusCode: StatusCodes.Status429TooManyRequests, Type: typeof(ProblemDetails)),
+                        (StatusCode: StatusCodes.Status404NotFound, Type: typeof(ProblemDetails)),
+                        (StatusCode: StatusCodes.Status409Conflict, Type: typeof(ProblemDetails))
+                      })
             {
                 await Assert.That(responseTypes.Any(response =>
                     response.StatusCode == expectedResponse.StatusCode &&

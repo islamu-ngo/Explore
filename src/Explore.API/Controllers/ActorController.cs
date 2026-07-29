@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.DTOs.Actor;
@@ -16,6 +17,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Explore.API.Controllers;
 
@@ -248,6 +250,7 @@ public class ActorController : ControllerBase
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost("{actorId:guid}/moderation/suspend", Name = RouteNames.SuspendActor)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [EndpointSummary("Suspend Actor Globally")]
     [EndpointDescription("Suspends an actor globally using the server-selected moderation action.")]
     [Consumes("application/json")]
@@ -255,6 +258,7 @@ public class ActorController : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> SuspendActor(
@@ -269,6 +273,7 @@ public class ActorController : ControllerBase
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost("{actorId:guid}/moderation/reinstate", Name = RouteNames.ReinstateActor)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [EndpointSummary("Reinstate Actor Globally")]
     [EndpointDescription("Reinstates an actor globally using the server-selected moderation action.")]
     [Consumes("application/json")]
@@ -276,6 +281,7 @@ public class ActorController : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> ReinstateActor(
@@ -290,6 +296,7 @@ public class ActorController : ControllerBase
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost("atproto-identities/{identityId:guid}/moderation/suspend", Name = RouteNames.SuspendAtprotoIdentity)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [EndpointSummary("Suspend AT Protocol Identity Globally")]
     [EndpointDescription("Suspends an AT Protocol identity globally using the server-selected moderation action.")]
     [Consumes("application/json")]
@@ -297,6 +304,7 @@ public class ActorController : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> SuspendAtprotoIdentity(
@@ -311,6 +319,7 @@ public class ActorController : ControllerBase
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost("atproto-identities/{identityId:guid}/moderation/reinstate", Name = RouteNames.ReinstateAtprotoIdentity)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [EndpointSummary("Reinstate AT Protocol Identity Globally")]
     [EndpointDescription("Reinstates an AT Protocol identity globally using the server-selected moderation action.")]
     [Consumes("application/json")]
@@ -318,6 +327,7 @@ public class ActorController : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> ReinstateAtprotoIdentity(
