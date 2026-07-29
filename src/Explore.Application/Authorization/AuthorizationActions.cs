@@ -172,6 +172,9 @@ public static class AuthorizationActions
         public const string Update = AuthorizationActions.Update;
         public const string Delete = AuthorizationActions.Delete;
         public const string ManageMembers = AuthorizationActions.ManageMembers;
+        public const string ViewEvidence = "view-evidence";
+        public const string SubmitEvidence = "submit-evidence";
+        public const string ReviewEvidence = "review-evidence";
     }
 
     /// <summary>

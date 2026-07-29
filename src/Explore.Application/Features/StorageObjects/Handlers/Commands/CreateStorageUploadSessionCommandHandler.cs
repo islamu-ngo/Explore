@@ -208,6 +208,8 @@ public class CreateStorageUploadSessionCommandHandler
             Extension = ResolveExtension(dto),
             Purpose = dto.Purpose,
             Visibility = dto.Visibility,
+            OwningResourceKind = NormalizeOptional(dto.OwningResourceKind),
+            OwningResourceId = dto.OwningResourceId,
             Status = StorageUploadSessionStates.Reserved,
             IdempotencyKey = idempotencyKey,
             ExpiresAt = utcNow.Add(SessionLifetime)

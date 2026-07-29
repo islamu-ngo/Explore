@@ -25,6 +25,7 @@ using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.DTOs.Organization;
+using Explore.Application.DTOs.OrganizationTenantEvidence;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.StorageObject;
@@ -47,6 +48,7 @@ public static class ResourceDescriptorRegistry
         // Organization
         [typeof(OrganizationDto)] = global::Explore.Application.Authorization.ResourceKinds.Organization,
         [typeof(OrganizationListDto)] = global::Explore.Application.Authorization.ResourceKinds.Organization,
+        [typeof(OrganizationTenantEvidenceDto)] = global::Explore.Application.Authorization.ResourceKinds.Organization,
 
         // Group
         [typeof(GroupDto)] = global::Explore.Application.Authorization.ResourceKinds.Group,

@@ -24,6 +24,7 @@ using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.DTOs.Organization;
+using Explore.Application.DTOs.OrganizationTenantEvidence;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.StorageObject;
@@ -114,6 +115,32 @@ public static class ResourceDescriptors
         {
             ["organizationId"] = dto.Id.ToString(),
             ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<OrganizationTenantEvidenceDto> OrganizationTenantEvidence = new(
+        ResourceKinds.Organization,
+        dto => dto.OrganizationId.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["organizationId"] = dto.OrganizationId.ToString(),
+            ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<OrganizationTenantEvidenceDto> OrganizationTenantEvidenceDocument = new(
+        ResourceKinds.StorageObject,
+        dto => dto.DocumentStorageObjectId.ToString(),
+        dto =>
+        {
+            var attributes = new Dictionary<string, object>
+            {
+                ["tenantId"] = dto.TenantId.ToString(),
+                ["lifecycleState"] = StorageObjectLifecycleStates.Active,
+                ["visibility"] = StorageObjectVisibilities.PrivateOwner
+            };
+            AddIfPresent(attributes, "createdBy", dto.DocumentCreatedBy);
+            return attributes;
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 

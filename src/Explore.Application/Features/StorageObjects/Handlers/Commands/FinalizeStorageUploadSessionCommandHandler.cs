@@ -366,6 +366,8 @@ public class FinalizeStorageUploadSessionCommandHandler
             Visibility = session.Visibility,
             Purpose = session.Purpose,
             LifecycleState = StorageObjectLifecycleStates.Active,
+            OwningResourceKind = session.OwningResourceKind,
+            OwningResourceId = session.OwningResourceId,
             TenantId = tenantId,
             Tenant = null!,
             ActorId = null
