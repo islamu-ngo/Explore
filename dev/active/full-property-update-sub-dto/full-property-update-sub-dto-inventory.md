@@ -274,7 +274,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-073 | `FooterController.UpdateFooterLinkGroup` | `PATCH link-groups/{id}` | C: grouped entity PATCH | 3.1 |
 | A-074 | `FooterController.UpdateFooterLink` | `PATCH links/{id}` | C: grouped entity PATCH | 3.1 |
 | A-075 | `FooterController.UpdateTenantFooterSettings` | `PUT settings` | R: removed broad operation; canonical grouped PATCH is A-109 | 1.2 |
-| A-076 | `ActorController.UpdateActor` | `PATCH {id}` | C: verify grouped PATCH | 2.1 |
+| A-076 | `ActorController.UpdateActor` | `PATCH {id}` | R: removed generic Actor mutation route; dedicated verified workflows own lifecycle changes | 2.1 |
 | A-077 | `UserExternalLoginController.UpdateUserExternalLogin` | `PUT {id}` | R: remove generic provider-mapping update | 5.1 |
 | A-078 | `EventSessionGroupController.UpdateEventSessionGroup` | `PATCH {id}` | C: grouped relationship PATCH | 3.4 |
 | A-079 | `NotificationController.UpdateCurrentUserNotificationPreferences` | `PATCH preferences/me` | C: grouped PATCH | 3.2 |
@@ -310,6 +310,7 @@ Paths are relative to `src/Explore.Application/Features/`.
 | A-109 | `FooterController.PatchTenantFooterSettings` | `PATCH settings` | C: grouped settings PATCH | 6.2 |
 | A-110 | `TenantSettingsDocumentsController.PatchTenantBrandingSettingsDocument` | `PATCH branding` | C: grouped settings PATCH | 6.2 |
 | A-111 | `TenantStorageSettingsController.PatchTenantStorageSettings` | `PATCH` | C: grouped settings PATCH with explicit credential action | 6.2 |
+| A-112 | `InstanceOnboardingController.SaveInstanceOnboardingProfile` | `PATCH profile` | A: setup-secret-gated non-secret profile save before completion | 6.2 |
 
 Task 6.1 verifies every surviving baseline `A` and `S` operation, plus the POST last-active-tenant selection represented by H-021, through `SemanticUpdateExceptionArchitectureTests`. Task 6.2 extends that exact registry with the four post-baseline `S` operations A-105 through A-108. The guard binds each exception to an exact operation ID, path, verb, and non-empty route-specific rationale. It separately proves that all `N` nested DTOs and Application-only commands have no direct controller operation. H-043 and H-053 were corrected from `A` to `N` because neither has a public endpoint.
 
