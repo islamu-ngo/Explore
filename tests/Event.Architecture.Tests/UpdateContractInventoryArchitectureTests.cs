@@ -31,8 +31,8 @@ public sealed partial class UpdateContractInventoryArchitectureTests
         ApiInventoryRow[] apiRows = ParseApiRows(inventory);
 
         ValidateIds(dtoRows, "D", 59, failures);
-        ValidateIds(handlerRows, "H", 80, failures);
-        ValidateIds(apiRows, "A", 112, failures);
+        ValidateIds(handlerRows, "H", 81, failures);
+        ValidateIds(apiRows, "A", 113, failures);
         ValidateFiles(
             Path.Combine(root, "src/Explore.Application/DTOs"),
             "Update*Dto.cs",

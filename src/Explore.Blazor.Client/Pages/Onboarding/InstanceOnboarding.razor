@@ -24,22 +24,25 @@
 @inject IAccessibilityAnnouncerService Announcer
 @inject ITranslationService Translation
 
-<PageTitle>@T("page_title", "Setup Overview")</PageTitle>
+<PageTitle>@T("page_title", "Site profile and launch")</PageTitle>
 
+<OnboardingWorkspace Steps="@WorkspaceSteps"
+                     ProgressLabel="@T("workspace.progress_label", "Instance onboarding progress")"
+                     StepPositionFormatter="FormatStepPosition"
+                     HeadingId="instance-onboarding-heading"
+                     SummaryLabel="@T("workspace.summary_label", "Setup summary")"
+                     ActionsLabel="@T("workspace.actions_label", "Instance onboarding actions")"
+                     StatusText="@WorkspaceStatusText">
+    <HeadingContent>
+        <MudText Id="instance-onboarding-heading" Typo="Typo.h3" HtmlTag="h1">
+            @T("title", "Site profile and launch")
+        </MudText>
+    </HeadingContent>
+    <ChildContent>
 <div class="instance-onboarding">
-    <div class="instance-onboarding__header">
-        <div class="instance-onboarding__heading">
-            <MudText Typo="Typo.h3" HtmlTag="h1">@T("title", "Setup Overview")</MudText>
-            <MudText Typo="Typo.body1" Color="Color.Secondary">
-                @T("intro", "Review the authoritative setup state, complete required work, and launch the instance when every blocker is resolved.")
-            </MudText>
-        </div>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
-                       Color="Color.Primary"
-                       Disabled="@_isRefreshing"
-                       OnClick="RefreshAsync"
-                       aria-label="@T("actions.refresh_aria", "Refresh setup status")" />
-    </div>
+    <MudText Typo="Typo.body1" Color="Color.Secondary">
+        @T("intro", "Complete the public site profile, review authoritative readiness checks, and launch when every blocker is resolved.")
+    </MudText>
 
     <section class="instance-onboarding__operator-context" aria-labelledby="deployment-mode-heading">
         <MudText Typo="Typo.h5" HtmlTag="h2" id="deployment-mode-heading">
@@ -80,11 +83,6 @@
     }
     else
     {
-        <div class="instance-onboarding__task-list">
-            <OnboardingTaskList Items="@TaskItems"
-                                AccessibleLabel="@T("tasks.accessible_label", "Instance setup tasks")" />
-        </div>
-
         @if (_isCompleted)
         {
             <section class="instance-onboarding__section" aria-labelledby="launch-handoff-heading">
@@ -286,6 +284,26 @@
         }
     }
 </div>
+    </ChildContent>
+    <SummaryContent>
+        <OnboardingTaskList Items="@TaskItems"
+                            AccessibleLabel="@T("tasks.accessible_label", "Instance setup tasks")" />
+    </SummaryContent>
+    <HelpContent>
+        <p>@T("workspace.help", "Provider and readiness states come from the server. Refresh after changing deployment-managed configuration.")</p>
+    </HelpContent>
+    <ActionsContent>
+        <MudButton Elevation="0"
+                   Variant="Variant.Text"
+                   Color="Color.Primary"
+                   Disabled="@_isRefreshing"
+                   OnClick="RefreshAsync"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   aria-label="@T("actions.refresh_aria", "Refresh setup status")">
+            @T("actions.refresh", "Refresh status")
+        </MudButton>
+    </ActionsContent>
+</OnboardingWorkspace>
 
 @code {
     private readonly object _refreshGate = new();
@@ -311,6 +329,75 @@
     private string? _setupSecretError;
     private string? _syncWarning;
     private IJSObjectReference? _bffModule;
+
+    private bool SiteProfileComplete => _isCompleted || !string.IsNullOrWhiteSpace(_siteProfile.SiteName);
+    private bool IsReadinessCurrent => _isCompleted || (!_isLoading && SiteProfileComplete);
+
+    private IReadOnlyList<OnboardingWorkspace.StepDescriptor> WorkspaceSteps
+    {
+        get
+        {
+            var complete = T("workspace.status.complete", "Complete");
+            var upcoming = T("workspace.status.upcoming", "Upcoming");
+            var unavailable = T("workspace.status.unavailable", "Status unavailable");
+
+            return
+            [
+                new(
+                    T("workspace.step.authentication", "Authentication"),
+                    _authProviderConfigured == true ? complete : unavailable,
+                    ProviderState(_authProviderConfigured),
+                    Href: CanOpenAuthenticationProvider ? AuthenticationProviderHref : null),
+                new(
+                    T("workspace.step.authorization", "Authorization"),
+                    _authorizationProviderConfigured == true ? complete : unavailable,
+                    ProviderState(_authorizationProviderConfigured),
+                    Href: CanOpenAuthorizationProvider ? AuthorizationProviderHref : null),
+                new(
+                    T("workspace.step.site_profile", "Site profile"),
+                    SiteProfileComplete ? complete : WorkspaceStatusText,
+                    SiteProfileComplete
+                        ? OnboardingWorkspace.PresentationState.Complete
+                        : _isLoading
+                            ? OnboardingWorkspace.PresentationState.Loading
+                            : OnboardingWorkspace.PresentationState.Current,
+                    IsCurrent: !IsReadinessCurrent,
+                    Href: _isCompleted ? null : "#site-profile"),
+                new(
+                    T("workspace.step.readiness", "Readiness"),
+                    _isCompleted ? complete : IsReadinessCurrent ? WorkspaceStatusText : upcoming,
+                    _isCompleted
+                        ? OnboardingWorkspace.PresentationState.Complete
+                        : IsReadinessCurrent
+                            ? OnboardingWorkspace.PresentationState.Current
+                            : OnboardingWorkspace.PresentationState.Upcoming,
+                    IsCurrent: IsReadinessCurrent,
+                    Href: _isCompleted ? null : "#launch-readiness")
+            ];
+        }
+    }
+
+    private string WorkspaceStatusText => _isLoading
+        ? T("workspace.status.loading", "Loading setup status")
+        : CurrentError is not null
+            ? T("workspace.status.error", "Setup status needs attention")
+            : _isCompleted
+                ? T("workspace.status.complete", "Complete")
+                : T("workspace.status.current", "Current step");
+
+    private OnboardingWorkspace.PresentationState ProviderState(bool? configured) => configured switch
+    {
+        true => OnboardingWorkspace.PresentationState.Complete,
+        false => OnboardingWorkspace.PresentationState.Locked,
+        null when _isLoading => OnboardingWorkspace.PresentationState.Loading,
+        _ => OnboardingWorkspace.PresentationState.Error
+    };
+
+    private string FormatStepPosition(int current, int total) => string.Format(
+        System.Globalization.CultureInfo.CurrentCulture,
+        T("workspace.step_position", "Step {0} of {1}"),
+        current,
+        total);
 
     private bool IsSingleTenantMode => string.Equals(_deploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase);
     private bool IsMultiTenantMode => string.Equals(_deploymentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase);

@@ -15,16 +15,16 @@ public static class EventApiBaseAddressResolver
             return NormalizeBaseUrl(explicitUrl);
         }
 
-        var aspireHttps = GetAspireApiReference(configuration, "https");
-        if (!string.IsNullOrWhiteSpace(aspireHttps))
-        {
-            return NormalizeBaseUrl(aspireHttps);
-        }
-
         var aspireHttp = GetAspireApiReference(configuration, "http");
         if (!string.IsNullOrWhiteSpace(aspireHttp))
         {
             return NormalizeBaseUrl(aspireHttp);
+        }
+
+        var aspireHttps = GetAspireApiReference(configuration, "https");
+        if (!string.IsNullOrWhiteSpace(aspireHttps))
+        {
+            return NormalizeBaseUrl(aspireHttps);
         }
 
         return "https://localhost:7039/";

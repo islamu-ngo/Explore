@@ -44,6 +44,7 @@ public sealed class SemanticUpdateExceptionArchitectureTests
         new("UpdateEventPublicAction", "/api/events/{eventId}/public-actions/{actionId}", "put", "Atomic reviewed public-action replacement."),
         new("UpdateEventTicketType", "/api/events/{eventId}/ticketing/ticket-types/{ticketTypeId}", "put", "Atomic ticket-type replacement within one draft catalog."),
         new("UpdateEventCapacityPool", "/api/events/{eventId}/ticketing/capacity-pools/{capacityPoolId}", "put", "Atomic capacity-pool replacement within one draft catalog."),
+        new("UpdateInstancePlatformMonetizationSettings", "/api/instance/settings/platform-monetization", "put", "Complete instance-level fee and contribution settings replacement with expected revision checks."),
         new("SaveInstanceOnboardingProfile", "/api/instanceonboarding/profile", "patch", "Setup-secret-gated non-secret profile save before instance onboarding completes.")
     ];
 

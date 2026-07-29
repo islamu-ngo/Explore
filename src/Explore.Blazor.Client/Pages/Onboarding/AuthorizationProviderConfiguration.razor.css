@@ -1,4 +1,4 @@
-/* ABOUTME: Scoped single-column styles for authorization-provider onboarding and remediation. */
+/* ABOUTME: Scoped authorization-provider content styles inside the shared onboarding workspace. */
 /* ABOUTME: Uses logical spacing, native disclosure focus, and responsive action flow. */
 
 .authz-page {
@@ -10,7 +10,6 @@
     gap: var(--isl-space-8);
 }
 
-.authz-page__header,
 .authz-page__section,
 .authz-page__loading,
 .authz-page__package,

@@ -5,22 +5,31 @@
 @rendermode InteractiveServer
 @layout SetupLayout
 @using Explore.Blazor.Client.Components.Forms
+@using Explore.Blazor.Client.Pages.Onboarding.Components
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Navigation
 @inject ILogger<AuthorizationProviderConfiguration> Logger
+@inject ITranslationService Translation
 
 <PageTitle>Authorization Provider</PageTitle>
 
-<div class="authz-page" dir="auto">
-    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
+<OnboardingWorkspace Steps="@WorkspaceSteps"
+                     ProgressLabel="Instance onboarding progress"
+                     StepPositionFormatter="FormatStepPosition"
+                     HeadingId="authorization-provider-heading"
+                     SummaryLabel="Setup summary"
+                     ActionsLabel="Authorization provider actions"
+                     StatusText="@WorkspaceStatusText">
+    <HeadingContent>
+        <MudText Id="authorization-provider-heading" Typo="Typo.h3" HtmlTag="h1">Authorization</MudText>
+    </HeadingContent>
+    <ChildContent>
+        <div class="authz-page" dir="auto">
         <div class="authz-page__content" aria-busy="@_isLoading">
-            <header class="authz-page__header">
-                <MudText Typo="Typo.h3" HtmlTag="h1">Authorization</MudText>
-                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="authz-page__intro">
-                    Use built-in authorization, or connect Cerbos when your deployment needs an external policy decision point.
-                </MudText>
-            </header>
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Class="authz-page__intro">
+                Use built-in authorization, or connect Cerbos when your deployment needs an external policy decision point.
+            </MudText>
 
             @if (_isLoading)
             {
@@ -219,8 +228,20 @@
                 </footer>
             }
         </div>
-    </MudContainer>
-</div>
+        </div>
+    </ChildContent>
+    <SummaryContent>
+        <p>Choose the authorization engine that will enforce permissions after authentication.</p>
+    </SummaryContent>
+    <HelpContent>
+        <p>Local RBAC needs no external service. Cerbos remains fail-closed and keeps its credentials on the server.</p>
+    </HelpContent>
+    <ActionsContent>
+        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" Href="/setup">
+            Exit setup
+        </MudButton>
+    </ActionsContent>
+</OnboardingWorkspace>
 
 @code {
     private const string LocalProvider = "local";
@@ -237,6 +258,54 @@
     private bool _isSyncing;
     private bool _manualPolicyPackageInstalled;
     private bool _policyPackageSynced;
+
+    private IReadOnlyList<OnboardingWorkspace.StepDescriptor> WorkspaceSteps
+    {
+        get
+        {
+            var complete = T("ui.onboarding.workspace.status.complete", "Complete");
+            var upcoming = T("ui.onboarding.workspace.status.upcoming", "Upcoming");
+            var authorizationState = _isLoading
+                ? OnboardingWorkspace.PresentationState.Loading
+                : IsDeploymentFailed
+                    ? OnboardingWorkspace.PresentationState.Locked
+                    : OnboardingWorkspace.PresentationState.Current;
+
+            return
+            [
+                new(
+                    T("ui.onboarding.workspace.step.authentication", "Authentication"),
+                    complete,
+                    OnboardingWorkspace.PresentationState.Complete,
+                    Href: "/onboarding/auth-provider"),
+                new(
+                    T("ui.onboarding.workspace.step.authorization", "Authorization"),
+                    WorkspaceStatusText,
+                    authorizationState,
+                    IsCurrent: true),
+                new(
+                    T("ui.onboarding.workspace.step.site_profile", "Site profile"),
+                    upcoming,
+                    OnboardingWorkspace.PresentationState.Upcoming),
+                new(
+                    T("ui.onboarding.workspace.step.readiness", "Readiness"),
+                    upcoming,
+                    OnboardingWorkspace.PresentationState.Upcoming)
+            ];
+        }
+    }
+
+    private string WorkspaceStatusText => _isLoading
+        ? T("ui.onboarding.authorization.status.loading", "Loading authorization configuration")
+        : IsDeploymentFailed
+            ? T("ui.onboarding.authorization.status.locked", "Deployment configuration needs attention")
+            : T("ui.onboarding.workspace.status.current", "Current step");
+
+    private string FormatStepPosition(int current, int total) => string.Format(
+        System.Globalization.CultureInfo.CurrentCulture,
+        T("ui.onboarding.workspace.step_position", "Step {0} of {1}"),
+        current,
+        total);
 
     private SecretOwnershipDto EndpointOwnership => _model.CerbosEndpointOwnership ??= new();
     private SecretOwnershipDto AdminCredentialsOwnership => _model.CerbosAdminCredentialsOwnership ??= new();
@@ -637,5 +706,7 @@
             _errorMessage = "Could not copy the command. Use: " + DockerComposeSyncCommand;
         }
     }
+
+    private string T(string key, string fallback) => Translation.T(key, fallback);
 
 }

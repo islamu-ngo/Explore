@@ -169,7 +169,7 @@ public sealed class BffSetupSecretEndpointsTests
     }
 
     [Test]
-    public async Task SetupSecret_Get_WhenPersistedSecretIsValid_RefreshesRollingCookies()
+    public async Task SetupSecret_Get_WhenPersistedSecretIsTrusted_RefreshesCookiesWithoutRevalidation()
     {
         using var handler = new ValidateSecretHandler(HttpStatusCode.OK, """{"valid":true}""");
         await using var app = await CreateAppAsync(
@@ -184,6 +184,39 @@ public sealed class BffSetupSecretEndpointsTests
             .Should().Contain("max-age=1800");
         cookies.Single(value => value.StartsWith("setup-secret-session=", StringComparison.Ordinal))
             .Should().Contain("max-age=1800");
+        handler.CallCount.Should().Be(0);
+    }
+
+    [Test]
+    public async Task SetupSecret_Sync_WhenPersistedSecretIsTrusted_BindsSessionWithoutRevalidation()
+    {
+        using var handler = new ValidateSecretHandler(HttpStatusCode.OK, """{"valid":true}""");
+        await using var app = await CreateAppAsync(
+            handler,
+            setupSecretResolver: new StaticSetupSecretResolver("candidate-secret"),
+            authenticatedUserId: "setup-user");
+
+        using var response = await app.Client.PostAsJsonAsync("/bff/setup-secret/sync", new { secret = "" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        handler.CallCount.Should().Be(0);
+    }
+
+    [Test]
+    public async Task SetupSecret_Sync_WhenSecretComesFromDevelopmentConfiguration_ValidatesBeforeBinding()
+    {
+        using var handler = new ValidateSecretHandler(HttpStatusCode.OK, """{"valid":true}""");
+        await using var app = await CreateAppAsync(
+            handler,
+            setupSecretResolver: new StaticSetupSecretResolver(
+                "candidate-secret",
+                SetupSecretSource.DevelopmentConfiguration),
+            authenticatedUserId: "setup-user");
+
+        using var response = await app.Client.PostAsJsonAsync("/bff/setup-secret/sync", new { secret = "" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        handler.CallCount.Should().Be(1);
     }
 
     [Test]
@@ -210,7 +243,8 @@ public sealed class BffSetupSecretEndpointsTests
     private static async Task<TestBffApp> CreateAppAsync(
         ValidateSecretHandler handler,
         bool useRealSetupRateLimit = false,
-        ISetupSecretResolver? setupSecretResolver = null)
+        ISetupSecretResolver? setupSecretResolver = null,
+        string? authenticatedUserId = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -253,6 +287,17 @@ public sealed class BffSetupSecretEndpointsTests
         var app = builder.Build();
         app.UseRouting();
         app.UseRateLimiter();
+        if (!string.IsNullOrWhiteSpace(authenticatedUserId))
+        {
+            app.Use(async (context, next) =>
+            {
+                context.User = new ClaimsPrincipal(
+                    new ClaimsIdentity(
+                    [new Claim("sub", authenticatedUserId)],
+                    authenticationType: "Test"));
+                await next(context);
+            });
+        }
         app.MapSetupSecretEndpoints();
         await app.StartAsync();
 
@@ -326,11 +371,13 @@ public sealed class BffSetupSecretEndpointsTests
         }
     }
 
-    private sealed class StaticSetupSecretResolver(string secret) : ISetupSecretResolver
+    private sealed class StaticSetupSecretResolver(
+        string secret,
+        SetupSecretSource source = SetupSecretSource.ServerSideSetupSession) : ISetupSecretResolver
     {
         public SetupSecretResolutionResult Resolve(
             HttpContext? httpContext = null,
             HttpRequestMessage? outboundRequest = null) =>
-            SetupSecretResolutionResult.FoundFrom(SetupSecretSource.ServerSideSetupSession, secret);
+            SetupSecretResolutionResult.FoundFrom(source, secret);
     }
 }

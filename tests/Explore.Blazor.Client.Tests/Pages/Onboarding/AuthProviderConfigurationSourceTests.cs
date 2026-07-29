@@ -15,7 +15,7 @@ public class AuthProviderConfigurationSourceTests
         await Assert.That(source).Contains("Set up the first login path for onboarding.");
         await Assert.That(source).Contains("NextStepsText");
         await Assert.That(source).Contains("Next you'll configure the site profile and readiness screens.");
-        await Assert.That(source).Contains("Next you'll configure the site profile, authorization, and readiness screens.");
+        await Assert.That(source).Contains("Next you'll configure authorization, the site profile, and readiness.");
         await Assert.That(source).Contains("Label=\"Admin username (Required)\"");
         await Assert.That(source).Contains("aria-label=\"One-time Keycloak admin username (required)\"");
         await Assert.That(source).Contains("Label=\"Admin password (Required)\"");

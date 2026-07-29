@@ -1,29 +1,12 @@
-/* ABOUTME: Scoped single-column layout styles for the authoritative instance setup overview. */
-/* ABOUTME: Uses logical properties and design tokens for responsive, RTL-safe task and readiness flows. */
+/* ABOUTME: Scoped content styles for the authoritative profile and readiness onboarding workspace. */
+/* ABOUTME: Uses logical properties and design tokens inside the shared responsive workspace shell. */
 
 .instance-onboarding {
     box-sizing: border-box;
     display: grid;
     gap: var(--isl-space-6, 24px);
-    width: min(100%, 52rem);
-    margin-inline: auto;
-    padding-block: var(--isl-space-8, 32px);
-    padding-inline: var(--isl-space-4, 16px);
+    inline-size: 100%;
     overflow-wrap: anywhere;
-}
-
-.instance-onboarding__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--isl-space-4, 16px);
-}
-
-.instance-onboarding__heading {
-    display: grid;
-    flex: 1;
-    gap: var(--isl-space-2, 8px);
-    min-width: 0;
 }
 
 .instance-onboarding__operator-context,
@@ -123,12 +106,6 @@
 @media (max-width: 48rem) {
     .instance-onboarding {
         gap: var(--isl-space-5, 20px);
-        padding-block: var(--isl-space-6, 24px);
-        padding-inline: var(--isl-space-3, 12px);
-    }
-
-    .instance-onboarding__header {
-        align-items: flex-start;
     }
 
     .instance-onboarding__definition-row,

@@ -329,16 +329,17 @@ public static class HttpClientExtensions
         }
 
         // 2. Aspire service discovery env vars (injected by .WithReference in AppHost)
-        var aspireHttps = GetAspireApiReference(configuration, "https");
-        if (!string.IsNullOrWhiteSpace(aspireHttps))
-        {
-            return NormalizeBaseUrl(aspireHttps);
-        }
-
+        // Prefer HTTP over HTTPS for local inter-service communication to avoid SSL proxy handshake delays
         var aspireHttp = GetAspireApiReference(configuration, "http");
         if (!string.IsNullOrWhiteSpace(aspireHttp))
         {
             return NormalizeBaseUrl(aspireHttp);
+        }
+
+        var aspireHttps = GetAspireApiReference(configuration, "https");
+        if (!string.IsNullOrWhiteSpace(aspireHttps))
+        {
+            return NormalizeBaseUrl(aspireHttps);
         }
 
         // 3. Fallback for standalone development (matches API launchSettings default)

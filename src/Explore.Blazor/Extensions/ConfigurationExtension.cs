@@ -102,8 +102,8 @@ public static class ConfigurationExtensions
         var rawAtprotoOAuthClientPrivateJwks = config["ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS"]
             ?? config[AtprotoClientKeyProvider.ConfigurationKey];
         var hasAspireApiReference =
-            !string.IsNullOrWhiteSpace(GetAspireApiReference(config, "https"))
-            || !string.IsNullOrWhiteSpace(GetAspireApiReference(config, "http"));
+            !string.IsNullOrWhiteSpace(GetAspireApiReference(config, "http"))
+            || !string.IsNullOrWhiteSpace(GetAspireApiReference(config, "https"));
         var baseUrl = config["KEYCLOAK_ENDPOINT"];
         var explicitAuthority = config["Keycloak:Authority"];
 

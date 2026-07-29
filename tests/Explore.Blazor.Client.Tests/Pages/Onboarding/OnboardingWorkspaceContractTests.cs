@@ -1,5 +1,5 @@
-// ABOUTME: Failing-first source contract for the planned display-only onboarding workspace primitive.
-// ABOUTME: Freezes required semantics and rejects nested-main or browser-storage shortcuts before implementation.
+// ABOUTME: Source contract for the display-only onboarding workspace and its continuous instance journey.
+// ABOUTME: Freezes required semantics and rejects standalone, nested-main, or browser-storage shortcuts.
 
 namespace Explore.Blazor.Client.Tests.Pages.Onboarding;
 
@@ -13,7 +13,8 @@ public sealed class OnboardingWorkspaceContractTests
         await Assert.That(design).Contains("### OnboardingWorkspace");
         await Assert.That(design).Contains("display/navigation-only");
         await Assert.That(design).Contains("visible ordinals belong in the setup-summary rail");
-        await Assert.That(design).Contains("Authentication, Site profile, Authorization, and Readiness/Launch");
+        await Assert.That(design).Contains("Authentication, Authorization, Site profile, and Readiness/Launch");
+        await Assert.That(design).Contains("must never fall back to a standalone “Setup Overview” surface");
         await Assert.That(design).Contains("right summary rail occupying one quarter of the page");
         await Assert.That(design).Contains("right rail occupies one third");
         await Assert.That(design).Contains("sticky top navigation bar");

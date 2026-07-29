@@ -61,7 +61,8 @@ public static class BffSetupSecretEndpoints
     {
         var sessionService = (ISetupSecretSessionService)ctx.RequestServices.GetRequiredService<SetupSecretSessionService>();
         var secretResolver = ctx.RequestServices.GetRequiredService<ISetupSecretResolver>();
-        var secret = ResolvePersistedSetupSecret(ctx, secretResolver);
+        var resolution = secretResolver.Resolve(ctx);
+        var secret = resolution.Found ? resolution.Secret?.Trim() : null;
 
         if (string.IsNullOrWhiteSpace(secret))
         {
@@ -69,7 +70,9 @@ public static class BffSetupSecretEndpoints
             return;
         }
 
-        var validation = await ValidateSetupSecretAsync(ctx, secret, ctx.RequestAborted);
+        var validation = IsTrustedPersistedSource(resolution.Source)
+            ? new SetupSecretValidationResult(true, StatusCodes.Status200OK, string.Empty)
+            : await ValidateSetupSecretAsync(ctx, secret, ctx.RequestAborted);
         if (!validation.IsValid)
         {
             if (IsPermanentValidationFailure(validation.StatusCode))
@@ -151,10 +154,13 @@ public static class BffSetupSecretEndpoints
         }
 
         var secret = request.Secret;
+        var requiresValidation = true;
         if (string.IsNullOrWhiteSpace(secret))
         {
             var secretResolver = ctx.RequestServices.GetRequiredService<ISetupSecretResolver>();
-            secret = ResolvePersistedSetupSecret(ctx, secretResolver);
+            var resolution = secretResolver.Resolve(ctx);
+            secret = resolution.Found ? resolution.Secret?.Trim() : null;
+            requiresValidation = !IsTrustedPersistedSource(resolution.Source);
         }
 
         if (string.IsNullOrWhiteSpace(secret))
@@ -163,16 +169,19 @@ public static class BffSetupSecretEndpoints
             return;
         }
 
-        var validation = await ValidateSetupSecretAsync(ctx, secret, ctx.RequestAborted);
-        if (!validation.IsValid)
+        if (requiresValidation)
         {
-            if (IsPermanentValidationFailure(validation.StatusCode))
+            var validation = await ValidateSetupSecretAsync(ctx, secret, ctx.RequestAborted);
+            if (!validation.IsValid)
             {
-                ClearSetupSecret(ctx, sessionService, ShouldUseSecureSetupCookie(ctx), userId);
-            }
+                if (IsPermanentValidationFailure(validation.StatusCode))
+                {
+                    ClearSetupSecret(ctx, sessionService, ShouldUseSecureSetupCookie(ctx), userId);
+                }
 
-            await WriteProblemAsync(ctx, validation.StatusCode, "Setup Secret Validation Failed", validation.Error);
-            return;
+                await WriteProblemAsync(ctx, validation.StatusCode, "Setup Secret Validation Failed", validation.Error);
+                return;
+            }
         }
 
         PersistSetupSecret(ctx, sessionService, secret, ShouldUseSecureSetupCookie(ctx), userId);
@@ -204,13 +213,10 @@ public static class BffSetupSecretEndpoints
             ?? ctx.User.FindFirst("sid")?.Value;
     }
 
-    private static string? ResolvePersistedSetupSecret(
-        HttpContext ctx,
-        ISetupSecretResolver setupSecretResolver)
-    {
-        var result = setupSecretResolver.Resolve(ctx);
-        return result.Found ? result.Secret?.Trim() : null;
-    }
+    private static bool IsTrustedPersistedSource(SetupSecretSource source) =>
+        source is SetupSecretSource.ServerSideSetupSession
+            or SetupSecretSource.AnonymousSetupSession
+            or SetupSecretSource.ProtectedSetupCookie;
 
     private static bool ShouldUseSecureSetupCookie(HttpContext ctx) => ctx.Request.IsHttps;
 

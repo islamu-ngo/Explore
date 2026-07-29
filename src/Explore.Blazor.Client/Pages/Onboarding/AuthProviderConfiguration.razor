@@ -426,11 +426,7 @@
                     T("ui.onboarding.workspace.step.authentication", "Authentication"),
                     WorkspaceStatusText,
                     WorkspaceState,
-                    IsCurrent: true),
-                new(
-                    T("ui.onboarding.workspace.step.site_profile", "Site profile"),
-                    upcoming,
-                    OnboardingWorkspace.PresentationState.Upcoming)
+                    IsCurrent: true)
             };
 
             if (!_skipAuthorizationProviderStep)
@@ -440,6 +436,11 @@
                     upcoming,
                     OnboardingWorkspace.PresentationState.Upcoming));
             }
+
+            steps.Add(new(
+                T("ui.onboarding.workspace.step.site_profile", "Site profile"),
+                upcoming,
+                OnboardingWorkspace.PresentationState.Upcoming));
 
             steps.Add(new(
                 T("ui.onboarding.workspace.step.readiness", "Readiness"),
@@ -473,7 +474,7 @@
 
     private string NextStepsText => _skipAuthorizationProviderStep
         ? T("ui.onboarding.authentication.next_steps_without_authorization", "Next you'll configure the site profile and readiness screens.")
-        : T("ui.onboarding.authentication.next_steps", "Next you'll configure the site profile, authorization, and readiness screens.");
+        : T("ui.onboarding.authentication.next_steps", "Next you'll configure authorization, the site profile, and readiness.");
 
     protected override async Task OnInitializedAsync()
     {

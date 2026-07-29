@@ -5,6 +5,7 @@ using System.Text.Json;
 using AngleSharp.Dom;
 using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Pages.Onboarding;
+using Explore.Blazor.Client.Pages.Onboarding.Components;
 using Explore.Blazor.Client.Routing.ControlPlane;
 using Microsoft.AspNetCore.Components.Web;
 
@@ -63,15 +64,17 @@ public class InstanceOnboardingTests : IDisposable
     public void Dispose() => _ctx.Dispose();
 
     [Test]
-    public async Task Overview_HasOneH1AndPageTitleWithoutLegacyRailOrChooser()
+    public async Task Workspace_HasOneH1AndContinuesWithoutStandaloneOverview()
     {
         var cut = RenderForDeploymentMode("SingleTenant");
 
         Require(cut.FindComponents<PageTitle>().Count == 1, "Expected exactly one PageTitle component.");
+        Require(cut.FindComponents<OnboardingWorkspace>().Count == 1, "Expected the shared onboarding workspace.");
         Require(cut.FindAll("h1").Count == 1, "Expected exactly one h1.");
-        RequireContains(cut.Find("h1").TextContent, "Setup Overview");
-        RequireNotContains(cut.Markup, "Step 1 of 2");
-        RequireNotContains(cut.Markup, "Setup progress");
+        RequireContains(cut.Find("h1").TextContent, "Site profile and launch");
+        RequireNotContains(cut.Markup, "Setup Overview");
+        RequireNotContains(cut.Markup, "instance-onboarding__header");
+        RequireContains(cut.Markup, "Instance onboarding progress");
         RequireNotContains(cut.Markup, "Launch Recap");
         RequireNotContains(cut.Markup, "Administration Access");
         RequireNotContains(cut.Markup, "Dedicated Admin Host");

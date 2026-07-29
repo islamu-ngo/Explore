@@ -41,6 +41,12 @@ public class SetupSecretForwardingHandler : DelegatingHandler
 
     private static bool RequiresSetupSecret(string method, string path)
     {
+        if (HttpMethods.IsGet(method)
+            && path.StartsWith("/api/instance/settings/", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
         if (HttpMethods.IsPatch(method)
             && (path.Equals("/api/instance/settings/auth-provider", StringComparison.OrdinalIgnoreCase)
                 || path.Equals("/api/instance/settings/authz-provider", StringComparison.OrdinalIgnoreCase)))

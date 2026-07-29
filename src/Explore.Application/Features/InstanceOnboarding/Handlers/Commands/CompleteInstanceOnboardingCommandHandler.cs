@@ -555,7 +555,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
                 UserId = user.Id,
                 User = null!,
                 ActorId = actor?.Id,
-                Actor = actor,
+                Actor = null,
                 StatusId = (int)TenantUserStatusEnum.Active,
                 JoinedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,

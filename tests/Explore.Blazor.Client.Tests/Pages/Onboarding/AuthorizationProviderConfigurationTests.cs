@@ -3,6 +3,7 @@
 
 using Bunit.TestDoubles;
 using Explore.Blazor.Client.Pages.Onboarding;
+using Explore.Blazor.Client.Pages.Onboarding.Components;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Onboarding;
@@ -45,10 +46,15 @@ public class AuthorizationProviderConfigurationTests : IDisposable
         cut.WaitForAssertion(() =>
         {
             var markup = cut.Markup;
+            var workspace = cut.FindComponent<OnboardingWorkspace>();
             var providerGroup = cut.FindComponent<MudRadioGroup<string>>();
             var radios = cut.FindComponents<MudRadio<string>>();
 
-            if (providerGroup.Instance.Value != "local"
+            if (workspace is null
+                || cut.FindAll("h1").Count != 1
+                || !cut.Find("h1").TextContent.Contains("Authorization", StringComparison.OrdinalIgnoreCase)
+                || markup.Contains("authz-page__header", StringComparison.Ordinal)
+                || providerGroup.Instance.Value != "local"
                 || radios.Count != 2
                 || !markup.Contains("Advanced: use Cerbos PDP", StringComparison.OrdinalIgnoreCase)
                 || !markup.Contains("Continue with Local RBAC", StringComparison.OrdinalIgnoreCase)
@@ -60,7 +66,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
                 || markup.Contains("<main", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException(
-                    $"Expected the single-column Local default with collapsed Cerbos details. " +
+                    $"Expected the unified-workspace Local default with collapsed Cerbos details. " +
                     $"Value={providerGroup.Instance.Value}; Radios={radios.Count}; " +
                     $"Advanced={markup.Contains("Advanced: use Cerbos PDP", StringComparison.OrdinalIgnoreCase)}; " +
                     $"LocalAction={markup.Contains("Continue with Local RBAC", StringComparison.OrdinalIgnoreCase)}; " +

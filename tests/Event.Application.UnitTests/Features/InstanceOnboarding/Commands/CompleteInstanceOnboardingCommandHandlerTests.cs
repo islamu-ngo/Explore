@@ -222,6 +222,44 @@ public class CompleteInstanceOnboardingCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_SingleTenant_WithDetachedActor_CreatesTenantUserByForeignKeyOnly()
+    {
+        var actorId = Guid.NewGuid();
+        _actorRepository.GetActorByUserId(TestUserId).Returns(new Actor
+        {
+            Id = actorId,
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = new ActorType
+            {
+                Id = (int)ActorTypeEnum.User,
+                FullName = "User",
+                MasterCode = "user"
+            },
+            Pii = new ActorPii { DisplayName = "Setup Admin" },
+            UserId = TestUserId
+        });
+        var command = new CompleteInstanceOnboardingCommand
+        {
+            UserId = TestUserId,
+            Settings = new CompleteInstanceOnboardingRequest
+            {
+                SiteProfile = new SelfHostOnboardingProfileDto
+                {
+                    SiteName = "Community Events",
+                    Locale = "en",
+                    TimeZone = "UTC"
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _tenantUserRepository.Received(1).Create(Arg.Is<TenantUser>(tenantUser =>
+            tenantUser.ActorId == actorId && tenantUser.Actor == null));
+    }
+
+    [Test]
     public async Task Handle_SingleTenant_WhenSiteNameBlank_UsesTrimmedInstanceNameForDisplayName()
     {
         _capturedUpserts.Clear();
