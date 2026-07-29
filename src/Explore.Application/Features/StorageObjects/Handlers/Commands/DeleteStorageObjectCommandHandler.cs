@@ -36,6 +36,12 @@ public class DeleteStorageObjectCommandHandler : IRequestHandler<DeleteStorageOb
             return false;
         }
 
+        if (await _storageObjectRepository.IsRetainedEvidenceAsync(entity.Id, cancellationToken))
+        {
+            _metrics.RecordStorageDelete(entity.Provider, "failed", "retained_evidence");
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(entity.ObjectKey))
         {
             _metrics.RecordStorageDelete(entity.Provider, "failed", "missing_object_key");

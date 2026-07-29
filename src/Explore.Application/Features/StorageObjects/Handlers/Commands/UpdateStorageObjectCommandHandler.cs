@@ -40,6 +40,14 @@ public class UpdateStorageObjectCommandHandler : IRequestHandler<UpdateStorageOb
             return response;
         }
 
+        if (await _storageObjectRepository.IsRetainedEvidenceAsync(entity.Id, cancellationToken))
+        {
+            response.Success = false;
+            response.Message = "Storage object update failed.";
+            response.Errors = ["Retained legitimacy evidence cannot be modified."];
+            return response;
+        }
+
         var validator = new UpdateStorageObjectDtoValidator(_actorRepository);
         var validationResult = await validator.ValidateAsync(request.StorageObjectDto, cancellationToken);
         if (!validationResult.IsValid)
