@@ -9,6 +9,7 @@ using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.DTOs.EventOrganizerClaim;
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
+using Explore.Application.DTOs.OrganizationTenantEvidence;
 using Explore.Application.DTOs.Settings;
 using Explore.Application.Features.EventReporting.Models;
 using Explore.Application.Models;
@@ -55,6 +56,7 @@ internal static class OpenApiStringEnumSchemaCatalog
         typeof(HomeDiscoverySectionStatus),
         typeof(KeycloakBootstrapMode),
         typeof(ManagedProviderOrganizerKindDto),
+        typeof(OrganizationTenantEvidenceReviewDecisionDto),
         typeof(PosthogCookielessMode),
         typeof(PosthogPersonProfiles),
         typeof(PrayerTime),

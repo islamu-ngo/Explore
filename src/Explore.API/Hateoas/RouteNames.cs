@@ -41,6 +41,11 @@ public static class RouteNames
     public const string CreateOrganization = "CreateOrganization";
     public const string UpdateOrganization = "UpdateOrganization";
     public const string UpdateOrganizationApprovalStatus = "UpdateOrganizationApprovalStatus";
+    public const string GetOrganizationTenantEvidenceCollection = "GetOrganizationTenantEvidenceCollection";
+    public const string GetOrganizationTenantEvidence = "GetOrganizationTenantEvidence";
+    public const string CreateOrganizationTenantEvidenceUploadSession = "CreateOrganizationTenantEvidenceUploadSession";
+    public const string SubmitOrganizationTenantEvidence = "SubmitOrganizationTenantEvidence";
+    public const string ReviewOrganizationTenantEvidence = "ReviewOrganizationTenantEvidence";
     public const string GetOrganizationNotificationPreferences = "GetOrganizationNotificationPreferences";
     public const string UpdateOrganizationNotificationPreferences = "UpdateOrganizationNotificationPreferences";
     public const string SetOrganizationNotificationPreferenceMute = "SetOrganizationNotificationPreferenceMute";

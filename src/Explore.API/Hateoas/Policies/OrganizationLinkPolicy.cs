@@ -9,6 +9,7 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.Hateoas;
+using Explore.Domain.Enums;
 
 /// <summary>
 /// Link policy for OrganizationDto (detail view).
@@ -30,6 +31,45 @@ public sealed class OrganizationDetailLinkPolicy : ILinkPolicy<OrganizationDto>
             LinkRelations.Members,
             RouteNames.GetOrganizationMembersByOrganization,
             new { organizationId = dto.Id });
+
+        yield return new LinkDefinition(
+            LinkRelations.LegitimacyEvidence,
+            RouteNames.GetOrganizationTenantEvidenceCollection,
+            new { organizationId = dto.Id },
+            HttpMethods.Get,
+            "Organization legitimacy evidence",
+            RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.Organizations.ViewEvidence,
+                ResourceDescriptors.Organization,
+                dto);
+
+        if (dto.ApprovalStatusId == (int)ApprovalStatusEnum.Pending)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.PrepareEvidenceUpload,
+                RouteNames.CreateOrganizationTenantEvidenceUploadSession,
+                new { organizationId = dto.Id },
+                HttpMethods.Post,
+                "Prepare legitimacy evidence upload",
+                RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.Organizations.SubmitEvidence,
+                    ResourceDescriptors.Organization,
+                    dto);
+
+            yield return new LinkDefinition(
+                LinkRelations.SubmitEvidence,
+                RouteNames.SubmitOrganizationTenantEvidence,
+                new { organizationId = dto.Id },
+                HttpMethods.Post,
+                "Submit legitimacy evidence",
+                RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.Organizations.SubmitEvidence,
+                    ResourceDescriptors.Organization,
+                    dto);
+        }
 
         // Actor link (if organization has an actor)
         if (dto.ActorId.HasValue)

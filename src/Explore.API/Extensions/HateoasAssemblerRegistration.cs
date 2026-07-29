@@ -42,6 +42,7 @@ using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Organization;
+using Explore.Application.DTOs.OrganizationTenantEvidence;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.PlatformMonetization;
@@ -71,6 +72,9 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<OrganizationDto>, OrganizationDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<OrganizationListDto>, OrganizationCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<OrganizationDto, OrganizationListDto>, OrganizationResourceAssembler>();
+        services.AddScoped<ILinkPolicy<OrganizationTenantEvidenceDto>, OrganizationTenantEvidenceDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<OrganizationTenantEvidenceDto>, OrganizationTenantEvidenceCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<OrganizationTenantEvidenceDto, OrganizationTenantEvidenceDto>, OrganizationTenantEvidenceResourceAssembler>();
 
         // Event
         services.AddScoped<ILinkPolicy<EventDto>, EventDetailLinkPolicy>();

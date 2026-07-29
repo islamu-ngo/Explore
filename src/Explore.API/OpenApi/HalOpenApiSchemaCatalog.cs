@@ -52,6 +52,7 @@ internal static class HalOpenApiSchemaCatalog
         // Organization DTOs
         typeof(Explore.Application.DTOs.Organization.OrganizationDto),
         typeof(Explore.Application.DTOs.Organization.OrganizationListDto),
+        typeof(Explore.Application.DTOs.OrganizationTenantEvidence.OrganizationTenantEvidenceDto),
 
         // Actor DTOs
         typeof(Explore.Application.DTOs.Actor.ActorDto),
@@ -199,6 +200,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfEventLocationManagementDto"] = typeof(Explore.Application.DTOs.Location.EventLocationManagementDto),
         ["HalResourceOfOrganizationDto"] = typeof(Explore.Application.DTOs.Organization.OrganizationDto),
         ["HalResourceOfOrganizationListDto"] = typeof(Explore.Application.DTOs.Organization.OrganizationListDto),
+        ["HalResourceOfOrganizationTenantEvidenceDto"] = typeof(Explore.Application.DTOs.OrganizationTenantEvidence.OrganizationTenantEvidenceDto),
         ["HalResourceOfActorDto"] = typeof(Explore.Application.DTOs.Actor.ActorDto),
         ["HalResourceOfActorListDto"] = typeof(Explore.Application.DTOs.Actor.ActorListDto),
         ["HalResourceOfActorSubscriptionDto"] = typeof(Explore.Application.DTOs.ActorSubscription.ActorSubscriptionDto),
@@ -305,6 +307,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfLocationListDto"] = "HalResourceOfLocationListDto",
         ["HalCollectionEmbeddedOfLocationRoomListDto"] = "HalResourceOfLocationRoomListDto",
         ["HalCollectionEmbeddedOfOrganizationListDto"] = "HalResourceOfOrganizationListDto",
+        ["HalCollectionEmbeddedOfOrganizationTenantEvidenceDto"] = "HalResourceOfOrganizationTenantEvidenceDto",
         ["HalCollectionEmbeddedOfOrganizationReviewDto"] = "HalResourceOfOrganizationReviewDto",
         ["HalCollectionEmbeddedOfEmailDispatchStatusDto"] = "HalResourceOfEmailDispatchStatusDto",
         ["HalCollectionEmbeddedOfSupportAccessSessionDto"] = "HalResourceOfSupportAccessSessionDto",
