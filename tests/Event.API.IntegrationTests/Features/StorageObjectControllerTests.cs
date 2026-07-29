@@ -6,13 +6,20 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Seeds;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.Extensions.DependencyInjection;
+using MediatR;
+using Microsoft.AspNetCore.Hosting;
 using TUnit.Assertions;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.AspNetCore.TestHost;
+using NSubstitute;
 using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -209,20 +216,29 @@ public class StorageObjectControllerTests
     }
 
     [Test]
-    public async Task Create_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task LegacyStorageWriteRoutes_AreNotCallable()
     {
-        // Arrange
-        var createDto = new CreateStorageObjectDto
-        {
-            FullName = "test-file.png",
-            Extension = ".png",
-            Uri = "https://example.com/test.png",
-            Size = 1024,
-            FileTypeId = 1
-        };
+        var mediator = Substitute.For<IMediator>();
+        var storageService = Substitute.For<IObjectStorageService>();
+        var repository = Substitute.For<IStorageObjectRepository>();
+        await using var factory = _fixture.Factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IMediator>();
+                services.AddSingleton(mediator);
+                services.RemoveAll<IObjectStorageService>();
+                services.AddSingleton(storageService);
+                services.RemoveAll<IStorageObjectRepository>();
+                services.AddSingleton(repository);
+            }));
+        using var client = factory.CreateClient();
 
-        // Act
-        var response = await _fixture.Client.PostAsJsonAsync(BaseUrl, createDto);
+        using var directUpload = await client.PostAsJsonAsync(
+            $"{BaseUrl}/generate-upload-url",
+            new { fileName = "unsafe.svg", contentType = "image/svg+xml" });
+        using var callerMetadata = await client.PostAsJsonAsync(
+            BaseUrl,
+            new { uri = "https://attacker.invalid/file", lifecycleState = StorageObjectLifecycleStates.Active });
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
@@ -364,8 +380,11 @@ public class StorageObjectControllerTests
         // Act
         var response = await _fixture.Client.PatchAsJsonAsync($"{BaseUrl}/{id}", updateDto);
 
-        // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(directUpload.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed).IsTrue();
+        await Assert.That(callerMetadata.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed).IsTrue();
+        await Assert.That(mediator.ReceivedCalls()).IsEmpty();
+        await Assert.That(storageService.ReceivedCalls()).IsEmpty();
+        await Assert.That(repository.ReceivedCalls()).IsEmpty();
     }
 
     [Test]

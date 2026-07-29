@@ -177,15 +177,6 @@ public sealed class StorageObjectCollectionLinkPolicy : ICollectionLinkPolicy<St
             "All storage objects");
 
         yield return new LinkDefinition(
-            LinkRelations.Create,
-            RouteNames.CreateStorageObject,
-            null,
-            "POST",
-            "Create storage object metadata",
-            RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Create, typeof(StorageObjectDto), ResourceKinds.StorageObject);
-
-        yield return new LinkDefinition(
             "create-upload-session",
             RouteNames.CreateStorageUploadSession,
             null,

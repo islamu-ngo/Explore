@@ -34,11 +34,6 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class StorageObjectController : ControllerBase
 {
-    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
-        "storageObject",
-        "Storage object validation failed",
-        "Storage object creation failed.");
-
     private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
         "storageObject",
         "Storage object validation failed",
@@ -189,26 +184,6 @@ public class StorageObjectController : ControllerBase
         return result is null ? this.ToNotFoundProblem(StorageObjectNotFoundProblem) : Ok(result);
     }
 
-    // POST: api/storageobject/generate-upload-url
-    [Authorize]
-    [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost("generate-upload-url", Name = RouteNames.GenerateStorageObjectUploadUrl)]
-    [EndpointSummary("Generate Pre-signed Upload URL")]
-    [EndpointDescription("Generate a pre-signed URL for uploading a file directly to S3-compatible storage (Hetzner Object Storage)")]
-    [ProducesResponseType(typeof(UploadUrlResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<UploadUrlResponseDto>> GenerateUploadUrl([FromBody] UploadRequestDto request, CancellationToken cancellationToken = default)
-    {
-        var command = new GenerateUploadUrlCommand
-        {
-            FileName = request.FileName,
-            ContentType = request.ContentType
-        };
-        var response = await _mediator.Send(command, cancellationToken);
-        return Ok(response);
-    }
-
     // POST: api/storageobject/upload-sessions
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
@@ -314,28 +289,6 @@ public class StorageObjectController : ControllerBase
         var response = await _mediator.Send(command, cancellationToken);
 
         return response.Success ? Ok(response) : this.ToStorageUploadProblem(response);
-    }
-
-    // POST: api/storageobject
-    [Authorize]
-    [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost(Name = RouteNames.CreateStorageObject)]
-    [EndpointSummary("Create Storage Object Record")]
-    [EndpointDescription("Create a storage object record after successful file upload to S3")]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateStorageObjectDto dto, CancellationToken cancellationToken = default)
-    {
-        var command = new CreateStorageObjectCommand { StorageObjectDto = dto };
-        var response = await _mediator.Send(command, cancellationToken);
-
-        if (!response.Success)
-        {
-            return this.ToCommandValidationProblem(response, CreateValidationProblem);
-        }
-
-        return Ok(response);
     }
 
     // PATCH: api/storageobject/{id}
