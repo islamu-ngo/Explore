@@ -34,6 +34,7 @@ public class UpdateEventSessionCommandHandlerTests
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IEventDayRepository _eventDayRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly HybridCache _cache;
@@ -51,6 +52,7 @@ public class UpdateEventSessionCommandHandlerTests
         _eventSessionIslamicAspectRepository = Substitute.For<IEventSessionIslamicAspectRepository>();
         _scheduleProjectionCalculator = new EventScheduleProjectionCalculator();
         _eventDayRepository = Substitute.For<IEventDayRepository>();
+        _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
         _eventLocationAttachmentService = EventLocationAttachmentServiceTestFixture.ForExistingEvent(
             _eventRepository,
@@ -77,7 +79,7 @@ public class UpdateEventSessionCommandHandlerTests
             _eventSessionIslamicAspectRepository,
             _scheduleProjectionCalculator,
             _eventDayRepository,
-            Substitute.For<IStorageObjectRepository>(),
+            _storageObjectRepository,
             _unitOfWork,
             _eventLocationAttachmentService,
             _cache,
@@ -121,6 +123,68 @@ public class UpdateEventSessionCommandHandlerTests
         await Assert.That(result.Errors).Contains(EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
         await _eventSessionRepository.DidNotReceive()
             .UpdateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenFeaturedImageIsCrossTenant_RejectsBeforeMutationOrSave()
+    {
+        Guid eventId = Guid.NewGuid();
+        Guid sessionId = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        Guid imageId = Guid.NewGuid();
+        Guid originalImageId = Guid.NewGuid();
+        Guid concurrencyStamp = Guid.NewGuid();
+        var session = new EventSession
+        {
+            Id = sessionId,
+            EventId = eventId,
+            TenantId = tenantId,
+            FeaturedImageId = originalImageId,
+            ConcurrencyStamp = concurrencyStamp,
+            Event = null!,
+            Tenant = null!
+        };
+        var parentEvent = DataBuilder.Event.Generate();
+        parentEvent.Id = eventId;
+        parentEvent.TenantId = tenantId;
+        _eventSessionRepository.GetById(sessionId).Returns(session);
+        _eventRepository.GetById(eventId).Returns(parentEvent);
+        _storageObjectRepository.GetById(imageId).Returns(new StorageObject
+        {
+            Id = imageId,
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            FileType = null!,
+            Uri = "storage://session.png",
+            Provider = "local",
+            FullName = "session.png",
+            SafeDisplayName = "session.png",
+            Extension = "png",
+            ContentType = "image/png",
+            Purpose = StorageObjectPurposes.EventImage,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            LifecycleState = StorageObjectLifecycleStates.Active
+        });
+        var command = new UpdateEventSessionCommand
+        {
+            EventSessionId = sessionId,
+            ExpectedConcurrencyStamp = concurrencyStamp,
+            EventSessionDto = new UpdateEventSessionDto
+            {
+                FeaturedImage = new UpdateEventSessionFeaturedImageDto
+                {
+                    Value = OptionalUpdate<Guid?>.Set(imageId)
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(session.FeaturedImageId).IsEqualTo(originalImageId);
+        await _eventSessionRepository.DidNotReceive()
+            .UpdateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

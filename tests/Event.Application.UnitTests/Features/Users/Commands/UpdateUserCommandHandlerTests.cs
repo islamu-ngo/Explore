@@ -183,6 +183,56 @@ public sealed class UpdateUserCommandHandlerTests
         await _cache.Received(1).RemoveAsync($"user:detail:{user.Id}", Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task Handle_WhenProfileImageIsCrossTenant_RejectsWithoutMutationOrSave()
+    {
+        var user = CreateUser(actorId: Guid.CreateVersion7());
+        Actor actor = user.Actor!;
+        actor.ProfilePictureUri = "storage://profiles/original.png";
+        var tenantId = Guid.CreateVersion7();
+        var storageObject = new StorageObject
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = Guid.CreateVersion7(),
+            FileType = null!,
+            Uri = "storage://profiles/cross-tenant.png",
+            Provider = "local",
+            FullName = "cross-tenant.png",
+            SafeDisplayName = "cross-tenant.png",
+            Extension = "png",
+            ContentType = "image/png",
+            Visibility = StorageObjectVisibilities.PublicImage,
+            Purpose = StorageObjectPurposes.ProfileImage,
+            LifecycleState = StorageObjectLifecycleStates.Active,
+            Tenant = null!
+        };
+        _tenantContext.TenantId.Returns(tenantId);
+        _userRepository.GetById(user.Id).Returns(user);
+        _actorRepository.GetActorByUserId(user.Id).Returns(actor);
+        _storageObjectRepository.GetById(storageObject.Id).Returns(storageObject);
+
+        var result = await _handler.Handle(new UpdateUserCommand
+        {
+            UserId = user.Id,
+            ExpectedConcurrencyStamp = user.ConcurrencyStamp,
+            UpdateUserDto = new UpdateUserDto
+            {
+                ProfileImage = new UpdateUserProfileImageDto
+                {
+                    ProfilePictureId = storageObject.Id
+                }
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(actor.ProfilePictureUri).IsEqualTo("storage://profiles/original.png");
+        await Assert.That(storageObject.ActorId).IsNull();
+        await _userRepository.DidNotReceive().Update(Arg.Any<User>());
+        await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
+        await _storageObjectRepository.DidNotReceive().Update(Arg.Any<StorageObject>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     private static User CreateUser(Guid? actorId = null)
     {
         var id = Guid.CreateVersion7();

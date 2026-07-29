@@ -28,6 +28,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
     private readonly IOrganizationTenantRepository _organizationTenantRepository;
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IActorRepository _actorRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly IUserContext _userContext;
     private readonly IMapper _mapper;
@@ -42,6 +43,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         _organizationTenantRepository = Substitute.For<IOrganizationTenantRepository>();
         _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
         _actorRepository = Substitute.For<IActorRepository>();
+        _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
         _adminCacheInvalidator = Substitute.For<IAdminCacheInvalidator>();
         _userContext = Substitute.For<IUserContext>();
         _mapper = Substitute.For<IMapper>();
@@ -144,6 +146,50 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(groupId);
         _adminCacheInvalidator.Received(1).InvalidateUser(userId);
+    }
+
+    [Test]
+    public async Task Create_WhenProfileImageIsCrossTenant_RejectsBeforeHierarchyMutation()
+    {
+        var tenantId = Guid.NewGuid();
+        var imageId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+        _storageObjectRepository.GetById(imageId).Returns(new StorageObject
+        {
+            Id = imageId,
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            FileType = null!,
+            Uri = "storage://group.png",
+            Provider = "local",
+            FullName = "group.png",
+            SafeDisplayName = "group.png",
+            Extension = "png",
+            ContentType = "image/png",
+            Purpose = StorageObjectPurposes.ProfileImage,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            LifecycleState = StorageObjectLifecycleStates.Active
+        });
+        var command = new CreateGroupCommand
+        {
+            CreatorUserId = Guid.NewGuid(),
+            GroupDto = new CreateGroupDto
+            {
+                FullName = "Unsafe image group",
+                ProfilePictureId = imageId
+            }
+        };
+
+        var result = await CreateCreateHandler().Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _groupRepository.DidNotReceive().ExecuteWithHierarchyMutationLock(
+            Arg.Any<Guid>(),
+            Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
+            Arg.Any<CancellationToken>());
+        await _groupRepository.DidNotReceive().Create(Arg.Any<Group>());
+        await _groupTenantRepository.DidNotReceive().Create(Arg.Any<GroupTenant>());
+        _adminCacheInvalidator.DidNotReceiveWithAnyArgs().InvalidateUser(default);
     }
 
     [Test]
@@ -454,7 +500,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
             _organizationTenantRepository,
             _groupMemberRepository,
             _actorRepository,
-            Substitute.For<IStorageObjectRepository>(),
+            _storageObjectRepository,
             _adminCacheInvalidator,
             _mapper,
             _tenantContext,

@@ -1,3 +1,6 @@
+// ABOUTME: Unit tests for Actor creation validation and image-reference security.
+// ABOUTME: Verifies user/organization actor creation and fail-closed image assignment.
+
 using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Infrastructure;
@@ -130,6 +133,56 @@ public class CreateActorCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(actorId);
         await _actorRepository.Received(1).Create(Arg.Any<Actor>());
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task Handle_WhenActorImageIsCrossTenant_RejectsBeforeMappingOrCreation(
+        bool useProfilePicture)
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var imageId = Guid.NewGuid();
+        var command = new CreateActorCommand
+        {
+            ActorDto = new CreateActorDto
+            {
+                ActorTypeId = 1,
+                UserId = userId,
+                DisplayName = "Unsafe image actor",
+                TenantId = tenantId,
+                ProfilePictureId = useProfilePicture ? imageId : null,
+                BannerPictureId = useProfilePicture ? null : imageId
+            }
+        };
+        _tenantContext.TenantId.Returns(tenantId);
+        _actorTypeRepository.Exists(1).Returns(true);
+        _tenantRepository.Exists(tenantId).Returns(true);
+        _userRepository.Exists(userId).Returns(true);
+        _storageObjectRepository.Exists(imageId).Returns(true);
+        _storageObjectRepository.GetById(imageId).Returns(new StorageObject
+        {
+            Id = imageId,
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            FileType = null!,
+            Uri = "storage://actor.png",
+            Provider = "local",
+            FullName = "actor.png",
+            SafeDisplayName = "actor.png",
+            Extension = "png",
+            ContentType = "image/png",
+            Purpose = StorageObjectPurposes.ProfileImage,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            LifecycleState = StorageObjectLifecycleStates.Active
+        });
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        _mapper.DidNotReceiveWithAnyArgs().Map<Actor>(default!);
+        await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
     }
 
     [Test]

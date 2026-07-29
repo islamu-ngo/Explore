@@ -29,6 +29,7 @@ public class CreateOrganizationCommandHandlerTests
     private readonly IOrganizationTenantRepository _organizationTenantRepository;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly IActorRepository _actorRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IAdminContext _adminContext;
     private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly ITenantContext _tenantContext;
@@ -43,6 +44,7 @@ public class CreateOrganizationCommandHandlerTests
         _organizationTenantRepository = Substitute.For<IOrganizationTenantRepository>();
         _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
         _actorRepository = Substitute.For<IActorRepository>();
+        _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
         _adminContext = Substitute.For<IAdminContext>();
         _adminCacheInvalidator = Substitute.For<IAdminCacheInvalidator>();
         _mapper = Substitute.For<IMapper>();
@@ -63,7 +65,7 @@ public class CreateOrganizationCommandHandlerTests
             _organizationTenantRepository,
             _organizationMemberRepository,
             _actorRepository,
-            Substitute.For<IStorageObjectRepository>(),
+            _storageObjectRepository,
             _adminContext,
             _adminCacheInvalidator,
             _mapper,
@@ -160,6 +162,57 @@ public class CreateOrganizationCommandHandlerTests
         await _actorRepository.Received(1).Create(Arg.Any<Actor>());
         await _organizationMemberRepository.Received(1).Create(Arg.Any<OrganizationMember>());
         _adminCacheInvalidator.Received(1).InvalidateUser(userId);
+    }
+
+    [Test]
+    public async Task Handle_WhenProfileImageIsCrossTenant_RejectsBeforeTransactionOrPersistence()
+    {
+        var tenantId = Guid.NewGuid();
+        var imageId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+        _storageObjectRepository.GetById(imageId).Returns(new StorageObject
+        {
+            Id = imageId,
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            FileType = null!,
+            Uri = "storage://organization.png",
+            Provider = "local",
+            FullName = "organization.png",
+            SafeDisplayName = "organization.png",
+            Extension = "png",
+            ContentType = "image/png",
+            Purpose = StorageObjectPurposes.ProfileImage,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            LifecycleState = StorageObjectLifecycleStates.Active
+        });
+        var command = new CreateOrganizationCommand
+        {
+            CreatorUserId = Guid.NewGuid(),
+            OrganizationDto = new CreateOrganizationDto
+            {
+                FullName = "Unsafe image organization",
+                Email = "unsafe@example.test",
+                Country = "Belgium",
+                City = "Brussels",
+                Address = "Unsafe Street",
+                Postcode = 1000,
+                ProfilePictureId = imageId
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _adminContext.DidNotReceive().IsTenantAdminAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+        await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
+            Arg.Any<Func<CancellationToken, Task>>(),
+            Arg.Any<CancellationToken>());
+        await _organizationRepository.DidNotReceive().Create(Arg.Any<Organization>());
+        await _actorRepository.DidNotReceive().Create(Arg.Any<Actor>());
+        await _organizationMemberRepository.DidNotReceive().Create(Arg.Any<OrganizationMember>());
     }
 
     [Test]

@@ -1,3 +1,6 @@
+// ABOUTME: Unit tests for EventDay creation, parent scoping, and image-reference security.
+// ABOUTME: Verifies valid creation and fail-closed behavior before mapping or persistence.
+
 using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
@@ -15,6 +18,7 @@ public class CreateEventDayCommandHandlerTests
 {
     private readonly IEventDayRepository _eventDayRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IMapper _mapper;
     private readonly CreateEventDayCommandHandler _handler;
 
@@ -22,6 +26,7 @@ public class CreateEventDayCommandHandlerTests
     {
         _eventDayRepository = Substitute.For<IEventDayRepository>();
         _eventRepository = Substitute.For<IEventRepository>();
+        _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
         _mapper = Substitute.For<IMapper>();
 
         _eventDayRepository.Create(Arg.Any<EventDay>())
@@ -30,7 +35,7 @@ public class CreateEventDayCommandHandlerTests
         _handler = new CreateEventDayCommandHandler(
             _eventDayRepository,
             _eventRepository,
-            Substitute.For<IStorageObjectRepository>(),
+            _storageObjectRepository,
             _mapper
         );
     }
@@ -138,6 +143,50 @@ public class CreateEventDayCommandHandlerTests
 
         // Assert
         await Assert.That(result.Success).IsFalse();
+        await _eventDayRepository.DidNotReceive().Create(Arg.Any<EventDay>());
+    }
+
+    [Test]
+    public async Task Handle_WhenBannerImageIsCrossTenant_RejectsBeforeMappingOrCreation()
+    {
+        var eventId = Guid.NewGuid();
+        var imageId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var parentEvent = DataBuilder.Event.Generate();
+        parentEvent.Id = eventId;
+        parentEvent.TenantId = tenantId;
+        _eventRepository.Exists(eventId).Returns(true);
+        _eventRepository.GetById(eventId).Returns(parentEvent);
+        _storageObjectRepository.GetById(imageId).Returns(new StorageObject
+        {
+            Id = imageId,
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            FileType = null!,
+            Uri = "storage://day.png",
+            Provider = "local",
+            FullName = "day.png",
+            SafeDisplayName = "day.png",
+            Extension = "png",
+            ContentType = "image/png",
+            Purpose = StorageObjectPurposes.EventImage,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            LifecycleState = StorageObjectLifecycleStates.Active
+        });
+        var command = new CreateEventDayCommand
+        {
+            EventDayDto = new CreateEventDayDto
+            {
+                EventId = eventId,
+                LocalDate = new DateOnly(2026, 7, 15),
+                BannerImageId = imageId
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        _mapper.DidNotReceiveWithAnyArgs().Map<EventDay>(default!);
         await _eventDayRepository.DidNotReceive().Create(Arg.Any<EventDay>());
     }
 }

@@ -21,6 +21,7 @@ public class UpdateEventDayCommandHandlerTests
 {
     private readonly IEventDayRepository _eventDayRepository = Substitute.For<IEventDayRepository>();
     private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
+    private readonly IStorageObjectRepository _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
     private readonly UpdateEventDayCommandHandler _handler;
 
@@ -29,7 +30,7 @@ public class UpdateEventDayCommandHandlerTests
         _handler = new UpdateEventDayCommandHandler(
             _eventDayRepository,
             _eventRepository,
-            Substitute.For<IStorageObjectRepository>(),
+            _storageObjectRepository,
             _cache);
     }
 
@@ -105,6 +106,57 @@ public class UpdateEventDayCommandHandlerTests
         await _eventDayRepository.Received(1).Update(eventDay);
         await _cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenBannerImageIsCrossTenant_RejectsBeforeMutationOrSave()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var eventDayId = Guid.NewGuid();
+        var imageId = Guid.NewGuid();
+        var stamp = Guid.NewGuid();
+        var eventDay = CreateEventDay(eventDayId, eventId, tenantId, new DateOnly(2026, 7, 16));
+        eventDay.BannerImageId = Guid.NewGuid();
+        Guid? originalBannerImageId = eventDay.BannerImageId;
+        eventDay.ConcurrencyStamp = stamp;
+        _eventDayRepository.GetById(eventDayId).Returns(eventDay);
+        _eventRepository.GetById(eventId).Returns(CreateEvent(eventId, tenantId));
+        _storageObjectRepository.GetById(imageId).Returns(new StorageObject
+        {
+            Id = imageId,
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            FileType = null!,
+            Uri = "storage://day.png",
+            Provider = "local",
+            FullName = "day.png",
+            SafeDisplayName = "day.png",
+            Extension = "png",
+            ContentType = "image/png",
+            Purpose = StorageObjectPurposes.EventImage,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            LifecycleState = StorageObjectLifecycleStates.Active
+        });
+        var command = new UpdateEventDayCommand
+        {
+            EventDayId = eventDayId,
+            ExpectedConcurrencyStamp = stamp,
+            EventDayDto = new UpdateEventDayDto
+            {
+                BannerImage = new UpdateEventDayBannerImageDto
+                {
+                    Value = OptionalUpdate<Guid?>.Set(imageId)
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(eventDay.BannerImageId).IsEqualTo(originalBannerImageId);
+        await _eventDayRepository.DidNotReceive().Update(Arg.Any<EventDay>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

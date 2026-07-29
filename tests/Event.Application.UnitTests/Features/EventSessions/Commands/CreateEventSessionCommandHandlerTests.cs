@@ -32,6 +32,7 @@ public class CreateEventSessionCommandHandlerTests
     private readonly IEventSessionTemplateInstantiationService _instantiationService;
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IEventDayRepository _eventDayRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly IMapper _mapper;
@@ -51,6 +52,7 @@ public class CreateEventSessionCommandHandlerTests
         _instantiationService = Substitute.For<IEventSessionTemplateInstantiationService>();
         _scheduleProjectionCalculator = new EventScheduleProjectionCalculator();
         _eventDayRepository = Substitute.For<IEventDayRepository>();
+        _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
         _eventLocationAttachmentService = EventLocationAttachmentServiceTestFixture.ForExistingEvent(
             _eventRepository,
@@ -76,7 +78,7 @@ public class CreateEventSessionCommandHandlerTests
             _instantiationService,
             _scheduleProjectionCalculator,
             _eventDayRepository,
-            Substitute.For<IStorageObjectRepository>(),
+            _storageObjectRepository,
             _unitOfWork,
             _eventLocationAttachmentService,
             _mapper
@@ -152,6 +154,55 @@ public class CreateEventSessionCommandHandlerTests
         // Assert
         await Assert.That(result.Success).IsFalse();
         await _eventSessionRepository.DidNotReceive().Create(Arg.Any<EventSession>());
+    }
+
+    [Test]
+    public async Task Handle_WhenFeaturedImageIsCrossTenant_RejectsBeforeMappingOrCreation()
+    {
+        var eventId = Guid.NewGuid();
+        var imageId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var parentEvent = DataBuilder.Event.Generate();
+        parentEvent.Id = eventId;
+        parentEvent.TenantId = tenantId;
+        _eventRepository.Exists(eventId).Returns(true);
+        _eventRepository.GetById(eventId).Returns(parentEvent);
+        _storageObjectRepository.GetById(imageId).Returns(new StorageObject
+        {
+            Id = imageId,
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            FileType = null!,
+            Uri = "storage://session.png",
+            Provider = "local",
+            FullName = "session.png",
+            SafeDisplayName = "session.png",
+            Extension = "png",
+            ContentType = "image/png",
+            Purpose = StorageObjectPurposes.EventImage,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            LifecycleState = StorageObjectLifecycleStates.Active
+        });
+        var command = new CreateEventSessionCommand
+        {
+            EventSessionDto = new CreateEventSessionDto
+            {
+                EventId = eventId,
+                StartTime = DateTimeOffset.UtcNow.AddDays(1),
+                EndTime = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+                Title = "Unsafe image",
+                FeaturedImageId = imageId
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        _mapper.DidNotReceiveWithAnyArgs().Map<EventSession>(default!);
+        await _eventSessionRepository.DidNotReceive()
+            .CreateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
+        await _unitOfWork.DidNotReceiveWithAnyArgs()
+            .ExecuteSerializableAsync(Arg.Any<Func<CancellationToken, Task<EventSession>>>(), default);
     }
 
     [Test]

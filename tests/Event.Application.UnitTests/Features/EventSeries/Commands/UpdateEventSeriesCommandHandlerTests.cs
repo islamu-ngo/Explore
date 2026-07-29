@@ -185,6 +185,57 @@ public class UpdateEventSeriesCommandHandlerTests
         await _eventSeriesRepository.Received(1).Update(series);
     }
 
+    [Test]
+    public async Task Handle_WhenFeaturedImageIsCrossTenant_RejectsBeforeMutationOrSave()
+    {
+        var seriesId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var imageId = Guid.NewGuid();
+        var stamp = Guid.NewGuid();
+        var series = CreateEventSeries(seriesId, tenantId);
+        series.FeaturedImageId = Guid.NewGuid();
+        Guid? originalFeaturedImageId = series.FeaturedImageId;
+        series.ConcurrencyStamp = stamp;
+        _eventSeriesRepository.GetEventSeriesWithEvents(seriesId).Returns(series);
+        _storageObjectRepository.GetById(imageId).Returns(new StorageObject
+        {
+            Id = imageId,
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            FileType = null!,
+            Uri = "storage://series.png",
+            Provider = "local",
+            FullName = "series.png",
+            SafeDisplayName = "series.png",
+            Extension = "png",
+            ContentType = "image/png",
+            Purpose = StorageObjectPurposes.EventImage,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            LifecycleState = StorageObjectLifecycleStates.Active
+        });
+        var command = new UpdateEventSeriesCommand
+        {
+            EventSeriesId = seriesId,
+            ActorId = series.ActorId,
+            TenantId = tenantId,
+            ExpectedConcurrencyStamp = stamp,
+            EventSeriesDto = new UpdateEventSeriesDto
+            {
+                FeaturedImage = new UpdateEventSeriesFeaturedImageDto
+                {
+                    Value = OptionalUpdate<Guid?>.Set(imageId)
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(series.FeaturedImageId).IsEqualTo(originalFeaturedImageId);
+        await _eventSeriesRepository.DidNotReceive().Update(Arg.Any<DomainEventSeries>());
+        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     private static DomainEventSeries CreateEventSeries(Guid id, Guid tenantId)
     {
         var tenant = new Tenant
