@@ -3,7 +3,11 @@
 
 using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Services.Http;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
+using System.Net;
+using System.Net.Http.Json;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -20,14 +24,16 @@ namespace Explore.Blazor.Client.Tests.Services;
 public class OrganizationServiceTests
 {
     private readonly IEventApiClient _apiClient;
+    private readonly IBffClient _bffClient;
     private readonly Microsoft.Extensions.Logging.ILogger<OrganizationService> _logger;
     private readonly OrganizationService _service;
 
     public OrganizationServiceTests()
     {
         _apiClient = Substitute.For<IEventApiClient>();
+        _bffClient = Substitute.For<IBffClient>();
         _logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<OrganizationService>>();
-        _service = new OrganizationService(_apiClient, _logger);
+        _service = new OrganizationService(_apiClient, _bffClient, _logger);
     }
 
     // ========== GetMyOrganizationsAsync ==========
@@ -431,6 +437,89 @@ public class OrganizationServiceTests
     }
 
     #endregion
+
+    [Test]
+    public async Task UploadTenantEvidenceAsync_UsesBoundPdfSessionBeforeSubmittingStorageObject()
+    {
+        var organizationId = Guid.NewGuid();
+        var storageObjectId = Guid.NewGuid();
+        var file = Substitute.For<IBrowserFile>();
+        file.Name.Returns("legitimacy.pdf");
+        file.ContentType.Returns("application/pdf");
+        file.Size.Returns(4);
+        file.OpenReadStream(4, Arg.Any<CancellationToken>())
+            .Returns(new MemoryStream([1, 2, 3, 4]));
+
+        _bffClient.PostAsync(
+                $"/bff/organizations/{organizationId:D}/legitimacy-evidence/upload-session",
+                Arg.Any<BffStorageUploadSessionRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new BffStorageUploadSessionResponse
+                {
+                    UploadSessionId = "session-1"
+                })
+            });
+        _bffClient.PostMultipartAsync(
+                "/bff/storage/upload-proxy",
+                Arg.Any<MultipartFormDataContent>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new BffStorageUploadProxyResponse
+                {
+                    StorageObjectId = storageObjectId
+                })
+            });
+        _apiClient.SubmitOrganizationTenantEvidenceAsync(
+                organizationId,
+                Arg.Is<SubmitOrganizationTenantEvidenceDto>(dto =>
+                    dto.DocumentStorageObjectId == storageObjectId),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+
+        var result = await _service.UploadTenantEvidenceAsync(organizationId, file);
+
+        await Assert.That(result).IsTrue();
+        await _bffClient.Received(1).PostMultipartAsync(
+            "/bff/storage/upload-proxy",
+            Arg.Any<MultipartFormDataContent>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ReviewTenantEvidenceAsync_SendsTypedDecisionAndConcurrencyStamp()
+    {
+        var organizationId = Guid.NewGuid();
+        var evidenceId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        var evidence = new OrganizationTenantEvidenceDto
+        {
+            Id = evidenceId,
+            ConcurrencyStamp = concurrencyStamp,
+            DocumentDisplayName = "legitimacy.pdf"
+        };
+        _apiClient.ReviewOrganizationTenantEvidenceAsync(
+                organizationId,
+                evidenceId,
+                Arg.Is<ReviewOrganizationTenantEvidenceDto>(dto =>
+                    dto.Decision == OrganizationTenantEvidenceReviewDecisionDto.Approve
+                    && dto.ExpectedConcurrencyStamp == concurrencyStamp),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+
+        var result = await _service.ReviewTenantEvidenceAsync(
+            organizationId,
+            evidence,
+            approve: true);
+
+        await Assert.That(result).IsTrue();
+    }
 
     // ========== HAL Response Helpers ==========
 

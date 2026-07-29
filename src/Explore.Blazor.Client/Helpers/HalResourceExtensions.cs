@@ -261,6 +261,15 @@ public static class HalResourceExtensions
         return JsonSerializer.Deserialize<OrganizationDto>(json, JsonOptions) ?? new OrganizationDto();
     }
 
+    public static ICollection<OrganizationTenantEvidenceDto> GetItems(
+        this HalCollectionResourceOfOrganizationTenantEvidenceDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return [];
+
+        return DeserializeItems<OrganizationTenantEvidenceDto>(collection._embedded.Items);
+    }
+
     // ========== Actor Extensions ==========
 
     /// <summary>
@@ -870,6 +879,12 @@ public static class HalResourceExtensions
 
     public static bool HasHalLink(this OrganizationListDto dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    public static bool HasHalLink(this OrganizationTenantEvidenceDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    public static string? GetHalHref(this OrganizationTenantEvidenceDto dto, string linkRel)
+        => GetSafeHalHref(dto.AdditionalProperties, linkRel);
 
     public static bool HasManagementLinks(this OrganizationListDto dto)
         => dto.HasHalLink("edit") || dto.HasHalLink("delete");

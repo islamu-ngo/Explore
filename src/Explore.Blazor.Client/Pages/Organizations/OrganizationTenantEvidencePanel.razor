@@ -1,0 +1,288 @@
+@* ABOUTME: HAL-driven organization legitimacy evidence upload and tenant review panel. *@
+@* ABOUTME: Keeps private documents behind protected links and server-bound PDF upload sessions. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+@inject IOrganizationService OrganizationService
+@inject ITranslationService Translation
+@inject IAccessibilityAnnouncerService Announcer
+
+<section class="organization-evidence" aria-labelledby="organization-evidence-title" aria-busy="@_busy">
+    <div class="organization-evidence__header">
+        <div>
+            <MudText Id="organization-evidence-title" Typo="Typo.h5" HtmlTag="h2">
+                @T("ui.organization.evidence.title", "Legitimacy evidence")
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @T("ui.organization.evidence.description", "Submit a private PDF for tenant review. Documents are visible only to authorized reviewers.")
+            </MudText>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" role="alert">
+            @_error
+        </MudAlert>
+    }
+
+    @if (CanSubmit)
+    {
+        <div class="organization-evidence__upload">
+            <MudFileUpload T="IBrowserFile"
+                           @ref="_fileUpload"
+                           FilesChanged="SelectFile"
+                           Accept=".pdf,application/pdf"
+                           MaximumFileCount="1"
+                           Disabled="@_busy">
+                <CustomContent Context="fileUpload">
+                    <AppButton Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                               Disabled="@_busy"
+                               OnClick="@fileUpload.OpenFilePickerAsync">
+                        @T("ui.organization.evidence.select_pdf", "Select PDF")
+                    </AppButton>
+                </CustomContent>
+            </MudFileUpload>
+
+            @if (_selectedFile is not null)
+            {
+                <MudText Typo="Typo.body2">
+                    @T("ui.organization.evidence.selected_file", "Selected"):
+                    <strong>@_selectedFile.Name</strong>
+                    (@FormatBytes(_selectedFile.Size))
+                </MudText>
+                <AppButton StartIcon="@Icons.Material.Filled.CloudUpload"
+                           Disabled="@_busy"
+                           OnClick="UploadAsync">
+                    @(_busy
+                        ? T("ui.organization.evidence.uploading", "Uploading...")
+                        : T("ui.organization.evidence.upload", "Upload for review"))
+                </AppButton>
+            }
+
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @T("ui.organization.evidence.helper", "PDF only. The tenant's upload limits and storage quota apply.")
+            </MudText>
+        </div>
+    }
+
+    @if (_loading)
+    {
+        <div class="organization-evidence__state" role="status">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            <span>@T("ui.organization.evidence.loading", "Loading evidence...")</span>
+        </div>
+    }
+    else if (_items.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            @T("ui.organization.evidence.empty", "No evidence has been submitted.")
+        </MudText>
+    }
+    else
+    {
+        <div class="organization-evidence__list">
+            @foreach (var evidence in _items)
+            {
+                <article class="organization-evidence__item">
+                    <div class="organization-evidence__document">
+                        <MudIcon Icon="@Icons.Material.Filled.Description" Color="Color.Primary" aria-hidden="true" />
+                        <div>
+                            <MudText Typo="Typo.subtitle1">@evidence.DocumentDisplayName</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @FormatBytes(evidence.DocumentSizeBytes ?? 0)
+                                @if (evidence.CreatedAt is { } createdAt)
+                                {
+                                    <span> · @createdAt.ToString("d")</span>
+                                }
+                            </MudText>
+                        </div>
+                    </div>
+
+                    <div class="organization-evidence__actions">
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Variant="Variant.Outlined"
+                                 Color="@StatusColor(evidence.ReviewStatusId)">
+                            @StatusLabel(evidence)
+                        </MudChip>
+
+                        @if (evidence.GetHalHref("document") is { } documentHref)
+                        {
+                            <AppButton Variant="Variant.Text"
+                                       Href="@documentHref"
+                                       StartIcon="@Icons.Material.Filled.Download">
+                                @T("ui.organization.evidence.download", "Open document")
+                            </AppButton>
+                        }
+
+                        @if (evidence.HasHalLink("review-evidence"))
+                        {
+                            <AppButton Variant="Variant.Outlined"
+                                       Color="Color.Success"
+                                       Disabled="@_busy"
+                                       OnClick="@(() => ReviewAsync(evidence, true))">
+                                @T("ui.organization.evidence.approve", "Approve")
+                            </AppButton>
+                            <AppButton Variant="Variant.Outlined"
+                                       Color="Color.Error"
+                                       Disabled="@_busy"
+                                       OnClick="@(() => ReviewAsync(evidence, false))">
+                                @T("ui.organization.evidence.reject", "Reject")
+                            </AppButton>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter] public Guid OrganizationId { get; set; }
+    [Parameter] public bool CanSubmit { get; set; }
+
+    private MudFileUpload<IBrowserFile>? _fileUpload;
+    private readonly List<OrganizationTenantEvidenceDto> _items = [];
+    private IBrowserFile? _selectedFile;
+    private Guid _loadedOrganizationId;
+    private bool _loading = true;
+    private bool _busy;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (OrganizationId == Guid.Empty || OrganizationId == _loadedOrganizationId)
+        {
+            return;
+        }
+
+        _loadedOrganizationId = OrganizationId;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _items.Clear();
+            _items.AddRange(await OrganizationService.GetTenantEvidenceAsync(OrganizationId));
+        }
+        catch (InvalidOperationException)
+        {
+            _error = T("ui.organization.evidence.load_error", "Evidence could not be loaded.");
+            await Announcer.AnnounceAssertiveAsync(_error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void SelectFile(IBrowserFile? file)
+    {
+        _error = null;
+        _selectedFile = file is not null &&
+                        file.Size > 0 &&
+                        file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(file.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase)
+            ? file
+            : null;
+        if (file is not null && _selectedFile is null)
+        {
+            _error = T("ui.organization.evidence.upload_error", "Choose a non-empty PDF document.");
+        }
+    }
+
+    private async Task UploadAsync()
+    {
+        if (!CanSubmit || _selectedFile is null || _busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        var uploaded = await OrganizationService.UploadTenantEvidenceAsync(OrganizationId, _selectedFile);
+        if (uploaded)
+        {
+            _selectedFile = null;
+            if (_fileUpload is not null)
+            {
+                await _fileUpload.ClearAsync();
+            }
+
+            await LoadAsync();
+            await Announcer.AnnouncePoliteAsync(
+                T("ui.organization.evidence.upload_success", "Evidence submitted for review."));
+        }
+        else
+        {
+            _error = T("ui.organization.evidence.upload_error", "Evidence could not be submitted.");
+            await Announcer.AnnounceAssertiveAsync(_error);
+        }
+
+        _busy = false;
+    }
+
+    private async Task ReviewAsync(OrganizationTenantEvidenceDto evidence, bool approve)
+    {
+        if (_busy || !evidence.HasHalLink("review-evidence"))
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        var reviewed = await OrganizationService.ReviewTenantEvidenceAsync(
+            OrganizationId,
+            evidence,
+            approve);
+        if (reviewed)
+        {
+            await LoadAsync();
+            await Announcer.AnnouncePoliteAsync(
+                T("ui.organization.evidence.review_success", "Evidence review saved."));
+        }
+        else
+        {
+            _error = T("ui.organization.evidence.review_error", "Evidence review could not be saved.");
+            await Announcer.AnnounceAssertiveAsync(_error);
+        }
+
+        _busy = false;
+    }
+
+    private string StatusLabel(OrganizationTenantEvidenceDto evidence) =>
+        evidence.ReviewStatusId switch
+        {
+            2 => T("ui.organization.evidence.status_approved", "Approved"),
+            3 => T("ui.organization.evidence.status_rejected", "Rejected"),
+            _ => T("ui.organization.evidence.status_pending", "Pending")
+        };
+
+    private static Color StatusColor(int? statusId) =>
+        statusId switch
+        {
+            2 => Color.Success,
+            3 => Color.Error,
+            _ => Color.Warning
+        };
+
+    private static string FormatBytes(long bytes) =>
+        bytes >= 1024 * 1024
+            ? $"{bytes / (1024d * 1024d):0.#} MB"
+            : bytes >= 1024
+                ? $"{bytes / 1024d:0.#} KB"
+                : $"{bytes} B";
+
+    private string T(string key, string fallback) => Translation.T(key, fallback);
+}

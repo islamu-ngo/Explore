@@ -3,8 +3,11 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Constants;
+using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
+using Explore.Blazor.Client.Services.Http;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -54,6 +57,21 @@ public interface IOrganizationService
     /// Updates an existing organization.
     /// </summary>
     Task<BaseCommandResponseOfGuid?> UpdateOrganizationAsync(Guid id, Guid expectedConcurrencyStamp, UpdateOrganizationDto organization);
+
+    Task<ICollection<OrganizationTenantEvidenceDto>> GetTenantEvidenceAsync(
+        Guid organizationId,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> UploadTenantEvidenceAsync(
+        Guid organizationId,
+        IBrowserFile file,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ReviewTenantEvidenceAsync(
+        Guid organizationId,
+        OrganizationTenantEvidenceDto evidence,
+        bool approve,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -63,11 +81,16 @@ public interface IOrganizationService
 public class OrganizationService : IOrganizationService
 {
     private readonly IEventApiClient _apiClient;
+    private readonly IBffClient _bffClient;
     private readonly ILogger<OrganizationService> _logger;
 
-    public OrganizationService(IEventApiClient apiClient, ILogger<OrganizationService> logger)
+    public OrganizationService(
+        IEventApiClient apiClient,
+        IBffClient bffClient,
+        ILogger<OrganizationService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _bffClient = bffClient ?? throw new ArgumentNullException(nameof(bffClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -221,6 +244,164 @@ public class OrganizationService : IOrganizationService
         {
             _logger.LogError(ex, "[OrganizationService.UpdateOrganizationAsync] API error updating organization. OrganizationId: {OrganizationId}, StatusCode: {StatusCode}", id, ex.StatusCode);
             throw;
+        }
+    }
+
+    public async Task<ICollection<OrganizationTenantEvidenceDto>> GetTenantEvidenceAsync(
+        Guid organizationId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await _apiClient.GetOrganizationTenantEvidenceCollectionAsync(
+                organizationId,
+                cancellationToken: cancellationToken);
+            return result.GetItems();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogWarning(
+                "Organization evidence could not be loaded. StatusCode={StatusCode}",
+                ex.StatusCode);
+            throw new InvalidOperationException("Organization evidence could not be loaded.");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(
+                "Organization evidence could not be loaded. FailureType={FailureType}",
+                ex.GetType().Name);
+            throw new InvalidOperationException("Organization evidence could not be loaded.");
+        }
+    }
+
+    public async Task<bool> UploadTenantEvidenceAsync(
+        Guid organizationId,
+        IBrowserFile file,
+        CancellationToken cancellationToken = default)
+    {
+        if (organizationId == Guid.Empty ||
+            file.Size <= 0 ||
+            !file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(file.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var sessionResponse = await _bffClient.PostAsync(
+                $"/bff/organizations/{organizationId:D}/legitimacy-evidence/upload-session",
+                new BffStorageUploadSessionRequest
+                {
+                    FileName = file.Name,
+                    ContentType = "application/pdf",
+                    ExpectedSizeBytes = file.Size
+                },
+                cancellationToken);
+            if (!sessionResponse.IsSuccessStatusCode)
+            {
+                return false;
+            }
+
+            var session = await sessionResponse.ReadJsonOrDefaultAsync<BffStorageUploadSessionResponse>(
+                cancellationToken);
+            if (string.IsNullOrWhiteSpace(session?.UploadSessionId))
+            {
+                return false;
+            }
+
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(session.UploadSessionId), "uploadSessionId");
+            content.Add(new StringContent("application/pdf"), "contentType");
+            using var stream = file.OpenReadStream(file.Size, cancellationToken);
+            using var document = new StreamContent(stream);
+            document.Headers.ContentType = new("application/pdf");
+            content.Add(document, "file", file.Name);
+
+            using var uploadResponse = await _bffClient.PostMultipartAsync(
+                "/bff/storage/upload-proxy",
+                content,
+                cancellationToken);
+            if (!uploadResponse.IsSuccessStatusCode)
+            {
+                return false;
+            }
+
+            var upload = await uploadResponse.ReadJsonOrDefaultAsync<BffStorageUploadProxyResponse>(
+                cancellationToken);
+            if (upload?.StorageObjectId is not { } storageObjectId || storageObjectId == Guid.Empty)
+            {
+                return false;
+            }
+
+            var submitted = await _apiClient.SubmitOrganizationTenantEvidenceAsync(
+                organizationId,
+                new SubmitOrganizationTenantEvidenceDto
+                {
+                    DocumentStorageObjectId = storageObjectId
+                },
+                cancellationToken: cancellationToken);
+            return submitted?.Success == true;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogWarning(
+                "Organization evidence could not be submitted. StatusCode={StatusCode}",
+                ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(
+                "Organization evidence could not be submitted. FailureType={FailureType}",
+                ex.GetType().Name);
+            return false;
+        }
+    }
+
+    public async Task<bool> ReviewTenantEvidenceAsync(
+        Guid organizationId,
+        OrganizationTenantEvidenceDto evidence,
+        bool approve,
+        CancellationToken cancellationToken = default)
+    {
+        if (organizationId == Guid.Empty ||
+            evidence.Id is not { } evidenceId ||
+            evidenceId == Guid.Empty ||
+            evidence.ConcurrencyStamp is not { } concurrencyStamp ||
+            concurrencyStamp == Guid.Empty)
+        {
+            return false;
+        }
+
+        try
+        {
+            var response = await _apiClient.ReviewOrganizationTenantEvidenceAsync(
+                organizationId,
+                evidenceId,
+                new ReviewOrganizationTenantEvidenceDto
+                {
+                    Decision = approve
+                        ? OrganizationTenantEvidenceReviewDecisionDto.Approve
+                        : OrganizationTenantEvidenceReviewDecisionDto.Reject,
+                    ExpectedConcurrencyStamp = concurrencyStamp
+                },
+                cancellationToken: cancellationToken);
+            return response?.Success == true;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogWarning(
+                "Organization evidence could not be reviewed. StatusCode={StatusCode}",
+                ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(
+                "Organization evidence could not be reviewed. FailureType={FailureType}",
+                ex.GetType().Name);
+            return false;
         }
     }
 }

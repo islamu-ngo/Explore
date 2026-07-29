@@ -294,6 +294,13 @@
             </MudCardContent>
         </MudCard>
 
+        @if (organization.HasHalLink("legitimacy-evidence"))
+        {
+            <OrganizationTenantEvidencePanel
+                OrganizationId="@Id"
+                CanSubmit="@(organization.HasHalLink("prepare-evidence-upload") && organization.HasHalLink("submit-evidence"))" />
+        }
+
         @* ── Events by this organization ── *@
         @if (_orgEvents.Any())
         {

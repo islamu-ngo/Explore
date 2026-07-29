@@ -1,0 +1,63 @@
+/* ABOUTME: Scoped layout for the organization legitimacy evidence panel. */
+/* ABOUTME: Keeps private document rows readable, responsive, and direction-safe. */
+
+.organization-evidence {
+    display: grid;
+    gap: var(--space-5, 1.25rem);
+    margin-block-start: var(--space-8, 2rem);
+    padding: var(--space-6, 1.5rem);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--radius-lg, 0.75rem);
+}
+
+.organization-evidence__header,
+.organization-evidence__upload,
+.organization-evidence__state,
+.organization-evidence__list {
+    display: grid;
+    gap: var(--space-3, 0.75rem);
+}
+
+.organization-evidence__upload {
+    align-items: start;
+    padding: var(--space-4, 1rem);
+    background: var(--mud-palette-background-gray);
+    border-radius: var(--radius-md, 0.5rem);
+}
+
+.organization-evidence__state,
+.organization-evidence__document,
+.organization-evidence__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3, 0.75rem);
+}
+
+.organization-evidence__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4, 1rem);
+    padding-block: var(--space-4, 1rem);
+    border-block-start: 1px solid var(--mud-palette-lines-default);
+}
+
+.organization-evidence__actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+@media (max-width: 600px) {
+    .organization-evidence {
+        padding: var(--space-4, 1rem);
+    }
+
+    .organization-evidence__item {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .organization-evidence__actions {
+        justify-content: flex-start;
+    }
+}
