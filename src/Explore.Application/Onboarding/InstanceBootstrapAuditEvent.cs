@@ -11,7 +11,8 @@ public enum InstanceBootstrapAuditEventType
     KeycloakBootstrapStarted = 41010,
     KeycloakBootstrapSucceeded = 41011,
     KeycloakBootstrapFailed = 41012,
-    SetupModeDisabled = 41020
+    SetupModeDisabled = 41020,
+    SetupProfileSaved = 41021
 }
 
 public sealed record InstanceBootstrapAuditEvent(

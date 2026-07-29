@@ -1,6 +1,8 @@
 // ABOUTME: Unit tests for first-run instance onboarding completion defaults.
 // ABOUTME: Verifies single-tenant convention settings are persisted without creating publisher scopes.
 
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
@@ -15,6 +17,7 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using System.Reflection;
 
 namespace Event.Application.UnitTests.Features.InstanceOnboarding.Commands;
 
@@ -40,6 +43,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
     private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService = Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly CompleteInstanceOnboardingCommandHandler _handler;
+    private readonly List<SystemSetting> _capturedUpserts = [];
 
     public CompleteInstanceOnboardingCommandHandlerTests()
     {
@@ -91,6 +95,13 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             Scope = RoleScopeEnum.Tenant
         });
         _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
+        _systemSettingRepository
+            .UpsertAsync(Arg.Any<SystemSetting>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                _capturedUpserts.Add(callInfo.ArgAt<SystemSetting>(0));
+                return Task.FromResult<string?>(null);
+            });
         _platformUserRoleRepository.Create(Arg.Any<PlatformUserRole>()).Returns(callInfo => callInfo.Arg<PlatformUserRole>()!);
         _tenantUserRoleGrantRepository.Create(Arg.Any<TenantUserRoleGrant>()).Returns(callInfo => callInfo.Arg<TenantUserRoleGrant>()!);
         _tenantUserRepository.Create(Arg.Any<TenantUser>()).Returns(callInfo =>
@@ -124,6 +135,8 @@ public class CompleteInstanceOnboardingCommandHandlerTests
     [Test]
     public async Task Handle_SingleTenant_PersistsSiteProfileAndConventionDefaults()
     {
+        _capturedUpserts.Clear();
+
         var command = new CompleteInstanceOnboardingCommand
         {
             UserId = TestUserId,
@@ -145,43 +158,43 @@ public class CompleteInstanceOnboardingCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await _bootstrapRepository.Received(1).GetCurrent(cancellationSource.Token);
-        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
-            setting != null
-            && setting.SettingKey == GovernanceSettingKeys.Branding.DisplayName
-            && setting.Value == JsonSerializer.Serialize("Community Events")), Arg.Any<CancellationToken>());
-        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
-            setting != null
-            && setting.SettingKey == GovernanceSettingKeys.Email.FromAddress
-            && setting.Value == JsonSerializer.Serialize("support@example.org")), Arg.Any<CancellationToken>());
-        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
-            setting != null
-            && setting.SettingKey == GovernanceSettingKeys.Domains.InstanceBaseDomain
-            && setting.Value == JsonSerializer.Serialize("events.example.org")), Arg.Any<CancellationToken>());
-        _ = _systemSettingRepository.DidNotReceive().UpsertAsync(
-            Arg.Is<SystemSetting>(setting => setting.SettingKey == GovernanceSettingKeys.Domains.AdminHost),
-            Arg.Any<CancellationToken>());
-        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
-            setting != null
-            && setting.SettingKey == GovernanceSettingKeys.PublicExperience.Mode
-            && setting.Value == JsonSerializer.Serialize("DiscoveryCentric")), Arg.Any<CancellationToken>());
-        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
-            setting != null
-            && setting.SettingKey == GovernanceSettingKeys.PublicExperience.EventCatalogLabel
-            && setting.Value == JsonSerializer.Serialize("Events")), Arg.Any<CancellationToken>());
-        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
-            setting != null
-            && setting.SettingKey == GovernanceSettingKeys.Routing.DefaultPublicHomePage
-            && setting.Value == JsonSerializer.Serialize("EventList")), Arg.Any<CancellationToken>());
-        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
-            setting != null
-            && setting.SettingKey == GovernanceSettingKeys.PublicExperience.HomeBlocks
-            && setting.ValueType == SettingValueType.Json
-            && ContainsDefaultHomeBlock(setting.Value, "Community Events")), Arg.Any<CancellationToken>());
-        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
-            setting != null
-            && setting.SettingKey == GovernanceSettingKeys.PublicExperience.Ctas
-            && setting.ValueType == SettingValueType.Json
-            && ContainsDefaultCta(setting.Value)), Arg.Any<CancellationToken>());
+        await Assert.That(_capturedUpserts.Select(setting => setting.SettingKey)).IsEquivalentTo([
+            GovernanceSettingKeys.Deployment.Mode,
+            GovernanceSettingKeys.Branding.DisplayName,
+            GovernanceSettingKeys.Email.FromAddress,
+            GovernanceSettingKeys.Domains.InstanceBaseDomain,
+            GovernanceSettingKeys.Localization.DefaultLanguage,
+            GovernanceSettingKeys.PublicExperience.Mode,
+            GovernanceSettingKeys.PublicExperience.EventCatalogLabel,
+            GovernanceSettingKeys.Routing.DefaultPublicHomePage,
+            GovernanceSettingKeys.PublicExperience.HomeBlocks,
+            GovernanceSettingKeys.PublicExperience.Ctas]);
+        await Assert.That(_capturedUpserts.Count).IsEqualTo(10);
+        await Assert.That(_capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.Deployment.Mode).Value)
+            .IsEqualTo(JsonSerializer.Serialize(DeploymentMode.SingleTenant.ToString()));
+        await Assert.That(_capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.Branding.DisplayName).Value)
+            .IsEqualTo(JsonSerializer.Serialize("Community Events"));
+        await Assert.That(_capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.Email.FromAddress).Value)
+            .IsEqualTo(JsonSerializer.Serialize("support@example.org"));
+        await Assert.That(_capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.Domains.InstanceBaseDomain).Value)
+            .IsEqualTo(JsonSerializer.Serialize("events.example.org"));
+        await Assert.That(_capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.Localization.DefaultLanguage).Value)
+            .IsEqualTo(JsonSerializer.Serialize("en"));
+        await Assert.That(_capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.PublicExperience.Mode).Value)
+            .IsEqualTo(JsonSerializer.Serialize("DiscoveryCentric"));
+        await Assert.That(_capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.PublicExperience.EventCatalogLabel).Value)
+            .IsEqualTo(JsonSerializer.Serialize("Events"));
+        await Assert.That(_capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.Routing.DefaultPublicHomePage).Value)
+            .IsEqualTo(JsonSerializer.Serialize("EventList"));
+        await Assert.That(_capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.PublicExperience.HomeBlocks).ValueType)
+            .IsEqualTo(SettingValueType.Json);
+        await Assert.That(ContainsDefaultHomeBlock(
+            _capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.PublicExperience.HomeBlocks).Value,
+            "Community Events")).IsTrue();
+        await Assert.That(_capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.PublicExperience.Ctas).ValueType)
+            .IsEqualTo(SettingValueType.Json);
+        await Assert.That(ContainsDefaultCta(
+            _capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.PublicExperience.Ctas).Value)).IsTrue();
         await _tenantUserRepository.Received(1).Create(Arg.Is<TenantUser>(tenantUser =>
             tenantUser != null
             && tenantUser.TenantId == PlatformDefaults.DefaultTenantId
@@ -204,7 +217,41 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             && auditEvent.Operation == "instance_onboarding_complete"
             && auditEvent.Outcome == "disabled"
             && auditEvent.ActorUserId == TestUserId
-            && auditEvent.DeploymentMode == DeploymentMode.SingleTenant.ToString()));
+            && auditEvent.DeploymentMode == DeploymentMode.SingleTenant.ToString()
+            && HasNoOnboardingPayloadShape(auditEvent)));
+    }
+
+    [Test]
+    public async Task Handle_SingleTenant_WhenSiteNameBlank_UsesTrimmedInstanceNameForDisplayName()
+    {
+        _capturedUpserts.Clear();
+
+        var command = new CompleteInstanceOnboardingCommand
+        {
+            UserId = TestUserId,
+            Settings = new CompleteInstanceOnboardingRequest
+            {
+                InstanceName = "  Trimmed Community Events  ",
+                SiteProfile = new SelfHostOnboardingProfileDto
+                {
+                    SiteName = string.Empty,
+                    SupportEmail = "support@example.org",
+                    CanonicalUrl = "https://events.example.org/start",
+                    Locale = "en",
+                    TimeZone = "UTC"
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(_capturedUpserts.Single(setting => setting.SettingKey == GovernanceSettingKeys.Branding.DisplayName).Value)
+            .IsEqualTo(JsonSerializer.Serialize("Trimmed Community Events"));
+        await _tenantBrandingProvisioningService.Received(1).EnsureTenantBrandingDocumentAsync(
+            PlatformDefaults.DefaultTenantId,
+            "Trimmed Community Events",
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -317,6 +364,34 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             && setting.Value == JsonSerializer.Serialize("admin.example.org")), Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task Handle_WithBlankSiteProfileName_UsesTrimmedInstanceNameForBrandingFallback()
+    {
+        var command = new CompleteInstanceOnboardingCommand
+        {
+            UserId = TestUserId,
+            Settings = new CompleteInstanceOnboardingRequest
+            {
+                InstanceName = "  Trimmed Instance Name  ",
+                SiteProfile = new SelfHostOnboardingProfileDto
+                {
+                    SiteName = string.Empty,
+                    SupportEmail = "support@example.org",
+                    CanonicalUrl = "https://events.example.org/start",
+                    Locale = "en",
+                    TimeZone = "UTC"
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(setting =>
+            setting.SettingKey == GovernanceSettingKeys.Branding.DisplayName
+            && setting.Value == JsonSerializer.Serialize("Trimmed Instance Name")), Arg.Any<CancellationToken>());
+    }
+
     private static bool ContainsDefaultHomeBlock(string value, string expectedTitle)
     {
         var config = JsonSerializer.Deserialize<PublicExperienceHomeBlocksConfig>(value);
@@ -339,5 +414,35 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             && cta.Url == "/events"
             && cta.Placement == PublicExperienceCtaPlacement.Hero
             && cta.Style == PublicExperienceCtaStyle.Primary;
+    }
+
+    private static bool HasNoOnboardingPayloadShape(InstanceBootstrapAuditEvent auditEvent)
+    {
+        var forbiddenPropertyNames = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Profile",
+            "Payload",
+            "Site",
+            "SiteName",
+            "Email",
+            "Url",
+            "Locale",
+            "TimeZone",
+            "Purpose"
+        };
+
+        var eventPropertyNames = typeof(InstanceBootstrapAuditEvent)
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Select(property => property.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        return forbiddenPropertyNames.All(propertyName => !eventPropertyNames.Contains(propertyName))
+            && string.IsNullOrWhiteSpace(auditEvent.RouteName)
+            && string.IsNullOrWhiteSpace(auditEvent.TraceId)
+            && string.IsNullOrWhiteSpace(auditEvent.FailureCode)
+            && string.IsNullOrWhiteSpace(auditEvent.Provider)
+            && string.IsNullOrWhiteSpace(auditEvent.Mode)
+            && string.IsNullOrWhiteSpace(auditEvent.Realm)
+            && string.IsNullOrWhiteSpace(auditEvent.ClientId);
     }
 }

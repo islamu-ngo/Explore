@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Onboarding.Validators;
+using Explore.Application.Features.InstanceOnboarding.Common;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Models;
 using Explore.Application.Models.PublicExperience;
@@ -96,6 +97,12 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         var configuredDeploymentMode = await _deploymentModeProvider.GetConfiguredOnboardingModeAsync(cancellationToken);
         request.Settings.DeploymentMode = configuredDeploymentMode;
 
+        if (string.IsNullOrWhiteSpace(request.Settings.SiteProfile.SiteName)
+            && !string.IsNullOrWhiteSpace(request.Settings.InstanceName))
+        {
+            request.Settings.SiteProfile.SiteName = request.Settings.InstanceName;
+        }
+
         var validator = new CompleteInstanceOnboardingRequestValidator();
         var validation = await validator.ValidateAsync(request.Settings, cancellationToken);
         if (!validation.IsValid)
@@ -118,7 +125,9 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
         var deploymentMode = configuredDeploymentMode;
         var isSingleTenant = deploymentMode == DeploymentMode.SingleTenant;
-        var siteProfile = NormalizeSiteProfile(request.Settings);
+        var siteProfile = InstanceOnboardingProfileSettingHelpers.Normalize(
+            request.Settings.SiteProfile,
+            request.Settings.InstanceName);
         Guid? defaultTenantId = null;
 
         await _unitOfWork.ExecuteInTransactionAsync(async ct =>
@@ -136,7 +145,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             }
 
             await PersistDeploymentModeSettingAsync(deploymentMode);
-            await PersistSiteProfileSettingsAsync(siteProfile, isSingleTenant);
+            await PersistSiteProfileSettingsAsync(siteProfile, isSingleTenant, ct);
             await PersistAdministrationAccessSettingsAsync(request.Settings, isSingleTenant);
 
             await EnsurePlatformAdministratorRoleAsync(request.UserId);
@@ -334,46 +343,15 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         });
     }
 
-    private async Task PersistSiteProfileSettingsAsync(SelfHostOnboardingProfileDto siteProfile, bool isSingleTenant)
+    private async Task PersistSiteProfileSettingsAsync(
+        SelfHostOnboardingProfileDto siteProfile,
+        bool isSingleTenant,
+        CancellationToken cancellationToken)
     {
-        await PersistSystemSettingAsync(
-            GovernanceSettingKeys.Branding.DisplayName,
-            JsonSerializer.Serialize(siteProfile.SiteName),
-            SettingValueType.String,
-            "Branding",
-            1,
-            "Instance brand display name");
-
-        if (!string.IsNullOrWhiteSpace(siteProfile.SupportEmail))
-        {
-            await PersistSystemSettingAsync(
-                GovernanceSettingKeys.Email.FromAddress,
-                JsonSerializer.Serialize(siteProfile.SupportEmail.Trim()),
-                SettingValueType.String,
-                "Email",
-                6,
-                "Default sender email address for outbound emails");
-        }
-
-        var canonicalHost = NormalizeCanonicalHost(siteProfile.CanonicalUrl);
-        if (!string.IsNullOrWhiteSpace(canonicalHost))
-        {
-            await PersistSystemSettingAsync(
-                GovernanceSettingKeys.Domains.InstanceBaseDomain,
-                JsonSerializer.Serialize(canonicalHost),
-                SettingValueType.String,
-                "Domains",
-                1,
-                "Instance base domain used for tenant subdomain generation");
-        }
-
-        await PersistSystemSettingAsync(
-            GovernanceSettingKeys.Localization.DefaultLanguage,
-            JsonSerializer.Serialize(siteProfile.Locale.Trim().ToLowerInvariant()),
-            SettingValueType.String,
-            "Localization",
-            1,
-            "Default language code (ISO 639-1) for the instance");
+        await InstanceOnboardingProfileSettingHelpers.PersistAsync(
+            _systemSettingRepository,
+            siteProfile,
+            cancellationToken);
 
         if (!isSingleTenant)
         {
@@ -499,39 +477,6 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         });
-    }
-
-    private static SelfHostOnboardingProfileDto NormalizeSiteProfile(CompleteInstanceOnboardingRequest settings)
-    {
-        var siteProfile = settings.SiteProfile;
-        var siteName = string.IsNullOrWhiteSpace(siteProfile.SiteName)
-            ? settings.InstanceName?.Trim() ?? string.Empty
-            : siteProfile.SiteName.Trim();
-
-        return new SelfHostOnboardingProfileDto
-        {
-            SiteName = siteName,
-            SupportEmail = string.IsNullOrWhiteSpace(siteProfile.SupportEmail) ? null : siteProfile.SupportEmail.Trim(),
-            CanonicalUrl = string.IsNullOrWhiteSpace(siteProfile.CanonicalUrl) ? null : siteProfile.CanonicalUrl.Trim(),
-            Locale = string.IsNullOrWhiteSpace(siteProfile.Locale) ? "en" : siteProfile.Locale.Trim(),
-            TimeZone = string.IsNullOrWhiteSpace(siteProfile.TimeZone) ? "UTC" : siteProfile.TimeZone.Trim(),
-            Purpose = string.IsNullOrWhiteSpace(siteProfile.Purpose) ? null : siteProfile.Purpose.Trim()
-        };
-    }
-
-    private static string? NormalizeCanonicalHost(string? canonicalUrl)
-    {
-        if (string.IsNullOrWhiteSpace(canonicalUrl))
-        {
-            return null;
-        }
-
-        if (!Uri.TryCreate(canonicalUrl.Trim(), UriKind.Absolute, out var uri))
-        {
-            return null;
-        }
-
-        return uri.Host.Trim().ToLowerInvariant();
     }
 
     private static string? NormalizeOptionalHost(string? value)
