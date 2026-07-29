@@ -83,8 +83,10 @@ public class GetPresignedDownloadUrlRequestHandler : IRequestHandler<GetPresigne
 
         try
         {
+            var safeDisplayName = ResolveSafeDisplayName(storageObject);
             var presignedUrl = await _objectStorageService.GeneratePresignedDownloadUrl(
                 storageObject.ObjectKey,
+                safeDisplayName,
                 request.ExpirationMinutes);
 
             return new PresignedDownloadUrlResponseDto
@@ -92,7 +94,7 @@ public class GetPresignedDownloadUrlRequestHandler : IRequestHandler<GetPresigne
                 PresignedUrl = presignedUrl,
                 ObjectKey = string.Empty,
                 ExpiresInMinutes = request.ExpirationMinutes,
-                SafeDisplayName = ResolveSafeDisplayName(storageObject),
+                SafeDisplayName = safeDisplayName,
                 ShouldDownloadAsAttachment = !SafeRasterContentPolicy.IsSafeRasterMetadata(
                     storageObject.ContentType,
                     storageObject.Extension)

@@ -1,7 +1,6 @@
 // ABOUTME: Query handler returning all actors belonging to a specific tenant.
 // ABOUTME: Used for tenant-scoped actor resolution.
 using AutoMapper;
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.Features.Actors.Requests.Queries;
@@ -16,18 +15,15 @@ public class GetActorsByTenantRequestHandler : IRequestHandler<GetActorsByTenant
 {
     private readonly IActorRepository _actorRepository;
     private readonly IMapper _mapper;
-    private readonly IObjectStorageService _objectStorageService;
     private readonly ILogger<GetActorsByTenantRequestHandler> _logger;
 
     public GetActorsByTenantRequestHandler(
         IActorRepository actorRepository,
         IMapper mapper,
-        IObjectStorageService objectStorageService,
         ILogger<GetActorsByTenantRequestHandler> logger)
     {
         _actorRepository = actorRepository;
         _mapper = mapper;
-        _objectStorageService = objectStorageService;
         _logger = logger;
     }
 
@@ -36,7 +32,6 @@ public class GetActorsByTenantRequestHandler : IRequestHandler<GetActorsByTenant
         var actors = await _actorRepository.GetActorsByTenant(request.TenantId, cancellationToken);
         var dtos = _mapper.Map<List<ActorListDto>>(actors);
 
-        // Resolve presigned URLs for profile pictures
         foreach (var dto in dtos)
         {
             var actor = actors.First(candidate => candidate.Id == dto.Id);
@@ -79,7 +74,6 @@ public class GetActorsByTenantRequestHandler : IRequestHandler<GetActorsByTenant
     private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
         => StoragePresentationUrlResolver.ResolveImageUrlAsync(
             objectKeyOrUri,
-            _objectStorageService,
             _logger,
             "tenant actor profile image");
 }

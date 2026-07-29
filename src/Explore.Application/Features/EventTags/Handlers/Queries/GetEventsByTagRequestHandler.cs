@@ -52,7 +52,6 @@ public class GetEventsByTagRequestHandler : IRequestHandler<GetEventsByTagReques
     private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
         => StoragePresentationUrlResolver.ResolveImageUrlAsync(
             objectKeyOrUri,
-            _objectStorageService,
             _logger,
             "tag event image");
 }

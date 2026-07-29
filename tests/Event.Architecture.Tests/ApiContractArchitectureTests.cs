@@ -352,6 +352,29 @@ public class ApiContractArchitectureTests
     }
 
     [Test]
+    [DisplayName("Legacy storage writes must stay absent while provider-neutral upload sessions remain")]
+    public async Task StorageWrites_MustExposeOnlyProviderNeutralUploadSessions()
+    {
+        var controller = ApiAssembly.GetType("Explore.API.Controllers.StorageObjectController")!;
+        var routes = controller
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .SelectMany(method => method.GetCustomAttributes<HttpMethodAttribute>())
+            .Select(attribute => (attribute.HttpMethods.Single(), attribute.Template))
+            .ToArray();
+
+        await Assert.That(routes).DoesNotContain(("POST", "generate-upload-url"));
+        await Assert.That(routes).DoesNotContain(("POST", null));
+        await Assert.That(routes).Contains(("POST", "upload-sessions"));
+        await Assert.That(routes).Contains(("PUT", "upload-sessions/{uploadSessionId:guid}/content"));
+        await Assert.That(typeof(RouteNames).GetField("GenerateStorageObjectUploadUrl")).IsNull();
+        await Assert.That(typeof(RouteNames).GetField("CreateStorageObject")).IsNull();
+        await Assert.That(ApplicationAssembly.GetType(
+            "Explore.Application.Features.StorageObjects.Requests.Commands.GenerateUploadUrlCommand")).IsNull();
+        await Assert.That(ApplicationAssembly.GetType(
+            "Explore.Application.Features.StorageObjects.Requests.Commands.CreateStorageObjectCommand")).IsNull();
+    }
+
+    [Test]
     [DisplayName("Every controller action must have a unique operation identity (controller.action)")]
     public async Task EveryAction_MustHave_UniqueIdentity()
     {

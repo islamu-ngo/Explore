@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for storage object metadata command authorization and update handling.
-// ABOUTME: Verifies client-controlled tenant fields cannot drive authorization context or persistence writes.
+// ABOUTME: Unit tests for storage object metadata update authorization and handling.
+// ABOUTME: Verifies route-owned identity, tenant isolation, and provider-owned field preservation.
 
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
@@ -16,28 +16,12 @@ public sealed class StorageObjectCommandHandlerTests
 {
     private readonly Guid _tenantId = Guid.CreateVersion7();
     private readonly IStorageObjectRepository _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
-    private readonly IFileTypeRepository _fileTypeRepository = Substitute.For<IFileTypeRepository>();
     private readonly IActorRepository _actorRepository = Substitute.For<IActorRepository>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
 
     public StorageObjectCommandHandlerTests()
     {
         _tenantContext.TenantId.Returns(_tenantId);
-        _fileTypeRepository.Exists(1).Returns(true);
-    }
-
-    [Test]
-    public async Task CreateCommand_DoesNotExposeClientTenantIdAsAuthorizationContext()
-    {
-        ISecureRequest command = new CreateStorageObjectCommand
-        {
-            StorageObjectDto = CreateCreateDto(tenantId: Guid.CreateVersion7())
-        };
-
-        await Assert.That(command.ResourceId).IsNull();
-        await Assert.That(command.ResourceAttributes).IsNotNull();
-        await Assert.That(command.ResourceAttributes!.ContainsKey("tenantId")).IsFalse();
-        await Assert.That(command.ResourceAttributes["authorizationScope"]).IsEqualTo("collection");
     }
 
     [Test]
@@ -167,25 +151,6 @@ public sealed class StorageObjectCommandHandlerTests
 
     private UpdateStorageObjectCommandHandler CreateUpdateHandler()
         => new(_storageObjectRepository, _actorRepository, _tenantContext);
-
-    private static CreateStorageObjectDto CreateCreateDto(Guid tenantId) =>
-        new()
-        {
-            FileTypeId = 1,
-            Uri = "/api/storageobject/018f0000-0000-7000-8000-000000000001/content",
-            ObjectKey = "tenants/current/file.png",
-            Provider = StorageProviders.Local,
-            FullName = "file.png",
-            SafeDisplayName = "file.png",
-            Extension = "png",
-            ContentType = "image/png",
-            Sha256Checksum = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            Size = 1024,
-            Visibility = StorageObjectVisibilities.PublicImage,
-            Purpose = StorageObjectPurposes.LegacyImage,
-            LifecycleState = StorageObjectLifecycleStates.Active,
-            TenantId = tenantId
-        };
 
     private static UpdateStorageObjectDto CreateUpdateDto(
         Guid? actorId = null,

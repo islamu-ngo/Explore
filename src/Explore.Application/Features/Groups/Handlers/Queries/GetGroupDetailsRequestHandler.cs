@@ -63,7 +63,6 @@ public class GetGroupDetailsRequestHandler : IRequestHandler<GetGroupDetailsRequ
     private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
         => StoragePresentationUrlResolver.ResolveImageUrlAsync(
             objectKeyOrUri,
-            _objectStorageService,
             _logger,
             "group detail profile image");
 }

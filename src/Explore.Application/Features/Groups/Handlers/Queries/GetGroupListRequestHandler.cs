@@ -48,7 +48,6 @@ public class GetGroupListRequestHandler : IRequestHandler<GetGroupListRequest, P
     private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
         => StoragePresentationUrlResolver.ResolveImageUrlAsync(
             objectKeyOrUri,
-            _objectStorageService,
             _logger,
             "group list profile image");
 }

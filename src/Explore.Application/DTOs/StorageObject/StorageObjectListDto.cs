@@ -9,7 +9,6 @@ public class StorageObjectListDto
     public int FileTypeId { get; set; }
     public string? FileTypeFullName { get; set; }
     public required string Uri { get; set; }
-    public string? ObjectKey { get; set; }
     public required string Provider { get; set; }
     public required string FullName { get; set; }
     public required string SafeDisplayName { get; set; }

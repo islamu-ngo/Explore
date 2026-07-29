@@ -318,35 +318,6 @@ public sealed class StorageUploadSessionControllerTests
     }
 
     [Test]
-    public async Task Create_WhenHandlerValidationFails_ReturnsValidationProblemDetails()
-    {
-        _mediator.Send(Arg.Any<CreateStorageObjectCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Storage object creation failed.",
-                Errors = ["ObjectKey must be a relative provider object key without traversal segments"]
-            });
-        var controller = CreateController();
-
-        var actionResult = await controller.Create(CreateStorageObjectDto(), CancellationToken.None);
-
-        var objectResult = actionResult.Result as ObjectResult;
-        await Assert.That(objectResult).IsNotNull();
-        await Assert.That(objectResult!.StatusCode).IsEqualTo(400);
-
-        var problemDetails = objectResult.Value as ValidationProblemDetails;
-        await Assert.That(problemDetails).IsNotNull();
-        await Assert.That(problemDetails!.Title).IsEqualTo("Storage object validation failed");
-        await Assert.That(problemDetails.Detail).IsEqualTo("Storage object creation failed.");
-        await Assert.That(problemDetails.Extensions["code"]).IsEqualTo("validation_failed");
-        await Assert.That(problemDetails.Errors.TryGetValue("storageObject", out var errors)).IsTrue();
-        await Assert.That(errors).IsNotNull();
-        await Assert.That(errors!.Length).IsEqualTo(1);
-        await Assert.That(errors[0]).IsEqualTo("ObjectKey must be a relative provider object key without traversal segments");
-    }
-
-    [Test]
     public async Task UploadSessionRoutes_UseStableRouteNamesAndWritePolicy()
     {
         var create = typeof(StorageObjectController).GetMethod(nameof(StorageObjectController.CreateUploadSession))!;
@@ -402,6 +373,23 @@ public sealed class StorageUploadSessionControllerTests
         await Assert.That(routeNames).DoesNotContain("GetStorageObjectPresignedDownloadUrlByKey");
     }
 
+    [Test]
+    public async Task LegacyStorageWriteRoutes_AreNotExposed()
+    {
+        var routeTemplates = typeof(StorageObjectController)
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .SelectMany(method => method.GetCustomAttributes<HttpMethodAttribute>())
+            .Select(attribute => (attribute.HttpMethods.Single(), attribute.Template))
+            .ToArray();
+
+        await Assert.That(routeTemplates).DoesNotContain(("POST", "generate-upload-url"));
+        await Assert.That(routeTemplates).DoesNotContain(("POST", null));
+        await Assert.That(typeof(RouteNames).GetField("GenerateStorageObjectUploadUrl")).IsNull();
+        await Assert.That(typeof(RouteNames).GetField("CreateStorageObject")).IsNull();
+        await Assert.That(typeof(StorageObjectController).GetMethod(nameof(StorageObjectController.CreateUploadSession))).IsNotNull();
+        await Assert.That(typeof(StorageObjectController).GetMethod(nameof(StorageObjectController.UploadSessionContent))).IsNotNull();
+    }
+
     private StorageObjectController CreateController(Stream? requestBody = null, string? contentType = null, long? contentLength = null)
     {
         var httpContext = new DefaultHttpContext
@@ -445,19 +433,6 @@ public sealed class StorageUploadSessionControllerTests
             Purpose = StorageObjectPurposes.Attachment,
             Visibility = StorageObjectVisibilities.PrivateOwner,
             IdempotencyKey = "upload-test"
-        };
-
-    private static CreateStorageObjectDto CreateStorageObjectDto()
-        => new()
-        {
-            FileTypeId = 1,
-            Uri = "/api/storageobject/test/content",
-            ObjectKey = "tenants/test/object.png",
-            Provider = StorageProviders.Local,
-            FullName = "object.png",
-            Extension = ".png",
-            ContentType = "image/png",
-            Size = 1
         };
 
     private static BaseCommandResponse<StorageUploadSessionDto> Success(Guid sessionId)

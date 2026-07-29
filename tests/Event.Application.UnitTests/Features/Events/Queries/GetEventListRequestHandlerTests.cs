@@ -288,7 +288,8 @@ public class GetEventListRequestHandlerTests
         var result = await _handler.Handle(new GetEventListRequest(), CancellationToken.None);
 
         await Assert.That(result.Items.Single().FeaturedImageUri).IsEqualTo(imageUrl);
-        await _objectStorageService.DidNotReceiveWithAnyArgs().GeneratePresignedDownloadUrl(default!, default);
+        await _objectStorageService.DidNotReceiveWithAnyArgs()
+            .GeneratePresignedDownloadUrl(default!, default!, default);
     }
 
     private static bool HasActorFilter(EventQuerySpecification specification, Guid actorId)

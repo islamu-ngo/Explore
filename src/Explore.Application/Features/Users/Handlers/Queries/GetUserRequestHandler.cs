@@ -81,9 +81,9 @@ public class GetUserRequestHandler : IRequestHandler<GetUserRequest, UserDto>
             return null!;
         }
 
-        if (userDto != null && !string.IsNullOrEmpty(userDto.ProfileImageKey))
+        if (userDto != null && !string.IsNullOrEmpty(userDto.ProfileImageUri))
         {
-            userDto.ProfileImageUri = await ResolveImageUrl(userDto.ProfileImageKey);
+            userDto.ProfileImageUri = await ResolveImageUrl(userDto.ProfileImageUri);
         }
 
         return userDto;
@@ -92,7 +92,6 @@ public class GetUserRequestHandler : IRequestHandler<GetUserRequest, UserDto>
     private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
         => StoragePresentationUrlResolver.ResolveImageUrlAsync(
             objectKeyOrUri,
-            _objectStorageService,
             _logger,
             "user profile image");
 }

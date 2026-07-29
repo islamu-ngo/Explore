@@ -52,7 +52,6 @@ public class GetOrganizationListRequestHandler : IRequestHandler<GetOrganization
     private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
         => StoragePresentationUrlResolver.ResolveImageUrlAsync(
             objectKeyOrUri,
-            _objectStorageService,
             _logger,
             "organization list profile image");
 }

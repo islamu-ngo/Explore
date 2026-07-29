@@ -337,7 +337,16 @@ public class StorageObjectController : ControllerBase
 
     private FileStreamResult ToFileResult(StorageObjectContentResult result)
     {
-        var fileResult = File(result.Content, result.ContentType, enableRangeProcessing: true);
+        Response.Headers["X-Content-Type-Options"] = "nosniff";
+        Response.Headers["Content-Security-Policy"] = "default-src 'none'; sandbox";
+
+        var fileResult = result.ShouldDownloadAsAttachment
+            ? File(
+                result.Content,
+                result.ContentType,
+                ResolveSafeDownloadName(result.SafeDisplayName),
+                enableRangeProcessing: true)
+            : File(result.Content, result.ContentType, enableRangeProcessing: true);
         fileResult.LastModified = result.LastModified;
 
         if (!string.IsNullOrWhiteSpace(result.Sha256Checksum))
@@ -347,4 +356,13 @@ public class StorageObjectController : ControllerBase
 
         return fileResult;
     }
+
+    private static string ResolveSafeDownloadName(string value)
+        => value.Length is > 0 and <= 255
+            && value is not "." and not ".."
+            && !value.Any(char.IsControl)
+            && !value.Contains('/', StringComparison.Ordinal)
+            && !value.Contains('\\', StringComparison.Ordinal)
+                ? value
+                : "download";
 }

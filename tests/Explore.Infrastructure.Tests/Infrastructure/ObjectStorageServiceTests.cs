@@ -15,6 +15,33 @@ namespace Explore.Infrastructure.Tests.Infrastructure;
 public sealed class ObjectStorageServiceTests
 {
     [Test]
+    public async Task GeneratePresignedDownloadUrl_UsesAttachmentResponseOverride()
+    {
+        var config = CreateConfig();
+        var configResolver = Substitute.For<IS3ConfigResolver>();
+        var clientFactory = Substitute.For<IS3ClientFactory>();
+        var s3Client = Substitute.For<IAmazonS3>();
+        GetPreSignedUrlRequest? capturedRequest = null;
+        configResolver.ResolveAsync().Returns(config);
+        clientFactory.CreatePresignClient(config).Returns(s3Client);
+        s3Client.GetPreSignedURL(Arg.Do<GetPreSignedUrlRequest>(request => capturedRequest = request))
+            .Returns("https://storage.example.test/presigned");
+        var service = new ObjectStorageService(
+            configResolver,
+            clientFactory,
+            new TestListLogger<ObjectStorageService>());
+
+        await service.GeneratePresignedDownloadUrl(
+            "tenants/example/document.pdf",
+            "Quarterly report.pdf",
+            15);
+
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.ResponseHeaderOverrides.ContentDisposition)
+            .IsEqualTo("attachment; filename*=utf-8''Quarterly%20report.pdf");
+    }
+
+    [Test]
     public async Task TestConnectionAsync_WhenProbeFails_LogsFailureTypeWithoutEndpointOrProviderPayload()
     {
         var config = CreateConfig();

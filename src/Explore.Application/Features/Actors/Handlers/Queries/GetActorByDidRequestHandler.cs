@@ -47,7 +47,6 @@ public class GetActorByDidRequestHandler : IRequestHandler<GetActorByDidRequest,
     private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
         => StoragePresentationUrlResolver.ResolveImageUrlAsync(
             objectKeyOrUri,
-            _objectStorageService,
             _logger,
             "actor DID profile image");
 }

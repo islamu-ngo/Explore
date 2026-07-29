@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for shared storage presentation URL resolution.
-// ABOUTME: Verifies projection helpers sign only safe object keys and leave URI-shaped values unsigned.
+// ABOUTME: Verifies projection helpers use API-owned or external URLs without signing raw object keys.
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Services;
@@ -15,19 +15,20 @@ public sealed class StoragePresentationUrlResolverTests
     public StoragePresentationUrlResolverTests()
     {
         _objectStorageService
-            .GeneratePresignedDownloadUrl(Arg.Any<string>(), Arg.Any<int>())
+            .GeneratePresignedDownloadUrl(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>())
             .Returns("https://storage.example.test/presigned");
     }
 
     [Test]
-    public async Task ResolveImageUrlAsync_WithSafeObjectKey_GeneratesPresignedUrl()
+    public async Task ResolveImageUrlAsync_WithRawObjectKey_ReturnsNullWithoutSigning()
     {
         var result = await Resolve("tenants/example/object.png");
 
-        await Assert.That(result).IsEqualTo("https://storage.example.test/presigned");
-        await _objectStorageService.Received(1).GeneratePresignedDownloadUrl(
-            "tenants/example/object.png",
-            60);
+        await Assert.That(result).IsNull();
+        await _objectStorageService.DidNotReceive().GeneratePresignedDownloadUrl(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<int>());
     }
 
     [Test]
@@ -38,6 +39,7 @@ public sealed class StoragePresentationUrlResolverTests
         await Assert.That(result).IsEqualTo("https://cdn.example.test/images/object.png");
         await _objectStorageService.DidNotReceive().GeneratePresignedDownloadUrl(
             Arg.Any<string>(),
+            Arg.Any<string>(),
             Arg.Any<int>());
     }
 
@@ -45,11 +47,13 @@ public sealed class StoragePresentationUrlResolverTests
     public async Task ResolveImageUrlAsync_WithLocalStorageApiPath_ReturnsPathWithoutSigning()
     {
         var path = $"/api/storageobject/{Guid.CreateVersion7()}/content";
+        var expected = path.Replace("/content", "/public", StringComparison.Ordinal);
 
         var result = await Resolve(path);
 
-        await Assert.That(result).IsEqualTo(path);
+        await Assert.That(result).IsEqualTo(expected);
         await _objectStorageService.DidNotReceive().GeneratePresignedDownloadUrl(
+            Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<int>());
     }
@@ -62,25 +66,13 @@ public sealed class StoragePresentationUrlResolverTests
         await Assert.That(result).IsNull();
         await _objectStorageService.DidNotReceive().GeneratePresignedDownloadUrl(
             Arg.Any<string>(),
+            Arg.Any<string>(),
             Arg.Any<int>());
-    }
-
-    [Test]
-    public async Task ResolveImageUrlAsync_WhenSigningFails_ReturnsNullWithoutLeakingReference()
-    {
-        _objectStorageService
-            .GeneratePresignedDownloadUrl(Arg.Any<string>(), Arg.Any<int>())
-            .Returns<Task<string>>(_ => throw new InvalidOperationException("provider failed"));
-
-        var result = await Resolve("tenants/example/object.png");
-
-        await Assert.That(result).IsNull();
     }
 
     private Task<string?> Resolve(string? value)
         => StoragePresentationUrlResolver.ResolveImageUrlAsync(
             value,
-            _objectStorageService,
             NullLogger.Instance,
             "test image");
 }

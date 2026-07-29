@@ -52,7 +52,6 @@ public class GetActorListRequestHandler : IRequestHandler<GetActorListRequest, P
     private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
         => StoragePresentationUrlResolver.ResolveImageUrlAsync(
             objectKeyOrUri,
-            _objectStorageService,
             _logger,
             "actor list profile image");
 }

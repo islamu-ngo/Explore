@@ -64,17 +64,13 @@ public sealed class StorageAdminHateoasTests
     }
 
     [Test]
-    public async Task StorageObjectCollectionLinks_ExposeCreateAndUploadSessionAffordances()
+    public async Task StorageObjectCollectionLinks_ExposeOnlyUploadSessionWriteAffordance()
     {
         var policy = new StorageObjectCollectionLinkPolicy();
 
         var links = policy.GetCollectionLinks(user: null).ToArray();
 
-        var create = links.Single(link => link.Rel == LinkRelations.Create);
-        await Assert.That(create.RouteName).IsEqualTo(RouteNames.CreateStorageObject);
-        await Assert.That(create.RequiresAuth).IsTrue();
-        await Assert.That(create.PermissionResourceKind).IsEqualTo(ResourceKinds.StorageObject);
-        await Assert.That(create.PermissionAction).IsEqualTo(AuthorizationActions.StorageObjects.Create);
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.Create)).IsFalse();
 
         var uploadSession = links.Single(link => link.Rel == "create-upload-session");
         await Assert.That(uploadSession.RouteName).IsEqualTo(RouteNames.CreateStorageUploadSession);

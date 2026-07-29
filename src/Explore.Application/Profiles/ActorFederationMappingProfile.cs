@@ -48,7 +48,5 @@ public class ActorFederationMappingProfile : Profile
             .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null));
         CreateMap<Domain.StorageObject, StorageObjectListDto>()
             .ForMember(dest => dest.FileTypeFullName, opt => opt.MapFrom(src => src.FileType != null ? src.FileType.FullName : null));
-        CreateMap<CreateStorageObjectDto, Domain.StorageObject>()
-            .ForMember(dest => dest.SafeDisplayName, opt => opt.MapFrom(src => string.IsNullOrWhiteSpace(src.SafeDisplayName) ? src.FullName : src.SafeDisplayName));
     }
 }

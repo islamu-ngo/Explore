@@ -10,7 +10,6 @@ public class StorageObjectDto
     public string? FileTypeFullName { get; set; }
     public string? FileTypeMasterCode { get; set; } // For i18n with Tolgee
     public required string Uri { get; set; }
-    public string? ObjectKey { get; set; }
     public required string Provider { get; set; }
     public required string FullName { get; set; }
     public required string SafeDisplayName { get; set; }

@@ -84,7 +84,6 @@ public sealed class EventDetailsProjectionService : IEventDetailsProjectionServi
     private Task<string?> ResolveImageUrlAsync(string? objectKeyOrUri)
         => StoragePresentationUrlResolver.ResolveImageUrlAsync(
             objectKeyOrUri,
-            _objectStorageService,
             _logger,
             "event detail image");
 }

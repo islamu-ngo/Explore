@@ -371,7 +371,6 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
     private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
         => StoragePresentationUrlResolver.ResolveImageUrlAsync(
             objectKeyOrUri,
-            _objectStorageService,
             _logger,
             "event list image");
 }

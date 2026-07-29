@@ -9,17 +9,18 @@ using Event.Api.IntegrationTests.Seeds;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.StorageObject;
+using Explore.Application.Models.Storage;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
-using Microsoft.Extensions.DependencyInjection;
 using MediatR;
 using Microsoft.AspNetCore.Hosting;
-using TUnit.Assertions;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.AspNetCore.TestHost;
 using NSubstitute;
+using TUnit.Assertions;
 using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -89,6 +90,164 @@ public class StorageObjectControllerTests
         var response = await _fixture.Client.GetAsync($"{BaseUrl}/{Guid.NewGuid()}/public");
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+    }
+
+    [Test]
+    public async Task GetPublicImage_WithSafeRaster_ReturnsInlineHeadersAndSupportsRanges()
+    {
+        var resolver = CreateProviderResolver([1, 2, 3, 4, 5, 6, 7, 8]);
+        await using var factory = CreateDeliveryFactory(resolver);
+        using var client = factory.CreateClient();
+        var lastModified = new DateTimeOffset(2026, 7, 29, 10, 0, 0, TimeSpan.Zero);
+        var storageObjectId = await SeedDeliveryStorageObjectAsync(
+            factory,
+            "image/png",
+            "png",
+            "public-image.png",
+            StorageObjectVisibilities.PublicImage,
+            StorageObjectPurposes.EventImage);
+        ConfigureProviderRead(resolver, [1, 2, 3, 4, 5, 6, 7, 8], lastModified);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"{BaseUrl}/{storageObjectId}/public");
+        request.Headers.Range = new RangeHeaderValue(2, 4);
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.PartialContent);
+        await Assert.That(response.Content.Headers.ContentType!.MediaType).IsEqualTo("image/png");
+        await Assert.That(response.Content.Headers.ContentDisposition).IsNull();
+        await Assert.That(response.Content.Headers.ContentRange!.From).IsEqualTo(2);
+        await Assert.That(response.Content.Headers.ContentRange.To).IsEqualTo(4);
+        await Assert.That(response.Content.Headers.LastModified).IsEqualTo(lastModified);
+        await Assert.That(response.Headers.ETag).IsNotNull();
+        await Assert.That(response.Headers.GetValues("X-Content-Type-Options").Single()).IsEqualTo("nosniff");
+        await Assert.That(response.Headers.GetValues("Content-Security-Policy").Single())
+            .IsEqualTo("default-src 'none'; frame-ancestors 'none'");
+    }
+
+    [Test]
+    public async Task GetContent_WithAuthenticatedDocument_ReturnsSanitizedAttachmentDisposition()
+    {
+        var resolver = CreateProviderResolver([1, 2, 3, 4]);
+        await using var factory = CreateDeliveryFactory(resolver);
+        using var client = factory.CreateClient();
+        var userId = Guid.CreateVersion7();
+        var storageObjectId = await SeedDeliveryStorageObjectAsync(
+            factory,
+            "application/pdf",
+            "pdf",
+            "../unsafe\r\nX-Injected: yes.pdf",
+            StorageObjectVisibilities.AuthenticatedTenant,
+            StorageObjectPurposes.Document,
+            userId);
+        ConfigureProviderRead(resolver, [1, 2, 3, 4], DateTimeOffset.UtcNow);
+        using var request = CreateAuthenticatedGetRequest(
+            $"{BaseUrl}/{storageObjectId}/content",
+            userId);
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Content.Headers.ContentType!.MediaType).IsEqualTo("application/pdf");
+        await Assert.That(response.Content.Headers.ContentDisposition!.DispositionType).IsEqualTo("attachment");
+        await Assert.That(response.Content.Headers.ContentDisposition.FileNameStar).IsEqualTo("download");
+        await Assert.That(response.Headers.Contains("X-Injected")).IsFalse();
+        await Assert.That(response.Headers.GetValues("X-Content-Type-Options").Single()).IsEqualTo("nosniff");
+        await Assert.That(response.Headers.GetValues("Content-Security-Policy").Single())
+            .IsEqualTo("default-src 'none'; frame-ancestors 'none'");
+    }
+
+    [Test]
+    public async Task GetPublicImage_WithUnsafeMetadata_ReturnsNotFoundBeforeProviderResolution()
+    {
+        var resolver = Substitute.For<IFileStorageProviderResolver>();
+        await using var factory = CreateDeliveryFactory(resolver);
+        using var client = factory.CreateClient();
+        var storageObjectId = await SeedDeliveryStorageObjectAsync(
+            factory,
+            "text/html",
+            "html",
+            "unsafe.html",
+            StorageObjectVisibilities.PublicImage,
+            StorageObjectPurposes.EventImage);
+
+        using var response = await client.GetAsync($"{BaseUrl}/{storageObjectId}/public");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        resolver.DidNotReceive().GetRequired(Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task GetPresignedDownloadUrl_WithAuthenticatedDocument_ReturnsNoStoreSecretSafeResponse()
+    {
+        var resolver = CreateProviderResolver([1]);
+        var objectStorageService = Substitute.For<IObjectStorageService>();
+        objectStorageService
+            .GeneratePresignedDownloadUrl(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>())
+            .Returns("https://storage.example.test/presigned?signature=secret");
+        await using var factory = CreateDeliveryFactory(resolver, objectStorageService);
+        using var client = factory.CreateClient();
+        var userId = Guid.CreateVersion7();
+        var storageObjectId = await SeedDeliveryStorageObjectAsync(
+            factory,
+            "application/pdf",
+            "pdf",
+            "Report.pdf",
+            StorageObjectVisibilities.AuthenticatedTenant,
+            StorageObjectPurposes.Document,
+            userId);
+        using var request = CreateAuthenticatedGetRequest(
+            $"{BaseUrl}/{storageObjectId}/presigned-url?expirationMinutes=15",
+            userId);
+
+        using var response = await client.SendAsync(request);
+        var result = await response.Content.ReadFromJsonAsync<PresignedDownloadUrlResponseDto>();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Headers.CacheControl!.NoStore).IsTrue();
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.PresignedUrl).IsEqualTo(
+            "https://storage.example.test/presigned?signature=secret");
+        await Assert.That(result.ObjectKey).IsEqualTo(string.Empty);
+        await Assert.That(result.SafeDisplayName).IsEqualTo("Report.pdf");
+        await Assert.That(result.ShouldDownloadAsAttachment).IsTrue();
+        await objectStorageService.Received(1).GeneratePresignedDownloadUrl(
+            Arg.Is<string>(value => value.Contains(storageObjectId.ToString("N"), StringComparison.Ordinal)),
+            "Report.pdf",
+            15);
+    }
+
+    [Test]
+    public async Task StorageMetadataResponses_DoNotExposeProviderObjectKeys()
+    {
+        var resolver = CreateProviderResolver([1]);
+        await using var factory = CreateDeliveryFactory(resolver);
+        using var client = factory.CreateClient();
+        var userId = Guid.CreateVersion7();
+        var storageObjectId = await SeedDeliveryStorageObjectAsync(
+            factory,
+            "image/png",
+            "png",
+            "provider-key-proof.png",
+            StorageObjectVisibilities.AuthenticatedTenant,
+            StorageObjectPurposes.EventImage,
+            userId);
+        var providerObjectKey = $"tenants/{PlatformDefaults.DefaultTenantId:N}/{storageObjectId:N}.png";
+
+        using var detailRequest = CreateAuthenticatedGetRequest($"{BaseUrl}/{storageObjectId}", userId);
+        using var detailResponse = await client.SendAsync(detailRequest);
+        var detailBody = await detailResponse.Content.ReadAsStringAsync();
+        using var listRequest = CreateAuthenticatedGetRequest(BaseUrl, userId);
+        using var listResponse = await client.SendAsync(listRequest);
+        var listBody = await listResponse.Content.ReadAsStringAsync();
+
+        await Assert.That(detailResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(listResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(detailBody).DoesNotContain("objectKey");
+        await Assert.That(detailBody).DoesNotContain(providerObjectKey);
+        await Assert.That(listBody).DoesNotContain("objectKey");
+        await Assert.That(listBody).DoesNotContain(providerObjectKey);
     }
 
     [Test]
@@ -240,8 +399,11 @@ public class StorageObjectControllerTests
             BaseUrl,
             new { uri = "https://attacker.invalid/file", lifecycleState = StorageObjectLifecycleStates.Active });
 
-        // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(directUpload.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed).IsTrue();
+        await Assert.That(callerMetadata.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed).IsTrue();
+        await Assert.That(mediator.ReceivedCalls()).IsEmpty();
+        await Assert.That(storageService.ReceivedCalls()).IsEmpty();
+        await Assert.That(repository.ReceivedCalls()).IsEmpty();
     }
 
     #endregion
@@ -371,20 +533,16 @@ public class StorageObjectControllerTests
         {
             Metadata = new StorageObjectMetadataUpdateDto
             {
-                FileTypeId = 1,
                 FullName = "updated-file.png",
-                Extension = "png"
+                SafeDisplayName = "Updated file.png"
             }
         };
 
         // Act
         var response = await _fixture.Client.PatchAsJsonAsync($"{BaseUrl}/{id}", updateDto);
 
-        await Assert.That(directUpload.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed).IsTrue();
-        await Assert.That(callerMetadata.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed).IsTrue();
-        await Assert.That(mediator.ReceivedCalls()).IsEmpty();
-        await Assert.That(storageService.ReceivedCalls()).IsEmpty();
-        await Assert.That(repository.ReceivedCalls()).IsEmpty();
+        // Assert
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -394,9 +552,8 @@ public class StorageObjectControllerTests
         {
             Metadata = new StorageObjectMetadataUpdateDto
             {
-                FileTypeId = 1,
                 FullName = "updated-file.png",
-                Extension = "png"
+                SafeDisplayName = "Updated file.png"
             }
         };
         using var content = JsonContent.Create(updateDto);
@@ -466,6 +623,100 @@ public class StorageObjectControllerTests
         await context.SaveChangesAsync();
 
         return storageObjectId;
+    }
+
+    private static DeliveryWebApplicationFactory CreateDeliveryFactory(
+        IFileStorageProviderResolver resolver,
+        IObjectStorageService? objectStorageService = null)
+        => new(resolver, objectStorageService)
+        {
+            AuthorizationProviderOverride = new StubAuthorizationProvider { AllowAll = true }
+        };
+
+    private static IFileStorageProviderResolver CreateProviderResolver(byte[] content)
+    {
+        var provider = Substitute.For<IFileStorageProvider>();
+        provider.Provider.Returns(StorageProviders.Local);
+        var resolver = Substitute.For<IFileStorageProviderResolver>();
+        resolver.GetRequired(StorageProviders.Local).Returns(provider);
+        ConfigureProviderRead(resolver, content, DateTimeOffset.UtcNow);
+        return resolver;
+    }
+
+    private static void ConfigureProviderRead(
+        IFileStorageProviderResolver resolver,
+        byte[] content,
+        DateTimeOffset lastModified)
+    {
+        var provider = resolver.GetRequired(StorageProviders.Local);
+        provider.OpenReadAsync(Arg.Any<FileStorageReadInput>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new FileStorageReadResult(
+                new MemoryStream(content),
+                "application/octet-stream",
+                content.Length,
+                lastModified));
+    }
+
+    private static async Task<Guid> SeedDeliveryStorageObjectAsync(
+        AuthenticatedWebApplicationFactory factory,
+        string contentType,
+        string extension,
+        string safeDisplayName,
+        string visibility,
+        string purpose,
+        Guid? createdBy = null)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        await TenantScenarioSeed.SeedActiveTenantWithUserAsync(context);
+        var storageObjectId = Guid.CreateVersion7();
+
+        context.StorageObjects.Add(new StorageObject
+        {
+            Id = storageObjectId,
+            FileTypeId = (int)FileTypeEnum.Image,
+            FileType = null!,
+            Uri = $"/api/storageobject/{storageObjectId}/content",
+            ObjectKey = $"tenants/{PlatformDefaults.DefaultTenantId:N}/{storageObjectId:N}.{extension}",
+            Provider = StorageProviders.Local,
+            FullName = safeDisplayName,
+            SafeDisplayName = safeDisplayName,
+            Extension = extension,
+            ContentType = contentType,
+            Sha256Checksum = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            Size = 8,
+            Visibility = visibility,
+            Purpose = purpose,
+            LifecycleState = StorageObjectLifecycleStates.Active,
+            TenantId = PlatformDefaults.DefaultTenantId,
+            Tenant = null!,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = createdBy,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        });
+        await context.SaveChangesAsync();
+
+        return storageObjectId;
+    }
+
+    private sealed class DeliveryWebApplicationFactory(
+        IFileStorageProviderResolver resolver,
+        IObjectStorageService? objectStorageService) : AuthenticatedWebApplicationFactory
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IFileStorageProviderResolver>();
+                services.AddSingleton(resolver);
+                if (objectStorageService is not null)
+                {
+                    services.RemoveAll<IObjectStorageService>();
+                    services.AddSingleton(objectStorageService);
+                }
+            });
+        }
     }
 
     private static async Task<(Guid Id, Guid TenantId)> SeedCrossTenantStorageObjectAsync(

@@ -52,7 +52,6 @@ public class GetEventsByCategoryRequestHandler : IRequestHandler<GetEventsByCate
     private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
         => StoragePresentationUrlResolver.ResolveImageUrlAsync(
             objectKeyOrUri,
-            _objectStorageService,
             _logger,
             "category event image");
 }

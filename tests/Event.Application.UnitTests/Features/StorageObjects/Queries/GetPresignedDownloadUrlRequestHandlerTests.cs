@@ -24,7 +24,7 @@ public sealed class GetPresignedDownloadUrlRequestHandlerTests
     public GetPresignedDownloadUrlRequestHandlerTests()
     {
         _objectStorageService
-            .GeneratePresignedDownloadUrl(Arg.Any<string>(), Arg.Any<int>())
+            .GeneratePresignedDownloadUrl(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>())
             .Returns("https://storage.example.test/presigned");
     }
 
@@ -47,6 +47,7 @@ public sealed class GetPresignedDownloadUrlRequestHandlerTests
         await Assert.That(result.ShouldDownloadAsAttachment).IsFalse();
         await _objectStorageService.Received(1).GeneratePresignedDownloadUrl(
             "tenants/example/object.png",
+            "object.png",
             15);
     }
 
@@ -69,6 +70,7 @@ public sealed class GetPresignedDownloadUrlRequestHandlerTests
         await Assert.That(result.ShouldDownloadAsAttachment).IsTrue();
         await _objectStorageService.Received(1).GeneratePresignedDownloadUrl(
             storageObject.ObjectKey!,
+            "download",
             15);
     }
 
@@ -85,6 +87,7 @@ public sealed class GetPresignedDownloadUrlRequestHandlerTests
 
         await Assert.That(result).IsNull();
         await _objectStorageService.DidNotReceive().GeneratePresignedDownloadUrl(
+            Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<int>());
     }
@@ -103,6 +106,7 @@ public sealed class GetPresignedDownloadUrlRequestHandlerTests
         await Assert.That(result).IsNotNull();
         await _objectStorageService.Received(1).GeneratePresignedDownloadUrl(
             storageObject.ObjectKey!,
+            storageObject.SafeDisplayName,
             15);
     }
 
@@ -118,6 +122,7 @@ public sealed class GetPresignedDownloadUrlRequestHandlerTests
 
         await Assert.That(result).IsNull();
         await _objectStorageService.DidNotReceive().GeneratePresignedDownloadUrl(
+            Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<int>());
     }
@@ -136,6 +141,7 @@ public sealed class GetPresignedDownloadUrlRequestHandlerTests
         await Assert.That(result).IsNull();
         await _objectStorageService.DidNotReceive().GeneratePresignedDownloadUrl(
             Arg.Any<string>(),
+            Arg.Any<string>(),
             Arg.Any<int>());
     }
 
@@ -150,6 +156,7 @@ public sealed class GetPresignedDownloadUrlRequestHandlerTests
         await _storageObjectRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await _objectStorageService.DidNotReceive().GeneratePresignedDownloadUrl(
             Arg.Any<string>(),
+            Arg.Any<string>(),
             Arg.Any<int>());
     }
 
@@ -160,7 +167,7 @@ public sealed class GetPresignedDownloadUrlRequestHandlerTests
         storageObject.ObjectKey = "tenants/example/sensitive-object-key.png";
         _storageObjectRepository.GetById(_storageObjectId).Returns(storageObject);
         _objectStorageService
-            .GeneratePresignedDownloadUrl(storageObject.ObjectKey, 15)
+            .GeneratePresignedDownloadUrl(storageObject.ObjectKey, storageObject.SafeDisplayName, 15)
             .Returns<Task<string>>(_ => throw new InvalidOperationException(
                 $"provider leaked raw storage reference {storageObject.ObjectKey}"));
         var logger = new ListLogger<GetPresignedDownloadUrlRequestHandler>();

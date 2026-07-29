@@ -114,7 +114,6 @@ public class GetManagedEventsByActorRequestHandler : IRequestHandler<GetManagedE
     private Task<string?> ResolveImageUrl(string? objectKeyOrUri)
         => StoragePresentationUrlResolver.ResolveImageUrlAsync(
             objectKeyOrUri,
-            _objectStorageService,
             _logger,
             "managed actor event list image");
 }
