@@ -30,6 +30,7 @@ public class CreateEventDayCommandHandlerTests
         _handler = new CreateEventDayCommandHandler(
             _eventDayRepository,
             _eventRepository,
+            Substitute.For<IStorageObjectRepository>(),
             _mapper
         );
     }

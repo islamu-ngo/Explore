@@ -35,6 +35,7 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
     private readonly IEventSessionTemplateInstantiationService _instantiationService;
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IEventDayRepository _eventDayRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly IMapper _mapper;
@@ -52,6 +53,7 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         IEventSessionTemplateInstantiationService instantiationService,
         IEventScheduleProjectionCalculator scheduleProjectionCalculator,
         IEventDayRepository eventDayRepository,
+        IStorageObjectRepository storageObjectRepository,
         IUnitOfWork unitOfWork,
         EventLocationAttachmentService eventLocationAttachmentService,
         IMapper mapper)
@@ -68,6 +70,7 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         _instantiationService = instantiationService;
         _scheduleProjectionCalculator = scheduleProjectionCalculator;
         _eventDayRepository = eventDayRepository;
+        _storageObjectRepository = storageObjectRepository;
         _unitOfWork = unitOfWork;
         _eventLocationAttachmentService = eventLocationAttachmentService;
         _mapper = mapper;
@@ -100,6 +103,17 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         {
             response.Success = false;
             response.Message = "Event not found in the current tenant.";
+            return response;
+        }
+
+        if (!await ImageReferenceEligibility.AreEligibleAsync(
+                _storageObjectRepository,
+                parentEvent.TenantId,
+                request.EventSessionDto.FeaturedImageId))
+        {
+            response.Success = false;
+            response.Message = "Event session creation failed.";
+            response.Errors = ["Featured image must be an active public safe-raster object in the current tenant."];
             return response;
         }
 

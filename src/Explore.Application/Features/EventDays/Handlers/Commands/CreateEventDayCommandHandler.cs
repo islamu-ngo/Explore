@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventDay.Validators;
 using Explore.Application.Features.EventDays.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using MediatR;
 
@@ -16,14 +17,17 @@ public class CreateEventDayCommandHandler : IRequestHandler<CreateEventDayComman
     private readonly IEventDayRepository _eventDayRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IMapper _mapper;
+    private readonly IStorageObjectRepository _storageObjectRepository;
 
     public CreateEventDayCommandHandler(
         IEventDayRepository eventDayRepository,
         IEventRepository eventRepository,
+        IStorageObjectRepository storageObjectRepository,
         IMapper mapper)
     {
         _eventDayRepository = eventDayRepository;
         _eventRepository = eventRepository;
+        _storageObjectRepository = storageObjectRepository;
         _mapper = mapper;
     }
 
@@ -47,6 +51,17 @@ public class CreateEventDayCommandHandler : IRequestHandler<CreateEventDayComman
         {
             response.Success = false;
             response.Message = "Event not found in the current tenant.";
+            return response;
+        }
+
+        if (!await ImageReferenceEligibility.AreEligibleAsync(
+                _storageObjectRepository,
+                parentEvent.TenantId,
+                request.EventDayDto.BannerImageId))
+        {
+            response.Success = false;
+            response.Message = "Event day creation failed.";
+            response.Errors = ["Banner image must be an active public safe-raster object in the current tenant."];
             return response;
         }
 

@@ -29,6 +29,7 @@ public class UpdateEventDayCommandHandlerTests
         _handler = new UpdateEventDayCommandHandler(
             _eventDayRepository,
             _eventRepository,
+            Substitute.For<IStorageObjectRepository>(),
             _cache);
     }
 

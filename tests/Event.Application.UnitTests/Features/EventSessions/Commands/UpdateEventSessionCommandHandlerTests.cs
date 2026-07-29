@@ -77,6 +77,7 @@ public class UpdateEventSessionCommandHandlerTests
             _eventSessionIslamicAspectRepository,
             _scheduleProjectionCalculator,
             _eventDayRepository,
+            Substitute.For<IStorageObjectRepository>(),
             _unitOfWork,
             _eventLocationAttachmentService,
             _cache,

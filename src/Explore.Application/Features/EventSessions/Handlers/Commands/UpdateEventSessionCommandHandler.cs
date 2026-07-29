@@ -30,6 +30,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IEventDayRepository _eventDayRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly HybridCache _cache;
@@ -47,6 +48,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         IEventSessionIslamicAspectRepository eventSessionIslamicAspectRepository,
         IEventScheduleProjectionCalculator scheduleProjectionCalculator,
         IEventDayRepository eventDayRepository,
+        IStorageObjectRepository storageObjectRepository,
         IUnitOfWork unitOfWork,
         EventLocationAttachmentService eventLocationAttachmentService,
         HybridCache cache,
@@ -63,6 +65,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         _eventSessionIslamicAspectRepository = eventSessionIslamicAspectRepository;
         _scheduleProjectionCalculator = scheduleProjectionCalculator;
         _eventDayRepository = eventDayRepository;
+        _storageObjectRepository = storageObjectRepository;
         _unitOfWork = unitOfWork;
         _eventLocationAttachmentService = eventLocationAttachmentService;
         _cache = cache;
@@ -128,6 +131,19 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
                 if (parentEvent is null || parentEvent.TenantId != eventSession.TenantId)
                 {
                     transactionFailure = CreateFailureResponse("Event does not belong to the same tenant as the session.");
+                    return false;
+                }
+
+                Guid? featuredImageId = request.EventSessionDto.FeaturedImage?.Value.HasValue == true
+                    ? request.EventSessionDto.FeaturedImage.Value.Value
+                    : null;
+                if (!await ImageReferenceEligibility.AreEligibleAsync(
+                        _storageObjectRepository,
+                        eventSession.TenantId,
+                        featuredImageId))
+                {
+                    transactionFailure = CreateFailureResponse(
+                        "Featured image must be an active public safe-raster object in the current tenant.");
                     return false;
                 }
 

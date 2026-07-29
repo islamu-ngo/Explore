@@ -76,6 +76,7 @@ public class CreateEventSessionCommandHandlerTests
             _instantiationService,
             _scheduleProjectionCalculator,
             _eventDayRepository,
+            Substitute.For<IStorageObjectRepository>(),
             _unitOfWork,
             _eventLocationAttachmentService,
             _mapper

@@ -8,6 +8,7 @@ using Explore.Application.DTOs.EventDay.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventDays.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -19,14 +20,17 @@ public class UpdateEventDayCommandHandler : IRequestHandler<UpdateEventDayComman
     private readonly IEventDayRepository _eventDayRepository;
     private readonly IEventRepository _eventRepository;
     private readonly HybridCache _cache;
+    private readonly IStorageObjectRepository _storageObjectRepository;
 
     public UpdateEventDayCommandHandler(
         IEventDayRepository eventDayRepository,
         IEventRepository eventRepository,
+        IStorageObjectRepository storageObjectRepository,
         HybridCache cache)
     {
         _eventDayRepository = eventDayRepository;
         _eventRepository = eventRepository;
+        _storageObjectRepository = storageObjectRepository;
         _cache = cache;
     }
 
@@ -83,6 +87,20 @@ public class UpdateEventDayCommandHandler : IRequestHandler<UpdateEventDayComman
         {
             response.Success = false;
             response.Message = "Event does not belong to the same tenant as the event day.";
+            return response;
+        }
+
+        Guid? bannerImageId = request.EventDayDto.BannerImage?.Value.HasValue == true
+            ? request.EventDayDto.BannerImage.Value.Value
+            : null;
+        if (!await ImageReferenceEligibility.AreEligibleAsync(
+                _storageObjectRepository,
+                eventDay.TenantId,
+                bannerImageId))
+        {
+            response.Success = false;
+            response.Message = "Event day update failed.";
+            response.Errors = ["Banner image must be an active public safe-raster object in the current tenant."];
             return response;
         }
 
