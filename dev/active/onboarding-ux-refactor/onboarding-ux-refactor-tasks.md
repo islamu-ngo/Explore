@@ -3,9 +3,9 @@
 
 # Onboarding UX Refactor — Task Checklist
 
-> **Current status (2026-07-29):** The backend/provider/HAL/task-list foundation is implemented. The screenshots prove the unified onboarding workspace is not; Phase 9 is planned and unstarted.
-> **Progress:** 12/22 unconditional tasks complete. Tasks 6.3, 8.1-8.3, 9.1-9.5, and 10.1 remain unchecked; conditional Task 6.2 remains deferred.
-> **Current priority:** Task 9.1 — codify the ISLAMU-native workspace in `docs/DESIGN.md` and add failing state/structure tests.
+> **Current status (2026-07-29):** The shared onboarding workspace exists for numbered post-entry routes, while `/setup` is restored as the separate split-screen setup-secret gateway.
+> **Progress:** 15/22 unconditional tasks complete. Tasks 6.3, 8.1-8.3, 9.4-9.5, and 10.1 remain unchecked; conditional Task 6.2 remains deferred.
+> **Current priority:** Task 9.4 — add narrow profile persistence and integrate the remaining post-authentication instance steps.
 > **Final review gate:** Fresh visual, goal, QA, code-quality, security, and context review is required after Phase 9.
 > **Corrected re-baseline:** Sharing `SetupLayout` does not equal a unified experience. Persistent journey orientation, focused step content, contextual navigation/status, and consistent actions are now explicit implementation scope.
 
@@ -13,12 +13,12 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Behavioral foundation implemented; unified workspace not started
-- **Checklist completed:** 12/22 unconditional tasks; conditional Task 6.2 remains deferred
+- **Overall status:** Behavioral foundation and shared workspace implemented; post-entry route integration remains in progress
+- **Checklist completed:** 15/22 unconditional tasks; conditional Task 6.2 remains deferred
 - **Planning completed:** Corrected repository/current-screenshot re-baseline is complete
-- **Current priority:** Task 9.1 — design contract and failing workspace tests
-- **Next recommended slice:** Task 9.2 shared display/navigation primitive after Task 9.1 acceptance
-- **Implementation has started:** Prior foundation yes; Phase 9 no
+- **Current priority:** Task 9.4 — profile persistence and post-authentication instance steps
+- **Next recommended slice:** Task 9.4 after the restored setup-entry evidence is reviewed
+- **Implementation has started:** Prior foundation yes; Phase 9 Tasks 9.1-9.3 complete
 - **Planning re-baseline:** Complete — new workspace scope added without runtime edits
 
 ## Implementation Maintenance Rules
@@ -183,26 +183,27 @@ Last Updated: 2026-07-29 Europe/Brussels
   - **Effort:** S
   - **Dependencies:** 8.2 (performed early so the blocked verification handoff remains accurate)
 
-## Phase 9: Unified Onboarding Workspace ⏳ NOT STARTED
+## Phase 9: Unified Onboarding Workspace 🟡 IN PROGRESS
 
-- [ ] **9.1 Define the workspace visual and state contract before component code**
+- [x] **9.1 Define the workspace visual and state contract before component code**
   - **Files:** `docs/DESIGN.md`; focused component/source test files; current screenshots as baseline
   - **Acceptance:** user approval explicitly widens the current intent allow-list to `docs/DESIGN.md`, `*.razor.css`, and focused Blazor tests; `OnboardingWorkspace` documents desktop main/summary grid, tablet/mobile summary disclosure, header, conditional segmented progress, focused main step, contextual help, footer actions, loading/error/locked/skipped/complete/dirty states, RTL, themes, forced colors, reduced motion, and long-copy behavior. Access is outside numbered progress; the default instance journey is Authentication → Site profile → Authorization → Readiness/Launch, with visible-count recomputation for deployment-managed omission.
   - **Validation:** design-system review and failing bUnit/source tests for the declared structure/state matrix.
   - **Effort:** M
   - **Dependencies:** corrected plan approval
 
-- [ ] **9.2 Implement the shared display/navigation workspace primitive**
+- [x] **9.2 Implement the shared display/navigation workspace primitive**
   - **Files:** likely new `src/Explore.Blazor.Client/Pages/Onboarding/Components/OnboardingWorkspace.razor` and isolated CSS; minimal step descriptor/model; `SetupLayout.razor` only where outer chrome changes; reuse/adapt `OnboardingTaskList` where appropriate
   - **Acceptance:** semantic header/nav/section/aside/footer inside `SetupLayout`'s existing `main#main-content`; `aria-current="step"`; native controls; one page h1; server-supplied status; project tokens/wrappers; no API/provider/role logic; no nested `main` or full-page card; no viewport overflow at 375/768/1280px.
   - **Validation:** bUnit state matrix plus component visual harness across LTR/RTL and light/dark.
   - **Effort:** L
   - **Dependencies:** 9.1
 
-- [ ] **9.3 Integrate setup access, authentication provider, and OIDC handoff**
+- [x] **9.3 Integrate setup access, authentication provider, and OIDC handoff**
   - **Files:** `Setup.razor`, `AuthProviderConfiguration.razor`, CSS/tests, `Routes.razor`, `SetupLayout`, existing BFF setup-secret tests
-  - **Acceptance:** access remains setup-secret gated and outside numbered progress; provider setup renders as the first workspace step; detected/manual Keycloak paths share the shell; required hard reloads remain; Exit stores no secrets/browser drafts; dirty discard and authoritative resume from persisted state are explicit.
+  - **Acceptance:** access remains setup-secret gated in the original split-screen `/setup` surface outside `OnboardingWorkspace`; detected Keycloak quick continue uses the authoritative post-entry destination, while missing Keycloak or explicit configuration enters `/onboarding/auth-provider`; required HttpOnly-cookie/OIDC hard reloads remain; no setup secret or draft enters browser storage; `StartupGate` remains the authoritative return router.
   - **Validation:** setup/provider component tests, BFF forwarding/session tests, route/focus/dirty-exit/resume tests.
+  - **Evidence:** The original setup-entry characterization passed 1/1 before production edits. The corrected source contract then failed 0/1 against the rejected workspace wrapper at the missing split-panel assertion. After restoration, `SetupSourceTests` pass 3/3 and `SetupTests` pass 13/13, including both authoritative Keycloak post-entry destinations and explicit authentication configuration routing.
   - **Effort:** L
   - **Dependencies:** 9.2
 
