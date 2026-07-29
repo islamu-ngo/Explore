@@ -7,13 +7,13 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 ## Current Status
 
-- Planning is complete; no runtime source was changed in this planning turn.
-- Next task: `SCS-100` failing-first Application tests for the reusable safe-raster policy.
+- Implementation is active under `.omo/plans/storage-content-security.md`; Wave 1 is independently confirmed.
+- Next task: `SCS-200` upload-session purpose/visibility/MIME/extension policy.
 - Approval checkpoint: accepting the plan authorizes the pre-v1 removal of
   `POST /api/storageobject/generate-upload-url` and `POST /api/storageobject`.
 - No matching active/paused workstream currently owns platform-wide storage content safety.
 - The repository has unrelated dirty Event/Actor/Studio/API/docs changes. Implementation must record and preserve them.
-- Code-review graph discovery was attempted first and failed with `Transport closed`; narrow repository inspection was used as fallback.
+- The implementation graph retry resolved the intended seam but reported a stale index (`2de073f...` versus baseline `2f0426e...`); narrow repository inspection remains the authoritative fallback.
 
 ## Contract Classification
 
@@ -279,12 +279,11 @@ Final reviews are invalidated by any later code/doc commit. Every lane must reco
 
 ## Handoff
 
-Start with `SCS-100`:
+Continue with Phase 2:
 
-1. record baseline branch/SHA/status and root Release build;
-2. retry graph impact discovery;
-3. add failing Application tests for the policy matrix;
-4. add the smallest static Application policy by moving existing parser code;
-5. do not touch ATProto gateway production code until Phase 5;
-6. update the task ledger immediately after the Phase 1 gate.
-
+1. enforce upload-session purpose/visibility/MIME/extension rules before quota or provider work;
+2. make stored byte identity immutable and validate merged access updates;
+3. reuse metadata/reference eligibility for reads and every image assignment;
+4. validate AI bytes before persistence/provider use;
+5. keep ATProto gateway production code untouched until Phase 5;
+6. record each independently confirmed task and the cumulative Phase 2 gate.

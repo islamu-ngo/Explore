@@ -268,13 +268,19 @@ The Blazor BFF upload proxy is an SSRF-sensitive boundary because browser upload
 - The BFF streams bytes to the API upload-session content endpoint. The API owns provider selection and writes to the selected `IFileStorageProvider`.
 - Arbitrary HTTPS URLs, private/internal hosts, local filesystem paths, or presigned-looking attacker values must not be proxied merely because they resemble storage destinations.
 - Upload sessions are short-lived, user-bound, content-type-bound, and consumed after successful upload. This keeps the browser path bound to a server-issued upload intent without duplicating tenant storage policy in the UI layer.
+- Upload-session reservation rejects incoherent access metadata before storage-policy resolution or quota reservation. `public_image` requires a safe-raster MIME/extension pair and an image purpose; image purposes cannot be paired with non-raster metadata.
+- Raster upload finalization accepts only exact, parameter-free `image/jpeg`, `image/png`, `image/gif`, `image/webp`, or `image/avif` declarations with matching extensions. The complete bounded container must match its declaration and be structurally framed through exact EOF before provider storage; non-raster signature checks retain prefix streaming.
+- Storage metadata updates cannot change byte identity: file type, MIME, extension, size, checksum, provider, and object key remain server-owned. Access updates are evaluated as the merged existing-plus-requested state so separate update groups cannot promote unsafe bytes into a public image.
+- This structural guarantee does not mean the raster is decoded, sanitized, fully codec-valid, or malware-free. Pixel dimensions, decompression behavior, content moderation, and malware scanning remain outside this policy; existing upload-byte limits remain authoritative.
 - BFF/API storage logs must not include raw upstream response bodies, presigned URLs, signatures, tokens, object keys, filesystem paths, filenames, or object secrets. Use safe fields such as status code, presence booleans, bounded provider labels, and session failure code.
 
 Server-side/non-browser code paths may still use direct provider upload URLs when the server owns the trusted URL. Browser-facing upload proxy paths must use the upload-session contract.
 
 ## Storage Object Download Boundary
 
-Storage download access uses stable storage object IDs, never browser-supplied provider keys or local paths. Metadata/list/detail routes are authenticated and authorized with `islamuevent_storage_object:view`; content streaming uses `download`; presigned URL generation uses `presigned_download`. The dedicated anonymous route is `GET /api/storageobject/{id}/public`, which is limited by the storage content reader to active `public_image` objects.
+Storage download access uses stable storage object IDs, never browser-supplied provider keys or local paths. Metadata/list/detail routes are authenticated and authorized with `islamuevent_storage_object:view`; content streaming uses `download`; presigned URL generation uses `presigned_download`. The dedicated anonymous route is `GET /api/storageobject/{id}/public`, which is limited by the storage content reader to active, non-deleted `public_image` objects with an image purpose and an exact safe-raster MIME/extension pair. Eligibility is checked before a provider is resolved or opened.
+
+Authenticated content reads and presigned-download decisions retain lifecycle, tenant-filter, authentication, and owner checks. Application results carry a bounded safe display name plus an attachment decision: structurally eligible raster metadata may be presented inline, while non-raster content is marked for attachment delivery. API/provider response-header enforcement is a separate delivery-layer responsibility.
 
 Presigned URLs are bearer credentials. API responses containing them must not be output-cached, must send no-store cache metadata, and must not log the URL, signature, token, object key, bucket path, or raw provider error. The presigned response intentionally keeps `ObjectKey` empty; consumers must treat the returned URL as short-lived secret material.
 

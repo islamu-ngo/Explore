@@ -7,10 +7,10 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 ## Status
 
-- Overall: planning complete; implementation not started.
-- Completed: 0 of 30 implementation tasks.
-- Current phase: Phase 1 — Shared safe-raster policy.
-- Current task: `SCS-100`.
+- Overall: implementation active; Wave 1 is independently confirmed.
+- Completed: 4 of 30 implementation tasks.
+- Current phase: Phase 2 — Storage metadata, image references, and AI ingress.
+- Current task: `SCS-200`.
 - Approval blocker: legacy route removal in `SCS-320` requires plan acceptance.
 - Runtime blocker: unknown until the Phase 6 container-runtime preflight.
 - Review status: not started; no final SHA is pinned.
@@ -28,13 +28,13 @@ Last Updated: 2026-07-29 Europe/Brussels
 
 ## Baseline Checklist
 
-- [ ] Record branch and full starting SHA.
-- [ ] Record full and scoped `git status --short`.
-- [ ] Identify all pre-existing in-scope changes and their owner.
-- [ ] Read plan/context/tasks and required contract/rule/skill files.
-- [ ] Retry code-review graph impact/test discovery; record fallback if unavailable.
-- [ ] Run the canonical root Release build before runtime edits.
-- [ ] Add/update the `storage-content-security` Boulder work entry without changing unrelated `active_work_id`.
+- [x] Record branch and full starting SHA.
+- [x] Record full and scoped `git status --short`.
+- [x] Identify all pre-existing in-scope changes and their owner.
+- [x] Read plan/context/tasks and required contract/rule/skill files.
+- [x] Retry code-review graph impact/test discovery; record fallback if unavailable.
+- [x] Run the canonical root Release build before runtime edits.
+- [x] Add/update the `storage-content-security` Boulder work entry without changing unrelated `active_work_id`.
 
 Baseline evidence:
 
@@ -44,55 +44,78 @@ Planning session, 2026-07-29:
 - Code-review graph: attempted first; failed with `Transport closed`.
 - Worktree: dirty with unrelated Event/Actor/Studio/API/docs changes.
 - Planning artifact verification is recorded at the end of this file.
+
+Implementation baseline, 2026-07-29:
+- Branch/SHA: `develop` at `2f0426ed0530bfad3655715acd40e6f3d87fbe00`.
+- Full and storage-scoped status: clean at capture time; no pre-existing in-scope changes required attribution.
+- Graph retry: seam resolved, but the index was stale (`2de073f...`).
+- `rtk dotnet build --configuration Release --verbosity quiet`: PASS, 26 projects, 0 errors, 10,608 pre-existing `NU1903` warning occurrences, 00:00:47.56.
+- Evidence: `.omo/evidence/storage-content-security/baseline/verification.md`.
+- Boulder: `works.storage-content-security` active; unrelated `active_work_id` preserved.
 ```
 
 ## Phase 1 — Shared Safe-Raster Policy
 
 ### SCS-100 — Failing-first parser and MIME matrix
 
-- [ ] Add tests for exact parameter-free JPEG/PNG/GIF/WebP/AVIF MIME.
-- [ ] Add MIME/extension match and mismatch tests.
-- [ ] Add valid baseline/progressive JPEG controls.
-- [ ] Add valid PNG/GIF/still-WebP/animated-WebP/AVIF controls.
-- [ ] Add truncated/malformed container cases.
-- [ ] Add MIME-spoofed bytes for every supported MIME.
-- [ ] Add safe-prefix plus active SVG/HTML tail cases.
-- [ ] Assert exact EOF and no trailing bytes.
-- [ ] Confirm the red tests fail for the intended missing shared policy/weak prefix behavior.
+- [x] Add tests for exact parameter-free JPEG/PNG/GIF/WebP/AVIF MIME.
+- [x] Add MIME/extension match and mismatch tests.
+- [x] Add valid baseline/progressive JPEG controls.
+- [x] Add valid PNG/GIF/still-WebP/animated-WebP/AVIF controls.
+- [x] Add truncated/malformed container cases.
+- [x] Add MIME-spoofed bytes for every supported MIME.
+- [x] Add safe-prefix plus active SVG/HTML tail cases.
+- [x] Assert exact EOF and no trailing bytes.
+- [x] Confirm the red tests fail for the intended missing shared policy/weak prefix behavior.
 
 ### SCS-110 — Application-owned policy
 
-- [ ] Add `SafeRasterContentPolicy` with two `ABOUTME:` lines.
-- [ ] Move the existing container parsers inward without adding a package/interface/factory.
-- [ ] Add the minimal exact MIME, extension, container, metadata, and reference APIs.
-- [ ] Support valid animated WebP `ANIM`/`ANMF` framing.
-- [ ] Describe the guarantee as structural framing, not decoding/sanitization.
+- [x] Add `SafeRasterContentPolicy` with two `ABOUTME:` lines.
+- [x] Move the existing container parsers inward without adding a package/interface/factory.
+- [x] Add the minimal exact MIME, extension, container, metadata, and reference APIs.
+- [x] Support valid animated WebP `ANIM`/`ANMF` framing.
+- [x] Describe the guarantee as structural framing, not decoding/sanitization.
 
 ### SCS-120 — Storage signature integration
 
-- [ ] Make raster inspection read a bounded full container plus one overflow sentinel.
-- [ ] Return a replayable bounded stream to the provider.
-- [ ] Preserve non-seekable stream behavior.
-- [ ] Preserve non-raster document-prefix inspection/streaming.
-- [ ] Reject overflow, early EOF, mismatch, truncation, and trailing active content before provider write.
-- [ ] Preserve quota/session failure and cleanup behavior.
+- [x] Make raster inspection read a bounded full container plus one overflow sentinel.
+- [x] Return a replayable bounded stream to the provider.
+- [x] Preserve non-seekable stream behavior.
+- [x] Preserve non-raster document-prefix inspection/streaming.
+- [x] Reject overflow, early EOF, mismatch, truncation, and trailing active content before provider write.
+- [x] Preserve quota/session failure and cleanup behavior.
 
 ### SCS-130 — Phase 1 docs
 
-- [ ] Update the safe-raster guarantee in `docs/SECURITY-MODEL.md`.
-- [ ] State exact MIME and structural-EOF limits accurately.
-- [ ] State decoder/malware/pixel semantics are out of scope.
+- [x] Update the safe-raster guarantee in `docs/SECURITY-MODEL.md`.
+- [x] State exact MIME and structural-EOF limits accurately.
+- [x] State decoder/malware/pixel semantics are out of scope.
 
 ### Phase 1 gate
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
-- [ ] Record nonzero counts, SHA, warnings/failures, and evidence.
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+- [x] Record nonzero counts, SHA, warnings/failures, and evidence.
 
 Evidence:
 
 ```text
-Pending.
+Confirmed 2026-07-29 at shared HEAD d1cd1ae2edfbd32322f93fa6f7a47e8365d61e44:
+- RED: the new exact-container matrix failed against the legacy prefix-only behavior.
+- GREEN: policy matrix 19/19; upload-finalizer class 29/29.
+- Permanent controls include baseline/progressive JPEG, PNG, GIF, still and real
+  two-frame animated WebP, AVIF, five MIME/container spoof cases, and five
+  safe-container plus active-tail cases.
+- Release build: 26 projects, 0 errors.
+- Full Application project: 3323/3326 passed; three deterministic current-HEAD
+  contract failures were reproduced in isolation and confirmed unrelated to
+  Wave 1 (PublishEvent ordering, UpdateOrganization authorization expectation,
+  and EventLocationDisclosure record-shape contract).
+- Manual built-assembly probe: valid_png=True; safe_prefix_svg_tail=False.
+- Executor: `.omo/evidence/storage-content-security/wave1/DONE_CLAIM.md`.
+- Independent gate: `.omo/evidence/storage-content-security/wave1/ADVERSARIAL_VERIFY.md`
+  with verdict `confirmed`.
+- Temporary parser/debug fixtures and journal were removed.
 ```
 
 ## Phase 2 — Storage Metadata, Image References, and AI Ingress
