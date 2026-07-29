@@ -32,7 +32,7 @@ public sealed partial class UpdateContractInventoryArchitectureTests
 
         ValidateIds(dtoRows, "D", 59, failures);
         ValidateIds(handlerRows, "H", 80, failures);
-        ValidateIds(apiRows, "A", 111, failures);
+        ValidateIds(apiRows, "A", 112, failures);
         ValidateFiles(
             Path.Combine(root, "src/Explore.Application/DTOs"),
             "Update*Dto.cs",

@@ -54,6 +54,47 @@ public sealed class InstanceOnboardingOpenApiContractTests
     }
 
     [Test]
+    public async Task SaveInstanceOnboardingProfile_MustExposeTheGeneratedPatchContract()
+    {
+        var repositoryRoot = ResolveRepositoryRoot();
+        var schemaPath = Path.Combine(repositoryRoot, "schemas", "openapi_islamu-event.json");
+        await using var schemaStream = File.OpenRead(schemaPath);
+        using var document = await JsonDocument.ParseAsync(schemaStream);
+
+        JsonElement operation = document.RootElement
+            .GetProperty("paths")
+            .GetProperty("/api/instanceonboarding/profile")
+            .GetProperty("patch");
+        string? requestSchema = operation
+            .GetProperty("requestBody")
+            .GetProperty("content")
+            .GetProperty("application/json; v=0.1")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+        string? responseSchema = operation
+            .GetProperty("responses")
+            .GetProperty("200")
+            .GetProperty("content")
+            .GetProperty("application/json; v=0.1")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+        var generatedClientPath = Path.Combine(
+            repositoryRoot,
+            "src",
+            "Explore.Blazor.Client",
+            "Clients",
+            "EventApiClient.g.cs");
+        var generatedClient = await File.ReadAllTextAsync(generatedClientPath);
+
+        await Assert.That(operation.GetProperty("operationId").GetString()).IsEqualTo("SaveInstanceOnboardingProfile");
+        await Assert.That(requestSchema).IsEqualTo("#/components/schemas/SelfHostOnboardingProfileDto");
+        await Assert.That(responseSchema).IsEqualTo("#/components/schemas/BaseCommandResponseOfGuid");
+        await Assert.That(generatedClient).Contains("SaveInstanceOnboardingProfileAsync", StringComparison.Ordinal);
+    }
+
+    [Test]
     public async Task InstanceSettingsWrites_MustUseDedicatedPatchContracts_AndOnboardingWriteAliasesMustBeAbsent()
     {
         (string ActionName, string Template, string RouteName, Type RequestType)[] patchActions =

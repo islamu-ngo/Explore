@@ -91,99 +91,6 @@
         },
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "ListData"
-      },
-      "post": {
-        "tags": [
-          "Actor"
-        ],
-        "summary": "Create Actor",
-        "description": "Create a new actor (user or organization profile).",
-        "operationId": "CreateActor",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateActorDto"
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateActorDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/actor/{id}": {
@@ -257,260 +164,6 @@
         },
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
-      },
-      "patch": {
-        "tags": [
-          "Actor"
-        ],
-        "summary": "Update Actor",
-        "description": "Partially update an existing actor. Route ID is authoritative and If-Match must contain the current actor concurrency stamp.",
-        "operationId": "UpdateActor",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "If-Match",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateActorDto"
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateActorDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated"
-      },
-      "delete": {
-        "tags": [
-          "Actor"
-        ],
-        "summary": "Delete Actor",
-        "description": "Delete an actor. Admin only.",
-        "operationId": "DeleteActor",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content",
-            "content": {
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/actor/by-did/{did}": {
@@ -680,6 +333,88 @@
         },
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "ListData"
+      }
+    },
+    "/api/actor/by-tenant/{tenantId}/{id}": {
+      "get": {
+        "tags": [
+          "Actor"
+        ],
+        "summary": "Get Actor by Tenant",
+        "description": "Get one locally discoverable actor with safe public participation overrides.",
+        "operationId": "GetActorByTenant",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfActorDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfActorDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "DetailData"
       }
     },
     "/api/actor/{actorId}/moderation/suspend": {
@@ -36818,6 +36553,176 @@
         "x-endpoint-class": "Public"
       }
     },
+    "/api/instanceonboarding/profile": {
+      "patch": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Save Instance Onboarding Profile",
+        "description": "Saves the non-secret instance profile while first-run setup authority is active.",
+        "operationId": "SaveInstanceOnboardingProfile",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SelfHostOnboardingProfileDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SelfHostOnboardingProfileDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SelfHostOnboardingProfileDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "SetupSecret"
+      }
+    },
     "/api/instanceonboarding/complete": {
       "post": {
         "tags": [
@@ -51335,6 +51240,575 @@
         "x-endpoint-class": "Public"
       }
     },
+    "/api/organizations/{organizationId}/legitimacy-evidence": {
+      "get": {
+        "tags": [
+          "OrganizationTenantEvidence"
+        ],
+        "operationId": "GetOrganizationTenantEvidenceCollection",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfOrganizationTenantEvidenceDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfOrganizationTenantEvidenceDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Authenticated"
+      },
+      "post": {
+        "tags": [
+          "OrganizationTenantEvidence"
+        ],
+        "operationId": "SubmitOrganizationTenantEvidence",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitOrganizationTenantEvidenceDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitOrganizationTenantEvidenceDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/organizations/{organizationId}/legitimacy-evidence/{evidenceId}": {
+      "get": {
+        "tags": [
+          "OrganizationTenantEvidence"
+        ],
+        "operationId": "GetOrganizationTenantEvidence",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "evidenceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfOrganizationTenantEvidenceDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfOrganizationTenantEvidenceDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Authenticated"
+      }
+    },
+    "/api/organizations/{organizationId}/legitimacy-evidence/upload-session": {
+      "post": {
+        "tags": [
+          "OrganizationTenantEvidence"
+        ],
+        "operationId": "CreateOrganizationTenantEvidenceUploadSession",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrganizationTenantEvidenceUploadSessionDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrganizationTenantEvidenceUploadSessionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfStorageUploadSessionDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfStorageUploadSessionDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/organizations/{organizationId}/legitimacy-evidence/{evidenceId}/review": {
+      "post": {
+        "tags": [
+          "OrganizationTenantEvidence"
+        ],
+        "operationId": "ReviewOrganizationTenantEvidence",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "evidenceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewOrganizationTenantEvidenceDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewOrganizationTenantEvidenceDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
     "/api/instance/settings/platform-monetization": {
       "get": {
         "tags": [
@@ -54118,104 +54592,6 @@
         },
         "x-endpoint-class": "Authenticated",
         "x-output-cache-policy": "ListData"
-      },
-      "post": {
-        "tags": [
-          "StorageObject"
-        ],
-        "summary": "Create Storage Object Record",
-        "description": "Create a storage object record after successful file upload to S3",
-        "operationId": "CreateStorageObject",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateStorageObjectDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateStorageObjectDto"
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateStorageObjectDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/storageobject/{id}": {
@@ -54784,106 +55160,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated"
-      }
-    },
-    "/api/storageobject/generate-upload-url": {
-      "post": {
-        "tags": [
-          "StorageObject"
-        ],
-        "summary": "Generate Pre-signed Upload URL",
-        "description": "Generate a pre-signed URL for uploading a file directly to S3-compatible storage (Hetzner Object Storage)",
-        "operationId": "GenerateStorageObjectUploadUrl",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UploadRequestDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UploadRequestDto"
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UploadRequestDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/UploadUrlResponseDto"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/UploadUrlResponseDto"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -65976,21 +66252,6 @@
               "string"
             ]
           },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "currencyCode": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "kindId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -69303,124 +69564,6 @@
           }
         }
       },
-      "CreateActorDto": {
-        "type": "object",
-        "properties": {
-          "actorTypeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "userId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "organizationId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "profilePictureId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "backgroundColor": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "backgroundEffect": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "bannerColor": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "bannerPictureId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "did": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "handle": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "didCustodyTypeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "pdsHost": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "indexedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "profilePictureCid": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "profilePictureUri": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
       "CreateAiConversationRequestDto": {
         "type": "object",
         "properties": {
@@ -70250,21 +70393,6 @@
             ],
             "format": "uuid"
           },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "currencyCode": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "featuredImageId": {
             "type": [
               "null",
@@ -70978,21 +71106,6 @@
             ],
             "format": "int32"
           },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "currencyCode": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "sessionTemplateId": {
             "type": [
               "null",
@@ -71209,21 +71322,6 @@
               "string"
             ],
             "format": "int32"
-          },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "currencyCode": {
-            "type": [
-              "null",
-              "string"
-            ]
           },
           "sessionTemplateId": {
             "type": [
@@ -72179,98 +72277,26 @@
           }
         }
       },
-      "CreateStorageObjectDto": {
+      "CreateOrganizationTenantEvidenceUploadSessionDto": {
         "required": [
-          "uri",
-          "fullName",
-          "extension"
+          "fileName",
+          "contentType"
         ],
         "type": "object",
         "properties": {
-          "fileTypeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "uri": {
-            "type": "string"
-          },
-          "objectKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "provider": {
-            "type": "string"
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "safeDisplayName": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "extension": {
+          "fileName": {
             "type": "string"
           },
           "contentType": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "string"
           },
-          "sha256Checksum": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "size": {
+          "expectedSizeBytes": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
               "string"
             ],
             "format": "int64"
-          },
-          "visibility": {
-            "type": "string"
-          },
-          "purpose": {
-            "type": "string"
-          },
-          "lifecycleState": {
-            "type": "string"
-          },
-          "owningResourceKind": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "owningResourceId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "actorId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
           }
         }
       },
@@ -75069,20 +75095,38 @@
               "$ref": "#/components/schemas/EventPublicActionDto"
             }
           },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
+          "ticketPriceSummary": {
+            "required": [
+              "summaryCode"
             ],
-            "format": "double"
-          },
-          "currencyCode": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "object",
+            "properties": {
+              "summaryCode": {
+                "type": "string"
+              },
+              "currencyCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "currencyMinorUnitDigits": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "fromAmountMinor": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              }
+            }
           },
           "featuredImageId": {
             "type": "string",
@@ -75665,19 +75709,14 @@
               "string"
             ]
           },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "currencyCode": {
-            "type": [
-              "null",
-              "string"
+          "ticketPriceSummary": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventTicketPriceSummaryDto"
+              }
             ]
           },
           "featuredImageId": {
@@ -78655,21 +78694,6 @@
               "string"
             ]
           },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "currencyCode": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "islamicAspect": {
             "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
           },
@@ -79623,21 +79647,6 @@
             "format": "int32"
           },
           "registrationModeFullName": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "currencyCode": {
             "type": [
               "null",
               "string"
@@ -80895,6 +80904,39 @@
           "syncedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "EventTicketPriceSummaryDto": {
+        "required": [
+          "summaryCode"
+        ],
+        "type": "object",
+        "properties": {
+          "summaryCode": {
+            "type": "string"
+          },
+          "currencyCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "currencyMinorUnitDigits": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fromAmountMinor": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -82354,6 +82396,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/HalResourceOfOrganizationReviewDto"
+            }
+          }
+        }
+      },
+      "HalCollectionEmbeddedOfOrganizationTenantEvidenceDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfOrganizationTenantEvidenceDto"
             }
           }
         }
@@ -84318,6 +84371,58 @@
           },
           "_embedded": {
             "$ref": "#/components/schemas/HalCollectionEmbeddedOfOrganizationReviewDto"
+          }
+        }
+      },
+      "HalCollectionResourceOfOrganizationTenantEvidenceDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfOrganizationTenantEvidenceDto"
           }
         }
       },
@@ -88716,20 +88821,38 @@
               "$ref": "#/components/schemas/EventPublicActionDto"
             }
           },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
+          "ticketPriceSummary": {
+            "required": [
+              "summaryCode"
             ],
-            "format": "double"
-          },
-          "currencyCode": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "object",
+            "properties": {
+              "summaryCode": {
+                "type": "string"
+              },
+              "currencyCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "currencyMinorUnitDigits": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "fromAmountMinor": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              }
+            }
           },
           "featuredImageId": {
             "type": "string",
@@ -89184,20 +89307,38 @@
               "string"
             ]
           },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
+          "ticketPriceSummary": {
+            "required": [
+              "summaryCode"
             ],
-            "format": "double"
-          },
-          "currencyCode": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "object",
+            "properties": {
+              "summaryCode": {
+                "type": "string"
+              },
+              "currencyCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "currencyMinorUnitDigits": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "fromAmountMinor": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              }
+            }
           },
           "featuredImageId": {
             "type": "string",
@@ -90827,21 +90968,6 @@
               "string"
             ]
           },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "currencyCode": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "islamicAspect": {
             "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
           },
@@ -91772,21 +91898,6 @@
             "format": "int32"
           },
           "registrationModeFullName": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "currencyCode": {
             "type": [
               "null",
               "string"
@@ -95599,6 +95710,98 @@
           }
         }
       },
+      "HalResourceOfOrganizationTenantEvidenceDto": {
+        "required": [
+          "documentDisplayName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "documentStorageObjectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "documentDisplayName": {
+            "type": "string"
+          },
+          "documentContentType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "documentSizeBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "reviewStatusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "reviewStatusCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reviewStatusName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reviewNotes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reviewedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfPlatformMonetizationSettingsDto": {
         "type": "object",
         "properties": {
@@ -96002,12 +96205,6 @@
           "uri": {
             "type": "string"
           },
-          "objectKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "provider": {
             "type": "string"
           },
@@ -96157,12 +96354,6 @@
           },
           "uri": {
             "type": "string"
-          },
-          "objectKey": {
-            "type": [
-              "null",
-              "string"
-            ]
           },
           "provider": {
             "type": "string"
@@ -98822,15 +99013,6 @@
               "null",
               "string"
             ]
-          },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
           },
           "participationConfiguration": {
             "$ref": "#/components/schemas/ConfigureEventParticipationDto"
@@ -104716,6 +104898,91 @@
           }
         }
       },
+      "OrganizationTenantEvidenceDto": {
+        "required": [
+          "documentDisplayName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "documentStorageObjectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "documentDisplayName": {
+            "type": "string"
+          },
+          "documentContentType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "documentSizeBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "reviewStatusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "reviewStatusCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reviewStatusName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reviewNotes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reviewedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "OrganizationTenantEvidenceReviewDecisionDto": {
+        "enum": [
+          "Approve",
+          "Reject"
+        ],
+        "type": "string"
+      },
       "OspreySignalCallbackItemDto": {
         "required": [
           "signalType",
@@ -107812,6 +108079,24 @@
           }
         }
       },
+      "ReviewOrganizationTenantEvidenceDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/OrganizationTenantEvidenceReviewDecisionDto"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expectedConcurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "RoleDto": {
         "required": [
           "masterCode",
@@ -108748,12 +109033,6 @@
           "uri": {
             "type": "string"
           },
-          "objectKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "provider": {
             "type": "string"
           },
@@ -108889,12 +109168,6 @@
           },
           "uri": {
             "type": "string"
-          },
-          "objectKey": {
-            "type": [
-              "null",
-              "string"
-            ]
           },
           "provider": {
             "type": "string"
@@ -109289,6 +109562,15 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "SubmitOrganizationTenantEvidenceDto": {
+        "type": "object",
+        "properties": {
+          "documentStorageObjectId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -111443,86 +111725,6 @@
           }
         }
       },
-      "UpdateActorAppearanceDto": {
-        "type": "object",
-        "properties": {
-          "backgroundColor": {
-            "$ref": "#/components/schemas/OptionalUpdateOfstring"
-          },
-          "backgroundEffect": {
-            "$ref": "#/components/schemas/OptionalUpdateOfstring"
-          },
-          "bannerColor": {
-            "$ref": "#/components/schemas/OptionalUpdateOfstring"
-          }
-        }
-      },
-      "UpdateActorDto": {
-        "type": "object",
-        "properties": {
-          "profile": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateActorProfileDto"
-              }
-            ]
-          },
-          "profileImage": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateActorProfileImageDto"
-              }
-            ]
-          },
-          "appearance": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateActorAppearanceDto"
-              }
-            ]
-          }
-        }
-      },
-      "UpdateActorProfileDto": {
-        "type": "object",
-        "properties": {
-          "actorTypeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "displayName": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "description": {
-            "$ref": "#/components/schemas/OptionalUpdateOfstring"
-          }
-        }
-      },
-      "UpdateActorProfileImageDto": {
-        "type": "object",
-        "properties": {
-          "profilePictureId": {
-            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
-          }
-        }
-      },
       "UpdateActorSubscriptionNotificationLevelDto": {
         "required": [
           "expectedConcurrencyStamp"
@@ -112156,14 +112358,6 @@
           }
         }
       },
-      "UpdateEventCurrencyCodeDto": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "$ref": "#/components/schemas/OptionalUpdateOfstring"
-          }
-        }
-      },
       "UpdateEventCustomPropertyDefinitionDto": {
         "type": "object",
         "properties": {
@@ -112475,26 +112669,6 @@
               },
               {
                 "$ref": "#/components/schemas/UpdateEventAudienceAgeDto"
-              }
-            ]
-          },
-          "price": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateEventPriceDto"
-              }
-            ]
-          },
-          "currencyCode": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateEventCurrencyCodeDto"
               }
             ]
           },
@@ -112869,14 +113043,6 @@
           }
         }
       },
-      "UpdateEventPriceDto": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "$ref": "#/components/schemas/OptionalUpdateOfdecimal"
-          }
-        }
-      },
       "UpdateEventRegistrationApprovalStatusDto": {
         "type": "object",
         "properties": {
@@ -113173,14 +113339,6 @@
           }
         }
       },
-      "UpdateEventSessionCurrencyCodeDto": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "$ref": "#/components/schemas/OptionalUpdateOfstring"
-          }
-        }
-      },
       "UpdateEventSessionCustomPropertyDefinitionDto": {
         "type": "object",
         "properties": {
@@ -113358,26 +113516,6 @@
               },
               {
                 "$ref": "#/components/schemas/UpdateEventSessionRegistrationModeDto"
-              }
-            ]
-          },
-          "price": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateEventSessionPriceDto"
-              }
-            ]
-          },
-          "currencyCode": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateEventSessionCurrencyCodeDto"
               }
             ]
           },
@@ -113587,14 +113725,6 @@
         "properties": {
           "value": {
             "$ref": "#/components/schemas/OptionalUpdateOfint"
-          }
-        }
-      },
-      "UpdateEventSessionPriceDto": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "$ref": "#/components/schemas/OptionalUpdateOfdecimal"
           }
         }
       },
@@ -115608,43 +115738,6 @@
               "type": "string",
               "format": "uuid"
             }
-          }
-        }
-      },
-      "UploadRequestDto": {
-        "required": [
-          "fileName",
-          "contentType"
-        ],
-        "type": "object",
-        "properties": {
-          "fileName": {
-            "type": "string"
-          },
-          "contentType": {
-            "type": "string"
-          }
-        }
-      },
-      "UploadUrlResponseDto": {
-        "type": "object",
-        "properties": {
-          "uploadUrl": {
-            "type": "string"
-          },
-          "objectKey": {
-            "type": "string"
-          },
-          "viewUrl": {
-            "type": "string"
-          },
-          "expiresInMinutes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
           }
         }
       },
@@ -117840,6 +117933,9 @@
     },
     {
       "name": "OrganizationReview"
+    },
+    {
+      "name": "OrganizationTenantEvidence"
     },
     {
       "name": "PlatformMonetizationSettings"
