@@ -326,6 +326,13 @@ Applied via `[OutputCache(PolicyName = "...")]` on controller endpoints.
 | `SystemConfig` | 10 seconds | `Host` | System configuration checks |
 | `SitemapData` | 30 minutes | `X-Tenant-Slug`, `Host` | Sitemap output |
 
+The default ASP.NET Core output-cache store is process-local. `HybridCache` or
+`IDistributedCache` does not distribute output-cache entries or tag eviction:
+immediate tag eviction is guaranteed only on the replica handling the request,
+while other replicas may serve stale output until the policy TTL expires.
+Cross-replica output-cache invalidation is deferred without a dedicated
+distributed output-cache dependency.
+
 ### Layer 2: HybridCache (Application Level — L1 + L2)
 Injected into MediatR handlers, not controllers. Provides in-memory L1 + distributed L2 caching with stampede protection.
 
