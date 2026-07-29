@@ -106204,6 +106204,12 @@
               "string"
             ],
             "format": "int32"
+          },
+          "safeDisplayName": {
+            "type": "string"
+          },
+          "shouldDownloadAsAttachment": {
+            "type": "boolean"
           }
         }
       },
@@ -108933,32 +108939,14 @@
       },
       "StorageObjectMetadataUpdateDto": {
         "required": [
-          "fullName",
-          "extension"
+          "fullName"
         ],
         "type": "object",
         "properties": {
-          "fileTypeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
           "fullName": {
             "type": "string"
           },
           "safeDisplayName": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "extension": {
-            "type": "string"
-          },
-          "contentType": {
             "type": [
               "null",
               "string"

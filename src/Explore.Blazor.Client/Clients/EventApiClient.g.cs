@@ -109326,6 +109326,12 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ExpiresInMinutes { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("safeDisplayName")]
+        public string? SafeDisplayName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("shouldDownloadAsAttachment")]
+        public bool? ShouldDownloadAsAttachment { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -112410,23 +112416,12 @@ namespace Explore.Blazor.Client.Clients
     public partial class StorageObjectMetadataUpdateDto
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("fileTypeId")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? FileTypeId { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("fullName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string FullName { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("safeDisplayName")]
         public string? SafeDisplayName { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("extension")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Extension { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("contentType")]
-        public string? ContentType { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
