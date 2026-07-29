@@ -140,6 +140,51 @@ public sealed class AtprotoEventProjectionVisibilityInMemoryTests
     }
 
     [Test]
+    public async Task ActorSubscriptionTarget_AllowsEligibleFederatedOrganizationWithoutParticipation()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        await using ExploreDbContext context = CreateContext(tenantId);
+        var actorType = new ActorType
+        {
+            Id = (int)ActorTypeEnum.Organization,
+            FullName = "Organization",
+            MasterCode = "ORGANIZATION"
+        };
+        var organization = new Organization
+        {
+            Id = Guid.CreateVersion7(),
+            Pii = new OrganizationPii { FullName = "Federated organization" }
+        };
+        Guid recordId = AddProjection(
+            context,
+            tenantId,
+            "federated-organization",
+            configureEventActor: actor =>
+            {
+                actor.ActorTypeId = (int)ActorTypeEnum.Organization;
+                actor.ActorType = actorType;
+                actor.OrganizationId = organization.Id;
+                actor.Organization = organization;
+                organization.Actor = actor;
+            },
+            eventStatus: EventStatusEnum.Published);
+        context.Set<ActorType>().Add(actorType);
+        context.Organizations.Add(organization);
+        await context.SaveChangesAsync();
+        Guid actorId = context.Events.Local.Single(@event => @event.AtprotoRecordId == recordId).ActorId;
+        var repository = new ActorRepository(context);
+
+        Actor? target = await repository.GetLocallyDiscoverableSubscriptionTargetAsync(
+            tenantId,
+            actorId,
+            CancellationToken.None);
+
+        await Assert.That(target).IsNotNull();
+        await Assert.That(target!.Id).IsEqualTo(actorId);
+        await Assert.That(organization.TenantParticipations).IsEmpty();
+    }
+
+    [Test]
     public async Task VisibleQuery_ExcludesTombstonedOwnedLocalEchoes()
     {
         Guid tenantId = Guid.CreateVersion7();
