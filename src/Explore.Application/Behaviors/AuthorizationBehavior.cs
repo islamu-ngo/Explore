@@ -535,9 +535,9 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         {
             ["eventId"] = registration.EventId.ToString("D"),
             ["eventSessionId"] = registration.EventSessionId.ToString("D"),
-            ["userId"] = registration.UserId.ToString("D"),
             ["tenantId"] = registration.TenantId.ToString("D")
         };
+        AddIfMissing(attributes, "userId", registration.UserId);
         AddIfMissing(attributes, "organizationId", eventEntity.Actor?.OrganizationId);
         AddIfMissing(attributes, "groupId", eventEntity.Actor?.GroupId);
         return attributes;

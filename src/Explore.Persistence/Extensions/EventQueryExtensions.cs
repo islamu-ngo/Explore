@@ -42,6 +42,8 @@ internal static class EventQueryExtensions
                 .ThenInclude(a => a!.PrimaryLanguage)
             .Include(e => e.TechAspect)
             .Include(e => e.CapacityPools)
+                .ThenInclude(pool => pool.CapacityHoldPolicy)
+            .Include(e => e.CapacityPools)
                 .ThenInclude(pool => pool.CapacityOversellPolicy)
             .Include(e => e.TicketCatalogVersions.Where(catalog =>
                 !catalog.IsDeleted && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Published))
