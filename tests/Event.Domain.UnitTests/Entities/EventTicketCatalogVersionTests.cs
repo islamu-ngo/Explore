@@ -181,6 +181,7 @@ public sealed class EventTicketCatalogVersionTests
             "Main hall",
             200,
             900,
+            CapacityHoldPolicyEnum.TimedHoldOnSelection,
             CapacityOversellPolicyEnum.Disallow,
             true);
 
@@ -225,6 +226,7 @@ public sealed class EventTicketCatalogVersionTests
             "Main hall",
             200,
             900,
+            CapacityHoldPolicyEnum.TimedHoldOnSelection,
             CapacityOversellPolicyEnum.Disallow,
             true);
         EventTicketType adultTicket = CreateTicket(catalog, "USD", TicketPricingModeEnum.Free, null, null, null);
@@ -239,6 +241,7 @@ public sealed class EventTicketCatalogVersionTests
             "Other hall",
             100,
             900,
+            CapacityHoldPolicyEnum.TimedHoldOnSelection,
             CapacityOversellPolicyEnum.Disallow,
             true);
         EventTicketType otherTicket = CreateTicket(catalog, "USD", TicketPricingModeEnum.Free, null, null, null);
@@ -320,6 +323,7 @@ public sealed class EventTicketCatalogVersionTests
         long? fixedPriceMinor,
         long? minimumPriceMinor,
         long? suggestedPriceMinor) => EventTicketType.Create(
+            Guid.CreateVersion7(),
         catalog.TenantId,
         catalog.Id,
         "General admission",

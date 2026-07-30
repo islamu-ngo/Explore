@@ -79,6 +79,7 @@ public sealed class EventSeriesRepositoryTests
         EventTicketCatalogVersion publishedCatalog = EventTicketCatalogVersion.Create(tenantId, eventId, "USD", 2);
         publishedCatalog.CreatedAt = now;
         EventTicketType activeTicket = EventTicketType.Create(
+            Guid.CreateVersion7(),
             tenantId,
             publishedCatalog.Id,
             "General",
@@ -102,6 +103,7 @@ public sealed class EventSeriesRepositoryTests
         publishedCatalog.AddEntitlement(activeTicket, TicketTypeEntitlement.CreateForEvent(activeTicket.Id, tenantId, eventId, 1));
 
         EventTicketType deletedTicket = EventTicketType.Create(
+            Guid.CreateVersion7(),
             tenantId,
             publishedCatalog.Id,
             "Deleted",

@@ -720,7 +720,7 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
             Id = Guid.NewGuid(),
             EventId = registrationIdentity.EventId,
             Event = null!,
-            UserId = registrationIdentity.UserId,
+            UserId = registrationIdentity.UserId!.Value,
             User = null!,
             RegistrationScopeId = (int)RegistrationScopeEnum.Event,
             RegistrationScope = null!,

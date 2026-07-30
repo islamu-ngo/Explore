@@ -110,6 +110,7 @@ public sealed class EventFilterTests
     {
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(@event.TenantId, @event.Id, "USD", 1);
         EventTicketType ticketType = EventTicketType.Create(
+            Guid.CreateVersion7(),
             catalog.TenantId,
             catalog.Id,
             "General admission",
