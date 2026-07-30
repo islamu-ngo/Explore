@@ -36,7 +36,10 @@ public sealed class EventTicketingControllerContractTests
         };
         var conflictCapableActions = new HashSet<string>
         {
+            nameof(EventTicketingController.CreateDraft),
+            nameof(EventTicketingController.CloneDraft),
             nameof(EventTicketingController.UpdateType),
+            nameof(EventTicketingController.CreatePool),
             nameof(EventTicketingController.UpdatePool),
             nameof(EventTicketingController.Publish)
         };
