@@ -510,10 +510,18 @@ public class EventSessionController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteEventSessionCommand { Id = id };
-        await _mediator.Send(command, cancellationToken);
+        BaseCommandResponse<Guid> response = await _mediator.Send(command, cancellationToken);
+
+        if (!response.Success)
+        {
+            return response.FailureCode == "event_session_ticket_entitlement_conflict"
+                ? this.ToCommandConflictProblem(response, "Event session deletion conflict", "Event session deletion conflict.")
+                : this.ToNotFoundProblem(EventSessionNotFoundProblem);
+        }
 
         return NoContent();
     }

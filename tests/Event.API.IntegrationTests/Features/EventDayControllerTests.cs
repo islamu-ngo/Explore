@@ -9,11 +9,16 @@ using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventDay;
 using Explore.Application.Features.EventDays.Requests.Commands;
 using Explore.Application.Features.EventDays.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Models.Common;
+using Explore.Application.Responses;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -68,6 +73,34 @@ public class EventDayControllerTests
         await AssertProducesProblem(action, StatusCodes.Status403Forbidden);
         await AssertProducesProblem(action, StatusCodes.Status404NotFound);
         await AssertProducesProblem(action, StatusCodes.Status409Conflict);
+    }
+
+    [Test]
+    public async Task Delete_WhenPublishedTicketReferencesDay_ReturnsConflict()
+    {
+        Guid id = Guid.CreateVersion7();
+        IMediator mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<DeleteEventDayCommand>(), Arg.Any<CancellationToken>()).Returns(new BaseCommandResponse<Guid>
+        {
+            Id = id,
+            Success = false,
+            FailureCode = "event_day_ticket_entitlement_conflict",
+            Message = "Event day is referenced by a published ticket catalog."
+        });
+        var controller = new EventDayController(
+            mediator,
+            Substitute.For<ILogger<EventDayController>>(),
+            Substitute.For<IResourceAssembler<EventDayDto, EventDayListDto>>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        ActionResult result = await controller.Delete(id, CancellationToken.None);
+
+        ObjectResult conflict = (ObjectResult)result;
+        await Assert.That(conflict.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        await Assert.That(((ProblemDetails)conflict.Value!).Extensions["code"]).IsEqualTo("event_day_ticket_entitlement_conflict");
+        await AssertProducesProblem(typeof(EventDayController).GetMethod(nameof(EventDayController.Delete))!, StatusCodes.Status409Conflict);
     }
 
     private static async Task AssertProducesProblem(MethodInfo action, int statusCode)

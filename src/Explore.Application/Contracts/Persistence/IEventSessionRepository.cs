@@ -14,6 +14,12 @@ public interface IEventSessionRepository : IGenericRepository<EventSession, Guid
         Guid tenantId,
         CancellationToken cancellationToken);
 
+    Task<EventSession?> GetByIdForEventForUpdateAsync(
+        Guid eventSessionId,
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken);
+
     Task<EventSession?> GetSessionWithDetails(Guid id);
     Task<EventSession?> GetPublicSessionWithDetailsAsync(Guid id, CancellationToken cancellationToken);
     Task<List<EventSession>> GetSessionsByEvent(Guid eventId);

@@ -13,6 +13,12 @@ public interface IEventDayRepository : IGenericRepository<EventDay, Guid>
         Guid tenantId,
         CancellationToken cancellationToken);
 
+    Task<EventDay?> GetByIdForEventForUpdateAsync(
+        Guid eventDayId,
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken);
+
     /// <summary>
     /// Returns true when the supplied day id belongs to the supplied event and is not soft-deleted.
     /// Used by the registration-intent validator to reject a Day-scoped intent that points at a foreign day.

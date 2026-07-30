@@ -12,11 +12,16 @@ using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Features.EventSessions.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Models.Common;
+using Explore.Application.Responses;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -313,6 +318,35 @@ public class EventSessionControllerTests
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task Delete_WhenPublishedTicketReferencesSession_ReturnsConflict()
+    {
+        Guid id = Guid.CreateVersion7();
+        IMediator mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<DeleteEventSessionCommand>(), Arg.Any<CancellationToken>()).Returns(new BaseCommandResponse<Guid>
+        {
+            Id = id,
+            Success = false,
+            FailureCode = "event_session_ticket_entitlement_conflict",
+            Message = "Event session is referenced by a published ticket catalog."
+        });
+        var controller = new EventSessionController(
+            mediator,
+            Substitute.For<ILogger<EventSessionController>>(),
+            Substitute.For<Explore.Application.Contracts.Infrastructure.ITenantContext>(),
+            Substitute.For<IResourceAssembler<EventSessionDto, EventSessionListDto>>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        ActionResult result = await controller.Delete(id, CancellationToken.None);
+
+        ObjectResult conflict = (ObjectResult)result;
+        await Assert.That(conflict.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        await Assert.That(((ProblemDetails)conflict.Value!).Extensions["code"]).IsEqualTo("event_session_ticket_entitlement_conflict");
+        await AssertProducesProblem(typeof(EventSessionController).GetMethod(nameof(EventSessionController.Delete))!, StatusCodes.Status409Conflict);
     }
 
     #endregion

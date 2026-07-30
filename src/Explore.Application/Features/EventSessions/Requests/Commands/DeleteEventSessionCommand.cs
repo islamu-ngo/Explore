@@ -2,12 +2,13 @@
 // ABOUTME: Carries the target session ID.
 using System;
 using Explore.Application.Authorization;
+using Explore.Application.Responses;
 using MediatR;
 
 namespace Explore.Application.Features.EventSessions.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.EventSession, AuthorizationActions.Delete)]
-public class DeleteEventSessionCommand : IRequest<bool>, ISecureRequest
+public class DeleteEventSessionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid Id { get; set; }
 

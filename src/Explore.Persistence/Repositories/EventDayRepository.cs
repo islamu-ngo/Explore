@@ -27,6 +27,35 @@ public class EventDayRepository : GenericRepository<EventDay, Guid>, IEventDayRe
                 day => day.Id == eventDayId && day.EventId == eventId && day.TenantId == tenantId,
                 cancellationToken);
 
+    public async Task<EventDay?> GetByIdForEventForUpdateAsync(
+        Guid eventDayId,
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            if (_dbContext.Database.CurrentTransaction is null)
+            {
+                throw new InvalidOperationException("Event-day row locks require an active transaction.");
+            }
+
+            await _dbContext.Database.ExecuteSqlInterpolatedAsync($"""
+                SELECT id
+                FROM event_days
+                WHERE id = {eventDayId}
+                  AND event_id = {eventId}
+                  AND tenant_id = {tenantId}
+                  AND is_deleted = false
+                FOR UPDATE
+                """, cancellationToken);
+        }
+
+        return await _dbContext.EventDays.FirstOrDefaultAsync(
+            day => day.Id == eventDayId && day.EventId == eventId && day.TenantId == tenantId,
+            cancellationToken);
+    }
+
     public async Task<bool> BelongsToEventAsync(Guid eventDayId, Guid eventId, CancellationToken cancellationToken)
     {
         return await _dbContext.EventDays

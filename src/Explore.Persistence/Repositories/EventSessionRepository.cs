@@ -35,6 +35,35 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
                 session => session.Id == eventSessionId && session.EventId == eventId && session.TenantId == tenantId,
                 cancellationToken);
 
+    public async Task<EventSession?> GetByIdForEventForUpdateAsync(
+        Guid eventSessionId,
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            if (_dbContext.Database.CurrentTransaction is null)
+            {
+                throw new InvalidOperationException("Event-session row locks require an active transaction.");
+            }
+
+            await _dbContext.Database.ExecuteSqlInterpolatedAsync($"""
+                SELECT id
+                FROM event_sessions
+                WHERE id = {eventSessionId}
+                  AND event_id = {eventId}
+                  AND tenant_id = {tenantId}
+                  AND is_deleted = false
+                FOR UPDATE
+                """, cancellationToken);
+        }
+
+        return await _dbContext.EventSessions.FirstOrDefaultAsync(
+            session => session.Id == eventSessionId && session.EventId == eventId && session.TenantId == tenantId,
+            cancellationToken);
+    }
+
     public async Task<EventSession?> GetSessionWithDetails(Guid id)
     {
         return await _dbContext.EventSessions
