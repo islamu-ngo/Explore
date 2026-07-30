@@ -1,6 +1,7 @@
 // ABOUTME: Validates capacity pool payloads before the ticket catalog aggregate mutates.
 // ABOUTME: Is manually constructed by capacity-pool command handlers.
 using FluentValidation;
+using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.EventTicketing.Validators;
 
@@ -10,5 +11,8 @@ public sealed class ManageEventCapacityPoolDtoValidator : AbstractValidator<Mana
     {
         RuleFor(x => x.Name).NotEmpty();
         RuleFor(x => x.HoldDurationSeconds).GreaterThan(0);
+        RuleFor(x => x.CapacityHoldPolicyId).InclusiveBetween(
+            (int)CapacityHoldPolicyEnum.NoHoldUntilReady,
+            (int)CapacityHoldPolicyEnum.WaitlistWhenFull);
     }
 }

@@ -43,6 +43,7 @@ public sealed class CreateEventTicketTypeCommandHandler(
 
         try
         {
+            Guid stableTicketTypeId = Guid.CreateVersion7();
             Guid? ticketTypeId = await unitOfWork.ExecuteInTransactionAsync<Guid?>(async token =>
             {
                 EventTicketCatalogVersion? catalog = await catalogs.GetDraftCatalogForUpdateAsync(
@@ -52,6 +53,11 @@ public sealed class CreateEventTicketTypeCommandHandler(
                 if (catalog is null)
                 {
                     return null;
+                }
+
+                if (catalog.TicketTypes.Any(ticketType => ticketType.Id == stableTicketTypeId))
+                {
+                    return stableTicketTypeId;
                 }
 
                 EventCapacityPool? pool = request.TicketType.CapacityPoolId.HasValue
@@ -66,7 +72,7 @@ public sealed class CreateEventTicketTypeCommandHandler(
                     return null;
                 }
 
-                EventTicketType ticketType = CreateTicketType(catalog, request.TicketType);
+                EventTicketType ticketType = CreateTicketType(stableTicketTypeId, catalog, request.TicketType);
                 IReadOnlyList<TicketTypeEntitlement> entitlements = await entitlementResolver.ResolveAsync(
                     ticketType.Id,
                     request.TicketType.Entitlements,
@@ -107,9 +113,11 @@ public sealed class CreateEventTicketTypeCommandHandler(
             == (int)ParticipationHandlingModeEnum.PlatformManaged;
 
     private static EventTicketType CreateTicketType(
+        Guid ticketTypeId,
         EventTicketCatalogVersion catalog,
         ManageEventTicketTypeDto dto) =>
         EventTicketType.Create(
+            ticketTypeId,
             catalog.TenantId,
             catalog.Id,
             dto.Name,

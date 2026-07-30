@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -44,15 +45,24 @@ public sealed class CloneEventTicketCatalogDraftCommandHandler(
             return Bad(request.EventId, "A ticket catalog draft already exists.");
         }
 
+        EventTicketCatalogVersion draft;
         try
         {
-            EventTicketCatalogVersion draft = publishedCatalog.CloneToDraft();
-            await catalogs.AddAsync(draft, cancellationToken);
-            return Ok(draft.Id, "Ticket catalog draft cloned.");
+            draft = publishedCatalog.CloneToDraft();
         }
         catch (InvalidOperationException exception)
         {
             return Bad(request.EventId, exception.Message);
+        }
+
+        try
+        {
+            await catalogs.AddAsync(draft, cancellationToken);
+            return Ok(draft.Id, "Ticket catalog draft cloned.");
+        }
+        catch (ConcurrencyConflictException exception)
+        {
+            return Conflict(request.EventId, exception.Message);
         }
     }
 
@@ -82,6 +92,15 @@ public sealed class CloneEventTicketCatalogDraftCommandHandler(
         Success = false,
         FailureCode = "event_ticketing_validation_failed",
         Message = "Ticketing configuration is invalid.",
+        Errors = [error]
+    };
+
+    private static BaseCommandResponse<Guid> Conflict(Guid id, string error) => new()
+    {
+        Id = id,
+        Success = false,
+        FailureCode = "event_ticketing_concurrency_conflict",
+        Message = "Ticketing configuration was updated by another request.",
         Errors = [error]
     };
 }

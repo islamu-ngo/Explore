@@ -103,11 +103,11 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
         registration.EventRegistrationIntentId = registrationIntentId;
         registration.ApprovalStatusId = (int)ApprovalStatusEnum.Waitlisted;
         registration.ConcurrencyStamp = stamp;
-        EventRegistrationIntent intent = CreateIntent(registrationIntentId, tenantId, eventId, registration.UserId);
+        EventRegistrationIntent intent = CreateIntent(registrationIntentId, tenantId, eventId, registration.UserId!.Value);
         _eventRegistrationRepository.GetById(registration.Id).Returns(registration);
         _intentRepository.GetById(registrationIntentId).Returns(intent);
         _eventRepository.GetById(eventId).Returns(CreateEvent(eventId, tenantId));
-        _userRepository.GetById(registration.UserId).Returns(CreateUser(registration.UserId));
+        _userRepository.GetById(registration.UserId!.Value).Returns(CreateUser(registration.UserId!.Value));
         _approvalStatusRepository.Exists((int)ApprovalStatusEnum.Approved).Returns(true);
         _eventRegistrationRepository.UpdateAndAdjustCapacityAsync(
                 registration,
@@ -174,7 +174,7 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
         _eventRegistrationRepository.GetById(registration.Id).Returns(registration);
         _eventRepository.GetById(eventId).Returns(CreateEvent(eventId, tenantId));
         _intentRepository.GetById(registrationIntentId)
-            .Returns(CreateIntent(registrationIntentId, tenantId, eventId, registration.UserId));
+            .Returns(CreateIntent(registrationIntentId, tenantId, eventId, registration.UserId!.Value));
         _approvalStatusRepository.Exists((int)ApprovalStatusEnum.Approved).Returns(true);
         _eventRegistrationRepository.UpdateAndAdjustCapacityAsync(
                 registration,
@@ -356,7 +356,7 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
         var newSession = CreateSession(newSessionId, tenantId, eventId);
         _eventRegistrationRepository.GetById(registration.Id).Returns(registration);
         _eventSessionRepository.GetById(newSessionId).Returns(newSession);
-        _eventRegistrationRepository.GetRegistrationByUserAndSession(registration.UserId, newSessionId)
+        _eventRegistrationRepository.GetRegistrationByUserAndSession(registration.UserId!.Value, newSessionId)
             .Returns((EventRegistration?)null);
 
         var command = new UpdateEventRegistrationCommand

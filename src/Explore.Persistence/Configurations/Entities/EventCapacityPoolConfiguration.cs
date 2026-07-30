@@ -21,6 +21,7 @@ public sealed class EventCapacityPoolConfiguration : IEntityTypeConfiguration<Ev
         builder.HasOne<Tenant>().WithMany().HasForeignKey(pool => pool.TenantId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Event>().WithMany(@event => @event.CapacityPools).HasForeignKey(pool => new { pool.TenantId, pool.EventId })
             .HasPrincipalKey(@event => new { @event.TenantId, @event.Id }).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(pool => pool.CapacityHoldPolicy).WithMany().HasForeignKey(pool => pool.CapacityHoldPolicyId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(pool => pool.CapacityOversellPolicy).WithMany().HasForeignKey(pool => pool.CapacityOversellPolicyId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(pool => new { pool.TenantId, pool.EventId, pool.Name }).IsUnique().HasFilter("is_deleted = false");
     }

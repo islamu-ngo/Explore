@@ -100,6 +100,9 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         await using var connection = new NpgsqlConnection(ConnectionString);
         await connection.OpenAsync();
         await _respawner.ResetAsync(connection);
+
+        await using var context = CreateDbContextInternal();
+        await LookupTableSeeder.SeedAsync(context);
     }
 
     private ExploreDbContext CreateDbContextInternal()

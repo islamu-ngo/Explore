@@ -119,6 +119,7 @@ public sealed class GetEventTicketCatalogManagementQueryHandlerTests
     {
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(_tenantId, _eventId, "USD", 1);
         EventTicketType ticket = EventTicketType.Create(
+            Guid.CreateVersion7(),
             _tenantId, catalog.Id, "General", "USD", TicketPricingModeEnum.Free,
             null, null, null, ParticipantDataCollectionModeEnum.None, null,
             null, null, false, false, null, null, null, null);
@@ -167,6 +168,7 @@ public sealed class GetEventTicketCatalogManagementQueryHandlerTests
     {
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(_tenantId, _eventId, "USD", 1);
         EventTicketType ticket = EventTicketType.Create(
+            Guid.CreateVersion7(),
             _tenantId,
             catalog.Id,
             "General admission",

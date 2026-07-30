@@ -27,6 +27,7 @@ using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Application.Services.Federation;
 using Explore.Application.Services.Lifecycle;
+using Explore.Application.Services.Registration;
 using Explore.Application.Services.Webhooks;
 using Explore.Application.Settings;
 using Explore.Application.Webhooks;
@@ -211,6 +212,8 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IEventDetailsProjectionService, EventDetailsProjectionService>();
         services.AddScoped<INotificationRefreshStreamService, NotificationRefreshStreamService>();
         services.AddScoped<IEventLifecycleScheduler, EventLifecycleScheduler>();
+        services.AddScoped<RegistrationOrderLifecycleService>();
+        services.AddScoped<IRegistrationOrderLifecycleService>(provider => provider.GetRequiredService<RegistrationOrderLifecycleService>());
         services.AddScoped<AtprotoEventGovernanceResolver>();
         services.AddScoped<AtprotoJetstreamTenantPresentationResolver>();
         services.AddScoped<AtprotoPdsRecoveryPolicyResolver>();
@@ -227,6 +230,7 @@ public static class ApplicationServicesRegistration
 
         // Scheduling domain services (stateless, safe as singleton).
         services.AddSingleton<IEventScheduleProjectionCalculator, EventScheduleProjectionCalculator>();
+        services.AddSingleton<IOrganizerEarningsCalculator, OrganizerEarningsCalculator>();
 
         // Appearance resolution and palette generation
         services.AddScoped<IAppearanceResolutionService, AppearanceResolutionService>();

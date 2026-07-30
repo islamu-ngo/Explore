@@ -10,6 +10,7 @@ using Explore.Application.Features.Management.Handlers.Commands;
 using Explore.Application.Features.Management.Requests.Commands;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Infrastructure.Services.Moderation;
 using MediatR;
@@ -60,6 +61,12 @@ public sealed class CompositeOutboxMessageDispatcher(
 
             case PrivacyErasureCacheInvalidationOutboxMessageFactory.EventType:
                 await privacyErasureCacheInvalidationDispatcher.DispatchAsync(message, ct);
+                return;
+
+            case RegistrationOrderOutboxMessageFactory.ConfirmedEventType:
+            case RegistrationOrderOutboxMessageFactory.CancelledEventType:
+            case RegistrationOrderOutboxMessageFactory.RejectedEventType:
+                logger.LogInformation("Recorded registration-order lifecycle outbox message {MessageId} after commit.", message.Id);
                 return;
 
             case ManagedTenantProvisioningOutboxEvents.ProcessRequested:

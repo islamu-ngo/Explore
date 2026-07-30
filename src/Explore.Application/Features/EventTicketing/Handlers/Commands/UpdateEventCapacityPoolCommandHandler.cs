@@ -56,6 +56,7 @@ public sealed class UpdateEventCapacityPoolCommandHandler(
                     request.CapacityPool.Name,
                     request.CapacityPool.MaximumQuantity,
                     request.CapacityPool.HoldDurationSeconds,
+                    (CapacityHoldPolicyEnum)request.CapacityPool.CapacityHoldPolicyId,
                     (CapacityOversellPolicyEnum)request.CapacityPool.CapacityOversellPolicyId,
                     request.CapacityPool.IsActive);
                 await catalogs.UpdateCapacityPoolAsync(pool, token);

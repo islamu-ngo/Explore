@@ -153,12 +153,14 @@ public sealed class CapacityPoolEditModel
     public string Name { get; set; } = string.Empty;
     public int? MaximumQuantity { get; set; }
     public int HoldDurationSeconds { get; set; } = 900;
+    public int HoldPolicyId { get; set; }
     public int OversellPolicyId { get; set; } = 1;
     public bool IsActive { get; set; } = true;
 
     public bool IsValid => !string.IsNullOrWhiteSpace(Name)
         && MaximumQuantity is null or > 0
         && HoldDurationSeconds > 0
+        && HoldPolicyId is 1 or 2 or 3 or 4
         && OversellPolicyId is 1 or 2;
 
     public static CapacityPoolEditModel Create() => new();
@@ -169,6 +171,7 @@ public sealed class CapacityPoolEditModel
         Name = state.Name,
         MaximumQuantity = state.MaximumQuantity,
         HoldDurationSeconds = state.HoldDurationSeconds,
+        HoldPolicyId = state.CapacityHoldPolicyId,
         OversellPolicyId = state.CapacityOversellPolicyId,
         IsActive = state.IsActive
     };
@@ -178,6 +181,7 @@ public sealed class CapacityPoolEditModel
         Name = Name.Trim(),
         MaximumQuantity = MaximumQuantity,
         HoldDurationSeconds = HoldDurationSeconds,
+        CapacityHoldPolicyId = HoldPolicyId,
         CapacityOversellPolicyId = OversellPolicyId,
         IsActive = IsActive
     };

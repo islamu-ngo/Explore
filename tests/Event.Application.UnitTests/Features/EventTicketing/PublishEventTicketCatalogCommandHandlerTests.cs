@@ -23,6 +23,8 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
     private readonly Guid _eventId = Guid.CreateVersion7();
     private readonly IEventRepository _events = Substitute.For<IEventRepository>();
     private readonly IEventTicketCatalogRepository _catalogs = Substitute.For<IEventTicketCatalogRepository>();
+    private readonly IEventDayRepository _eventDays = Substitute.For<IEventDayRepository>();
+    private readonly IEventSessionRepository _eventSessions = Substitute.For<IEventSessionRepository>();
     private readonly ITenantContext _tenant = Substitute.For<ITenantContext>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
 
@@ -67,16 +69,96 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenTransactionFails_DoesNotInvalidateCache()
+    public async Task Handle_WhenDayEntitlementTargetIsStale_ReturnsValidationFailureWithoutMutation()
+    {
+        EventTicketCatalogVersion draft = CreateDraftCatalog();
+        EventTicketType ticketType = CreateFreeTicket(draft);
+        var eventDay = new EventDay
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = _eventId,
+            TenantId = _tenantId,
+            Event = null!,
+            Tenant = null!,
+            IsDeleted = true
+        };
+        draft.AddTicketType(ticketType, capacityPool: null);
+        draft.AddEntitlement(ticketType, TicketTypeEntitlement.CreateForEventDay(
+            ticketType.Id,
+            eventDay,
+            includedQuantity: 1,
+            EntitlementSelectionRuleEnum.FixedSelection));
+        var unitOfWork = new RecordingUnitOfWork();
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
+
+        var result = await CreateHandler(unitOfWork).Handle(
+            new PublishEventTicketCatalogCommand { EventId = _eventId },
+            CancellationToken.None);
+
+        await Assert.That(result.FailureCode).IsEqualTo("event_ticketing_validation_failed");
+        await Assert.That(result.Errors).Contains(
+            "Ticket entitlement targets must be active and belong to the catalog event and tenant.");
+        await _eventDays.Received(1).GetByIdForEventForUpdateAsync(
+            eventDay.Id,
+            _eventId,
+            _tenantId,
+            Arg.Any<CancellationToken>());
+        await _catalogs.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenSessionEntitlementTargetIsStale_ReturnsValidationFailureWithoutMutation()
+    {
+        EventTicketCatalogVersion draft = CreateDraftCatalog();
+        EventTicketType ticketType = CreateFreeTicket(draft);
+        var eventSession = new EventSession
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = _eventId,
+            TenantId = _tenantId,
+            Event = null!,
+            Tenant = null!,
+            IsDeleted = true
+        };
+        draft.AddTicketType(ticketType, capacityPool: null);
+        draft.AddEntitlement(ticketType, TicketTypeEntitlement.CreateForEventSession(
+            ticketType.Id,
+            eventSession,
+            includedQuantity: 1,
+            EntitlementSelectionRuleEnum.FixedSelection));
+        var unitOfWork = new RecordingUnitOfWork();
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
+
+        var result = await CreateHandler(unitOfWork).Handle(
+            new PublishEventTicketCatalogCommand { EventId = _eventId },
+            CancellationToken.None);
+
+        await Assert.That(result.FailureCode).IsEqualTo("event_ticketing_validation_failed");
+        await Assert.That(result.Errors).Contains(
+            "Ticket entitlement targets must be active and belong to the catalog event and tenant.");
+        await _eventSessions.Received(1).GetByIdForEventForUpdateAsync(
+            eventSession.Id,
+            _eventId,
+            _tenantId,
+            Arg.Any<CancellationToken>());
+        await _catalogs.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenTransactionFails_PropagatesAndDoesNotInvalidateCache()
     {
         EventTicketCatalogVersion draft = CreateValidDraftCatalog();
         var unitOfWork = new RecordingUnitOfWork(commitFailure: new InvalidOperationException("Catalog publication failed."));
         _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
 
-        var result = await CreateHandler(unitOfWork).Handle(new PublishEventTicketCatalogCommand { EventId = _eventId }, CancellationToken.None);
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CreateHandler(unitOfWork).Handle(
+                new PublishEventTicketCatalogCommand { EventId = _eventId },
+                CancellationToken.None));
 
-        await Assert.That(result.FailureCode).IsEqualTo("event_ticketing_validation_failed");
-        await Assert.That(result.Errors).Contains("Catalog publication failed.");
+        await Assert.That(exception.Message).IsEqualTo("Catalog publication failed.");
         await Assert.That(unitOfWork.HasCommitted).IsFalse();
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -156,7 +238,8 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    private PublishEventTicketCatalogCommandHandler CreateHandler(IUnitOfWork unitOfWork) => new(_events, _catalogs, _tenant, unitOfWork, _cache);
+    private PublishEventTicketCatalogCommandHandler CreateHandler(IUnitOfWork unitOfWork) =>
+        new(_events, _catalogs, _eventDays, _eventSessions, _tenant, unitOfWork, _cache);
 
     private DomainEvent CreatePlatformEvent() => new()
     {
@@ -201,6 +284,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
     }
 
     private static EventTicketType CreateFreeTicket(EventTicketCatalogVersion catalog) => EventTicketType.Create(
+        Guid.CreateVersion7(),
         catalog.TenantId,
         catalog.Id,
         "General admission",

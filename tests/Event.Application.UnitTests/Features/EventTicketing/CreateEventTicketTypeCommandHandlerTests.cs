@@ -116,6 +116,24 @@ public sealed class CreateEventTicketTypeCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenCommitOutcomeIsAmbiguous_RetryReturnsTheSingleCreatedTicket()
+    {
+        EventTicketCatalogVersion catalog = CreateDraftCatalog();
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        var unitOfWork = new AmbiguousCommitRetryUnitOfWork();
+
+        var result = await CreateHandler(unitOfWork).Handle(
+            new CreateEventTicketTypeCommand { EventId = _eventId, TicketType = FreeTicketDto() },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(unitOfWork.Attempts).IsEqualTo(2);
+        await Assert.That(catalog.TicketTypes).HasSingleItem();
+        await Assert.That(catalog.TicketTypes.Single().Id).IsEqualTo(result.Id);
+        await _catalogs.Received(1).UpdateAsync(catalog, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Handle_WhenTicketTypeIsInvalid_ReturnsValidationFailureWithoutCacheInvalidation()
     {
         var result = await CreateHandler().Handle(
@@ -146,12 +164,12 @@ public sealed class CreateEventTicketTypeCommandHandlerTests
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    private CreateEventTicketTypeCommandHandler CreateHandler() => new(
+    private CreateEventTicketTypeCommandHandler CreateHandler(IUnitOfWork? unitOfWork = null) => new(
         _events,
         _catalogs,
         new TicketTypeEntitlementResolver(_days, _sessions, _tenant),
         _tenant,
-        _unitOfWork,
+        unitOfWork ?? _unitOfWork,
         _cache);
 
     private DomainEvent CreatePlatformEvent() => new()
@@ -182,6 +200,7 @@ public sealed class CreateEventTicketTypeCommandHandlerTests
         "Main hall",
         200,
         900,
+        CapacityHoldPolicyEnum.TimedHoldOnSelection,
         CapacityOversellPolicyEnum.Disallow,
         true);
 
@@ -240,4 +259,27 @@ public sealed class CreateEventTicketTypeCommandHandlerTests
         IncludedQuantity = 1,
         EntitlementSelectionRuleId = (int)EntitlementSelectionRuleEnum.FixedSelection
     };
+
+    private sealed class AmbiguousCommitRetryUnitOfWork : IUnitOfWork
+    {
+        public int Attempts { get; private set; }
+
+        public Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default) =>
+            ExecuteInTransactionAsync<object?>(async token =>
+            {
+                await operation(token);
+                return null;
+            }, ct);
+
+        public async Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default)
+        {
+            Attempts++;
+            await operation(ct);
+            Attempts++;
+            return await operation(ct);
+        }
+
+        public Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) =>
+            ExecuteInTransactionAsync(operation, ct);
+    }
 }

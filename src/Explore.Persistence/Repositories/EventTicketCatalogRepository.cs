@@ -13,6 +13,7 @@ namespace Explore.Persistence.Repositories;
 public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : IEventTicketCatalogRepository
 {
     private const string PublishedCatalogUniqueIndexName = "ix_event_ticket_catalog_versions_tenant_id_event_id";
+    private const string CatalogVersionNumberUniqueIndexName = "ix_event_ticket_catalog_versions_tenant_id_event_id_version_nu";
     private const string CapacityPoolNameUniqueIndexName = "ix_event_capacity_pools_tenant_id_event_id_name";
 
     public Task<EventTicketCatalogVersion?> GetManagementCatalogAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken) =>
@@ -27,6 +28,15 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
         CatalogDetailsQuery().FirstOrDefaultAsync(catalog => catalog.EventId == eventId
             && catalog.TenantId == tenantId
             && catalog.TicketCatalogStatusId == (int)TicketCatalogStatusEnum.Published, cancellationToken);
+
+    public Task<EventTicketCatalogVersion?> GetOrderCatalogAsync(
+        Guid catalogId,
+        Guid eventId,
+        Guid tenantId,
+        CancellationToken cancellationToken) =>
+        CatalogDetailsQuery().FirstOrDefaultAsync(catalog => catalog.Id == catalogId
+            && catalog.EventId == eventId
+            && catalog.TenantId == tenantId, cancellationToken);
 
     public async Task<EventTicketCatalogVersion?> GetDraftCatalogForUpdateAsync(
         Guid eventId,
@@ -60,7 +70,10 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
             && dbContext.EventTicketCatalogVersions.Any(catalog => catalog.Id == ticketType.CatalogId && catalog.EventId == eventId && catalog.TenantId == tenantId), cancellationToken);
 
     public Task<EventCapacityPool?> GetCapacityPoolByIdEventAndTenantAsync(Guid capacityPoolId, Guid eventId, Guid tenantId, CancellationToken cancellationToken) =>
-        dbContext.EventCapacityPools.AsNoTracking().FirstOrDefaultAsync(pool => pool.Id == capacityPoolId && pool.EventId == eventId && pool.TenantId == tenantId, cancellationToken);
+        dbContext.EventCapacityPools
+            .AsNoTracking()
+            .Include(pool => pool.CapacityHoldPolicy)
+            .FirstOrDefaultAsync(pool => pool.Id == capacityPoolId && pool.EventId == eventId && pool.TenantId == tenantId, cancellationToken);
 
     public async Task<EventCapacityPool?> GetActiveCapacityPoolForUpdateAsync(
         Guid capacityPoolId,
@@ -69,10 +82,12 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
         CancellationToken cancellationToken)
     {
         await LockCapacityPoolRowAsync(capacityPoolId, eventId, tenantId, cancellationToken);
-        return await dbContext.EventCapacityPools.FirstOrDefaultAsync(pool =>
-            pool.Id == capacityPoolId
-            && pool.EventId == eventId
-            && pool.TenantId == tenantId, cancellationToken);
+        return await dbContext.EventCapacityPools
+            .Include(pool => pool.CapacityHoldPolicy)
+            .FirstOrDefaultAsync(pool =>
+                pool.Id == capacityPoolId
+                && pool.EventId == eventId
+                && pool.TenantId == tenantId, cancellationToken);
     }
 
     public Task<bool> HasLiveTicketTypeReferencesAsync(
@@ -101,6 +116,14 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
 
     public async Task UpdateAsync(EventTicketCatalogVersion catalog, CancellationToken cancellationToken)
     {
+        await SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task RemoveEntitlementsAsync(
+        IEnumerable<TicketTypeEntitlement> entitlements,
+        CancellationToken cancellationToken)
+    {
+        dbContext.TicketTypeEntitlements.RemoveRange(entitlements);
         await SaveChangesAsync(cancellationToken);
     }
 
@@ -141,7 +164,7 @@ public sealed class EventTicketCatalogRepository(ExploreDbContext dbContext) : I
         exception.InnerException is PostgresException
         {
             SqlState: PostgresErrorCodes.UniqueViolation,
-            ConstraintName: PublishedCatalogUniqueIndexName or CapacityPoolNameUniqueIndexName
+            ConstraintName: PublishedCatalogUniqueIndexName or CatalogVersionNumberUniqueIndexName or CapacityPoolNameUniqueIndexName
         };
 
     private async Task LockCatalogRowAsync(

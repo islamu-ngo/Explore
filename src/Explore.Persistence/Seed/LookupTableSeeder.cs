@@ -71,6 +71,7 @@ public static class LookupTableSeeder
         await SeedEventAuthorityLookupsAsync(context, cancellationToken);
         await SeedEventParticipationLookupsAsync(context, cancellationToken);
         await SeedTicketingLookupsAsync(context, cancellationToken);
+        await SeedRegistrationOrderLookupsAsync(context, cancellationToken);
         await SeedPlatformMonetizationDefaultsAsync(context, cancellationToken);
         await SeedEventStatusesAsync(context, cancellationToken);
         await SeedEventSessionStatusesAsync(context, cancellationToken);
@@ -1558,8 +1559,51 @@ public static class LookupTableSeeder
         ], row => row.Id, ct);
         await SeedMissingLookupRowsAsync(context,
         [
+            new CapacityHoldPolicy { Id = (int)CapacityHoldPolicyEnum.NoHoldUntilReady, MasterCode = "NO_HOLD_UNTIL_READY", FullName = "No hold until ready" },
+            new CapacityHoldPolicy { Id = (int)CapacityHoldPolicyEnum.TimedHoldOnSelection, MasterCode = "TIMED_HOLD_ON_SELECTION", FullName = "Timed hold on selection" },
+            new CapacityHoldPolicy { Id = (int)CapacityHoldPolicyEnum.ApprovalNoHold, MasterCode = "APPROVAL_NO_HOLD", FullName = "Approval without hold" },
+            new CapacityHoldPolicy { Id = (int)CapacityHoldPolicyEnum.WaitlistWhenFull, MasterCode = "WAITLIST_WHEN_FULL", FullName = "Waitlist when full" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
             new CapacityOversellPolicy { Id = (int)CapacityOversellPolicyEnum.Disallow, MasterCode = "DISALLOW", FullName = "Disallow" },
             new CapacityOversellPolicy { Id = (int)CapacityOversellPolicyEnum.Allow, MasterCode = "ALLOW", FullName = "Allow" }
+        ], row => row.Id, ct);
+    }
+
+    private static async Task SeedRegistrationOrderLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new BookingPartyType { Id = (int)BookingPartyTypeEnum.Individual, MasterCode = "INDIVIDUAL", FullName = "Individual" },
+            new BookingPartyType { Id = (int)BookingPartyTypeEnum.Household, MasterCode = "HOUSEHOLD", FullName = "Household" },
+            new BookingPartyType { Id = (int)BookingPartyTypeEnum.Organization, MasterCode = "ORGANIZATION", FullName = "Organization" },
+            new BookingPartyType { Id = (int)BookingPartyTypeEnum.Company, MasterCode = "COMPANY", FullName = "Company" },
+            new BookingPartyType { Id = (int)BookingPartyTypeEnum.CommunityGroup, MasterCode = "COMMUNITY_GROUP", FullName = "Community group" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.Draft, MasterCode = "DRAFT", FullName = "Draft" },
+            new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.AwaitingIdentity, MasterCode = "AWAITING_IDENTITY", FullName = "Awaiting identity" },
+            new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.AwaitingParticipantDetails, MasterCode = "AWAITING_PARTICIPANT_DETAILS", FullName = "Awaiting participant details" },
+            new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.AwaitingRequirements, MasterCode = "AWAITING_REQUIREMENTS", FullName = "Awaiting requirements" },
+            new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.ReadyForCheckout, MasterCode = "READY_FOR_CHECKOUT", FullName = "Ready for checkout" },
+            new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.AwaitingPayment, MasterCode = "AWAITING_PAYMENT", FullName = "Awaiting payment" },
+            new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.AwaitingApproval, MasterCode = "AWAITING_APPROVAL", FullName = "Awaiting approval" },
+            new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.Waitlisted, MasterCode = "WAITLISTED", FullName = "Waitlisted" },
+            new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.Confirmed, MasterCode = "CONFIRMED", FullName = "Confirmed" },
+            new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.Rejected, MasterCode = "REJECTED", FullName = "Rejected" },
+            new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired" },
+            new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.Cancelled, MasterCode = "CANCELLED", FullName = "Cancelled" },
+            new RegistrationOrderStatus { Id = (int)RegistrationOrderStatusEnum.NeedsReconciliation, MasterCode = "NEEDS_RECONCILIATION", FullName = "Needs reconciliation" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationInventoryHoldStatus { Id = (int)RegistrationInventoryHoldStatusEnum.Active, MasterCode = "ACTIVE", FullName = "Active" },
+            new RegistrationInventoryHoldStatus { Id = (int)RegistrationInventoryHoldStatusEnum.Consumed, MasterCode = "CONSUMED", FullName = "Consumed" },
+            new RegistrationInventoryHoldStatus { Id = (int)RegistrationInventoryHoldStatusEnum.Released, MasterCode = "RELEASED", FullName = "Released" },
+            new RegistrationInventoryHoldStatus { Id = (int)RegistrationInventoryHoldStatusEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired" },
+            new RegistrationInventoryHoldStatus { Id = (int)RegistrationInventoryHoldStatusEnum.Cancelled, MasterCode = "CANCELLED", FullName = "Cancelled" }
         ], row => row.Id, ct);
     }
 

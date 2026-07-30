@@ -157,6 +157,11 @@ public partial class ExploreDbContext
     public DbSet<EventTicketType> EventTicketTypes { get; set; }
     public DbSet<TicketTypeEntitlement> TicketTypeEntitlements { get; set; }
     public DbSet<EventCapacityPool> EventCapacityPools { get; set; }
+    public DbSet<RegistrationOrder> RegistrationOrders { get; set; }
+    public DbSet<RegistrationOrderLine> RegistrationOrderLines { get; set; }
+    public DbSet<RegistrationOrderPii> RegistrationOrderPii { get; set; }
+    public DbSet<RegistrationOrderPlatformContribution> RegistrationOrderPlatformContributions { get; set; }
+    public DbSet<RegistrationInventoryHold> RegistrationInventoryHolds { get; set; }
 
     // ===== Event Lookup Tables =====
     public DbSet<EventType> EventTypes { get; set; }
@@ -181,7 +186,11 @@ public partial class ExploreDbContext
     public DbSet<ParticipantDataCollectionMode> ParticipantDataCollectionModes { get; set; }
     public DbSet<EntitlementScopeType> EntitlementScopeTypes { get; set; }
     public DbSet<EntitlementSelectionRule> EntitlementSelectionRules { get; set; }
+    public DbSet<CapacityHoldPolicy> CapacityHoldPolicies { get; set; }
     public DbSet<CapacityOversellPolicy> CapacityOversellPolicies { get; set; }
+    public DbSet<BookingPartyType> BookingPartyTypes { get; set; }
+    public DbSet<RegistrationOrderStatus> RegistrationOrderStatuses { get; set; }
+    public DbSet<RegistrationInventoryHoldStatus> RegistrationInventoryHoldStatuses { get; set; }
 
     // ===== Instance Monetization =====
     public DbSet<PlatformFeePolicy> PlatformFeePolicies { get; set; }

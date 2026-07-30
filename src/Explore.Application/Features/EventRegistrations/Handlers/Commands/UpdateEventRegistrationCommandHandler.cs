@@ -146,7 +146,12 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         var oldEventId = eventRegistration.EventId;
         var update = request.EventRegistrationDto;
 
-        var effectiveUserId = eventRegistration.UserId;
+        if (eventRegistration.UserId is not { } registrationUserId)
+        {
+            return new UpdateExecutionOutcome(ValidationFailure("Order-backed registrations must be changed through the order workflow."));
+        }
+
+        Guid effectiveUserId = registrationUserId;
         if (update.User is not null)
         {
             var user = await _userRepository.GetById(update.User.UserId);
@@ -188,7 +193,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         if (!RegistrationApprovalStatusRules.PreservesRegistrationIdentity(
                 eventRegistration.EventRegistrationIntentId,
                 effectiveIntentId,
-                eventRegistration.UserId,
+                registrationUserId,
                 effectiveUserId,
                 eventRegistration.EventId,
                 effectiveEventId,
@@ -213,7 +218,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
             }
         }
 
-        if (effectiveUserId != eventRegistration.UserId || effectiveSessionId != eventRegistration.EventSessionId)
+        if (effectiveUserId != registrationUserId || effectiveSessionId != eventRegistration.EventSessionId)
         {
             var duplicate = await _eventRegistrationRepository.GetRegistrationByUserAndSession(effectiveUserId, effectiveSessionId, cancellationToken);
             if (duplicate is not null && duplicate.Id != eventRegistration.Id)

@@ -17,6 +17,7 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
     }
 
     private EventTicketType(
+        Guid id,
         Guid tenantId,
         Guid catalogId,
         string name,
@@ -36,7 +37,7 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
         int? perVerifiedContactLimit,
         int? perBookingPartyLimit)
     {
-        Id = Guid.CreateVersion7();
+        Id = id;
         TenantId = tenantId;
         CatalogId = catalogId;
         Name = name;
@@ -118,6 +119,7 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
     public IReadOnlyCollection<TicketTypeEntitlement> Entitlements => _entitlements.AsReadOnly();
 
     public static EventTicketType Create(
+        Guid id,
         Guid tenantId,
         Guid catalogId,
         string name,
@@ -137,6 +139,11 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
         int? perVerifiedContactLimit,
         int? perBookingPartyLimit)
     {
+        if (id == Guid.Empty)
+        {
+            throw new ArgumentException("Ticket type id is required.", nameof(id));
+        }
+
         if (tenantId == Guid.Empty)
         {
             throw new ArgumentException("Tenant is required.", nameof(tenantId));
@@ -158,6 +165,7 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
         TicketPricingRules.ValidateConfiguration(pricingMode, currencyCode, fixedPriceMinor, minimumPriceMinor, suggestedPriceMinor);
 
         return new EventTicketType(
+            id,
             tenantId,
             catalogId,
             name.Trim(),
@@ -247,6 +255,7 @@ public sealed class EventTicketType : ITenantEntity, IAuditableEntity, ISoftDele
     internal EventTicketType CloneTo(Guid catalogId)
     {
         var clone = new EventTicketType(
+            Guid.CreateVersion7(),
             TenantId,
             catalogId,
             Name,

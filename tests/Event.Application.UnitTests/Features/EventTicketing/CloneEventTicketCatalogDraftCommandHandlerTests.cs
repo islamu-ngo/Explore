@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventTicketing.Handlers.Commands;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
 using Explore.Domain;
@@ -98,12 +99,48 @@ public sealed class CloneEventTicketCatalogDraftCommandHandlerTests
         await _catalogs.DidNotReceive().GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task Handle_WhenRepositoryReportsConcurrencyConflict_ReturnsConflict()
+    {
+        _catalogs.GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns(CreatePublishedCatalog());
+        _catalogs.AddAsync(Arg.Any<EventTicketCatalogVersion>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The catalog version was created by another request."));
+
+        var result = await CreateHandler().Handle(
+            new CloneEventTicketCatalogDraftCommand { EventId = _eventId },
+            CancellationToken.None);
+
+        await Assert.That(result.FailureCode).IsEqualTo("event_ticketing_concurrency_conflict");
+        await Assert.That(result.Message).IsEqualTo("Ticketing configuration was updated by another request.");
+        await Assert.That(result.Errors).Contains("The catalog version was created by another request.");
+    }
+
+    [Test]
+    public async Task Handle_WhenPersistenceReportsInvalidOperation_PropagatesFailure()
+    {
+        _catalogs.GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns(CreatePublishedCatalog());
+        _catalogs.AddAsync(Arg.Any<EventTicketCatalogVersion>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("Persistence failed."));
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CreateHandler().Handle(
+                new CloneEventTicketCatalogDraftCommand { EventId = _eventId },
+                CancellationToken.None));
+
+        await Assert.That(exception.Message).IsEqualTo("Persistence failed.");
+    }
+
     private CloneEventTicketCatalogDraftCommandHandler CreateHandler() => new(_events, _catalogs, _tenant);
 
     private EventTicketCatalogVersion CreatePublishedCatalog()
     {
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(_tenantId, _eventId, "USD", 1);
         EventTicketType ticket = EventTicketType.Create(
+            Guid.CreateVersion7(),
             _tenantId,
             catalog.Id,
             "General admission",

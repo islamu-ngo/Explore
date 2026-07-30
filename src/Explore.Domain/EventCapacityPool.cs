@@ -18,6 +18,7 @@ public sealed class EventCapacityPool : ITenantEntity, IAuditableEntity, ISoftDe
         string name,
         int? maximumQuantity,
         int holdDurationSeconds,
+        CapacityHoldPolicyEnum holdPolicy,
         CapacityOversellPolicyEnum oversellPolicy,
         bool isActive)
     {
@@ -27,6 +28,7 @@ public sealed class EventCapacityPool : ITenantEntity, IAuditableEntity, ISoftDe
         Name = name;
         MaximumQuantity = maximumQuantity;
         HoldDurationSeconds = holdDurationSeconds;
+        CapacityHoldPolicyId = (int)holdPolicy;
         CapacityOversellPolicyId = (int)oversellPolicy;
         IsActive = isActive;
     }
@@ -42,6 +44,10 @@ public sealed class EventCapacityPool : ITenantEntity, IAuditableEntity, ISoftDe
     public int? MaximumQuantity { get; private set; }
 
     public int HoldDurationSeconds { get; private set; }
+
+    public int CapacityHoldPolicyId { get; private set; }
+
+    public CapacityHoldPolicy? CapacityHoldPolicy { get; private set; }
 
     public int CapacityOversellPolicyId { get; private set; }
 
@@ -71,6 +77,7 @@ public sealed class EventCapacityPool : ITenantEntity, IAuditableEntity, ISoftDe
         string name,
         int? maximumQuantity,
         int holdDurationSeconds,
+        CapacityHoldPolicyEnum holdPolicy,
         CapacityOversellPolicyEnum oversellPolicy,
         bool isActive)
     {
@@ -104,7 +111,12 @@ public sealed class EventCapacityPool : ITenantEntity, IAuditableEntity, ISoftDe
             throw new ArgumentOutOfRangeException(nameof(oversellPolicy));
         }
 
-        return new EventCapacityPool(tenantId, eventId, name.Trim(), maximumQuantity, holdDurationSeconds, oversellPolicy, isActive);
+        if (!Enum.IsDefined(holdPolicy))
+        {
+            throw new ArgumentOutOfRangeException(nameof(holdPolicy));
+        }
+
+        return new EventCapacityPool(tenantId, eventId, name.Trim(), maximumQuantity, holdDurationSeconds, holdPolicy, oversellPolicy, isActive);
     }
 
     public void SetActive(bool isActive)
@@ -138,9 +150,20 @@ public sealed class EventCapacityPool : ITenantEntity, IAuditableEntity, ISoftDe
         ConcurrencyStamp = Guid.CreateVersion7();
     }
 
-    public void Update(string name, int? maximumQuantity, int holdDurationSeconds, CapacityOversellPolicyEnum oversellPolicy, bool isActive)
+    public void Update(
+        string name,
+        int? maximumQuantity,
+        int holdDurationSeconds,
+        CapacityHoldPolicyEnum holdPolicy,
+        CapacityOversellPolicyEnum oversellPolicy,
+        bool isActive)
     {
-        var updated = Create(TenantId, EventId, name, maximumQuantity, holdDurationSeconds, oversellPolicy, isActive);
-        Name = updated.Name; MaximumQuantity = updated.MaximumQuantity; HoldDurationSeconds = updated.HoldDurationSeconds; CapacityOversellPolicyId = updated.CapacityOversellPolicyId; IsActive = updated.IsActive;
+        EventCapacityPool updated = Create(TenantId, EventId, name, maximumQuantity, holdDurationSeconds, holdPolicy, oversellPolicy, isActive);
+        Name = updated.Name;
+        MaximumQuantity = updated.MaximumQuantity;
+        HoldDurationSeconds = updated.HoldDurationSeconds;
+        CapacityHoldPolicyId = updated.CapacityHoldPolicyId;
+        CapacityOversellPolicyId = updated.CapacityOversellPolicyId;
+        IsActive = updated.IsActive;
     }
 }

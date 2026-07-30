@@ -73,6 +73,8 @@ public sealed class UpdateEventTicketTypeCommandHandler(
                     request.EventId,
                     token);
 
+                TicketTypeEntitlement[] existingEntitlements = ticketType.Entitlements.ToArray();
+                await catalogs.RemoveEntitlementsAsync(existingEntitlements, token);
                 catalog!.UpdateTicketType(
                     ticketType,
                     request.TicketType.Name,

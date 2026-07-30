@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventTicketing.Handlers.Commands;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
 using Explore.Domain;
@@ -86,6 +87,23 @@ public sealed class CreateEventTicketCatalogDraftCommandHandlerTests
 
         await Assert.That(result.FailureCode).IsEqualTo("event_ticketing_validation_failed");
         await _catalogs.DidNotReceive().AddAsync(Arg.Any<EventTicketCatalogVersion>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenRepositoryReportsConcurrencyConflict_ReturnsConflict()
+    {
+        _catalogs.AddAsync(Arg.Any<EventTicketCatalogVersion>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The catalog version was created by another request."));
+
+        var result = await CreateHandler().Handle(
+            new CreateEventTicketCatalogDraftCommand { EventId = _eventId, CurrencyCode = "USD" },
+            CancellationToken.None);
+
+        await Assert.That(result.FailureCode).IsEqualTo("event_ticketing_concurrency_conflict");
+        await Assert.That(result.Message).IsEqualTo("Ticketing configuration was updated by another request.");
+        await Assert.That(result.Errors).Contains("The catalog version was created by another request.");
     }
 
     private CreateEventTicketCatalogDraftCommandHandler CreateHandler() => new(_events, _catalogs, _tenant);

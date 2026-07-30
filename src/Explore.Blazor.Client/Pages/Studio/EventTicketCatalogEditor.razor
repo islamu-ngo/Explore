@@ -137,7 +137,7 @@
                         <article class="event-ticket-catalog__card" data-testid="capacity-pool-card">
                             <div>
                                 <MudText Typo="Typo.subtitle1">@pool.Name</MudText>
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">@(pool.MaximumQuantity?.ToString() ?? "Unlimited") places · @pool.HoldDurationSeconds second hold · @(pool.CapacityOversellPolicyName ?? pool.CapacityOversellPolicyCode)</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@(pool.MaximumQuantity?.ToString() ?? "Unlimited") places · @(pool.CapacityHoldPolicyName ?? pool.CapacityHoldPolicyCode) · @(pool.CapacityOversellPolicyName ?? pool.CapacityOversellPolicyCode)</MudText>
                                 <MudText Typo="Typo.caption">Used by @TicketTypeCount(pool.Id) ticket type(s)</MudText>
                             </div>
                             <div class="event-ticket-catalog__item-actions">

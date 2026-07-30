@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -41,6 +42,10 @@ public sealed class CreateEventTicketCatalogDraftCommandHandler(
         {
             return Bad(request.EventId, exception.Message);
         }
+        catch (ConcurrencyConflictException exception)
+        {
+            return Conflict(request.EventId, exception.Message);
+        }
     }
 
     private static bool IsPlatformManaged(Event? eventTarget, Guid tenantId) =>
@@ -69,6 +74,15 @@ public sealed class CreateEventTicketCatalogDraftCommandHandler(
         Success = false,
         FailureCode = "event_ticketing_validation_failed",
         Message = "Ticketing configuration is invalid.",
+        Errors = [error]
+    };
+
+    private static BaseCommandResponse<Guid> Conflict(Guid id, string error) => new()
+    {
+        Id = id,
+        Success = false,
+        FailureCode = "event_ticketing_concurrency_conflict",
+        Message = "Ticketing configuration was updated by another request.",
         Errors = [error]
     };
 }

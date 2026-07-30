@@ -49,6 +49,7 @@ public sealed class UpdateEventCapacityPoolCommandHandlerTests
         await Assert.That(pool.Name).IsEqualTo("Main hall revised");
         await Assert.That(pool.MaximumQuantity).IsEqualTo(300);
         await Assert.That(pool.HoldDurationSeconds).IsEqualTo(1_200);
+        await Assert.That(pool.CapacityHoldPolicyId).IsEqualTo((int)CapacityHoldPolicyEnum.WaitlistWhenFull);
         await Assert.That(pool.CapacityOversellPolicyId).IsEqualTo((int)CapacityOversellPolicyEnum.Allow);
         await Assert.That(pool.IsActive).IsFalse();
         Received.InOrder(() =>
@@ -141,6 +142,7 @@ public sealed class UpdateEventCapacityPoolCommandHandlerTests
         "Main hall",
         200,
         900,
+        CapacityHoldPolicyEnum.TimedHoldOnSelection,
         CapacityOversellPolicyEnum.Disallow,
         true);
 
@@ -149,6 +151,7 @@ public sealed class UpdateEventCapacityPoolCommandHandlerTests
         Name = "Main hall revised",
         MaximumQuantity = 300,
         HoldDurationSeconds = 1_200,
+        CapacityHoldPolicyId = (int)CapacityHoldPolicyEnum.WaitlistWhenFull,
         CapacityOversellPolicyId = (int)CapacityOversellPolicyEnum.Allow,
         IsActive = false
     };

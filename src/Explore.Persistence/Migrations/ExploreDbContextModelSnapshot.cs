@@ -1964,6 +1964,72 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("audit_logs", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.BookingPartyType", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_booking_party_types");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_booking_party_types_master_code");
+
+                    b.ToTable("booking_party_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.CapacityHoldPolicy", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_capacity_hold_policies");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_capacity_hold_policies_master_code");
+
+                    b.ToTable("capacity_hold_policies", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.CapacityOversellPolicy", b =>
                 {
                     b.Property<int>("Id")
@@ -3893,6 +3959,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<int>("CapacityHoldPolicyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("capacity_hold_policy_id");
+
                     b.Property<int>("CapacityOversellPolicyId")
                         .HasColumnType("integer")
                         .HasColumnName("capacity_oversell_policy_id");
@@ -3963,6 +4033,9 @@ namespace Explore.Persistence.Migrations
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_capacity_pools_tenant_id_id");
+
+                    b.HasIndex("CapacityHoldPolicyId")
+                        .HasDatabaseName("ix_event_capacity_pools_capacity_hold_policy_id");
 
                     b.HasIndex("CapacityOversellPolicyId")
                         .HasDatabaseName("ix_event_capacity_pools_capacity_oversell_policy_id");
@@ -5842,6 +5915,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("deleted_by");
 
+                    b.Property<int?>("EntitlementOrdinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("entitlement_ordinal");
+
                     b.Property<Guid>("EventId")
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
@@ -5858,9 +5935,25 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
+                    b.Property<Guid?>("RegistrationOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid?>("RegistrationOrderLineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_line_id");
+
+                    b.Property<Guid?>("RegistrationParticipantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_participant_id");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
+
+                    b.Property<Guid?>("TicketTypeEntitlementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ticket_type_entitlement_id");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -5870,7 +5963,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
@@ -5886,13 +5979,23 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_eventregistrations_user");
 
+                    b.HasIndex("TenantId", "RegistrationOrderId")
+                        .HasDatabaseName("ix_event_registrations_tenant_id_registration_order_id");
+
+                    b.HasIndex("TenantId", "TicketTypeEntitlementId")
+                        .HasDatabaseName("ix_event_registrations_tenant_id_ticket_type_entitlement_id");
+
                     b.HasIndex("TenantId", "EventId", "EventRegistrationIntentId")
                         .HasDatabaseName("ix_eventregistrations_intent");
 
                     b.HasIndex("TenantId", "EventId", "EventSessionId", "UserId")
-                        .IsUnique()
                         .HasDatabaseName("ix_eventregistrations_session_user")
                         .HasFilter("is_deleted = false");
+
+                    b.HasIndex("TenantId", "RegistrationOrderLineId", "TicketTypeEntitlementId", "EventSessionId", "EntitlementOrdinal")
+                        .IsUnique()
+                        .HasDatabaseName("ix_eventregistrations_order_admission")
+                        .HasFilter("registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false");
 
                     b.ToTable("event_registrations", (string)null);
                 });
@@ -16488,6 +16591,140 @@ namespace Explore.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Explore.Domain.RegistrationInventoryHold", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CapacityPoolId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("capacity_pool_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<int>("RegistrationInventoryHoldStatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("registration_inventory_hold_status_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("released_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("TicketTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ticket_type_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_inventory_holds");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_inventory_holds_tenant_id_id");
+
+                    b.HasIndex("RegistrationInventoryHoldStatusId")
+                        .HasDatabaseName("ix_registration_inventory_holds_registration_inventory_hold_st");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId")
+                        .HasDatabaseName("ix_registration_inventory_holds_tenant_id_registration_order_id");
+
+                    b.HasIndex("TenantId", "TicketTypeId")
+                        .HasDatabaseName("ix_registration_inventory_holds_tenant_id_ticket_type_id");
+
+                    b.HasIndex("TenantId", "CapacityPoolId", "RegistrationInventoryHoldStatusId")
+                        .HasDatabaseName("ix_registration_inventory_holds_tenant_id_capacity_pool_id_reg");
+
+                    b.HasIndex("TenantId", "RegistrationInventoryHoldStatusId", "ExpiresAt")
+                        .HasDatabaseName("ix_registration_inventory_holds_tenant_id_registration_invento");
+
+                    b.ToTable("registration_inventory_holds", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationInventoryHoldStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_inventory_hold_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_inventory_hold_statuses_master_code");
+
+                    b.ToTable("registration_inventory_hold_statuses", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.RegistrationMode", b =>
                 {
                     b.Property<int>("Id")
@@ -16515,6 +16752,429 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_registration_modes");
 
                     b.ToTable("registration_modes", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AccountUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_user_id");
+
+                    b.Property<int>("BookingPartyTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("booking_party_type_id");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("GuestAccessTokenHash")
+                        .HasMaxLength(44)
+                        .HasColumnType("character varying(44)")
+                        .HasColumnName("guest_access_token_hash");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<long>("OrganizerDirectedTotalMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("organizer_directed_total_minor_snapshot");
+
+                    b.Property<long>("OrganizerEarningsTotalMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("organizer_earnings_total_minor_snapshot");
+
+                    b.Property<Guid>("ParticipationConfigurationVersionSnapshot")
+                        .HasColumnType("uuid")
+                        .HasColumnName("participation_configuration_version_snapshot");
+
+                    b.Property<long>("PlatformContributionTotalMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("platform_contribution_total_minor_snapshot");
+
+                    b.Property<long>("PlatformFeeTotalMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("platform_fee_total_minor_snapshot");
+
+                    b.Property<Guid?>("PurchaserActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("purchaser_actor_id");
+
+                    b.Property<int>("RegistrationOrderStatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("registration_order_status_id");
+
+                    b.Property<Guid?>("RegistrationWorkflowVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_workflow_version_id");
+
+                    b.Property<DateTime?>("RejectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rejected_at");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("TicketCatalogVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ticket_catalog_version_id");
+
+                    b.Property<long>("TotalDueMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("total_due_minor_snapshot");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_orders");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_orders_tenant_id_id");
+
+                    b.HasIndex("BookingPartyTypeId")
+                        .HasDatabaseName("ix_registration_orders_booking_party_type_id");
+
+                    b.HasIndex("RegistrationOrderStatusId")
+                        .HasDatabaseName("ix_registration_orders_registration_order_status_id");
+
+                    b.HasIndex("TenantId", "ExpiresAt")
+                        .HasDatabaseName("ix_registration_orders_tenant_id_expires_at");
+
+                    b.HasIndex("TenantId", "TicketCatalogVersionId")
+                        .HasDatabaseName("ix_registration_orders_tenant_id_ticket_catalog_version_id");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderStatusId")
+                        .HasDatabaseName("ix_registration_orders_tenant_id_event_id_registration_order_s");
+
+                    b.ToTable("registration_orders", null, t =>
+                        {
+                            t.Property("ParticipationConfigurationVersionSnapshot")
+                                .HasColumnName("registration_order_participation_configuration_version_snapshot");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrderLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long?>("ChosenUnitPriceAmountSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("chosen_unit_price_amount_snapshot");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCodeSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code_snapshot");
+
+                    b.Property<long>("LineSubtotalSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("line_subtotal_snapshot");
+
+                    b.Property<long?>("MinimumPriceAmountSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("minimum_price_amount_snapshot");
+
+                    b.Property<int?>("PlatformFeePolicyVersionSnapshot")
+                        .HasColumnType("integer")
+                        .HasColumnName("platform_fee_policy_version_snapshot");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<long?>("SuggestedPriceAmountSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("suggested_price_amount_snapshot");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("TicketCatalogVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ticket_catalog_version_id");
+
+                    b.Property<int>("TicketPricingModeSnapshot")
+                        .HasColumnType("integer")
+                        .HasColumnName("ticket_pricing_mode_snapshot");
+
+                    b.Property<Guid>("TicketTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ticket_type_id");
+
+                    b.Property<string>("TicketTypeNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("ticket_type_name_snapshot");
+
+                    b.Property<long>("UnitPriceAmountSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("unit_price_amount_snapshot");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_order_lines");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_order_lines_tenant_id_id");
+
+                    b.HasIndex("TenantId", "TicketCatalogVersionId")
+                        .HasDatabaseName("ix_registration_order_lines_tenant_id_ticket_catalog_version_id");
+
+                    b.HasIndex("TenantId", "TicketTypeId")
+                        .HasDatabaseName("ix_registration_order_lines_tenant_id_ticket_type_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "TicketTypeId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_order_lines_tenant_id_registration_order_id_ti");
+
+                    b.ToTable("registration_order_lines", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrderPii", b =>
+                {
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("contact_name");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("NormalizedEmail")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("normalized_email");
+
+                    b.Property<string>("OrganizationName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("organization_name");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("phone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("RegistrationOrderId")
+                        .HasName("pk_registration_order_pii");
+
+                    b.HasAlternateKey("TenantId", "RegistrationOrderId")
+                        .HasName("ak_registration_order_pii_tenant_id_registration_order_id");
+
+                    b.HasIndex("TenantId", "NormalizedEmail")
+                        .HasDatabaseName("ix_registration_order_pii_tenant_id_normalized_email");
+
+                    b.ToTable("registration_order_pii", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrderPlatformContribution", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("AmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_minor");
+
+                    b.Property<int>("ContributionBasisPointsSnapshot")
+                        .HasColumnType("integer")
+                        .HasColumnName("contribution_basis_points_snapshot");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<Guid>("PlatformContributionSettingIdSnapshot")
+                        .HasColumnType("uuid")
+                        .HasColumnName("platform_contribution_setting_id_snapshot");
+
+                    b.Property<int>("PlatformContributionSettingVersionSnapshot")
+                        .HasColumnType("integer")
+                        .HasColumnName("platform_contribution_setting_version_snapshot");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_order_platform_contributions");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_order_platform_contributions_tenant_id_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_order_platform_contributions_tenant_id_registr");
+
+                    b.ToTable("registration_order_platform_contributions", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrderStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_order_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_order_statuses_master_code");
+
+                    b.ToTable("registration_order_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationScope", b =>
@@ -19617,6 +20277,9 @@ namespace Explore.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_ticket_type_entitlements");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_ticket_type_entitlements_tenant_id_id");
 
                     b.HasIndex("EntitlementScopeTypeId")
                         .HasDatabaseName("ix_ticket_type_entitlements_entitlement_scope_type_id");
@@ -24332,6 +24995,13 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.EventCapacityPool", b =>
                 {
+                    b.HasOne("Explore.Domain.CapacityHoldPolicy", "CapacityHoldPolicy")
+                        .WithMany()
+                        .HasForeignKey("CapacityHoldPolicyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_capacity_pools_capacity_hold_policies_capacity_hold_p");
+
                     b.HasOne("Explore.Domain.CapacityOversellPolicy", "CapacityOversellPolicy")
                         .WithMany()
                         .HasForeignKey("CapacityOversellPolicyId")
@@ -24353,6 +25023,8 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_event_capacity_pools_events_tenant_id_event_id");
+
+                    b.Navigation("CapacityHoldPolicy");
 
                     b.Navigation("CapacityOversellPolicy");
                 });
@@ -24995,7 +25667,6 @@ namespace Explore.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_event_registrations_users_user_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
@@ -25005,6 +25676,27 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_event_registrations_events_tenant_id_event_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_registrations_registration_orders_tenant_id_registrat");
+
+                    b.HasOne("Explore.Domain.RegistrationOrderLine", "RegistrationOrderLine")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderLineId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_registrations_registration_order_lines_tenant_id_regi");
+
+                    b.HasOne("Explore.Domain.TicketTypeEntitlement", "TicketTypeEntitlement")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TicketTypeEntitlementId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_registrations_ticket_type_entitlements_tenant_id_tick");
 
                     b.HasOne("Explore.Domain.EventRegistrationIntent", "EventRegistrationIntent")
                         .WithMany()
@@ -25031,7 +25723,13 @@ namespace Explore.Persistence.Migrations
 
                     b.Navigation("EventSession");
 
+                    b.Navigation("RegistrationOrder");
+
+                    b.Navigation("RegistrationOrderLine");
+
                     b.Navigation("Tenant");
+
+                    b.Navigation("TicketTypeEntitlement");
 
                     b.Navigation("User");
                 });
@@ -29924,6 +30622,182 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_privacy_erasure_sagas_privacy_erasure_intents_intent_id");
                 });
 
+            modelBuilder.Entity("Explore.Domain.RegistrationInventoryHold", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationInventoryHoldStatus", "RegistrationInventoryHoldStatus")
+                        .WithMany()
+                        .HasForeignKey("RegistrationInventoryHoldStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_inventory_holds_registration_inventory_hold_st");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_inventory_holds_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.EventCapacityPool", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CapacityPoolId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_inventory_holds_event_capacity_pools_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_inventory_holds_registration_orders_tenant_id_");
+
+                    b.HasOne("Explore.Domain.EventTicketType", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TicketTypeId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_inventory_holds_event_ticket_types_tenant_id_t");
+
+                    b.Navigation("RegistrationInventoryHoldStatus");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrder", b =>
+                {
+                    b.HasOne("Explore.Domain.BookingPartyType", "BookingPartyType")
+                        .WithMany()
+                        .HasForeignKey("BookingPartyTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_orders_booking_party_types_booking_party_type_");
+
+                    b.HasOne("Explore.Domain.RegistrationOrderStatus", "RegistrationOrderStatus")
+                        .WithMany()
+                        .HasForeignKey("RegistrationOrderStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_orders_registration_order_statuses_registratio");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_orders_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_orders_events_tenant_id_event_id");
+
+                    b.HasOne("Explore.Domain.EventTicketCatalogVersion", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TicketCatalogVersionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_orders_event_ticket_catalog_versions_tenant_id");
+
+                    b.OwnsOne("Explore.Domain.RegistrationParticipationSnapshot", "ParticipationSnapshot", b1 =>
+                        {
+                            b1.Property<Guid>("RegistrationOrderId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<int>("AdvanceRegistrationObligationId")
+                                .HasColumnType("integer")
+                                .HasColumnName("advance_registration_obligation_id_snapshot");
+
+                            b1.Property<Guid>("ConfigurationVersion")
+                                .HasColumnType("uuid")
+                                .HasColumnName("participation_configuration_version_snapshot");
+
+                            b1.Property<int?>("GuestRecoveryPolicy")
+                                .HasColumnType("integer")
+                                .HasColumnName("guest_recovery_policy_snapshot");
+
+                            b1.Property<int?>("IdentityAccessModeId")
+                                .HasColumnType("integer")
+                                .HasColumnName("identity_access_mode_id_snapshot");
+
+                            b1.Property<int>("ParticipationHandlingModeId")
+                                .HasColumnType("integer")
+                                .HasColumnName("participation_handling_mode_id_snapshot");
+
+                            b1.HasKey("RegistrationOrderId");
+
+                            b1.ToTable("registration_orders");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RegistrationOrderId")
+                                .HasConstraintName("fk_registration_orders_registration_orders_id");
+                        });
+
+                    b.Navigation("BookingPartyType");
+
+                    b.Navigation("ParticipationSnapshot")
+                        .IsRequired();
+
+                    b.Navigation("RegistrationOrderStatus");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrderLine", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationOrder", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("TenantId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_lines_registration_orders_tenant_id_regi");
+
+                    b.HasOne("Explore.Domain.EventTicketCatalogVersion", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TicketCatalogVersionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_lines_event_ticket_catalog_versions_tena");
+
+                    b.HasOne("Explore.Domain.EventTicketType", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TicketTypeId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_lines_event_ticket_types_tenant_id_ticke");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrderPii", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
+                        .WithOne("Pii")
+                        .HasForeignKey("Explore.Domain.RegistrationOrderPii", "TenantId", "RegistrationOrderId")
+                        .HasPrincipalKey("Explore.Domain.RegistrationOrder", "TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_pii_registration_orders_tenant_id_regist");
+
+                    b.Navigation("RegistrationOrder");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrderPlatformContribution", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationOrder", null)
+                        .WithOne("PlatformContribution")
+                        .HasForeignKey("Explore.Domain.RegistrationOrderPlatformContribution", "TenantId", "RegistrationOrderId")
+                        .HasPrincipalKey("Explore.Domain.RegistrationOrder", "TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_platform_contributions_registration_orde");
+                });
+
             modelBuilder.Entity("Explore.Domain.Role", b =>
                 {
                     b.HasOne("Explore.Domain.RoleScope", "RoleScope")
@@ -32408,6 +33282,15 @@ namespace Explore.Persistence.Migrations
             modelBuilder.Entity("Explore.Domain.PlatformFeePolicy", b =>
                 {
                     b.Navigation("FixedCharges");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrder", b =>
+                {
+                    b.Navigation("Lines");
+
+                    b.Navigation("Pii");
+
+                    b.Navigation("PlatformContribution");
                 });
 
             modelBuilder.Entity("Explore.Domain.ServicePrincipal", b =>

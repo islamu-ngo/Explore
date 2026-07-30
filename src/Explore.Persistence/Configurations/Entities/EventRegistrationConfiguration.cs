@@ -1,5 +1,5 @@
-// ABOUTME: EF configuration for concrete session registration rows under an EventRegistrationIntent.
-// ABOUTME: Preserves composite membership constraints and optimistic concurrency mapping.
+// ABOUTME: EF configuration for concrete session admissions from legacy intents or registration orders.
+// ABOUTME: Preserves tenant-safe lineage and makes interim participant linkage nullable.
 
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +28,7 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
         builder.HasOne(e => e.User)
             .WithMany()
             .HasForeignKey(e => e.UserId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.EventSession)
@@ -41,6 +42,24 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
             .HasForeignKey(e => new { e.TenantId, e.EventId, e.EventRegistrationIntentId })
             .HasPrincipalKey(e => new { e.TenantId, e.EventId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(e => e.RegistrationOrder)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.RegistrationOrderId })
+            .HasPrincipalKey(order => new { order.TenantId, order.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.RegistrationOrderLine)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.RegistrationOrderLineId })
+            .HasPrincipalKey(line => new { line.TenantId, line.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.TicketTypeEntitlement)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.TicketTypeEntitlementId })
+            .HasPrincipalKey(entitlement => new { entitlement.TenantId, entitlement.Id })
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.ApprovalStatus)
             .WithMany()
@@ -59,9 +78,7 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
 
         // ===== Performance Indexes =====
 
-        // Unique constraint: one access row per user per event session (child-level invariant).
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventSessionId, e.UserId })
-            .IsUnique()
             .HasFilter("is_deleted = false")
             .HasDatabaseName("ix_eventregistrations_session_user");
 
@@ -72,5 +89,17 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
         // Children by parent intent (to walk a user's registration intent down to concrete access rows).
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventRegistrationIntentId })
             .HasDatabaseName("ix_eventregistrations_intent");
+
+        builder.HasIndex(e => new
+            {
+                e.TenantId,
+                e.RegistrationOrderLineId,
+                e.TicketTypeEntitlementId,
+                e.EventSessionId,
+                e.EntitlementOrdinal
+            })
+            .IsUnique()
+            .HasFilter("registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false")
+            .HasDatabaseName("ix_eventregistrations_order_admission");
     }
 }

@@ -128,6 +128,7 @@ public sealed class DeleteEventTicketTypeCommandHandlerTests
     private EventTicketType AddFreeTicket(EventTicketCatalogVersion catalog)
     {
         EventTicketType ticket = EventTicketType.Create(
+            Guid.CreateVersion7(),
             _tenantId,
             catalog.Id,
             "General admission",

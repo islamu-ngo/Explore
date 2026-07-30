@@ -42,6 +42,10 @@ public sealed class TicketingMonetizationPersistenceTests
         await Assert.That(ticketType.FindProperty(nameof(EventTicketType.SuggestedPriceMinor))!.GetColumnType()).IsEqualTo("bigint");
 
         IEntityType feePolicy = model.FindEntityType(typeof(PlatformFeePolicy))!;
+        IEntityType? capacityHoldPolicy = model.FindEntityType(typeof(CapacityHoldPolicy));
+        await Assert.That(capacityHoldPolicy).IsNotNull();
+        await Assert.That(model.FindEntityType(typeof(EventCapacityPool))!.GetForeignKeys().Any(foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(CapacityHoldPolicy))).IsTrue();
         IEntityType eventEntity = model.FindEntityType(typeof(DomainEvent))!;
         await Assert.That(eventEntity.FindNavigation(nameof(DomainEvent.TicketCatalogVersions))!.GetFieldName()).IsEqualTo("_ticketCatalogVersions");
         await Assert.That(eventEntity.FindNavigation(nameof(DomainEvent.CapacityPools))!.GetFieldName()).IsEqualTo("_capacityPools");
@@ -83,6 +87,12 @@ public sealed class TicketingMonetizationPersistenceTests
         await Assert.That((await context.EntitlementScopeTypes.OrderBy(row => row.Id).Select(row => row.MasterCode).ToArrayAsync()).SequenceEqual(["EVENT", "EVENT_DAY", "EVENT_SESSION"])).IsTrue();
         await Assert.That((await context.EntitlementSelectionRules.OrderBy(row => row.Id).Select(row => row.MasterCode).ToArrayAsync()).SequenceEqual(["ALL_INCLUDED", "FIXED_SELECTION", "CHOOSE_ONE", "CHOOSE_UP_TO_N"])).IsTrue();
         await Assert.That((await context.CapacityOversellPolicies.OrderBy(row => row.Id).Select(row => row.MasterCode).ToArrayAsync()).SequenceEqual(["DISALLOW", "ALLOW"])).IsTrue();
+        await Assert.That((await context.Set<CapacityHoldPolicy>().OrderBy(row => row.Id).Select(row => row.MasterCode).ToArrayAsync()).SequenceEqual([
+            "NO_HOLD_UNTIL_READY",
+            "TIMED_HOLD_ON_SELECTION",
+            "APPROVAL_NO_HOLD",
+            "WAITLIST_WHEN_FULL"
+        ])).IsTrue();
         PlatformFeePolicy policy = await context.PlatformFeePolicies.SingleAsync();
         PlatformContributionSetting setting = await context.PlatformContributionSettings.Include(row => row.Options).SingleAsync();
         await Assert.That(policy.IsEnabled).IsFalse();
@@ -96,12 +106,13 @@ public sealed class TicketingMonetizationPersistenceTests
     public async Task TicketRepository_RequiresMatchingTenantAndEventForTicketAndCapacityLookups()
     {
         await using var context = CreateInMemoryContext("ticketing-repository");
+        await LookupTableSeeder.SeedTicketingLookupsAsync(context, CancellationToken.None);
         Guid tenantA = Guid.CreateVersion7();
         Guid tenantB = Guid.CreateVersion7();
         Guid eventA = Guid.CreateVersion7();
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(tenantA, eventA, "USD", 1);
-        EventCapacityPool pool = EventCapacityPool.Create(tenantA, eventA, "Hall", 100, 900, CapacityOversellPolicyEnum.Disallow, true);
-        EventTicketType ticket = EventTicketType.Create(tenantA, catalog.Id, "General", "USD", TicketPricingModeEnum.Free, null, null, null, ParticipantDataCollectionModeEnum.None, pool.Id, null, null, false, false, null, null, null, null);
+        EventCapacityPool pool = EventCapacityPool.Create(tenantA, eventA, "Hall", 100, 900, CapacityHoldPolicyEnum.TimedHoldOnSelection, CapacityOversellPolicyEnum.Disallow, true);
+        EventTicketType ticket = EventTicketType.Create(Guid.CreateVersion7(), tenantA, catalog.Id, "General", "USD", TicketPricingModeEnum.Free, null, null, null, ParticipantDataCollectionModeEnum.None, pool.Id, null, null, false, false, null, null, null, null);
         catalog.AddTicketType(ticket, pool);
 
         context.EnableTenantFilterBypass("Seeds ticketing repository isolation test rows.");
@@ -114,7 +125,9 @@ public sealed class TicketingMonetizationPersistenceTests
         await Assert.That(await repository.GetTicketTypeByIdEventAndTenantAsync(ticket.Id, eventA, tenantA, CancellationToken.None)).IsNotNull();
         await Assert.That(await repository.GetTicketTypeByIdEventAndTenantAsync(ticket.Id, Guid.CreateVersion7(), tenantA, CancellationToken.None)).IsNull();
         await Assert.That(await repository.GetTicketTypeByIdEventAndTenantAsync(ticket.Id, eventA, tenantB, CancellationToken.None)).IsNull();
-        await Assert.That(await repository.GetCapacityPoolByIdEventAndTenantAsync(pool.Id, eventA, tenantA, CancellationToken.None)).IsNotNull();
+        EventCapacityPool? loadedPool = await repository.GetCapacityPoolByIdEventAndTenantAsync(pool.Id, eventA, tenantA, CancellationToken.None);
+        await Assert.That(loadedPool).IsNotNull();
+        await Assert.That(loadedPool!.CapacityHoldPolicy?.MasterCode).IsEqualTo("TIMED_HOLD_ON_SELECTION");
         await Assert.That(await repository.GetCapacityPoolByIdEventAndTenantAsync(pool.Id, eventA, tenantB, CancellationToken.None)).IsNull();
     }
 
@@ -145,6 +158,60 @@ public sealed class TicketingMonetizationPersistenceTests
         EventTicketCatalogVersion persisted = (await repository.GetManagementCatalogAsync(eventId, tenantId, CancellationToken.None))!;
         await Assert.That(persisted.TicketTypes.Count).IsEqualTo(2);
         await Assert.That(persisted.TicketTypes.Single(ticket => ticket.Name == "Added").Entitlements.Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task ManagementCatalog_RemovesOldEntitlementsBeforePersistingReplacement()
+    {
+        await using var context = CreateInMemoryContext("ticketing-entitlement-replacement");
+        await LookupTableSeeder.SeedTicketingLookupsAsync(context, CancellationToken.None);
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(tenantId, eventId, "USD", 1);
+        EventTicketType ticket = CreateFreeTicket(catalog, "General");
+        catalog.AddTicketType(ticket, null);
+        catalog.AddEntitlement(ticket, TicketTypeEntitlement.CreateForEvent(ticket.Id, tenantId, eventId, 1));
+        context.EnableTenantFilterBypass("Seeds entitlement replacement test rows.");
+        context.Add(catalog);
+        await context.SaveChangesAsync();
+        context.ClearTenantFilterBypass();
+        context.ChangeTracker.Clear();
+        context.TenantContext = new TestTenantContext(tenantId);
+        var repository = new EventTicketCatalogRepository(context);
+
+        EventTicketCatalogVersion managed = (await repository.GetManagementCatalogAsync(eventId, tenantId, CancellationToken.None))!;
+        EventTicketType managedTicket = managed.TicketTypes.Single();
+        TicketTypeEntitlement[] previousEntitlements = managedTicket.Entitlements.ToArray();
+        TicketTypeEntitlement replacement = TicketTypeEntitlement.CreateForEvent(managedTicket.Id, tenantId, eventId, 2);
+
+        await repository.RemoveEntitlementsAsync(previousEntitlements, CancellationToken.None);
+        managed.UpdateTicketType(
+            managedTicket,
+            name: "General",
+            pricingMode: TicketPricingModeEnum.Free,
+            fixedPriceMinor: null,
+            minimumPriceMinor: null,
+            suggestedPriceMinor: null,
+            participantDataCollectionMode: ParticipantDataCollectionModeEnum.None,
+            capacityPool: null,
+            minimumAge: null,
+            maximumAge: null,
+            requiresGuardian: false,
+            requiresApproval: false,
+            perOrderLimit: null,
+            perAccountLimit: null,
+            perVerifiedContactLimit: null,
+            perBookingPartyLimit: null,
+            entitlements: [replacement]);
+        await repository.UpdateAsync(managed, CancellationToken.None);
+
+        context.ChangeTracker.Clear();
+        TicketTypeEntitlement[] persisted = await context.TicketTypeEntitlements
+            .Where(entitlement => entitlement.TicketTypeId == managedTicket.Id)
+            .ToArrayAsync();
+        await Assert.That(persisted.Any(entitlement => entitlement.Id == previousEntitlements[0].Id)).IsFalse();
+        await Assert.That(persisted).HasSingleItem();
+        await Assert.That(persisted[0].Id).IsEqualTo(replacement.Id);
     }
 
     [Test]
@@ -244,6 +311,7 @@ public sealed class TicketingMonetizationPersistenceTests
 
     [Test]
     [Arguments("ix_event_ticket_catalog_versions_tenant_id_event_id")]
+    [Arguments("ix_event_ticket_catalog_versions_tenant_id_event_id_version_nu")]
     [Arguments("ix_event_capacity_pools_tenant_id_event_id_name")]
     public async Task TicketRepository_TranslatesRecognizedUniqueRaces(string constraintName)
     {
@@ -293,6 +361,7 @@ public sealed class TicketingMonetizationPersistenceTests
     }
 
     private static EventTicketType CreateFreeTicket(EventTicketCatalogVersion catalog, string name) => EventTicketType.Create(
+        Guid.CreateVersion7(),
         catalog.TenantId, catalog.Id, name, "USD", TicketPricingModeEnum.Free, null, null, null,
         ParticipantDataCollectionModeEnum.None, null, null, null, false, false, null, null, null, null);
 

@@ -1,5 +1,5 @@
-// ABOUTME: Concrete per-session registration access row derived from a parent EventRegistrationIntent.
-// ABOUTME: Denormalizes EventId and carries concurrency metadata for grouped PATCH updates.
+// ABOUTME: Concrete per-session admission row derived from legacy intents or interim registration orders.
+// ABOUTME: Keeps participant and linked-user references nullable until participant assignment is introduced.
 
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -17,8 +17,8 @@ public class EventRegistration : ITenantEntity, IAuditableEntity, ISoftDeletable
     public required Event Event { get; set; }
 
     [ForeignKey("User")]
-    public Guid UserId { get; set; }
-    public required User User { get; set; }
+    public Guid? UserId { get; set; }
+    public User? User { get; set; }
 
     [ForeignKey("EventSession")]
     public Guid EventSessionId { get; set; }
@@ -34,6 +34,22 @@ public class EventRegistration : ITenantEntity, IAuditableEntity, ISoftDeletable
     [ForeignKey("EventRegistrationIntent")]
     public Guid? EventRegistrationIntentId { get; set; }
     public EventRegistrationIntent? EventRegistrationIntent { get; set; }
+
+    [ForeignKey("RegistrationOrder")]
+    public Guid? RegistrationOrderId { get; set; }
+    public RegistrationOrder? RegistrationOrder { get; set; }
+
+    [ForeignKey("RegistrationOrderLine")]
+    public Guid? RegistrationOrderLineId { get; set; }
+    public RegistrationOrderLine? RegistrationOrderLine { get; set; }
+
+    [ForeignKey("TicketTypeEntitlement")]
+    public Guid? TicketTypeEntitlementId { get; set; }
+    public TicketTypeEntitlement? TicketTypeEntitlement { get; set; }
+
+    public Guid? RegistrationParticipantId { get; set; }
+
+    public int? EntitlementOrdinal { get; set; }
 
     [ForeignKey("ApprovalStatus")]
     public int? ApprovalStatusId { get; set; }

@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventTicketing;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventTicketing.Handlers.Commands;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
 using Explore.Domain;
@@ -48,6 +49,7 @@ public sealed class CreateEventCapacityPoolCommandHandlerTests
                 && pool.Name == "Main hall revised"
                 && pool.MaximumQuantity == 300
                 && pool.HoldDurationSeconds == 1_200
+                && pool.CapacityHoldPolicyId == (int)CapacityHoldPolicyEnum.WaitlistWhenFull
                 && pool.CapacityOversellPolicyId == (int)CapacityOversellPolicyEnum.Allow
                 && !pool.IsActive),
             Arg.Any<CancellationToken>());
@@ -89,6 +91,24 @@ public sealed class CreateEventCapacityPoolCommandHandlerTests
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task Handle_WhenRepositoryReportsConcurrencyConflict_ReturnsConflictWithoutCacheInvalidation()
+    {
+        _catalogs.AddCapacityPoolAsync(Arg.Any<EventCapacityPool>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The capacity pool name was created by another request."));
+
+        var result = await CreateHandler().Handle(
+            new CreateEventCapacityPoolCommand { EventId = _eventId, CapacityPool = FullPoolDto() },
+            CancellationToken.None);
+
+        await Assert.That(result.FailureCode).IsEqualTo("event_ticketing_concurrency_conflict");
+        await Assert.That(result.Message).IsEqualTo("Ticketing configuration was updated by another request.");
+        await Assert.That(result.Errors).Contains("The capacity pool name was created by another request.");
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     private CreateEventCapacityPoolCommandHandler CreateHandler() => new(_events, _catalogs, _tenant, _cache);
 
     private DomainEvent CreatePlatformEvent(ParticipationHandlingModeEnum mode = ParticipationHandlingModeEnum.PlatformManaged) => new()
@@ -116,6 +136,7 @@ public sealed class CreateEventCapacityPoolCommandHandlerTests
         Name = "Main hall revised",
         MaximumQuantity = 300,
         HoldDurationSeconds = 1_200,
+        CapacityHoldPolicyId = (int)CapacityHoldPolicyEnum.WaitlistWhenFull,
         CapacityOversellPolicyId = (int)CapacityOversellPolicyEnum.Allow,
         IsActive = false
     };

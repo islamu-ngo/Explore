@@ -63,6 +63,9 @@ public sealed class EventTicketCatalogStateTests
                   "name": "Main hall",
                   "maximumQuantity": 200,
                   "holdDurationSeconds": 900,
+                  "capacityHoldPolicyId": 2,
+                  "capacityHoldPolicyCode": "TIMED_HOLD_ON_SELECTION",
+                  "capacityHoldPolicyName": "Timed hold on selection",
                   "capacityOversellPolicyId": 1,
                   "isActive": true,
                   "_links": {
@@ -84,6 +87,7 @@ public sealed class EventTicketCatalogStateTests
         await Assert.That(state.TicketTypes.Single().HasLink("delete")).IsFalse();
         await Assert.That(state.TicketTypes.Single().ToRequest().Entitlements!.Single().IncludedQuantity).IsEqualTo(1);
         await Assert.That(state.CapacityPools.Single().HasLink("edit")).IsTrue();
+        await Assert.That(state.CapacityPools.Single().CapacityHoldPolicyCode).IsEqualTo("TIMED_HOLD_ON_SELECTION");
     }
 
     [Test]

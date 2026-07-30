@@ -317,7 +317,8 @@ if (!isOpenApiGeneration)
     if (!builder.Environment.IsEnvironment("Testing"))
     {
         builder.Services.AddHostedService<NotificationFanoutProcessor>();
-        builder.Services.AddHostedService<IdempotencyCleanupProcessor>();
+builder.Services.AddHostedService<IdempotencyCleanupProcessor>();
+builder.Services.AddHostedService<InventoryHoldExpiryWorker>();
         builder.Services.AddHostedService<PrivacyErasureCredentialCleanupProcessor>();
         builder.Services.AddHostedService<EmailDispatchRetentionCleanupProcessor>();
         builder.Services.AddHostedService<AiRetentionCleanupProcessor>();

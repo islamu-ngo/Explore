@@ -188,9 +188,10 @@ public sealed record EventTicketCatalogState(
         {
             if (item.ValueKind != JsonValueKind.Object
                 || !TryRequiredGuid(item, "id", out Guid id)
-                || !TryRequiredString(item, "name", out string name)
-                || !TryRequiredInt(item, "holdDurationSeconds", out int holdDurationSeconds)
-                || !TryRequiredInt(item, "capacityOversellPolicyId", out int oversellPolicyId)
+                 || !TryRequiredString(item, "name", out string name)
+                 || !TryRequiredInt(item, "holdDurationSeconds", out int holdDurationSeconds)
+                 || !TryRequiredInt(item, "capacityHoldPolicyId", out int holdPolicyId)
+                 || !TryRequiredInt(item, "capacityOversellPolicyId", out int oversellPolicyId)
                 || !TryLinks(item, required: false, out Dictionary<string, HalLink> links))
             {
                 return false;
@@ -198,10 +199,13 @@ public sealed record EventTicketCatalogState(
 
             parsed.Add(new EventCapacityPoolState(
                 id,
-                name,
-                OptionalInt(item, "maximumQuantity"),
-                holdDurationSeconds,
-                oversellPolicyId,
+                 name,
+                 OptionalInt(item, "maximumQuantity"),
+                 holdDurationSeconds,
+                 holdPolicyId,
+                 OptionalString(item, "capacityHoldPolicyCode"),
+                 OptionalString(item, "capacityHoldPolicyName"),
+                 oversellPolicyId,
                 OptionalString(item, "capacityOversellPolicyCode"),
                 OptionalString(item, "capacityOversellPolicyName"),
                 OptionalBool(item, "isActive"),
@@ -393,6 +397,9 @@ public sealed record EventCapacityPoolState(
     string Name,
     int? MaximumQuantity,
     int HoldDurationSeconds,
+    int CapacityHoldPolicyId,
+    string? CapacityHoldPolicyCode,
+    string? CapacityHoldPolicyName,
     int CapacityOversellPolicyId,
     string? CapacityOversellPolicyCode,
     string? CapacityOversellPolicyName,
@@ -406,6 +413,7 @@ public sealed record EventCapacityPoolState(
         Name = Name,
         MaximumQuantity = MaximumQuantity,
         HoldDurationSeconds = HoldDurationSeconds,
+        CapacityHoldPolicyId = CapacityHoldPolicyId,
         CapacityOversellPolicyId = CapacityOversellPolicyId,
         IsActive = IsActive
     };

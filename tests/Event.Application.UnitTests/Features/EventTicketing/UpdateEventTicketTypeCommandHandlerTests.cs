@@ -35,6 +35,7 @@ public sealed class UpdateEventTicketTypeCommandHandlerTests
     {
         _tenant.TenantId.Returns(_tenantId);
         _events.GetAuthorizationTargetByIdAsync(_eventId, Arg.Any<CancellationToken>()).Returns(CreatePlatformEvent());
+        _catalogs.RemoveEntitlementsAsync(Arg.Any<IEnumerable<TicketTypeEntitlement>>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
         _catalogs.UpdateAsync(Arg.Any<EventTicketCatalogVersion>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
     }
 
@@ -43,6 +44,7 @@ public sealed class UpdateEventTicketTypeCommandHandlerTests
     {
         EventTicketCatalogVersion catalog = CreateDraftCatalog();
         EventTicketType ticket = AddFreeTicket(catalog);
+        TicketTypeEntitlement existingEntitlement = ticket.Entitlements.Single();
         EventCapacityPool pool = CreatePool();
         _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
         _catalogs.GetActiveCapacityPoolForUpdateAsync(pool.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(pool);
@@ -67,6 +69,9 @@ public sealed class UpdateEventTicketTypeCommandHandlerTests
         await Assert.That(ticket.PerBookingPartyLimit).IsEqualTo(5);
         Received.InOrder(() =>
         {
+            _catalogs.RemoveEntitlementsAsync(
+                Arg.Is<IEnumerable<TicketTypeEntitlement>>(entitlements => entitlements.SequenceEqual(new[] { existingEntitlement })),
+                Arg.Any<CancellationToken>());
             _catalogs.UpdateAsync(catalog, Arg.Any<CancellationToken>());
             _cache.RemoveAsync($"event:detail:{_eventId}", Arg.Any<CancellationToken>());
         });
@@ -181,6 +186,7 @@ public sealed class UpdateEventTicketTypeCommandHandlerTests
     private EventTicketType AddFreeTicket(EventTicketCatalogVersion catalog)
     {
         EventTicketType ticket = EventTicketType.Create(
+            Guid.CreateVersion7(),
             _tenantId,
             catalog.Id,
             "General admission",
@@ -210,6 +216,7 @@ public sealed class UpdateEventTicketTypeCommandHandlerTests
         "Main hall",
         200,
         900,
+        CapacityHoldPolicyEnum.TimedHoldOnSelection,
         CapacityOversellPolicyEnum.Disallow,
         true);
 

@@ -146,12 +146,14 @@ public sealed class DeleteEventCapacityPoolCommandHandlerTests
         "Main hall",
         200,
         900,
+        CapacityHoldPolicyEnum.TimedHoldOnSelection,
         CapacityOversellPolicyEnum.Disallow,
         true);
 
     private EventTicketType AddFreeTicket(EventTicketCatalogVersion catalog, EventCapacityPool? pool)
     {
         EventTicketType ticket = EventTicketType.Create(
+            Guid.CreateVersion7(),
             _tenantId,
             catalog.Id,
             "General admission",

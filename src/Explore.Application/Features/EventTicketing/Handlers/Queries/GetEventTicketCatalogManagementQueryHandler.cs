@@ -129,7 +129,10 @@ public sealed class GetEventTicketCatalogManagementQueryHandler(
         Name = pool.Name,
         MaximumQuantity = pool.MaximumQuantity,
         HoldDurationSeconds = pool.HoldDurationSeconds,
-         CapacityOversellPolicyId = pool.CapacityOversellPolicyId,
+        CapacityHoldPolicyId = pool.CapacityHoldPolicyId,
+        CapacityHoldPolicyCode = pool.CapacityHoldPolicy?.MasterCode,
+        CapacityHoldPolicyName = pool.CapacityHoldPolicy?.FullName,
+        CapacityOversellPolicyId = pool.CapacityOversellPolicyId,
          CapacityOversellPolicyCode = pool.CapacityOversellPolicy?.MasterCode,
          CapacityOversellPolicyName = pool.CapacityOversellPolicy?.FullName,
         IsActive = pool.IsActive

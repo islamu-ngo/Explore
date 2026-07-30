@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventTicketing.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -44,11 +45,16 @@ public sealed class CreateEventCapacityPoolCommandHandler(
                 request.CapacityPool.Name,
                 request.CapacityPool.MaximumQuantity,
                 request.CapacityPool.HoldDurationSeconds,
+                (CapacityHoldPolicyEnum)request.CapacityPool.CapacityHoldPolicyId,
                 (CapacityOversellPolicyEnum)request.CapacityPool.CapacityOversellPolicyId,
                 request.CapacityPool.IsActive);
             await catalogs.AddCapacityPoolAsync(pool, cancellationToken);
             await cache.RemoveAsync($"event:detail:{request.EventId}", cancellationToken);
             return Ok(pool.Id, "Capacity pool created.");
+        }
+        catch (ConcurrencyConflictException exception)
+        {
+            return Conflict(request.EventId, exception.Message);
         }
         catch (ArgumentException exception)
         {
@@ -86,5 +92,14 @@ public sealed class CreateEventCapacityPoolCommandHandler(
         FailureCode = "event_ticketing_validation_failed",
         Message = "Ticketing configuration is invalid.",
         Errors = errors.ToList()
+    };
+
+    private static BaseCommandResponse<Guid> Conflict(Guid id, string error) => new()
+    {
+        Id = id,
+        Success = false,
+        FailureCode = "event_ticketing_concurrency_conflict",
+        Message = "Ticketing configuration was updated by another request.",
+        Errors = [error]
     };
 }
