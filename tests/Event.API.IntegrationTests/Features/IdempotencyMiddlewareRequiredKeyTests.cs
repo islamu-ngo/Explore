@@ -93,14 +93,72 @@ public class IdempotencyMiddlewareTests
         await Assert.That(result.NextCallCount).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task Middleware_WhenMatchingKeyIsInProgress_DoesNotExecuteDuplicate()
+    {
+        var repository = new InMemoryIdempotencyRepository();
+        var tenantId = Guid.CreateVersion7();
+        var firstRequestStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseFirstRequest = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task<MiddlewareResult> firstRequest = InvokeAsync(
+            "same-key",
+            repository: repository,
+            tenantId: tenantId,
+            next: async context =>
+            {
+                firstRequestStarted.SetResult(true);
+                await releaseFirstRequest.Task;
+                context.Response.StatusCode = StatusCodes.Status201Created;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync("{\"created\":true}");
+            });
+
+        await firstRequestStarted.Task;
+
+        MiddlewareResult duplicate = await InvokeAsync(
+            "same-key",
+            repository: repository,
+            tenantId: tenantId,
+            next: context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status201Created;
+                return Task.CompletedTask;
+            });
+
+        releaseFirstRequest.SetResult(true);
+        MiddlewareResult completed = await firstRequest;
+
+        await Assert.That(completed.StatusCode).IsEqualTo(StatusCodes.Status201Created);
+        await Assert.That(duplicate.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        await Assert.That(duplicate.Body).Contains("idempotency_request_in_progress");
+        await Assert.That(completed.NextCallCount + duplicate.NextCallCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Middleware_WhenClaimPersistenceFails_FailsClosedBeforeExecuting()
+    {
+        MiddlewareResult result = await InvokeAsync(
+            "same-key",
+            repository: new FailingIdempotencyRepository());
+
+        await Assert.That(result.StatusCode).IsEqualTo(StatusCodes.Status503ServiceUnavailable);
+        await Assert.That(result.Body).Contains("idempotency_unavailable");
+        await Assert.That(result.NextCallCount).IsEqualTo(0);
+    }
+
     private static async Task<MiddlewareResult> InvokeAsync(
         string? idempotencyKey,
         bool requiresIdempotencyKey = true,
-        string path = "/api/idempotency-test")
+        string path = "/api/idempotency-test",
+        IIdempotencyRepository? repository = null,
+        Guid? tenantId = null,
+        RequestDelegate? next = null)
     {
+        var idempotencyRepository = repository ?? new InMemoryIdempotencyRepository();
         var services = new ServiceCollection()
-            .AddSingleton<ITenantContext>(new StaticTenantContext(Guid.CreateVersion7()))
-            .AddSingleton<IIdempotencyRepository, InMemoryIdempotencyRepository>()
+            .AddSingleton<ITenantContext>(new StaticTenantContext(tenantId ?? Guid.CreateVersion7()))
+            .AddSingleton(idempotencyRepository)
             .AddSingleton<IProblemDetailsService, IdempotencyMiddlewareRealRuntimeTests.JsonProblemDetailsService>()
             .BuildServiceProvider();
         var nextCallCount = 0;
@@ -126,12 +184,17 @@ public class IdempotencyMiddlewareTests
                 "required-idempotency-key"));
         }
 
+        RequestDelegate effectiveNext = next ??
+            (httpContext =>
+            {
+                httpContext.Response.StatusCode = StatusCodes.Status201Created;
+                return Task.CompletedTask;
+            });
         var middleware = new IdempotencyMiddleware(
             httpContext =>
             {
                 nextCallCount++;
-                httpContext.Response.StatusCode = StatusCodes.Status201Created;
-                return Task.CompletedTask;
+                return effectiveNext(httpContext);
             },
             new RecyclableMemoryStreamManager(),
             NullLogger<IdempotencyMiddleware>.Instance);
@@ -156,16 +219,109 @@ public class IdempotencyMiddlewareTests
 
     private sealed class InMemoryIdempotencyRepository : IIdempotencyRepository
     {
-        public Task<IdempotencyRecord?> FindAsync(string key, Guid tenantId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IdempotencyRecord?>(null);
+        private readonly object _sync = new();
+        private readonly Dictionary<(Guid TenantId, string Key), IdempotencyRecord> _records = [];
 
-        public Task SaveAsync(IdempotencyRecord record, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task<IdempotencyRecord?> FindAsync(string key, Guid tenantId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(_records.GetValueOrDefault((tenantId, key)));
+
+        public Task SaveAsync(IdempotencyRecord record, CancellationToken cancellationToken = default)
+        {
+            _records[(record.TenantId, record.Key)] = record;
+            return Task.CompletedTask;
+        }
+
+        public Task<IdempotencyClaim> TryClaimAsync(
+            IdempotencyRecord record,
+            CancellationToken cancellationToken = default)
+        {
+            lock (_sync)
+            {
+                if (_records.TryGetValue((record.TenantId, record.Key), out var existing))
+                {
+                    return Task.FromResult(new IdempotencyClaim(existing, IsOwner: false));
+                }
+
+                _records[(record.TenantId, record.Key)] = record;
+                return Task.FromResult(new IdempotencyClaim(record, IsOwner: true));
+            }
+        }
+
+        public Task<bool> CompleteAsync(
+            Guid recordId,
+            int statusCode,
+            string? responseBody,
+            string? contentType,
+            CancellationToken cancellationToken = default)
+        {
+            var record = _records.Values.FirstOrDefault(candidate => candidate.Id == recordId);
+            if (record is null || record.StatusCode != IdempotencyRecord.InProgressStatusCode)
+            {
+                return Task.FromResult(false);
+            }
+
+            record.StatusCode = statusCode;
+            record.ResponseBody = responseBody;
+            record.ContentType = contentType;
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> ReleaseAsync(Guid recordId, CancellationToken cancellationToken = default)
+        {
+            var pair = _records.FirstOrDefault(candidate => candidate.Value.Id == recordId);
+            if (pair.Value is null || pair.Value.StatusCode != IdempotencyRecord.InProgressStatusCode)
+            {
+                return Task.FromResult(false);
+            }
+
+            _records.Remove(pair.Key);
+            return Task.FromResult(true);
+        }
 
         public Task<int> CountExpiredAsync(DateTime expiresBeforeUtc, int batchSize, CancellationToken cancellationToken = default) =>
             Task.FromResult(0);
 
         public Task<int> DeleteExpiredAsync(DateTime expiresBeforeUtc, int batchSize, CancellationToken cancellationToken = default) =>
+            Task.FromResult(0);
+    }
+
+    private sealed class FailingIdempotencyRepository : IIdempotencyRepository
+    {
+        public Task<IdempotencyRecord?> FindAsync(
+            string key,
+            Guid tenantId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IdempotencyRecord?>(null);
+
+        public Task SaveAsync(IdempotencyRecord record, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Idempotency storage is unavailable.");
+
+        public Task<IdempotencyClaim> TryClaimAsync(
+            IdempotencyRecord record,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Idempotency storage is unavailable.");
+
+        public Task<bool> CompleteAsync(
+            Guid recordId,
+            int statusCode,
+            string? responseBody,
+            string? contentType,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Idempotency storage is unavailable.");
+
+        public Task<bool> ReleaseAsync(Guid recordId, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Idempotency storage is unavailable.");
+
+        public Task<int> CountExpiredAsync(
+            DateTime expiresBeforeUtc,
+            int batchSize,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(0);
+
+        public Task<int> DeleteExpiredAsync(
+            DateTime expiresBeforeUtc,
+            int batchSize,
+            CancellationToken cancellationToken = default) =>
             Task.FromResult(0);
     }
 

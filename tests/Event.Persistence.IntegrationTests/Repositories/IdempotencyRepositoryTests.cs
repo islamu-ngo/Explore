@@ -2,6 +2,7 @@
 // ABOUTME: Verifies expired-row cleanup is bounded and preserves live replay records.
 
 using Event.Persistence.IntegrationTests.Fixtures;
+using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +40,39 @@ public sealed class IdempotencyRepositoryTests(PostgreSqlContainerFixture fixtur
         await Assert.That(await context.IdempotencyRecords.AnyAsync(record => record.Key == "expired-3")).IsTrue();
     }
 
+    [Test]
+    public async Task TryClaimAsync_WhenTwoContextsUseTheSameKey_AllowsExactlyOneOwner()
+    {
+        await fixture.ResetAsync();
+        var tenantId = Guid.CreateVersion7();
+        var now = new DateTime(2026, 7, 30, 12, 0, 0, DateTimeKind.Utc);
+
+        await using var winnerContext = fixture.CreateDbContext();
+        await using var contenderContext = fixture.CreateDbContext();
+        var winnerRepository = new IdempotencyRepository(winnerContext);
+        var contenderRepository = new IdempotencyRepository(contenderContext);
+        await using var winnerTransaction = await winnerContext.Database.BeginTransactionAsync();
+
+        var winnerRecord = NewClaim("contended-key", tenantId, now);
+        var contenderRecord = NewClaim("contended-key", tenantId, now);
+        var winner = await winnerRepository.TryClaimAsync(winnerRecord);
+        await Assert.That(winner.IsOwner).IsTrue();
+
+        Task<IdempotencyClaim> contenderTask = contenderRepository.TryClaimAsync(contenderRecord);
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
+        await Assert.That(contenderTask.IsCompleted).IsFalse();
+
+        await winnerTransaction.CommitAsync();
+        IdempotencyClaim contender = await contenderTask;
+
+        await Assert.That(contender.IsOwner).IsFalse();
+        await Assert.That(contender.Record.Id).IsEqualTo(winnerRecord.Id);
+
+        await using var verificationContext = fixture.CreateDbContext();
+        await Assert.That(await verificationContext.IdempotencyRecords
+            .CountAsync(record => record.Key == "contended-key" && record.TenantId == tenantId)).IsEqualTo(1);
+    }
+
     private static IdempotencyRecord NewRecord(string key, Guid tenantId, DateTime expiresAt) =>
         new()
         {
@@ -55,5 +89,21 @@ public sealed class IdempotencyRepositoryTests(PostgreSqlContainerFixture fixtur
             ResponseBody = "{}",
             CreatedAt = expiresAt.AddHours(-24),
             ExpiresAt = expiresAt
+        };
+
+    private static IdempotencyRecord NewClaim(string key, Guid tenantId, DateTime now) =>
+        new()
+        {
+            Id = Guid.CreateVersion7(),
+            Key = key,
+            TenantId = tenantId,
+            UserId = "test-user",
+            RequestMethod = "POST",
+            RequestTarget = "/api/test",
+            RequestBodyHash = Guid.NewGuid().ToString("N"),
+            PrincipalFingerprint = Guid.NewGuid().ToString("N"),
+            StatusCode = IdempotencyRecord.InProgressStatusCode,
+            CreatedAt = now,
+            ExpiresAt = now.AddHours(24)
         };
 }

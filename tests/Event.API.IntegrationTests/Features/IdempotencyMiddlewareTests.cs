@@ -484,6 +484,54 @@ public class IdempotencyMiddlewareRealRuntimeTests(RealRuntimeApiFixture fixture
             return Task.CompletedTask;
         }
 
+        public Task<IdempotencyClaim> TryClaimAsync(
+            IdempotencyRecord record,
+            CancellationToken cancellationToken = default)
+        {
+            var existing = Records.FirstOrDefault(candidate =>
+                candidate.Key == record.Key
+                && candidate.TenantId == record.TenantId
+                && candidate.ExpiresAt > DateTime.UtcNow);
+            if (existing is not null)
+            {
+                return Task.FromResult(new IdempotencyClaim(existing, IsOwner: false));
+            }
+
+            Records.Add(record);
+            return Task.FromResult(new IdempotencyClaim(record, IsOwner: true));
+        }
+
+        public Task<bool> CompleteAsync(
+            Guid recordId,
+            int statusCode,
+            string? responseBody,
+            string? contentType,
+            CancellationToken cancellationToken = default)
+        {
+            var record = Records.FirstOrDefault(candidate => candidate.Id == recordId);
+            if (record is null || record.StatusCode != IdempotencyRecord.InProgressStatusCode)
+            {
+                return Task.FromResult(false);
+            }
+
+            record.StatusCode = statusCode;
+            record.ResponseBody = responseBody;
+            record.ContentType = contentType;
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> ReleaseAsync(Guid recordId, CancellationToken cancellationToken = default)
+        {
+            var record = Records.FirstOrDefault(candidate => candidate.Id == recordId);
+            if (record is null || record.StatusCode != IdempotencyRecord.InProgressStatusCode)
+            {
+                return Task.FromResult(false);
+            }
+
+            Records.Remove(record);
+            return Task.FromResult(true);
+        }
+
         public Task<int> CountExpiredAsync(
             DateTime expiresBeforeUtc,
             int batchSize,
@@ -517,6 +565,7 @@ public class IdempotencyMiddlewareRealRuntimeTests(RealRuntimeApiFixture fixture
             return Task.FromResult(expired.Length);
         }
     }
+
 
     internal sealed class JsonProblemDetailsService : IProblemDetailsService
     {

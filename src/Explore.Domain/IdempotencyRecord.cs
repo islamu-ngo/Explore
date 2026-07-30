@@ -5,6 +5,8 @@ namespace Explore.Domain;
 
 public class IdempotencyRecord
 {
+    public const int InProgressStatusCode = 0;
+
     public Guid Id { get; set; }
     public string Key { get; set; } = string.Empty;
     public Guid TenantId { get; set; }

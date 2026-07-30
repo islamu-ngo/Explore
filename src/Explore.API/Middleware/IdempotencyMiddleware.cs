@@ -36,7 +36,6 @@ public sealed class IdempotencyMiddleware
     private readonly RequestDelegate _next;
     private readonly RecyclableMemoryStreamManager _streamManager;
     private readonly ILogger<IdempotencyMiddleware> _logger;
-
     public IdempotencyMiddleware(
         RequestDelegate next,
         RecyclableMemoryStreamManager streamManager,
@@ -108,27 +107,64 @@ public sealed class IdempotencyMiddleware
             _streamManager,
             context.RequestAborted);
 
-        // Check for existing cached response
-        var existing = await repository.FindAsync(key, tenantId, context.RequestAborted);
-        if (existing is not null)
+        var now = DateTime.UtcNow;
+        var record = new IdempotencyRecord
         {
-            if (!MatchesRequestIdentity(existing, requestIdentity))
+            Id = Guid.CreateVersion7(),
+            Key = key,
+            TenantId = tenantId,
+            UserId = requestIdentity.UserId,
+            RequestMethod = requestIdentity.Method,
+            RequestTarget = requestIdentity.RequestTarget,
+            RequestContentType = requestIdentity.ContentType,
+            RequestBodyHash = requestIdentity.BodyHash,
+            PrincipalFingerprint = requestIdentity.PrincipalFingerprint,
+            StatusCode = IdempotencyRecord.InProgressStatusCode,
+            CreatedAt = now,
+            ExpiresAt = now.Add(DefaultExpiration)
+        };
+
+        IdempotencyClaim claim;
+        try
+        {
+            claim = await repository.TryClaimAsync(record, context.RequestAborted);
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unable to claim idempotency request state.");
+            await WritePersistenceFailureAsync(context);
+            return;
+        }
+
+        if (!claim.IsOwner)
+        {
+            if (!MatchesRequestIdentity(claim.Record, requestIdentity))
             {
                 await WriteKeyReuseConflictAsync(context);
                 return;
             }
 
-            context.Response.StatusCode = existing.StatusCode;
-            context.Response.Headers[ReplayHeader] = "true";
-
-            if (!string.IsNullOrEmpty(existing.ContentType))
+            if (claim.Record.StatusCode == IdempotencyRecord.InProgressStatusCode)
             {
-                context.Response.ContentType = existing.ContentType;
+                await WriteInProgressConflictAsync(context);
+                return;
             }
 
-            if (!string.IsNullOrEmpty(existing.ResponseBody))
+            context.Response.StatusCode = claim.Record.StatusCode;
+            context.Response.Headers[ReplayHeader] = "true";
+
+            if (!string.IsNullOrEmpty(claim.Record.ContentType))
             {
-                await context.Response.WriteAsync(existing.ResponseBody, context.RequestAborted);
+                context.Response.ContentType = claim.Record.ContentType;
+            }
+
+            if (!string.IsNullOrEmpty(claim.Record.ResponseBody))
+            {
+                await context.Response.WriteAsync(claim.Record.ResponseBody, context.RequestAborted);
             }
 
             return;
@@ -146,6 +182,7 @@ public sealed class IdempotencyMiddleware
         catch
         {
             context.Response.Body = originalBodyStream;
+            await TryReleaseAsync(repository, record.Id, context.RequestAborted);
             throw;
         }
 
@@ -162,29 +199,18 @@ public sealed class IdempotencyMiddleware
 
         if (ShouldPersistResponse(context.Response, bufferStream.Length))
         {
-            // Persist the idempotency record
-            var now = DateTime.UtcNow;
-            var record = new IdempotencyRecord
-            {
-                Id = Guid.CreateVersion7(),
-                Key = key,
-                TenantId = tenantId,
-                UserId = requestIdentity.UserId,
-                RequestMethod = requestIdentity.Method,
-                RequestTarget = requestIdentity.RequestTarget,
-                RequestContentType = requestIdentity.ContentType,
-                RequestBodyHash = requestIdentity.BodyHash,
-                PrincipalFingerprint = requestIdentity.PrincipalFingerprint,
-                StatusCode = context.Response.StatusCode,
-                ResponseBody = responseBody,
-                ContentType = context.Response.ContentType,
-                CreatedAt = now,
-                ExpiresAt = now.Add(DefaultExpiration)
-            };
-
             try
             {
-                await repository.SaveAsync(record, context.RequestAborted);
+                if (!await repository.CompleteAsync(
+                        record.Id,
+                        context.Response.StatusCode,
+                        responseBody,
+                        context.Response.ContentType,
+                        context.RequestAborted))
+                {
+                    await WritePersistenceFailureAsync(context);
+                    return;
+                }
             }
             catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
             {
@@ -192,14 +218,15 @@ public sealed class IdempotencyMiddleware
             }
             catch (Exception ex)
             {
-                // Duplicate-key races are non-fatal for the original request, but must still be observable.
-                _logger.LogWarning(
-                    ex,
-                    "Unable to persist idempotency record for tenant {TenantId}, key hash {KeyHash}, and path {Path}.",
-                    tenantId,
-                    key.GetHashCode(StringComparison.Ordinal),
-                    context.Request.Path);
+                _logger.LogError(ex, "Unable to complete idempotency request state.");
+                await WritePersistenceFailureAsync(context);
+                return;
             }
+        }
+        else if (!await TryReleaseAsync(repository, record.Id, context.RequestAborted))
+        {
+            await WritePersistenceFailureAsync(context);
+            return;
         }
 
         // Write the captured response to the original stream
@@ -250,6 +277,68 @@ public sealed class IdempotencyMiddleware
             HttpContext = context,
             ProblemDetails = problemDetails
         });
+    }
+
+    private static async Task WriteInProgressConflictAsync(HttpContext context)
+    {
+        context.Response.StatusCode = StatusCodes.Status409Conflict;
+        var problemDetails = new ProblemDetails
+        {
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+            Title = "Conflict",
+            Status = StatusCodes.Status409Conflict,
+            Detail = "An identical request with this Idempotency-Key is still in progress.",
+            Instance = context.Request.Path
+        };
+        problemDetails.Extensions["code"] = "idempotency_request_in_progress";
+
+        var problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
+        await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = context,
+            ProblemDetails = problemDetails
+        });
+    }
+
+    private static async Task WritePersistenceFailureAsync(HttpContext context)
+    {
+        context.Response.Clear();
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        var problemDetails = new ProblemDetails
+        {
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.6.4",
+            Title = "Service Unavailable",
+            Status = StatusCodes.Status503ServiceUnavailable,
+            Detail = "The request could not be processed safely.",
+            Instance = context.Request.Path
+        };
+        problemDetails.Extensions["code"] = "idempotency_unavailable";
+
+        var problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
+        await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = context,
+            ProblemDetails = problemDetails
+        });
+    }
+
+    private static async Task<bool> TryReleaseAsync(
+        IIdempotencyRepository repository,
+        Guid recordId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await repository.ReleaseAsync(recordId, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static async Task WriteBadRequestAsync(HttpContext context, string detail)
