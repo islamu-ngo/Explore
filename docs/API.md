@@ -990,9 +990,11 @@ Authorization decisions are also traced via `ActivitySource` named `Explore.Auth
 
 Write operations support the `Idempotency-Key` HTTP header for safe retries:
 - Client sends `Idempotency-Key: <UUID>` on POST/PUT/PATCH/DELETE requests.
-- Server caches eligible responses by `(Key, TenantId)` in PostgreSQL.
+- Server atomically persists an in-progress claim by `(Key, TenantId)` in PostgreSQL before dispatching the write.
 - Duplicate requests within 24 hours replay the cached response with original status code when the original response was persisted.
 - Reusing the same key for a different write request is rejected with `409 Conflict`. The request identity includes method, normalized target, content type, request-body hash, and a principal fingerprint.
+- A matching request while the original claim is in progress receives `409 Conflict` with code `idempotency_request_in_progress`; it must retry for the completed replay.
+- Required claim or result persistence failures return `503 Service Unavailable` with code `idempotency_unavailable`, never a successful write response.
 - Persisted responses must have status `200` through `499`, body size at or below 1 MB, and blank, `application/json`, or `application/problem+json` content type.
 - `5xx`, large, or non-JSON responses are not persisted for replay.
 - Keys expire after 24 hours for replay eligibility. Expired rows are ignored by reads; the `IdempotencyCleanupProcessor` physically deletes expired rows after the configured `IdempotencyCleanup:ExpirationGraceHours` safety buffer.

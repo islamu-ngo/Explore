@@ -60,7 +60,7 @@ Several previously enum-shaped persistence fields are now modeled as lookup/refe
 | `TicketTypeEntitlement.ScopeType` | `EntitlementScopeTypeId` | `EntitlementScopeType` / `entitlement_scope_types` |
 | `TicketTypeEntitlement.SelectionRule` | `EntitlementSelectionRuleId` | `EntitlementSelectionRule` / `entitlement_selection_rules` |
 | `EventCapacityPool.OversellPolicy` | `CapacityOversellPolicyId` | `CapacityOversellPolicy` / `capacity_oversell_policies` |
-| `EventParticipationConfiguration.ParticipantDataCollectionMode` | `ParticipantDataCollectionModeId` | `ParticipantDataCollectionMode` / `participant_data_collection_modes` |
+| `EventTicketType.ParticipantDataCollectionMode` | `ParticipantDataCollectionModeId` | `ParticipantDataCollectionMode` / `participant_data_collection_modes` |
 
 API DTOs expose lookup primitives (`*Id`, `*Code`, `*Name`) rather than domain enum values. Repositories query on the normalized FK IDs. Handlers may convert IDs to internal enums only for business-rule switches while keeping persistence and public contracts normalized.
 
@@ -133,7 +133,23 @@ External participation destinations are reviewed `EventPublicAction` records, no
 
 `EventTicketCatalogVersion` owns immutable published catalog revisions. Drafts contain `EventTicketType` rows with one of five normalized pricing modes, optional shared `EventCapacityPool` references, and `TicketTypeEntitlement` rows targeting the Event, a day, or a session. Published edits clone to a new draft. Ticket and capacity rows are tenant-scoped, concurrency-protected, and soft-deletable where their lifecycle permits it.
 
-Persisted and API monetary amounts use `long` integer minor units, named with the `...Minor` suffix. Percentage values use integer basis points, where `10_000 = 100%`. Currency metadata controls deterministic conversion from decimal major units to integer minor units within the same currency, and overflow-checked minor-unit arithmetic returns persisted integer values. The model performs no foreign-exchange conversion and uses no floating-point money.
+#### Ticket Type Entitlements (`TicketTypeEntitlement`)
+
+`TicketTypeEntitlement` defines what admission, access rights, or privileges a given `EventTicketType` grants to an attendee. Each entitlement encapsulates:
+- **Scope (`EntitlementScopeTypeEnum`)**:
+  - `Event` (1): Grants admission to the entire overall event (all days and sessions).
+  - `EventDay` (2): Grants admission to a specific day (`EventDayId`) of a multi-day event.
+  - `EventSession` (3): Grants admission to a specific session (`EventSessionId`).
+- **Selection Rule (`EntitlementSelectionRuleEnum`)**:
+  - `AllIncluded` (1): All sub-resources under the scope are automatically included (e.g., all sessions on that day).
+  - `FixedSelection` (2): Predefined fixed selection of admission targets.
+  - `ChooseOne` (3): Registrant selects 1 session option during registration.
+  - `ChooseUpToN` (4): Registrant selects up to *N* session options (e.g., pick 3 workshops out of 10).
+- **Included Quantity (`IncludedQuantity`)**: The number of admission units or entries granted per entitlement.
+
+Entitlements feed directly into capacity pool enforcement (`EventCapacityPool`), attendee check-in lists, and location privacy disclosure gating (`EventLocation` reveal policy).
+
+Persisted and API ticketing amounts use `long` integer minor units, named with the `...Minor` suffix. Percentage values use integer basis points, where `10_000 = 100%`. Catalog rows carry a three-character currency code, and published Event summaries derive their currency and lowest available amount from those rows. The implemented persistence model has no scalar Event or EventSession price and defines no foreign-exchange conversion.
 
 `PlatformFeePolicy` and `PlatformContributionSetting` are separate versioned instance aggregates. Fee policies contain basis points and per-currency fixed minor-unit charges. Contribution settings contain DB-stored heading/body text and ordered basis-point options with exactly one zero default. Both start disabled or zero. A platform contribution is instance-directed and never enters organizer earnings, ticket price, capacity, or organizer export totals.
 
@@ -290,7 +306,7 @@ Specialized variants: `PdsSyncOutbox` (federation), `PolicyChangeOutbox` (govern
 ## Persistence-Enforced Rules (from EF configuration)
 
 - `Event.Title`: Required, max 200.
-- `Event.Price`: Precision (19,4), non-negative constraint.
+- `Event` and `EventSession`: No scalar price or currency columns; published price summaries derive from the published `EventTicketCatalogVersion` and its ticket types.
 - `Event.EventTimeZoneId`: Optional, max 100; blank strings rejected.
 - `Event`: Schedule rollups reject inverted first/last local date and UTC start ranges.
 - `EventSession`: `EventSessionStatusId` is required; schedule and local projection fields are nullable for drafts; if a schedule is present, UTC end must be after UTC start and local minute projections must match local time projections.

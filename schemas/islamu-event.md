@@ -275,6 +275,136 @@ Table "identity_access_modes" {
   Note: 'Lookup: participation identity access. Values: ACCOUNT_REQUIRED(1), GUEST_ALLOWED(2), CAPABILITY_TOKEN_ALLOWED(3). Runtime-seeded.'
 }
 
+Table "ticket_catalog_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_ticket_catalog_statuses_master_code']
+  }
+
+  Note: 'Lookup: ticket catalog lifecycle. Values: DRAFT(1), PUBLISHED(2), RETIRED(3). Runtime-seeded.'
+}
+
+Table "ticket_pricing_modes" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_ticket_pricing_modes_master_code']
+  }
+
+  Note: 'Lookup: ticket pricing behavior. Values: FIXED(1), FREE(2), DONATION(3), PAY_WHAT_YOU_CAN(4), SLIDING_SCALE(5). Runtime-seeded.'
+}
+
+Table "participant_data_collection_modes" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_participant_data_collection_modes_master_code']
+  }
+
+  Note: 'Lookup: ticket participant-data collection. Values: NONE(1), LEAD_BOOKER_ONLY(2), PER_TICKET_OPTIONAL(3), PER_TICKET_REQUIRED(4), DEFERRED_ASSIGNMENT(5). Runtime-seeded.'
+}
+
+Table "capacity_oversell_policies" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_capacity_oversell_policies_master_code']
+  }
+
+  Note: 'Lookup: capacity oversell behavior. Values: DISALLOW(1), ALLOW(2). Runtime-seeded.'
+}
+
+Table "capacity_hold_policies" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_capacity_hold_policies_master_code']
+  }
+
+  Note: 'Lookup: capacity reservation behavior. Values: NO_HOLD_UNTIL_READY(1), TIMED_HOLD_ON_SELECTION(2), APPROVAL_NO_HOLD(3), WAITLIST_WHEN_FULL(4). Runtime-seeded; migration seeds these rows before legacy pools are backfilled to NO_HOLD_UNTIL_READY(1).'
+}
+
+Table "booking_party_types" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_booking_party_types_master_code']
+  }
+
+  Note: 'Lookup: registration-order booking party. Values: INDIVIDUAL(1), HOUSEHOLD(2), ORGANIZATION(3), COMPANY(4), COMMUNITY_GROUP(5). Runtime-seeded.'
+}
+
+Table "registration_order_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_registration_order_statuses_master_code']
+  }
+
+  Note: 'Lookup: registration-order workflow lifecycle. Values: DRAFT(1) through NEEDS_RECONCILIATION(13). Runtime-seeded.'
+}
+
+Table "registration_inventory_hold_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_registration_inventory_hold_statuses_master_code']
+  }
+
+  Note: 'Lookup: inventory reservation lifecycle. Values: ACTIVE(1), CONSUMED(2), RELEASED(3), EXPIRED(4), CANCELLED(5). Runtime-seeded.'
+}
+
+Table "entitlement_scope_types" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_entitlement_scope_types_master_code']
+  }
+
+  Note: 'Lookup: ticket entitlement target. Values: EVENT(1), EVENT_DAY(2), EVENT_SESSION(3). Runtime-seeded.'
+}
+
+Table "entitlement_selection_rules" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_entitlement_selection_rules_master_code']
+  }
+
+  Note: 'Lookup: ticket entitlement selection. Values: ALL_INCLUDED(1), FIXED_SELECTION(2), CHOOSE_ONE(3), CHOOSE_UP_TO_N(4). Runtime-seeded.'
+}
+
 Table "event_provenance_types" {
   "id" int [pk, not null]
   "master_code" varchar(100) [not null]
@@ -3833,14 +3963,12 @@ Table "events" {
   "actor_id" uuid [not null]
   "featured_image_id" uuid
   "total_views" int [not null]
-  "is_registration_required" boolean [not null]
   "madhab_id" int
   "tenant_id" uuid [not null]
   "slug" varchar(200)
   "visibility_type_id" int [not null]
   "session_count" int
   "event_status_id" int [not null]
-  "external_registration_url" varchar(2048)
   "first_session_date" date
   "last_session_date" date
   "timezone" varchar(100)
@@ -4211,7 +4339,355 @@ Table "event_participation_configurations" {
   "deleted_by" uuid
   "concurrency_stamp" uuid [not null]
 
+  indexes {
+    advance_registration_obligation_id [name: 'ix_event_participation_configurations_advance_registration_obl']
+    identity_access_mode_id [name: 'ix_event_participation_configurations_identity_access_mode_id']
+    participation_handling_mode_id [name: 'ix_event_participation_configurations_participation_handling_m']
+    (tenant_id, id) [unique, name: 'ix_event_participation_configurations_tenant_id_id']
+  }
+
   Note: 'Tenant-scoped 1:1 Event participation policy. Identity and recovery apply only when the typed handling mode permits them.'
+}
+
+Table "event_capacity_pools" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "name" varchar(200) [not null]
+  "maximum_quantity" int
+  "hold_duration_seconds" int [not null]
+  "capacity_hold_policy_id" int [not null]
+  "capacity_oversell_policy_id" int [not null]
+  "is_active" boolean [not null]
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_event_capacity_pools_tenant_id_id']
+    capacity_hold_policy_id [name: 'ix_event_capacity_pools_capacity_hold_policy_id']
+    capacity_oversell_policy_id [name: 'ix_event_capacity_pools_capacity_oversell_policy_id']
+    (tenant_id, event_id, name) [unique, name: 'ix_event_capacity_pools_tenant_id_event_id_name', note: 'filter: is_deleted = false']
+  }
+
+  Note: 'Tenant-scoped shared capacity definition. Soft-deletable, audited, and concurrency-protected.'
+}
+
+Table "event_ticket_catalog_versions" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "currency_code" varchar(3) [not null]
+  "version_number" int [not null]
+  "ticket_catalog_status_id" int [not null]
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_event_ticket_catalog_versions_tenant_id_id']
+    ticket_catalog_status_id [name: 'ix_event_ticket_catalog_versions_ticket_catalog_status_id']
+    (tenant_id, event_id) [unique, name: 'ix_event_ticket_catalog_versions_tenant_id_event_id', note: 'filter: ticket_catalog_status_id = 2 AND is_deleted = false']
+    (tenant_id, event_id, version_number) [unique, name: 'ix_event_ticket_catalog_versions_tenant_id_event_id_version_nu', note: 'filter: is_deleted = false']
+  }
+
+  Note: 'Versioned Event ticket catalog. At most one non-deleted published catalog exists per tenant and Event.'
+}
+
+Table "event_ticket_types" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "catalog_id" uuid [not null]
+  "name" varchar(200) [not null]
+  "currency_code" varchar(3) [not null]
+  "ticket_pricing_mode_id" int [not null]
+  "fixed_price_minor" bigint
+  "minimum_price_minor" bigint
+  "suggested_price_minor" bigint
+  "participant_data_collection_mode_id" int [not null]
+  "capacity_pool_id" uuid
+  "minimum_age" int
+  "maximum_age" int
+  "requires_guardian" boolean [not null]
+  "requires_approval" boolean [not null]
+  "per_order_limit" int
+  "per_account_limit" int
+  "per_verified_contact_limit" int
+  "per_booking_party_limit" int
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_event_ticket_types_tenant_id_id']
+    participant_data_collection_mode_id [name: 'ix_event_ticket_types_participant_data_collection_mode_id']
+    ticket_pricing_mode_id [name: 'ix_event_ticket_types_ticket_pricing_mode_id']
+    (tenant_id, capacity_pool_id) [name: 'ix_event_ticket_types_tenant_id_capacity_pool_id']
+    (tenant_id, catalog_id) [name: 'ix_event_ticket_types_tenant_id_catalog_id']
+  }
+
+  Note: 'Ticket type within one catalog version. Monetary values are nullable bigint minor units selected by pricing mode.'
+}
+
+Table "ticket_type_entitlements" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "ticket_type_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "target_event_id" uuid [not null]
+  "entitlement_scope_type_id" int [not null]
+  "event_day_id" uuid
+  "event_session_id" uuid
+  "included_quantity" int [not null]
+  "entitlement_selection_rule_id" int [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_ticket_type_entitlements_tenant_id_id']
+    entitlement_scope_type_id [name: 'ix_ticket_type_entitlements_entitlement_scope_type_id']
+    entitlement_selection_rule_id [name: 'ix_ticket_type_entitlements_entitlement_selection_rule_id']
+    (tenant_id, ticket_type_id) [name: 'ix_ticket_type_entitlements_tenant_id_ticket_type_id']
+    (tenant_id, target_event_id, event_day_id) [name: 'ix_ticket_type_entitlements_tenant_id_target_event_id_event_da']
+    (tenant_id, target_event_id, event_session_id) [name: 'ix_ticket_type_entitlements_tenant_id_target_event_id_event_se']
+  }
+
+  Note: 'Ticket access entitlement targeting the Event, one Event day, or one Event session.'
+}
+
+Table "registration_orders" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "account_user_id" uuid
+  "purchaser_actor_id" uuid
+  "booking_party_type_id" int [not null]
+  "registration_order_status_id" int [not null]
+  "ticket_catalog_version_id" uuid [not null]
+  "participation_configuration_version_snapshot" uuid [not null]
+  "participation_handling_mode_id_snapshot" int [not null]
+  "advance_registration_obligation_id_snapshot" int [not null]
+  "identity_access_mode_id_snapshot" int
+  "guest_recovery_policy_snapshot" int
+  "registration_order_participation_configuration_version_snapshot" uuid [not null]
+  "registration_workflow_version_id" uuid
+  "guest_access_token_hash" varchar(44)
+  "currency_code" varchar(3) [not null]
+  "expires_at" timestamptz
+  "submitted_at" timestamptz
+  "confirmed_at" timestamptz
+  "rejected_at" timestamptz
+  "cancelled_at" timestamptz
+  "organizer_directed_total_minor_snapshot" bigint [not null]
+  "platform_fee_total_minor_snapshot" bigint [not null]
+  "organizer_earnings_total_minor_snapshot" bigint [not null]
+  "platform_contribution_total_minor_snapshot" bigint [not null]
+  "total_due_minor_snapshot" bigint [not null]
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_orders_tenant_id_id']
+    booking_party_type_id [name: 'ix_registration_orders_booking_party_type_id']
+    registration_order_status_id [name: 'ix_registration_orders_registration_order_status_id']
+    (tenant_id, event_id, registration_order_status_id) [name: 'ix_registration_orders_tenant_id_event_id_registration_order_s']
+    (tenant_id, expires_at) [name: 'ix_registration_orders_tenant_id_expires_at']
+    (tenant_id, ticket_catalog_version_id) [name: 'ix_registration_orders_tenant_id_ticket_catalog_version_id']
+  }
+
+  Note: 'Tenant-scoped checkout aggregate with immutable participation, catalog, money, and access snapshots.'
+}
+
+Table "registration_inventory_holds" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "registration_order_id" uuid [not null]
+  "capacity_pool_id" uuid [not null]
+  "ticket_type_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "quantity" int [not null]
+  "registration_inventory_hold_status_id" int [not null]
+  "expires_at" timestamptz [not null]
+  "consumed_at" timestamptz
+  "released_at" timestamptz
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_inventory_holds_tenant_id_id']
+    registration_inventory_hold_status_id [name: 'ix_registration_inventory_holds_registration_inventory_hold_st']
+    (tenant_id, capacity_pool_id, registration_inventory_hold_status_id) [name: 'ix_registration_inventory_holds_tenant_id_capacity_pool_id_reg']
+    (tenant_id, registration_inventory_hold_status_id, expires_at) [name: 'ix_registration_inventory_holds_tenant_id_registration_invento']
+    (tenant_id, registration_order_id) [name: 'ix_registration_inventory_holds_tenant_id_registration_order_id']
+    (tenant_id, ticket_type_id) [name: 'ix_registration_inventory_holds_tenant_id_ticket_type_id']
+  }
+
+  Note: 'Tenant-scoped, audited, soft-deletable capacity reservation. Status controls whether its quantity is allocated.'
+}
+
+Table "registration_order_lines" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "registration_order_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "ticket_type_id" uuid [not null]
+  "quantity" int [not null]
+  "unit_price_amount_snapshot" bigint [not null]
+  "chosen_unit_price_amount_snapshot" bigint
+  "currency_code_snapshot" varchar(3) [not null]
+  "line_subtotal_snapshot" bigint [not null]
+  "ticket_type_name_snapshot" varchar(200) [not null]
+  "ticket_pricing_mode_snapshot" int [not null]
+  "minimum_price_amount_snapshot" bigint
+  "suggested_price_amount_snapshot" bigint
+  "ticket_catalog_version_id" uuid [not null]
+  "platform_fee_policy_version_snapshot" int
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_order_lines_tenant_id_id']
+    (tenant_id, registration_order_id, ticket_type_id) [unique, name: 'ix_registration_order_lines_tenant_id_registration_order_id_ti']
+    (tenant_id, ticket_catalog_version_id) [name: 'ix_registration_order_lines_tenant_id_ticket_catalog_version_id']
+    (tenant_id, ticket_type_id) [name: 'ix_registration_order_lines_tenant_id_ticket_type_id']
+  }
+
+  Note: 'Immutable selected-ticket and price snapshots for one registration order.'
+}
+
+Table "registration_order_pii" {
+  "registration_order_id" uuid [pk, not null, note: 'shared PK with registration_orders']
+  "tenant_id" uuid [not null]
+  "contact_name" varchar(200)
+  "email" varchar(320)
+  "normalized_email" varchar(320)
+  "phone" varchar(64)
+  "organization_name" varchar(200)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, registration_order_id) [unique, name: 'ak_registration_order_pii_tenant_id_registration_order_id']
+    (tenant_id, normalized_email) [name: 'ix_registration_order_pii_tenant_id_normalized_email']
+  }
+
+  Note: 'Optional buyer contact PII split from durable registration-order workflow and accounting state.'
+}
+
+Table "registration_order_platform_contributions" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "registration_order_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "platform_contribution_setting_id_snapshot" uuid [not null]
+  "platform_contribution_setting_version_snapshot" int [not null]
+  "contribution_basis_points_snapshot" int [not null]
+  "amount_minor" bigint [not null]
+  "currency_code" varchar(3) [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_order_platform_contributions_tenant_id_id']
+    (tenant_id, registration_order_id) [unique, name: 'ix_registration_order_platform_contributions_tenant_id_registr']
+  }
+
+  Note: 'Optional instance-directed contribution snapshot kept separate from organizer-directed order totals.'
+}
+
+Table "platform_fee_policies" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "version_number" int [not null]
+  "is_active" boolean [not null]
+  "is_enabled" boolean [not null]
+  "fee_basis_points" int [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    is_active [unique, name: 'ix_platform_fee_policies_is_active', note: 'filter: is_active = true']
+    version_number [unique, name: 'ix_platform_fee_policies_version_number']
+  }
+
+  Note: 'Versioned instance platform fee policy. At most one active version.'
+}
+
+Table "platform_fee_fixed_charges" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "currency_code" varchar(3) [not null]
+  "amount_minor" bigint [not null]
+  "platform_fee_policy_id" uuid
+
+  indexes {
+    (platform_fee_policy_id, currency_code) [unique, name: 'ix_platform_fee_fixed_charges_platform_fee_policy_id_currency_']
+  }
+
+  Note: 'Per-currency fixed minor-unit component of a platform fee policy.'
+}
+
+Table "platform_contribution_settings" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "version_number" int [not null]
+  "is_active" boolean [not null]
+  "is_enabled" boolean [not null]
+  "heading" varchar(200) [not null]
+  "body" varchar(2000) [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    is_active [unique, name: 'ix_platform_contribution_settings_is_active', note: 'filter: is_active = true']
+    version_number [unique, name: 'ix_platform_contribution_settings_version_number']
+  }
+
+  Note: 'Versioned instance contribution prompt and option set. At most one active version.'
+}
+
+Table "platform_contribution_options" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "contribution_basis_points" int [not null]
+  "sort_order" int [not null]
+  "is_default" boolean [not null]
+  "platform_contribution_setting_id" uuid
+
+  indexes {
+    (platform_contribution_setting_id, contribution_basis_points) [unique, name: 'ix_platform_contribution_options_platform_contribution_setting']
+    (platform_contribution_setting_id, sort_order) [unique, name: 'ix_platform_contribution_options_platform_contribution_setting1']
+  }
+
+  Note: 'Ordered basis-point contribution option belonging to a versioned contribution setting.'
 }
 
 Table "event_public_actions" {
@@ -4272,10 +4748,15 @@ Table "event_organizer_claims" {
 Table "event_registrations" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "event_id" uuid [not null, note: 'denormalized from EventSession for same-event composite FK enforcement']
-  "user_id" uuid [not null]
+  "user_id" uuid
   "event_session_id" uuid [not null]
   "coverage_established_at" timestamptz [not null, default: `NOW()`]
   "event_registration_intent_id" uuid
+  "registration_order_id" uuid
+  "registration_order_line_id" uuid
+  "registration_participant_id" uuid
+  "ticket_type_entitlement_id" uuid
+  "entitlement_ordinal" int
   "approval_status_id" int
   "tenant_id" uuid [not null]
   "atproto_record_id" uuid
@@ -4288,9 +4769,12 @@ Table "event_registrations" {
   "deleted_by" uuid
 
   indexes {
-    (tenant_id, event_id, event_session_id, user_id) [unique, name: 'ix_eventregistrations_session_user', note: 'filter: is_deleted = false']
+    (tenant_id, event_id, event_session_id, user_id) [name: 'ix_eventregistrations_session_user', note: 'filter: is_deleted = false']
     user_id [name: 'ix_eventregistrations_user']
     (tenant_id, event_id, event_registration_intent_id) [name: 'ix_eventregistrations_intent']
+    (tenant_id, registration_order_id) [name: 'ix_event_registrations_tenant_id_registration_order_id']
+    (tenant_id, ticket_type_entitlement_id) [name: 'ix_event_registrations_tenant_id_ticket_type_entitlement_id']
+    (tenant_id, registration_order_line_id, ticket_type_entitlement_id, event_session_id, entitlement_ordinal) [unique, name: 'ix_eventregistrations_order_admission', note: 'filter: registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false']
   }
 }
 
@@ -5153,6 +5637,40 @@ Ref: "event_participation_configurations".("tenant_id", "id") > "events".("tenan
 Ref: "event_participation_configurations"."participation_handling_mode_id" > "participation_handling_modes"."id" [delete: restrict]
 Ref: "event_participation_configurations"."advance_registration_obligation_id" > "advance_registration_obligations"."id" [delete: restrict]
 Ref: "event_participation_configurations"."identity_access_mode_id" > "identity_access_modes"."id" [delete: restrict]
+Ref: "event_capacity_pools"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_capacity_pools".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "event_capacity_pools"."capacity_hold_policy_id" > "capacity_hold_policies"."id" [delete: restrict]
+Ref: "event_capacity_pools"."capacity_oversell_policy_id" > "capacity_oversell_policies"."id" [delete: restrict]
+Ref: "event_ticket_catalog_versions"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_ticket_catalog_versions".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "event_ticket_catalog_versions"."ticket_catalog_status_id" > "ticket_catalog_statuses"."id" [delete: restrict]
+Ref: "event_ticket_types".("tenant_id", "catalog_id") > "event_ticket_catalog_versions".("tenant_id", "id") [delete: restrict]
+Ref: "event_ticket_types".("tenant_id", "capacity_pool_id") > "event_capacity_pools".("tenant_id", "id") [delete: restrict]
+Ref: "event_ticket_types"."ticket_pricing_mode_id" > "ticket_pricing_modes"."id" [delete: restrict]
+Ref: "event_ticket_types"."participant_data_collection_mode_id" > "participant_data_collection_modes"."id" [delete: restrict]
+Ref: "ticket_type_entitlements".("tenant_id", "ticket_type_id") > "event_ticket_types".("tenant_id", "id") [delete: restrict]
+Ref: "ticket_type_entitlements".("tenant_id", "target_event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "ticket_type_entitlements".("tenant_id", "target_event_id", "event_day_id") > "event_days".("tenant_id", "event_id", "id") [delete: restrict]
+Ref: "ticket_type_entitlements".("tenant_id", "target_event_id", "event_session_id") > "event_sessions".("tenant_id", "event_id", "id") [delete: restrict]
+Ref: "ticket_type_entitlements"."entitlement_scope_type_id" > "entitlement_scope_types"."id" [delete: restrict]
+Ref: "ticket_type_entitlements"."entitlement_selection_rule_id" > "entitlement_selection_rules"."id" [delete: restrict]
+Ref: "registration_orders"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_orders".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "registration_orders".("tenant_id", "ticket_catalog_version_id") > "event_ticket_catalog_versions".("tenant_id", "id") [delete: restrict]
+Ref: "registration_orders"."booking_party_type_id" > "booking_party_types"."id" [delete: restrict]
+Ref: "registration_orders"."registration_order_status_id" > "registration_order_statuses"."id" [delete: restrict]
+Ref: "registration_inventory_holds"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_inventory_holds".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "registration_inventory_holds".("tenant_id", "capacity_pool_id") > "event_capacity_pools".("tenant_id", "id") [delete: restrict]
+Ref: "registration_inventory_holds".("tenant_id", "ticket_type_id") > "event_ticket_types".("tenant_id", "id") [delete: restrict]
+Ref: "registration_inventory_holds"."registration_inventory_hold_status_id" > "registration_inventory_hold_statuses"."id" [delete: restrict]
+Ref: "registration_order_lines".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "registration_order_lines".("tenant_id", "ticket_type_id") > "event_ticket_types".("tenant_id", "id") [delete: restrict]
+Ref: "registration_order_lines".("tenant_id", "ticket_catalog_version_id") > "event_ticket_catalog_versions".("tenant_id", "id") [delete: restrict]
+Ref: "registration_order_pii".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "registration_order_platform_contributions".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "platform_fee_fixed_charges"."platform_fee_policy_id" > "platform_fee_policies"."id" [delete: restrict]
+Ref: "platform_contribution_options"."platform_contribution_setting_id" > "platform_contribution_settings"."id" [delete: restrict]
 Ref: "event_public_actions"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "event_public_actions".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
 Ref: "event_public_actions"."event_public_action_kind_id" > "event_public_action_kinds"."id" [delete: restrict]
@@ -5217,6 +5735,9 @@ Ref: "event_registrations".("tenant_id", "event_id") > "events".("tenant_id", "i
 Ref: "event_registrations".("tenant_id", "event_id", "event_registration_intent_id") > "event_registration_intents".("tenant_id", "event_id", "id") [delete: cascade]
 Ref: "event_registrations".("tenant_id", "event_id", "event_session_id") > "event_sessions".("tenant_id", "event_id", "id") [delete: cascade]
 Ref: "event_registrations"."user_id" > "users"."id" [delete: restrict]
+Ref: "event_registrations".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "event_registrations".("tenant_id", "registration_order_line_id") > "registration_order_lines".("tenant_id", "id") [delete: restrict]
+Ref: "event_registrations".("tenant_id", "ticket_type_entitlement_id") > "ticket_type_entitlements".("tenant_id", "id") [delete: restrict]
 Ref: "event_registrations"."atproto_record_id" > "atproto_records"."id" [delete: set null]
 
 // Email Dispatch
