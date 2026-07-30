@@ -317,12 +317,9 @@ public class SetupSecretForwardingHandlerTests
     }
 
     [Test]
-    [Arguments("/api/instance/settings/branding")]
     [Arguments("/api/instance/settings/auth-provider")]
-    [Arguments("/api/instance/settings/auth-provider/status")]
     [Arguments("/api/instance/settings/authz-provider")]
-    [Arguments("/api/instance/settings/authz-provider/status")]
-    public async Task SendAsync_InstanceSettingsGet_WithInboundHeaderAndSessionSecret_ForwardsTrustedSecret(
+    public async Task SendAsync_CanonicalInstanceProviderGet_WithInboundHeaderAndSessionSecret_ForwardsTrustedSecret(
         string path)
     {
         var userId = Guid.NewGuid().ToString();
@@ -399,6 +396,9 @@ public class SetupSecretForwardingHandlerTests
     [Arguments("PATCH", "/api/instance/settings/authz-provider/")]
     [Arguments("PATCH", "/api/instance/settings/authz-provider/child")]
     [Arguments("PATCH", "/api/instance/settings/authz-provider-extra")]
+    [Arguments("GET", "/api/instance/settings/branding")]
+    [Arguments("GET", "/api/instance/settings/auth-provider/status")]
+    [Arguments("GET", "/api/instance/settings/authz-provider/status")]
     [Arguments("GET", "/api/instance/settings-extra/branding")]
     public async Task SendAsync_NonCanonicalInstanceProviderRequest_StripsClientHeaderWithoutAddingTrustedSecret(
         string method,

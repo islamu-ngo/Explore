@@ -637,6 +637,50 @@ public sealed class AiAssistantApiFlowTests
             return Task.CompletedTask;
         }
 
+        public Task<IdempotencyClaim> TryClaimAsync(
+            IdempotencyRecord record,
+            CancellationToken cancellationToken = default)
+        {
+            if (_records.TryGetValue((record.TenantId, record.Key), out var existing))
+            {
+                return Task.FromResult(new IdempotencyClaim(existing, IsOwner: false));
+            }
+
+            _records[(record.TenantId, record.Key)] = record;
+            return Task.FromResult(new IdempotencyClaim(record, IsOwner: true));
+        }
+
+        public Task<bool> CompleteAsync(
+            Guid recordId,
+            int statusCode,
+            string? responseBody,
+            string? contentType,
+            CancellationToken cancellationToken = default)
+        {
+            var record = _records.Values.FirstOrDefault(candidate => candidate.Id == recordId);
+            if (record is null || record.StatusCode != IdempotencyRecord.InProgressStatusCode)
+            {
+                return Task.FromResult(false);
+            }
+
+            record.StatusCode = statusCode;
+            record.ResponseBody = responseBody;
+            record.ContentType = contentType;
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> ReleaseAsync(Guid recordId, CancellationToken cancellationToken = default)
+        {
+            var pair = _records.FirstOrDefault(candidate => candidate.Value.Id == recordId);
+            if (pair.Value is null || pair.Value.StatusCode != IdempotencyRecord.InProgressStatusCode)
+            {
+                return Task.FromResult(false);
+            }
+
+            _records.Remove(pair.Key);
+            return Task.FromResult(true);
+        }
+
         public Task<int> CountExpiredAsync(DateTime expiresBeforeUtc, int batchSize, CancellationToken cancellationToken = default)
         {
             var count = _records.Values.Count(record => record.ExpiresAt < expiresBeforeUtc);

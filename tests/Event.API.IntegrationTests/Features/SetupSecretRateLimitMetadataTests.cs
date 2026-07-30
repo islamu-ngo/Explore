@@ -1,6 +1,7 @@
 // ABOUTME: Contract tests for setup-secret rate-limit endpoint metadata and provider-route classification.
 // ABOUTME: Guards bootstrap validation plus the shared setup-secret quota for canonical provider GET and PATCH requests.
 
+using System.Net;
 using System.Reflection;
 using System.Security.Claims;
 using Explore.API.Controllers;
@@ -10,9 +11,14 @@ using Explore.API.Hateoas;
 using Explore.Application.Constants;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -57,6 +63,35 @@ public sealed class SetupSecretRateLimitMetadataTests
                 .Because($"{method.Name} is setup-secret gated and must use the setup-secret brute-force limiter.");
             await Assert.That(rateLimit!.PolicyName).IsEqualTo(RateLimitingExtensions.SetupSecretPolicy);
         }
+    }
+
+    [Test]
+    public async Task AuthorizeRequiredSetupRequest_DoesNotShareAllowAnonymousAttemptBudget()
+    {
+        await using var host = await SetupRateLimitedApi.StartAsync();
+
+        for (var i = 0; i < 2; i++)
+        {
+            using var anonymousRequest = CreateAuthenticatedRequest("/setup-anonymous");
+            using var anonymousResponse = await host.Client.SendAsync(anonymousRequest);
+            await Assert.That(anonymousResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        }
+
+        using var request = CreateAuthenticatedRequest("/setup-authenticated");
+        using var response = await host.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        using var throttledAnonymousRequest = CreateAuthenticatedRequest("/setup-anonymous");
+        using var throttledAnonymousResponse = await host.Client.SendAsync(throttledAnonymousRequest);
+        await Assert.That(throttledAnonymousResponse.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+    }
+
+    private static HttpRequestMessage CreateAuthenticatedRequest(string path)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("X-Test-User", "onboarding-admin");
+        return request;
     }
 
     [Test]
@@ -209,6 +244,59 @@ public sealed class SetupSecretRateLimitMetadataTests
         {
             throw new InvalidOperationException(
                 $"{method.Name} must advertise ProblemDetails for HTTP {statusCode}.");
+        }
+    }
+
+    private sealed class SetupRateLimitedApi(WebApplication app, HttpClient client) : IAsyncDisposable
+    {
+        public HttpClient Client { get; } = client;
+
+        public static async Task<SetupRateLimitedApi> StartAsync()
+        {
+            var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+            {
+                EnvironmentName = "Testing"
+            });
+            builder.WebHost.UseTestServer();
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["RateLimiting:DisableInTesting"] = "false",
+                ["RateLimiting:SetupSecret:PermitLimit"] = "2",
+                ["RateLimiting:SetupSecret:WindowSeconds"] = "60"
+            });
+            builder.Services.AddAuthorization();
+            builder.Services.AddProblemDetails();
+            builder.Services.AddApiRateLimiting(builder.Configuration, builder.Environment);
+
+            var app = builder.Build();
+            app.Use(async (context, next) =>
+            {
+                if (context.Request.Headers.TryGetValue("X-Test-User", out var userId))
+                {
+                    context.User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim("sub", userId.ToString())],
+                        authenticationType: "Test"));
+                }
+
+                await next(context);
+            });
+            app.UseRateLimiter();
+            app.UseAuthorization();
+            app.MapGet("/setup-anonymous", () => Results.Ok())
+                .WithMetadata(new SetupSecretRequiredAttribute(), new AllowAnonymousAttribute())
+                .RequireRateLimiting(RateLimitingExtensions.SetupSecretPolicy);
+            app.MapGet("/setup-authenticated", () => Results.Ok())
+                .WithMetadata(new SetupSecretRequiredAttribute(), new AuthorizeAttribute())
+                .RequireRateLimiting(RateLimitingExtensions.SetupSecretPolicy);
+
+            await app.StartAsync();
+            return new SetupRateLimitedApi(app, app.GetTestClient());
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            Client.Dispose();
+            await app.DisposeAsync();
         }
     }
 }

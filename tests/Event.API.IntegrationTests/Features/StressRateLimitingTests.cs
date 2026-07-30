@@ -296,4 +296,31 @@ public class StressRateLimitingTests(StressApiFixture fixture)
             await Assert.That(response.Headers.GetValues("X-RateLimit-Limit").Single()).IsEqualTo("3");
         }
     }
+
+    [Test]
+    public async Task Complete_WithSetupSecretBudgetExhausted_ReachesSecretValidation()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        for (var i = 0; i < 2; i++)
+        {
+            using var validationRequest = new HttpRequestMessage(HttpMethod.Post, "/api/instanceonboarding/validate-secret")
+            {
+                Content = new StringContent("{\"secret\":\"invalid-setup-secret\"}", Encoding.UTF8, "application/json")
+            };
+            using var validationResponse = await _fixture.Client.SendAsync(validationRequest);
+
+            await Assert.That(validationResponse.StatusCode).IsNotEqualTo(HttpStatusCode.TooManyRequests);
+        }
+
+        using var request = _fixture.CreateInstanceAdminRequest(
+            HttpMethod.Post,
+            "/api/instanceonboarding/complete");
+        request.Headers.Add("X-Setup-Secret", "invalid-setup-secret");
+        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        using var response = await _fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
 }

@@ -7,9 +7,11 @@ using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Explore.API.Authentication;
 using Explore.API.ExceptionHandling;
+using Explore.API.Filters;
 using Explore.Application.Authentication;
 using Explore.Application.Constants;
 using Explore.Application.Telemetry;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -263,7 +265,15 @@ public static class RateLimitingExtensions
             RateLimitPartition<string> CreateSetupSecretPartition(HttpContext httpContext)
             {
                 var ip = ResolveClientIp(httpContext)?.ToString() ?? "unknown";
-                return RateLimitPartition.GetFixedWindowLimiter($"setup:{ip}", _ =>
+                var metadata = httpContext.GetEndpoint()?.Metadata;
+                var partitionKey = httpContext.User.Identity?.IsAuthenticated == true
+                    && metadata?.GetMetadata<SetupSecretRequiredAttribute>() is not null
+                    && metadata.GetMetadata<IAuthorizeData>() is not null
+                    && metadata.GetMetadata<IAllowAnonymous>() is null
+                        ? $"setup-authenticated:{ip}"
+                        : $"setup:{ip}";
+
+                return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ =>
                     new FixedWindowRateLimiterOptions
                     {
                         PermitLimit = setupSecretPermitLimit,

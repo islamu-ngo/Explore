@@ -302,6 +302,31 @@ public class InstanceOnboardingControllerTests
     }
 
     [Test]
+    public async Task Complete_WithExistingUserActor_ShouldCreateTenantMembershipWithoutReinsertingActorGraph()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+        var actorId = await EnsureUserActorExistsAsync(factory, userId);
+
+        using var request = CreateInstanceAdminRequest(
+            HttpMethod.Post,
+            $"{BaseUrl}/complete",
+            userId,
+            CreateValidOnboardingRequest(),
+            includeSetupSecret: true);
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        await Assert.That(await dbContext.Actors.CountAsync(actor => actor.Id == actorId)).IsEqualTo(1);
+        await Assert.That(await dbContext.TenantUsers.AnyAsync(tenantUser =>
+            tenantUser.UserId == userId && tenantUser.ActorId == actorId)).IsTrue();
+    }
+
+    [Test]
     public async Task Complete_WithSidOnlyPrincipalAndExternalLogin_ShouldResolveCurrentUserIdWithoutClaimsTransformation()
     {
         using var factory = CreateFactoryWithSetupSecretWithoutClaimsTransformation();
@@ -1104,6 +1129,40 @@ public class InstanceOnboardingControllerTests
         });
 
         await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task<Guid> EnsureUserActorExistsAsync(
+        AuthenticatedWebApplicationFactory factory,
+        Guid userId)
+    {
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var existingActorId = await dbContext.Actors
+            .Where(actor => actor.UserId == userId)
+            .Select(actor => (Guid?)actor.Id)
+            .SingleOrDefaultAsync();
+        if (existingActorId.HasValue)
+        {
+            return existingActorId.Value;
+        }
+
+        var actorId = Guid.CreateVersion7();
+        dbContext.Actors.Add(new Actor
+        {
+            Id = actorId,
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = null!,
+            UserId = userId,
+            Pii = new ActorPii
+            {
+                ActorId = actorId,
+                DisplayName = "Instance Admin"
+            },
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = userId
+        });
+        await dbContext.SaveChangesAsync();
+        return actorId;
     }
 
     private static AuthenticatedWebApplicationFactory CreateFactoryWithSetupSecret(
