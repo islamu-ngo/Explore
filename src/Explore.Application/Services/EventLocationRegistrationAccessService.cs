@@ -1,5 +1,5 @@
-// ABOUTME: Resolves live registration intents and child placements into fail-closed EventLocation access facts.
-// ABOUTME: Applies identity, scope, lifecycle, null-mode, requested-placement, and audience rules to pure or loaded facts.
+// ABOUTME: Resolves order-backed session admissions into fail-closed EventLocation access facts.
+// ABOUTME: Applies account ownership, order state, admission coverage, and audience rules without exposing persistence entities.
 
 using System.Collections.Immutable;
 using Explore.Application.Contracts.Services;
@@ -30,7 +30,7 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
             return new Dictionary<Guid, EventLocationRegistrationAccess>();
         }
 
-        var requestedIds = requestedEventLocationIds
+        Guid[] requestedIds = requestedEventLocationIds
             .Where(id => id != Guid.Empty)
             .Distinct()
             .Order()
@@ -40,32 +40,28 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
             return new Dictionary<Guid, EventLocationRegistrationAccess>();
         }
 
-        var intentSources = registrations
-            .Where(registration => HasValidLoadedSource(
-                registration,
-                tenantId,
-                eventId,
-                userId))
-            .GroupBy(registration => registration.EventRegistrationIntentId!.Value)
-            .Select(CreateLoadedIntentSource)
+        LoadedOrderSource[] orderSources = registrations
+            .Where(registration => HasValidLoadedSource(registration, tenantId, eventId, userId))
+            .GroupBy(registration => registration.RegistrationOrderId!.Value)
+            .Select(CreateLoadedOrderSource)
             .ToArray();
-        if (intentSources.Length == 0)
+        if (orderSources.Length == 0)
         {
             return new Dictionary<Guid, EventLocationRegistrationAccess>();
         }
 
         var results = new Dictionary<Guid, EventLocationRegistrationAccess>(requestedIds.Length);
-        foreach (var requestedId in requestedIds)
+        foreach (Guid requestedId in requestedIds)
         {
-            var strongest = intentSources
+            EventLocationRegistrationAccess strongest = orderSources
                 .Select(source => Resolve(new(
                     requestedId,
                     asOfUtc,
-                    source.Intent,
+                    source.Order,
                     source.Coverage)))
                 .OrderByDescending(access => access.CoversRequestedEventLocation)
                 .ThenByDescending(access => AuthorityRank(access.EffectiveState))
-                .ThenBy(access => access.IntentId)
+                .ThenBy(access => access.OrderId)
                 .First();
             results.Add(requestedId, strongest);
         }
@@ -77,30 +73,30 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var intent = request.Intent;
+        EventLocationRegistrationOrderFact order = request.Order;
         if (!HasValidIdentity(request))
         {
             return NoAccess(request, EventLocationRegistrationEffectiveState.Denied);
         }
 
-        if (!IsParentLive(intent, request.AsOfUtc))
+        if (!IsOrderLive(order, request.AsOfUtc))
         {
             return NoAccess(request, EventLocationRegistrationEffectiveState.NonLive);
         }
 
-        var parentState = ResolveParentState(intent.ApprovalStatusId);
-        if (parentState is not null && !HasAudienceAuthority(parentState.Value))
+        EventLocationRegistrationEffectiveState? orderState = ResolveParentState(order.OrderStatusId);
+        if (orderState is not null && !HasAudienceAuthority(orderState.Value))
         {
-            return NoAccess(request, parentState.Value);
+            return NoAccess(request, orderState.Value);
         }
 
-        var resolvedCoverage = request.Coverage
-            .Where(item => IsCoverageInScope(item, intent))
+        ResolvedCoverage[] resolvedCoverage = request.Coverage
+            .Where(item => IsCoverageForOrder(item, order))
             .Select(item => new ResolvedCoverage(
                 item,
-                ResolveEffectiveCoverageState(item, request.AsOfUtc, parentState)))
+                ResolveEffectiveCoverageState(item, request.AsOfUtc, orderState)))
             .ToArray();
-        var liveCoverage = resolvedCoverage
+        ResolvedCoverage[] liveCoverage = resolvedCoverage
             .Where(item => HasAudienceAuthority(item.State))
             .ToArray();
 
@@ -109,20 +105,17 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
             return NoAccess(request, ResolveRequestedTerminalState(resolvedCoverage, request.RequestedEventLocationId));
         }
 
-        var requestedCoverage = liveCoverage
+        ResolvedCoverage[] requestedCoverage = liveCoverage
             .Where(item => item.Fact.EventLocationId == request.RequestedEventLocationId)
             .ToArray();
-        var effectiveState = requestedCoverage.Length == 0
+        EventLocationRegistrationEffectiveState effectiveState = requestedCoverage.Length == 0
             ? ResolveRequestedTerminalState(resolvedCoverage, request.RequestedEventLocationId)
             : requestedCoverage.MaxBy(item => AuthorityRank(item.State))!.State;
 
         return CreateAccess(
-            intent.IntentId,
-            intent.Scope,
+            order.OrderId,
             effectiveState,
-            intent.EventId,
-            intent.Scope == RegistrationScopeEnum.Event,
-            intent.Scope == RegistrationScopeEnum.Day ? intent.SelectedEventDayId : null,
+            order.EventId,
             liveCoverage
                 .Select(item => item.Fact.EventSessionId)
                 .Distinct()
@@ -138,18 +131,18 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
         Guid eventId,
         Guid userId)
     {
-        var intent = registration.EventRegistrationIntent;
-        var session = registration.EventSession;
-        var @event = registration.Event;
+        RegistrationOrder? order = registration.RegistrationOrder;
+        EventSession? session = registration.EventSession;
+        Event? @event = registration.Event;
         return registration.TenantId == tenantId
             && registration.EventId == eventId
             && registration.UserId == userId
-            && registration.EventRegistrationIntentId is { } intentId
-            && intent is not null
-            && intent.Id == intentId
-            && intent.TenantId == tenantId
-            && intent.EventId == eventId
-            && intent.UserId == userId
+            && registration.RegistrationOrderId is { } orderId
+            && order is not null
+            && order.Id == orderId
+            && order.TenantId == tenantId
+            && order.EventId == eventId
+            && order.AccountUserId == userId
             && @event is not null
             && @event.Id == eventId
             && @event.TenantId == tenantId
@@ -161,53 +154,36 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
             && HasValidPlacementIdentity(session, tenantId, eventId);
     }
 
-    private static LoadedIntentSource CreateLoadedIntentSource(
+    private static LoadedOrderSource CreateLoadedOrderSource(
         IGrouping<Guid, EventRegistration> registrations)
     {
-        var rows = registrations.ToArray();
-        var intent = rows[0].EventRegistrationIntent!;
-        var scope = (RegistrationScopeEnum)intent.RegistrationScopeId;
-        var intentFact = new EventLocationRegistrationIntentFact(
-            intent.Id,
-            intent.EventId,
-            scope,
-            intent.SelectedEventDayId,
-            intent.ApprovalStatusId,
-            intent.IsDeleted,
-            ExpiresAtUtc: null);
+        EventRegistration[] rows = registrations.ToArray();
+        RegistrationOrder order = rows[0].RegistrationOrder!;
+        var orderFact = new EventLocationRegistrationOrderFact(
+            order.Id,
+            order.EventId,
+            order.RegistrationOrderStatusId,
+            order.IsDeleted,
+            ToUtcOffset(order.ExpiresAt));
 
-        var childrenBySession = rows
-            .GroupBy(registration => registration.EventSessionId)
-            .ToDictionary(
-                group => group.Key,
-                group => group
-                    .OrderBy(registration => registration.IsDeleted)
-                    .ThenByDescending(registration => registration.CoverageEstablishedAt)
-                    .ThenByDescending(registration => registration.Id)
-                    .First());
-        var sessions = scope == RegistrationScopeEnum.SessionSelection
-            ? rows.Select(registration => registration.EventSession)
-            : rows.SelectMany(registration => registration.Event.Sessions);
-        var coverage = sessions
-            .Where(session => HasValidPlacementIdentity(session, intent.TenantId, intent.EventId))
-            .DistinctBy(session => session.Id)
-            .Select(session =>
-            {
-                childrenBySession.TryGetValue(session.Id, out var child);
-                return new EventLocationRegistrationCoverageFact(
-                    intent.Id,
-                    session.EventId,
-                    session.EventDayId,
-                    session.Id,
-                    session.EventLocationId!.Value,
-                    child?.ApprovalStatusId ?? intent.ApprovalStatusId,
-                    session.RegistrationModeId,
-                    session.IsDeleted || session.EventLocation!.IsDeleted || child?.IsDeleted == true,
-                    ExpiresAtUtc: null);
-            })
+        ImmutableArray<EventLocationRegistrationCoverageFact> coverage = rows
+            .Select(registration => new EventLocationRegistrationCoverageFact(
+                order.Id,
+                order.EventId,
+                registration.EventSession.EventDayId,
+                registration.EventSession.Id,
+                registration.EventSession.EventLocationId!.Value,
+                registration.ApprovalStatusId,
+                registration.EventSession.RegistrationModeId,
+                registration.IsDeleted || registration.EventSession.IsDeleted || registration.EventSession.EventLocation!.IsDeleted,
+                ExpiresAtUtc: null))
             .ToImmutableArray();
-        return new(intentFact, coverage);
+        return new(orderFact, coverage);
     }
+
+    private static DateTimeOffset? ToUtcOffset(DateTime? value) => value is { Kind: DateTimeKind.Utc } utc
+        ? new DateTimeOffset(utc)
+        : null;
 
     private static bool HasValidPlacementIdentity(EventSession session, Guid tenantId, Guid eventId)
         => session.Id != Guid.Empty
@@ -220,70 +196,55 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
             && eventLocation.TenantId == tenantId
             && eventLocation.EventId == eventId;
 
+    private static int? ToApprovalStatusId(RegistrationOrderStatusEnum status) => status switch
+    {
+        RegistrationOrderStatusEnum.Confirmed => (int)ApprovalStatusEnum.Approved,
+        RegistrationOrderStatusEnum.AwaitingApproval => (int)ApprovalStatusEnum.Pending,
+        RegistrationOrderStatusEnum.Waitlisted => (int)ApprovalStatusEnum.Waitlisted,
+        RegistrationOrderStatusEnum.Rejected => (int)ApprovalStatusEnum.Rejected,
+        RegistrationOrderStatusEnum.Cancelled => (int)ApprovalStatusEnum.Cancelled,
+        _ => null
+    };
+
     private static bool HasValidIdentity(EventLocationRegistrationAccessRequest request)
-    {
-        var intent = request.Intent;
-        return request.RequestedEventLocationId != Guid.Empty
+        => request.RequestedEventLocationId != Guid.Empty
             && request.AsOfUtc != default
-            && intent.IntentId != Guid.Empty
-            && intent.EventId != Guid.Empty
-            && Enum.IsDefined(intent.Scope)
-            && (intent.Scope != RegistrationScopeEnum.Day || intent.SelectedEventDayId is { } dayId && dayId != Guid.Empty)
+            && request.Order.OrderId != Guid.Empty
+            && request.Order.EventId != Guid.Empty
+            && Enum.IsDefined((RegistrationOrderStatusEnum)request.Order.OrderStatusId)
             && !request.Coverage.IsDefault;
-    }
 
-    private static bool IsParentLive(EventLocationRegistrationIntentFact intent, DateTimeOffset asOfUtc)
-        => !intent.IsDeleted
-            && (!intent.ExpiresAtUtc.HasValue || intent.ExpiresAtUtc.Value > asOfUtc);
+    private static bool IsOrderLive(EventLocationRegistrationOrderFact order, DateTimeOffset asOfUtc)
+        => !order.IsDeleted
+            && (!order.ExpiresAtUtc.HasValue || order.ExpiresAtUtc.Value > asOfUtc);
 
-    private static bool IsCoverageInScope(
+    private static bool IsCoverageForOrder(
         EventLocationRegistrationCoverageFact coverage,
-        EventLocationRegistrationIntentFact intent)
-    {
-        if (coverage.IntentId != intent.IntentId
-            || coverage.EventId != intent.EventId
-            || coverage.EventSessionId == Guid.Empty
-            || coverage.EventLocationId == Guid.Empty)
-        {
-            return false;
-        }
-
-        return intent.Scope switch
-        {
-            RegistrationScopeEnum.Event => true,
-            RegistrationScopeEnum.Day => coverage.EventDayId == intent.SelectedEventDayId,
-            RegistrationScopeEnum.SessionSelection => true,
-            _ => false
-        };
-    }
+        EventLocationRegistrationOrderFact order)
+        => coverage.OrderId == order.OrderId
+            && coverage.EventId == order.EventId
+            && coverage.EventSessionId != Guid.Empty
+            && coverage.EventLocationId != Guid.Empty;
 
     private static EventLocationRegistrationEffectiveState ResolveEffectiveCoverageState(
         EventLocationRegistrationCoverageFact coverage,
         DateTimeOffset asOfUtc,
-        EventLocationRegistrationEffectiveState? parentState)
+        EventLocationRegistrationEffectiveState? orderState)
     {
         if (coverage.IsDeleted || coverage.ExpiresAtUtc.HasValue && coverage.ExpiresAtUtc.Value <= asOfUtc)
         {
             return EventLocationRegistrationEffectiveState.NonLive;
         }
 
-        return ApplyParentCeiling(
+        return ApplyOrderCeiling(
             ResolveCoverageState(coverage.ApprovalStatusId, coverage.RegistrationModeId),
-            parentState);
+            orderState);
     }
 
-    private static EventLocationRegistrationEffectiveState? ResolveParentState(int? approvalStatusId)
-        => approvalStatusId switch
-        {
-            null => null,
-            (int)ApprovalStatusEnum.Approved => EventLocationRegistrationEffectiveState.Confirmed,
-            (int)ApprovalStatusEnum.Pending => EventLocationRegistrationEffectiveState.Pending,
-            (int)ApprovalStatusEnum.Waitlisted => EventLocationRegistrationEffectiveState.Waitlisted,
-            (int)ApprovalStatusEnum.Rejected => EventLocationRegistrationEffectiveState.Rejected,
-            (int)ApprovalStatusEnum.Cancelled => EventLocationRegistrationEffectiveState.Cancelled,
-            (int)ApprovalStatusEnum.Revoked => EventLocationRegistrationEffectiveState.Revoked,
-            _ => EventLocationRegistrationEffectiveState.Denied
-        };
+    private static EventLocationRegistrationEffectiveState? ResolveParentState(int orderStatusId)
+        => ToApprovalStatusId((RegistrationOrderStatusEnum)orderStatusId) is { } approvalStatusId
+            ? ResolveCoverageState(approvalStatusId, registrationModeId: null)
+            : null;
 
     private static EventLocationRegistrationEffectiveState ResolveCoverageState(
         int? approvalStatusId,
@@ -305,27 +266,26 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
             _ => EventLocationRegistrationEffectiveState.Denied
         };
 
-    private static EventLocationRegistrationEffectiveState ApplyParentCeiling(
+    private static EventLocationRegistrationEffectiveState ApplyOrderCeiling(
         EventLocationRegistrationEffectiveState childState,
-        EventLocationRegistrationEffectiveState? parentState)
+        EventLocationRegistrationEffectiveState? orderState)
     {
-        if (!HasAudienceAuthority(childState) || parentState is null)
+        if (!HasAudienceAuthority(childState) || orderState is null)
         {
             return childState;
         }
 
-        return parentState == EventLocationRegistrationEffectiveState.Confirmed
+        return orderState == EventLocationRegistrationEffectiveState.Confirmed
             ? childState
-            : parentState.Value;
+            : orderState.Value;
     }
 
-    private static int AuthorityRank(EventLocationRegistrationEffectiveState state)
-        => state switch
-        {
-            EventLocationRegistrationEffectiveState.Confirmed => 2,
-            EventLocationRegistrationEffectiveState.Pending or EventLocationRegistrationEffectiveState.Waitlisted => 1,
-            _ => 0
-        };
+    private static int AuthorityRank(EventLocationRegistrationEffectiveState state) => state switch
+    {
+        EventLocationRegistrationEffectiveState.Confirmed => 2,
+        EventLocationRegistrationEffectiveState.Pending or EventLocationRegistrationEffectiveState.Waitlisted => 1,
+        _ => 0
+    };
 
     private static bool HasAudienceAuthority(EventLocationRegistrationEffectiveState state)
         => state is EventLocationRegistrationEffectiveState.Pending
@@ -341,47 +301,39 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
             .OrderByDescending(TerminalEvidenceRank)
             .FirstOrDefault(EventLocationRegistrationEffectiveState.Denied);
 
-    private static int TerminalEvidenceRank(EventLocationRegistrationEffectiveState state)
-        => state switch
-        {
-            EventLocationRegistrationEffectiveState.NonLive => 4,
-            EventLocationRegistrationEffectiveState.Revoked => 3,
-            EventLocationRegistrationEffectiveState.Cancelled => 2,
-            EventLocationRegistrationEffectiveState.Rejected => 1,
-            _ => 0
-        };
+    private static int TerminalEvidenceRank(EventLocationRegistrationEffectiveState state) => state switch
+    {
+        EventLocationRegistrationEffectiveState.NonLive => 4,
+        EventLocationRegistrationEffectiveState.Revoked => 3,
+        EventLocationRegistrationEffectiveState.Cancelled => 2,
+        EventLocationRegistrationEffectiveState.Rejected => 1,
+        _ => 0
+    };
 
     private static EventLocationRegistrationAccess NoAccess(
         EventLocationRegistrationAccessRequest request,
         EventLocationRegistrationEffectiveState effectiveState)
         => CreateAccess(
-            request.Intent.IntentId,
-            request.Intent.Scope,
+            request.Order.OrderId,
             effectiveState,
-            request.Intent.EventId,
-            false,
-            null,
+            request.Order.EventId,
             [],
             request.RequestedEventLocationId,
             false);
 
     private static EventLocationRegistrationAccess CreateAccess(
-        Guid intentId,
-        RegistrationScopeEnum scope,
+        Guid orderId,
         EventLocationRegistrationEffectiveState effectiveState,
         Guid eventId,
-        bool coversWholeEvent,
-        Guid? coveredEventDayId,
         ImmutableArray<Guid> coveredEventSessionIds,
         Guid requestedEventLocationId,
         bool coversRequestedEventLocation)
         => new(
-            intentId,
-            scope,
+            orderId,
             effectiveState,
             eventId,
-            coversWholeEvent,
-            coveredEventDayId,
+            coversWholeEvent: false,
+            coveredEventDayId: null,
             coveredEventSessionIds,
             requestedEventLocationId,
             coversRequestedEventLocation);
@@ -390,7 +342,7 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
         EventLocationRegistrationCoverageFact Fact,
         EventLocationRegistrationEffectiveState State);
 
-    private sealed record LoadedIntentSource(
-        EventLocationRegistrationIntentFact Intent,
+    private sealed record LoadedOrderSource(
+        EventLocationRegistrationOrderFact Order,
         ImmutableArray<EventLocationRegistrationCoverageFact> Coverage);
 }

@@ -1,5 +1,5 @@
 // ABOUTME: Repository contract for EventDay - first-class event-local day aggregate used for day-scope registration and admin landing sections.
-// ABOUTME: Provides tenant-aware reads needed by CreateEventRegistrationDtoValidator when scope = Day.
+// ABOUTME: Provides tenant-aware event-day reads for registration-order and event-management validation.
 
 using Explore.Domain;
 
@@ -21,7 +21,7 @@ public interface IEventDayRepository : IGenericRepository<EventDay, Guid>
 
     /// <summary>
     /// Returns true when the supplied day id belongs to the supplied event and is not soft-deleted.
-    /// Used by the registration-intent validator to reject a Day-scoped intent that points at a foreign day.
+    /// Used by registration workflow validation to reject a day scope that points at a foreign day.
     /// </summary>
     Task<bool> BelongsToEventAsync(Guid eventDayId, Guid eventId, CancellationToken cancellationToken);
 

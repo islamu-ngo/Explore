@@ -17,7 +17,7 @@ namespace Event.Application.UnitTests.Services;
 
 public sealed class EventModerationNotificationFanoutServiceTests
 {
-    private readonly IEventRegistrationIntentRepository _registrationIntentRepository = Substitute.For<IEventRegistrationIntentRepository>();
+    private readonly IRegistrationInventoryRepository _registrationInventoryRepository = Substitute.For<IRegistrationInventoryRepository>();
     private readonly IEventModerationRecordRepository _moderationRecordRepository = Substitute.For<IEventModerationRecordRepository>();
     private readonly INotificationRepository _notificationRepository = Substitute.For<INotificationRepository>();
     private readonly INotificationFanoutRunRepository _fanoutRunRepository = Substitute.For<INotificationFanoutRunRepository>();
@@ -36,7 +36,7 @@ public sealed class EventModerationNotificationFanoutServiceTests
             _outboxRepository,
             new NotificationFanoutRecipientTemplateFactory());
         _service = new EventModerationNotificationFanoutService(
-            _registrationIntentRepository,
+            _registrationInventoryRepository,
             _moderationRecordRepository,
             _notificationRepository,
             _fanoutRunRepository,
@@ -81,7 +81,7 @@ public sealed class EventModerationNotificationFanoutServiceTests
         ConfigureNewRun(request);
         _fanoutRunRepository.Update(Arg.Do<NotificationFanoutRun>(run => updatedRuns.Add(CloneRun(run))))
             .Returns(Task.CompletedTask);
-        _registrationIntentRepository.GetRegisteredUserFanoutBatchAsync(
+        _registrationInventoryRepository.GetRegisteredUserFanoutBatchAsync(
                 request.TenantId,
                 request.EventId,
                 Arg.Any<Guid?>(),
@@ -126,7 +126,7 @@ public sealed class EventModerationNotificationFanoutServiceTests
         var userId = Guid.Parse("10000000-0000-0000-0000-000000000001");
 
         ConfigureNewRun(request);
-        _registrationIntentRepository.GetRegisteredUserFanoutBatchAsync(
+        _registrationInventoryRepository.GetRegisteredUserFanoutBatchAsync(
                 request.TenantId,
                 request.EventId,
                 Arg.Any<Guid?>(),
@@ -180,7 +180,7 @@ public sealed class EventModerationNotificationFanoutServiceTests
         await Assert.That(pointer.Payload).DoesNotContain("SourceActorId");
         await Assert.That(pointer.Payload).DoesNotContain("RedactedAt");
         await Assert.That(pointer.Payload).DoesNotContain("illegal_content");
-        await _registrationIntentRepository.DidNotReceiveWithAnyArgs()
+        await _registrationInventoryRepository.DidNotReceiveWithAnyArgs()
             .GetRegisteredUserFanoutBatchAsync(default, default, default, default, default);
         await _notificationRepository.DidNotReceiveWithAnyArgs().Create(default!);
         await _fanoutRunRepository.DidNotReceiveWithAnyArgs().Create(default!);
@@ -212,7 +212,7 @@ public sealed class EventModerationNotificationFanoutServiceTests
         var userId = Guid.Parse("10000000-0000-0000-0000-000000000001");
 
         ConfigureNewRun(request);
-        _registrationIntentRepository.GetRegisteredUserFanoutBatchAsync(
+        _registrationInventoryRepository.GetRegisteredUserFanoutBatchAsync(
                 request.TenantId,
                 request.EventId,
                 Arg.Any<Guid?>(),
@@ -240,7 +240,7 @@ public sealed class EventModerationNotificationFanoutServiceTests
     {
         EventLightModeratedNotificationFanoutRequested request = CreateRequest();
         ConfigureNewRun(request);
-        _registrationIntentRepository.GetRegisteredUserFanoutBatchAsync(
+        _registrationInventoryRepository.GetRegisteredUserFanoutBatchAsync(
                 request.TenantId,
                 request.EventId,
                 Arg.Any<Guid?>(),
@@ -291,7 +291,7 @@ public sealed class EventModerationNotificationFanoutServiceTests
 
         await _service.FanoutLightModerationAsync(request);
 
-        await _registrationIntentRepository.DidNotReceiveWithAnyArgs().GetRegisteredUserFanoutBatchAsync(default, default, default, default, default);
+        await _registrationInventoryRepository.DidNotReceiveWithAnyArgs().GetRegisteredUserFanoutBatchAsync(default, default, default, default, default);
         await _notificationRepository.DidNotReceiveWithAnyArgs().Create(default!);
         await _fanoutRunRepository.DidNotReceive().Update(Arg.Any<NotificationFanoutRun>());
     }

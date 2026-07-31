@@ -25,7 +25,7 @@ public sealed record NotificationFanoutPageProcessingResult(
 
 public sealed class NotificationFanoutPageProcessor(
     INotificationFanoutOccurrenceRepository occurrenceRepository,
-    IEventRegistrationIntentRepository registrationIntentRepository,
+    IRegistrationInventoryRepository registrationInventoryRepository,
     INotificationFanoutRunRepository runRepository,
     INotificationFanoutRecipientMaterializationService recipientMaterializationService,
     NotificationFanoutRecipientTemplateFactory templateFactory,
@@ -81,7 +81,7 @@ public sealed class NotificationFanoutPageProcessor(
             }
 
             IReadOnlyList<NotificationFanoutAudienceMember> page =
-                await registrationIntentRepository.GetNotificationFanoutAudienceBatchAsync(
+                await registrationInventoryRepository.GetNotificationFanoutAudienceBatchAsync(
                     occurrence.TenantId,
                     occurrence.EventId,
                     occurrence.SessionId,

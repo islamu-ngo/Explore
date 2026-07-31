@@ -28,9 +28,10 @@ public class IntegrationSyncOutboxConfiguration : IEntityTypeConfiguration<Integ
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(e => e.RegistrationIntent)
+        builder.HasOne(e => e.RegistrationOrder)
             .WithMany()
-            .HasForeignKey(e => e.RegistrationIntentId)
+            .HasForeignKey(e => new { e.TenantId, e.RegistrationOrderId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.User)

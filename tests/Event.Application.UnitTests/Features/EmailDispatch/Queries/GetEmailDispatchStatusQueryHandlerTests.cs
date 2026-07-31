@@ -52,7 +52,7 @@ public sealed class GetEmailDispatchStatusQueryHandlerTests
                 {
                     Id = outboxId,
                     TenantId = tenantId,
-                    SourceType = "event_registration_intent",
+                    SourceType = "registration_order",
                     SourceId = sourceId,
                     Kind = EmailDispatchKind.RegistrationConfirmation,
                     RecipientEmail = "registrant@example.test",
@@ -81,7 +81,7 @@ public sealed class GetEmailDispatchStatusQueryHandlerTests
         var dto = result.Id![0];
         await Assert.That(dto.OutboxId).IsEqualTo(outboxId);
         await Assert.That(dto.TenantId).IsEqualTo(tenantId);
-        await Assert.That(dto.SourceType).IsEqualTo("event_registration_intent");
+        await Assert.That(dto.SourceType).IsEqualTo("registration_order");
         await Assert.That(dto.SourceId).IsEqualTo(sourceId);
         await Assert.That(dto.DeliveryStatus).IsEqualTo(nameof(EmailDispatchStatus.Sent));
         await Assert.That(dto.AttemptCount).IsEqualTo(2);

@@ -1284,20 +1284,18 @@ public sealed class EventLocationDisclosureEvaluatorTests
             EventLocationRegistrationEffectiveState.Revoked => (int)ApprovalStatusEnum.Revoked,
             _ => 999
         };
-        var intentId = Guid.CreateVersion7();
+        var orderId = Guid.CreateVersion7();
         return new EventLocationRegistrationAccessService().Resolve(new(
             eventLocationId,
             Now,
-            new EventLocationRegistrationIntentFact(
-                intentId,
+            new EventLocationRegistrationOrderFact(
+                orderId,
                 eventId,
-                RegistrationScopeEnum.Event,
-                null,
-                null,
+                (int)RegistrationOrderStatusEnum.Confirmed,
                 false,
                 Now.AddDays(1)),
             ImmutableArray.Create(new EventLocationRegistrationCoverageFact(
-                intentId,
+                orderId,
                 eventId,
                 null,
                 Guid.CreateVersion7(),

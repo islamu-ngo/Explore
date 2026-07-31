@@ -125,8 +125,23 @@ public class PublishEventCommandHandlerTests
         var userId = Guid.CreateVersion7();
         var concurrencyStamp = Guid.CreateVersion7();
         var @event = CreateReadyEvent(concurrencyStamp);
+        @event.Actor.AtprotoIdentities.Add(new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            Did = "did:plc:publisher",
+            ActorId = @event.ActorId,
+            Actor = @event.Actor,
+            PdsHost = "https://pds.example.test/",
+            IsActive = true,
+            LastResolvedAt = DateTime.UtcNow
+        });
         _userContext.GetRequiredUserId().Returns(userId);
         _eventRepository.GetById(@event.Id).Returns(@event);
+        _eventRepository.IsPubliclyEligibleAsync(
+                @event.TenantId,
+                @event.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(true);
         _eventRepository.GetAtprotoPublicationGraphAsync(
                 @event.TenantId,
                 @event.Id,
@@ -221,7 +236,6 @@ public class PublishEventCommandHandlerTests
         var planner = new AtprotoEventPublicationPlanner(
             new AtprotoEventGovernanceResolver(settings),
             _eventRepository,
-            Substitute.For<IEventRegistrationIntentRepository>(),
             Substitute.For<IAtprotoRecordRepository>(),
             sessions,
             logins,

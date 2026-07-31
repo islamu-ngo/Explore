@@ -26,7 +26,7 @@ public sealed class InMemoryEmailDispatchOutboxRepositoryTests
                 new EventReminderSupersessionRequest(
                     dispatch.TenantId,
                     dispatch.EventId!.Value,
-                    dispatch.RegistrationIntentId,
+                    dispatch.RegistrationOrderId,
                     SessionId(),
                     changedAt,
                     "event_cancelled"),
@@ -62,7 +62,7 @@ public sealed class InMemoryEmailDispatchOutboxRepositoryTests
                 new EventReminderSupersessionRequest(
                     dispatch.TenantId,
                     dispatch.EventId!.Value,
-                    dispatch.RegistrationIntentId,
+                    dispatch.RegistrationOrderId,
                     SessionId(),
                     DateTime.UtcNow,
                     "event_cancelled"),
@@ -90,7 +90,7 @@ public sealed class InMemoryEmailDispatchOutboxRepositoryTests
                 new EventReminderRescheduleRequest(
                     dispatch.TenantId,
                     dispatch.EventId!.Value,
-                    dispatch.RegistrationIntentId,
+                    dispatch.RegistrationOrderId,
                     SessionId(),
                     " Updated event ",
                     TimeSpan.FromHours(1),
@@ -118,7 +118,7 @@ public sealed class InMemoryEmailDispatchOutboxRepositoryTests
                 new EventReminderRescheduleRequest(
                     dispatch.TenantId,
                     dispatch.EventId!.Value,
-                    dispatch.RegistrationIntentId,
+                    dispatch.RegistrationOrderId,
                     SessionId(),
                     "Event",
                     TimeSpan.FromHours(1),
@@ -142,7 +142,7 @@ public sealed class InMemoryEmailDispatchOutboxRepositoryTests
                 new EventReminderSupersessionRequest(
                     dispatch.TenantId,
                     dispatch.EventId!.Value,
-                    dispatch.RegistrationIntentId,
+                    dispatch.RegistrationOrderId,
                     SessionId(),
                     DateTime.UtcNow,
                     string.Empty),
@@ -162,7 +162,7 @@ public sealed class InMemoryEmailDispatchOutboxRepositoryTests
                 new EventReminderRescheduleRequest(
                     dispatch.TenantId,
                     dispatch.EventId!.Value,
-                    dispatch.RegistrationIntentId,
+                    dispatch.RegistrationOrderId,
                     SessionId(),
                     "Event",
                     TimeSpan.FromHours(1),
@@ -174,18 +174,18 @@ public sealed class InMemoryEmailDispatchOutboxRepositoryTests
     {
         Guid tenantId = Guid.CreateVersion7();
         Guid eventId = Guid.CreateVersion7();
-        Guid registrationIntentId = Guid.CreateVersion7();
+        Guid registrationOrderId = Guid.CreateVersion7();
         Guid sessionId = SessionId();
         return new EmailDispatchOutbox
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
             Kind = EmailDispatchKind.EventReminder,
-            SourceType = "EventRegistrationIntent",
-            SourceId = registrationIntentId,
+            SourceType = "RegistrationOrder",
+            SourceId = registrationOrderId,
             NotificationIntentId = Guid.CreateVersion7(),
             EventId = eventId,
-            RegistrationIntentId = registrationIntentId,
+            RegistrationOrderId = registrationOrderId,
             RecipientUserId = Guid.CreateVersion7(),
             RecipientEmail = "recipient@example.test",
             Subject = "Reminder: Event",

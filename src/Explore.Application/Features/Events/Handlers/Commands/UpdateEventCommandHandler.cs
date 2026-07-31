@@ -256,7 +256,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
                     new EventReminderReprojectionInput(
                         eventEntity.TenantId,
                         eventEntity.Id,
-                        RegistrationIntentId: null,
+                        RegistrationOrderId: null,
                         SessionId: null,
                         eventEntity.Title,
                         occurredAt,

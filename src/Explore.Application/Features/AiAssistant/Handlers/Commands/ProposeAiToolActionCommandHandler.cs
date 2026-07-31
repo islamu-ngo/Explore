@@ -176,7 +176,6 @@ public sealed class ProposeAiToolActionCommandHandler(
             ResourceKinds.EventSessionGroup => ["groupId", "eventId"],
             ResourceKinds.EventDay => ["dayId", "eventId"],
             ResourceKinds.EventAgendaItem => ["agendaItemId", "eventId"],
-            ResourceKinds.EventRegistration => ["registrationId", "eventId"],
             ResourceKinds.CustomPropertyDefinition => ["definitionId", "eventId"],
             ResourceKinds.CustomPropertyValue =>
             [

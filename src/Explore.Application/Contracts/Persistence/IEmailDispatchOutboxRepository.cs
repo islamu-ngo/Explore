@@ -211,7 +211,7 @@ public sealed record EmailDispatchSpecificClaimRequest(
 public sealed record EventReminderSupersessionRequest(
     Guid TenantId,
     Guid EventId,
-    Guid? RegistrationIntentId,
+    Guid? RegistrationOrderId,
     Guid? SessionId,
     DateTime SupersededAt,
     string ReasonCode);
@@ -219,7 +219,7 @@ public sealed record EventReminderSupersessionRequest(
 public sealed record EventReminderRescheduleRequest(
     Guid TenantId,
     Guid EventId,
-    Guid? RegistrationIntentId,
+    Guid? RegistrationOrderId,
     Guid? SessionId,
     string EventTitle,
     TimeSpan LeadTime,

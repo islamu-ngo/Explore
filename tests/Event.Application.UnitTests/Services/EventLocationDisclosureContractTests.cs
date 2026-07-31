@@ -452,7 +452,6 @@ public sealed class EventLocationDisclosureContractTests
             typeof(EventLocationManagementDto),
             typeof(EventLocationManagementFieldsDto),
             typeof(EventLocationDisclosurePolicyDto),
-            typeof(UpdateEventLocationDisclosureDto),
             typeof(EventLocationDisclosureRequest),
             typeof(EventLocationDisclosureValues),
             typeof(EventLocationDisclosureResult)
@@ -464,6 +463,9 @@ public sealed class EventLocationDisclosureContractTests
             await Assert.That(contractType.GetProperties().All(property => property.SetMethod?.IsInitOnly() != false)).IsTrue();
             await Assert.That(contractType.GetProperties().Any(property => property.PropertyType == typeof(LocationDto))).IsFalse();
         }
+
+        await Assert.That(typeof(UpdateEventLocationDisclosureDto).GetProperties()
+            .Any(property => property.PropertyType == typeof(LocationDto))).IsFalse();
 
         await Assert.That(typeof(EventLocationDisclosureResult).GetProperty("DisclosedFields")?.PropertyType)
             .IsEqualTo(typeof(ImmutableArray<EventLocationDisclosureField>));

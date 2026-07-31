@@ -128,8 +128,6 @@ public sealed class EventGraphTenantForeignKeyTests(PostgreSqlContainerFixture f
         var eventA = await SeedEventAsync(context, scope, "Registration Event");
         var eventB = await SeedEventAsync(context, scope, "Other Session Event");
         var foreignSession = await SeedEventSessionAsync(context, eventB, "Other Event Session");
-        var intent = await SeedRegistrationIntentAsync(context, eventA, scope.UserId);
-
         context.EventRegistrations.Add(new EventRegistration
         {
             Id = Guid.NewGuid(),
@@ -139,8 +137,6 @@ public sealed class EventGraphTenantForeignKeyTests(PostgreSqlContainerFixture f
             User = null!,
             EventSessionId = foreignSession.Id,
             EventSession = null!,
-            EventRegistrationIntentId = intent.Id,
-            EventRegistrationIntent = null,
             ApprovalStatusId = 1,
             ApprovalStatus = null,
             TenantId = scope.TenantId,
@@ -320,32 +316,6 @@ public sealed class EventGraphTenantForeignKeyTests(PostgreSqlContainerFixture f
         context.EventSessionGroups.Add(group);
         await context.SaveChangesAsync();
         return group;
-    }
-
-    private static async Task<EventRegistrationIntent> SeedRegistrationIntentAsync(
-        ExploreDbContext context,
-        EventGraphScope scope,
-        Guid userId)
-    {
-        var intent = new EventRegistrationIntent
-        {
-            Id = Guid.NewGuid(),
-            EventId = scope.EventId,
-            Event = null!,
-            UserId = userId,
-            User = null!,
-            RegistrationScopeId = 3,
-            RegistrationScope = null!,
-            ApprovalStatusId = 1,
-            ApprovalStatus = null,
-            TenantId = scope.TenantId,
-            Tenant = null!,
-            ConcurrencyStamp = Guid.NewGuid()
-        };
-
-        context.EventRegistrationIntents.Add(intent);
-        await context.SaveChangesAsync();
-        return intent;
     }
 
     private static async Task<Category> SeedCategoryAsync(ExploreDbContext context, Guid tenantId, string masterCode)

@@ -84,7 +84,7 @@ public sealed class CancelEventSessionCommandHandler(
             new EventReminderReprojectionInput(
                 session.TenantId,
                 parentEvent.Id,
-                RegistrationIntentId: null,
+                RegistrationOrderId: null,
                 session.Id,
                 parentEvent.Title,
                 attempt.OccurredAt,

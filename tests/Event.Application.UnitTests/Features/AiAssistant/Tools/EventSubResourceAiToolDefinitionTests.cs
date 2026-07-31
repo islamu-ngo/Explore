@@ -1,5 +1,5 @@
 // ABOUTME: Tests Phase 5 event sub-resource AI tool definitions.
-// ABOUTME: Locks proposal-only registry coverage for sessions, program structure, agenda, custom properties, registrations, teams, and templates.
+// ABOUTME: Locks proposal-only registry coverage for sessions, program structure, agenda, custom properties, teams, and templates.
 
 using System.Text.Json;
 using Explore.Application.Features.AiAssistant.Actions;
@@ -40,7 +40,6 @@ public sealed class EventSubResourceAiToolDefinitionTests
             AiProposedActionKind.DeleteEventAgendaItem,
             AiProposedActionKind.DeleteEventCustomPropertyDefinition,
             AiProposedActionKind.PurgeEventCustomPropertyDefinition,
-            AiProposedActionKind.DeleteEventRegistration,
             AiProposedActionKind.RevokeEventTeamRole,
             AiProposedActionKind.DeleteEventTemplate,
             AiProposedActionKind.DeleteEventSessionTemplate,
@@ -134,9 +133,6 @@ public sealed class EventSubResourceAiToolDefinitionTests
         AiProposedActionKind.PurgeEventCustomPropertyDefinition,
         AiProposedActionKind.SetEventCustomPropertyValue,
         AiProposedActionKind.SetEventCustomPropertyMultiValues,
-        AiProposedActionKind.CreateEventRegistration,
-        AiProposedActionKind.UpdateEventRegistration,
-        AiProposedActionKind.DeleteEventRegistration,
         AiProposedActionKind.AssignEventTeamRole,
         AiProposedActionKind.RevokeEventTeamRole,
         AiProposedActionKind.CreateEventTemplate,

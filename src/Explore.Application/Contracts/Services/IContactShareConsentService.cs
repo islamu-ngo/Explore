@@ -14,7 +14,7 @@ public interface IContactShareConsentService
     /// <param name="tenantId">Current tenant</param>
     /// <param name="userId">Registering user</param>
     /// <param name="eventId">The event being registered for</param>
-    /// <param name="registrationIntentId">The parent registration intent ID</param>
+    /// <param name="registrationOrderId">The source registration order ID</param>
     /// <param name="shareEmailWithOrganizer">Whether the user checked the consent box</param>
     /// <param name="consentText">Exact consent text shown to the user</param>
     /// <param name="consentUiVersion">UI version identifier</param>
@@ -23,7 +23,7 @@ public interface IContactShareConsentService
         Guid tenantId,
         Guid userId,
         Guid eventId,
-        Guid registrationIntentId,
+        Guid registrationOrderId,
         bool shareEmailWithOrganizer,
         string? consentText,
         string? consentUiVersion);

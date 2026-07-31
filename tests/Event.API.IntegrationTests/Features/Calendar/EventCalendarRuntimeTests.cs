@@ -204,20 +204,17 @@ public sealed class EventCalendarRuntimeTests(CalendarRouteRuntimeFixture fixtur
         session.Room = room;
         @event.Sessions.Add(session);
 
-        var intent = new EventRegistrationIntent
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenant.TenantId,
-            Tenant = null!,
-            EventId = @event.Id,
-            Event = @event,
-            UserId = tenant.UserId,
-            User = null!,
-            RegistrationScopeId = (int)RegistrationScopeEnum.Event,
-            RegistrationScope = null!,
-            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
-            ConcurrencyStamp = Guid.CreateVersion7()
-        };
+        EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(
+            tenant.TenantId,
+            @event.Id,
+            "USD",
+            versionNumber: 1);
+        RegistrationOrder order = CreateConfirmedOrder(
+            tenant.TenantId,
+            @event.Id,
+            tenant.UserId,
+            catalog.Id,
+            now);
         var registration = new EventRegistration
         {
             Id = Guid.CreateVersion7(),
@@ -229,8 +226,8 @@ public sealed class EventCalendarRuntimeTests(CalendarRouteRuntimeFixture fixtur
             User = null!,
             EventSessionId = session.Id,
             EventSession = session,
-            EventRegistrationIntentId = intent.Id,
-            EventRegistrationIntent = intent,
+            RegistrationOrderId = order.Id,
+            RegistrationOrder = order,
             ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
             CoverageEstablishedAt = now.AddMinutes(-30),
             ConcurrencyStamp = Guid.CreateVersion7()
@@ -239,13 +236,46 @@ public sealed class EventCalendarRuntimeTests(CalendarRouteRuntimeFixture fixtur
         context.Locations.Add(location);
         context.LocationRooms.Add(room);
         context.Events.Add(@event);
+        context.EventTicketCatalogVersions.Add(catalog);
+        context.RegistrationOrders.Add(order);
         context.EventLocations.Add(placement);
         context.EventLocationDisclosureAudits.AddRange(initialAudit, policyAudit);
-        context.EventRegistrationIntents.Add(intent);
         context.EventRegistrations.Add(registration);
         await context.SaveChangesAsync();
 
         return new(tenant.UserId, @event.Id);
+    }
+
+    private static RegistrationOrder CreateConfirmedOrder(
+        Guid tenantId,
+        Guid eventId,
+        Guid userId,
+        Guid catalogId,
+        DateTime createdAt)
+    {
+        RegistrationOrder order = RegistrationOrder.Create(
+            tenantId,
+            eventId,
+            userId,
+            purchaserActorId: null,
+            BookingPartyTypeEnum.Individual,
+            catalogId,
+            RegistrationParticipationSnapshot.Create(
+                Guid.CreateVersion7(),
+                4,
+                3,
+                2,
+                GuestRecoveryPolicyEnum.VerifiedEmailRequired),
+            registrationWorkflowVersionId: null,
+            guestAccessTokenHash: null,
+            "USD",
+            createdAt,
+            expiresAt: null);
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingParticipantDetails, createdAt);
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingRequirements, createdAt);
+        order.TransitionTo(RegistrationOrderStatusEnum.ReadyForCheckout, createdAt);
+        order.TransitionTo(RegistrationOrderStatusEnum.Confirmed, createdAt);
+        return order;
     }
 
     private static async Task AssertRetentionWarningAsync(HttpResponseMessage response)

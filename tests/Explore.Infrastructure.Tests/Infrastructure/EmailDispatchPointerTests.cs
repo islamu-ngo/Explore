@@ -22,7 +22,7 @@ public sealed class EmailDispatchPointerTests
             SourceType = "event-registration",
             SourceId = Guid.CreateVersion7(),
             EventId = Guid.CreateVersion7(),
-            RegistrationIntentId = Guid.CreateVersion7(),
+            RegistrationOrderId = Guid.CreateVersion7(),
             RecipientUserId = Guid.CreateVersion7(),
             RecipientEmail = "person@example.test",
             Subject = "Registration confirmed",

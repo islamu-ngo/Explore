@@ -188,7 +188,7 @@ public sealed class IntegrationSyncDrainServiceTests
             TenantId = Guid.CreateVersion7(),
             UserId = Guid.CreateVersion7(),
             Kind = IntegrationKind.Listmonk,
-            SourceType = "event_registration_intent",
+            SourceType = "registration_order",
             SourceId = Guid.CreateVersion7(),
             SubscriberEmail = "attendee@example.test",
             SubscriberName = "Attendee Example",

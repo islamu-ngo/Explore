@@ -129,7 +129,7 @@ public sealed class NotificationFanoutProcessorTests
         INotificationFanoutRunRepository runRepository)
     {
         var occurrenceRepository = Substitute.For<INotificationFanoutOccurrenceRepository>();
-        var registrationRepository = Substitute.For<IEventRegistrationIntentRepository>();
+        var registrationRepository = Substitute.For<IRegistrationInventoryRepository>();
         var materializationService = Substitute.For<INotificationFanoutRecipientMaterializationService>();
         return new NotificationFanoutPageProcessor(
             occurrenceRepository,

@@ -54,7 +54,7 @@ public sealed class EmailDispatchRabbitMqConsumerDecisionTests
             "event-registration",
             SourceId: null,
             EventId: null,
-            RegistrationIntentId: null);
+            RegistrationOrderId: null);
         byte[] body = JsonSerializer.SerializeToUtf8Bytes(pointer, JsonOptions);
 
         EmailDispatchRabbitMqPointerParseResult result = EmailDispatchRabbitMqConsumerDecision.ParsePointer(body);
@@ -114,5 +114,5 @@ public sealed class EmailDispatchRabbitMqConsumerDecisionTests
             "event-registration",
             Guid.CreateVersion7(),
             EventId: Guid.CreateVersion7(),
-            RegistrationIntentId: Guid.CreateVersion7());
+            RegistrationOrderId: Guid.CreateVersion7());
 }

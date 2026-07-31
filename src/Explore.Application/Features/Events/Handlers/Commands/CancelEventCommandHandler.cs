@@ -116,7 +116,7 @@ public sealed class CancelEventCommandHandler(
                 new EventReminderSuppressionInput(
                     @event.TenantId,
                     @event.Id,
-                    RegistrationIntentId: null,
+                    RegistrationOrderId: null,
                     SessionId: null,
                     occurredAt,
                     "event_cancelled"),

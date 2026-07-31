@@ -156,7 +156,7 @@ public sealed class RabbitMqEmailDispatchConsumerMailpitTests(
             SourceType: "event-registration",
             SourceId: Guid.CreateVersion7(),
             EventId: Guid.CreateVersion7(),
-            RegistrationIntentId: Guid.CreateVersion7());
+            RegistrationOrderId: Guid.CreateVersion7());
 
         await consumer.StartAsync(CancellationToken.None);
         try
@@ -322,7 +322,7 @@ public sealed class RabbitMqEmailDispatchConsumerMailpitTests(
         SourceType = "event-registration",
         SourceId = Guid.CreateVersion7(),
         EventId = Guid.CreateVersion7(),
-        RegistrationIntentId = Guid.CreateVersion7(),
+        RegistrationOrderId = Guid.CreateVersion7(),
         RecipientUserId = Guid.CreateVersion7(),
         RecipientEmail = "attendee@example.test",
         Subject = subject,

@@ -280,7 +280,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
                             new EventReminderReprojectionInput(
                                 eventSession.TenantId,
                                 parentEvent.Id,
-                                RegistrationIntentId: null,
+                                RegistrationOrderId: null,
                                 eventSession.Id,
                                 parentEvent.Title,
                                 occurredAt,

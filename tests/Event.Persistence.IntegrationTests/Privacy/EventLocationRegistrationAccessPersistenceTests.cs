@@ -27,7 +27,7 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
 
     [Test]
     [Category("EventLocationPrivacy")]
-    public async Task ResolveManyAsync_RealPostgres_MapsExactEventDayAndSessionSelectionCoverage()
+    public async Task ResolveManyAsync_RealPostgres_MapsExactMaterializedSessionCoverage()
     {
         var graph = await SeedGraphAsync();
 
@@ -38,11 +38,11 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
         await Assert.That(eventAccess[graph.SharedLocationId].EffectiveState)
             .IsEqualTo(EventLocationRegistrationEffectiveState.Confirmed);
         await Assert.That(eventAccess[graph.LaterSameDayLocationId].EffectiveState)
-            .IsEqualTo(EventLocationRegistrationEffectiveState.Pending);
+            .IsEqualTo(EventLocationRegistrationEffectiveState.Denied);
         await Assert.That(eventAccess[graph.CrossDayLocationId].EffectiveState)
-            .IsEqualTo(EventLocationRegistrationEffectiveState.Pending);
+            .IsEqualTo(EventLocationRegistrationEffectiveState.Denied);
         await Assert.That(dayAccess[graph.SharedLocationId].CoversRequestedEventLocation).IsTrue();
-        await Assert.That(dayAccess[graph.LaterSameDayLocationId].CoversRequestedEventLocation).IsTrue();
+        await Assert.That(dayAccess[graph.LaterSameDayLocationId].CoversRequestedEventLocation).IsFalse();
         await Assert.That(dayAccess[graph.CrossDayLocationId].CoversRequestedEventLocation).IsFalse();
         await Assert.That(selectedAccess[graph.SharedLocationId].CoversRequestedEventLocation).IsTrue();
         await Assert.That(selectedAccess[graph.LaterSameDayLocationId].CoversRequestedEventLocation).IsFalse();
@@ -56,9 +56,9 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
         var graph = await SeedGraphAsync();
         await using (var deleteContext = fixture.CreateDbContext())
         {
-            var intent = await deleteContext.EventRegistrationIntents
-                .SingleAsync(item => item.Id == graph.DayIntentId);
-            intent.IsDeleted = true;
+            var order = await deleteContext.RegistrationOrders
+                .SingleAsync(item => item.Id == graph.DayOrderId);
+            order.IsDeleted = true;
             await deleteContext.SaveChangesAsync();
         }
 
@@ -207,40 +207,42 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
         context.EventSessions.AddRange(registered, laterSameDay, crossDay, selectedOverlap);
         await context.SaveChangesAsync();
 
-        var eventIntent = CreateIntent(
+        EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(
+            tenant.Id,
+            @event.Id,
+            "USD",
+            versionNumber: 1);
+        var eventOrder = CreateOrder(
             tenant.Id,
             @event.Id,
             eventUser.Id,
-            RegistrationScopeEnum.Event,
-            null,
-            ApprovalStatusEnum.Pending);
-        var selectedIntent = CreateIntent(
+            catalog.Id,
+            RegistrationOrderStatusEnum.AwaitingApproval);
+        var selectedOrder = CreateOrder(
             tenant.Id,
             @event.Id,
             eventUser.Id,
-            RegistrationScopeEnum.SessionSelection,
-            null,
-            ApprovalStatusEnum.Approved);
-        var dayIntent = CreateIntent(
+            catalog.Id,
+            RegistrationOrderStatusEnum.Confirmed);
+        var dayOrder = CreateOrder(
             tenant.Id,
             @event.Id,
             dayUser.Id,
-            RegistrationScopeEnum.Day,
-            selectedDay.Id,
-            ApprovalStatusEnum.Approved);
-        var sessionIntent = CreateIntent(
+            catalog.Id,
+            RegistrationOrderStatusEnum.Confirmed);
+        var sessionOrder = CreateOrder(
             tenant.Id,
             @event.Id,
             sessionUser.Id,
-            RegistrationScopeEnum.SessionSelection,
-            null,
-            ApprovalStatusEnum.Approved);
-        context.EventRegistrationIntents.AddRange(eventIntent, selectedIntent, dayIntent, sessionIntent);
+            catalog.Id,
+            RegistrationOrderStatusEnum.Confirmed);
+        context.EventTicketCatalogVersions.Add(catalog);
+        context.RegistrationOrders.AddRange(eventOrder, selectedOrder, dayOrder, sessionOrder);
         context.EventRegistrations.AddRange(
-            CreateRegistration(tenant.Id, @event.Id, eventUser.Id, registered.Id, eventIntent.Id, ApprovalStatusEnum.Pending),
-            CreateRegistration(tenant.Id, @event.Id, eventUser.Id, selectedOverlap.Id, selectedIntent.Id, ApprovalStatusEnum.Approved),
-            CreateRegistration(tenant.Id, @event.Id, dayUser.Id, registered.Id, dayIntent.Id, ApprovalStatusEnum.Approved),
-            CreateRegistration(tenant.Id, @event.Id, sessionUser.Id, registered.Id, sessionIntent.Id, ApprovalStatusEnum.Approved));
+            CreateRegistration(tenant.Id, @event.Id, eventUser.Id, registered.Id, eventOrder.Id, ApprovalStatusEnum.Pending),
+            CreateRegistration(tenant.Id, @event.Id, eventUser.Id, selectedOverlap.Id, selectedOrder.Id, ApprovalStatusEnum.Approved),
+            CreateRegistration(tenant.Id, @event.Id, dayUser.Id, registered.Id, dayOrder.Id, ApprovalStatusEnum.Approved),
+            CreateRegistration(tenant.Id, @event.Id, sessionUser.Id, registered.Id, sessionOrder.Id, ApprovalStatusEnum.Approved));
         await context.SaveChangesAsync();
 
         return new(
@@ -250,7 +252,7 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
             eventUser.Id,
             dayUser.Id,
             sessionUser.Id,
-            dayIntent.Id,
+            dayOrder.Id,
             placements[0].Id,
             placements[1].Id,
             placements[2].Id);
@@ -321,33 +323,50 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
         return session;
     }
 
-    private static EventRegistrationIntent CreateIntent(
+    private static RegistrationOrder CreateOrder(
         Guid tenantId,
         Guid eventId,
         Guid userId,
-        RegistrationScopeEnum scope,
-        Guid? dayId,
-        ApprovalStatusEnum status) => new()
+        Guid catalogId,
+        RegistrationOrderStatusEnum status)
+    {
+        DateTime createdAt = Now.UtcDateTime;
+        RegistrationOrder order = RegistrationOrder.Create(
+            tenantId,
+            eventId,
+            userId,
+            purchaserActorId: null,
+            BookingPartyTypeEnum.Individual,
+            catalogId,
+            RegistrationParticipationSnapshot.Create(
+                Guid.CreateVersion7(),
+                4,
+                3,
+                2,
+                GuestRecoveryPolicyEnum.VerifiedEmailRequired),
+            registrationWorkflowVersionId: null,
+            guestAccessTokenHash: null,
+            "USD",
+            createdAt,
+            expiresAt: null);
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingParticipantDetails, createdAt);
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingRequirements, createdAt);
+
+        if (status == RegistrationOrderStatusEnum.Confirmed)
         {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            Tenant = null!,
-            EventId = eventId,
-            Event = null!,
-            UserId = userId,
-            User = null!,
-            RegistrationScopeId = (int)scope,
-            RegistrationScope = null!,
-            SelectedEventDayId = dayId,
-            ApprovalStatusId = (int)status
-        };
+            order.TransitionTo(RegistrationOrderStatusEnum.ReadyForCheckout, createdAt);
+        }
+
+        order.TransitionTo(status, createdAt);
+        return order;
+    }
 
     private static EventRegistration CreateRegistration(
         Guid tenantId,
         Guid eventId,
         Guid userId,
         Guid sessionId,
-        Guid intentId,
+        Guid orderId,
         ApprovalStatusEnum status) => new()
         {
             Id = Guid.CreateVersion7(),
@@ -359,7 +378,7 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
             User = null!,
             EventSessionId = sessionId,
             EventSession = null!,
-            EventRegistrationIntentId = intentId,
+            RegistrationOrderId = orderId,
             ApprovalStatusId = (int)status
         };
 
@@ -370,7 +389,7 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
         Guid EventUserId,
         Guid DayUserId,
         Guid SessionUserId,
-        Guid DayIntentId,
+        Guid DayOrderId,
         Guid SharedLocationId,
         Guid LaterSameDayLocationId,
         Guid CrossDayLocationId)

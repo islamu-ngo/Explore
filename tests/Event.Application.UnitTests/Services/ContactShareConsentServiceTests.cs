@@ -30,7 +30,7 @@ public class ContactShareConsentServiceTests
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _eventId = Guid.NewGuid();
-    private readonly Guid _registrationIntentId = Guid.NewGuid();
+    private readonly Guid _registrationOrderId = Guid.NewGuid();
     private readonly Guid _actorId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
 
@@ -61,7 +61,7 @@ public class ContactShareConsentServiceTests
     {
         // Act
         var result = await _service.ProcessRegistrationConsent(
-            _tenantId, _userId, _eventId, _registrationIntentId,
+            _tenantId, _userId, _eventId, _registrationOrderId,
             shareEmailWithOrganizer: false, null, null);
 
         // Assert
@@ -101,7 +101,7 @@ public class ContactShareConsentServiceTests
 
         // Act
         var result = await _service.ProcessRegistrationConsent(
-            _tenantId, _userId, _eventId, _registrationIntentId,
+            _tenantId, _userId, _eventId, _registrationOrderId,
             shareEmailWithOrganizer: true, "consent text", "v1");
 
         // Assert
@@ -116,7 +116,7 @@ public class ContactShareConsentServiceTests
             c.EmailSnapshot == email &&
             c.EmailNormalizedSnapshot == email.ToLowerInvariant() &&
             c.SourceEventId == _eventId &&
-            c.SourceEventRegistrationIntentId == _registrationIntentId));
+                c.SourceRegistrationOrderId == _registrationOrderId));
     }
 
     #endregion
@@ -136,7 +136,7 @@ public class ContactShareConsentServiceTests
 
         // Act
         var result = await _service.ProcessRegistrationConsent(
-            _tenantId, _userId, _eventId, _registrationIntentId,
+            _tenantId, _userId, _eventId, _registrationOrderId,
             shareEmailWithOrganizer: true, "consent text", "v1");
 
         // Assert
@@ -145,7 +145,7 @@ public class ContactShareConsentServiceTests
         await Assert.That(existingConsent.EmailSnapshot).IsEqualTo(email);
         await Assert.That(existingConsent.WithdrawnAt).IsNull();
         await Assert.That(existingConsent.SourceEventId).IsEqualTo(_eventId);
-        await Assert.That(existingConsent.SourceEventRegistrationIntentId).IsEqualTo(_registrationIntentId);
+        await Assert.That(existingConsent.SourceRegistrationOrderId).IsEqualTo(_registrationOrderId);
 
         await _consentRepository.Received(1).Update(existingConsent);
         await _consentRepository.DidNotReceive().Create(Arg.Any<EventContactShareConsent>());
@@ -163,7 +163,7 @@ public class ContactShareConsentServiceTests
 
         // Act
         var result = await _service.ProcessRegistrationConsent(
-            _tenantId, _userId, _eventId, _registrationIntentId,
+            _tenantId, _userId, _eventId, _registrationOrderId,
             shareEmailWithOrganizer: true, null, null);
 
         // Assert
@@ -186,7 +186,7 @@ public class ContactShareConsentServiceTests
 
         // Act
         var result = await _service.ProcessRegistrationConsent(
-            _tenantId, _userId, _eventId, _registrationIntentId,
+            _tenantId, _userId, _eventId, _registrationOrderId,
             shareEmailWithOrganizer: true, null, null);
 
         // Assert
@@ -202,7 +202,7 @@ public class ContactShareConsentServiceTests
 
         // Act
         var result = await _service.ProcessRegistrationConsent(
-            _tenantId, _userId, _eventId, _registrationIntentId,
+            _tenantId, _userId, _eventId, _registrationOrderId,
             shareEmailWithOrganizer: true, null, null);
 
         // Assert
@@ -223,7 +223,7 @@ public class ContactShareConsentServiceTests
 
         // Act
         var result = await _service.ProcessRegistrationConsent(
-            _tenantId, _userId, _eventId, _registrationIntentId,
+            _tenantId, _userId, _eventId, _registrationOrderId,
             shareEmailWithOrganizer: true, null, null);
 
         // Assert

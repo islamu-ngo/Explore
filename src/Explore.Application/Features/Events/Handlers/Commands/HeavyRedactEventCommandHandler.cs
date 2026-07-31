@@ -299,7 +299,7 @@ public sealed class HeavyRedactEventCommandHandler(
             new EventReminderSuppressionInput(
                 @event.TenantId,
                 @event.Id,
-                RegistrationIntentId: null,
+                RegistrationOrderId: null,
                 SessionId: null,
                 occurredAt,
                 "event_heavy_moderation_unavailable"),

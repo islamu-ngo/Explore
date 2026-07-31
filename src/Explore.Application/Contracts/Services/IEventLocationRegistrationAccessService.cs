@@ -23,20 +23,18 @@ public interface IEventLocationRegistrationAccessService
 public sealed record EventLocationRegistrationAccessRequest(
     Guid RequestedEventLocationId,
     DateTimeOffset AsOfUtc,
-    EventLocationRegistrationIntentFact Intent,
+    EventLocationRegistrationOrderFact Order,
     ImmutableArray<EventLocationRegistrationCoverageFact> Coverage);
 
-public sealed record EventLocationRegistrationIntentFact(
-    Guid IntentId,
+public sealed record EventLocationRegistrationOrderFact(
+    Guid OrderId,
     Guid EventId,
-    RegistrationScopeEnum Scope,
-    Guid? SelectedEventDayId,
-    int? ApprovalStatusId,
+    int OrderStatusId,
     bool IsDeleted,
     DateTimeOffset? ExpiresAtUtc);
 
 public sealed record EventLocationRegistrationCoverageFact(
-    Guid IntentId,
+    Guid OrderId,
     Guid EventId,
     Guid? EventDayId,
     Guid EventSessionId,

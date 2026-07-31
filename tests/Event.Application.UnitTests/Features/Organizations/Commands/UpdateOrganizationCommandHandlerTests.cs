@@ -57,7 +57,7 @@ public class UpdateOrganizationCommandHandlerTests
         _organizationMemberRepository.GetMembersByOrganizationId(organization.Id)
             .Returns([CreateMember(organization, userId, RoleEnum.OrgMember)]);
 
-        var result = await _handler.Handle(new UpdateOrganizationCommand
+        await Assert.ThrowsAsync<AuthorizationException>(() => _handler.Handle(new UpdateOrganizationCommand
         {
             OrganizationId = organization.Id,
             UserId = userId.ToString(),
@@ -66,10 +66,8 @@ public class UpdateOrganizationCommandHandlerTests
             {
                 FullName = new UpdateOrganizationFullNameDto { Value = "Updated Organization" }
             }
-        }, CancellationToken.None);
+        }, CancellationToken.None));
 
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Message).IsEqualTo("You are not authorized to update this organization.");
         await _organizationRepository.DidNotReceive().Update(Arg.Any<Organization>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }

@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 namespace Explore.Application.Services;
 
 public sealed class EventModerationNotificationFanoutService(
-    IEventRegistrationIntentRepository registrationIntentRepository,
+    IRegistrationInventoryRepository registrationInventoryRepository,
     IEventModerationRecordRepository moderationRecordRepository,
     INotificationRepository notificationRepository,
     INotificationFanoutRunRepository fanoutRunRepository,
@@ -69,7 +69,7 @@ public sealed class EventModerationNotificationFanoutService(
         {
             while (true)
             {
-                var attendeeUserIds = await registrationIntentRepository.GetRegisteredUserFanoutBatchAsync(
+                var attendeeUserIds = await registrationInventoryRepository.GetRegisteredUserFanoutBatchAsync(
                     request.TenantId,
                     request.EventId,
                     run.CursorSubscriberTenantUserId,

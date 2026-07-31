@@ -22,8 +22,8 @@ public class EmailDispatchOutbox : ITenantEntity, IAuditableEntity, ISoftDeletab
     public Guid? EventId { get; set; }
     public Event? Event { get; set; }
 
-    public Guid? RegistrationIntentId { get; set; }
-    public EventRegistrationIntent? RegistrationIntent { get; set; }
+    public Guid? RegistrationOrderId { get; set; }
+    public RegistrationOrder? RegistrationOrder { get; set; }
 
     public Guid RecipientUserId { get; set; }
     public TenantUser? RecipientTenantUser { get; set; }

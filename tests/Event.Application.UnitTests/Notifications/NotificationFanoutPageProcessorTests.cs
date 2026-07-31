@@ -199,7 +199,7 @@ public sealed class NotificationFanoutPageProcessorTests
                 privacyErasureStateRepository));
         var processor = new NotificationFanoutPageProcessor(
             fixture.OccurrenceRepository,
-            fixture.RegistrationIntentRepository,
+            fixture.RegistrationInventoryRepository,
             fixture.RunRepository,
             recipientService,
             templateFactory,
@@ -454,7 +454,7 @@ public sealed class NotificationFanoutPageProcessorTests
 
         await fixture.RunRepository.DidNotReceiveWithAnyArgs().TryRenewClaimAsync(
             default!, default, default, default);
-        await fixture.RegistrationIntentRepository.DidNotReceiveWithAnyArgs()
+        await fixture.RegistrationInventoryRepository.DidNotReceiveWithAnyArgs()
             .GetNotificationFanoutAudienceBatchAsync(
                 default, default, default, default, default, default, default, default);
         await fixture.RunRepository.DidNotReceiveWithAnyArgs().TryCompleteAsync(default!, default, default);
@@ -509,7 +509,7 @@ public sealed class NotificationFanoutPageProcessorTests
                 .Returns(call => ResultFor(call.ArgAt<Guid>(1)));
             Processor = new NotificationFanoutPageProcessor(
                 OccurrenceRepository,
-                RegistrationIntentRepository,
+                RegistrationInventoryRepository,
                 RunRepository,
                 MaterializationService,
                 new NotificationFanoutRecipientTemplateFactory(),
@@ -519,8 +519,8 @@ public sealed class NotificationFanoutPageProcessorTests
         public INotificationFanoutOccurrenceRepository OccurrenceRepository { get; } =
             Substitute.For<INotificationFanoutOccurrenceRepository>();
 
-        public IEventRegistrationIntentRepository RegistrationIntentRepository { get; } =
-            Substitute.For<IEventRegistrationIntentRepository>();
+        public IRegistrationInventoryRepository RegistrationInventoryRepository { get; } =
+            Substitute.For<IRegistrationInventoryRepository>();
 
         public INotificationFanoutRunRepository RunRepository { get; } =
             Substitute.For<INotificationFanoutRunRepository>();
@@ -539,7 +539,7 @@ public sealed class NotificationFanoutPageProcessorTests
         public void ConfigurePages(
             Func<NotificationFanoutAudienceCursor?, IReadOnlyList<NotificationFanoutAudienceMember>> select)
         {
-            RegistrationIntentRepository.GetNotificationFanoutAudienceBatchAsync(
+            RegistrationInventoryRepository.GetNotificationFanoutAudienceBatchAsync(
                     Occurrence.TenantId,
                     Occurrence.EventId,
                     Occurrence.SessionId,

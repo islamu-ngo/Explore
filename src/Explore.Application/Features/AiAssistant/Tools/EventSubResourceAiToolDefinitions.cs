@@ -185,22 +185,6 @@ public static class EventSubResourceAiToolDefinitions
             """
     };
 
-    private static readonly IReadOnlyDictionary<string, string> EventRegistrationFields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["eventId"] = Uuid,
-        ["registrationId"] = Uuid,
-        ["eventSessionId"] = Uuid,
-        ["expectedConcurrencyStamp"] = Uuid,
-        ["managementContextHasEdit"] = TrueBoolean,
-        ["registrationScopeId"] = Integer,
-        ["selectedEventDayId"] = NullableUuid,
-        ["selectedSessionIds"] = UuidArray,
-        ["approvalStatusId"] = """{ "type": ["integer", "null"] }""",
-        ["shareEmailWithOrganizer"] = Boolean,
-        ["consentTextAcknowledged"] = NullableShortText,
-        ["consentUiVersion"] = NullableShortText
-    };
-
     private static readonly IReadOnlyDictionary<string, string> EventTeamFields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["eventId"] = Uuid,
@@ -356,9 +340,6 @@ public static class EventSubResourceAiToolDefinitions
             Definition(AiProposedActionKind.SetEventCustomPropertyValue, "SetEventCustomPropertyValue", "Set event custom property value", ResourceKinds.CustomPropertyValue, AuthorizationActions.Update, Without(CustomPropertyValueFields, "definitionId", "values"), ["eventCustomPropertyDefinitionId", "eventId", "expectedConcurrencyStamp", "managementContextHasEdit", "ordinal"], "event-custom-property-value-proposal-card", "edit", "event-custom-properties", "event-custom-property-context"),
             Definition(AiProposedActionKind.SetEventCustomPropertyMultiValues, "SetEventCustomPropertyMultiValues", "Set event custom property multi-values", ResourceKinds.CustomPropertyValue, AuthorizationActions.Update, Pick(CustomPropertyValueFields, "definitionId", "eventId", "expectedConcurrencyStamp", "managementContextHasEdit", "values"), ["definitionId", "eventId", "expectedConcurrencyStamp", "managementContextHasEdit", "values"], "event-custom-property-multi-value-proposal-card", "edit", "event-custom-properties", "event-custom-property-context"),
 
-            Definition(AiProposedActionKind.CreateEventRegistration, "CreateEventRegistration", "Create event registration", ResourceKinds.EventRegistration, AuthorizationActions.Create, Without(EventRegistrationFields, "registrationId"), ["eventId", "eventSessionId", "expectedConcurrencyStamp", "managementContextHasEdit", "registrationScopeId"], "event-registration-proposal-card", "edit", "event-registrations", "event-registration-context"),
-            Definition(AiProposedActionKind.UpdateEventRegistration, "UpdateEventRegistration", "Update event registration", ResourceKinds.EventRegistration, AuthorizationActions.Update, EventRegistrationFields, ["registrationId", "eventId", "eventSessionId", "expectedConcurrencyStamp", "managementContextHasEdit"], "event-registration-update-proposal-card", "edit", "event-registrations", "event-registration-context"),
-            DestructiveDefinition(AiProposedActionKind.DeleteEventRegistration, "DeleteEventRegistration", "Delete event registration", ResourceKinds.EventRegistration, AuthorizationActions.Delete, Pick(EventRegistrationFields, "registrationId", "eventId", "expectedConcurrencyStamp"), ["registrationId", "eventId", "expectedConcurrencyStamp", "managementContextHasDelete", "destructiveSummary", "confirmationPhrase", "acknowledgedConsequences"], "DELETE_EVENT_REGISTRATION", "event-registration-delete-proposal-card", "delete", "event-registrations", "event-registration-context"),
             Definition(AiProposedActionKind.AssignEventTeamRole, "AssignEventTeamRole", "Assign event team role", ResourceKinds.Event, AuthorizationActions.Events.ManageTeam, Without(EventTeamFields, "assignmentId"), ["eventId", "expectedConcurrencyStamp", "managementContextHasManageTeam", "targetUserEmail", "roleId"], "event-team-role-proposal-card", "team", "event-team", "event-team-context"),
             DestructiveDefinition(AiProposedActionKind.RevokeEventTeamRole, "RevokeEventTeamRole", "Revoke event team role", ResourceKinds.Event, AuthorizationActions.Events.ManageTeam, Pick(EventTeamFields, "assignmentId", "eventId", "expectedConcurrencyStamp"), ["assignmentId", "eventId", "expectedConcurrencyStamp", "managementContextHasDelete", "destructiveSummary", "confirmationPhrase", "acknowledgedConsequences"], "REVOKE_EVENT_TEAM_ROLE", "event-team-role-revoke-proposal-card", "delete", "event-team", "event-team-context"),
 

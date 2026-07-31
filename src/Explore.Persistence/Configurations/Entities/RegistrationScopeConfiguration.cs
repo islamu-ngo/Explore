@@ -1,5 +1,5 @@
 // ABOUTME: EF configuration for RegistrationScope lookup - stable int ids, unique master code, seeded by LookupTableSeeder at runtime.
-// ABOUTME: Referenced by EventRegistrationIntent.RegistrationScopeId.
+// ABOUTME: Supports the retained registration-scope workflow lookup.
 
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;

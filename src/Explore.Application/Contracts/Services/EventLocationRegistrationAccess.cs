@@ -1,5 +1,5 @@
 // ABOUTME: Immutable attendee-registration authority fact for one requested EventLocation.
-// ABOUTME: Carries exact scope coverage and an audience ceiling without exposing persistence entities.
+// ABOUTME: Carries order-derived admission coverage and an audience ceiling without exposing persistence entities.
 
 using System.Collections.Immutable;
 using Explore.Domain.Enums;
@@ -21,8 +21,7 @@ public enum EventLocationRegistrationEffectiveState
 public sealed class EventLocationRegistrationAccess
 {
     internal EventLocationRegistrationAccess(
-        Guid intentId,
-        RegistrationScopeEnum scope,
+        Guid orderId,
         EventLocationRegistrationEffectiveState effectiveState,
         Guid eventId,
         bool coversWholeEvent,
@@ -31,8 +30,7 @@ public sealed class EventLocationRegistrationAccess
         Guid requestedEventLocationId,
         bool coversRequestedEventLocation)
     {
-        IntentId = intentId;
-        Scope = scope;
+        OrderId = orderId;
         EffectiveState = Enum.IsDefined(effectiveState)
             ? effectiveState
             : EventLocationRegistrationEffectiveState.Denied;
@@ -49,8 +47,7 @@ public sealed class EventLocationRegistrationAccess
             : LocationDisclosureAudienceEnum.Never;
     }
 
-    public Guid IntentId { get; }
-    public RegistrationScopeEnum Scope { get; }
+    public Guid OrderId { get; }
     public EventLocationRegistrationEffectiveState EffectiveState { get; }
     public Guid EventId { get; }
     public bool CoversWholeEvent { get; }

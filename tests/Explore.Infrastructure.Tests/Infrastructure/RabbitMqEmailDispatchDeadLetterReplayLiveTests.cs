@@ -77,7 +77,7 @@ public sealed class RabbitMqEmailDispatchDeadLetterReplayLiveTests(RabbitMqConta
             SourceType: "event-registration",
             SourceId: Guid.CreateVersion7(),
             EventId: Guid.CreateVersion7(),
-            RegistrationIntentId: Guid.CreateVersion7());
+            RegistrationOrderId: Guid.CreateVersion7());
         var settingsMonitor = CreateOptionsMonitor(settings);
         await using var transport = CreateTransport(settingsMonitor);
         await transport.DeclareTopologyAsync(CancellationToken.None);
@@ -205,7 +205,7 @@ public sealed class RabbitMqEmailDispatchDeadLetterReplayLiveTests(RabbitMqConta
         SourceType = "event-registration",
         SourceId = Guid.CreateVersion7(),
         EventId = Guid.CreateVersion7(),
-        RegistrationIntentId = Guid.CreateVersion7(),
+        RegistrationOrderId = Guid.CreateVersion7(),
         RecipientUserId = Guid.CreateVersion7(),
         RecipientEmail = "attendee@example.test",
         Subject = "Registration confirmation",

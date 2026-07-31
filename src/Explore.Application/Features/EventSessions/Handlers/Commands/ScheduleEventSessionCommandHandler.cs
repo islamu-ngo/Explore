@@ -160,7 +160,7 @@ public sealed class ScheduleEventSessionCommandHandler(
                             new EventReminderReprojectionInput(
                                 session.TenantId,
                                 parentEvent.Id,
-                                RegistrationIntentId: null,
+                                RegistrationOrderId: null,
                                 session.Id,
                                 parentEvent.Title,
                                 occurredAt,

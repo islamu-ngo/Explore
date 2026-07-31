@@ -136,7 +136,7 @@ public sealed class RabbitMqEmailDispatchTransportLiveTests(RabbitMqContainerFix
         await Assert.That(payload).Contains(dispatch.SourceType);
         await Assert.That(payload).Contains(dispatch.SourceId.ToString());
         await Assert.That(payload).Contains(dispatch.EventId!.Value.ToString());
-        await Assert.That(payload).Contains(dispatch.RegistrationIntentId!.Value.ToString());
+        await Assert.That(payload).Contains(dispatch.RegistrationOrderId!.Value.ToString());
         await Assert.That(payload).Contains(dispatch.RecipientUserId.ToString());
         await Assert.That(payload).DoesNotContain(dispatch.RecipientEmail);
         await Assert.That(payload).DoesNotContain(dispatch.Subject);
@@ -207,7 +207,7 @@ public sealed class RabbitMqEmailDispatchTransportLiveTests(RabbitMqContainerFix
         SourceType: "event-registration",
         SourceId: Guid.CreateVersion7(),
         EventId: Guid.CreateVersion7(),
-        RegistrationIntentId: Guid.CreateVersion7());
+        RegistrationOrderId: Guid.CreateVersion7());
 
     private static EmailDispatchOutbox CreateDispatchWithSensitiveSnapshot() => new()
     {
@@ -218,7 +218,7 @@ public sealed class RabbitMqEmailDispatchTransportLiveTests(RabbitMqContainerFix
         SourceType = "event-registration",
         SourceId = Guid.CreateVersion7(),
         EventId = Guid.CreateVersion7(),
-        RegistrationIntentId = Guid.CreateVersion7(),
+        RegistrationOrderId = Guid.CreateVersion7(),
         RecipientUserId = Guid.CreateVersion7(),
         RecipientEmail = $"attendee-{Guid.CreateVersion7():N}@example.test",
         Subject = $"registration-subject-{Guid.CreateVersion7():N}",

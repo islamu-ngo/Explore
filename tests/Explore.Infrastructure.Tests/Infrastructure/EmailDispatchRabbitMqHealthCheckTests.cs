@@ -119,7 +119,7 @@ public sealed class EmailDispatchRabbitMqHealthCheckTests
             "event-registration",
             Guid.CreateVersion7(),
             EventId: Guid.CreateVersion7(),
-            RegistrationIntentId: Guid.CreateVersion7());
+            RegistrationOrderId: Guid.CreateVersion7());
 
         EmailDispatchPublishResult result = await transport.PublishDispatchPointerAsync(pointer);
 

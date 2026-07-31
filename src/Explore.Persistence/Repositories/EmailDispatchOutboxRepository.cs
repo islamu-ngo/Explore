@@ -27,7 +27,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         WITH candidates AS (
             SELECT intent.tenant_id,
                    intent.id AS notification_intent_id,
-                   split_part(intent.safe_payload_reference, ':', 2)::uuid AS registration_intent_id,
+                    split_part(intent.safe_payload_reference, ':', 2)::uuid AS registration_order_id,
                    intent.recipient_user_id,
                    outbox.id AS outbox_id
             FROM notification_intents AS intent
@@ -54,16 +54,16 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
               AND intent.event_id = @event_id
               AND intent.template_key = 'event.reminder'
               AND intent.is_deleted = FALSE
-              AND intent.safe_payload_reference ~ '^event-registration-intent:[0-9a-f]{32}:session:[0-9a-f]{32}$'
-              AND (@registration_intent_id IS NULL
-                   OR split_part(intent.safe_payload_reference, ':', 2)::uuid = @registration_intent_id)
+               AND intent.safe_payload_reference ~ '^registration-order:[0-9a-f]{32}:session:[0-9a-f]{32}$'
+               AND (@registration_order_id IS NULL
+                    OR split_part(intent.safe_payload_reference, ':', 2)::uuid = @registration_order_id)
               AND (@session_id IS NULL
                    OR right(intent.safe_payload_reference, length(@session_suffix)) = @session_suffix
                    OR EXISTS (
                        SELECT 1
                        FROM event_registrations AS affected_child
                        WHERE affected_child.tenant_id = intent.tenant_id
-                         AND affected_child.event_registration_intent_id = split_part(intent.safe_payload_reference, ':', 2)::uuid
+                          AND affected_child.registration_order_id = split_part(intent.safe_payload_reference, ':', 2)::uuid
                          AND affected_child.event_id = @event_id
                          AND affected_child.user_id = intent.recipient_user_id
                          AND affected_child.event_session_id = @session_id
@@ -83,10 +83,10 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
                        session.start_time AS session_start,
                        session.local_start_date,
                        session.local_start_time
-                FROM event_registration_intents AS parent
+                FROM registration_orders AS parent
                 INNER JOIN event_registrations AS child
                     ON child.tenant_id = parent.tenant_id
-                   AND child.event_registration_intent_id = parent.id
+                    AND child.registration_order_id = parent.id
                 INNER JOIN event_sessions AS session
                     ON session.tenant_id = child.tenant_id
                    AND session.id = child.event_session_id
@@ -95,12 +95,12 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
                     ON event.tenant_id = parent.tenant_id
                    AND event.id = parent.event_id
                 WHERE parent.tenant_id = candidates.tenant_id
-                  AND parent.id = candidates.registration_intent_id
+                   AND parent.id = candidates.registration_order_id
                   AND parent.event_id = @event_id
-                  AND parent.user_id = candidates.recipient_user_id
+                   AND parent.account_user_id = candidates.recipient_user_id
                   AND parent.is_deleted = FALSE
-                  AND parent.approval_status_id = @approved_status
-                  AND child.user_id = parent.user_id
+                   AND parent.registration_order_status_id = @confirmed_order_status
+                   AND child.user_id = parent.account_user_id
                   AND child.event_id = parent.event_id
                   AND child.is_deleted = FALSE
                   AND child.approval_status_id = @approved_status
@@ -161,7 +161,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             RETURNING outbox.tenant_id,
                       outbox.id,
                       outbox.notification_intent_id,
-                      outbox.registration_intent_id,
+                       outbox.registration_order_id,
                       selected.session_id,
                       selected.session_start
         ),
@@ -172,7 +172,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
                     WHEN selected.outbox_id IS NOT NULL THEN @dispatch_queued_intent_status
                     ELSE intent.status_id END,
                 safe_payload_reference = CASE WHEN selected.session_id IS NULL THEN intent.safe_payload_reference ELSE
-                    'event-registration-intent:' || replace(selected.registration_intent_id::text, '-', '') ||
+                     'registration-order:' || replace(selected.registration_order_id::text, '-', '') ||
                     ':session:' || replace(selected.session_id::text, '-', '') END,
                 updated_at = @changed_at
             FROM selected
@@ -324,9 +324,9 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
                   AND intent.event_id = @event_id
                   AND intent.template_key = 'event.reminder'
                   AND intent.is_deleted = FALSE
-                  AND intent.safe_payload_reference ~ '^event-registration-intent:[0-9a-f]{32}:session:[0-9a-f]{32}$'
-                  AND (@registration_intent_id IS NULL
-                       OR split_part(intent.safe_payload_reference, ':', 2)::uuid = @registration_intent_id)
+                   AND intent.safe_payload_reference ~ '^registration-order:[0-9a-f]{32}:session:[0-9a-f]{32}$'
+                   AND (@registration_order_id IS NULL
+                        OR split_part(intent.safe_payload_reference, ':', 2)::uuid = @registration_order_id)
                   AND (@session_suffix IS NULL
                        OR right(intent.safe_payload_reference, length(@session_suffix)) = @session_suffix)
             ),
@@ -428,7 +428,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             command,
             request.TenantId,
             request.EventId,
-            request.RegistrationIntentId,
+            request.RegistrationOrderId,
             request.SessionId,
             sessionSuffix,
             request.SupersededAt,
@@ -461,7 +461,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             command,
             request.TenantId,
             request.EventId,
-            request.RegistrationIntentId,
+            request.RegistrationOrderId,
             request.SessionId,
             sessionSuffix,
             request.ChangedAt,
@@ -473,6 +473,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         AddParameter(command, "html_time_zone_id", htmlTimeZoneId, DbType.String);
         AddParameter(command, "published_event_status", (int)EventStatusEnum.Published, DbType.Int32);
         AddParameter(command, "approved_status", (int)ApprovalStatusEnum.Approved, DbType.Int32);
+        AddParameter(command, "confirmed_order_status", (int)RegistrationOrderStatusEnum.Confirmed, DbType.Int32);
         AddParameter(command, "published_session_status", (int)EventSessionStatusEnum.Published, DbType.Int32);
         return await ReadReminderStateChangeAsync(command, cancellationToken);
     }
@@ -1628,7 +1629,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         DbCommand command,
         Guid tenantId,
         Guid eventId,
-        Guid? registrationIntentId,
+        Guid? registrationOrderId,
         Guid? sessionId,
         string? sessionSuffix,
         DateTime changedAt,
@@ -1636,7 +1637,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
     {
         AddParameter(command, "tenant_id", tenantId, DbType.Guid);
         AddParameter(command, "event_id", eventId, DbType.Guid);
-        AddParameter(command, "registration_intent_id", registrationIntentId ?? (object)DBNull.Value, DbType.Guid);
+        AddParameter(command, "registration_order_id", registrationOrderId ?? (object)DBNull.Value, DbType.Guid);
         AddParameter(command, "session_id", sessionId ?? (object)DBNull.Value, DbType.Guid);
         AddParameter(command, "session_suffix", sessionSuffix ?? (object)DBNull.Value, DbType.String);
         AddParameter(command, "changed_at", changedAt);

@@ -78,7 +78,7 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
             if (!IsEligibleReminder(
                     request.TenantId,
                     request.EventId,
-                    request.RegistrationIntentId,
+                    request.RegistrationOrderId,
                     request.SessionId,
                     requireSchedule: false,
                     out _))
@@ -118,7 +118,7 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
             if (!IsEligibleReminder(
                     request.TenantId,
                     request.EventId,
-                    request.RegistrationIntentId,
+                    request.RegistrationOrderId,
                     request.SessionId,
                     requireSchedule: true,
                     out EventReminderSchedule schedule))
@@ -591,7 +591,7 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
     private bool IsEligibleReminder(
         Guid tenantId,
         Guid eventId,
-        Guid? registrationIntentId,
+        Guid? registrationOrderId,
         Guid? sessionId,
         bool requireSchedule,
         out EventReminderSchedule schedule)
@@ -606,7 +606,7 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
                 EmailDispatchStatus.Pending
                 or EmailDispatchStatus.RetryScheduled
                 or EmailDispatchStatus.Processing)
-            || registrationIntentId.HasValue && dispatch.RegistrationIntentId != registrationIntentId
+            || registrationOrderId.HasValue && dispatch.RegistrationOrderId != registrationOrderId
             || dispatch.Status == EmailDispatchStatus.Processing && HasProviderHandoffFence())
         {
             return false;

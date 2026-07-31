@@ -165,7 +165,7 @@ public sealed class PrivacyErasureApplier(
 
         foreach (Actor actor in actors)
         {
-            actor.UserId = null;
+            actor.TombstoneForUserPrivacyErasure(prepared.AppliedAtUtc, intent.SubjectId);
             foreach (AtprotoIdentity identity in actor.AtprotoIdentities)
             {
                 identity.Did = $"did:deleted:{identity.Id:N}";
@@ -174,8 +174,10 @@ public sealed class PrivacyErasureApplier(
                 identity.SigningKey = null;
                 identity.IsActive = false;
                 identity.IsDeleted = true;
+                identity.CreatedBy = null;
+                identity.UpdatedBy = null;
                 identity.DeletedAt = prepared.AppliedAtUtc;
-                identity.DeletedBy = intent.SubjectId;
+                identity.DeletedBy = null;
             }
 
             if (actor.Pii is null)

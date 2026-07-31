@@ -18,8 +18,8 @@ public class IntegrationSyncOutbox : ITenantEntity, IAuditableEntity, ISoftDelet
     public Guid? EventId { get; set; }
     public Event? Event { get; set; }
 
-    public Guid? RegistrationIntentId { get; set; }
-    public EventRegistrationIntent? RegistrationIntent { get; set; }
+    public Guid? RegistrationOrderId { get; set; }
+    public RegistrationOrder? RegistrationOrder { get; set; }
 
     public Guid? UserId { get; set; }
     public User? User { get; set; }

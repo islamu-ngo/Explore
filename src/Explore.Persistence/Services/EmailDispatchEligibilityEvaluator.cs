@@ -614,7 +614,7 @@ public sealed class EmailDispatchEligibilityEvaluator(
         CancellationToken cancellationToken)
     {
         if (dispatch.EventId is not Guid eventId
-            || dispatch.RegistrationIntentId is not Guid registrationIntentId
+            || dispatch.RegistrationOrderId is not Guid registrationOrderId
             || intent.TemplateKey != "event.reminder"
             || intent.EventId != eventId
             || intent.RecipientUserId != dispatch.RecipientUserId
@@ -625,7 +625,7 @@ public sealed class EmailDispatchEligibilityEvaluator(
                 out string scheduledTimeZoneId)
             || !string.Equals(
                 intent.SafePayloadReference,
-                $"event-registration-intent:{registrationIntentId:N}:session:{scheduledSessionId:N}",
+                $"registration-order:{registrationOrderId:N}:session:{scheduledSessionId:N}",
                 StringComparison.Ordinal))
         {
             return "event_reminder_authority_missing";
@@ -662,16 +662,16 @@ public sealed class EmailDispatchEligibilityEvaluator(
             return "event_reminder_authority_changed";
         }
 
-        bool registrationAuthorityActive = await dbContext.EventRegistrationIntents
+        bool registrationAuthorityActive = await dbContext.RegistrationOrders
             .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
             .AsNoTracking()
             .AnyAsync(parent =>
                 parent.TenantId == dispatch.TenantId
-                && parent.Id == registrationIntentId
+                && parent.Id == registrationOrderId
                 && parent.EventId == eventId
-                && parent.UserId == dispatch.RecipientUserId
+                && parent.AccountUserId == dispatch.RecipientUserId
                 && !parent.IsDeleted
-                && parent.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                && parent.RegistrationOrderStatusId == (int)RegistrationOrderStatusEnum.Confirmed
                 && !dbContext.EventModerationRecords
                     .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
                     .Any(record =>
@@ -697,7 +697,7 @@ public sealed class EmailDispatchEligibilityEvaluator(
                     on new { child.TenantId, Id = child.EventSessionId }
                     equals new { session.TenantId, Id = session.Id }
                 where child.TenantId == dispatch.TenantId
-                      && child.EventRegistrationIntentId == registrationIntentId
+                       && child.RegistrationOrderId == registrationOrderId
                       && child.EventId == eventId
                       && child.UserId == dispatch.RecipientUserId
                       && !child.IsDeleted
