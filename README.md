@@ -41,6 +41,7 @@ It is built as a **white-label platform engine**: the hosted ISLAMU instance foc
 - **🌐 Multi-Language Sessions:** Event sessions with multiple language variants and localized content
 - **📱 PWA & Responsive Design:** Mobile-friendly Blazor UI with MudBlazor components; installable as a Progressive Web App
 - **✅ RSVP & Registration:** Waitlists, approval workflows, per-session registration limits, and capacity management
+- **🎟️ Ticketing:** Discover events with free or paid tickets; view published ticket types, price summaries, and availability directly in event discovery and detail pages
 - **🤖 AI Assistant (when enabled):** Chat with the assistant to discover events, ask questions in natural language, and let it draft registrations or RSVPs as confirmable proposed actions
 
 ### Event Organizers
@@ -52,6 +53,8 @@ It is built as a **white-label platform engine**: the hosted ISLAMU instance foc
 - **🧩 Custom Properties:** Per-event-type custom fields, single- and multi-select options, relations, and typed validation — see [Custom Properties][custom-properties-doc]
 - **🔔 Notifications, Email & Webhooks:** In-app notifications, built-in/Svix-compatible outgoing webhooks, and templated email pipelines — see [Notifications][notifications-doc], [Webhooks][webhooks-doc], and [Email Notifications][email-notifications-doc]
 - **📇 Contact Sharing:** Share contact information with explicit, revocable consent — see [Contact Sharing][contact-sharing-doc]
+- **🎟️ Ticketing & Pricing:** Create versioned ticket catalogs with multiple ticket types, capacity pools, and minor-unit pricing. Publish a catalog to attach structured pricing to an event; ticket price summaries appear in public discovery automatically. Draft, clone, and iterate before publishing — see [API Changelog][api-changelog-doc]
+- **📬 Mailing List Integration (Listmonk):** Optionally connect a self-hosted [Listmonk][listmonk-link] instance to automatically sync attendee registrations as newsletter subscribers, with pre-confirmation support and per-tenant configuration
 - **🤖 AI Assistant (when enabled):** Ask the assistant to draft event listings, suggest categories/tags, and propose schedule improvements; every AI-proposed change is reviewed and explicitly confirmed before any side effect
 
 ### Platform Owners & Self-Hosters
@@ -64,6 +67,9 @@ It is built as a **white-label platform engine**: the hosted ISLAMU instance foc
 - **🔌 Model Context Protocol (MCP) Server:** The API hosts a stateless MCP adapter at `/mcp` so AI agents, IDEs (VS Code, Copilot, Inspector), and external integrations can discover public events and *propose* actions through the normal confirmation flow — mutations never bypass authorization. See [MCP Debugging][mcp-debugging-doc]
 - **🧠 AI-Ready Foundation:** Provider-neutral AI Assistant, RAG ingestion contracts, and proposal-first tooling are wired through the same Cerbos-authorized, HAL-affordance-driven surface as the rest of the platform
 - **🌍 Federation Foundation:** ATProto-oriented models and outbound sync plumbing exist, while public ActivityPub and ATProto server endpoints remain roadmap work — see [Federation][federation-doc]
+- **🗄️ Privacy Erasure Authority:** GDPR-compliant user data erasure with two topology options: **Co-located** (default — erasure authority shares the main database, simplest to operate) or **External Database** (a dedicated isolated PostgreSQL instance for stricter compliance separation). Operators choose topology at deployment time; the runtime erasure receipt flow and provider-work reconciliation behave identically in both modes.
+- **📬 Mailing List Integration (Listmonk):** Integrate with a self-hosted [Listmonk][listmonk-link] instance to sync attendee registrations as mailing-list subscribers. Connection, behavior, and privacy-erasure authority settings are independently configurable per tenant via grouped settings patches.
+- **🎛️ ISLAMU Event Control Plane *(optional, commercial)*:** A separate commercial product for managed multi-instance operators. The Control Plane provides centralized fleet orchestration, automated instance provisioning, cross-instance telemetry, tenant quota management, and billing integration. ISLAMU Event itself remains fully self-hostable and open-source without it; the Control Plane is an add-on for operators running many instances at scale. See the [ISLAMU website][islamu-platform] for early-access information.
 - **📚 Comprehensive Docs:** Architecture, deployment, configuration, troubleshooting, and API reference
 - **🔐 Enterprise Security:** BFF pattern, Cerbos authorization, Infisical secrets, and HATEOAS REST API
 
@@ -260,6 +266,26 @@ I am deeply grateful to all our amazing contributors.
 ## ISLAMU Solutions
 
 - [ISLAMU Event][github-repo-link]: Event Platform & Management System.
+- [I-VSD][ivsd-github-repo-link]: Islamic Value Sensitive Design: A Framework for Provider-Mediated Software Solutions
+
+## 🌱 Sustainability
+
+ISLAMU is a passion project built by one person — **Amir Akrari** — entirely on personal free time and personal funds. Every line of code, every decision, and every euro spent comes from a genuine belief that Muslim communities deserve dignified, privacy-respecting, community-owned software.
+
+**ISLAMU ASBL** (Association Sans But Lucratif — a non-profit association) is being established in Belgium. Once registered, ISLAMU ASBL will become the legal steward of all ISLAMU open-source projects and charitable activities.
+
+### How ISLAMU sustains itself
+
+ISLAMU will never offer its open-source software as a hosted SaaS. Instead, sustainability is built on:
+
+- **Fundraising & Grants:** Crowdfunding campaigns, foundation grants, and public-interest funding for open-source digital infrastructure
+- **Sponsorships:** Ranked sponsorship tiers — sponsors receive recognition and visibility; every euro goes back into the non-profit
+- **Official Partnerships:** Organizations that want to offer ISLAMU software as a hosted service can become **Official ISLAMU Partners**. Partners are vetted, listed on the ISLAMU website, and actively recommended and marketed by ISLAMU. ISLAMU does not compete with its partners; we redirect and endorse them
+- **Commercial Activity:** ISLAMU conducts limited commercial activity with the sole purpose of returning all proceeds to the non-profit:
+  - **ISLAMU Event Control Plane** — a commercial fleet-management product for multi-instance operators (see above)
+  - **Consultation & Support** — professional consulting around ISLAMU software deployment, customization, and integration
+
+If you are a company or institution that wants to support this work, reach out at [contact@openislamu.org][contact-email] or start a conversation in our [Discord][discord-link].
 
 ## 📞 Contact
 
@@ -351,7 +377,9 @@ The CLA is versioned. The current version and full legal text live in [`legal/CL
 [cerbos-link]: https://www.cerbos.dev/
 [svix-link]: https://www.svix.com/
 [webhooks-doc]: docs/WEBHOOKS.md
+[api-changelog-doc]: docs/API_CHANGELOG.md
 [infisical-link]: https://infisical.com/
+[listmonk-link]: https://listmonk.app/
 [mudblazor-link]: https://www.mudblazor.com/
 [penpot-link]: https://penpot.app/
 [plane-link]: https://plane.so/
@@ -361,9 +389,7 @@ The CLA is versioned. The current version and full legal text live in [`legal/CL
 [smoke-signals-link]: https://smokesignal.events/
 [mangadex-link]: https://mangadex.org/
 
-[palestinian-red-crescent]: https://www.palestinercs.org/en/Donation
-[support-palestine-banner]: https://github.com/Safouene1/support-palestine-banner/blob/master/banner-support.svg
-[support-palestine-banner-source]: https://github.com/Safouene1/support-palestine-banner/
+[ivsd-github-repo-link]: https://github.com/islamu-ngo/Islamic-Value-Sensitive-Design
 
 [contribution-guidelines]: docs/CONTRIBUTING.md
 [cla-link]: legal/CLA.md
