@@ -1,0 +1,142 @@
+@* ABOUTME: Attendee ticket-selection entry page backed by the public checkout composition contract. *@
+@* ABOUTME: Sends only selected quantities and prices to the server, which remains authoritative for totals. *@
+@page "/registration/events/{EventId:guid}/tickets"
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IRegistrationOrderService RegistrationOrderService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Select tickets</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="ticket-selection">
+    <MudText Typo="Typo.h4" HtmlTag="h1">Select tickets</MudText>
+
+    @if (_isLoading)
+    {
+        <div role="status">Loading ticket choices…</div>
+    }
+    else if (_tickets.Count == 0)
+    {
+        <div role="alert">Tickets are not available for this event.</div>
+    }
+    else
+    {
+        @foreach (var state in _tickets)
+        {
+            <section class="ticket-selection__ticket" aria-label="@state.Ticket.Name">
+                <MudText Typo="Typo.h6" HtmlTag="h2">@state.Ticket.Name</MudText>
+                <MudText Typo="Typo.body2">@PriceLabel(state.Ticket, _composition?.CurrencyCode)</MudText>
+                @if (state.Ticket.PerOrderLimit is { } perOrderLimit)
+                {
+                    <MudNumericField T="int" Label="Quantity" Min="0" Max="@perOrderLimit" @bind-Value="state.Quantity" />
+                }
+                else
+                {
+                    <MudNumericField T="int" Label="Quantity" Min="0" @bind-Value="state.Quantity" />
+                }
+                @if (AllowsChosenPrice(state.Ticket))
+                {
+                    @if (state.Ticket.SlidingScaleOptions is { Count: > 0 })
+                    {
+                        <MudSlider T="int" Min="0" Max="@(state.Ticket.SlidingScaleOptions.Count - 1)" Step="1" @bind-Value="state.SlidingScaleIndex" aria-label="Choose sliding-scale price" />
+                        <MudText Typo="Typo.body2">You pay @RegistrationOrderMoneyFormatter.Format(state.SelectedSlidingScaleOption!.BuyerPriceMinor, _composition?.CurrencyCode)</MudText>
+                        <MudText Typo="Typo.body2">Organizer earns @RegistrationOrderMoneyFormatter.Format(state.SelectedSlidingScaleOption!.OrganizerEarningsMinor, _composition?.CurrencyCode)</MudText>
+                    }
+                    else
+                    {
+                        <MudNumericField T="long" Label="Price per ticket in minor units" Min="@(state.Ticket.MinimumPriceMinor ?? 0)" @bind-Value="state.ChosenUnitPriceMinor" />
+                    }
+                }
+            </section>
+        }
+
+        @if (_error is not null)
+        {
+            <div role="alert">@_error</div>
+        }
+
+        <AppButton Disabled="_isSubmitting" OnClick="StartAsync">Reserve selected tickets</AppButton>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+
+    private RegistrationCheckoutCompositionDto? _composition;
+    private readonly List<TicketState> _tickets = [];
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _composition = await RegistrationOrderService.GetCheckoutAsync(EventId);
+        _tickets.Clear();
+        _tickets.AddRange((_composition?.TicketTypes ?? []).Where(ticket => ticket.Id.HasValue).Select(ticket => new TicketState(ticket)));
+        _isLoading = false;
+    }
+
+    private async Task StartAsync()
+    {
+        var lines = _tickets
+            .Where(state => state.Quantity > 0 && state.Ticket.Id.HasValue)
+            .Select(state => new RegistrationOrderLineSelection
+            {
+                TicketTypeId = state.Ticket.Id!.Value,
+                Quantity = state.Quantity,
+                ChosenUnitPriceMinor = AllowsChosenPrice(state.Ticket) ? state.SelectedPriceMinor : null
+            })
+            .ToArray();
+        if (_composition?.TicketCatalogVersionId is not { } catalogId || lines.Length == 0)
+        {
+            _error = "Select at least one ticket.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _error = null;
+        var request = new StartRegistrationOrderRequest
+        {
+            TicketCatalogVersionId = catalogId,
+            BookingPartyType = 1,
+            Lines = lines
+        };
+        var isAuthenticated = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User.Identity?.IsAuthenticated == true;
+        var orderId = isAuthenticated
+            ? (await RegistrationOrderService.StartAuthenticatedAsync(EventId, request))?.Id
+            : (await RegistrationOrderService.StartGuestAsync(EventId, request))?.Id;
+
+        if (orderId is null)
+        {
+            _error = "The registration order could not be started.";
+            _isSubmitting = false;
+            return;
+        }
+
+        Navigation.NavigateTo(isAuthenticated
+            ? $"/registration/events/{EventId}/orders/{orderId}"
+            : $"/registration/guest/events/{EventId}/orders/{orderId}");
+    }
+
+    private static bool AllowsChosenPrice(RegistrationCheckoutTicketTypeDto ticket) =>
+        ticket.TicketPricingModeCode is "DONATION" or "PAY_WHAT_YOU_CAN" or "SLIDING_SCALE";
+
+    private static string PriceLabel(RegistrationCheckoutTicketTypeDto ticket, string? currencyCode) => ticket.TicketPricingModeCode switch
+    {
+        "FREE" => "Free",
+        "FIXED" => RegistrationOrderMoneyFormatter.Format(ticket.FixedPriceMinor, currencyCode),
+        _ => $"Minimum {RegistrationOrderMoneyFormatter.Format(ticket.MinimumPriceMinor, currencyCode)}"
+    };
+
+    private sealed class TicketState(RegistrationCheckoutTicketTypeDto ticket)
+    {
+        public RegistrationCheckoutTicketTypeDto Ticket { get; } = ticket;
+        public int Quantity { get; set; }
+        public long ChosenUnitPriceMinor { get; set; } = ticket.SuggestedPriceMinor ?? ticket.MinimumPriceMinor ?? 0;
+        public int SlidingScaleIndex { get; set; } = Math.Max(0, (ticket.SlidingScaleOptions?.Count ?? 1) - 1);
+        public RegistrationCheckoutSlidingScaleOptionDto? SelectedSlidingScaleOption =>
+            Ticket.SlidingScaleOptions is { Count: > 0 } options ? options.ElementAt(Math.Min(SlidingScaleIndex, options.Count - 1)) : null;
+        public long SelectedPriceMinor => SelectedSlidingScaleOption?.BuyerPriceMinor ?? ChosenUnitPriceMinor;
+    }
+}

@@ -1,0 +1,90 @@
+@* ABOUTME: Reusable Studio registration-order list backed by server-authored order snapshots. *@
+@* ABOUTME: Loads one event collection through IStudioContextService and renders honest empty/error states. *@
+@using Explore.Blazor.Client.Contracts.Services
+@inject IStudioContextService StudioContextService
+
+@if (_isLoading)
+{
+    <div class="studio-order-list__state" role="status" data-testid="studio-orders-loading">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        <span>Loading registration orders…</span>
+    </div>
+}
+else if (_error is not null)
+{
+    <div class="studio-order-list__state" role="alert" data-testid="studio-orders-unavailable">
+        @_error
+    </div>
+}
+else if (_orders.Count == 0)
+{
+    <div class="studio-order-list__state" data-testid="studio-orders-empty">
+        <MudIcon Icon="@Icons.Material.Outlined.ReceiptLong" Color="Color.Secondary" aria-hidden="true" />
+        <span>No registration orders are available.</span>
+    </div>
+}
+else
+{
+    <div class="studio-order-list" data-testid="studio-order-list">
+        @foreach (var order in _orders)
+        {
+            <article class="studio-order-list__item">
+                <div class="studio-order-list__summary">
+                    <MudText Typo="Typo.h6" HtmlTag="h3">Order @ShortId(order.Id)</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@(order.StatusName ?? order.StatusCode ?? "Unknown status")</MudText>
+                </div>
+                <dl class="studio-order-list__totals">
+                    <div><dt>Total due</dt><dd>@MinorAmount(order.TotalDueMinor, order.CurrencyCode)</dd></div>
+                    <div><dt>Organizer earnings</dt><dd>@MinorAmount(order.OrganizerEarningsTotalMinor, order.CurrencyCode)</dd></div>
+                </dl>
+                @if (order.Lines is { Count: > 0 })
+                {
+                    <ul class="studio-order-list__lines" aria-label="Order lines">
+                        @foreach (var line in order.Lines)
+                        {
+                            <li>@line.Quantity × @line.TicketTypeName — @MinorAmount(line.SubtotalMinor, line.CurrencyCode)</li>
+                        }
+                    </ul>
+                }
+            </article>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public Guid EventId { get; set; }
+
+    private IReadOnlyList<HalResourceOfRegistrationOrderDto> _orders = [];
+    private string? _error;
+    private bool _isLoading;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (EventId == Guid.Empty)
+        {
+            _orders = [];
+            return;
+        }
+
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            _orders = await StudioContextService.GetEventOrdersAsync(EventId);
+        }
+        catch (Exception)
+        {
+            _orders = [];
+            _error = "Registration orders are currently unavailable.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string ShortId(Guid? id) => id?.ToString("N")[..8] ?? "unknown";
+
+    private static string MinorAmount(long? amountMinor, string? currencyCode) =>
+        $"{amountMinor ?? 0:N0} {currencyCode ?? string.Empty} minor units".TrimEnd();
+}

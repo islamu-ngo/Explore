@@ -64,6 +64,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAtprotoFederationSettingsService, AtprotoFederationSettingsService>();
         services.AddScoped<ITenantShellSettingsService, TenantShellSettingsService>();
         services.AddScoped<IEventService, EventService>();
+        services.AddScoped<IRegistrationOrderService, RegistrationOrderService>();
+        services.AddScoped<IGuestRegistrationOrderCapabilityStore, GuestRegistrationOrderCapabilityStore>();
         services.AddScoped<IEventTicketingService, EventTicketingService>();
         services.AddScoped<IPlatformMonetizationService, PlatformMonetizationService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
@@ -111,7 +113,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILookupCacheService, LookupCacheService>();
 
         // Event-specific services
-        services.AddScoped<IEventRegistrationService, EventRegistrationService>();
         services.AddScoped<Explore.Blazor.Client.Contracts.Services.EventReporting.IEventReportingService, EventReportingService>();
         services.AddScoped<IEventReportModerationService, EventReportModerationService>();
         services.AddScoped<IEventSessionLanguageService, EventSessionLanguageService>();
@@ -179,6 +180,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<UiShellState>();
         services.AddScoped<IShellPreferencesService, ShellPreferencesService>();
         services.AddScoped<StudioEventContextState>();
+        services.AddScoped<IStudioContextService, StudioContextService>();
         services.AddScoped<IUiShellContextService, UiShellContextService>();
 
         // User-scoped settings (auth-branching: API for authenticated, localStorage for anonymous)

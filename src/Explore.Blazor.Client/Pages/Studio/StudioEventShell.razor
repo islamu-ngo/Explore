@@ -4,6 +4,7 @@
 @page "/studio/events/{EventId:guid}/schedule"
 @page "/studio/events/{EventId:guid}/registration"
 @page "/studio/events/{EventId:guid}/tickets"
+@page "/studio/events/{EventId:guid}/orders"
 @page "/studio/events/{EventId:guid}/publication"
 @using Blazouter.Services
 @using Microsoft.AspNetCore.Authorization
@@ -82,6 +83,19 @@
                                                       OnSaved="ReloadEventAsync" />
                 }
             }
+            else if (Section == "orders")
+            {
+                @if (!CanViewOrders)
+                {
+                    <div class="studio-event-shell__state" role="alert" data-testid="orders-route-unavailable">
+                        Registration orders are not available for this event.
+                    </div>
+                }
+                else
+                {
+                    <StudioOrderList EventId="EventId" />
+                }
+            }
             else
             {
                 <div class="studio-event-shell__actions">
@@ -109,6 +123,7 @@
         "schedule" => "Schedule",
         "registration" => "Registration",
         "tickets" => "Tickets",
+        "orders" => "Orders",
         "publication" => "Publication",
         _ => "Details"
     };
@@ -117,6 +132,7 @@
         "schedule" => "Manage this event's sessions in the existing event editor.",
         "registration" => "Define how people participate, whether advance registration applies, and which identity options are available.",
         "tickets" => "Define ticket types, shared capacity pools, prices, limits, and admission entitlements.",
+        "orders" => "Review registration order status and server-calculated commercial snapshots.",
         "publication" => "Review and edit publication details in the existing event editor.",
         _ => "Edit this event using the existing event editor."
     };
@@ -126,6 +142,7 @@
     private bool CanManageTicketTypes => Resource?.HasHalLink("manage-ticket-types") == true;
     private bool CanManageCapacityPools => Resource?.HasHalLink("manage-capacity-pools") == true;
     private bool CanManageTickets => CanManageTicketTypes || CanManageCapacityPools;
+    private bool CanViewOrders => Resource?.HasHalLink("view-registration-orders") == true;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -147,6 +164,7 @@
         return path.EndsWith("/schedule", StringComparison.OrdinalIgnoreCase) ? "schedule"
             : path.EndsWith("/registration", StringComparison.OrdinalIgnoreCase) ? "registration"
             : path.EndsWith("/tickets", StringComparison.OrdinalIgnoreCase) ? "tickets"
+            : path.EndsWith("/orders", StringComparison.OrdinalIgnoreCase) ? "orders"
             : path.EndsWith("/publication", StringComparison.OrdinalIgnoreCase) ? "publication"
             : "details";
     }

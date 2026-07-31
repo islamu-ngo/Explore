@@ -1,0 +1,31 @@
+/* ABOUTME: Scoped layout for capability-scoped guest registration-order recovery. */
+/* ABOUTME: Presents server lifecycle outcomes with tokenized spacing and logical layout. */
+
+.guest-order-recovery {
+    display: grid;
+    gap: var(--isl-space-section);
+    padding-block: var(--isl-space-page);
+}
+
+.guest-order-recovery__state,
+.guest-order-recovery__summary,
+.guest-order-recovery__details {
+    display: grid;
+    gap: var(--isl-space-3);
+    padding: var(--isl-space-4);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.guest-order-recovery__details ul {
+    display: grid;
+    gap: var(--isl-space-1);
+    margin: 0;
+    padding-inline-start: var(--isl-space-5);
+}
+
+.guest-order-recovery__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-3);
+}

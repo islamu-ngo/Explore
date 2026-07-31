@@ -1,0 +1,50 @@
+@* ABOUTME: Actor-level Studio orders link sourced exclusively from the private Studio HAL context. *@
+@* ABOUTME: Reloads when the active managed actor changes and fails closed on context errors. *@
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Services.Shell
+@implements IDisposable
+@inject IStudioContextService StudioContextService
+@inject UiShellState ShellState
+
+@if (_canViewOrders)
+{
+    <MudNavLink Href="/studio/orders"
+                Icon="@Icons.Material.Outlined.ReceiptLong"
+                Match="NavLinkMatch.Prefix"
+                data-testid="studio-orders-navigation-link">
+        Orders
+    </MudNavLink>
+}
+
+@code {
+    private bool _canViewOrders;
+    private long _loadVersion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ShellState.Changed += OnShellStateChanged;
+        await LoadAsync();
+    }
+
+    private void OnShellStateChanged() => _ = InvokeAsync(LoadAsync);
+
+    private async Task LoadAsync()
+    {
+        var version = Interlocked.Increment(ref _loadVersion);
+        var context = await StudioContextService.GetContextAsync(ShellState.ActiveActorId);
+        if (version != _loadVersion)
+        {
+            return;
+        }
+
+        _canViewOrders = context?._links?.ContainsKey("view-registration-orders") == true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ShellState.Changed -= OnShellStateChanged;
+        Interlocked.Increment(ref _loadVersion);
+        GC.SuppressFinalize(this);
+    }
+}

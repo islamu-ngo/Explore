@@ -30,10 +30,6 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
     [Inject] private IDialogService DialogService { get; set; } = default!;
     [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
     [Inject] private ILogger<EventPreviewWorkspace> Logger { get; set; } = default!;
-    [Inject] private IUserService UserService { get; set; } = default!;
-    [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
-    [Inject] private IContactShareConsentService ConsentService { get; set; } = default!;
-    [Inject] private IEventRegistrationService RegistrationService { get; set; } = default!;
 
     [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = default!;
     [Parameter] public IEnumerable<EventListDto> NavigationEvents { get; set; } = [];
@@ -53,19 +49,6 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
     private bool _isDetailImageLoading;
     private bool _eventCardClickOpensDetailPage;
     private bool _panelRegistered;
-    private HashSet<Guid> _registeredEventIds = [];
-    private bool _showInlineRegistration;
-    private bool _regIsLoading;
-    private bool _regIsSubmitting;
-    private bool _regIsComplete;
-    private bool _regIsAlreadyRegistered;
-    private bool _regIsWaitlisted;
-    private bool _regShowConsentOption;
-    private bool _regShareEmail;
-    private string _regOrganizerName = "";
-    private UserDto? _regCurrentUser;
-    private ICollection<EventSessionListDto>? _regAvailableSessions;
-    private HashSet<Guid> _regSelectedSessionIds = [];
     private bool _showTagCatPopup;
     private TagCategoryMode _tagCatMode;
     private IReadOnlyCollection<Guid> _tagCatInitialIds = Array.Empty<Guid>();
@@ -139,17 +122,12 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
 
     private bool CanNavigatePreviousEvent => GetAdjacentEvent(-1) is not null;
     private bool CanNavigateNextEvent => GetAdjacentEvent(1) is not null;
-    private bool _regAllSessionsSelected => EventListRegistrationWorkflow.AreAllSessionsSelected(
-        _regAvailableSessions,
-        _regSelectedSessionIds);
-
     protected override async Task OnInitializedAsync()
     {
         RegisterPreviewPanel();
         DockLayoutState.Changed += OnDockLayoutChanged;
 
         await LoadClickBehaviorAsync();
-        await LoadUserRegistrationsAsync();
     }
 
     public async Task SelectEventAsync(EventListDto evt)
@@ -170,7 +148,6 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
         _selectedEvent = evt;
         _selectedEventDetail = null;
         _selectedEventSessions = null;
-        _showInlineRegistration = false;
         _showTagCatPopup = false;
         _detailImageLoadFailed = false;
         _isDetailImageLoading = HasUsableFeaturedImage(evt);
@@ -283,37 +260,6 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
         }
     }
 
-    private async Task LoadUserRegistrationsAsync()
-    {
-        try
-        {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            if (authState.User.Identity?.IsAuthenticated != true)
-            {
-                return;
-            }
-
-            var user = await UserService.GetCurrentUserAsync();
-            if (user?.Id is not Guid userId)
-            {
-                return;
-            }
-
-            var registrations = await EventService.GetRegistrationsByUserAsync(userId);
-            var registrationLookup = EventListRegistrationWorkflow.BuildRegistrationLookup(registrations);
-            _registeredEventIds = registrationLookup.RegisteredEventIds;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to load user registrations for event preview workspace.");
-        }
-    }
-
-    private bool IsUserRegistered(Guid eventId)
-    {
-        return _registeredEventIds.Contains(eventId);
-    }
-
     private void RegisterPreviewPanel()
     {
         if (_panelRegistered)
@@ -351,7 +297,6 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
         _detailImageLoadFailed = false;
         _isDetailImageLoading = false;
         _isLoadingDetail = false;
-        _showInlineRegistration = false;
         _showTagCatPopup = false;
     }
 
@@ -360,7 +305,6 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
         var previous = GetAdjacentEvent(-1);
         if (previous is not null)
         {
-            _showInlineRegistration = false;
             _showTagCatPopup = false;
             await SelectEventAsync(previous);
         }
@@ -371,7 +315,6 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
         var next = GetAdjacentEvent(1);
         if (next is not null)
         {
-            _showInlineRegistration = false;
             _showTagCatPopup = false;
             await SelectEventAsync(next);
         }
@@ -470,159 +413,6 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
     {
         await InvokeAsync(StateHasChanged);
         DockLayoutState.Refresh();
-    }
-
-    private async Task OpenInlineRegistrationAsync()
-    {
-        if (_selectedEvent?.Id is not Guid eventId || _selectedEventDetail is null)
-        {
-            return;
-        }
-
-        if (_selectedEventDetail.HasHalLink("start-registration") != true &&
-            _selectedEventDetail.HasHalLink("sign-in-to-register") != true)
-        {
-            Snackbar.Add("Registration is unavailable for this event.", Severity.Warning);
-            return;
-        }
-
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        if (authState.User.Identity?.IsAuthenticated != true)
-        {
-            await AccessibilityFocusService.SaveFocusAsync();
-            var returnPath = EventUrlHelper.BuildPublicPath(_selectedEvent?.Slug, _selectedEvent?.PublicCode) ?? $"/events/{eventId}";
-            await LoginPromptDialog.ShowAsync(
-                DialogService,
-                returnPath,
-                "Sign in to register for this event. After you sign in, we will bring you back here to finish registration.");
-            await AccessibilityFocusService.RestoreFocusAsync();
-            return;
-        }
-
-        _showInlineRegistration = true;
-        _regIsLoading = true;
-        _regIsComplete = false;
-        _regIsAlreadyRegistered = false;
-        _regIsWaitlisted = false;
-        _regShareEmail = false;
-        _regShowConsentOption = false;
-        _regSelectedSessionIds.Clear();
-        await RefreshDetailPreviewAsync();
-
-        try
-        {
-            if (IsUserRegistered(eventId))
-            {
-                _regIsAlreadyRegistered = true;
-                _regIsLoading = false;
-                return;
-            }
-
-            _regAvailableSessions = _selectedEventSessions;
-            _regSelectedSessionIds = EventListRegistrationWorkflow.GetSelectableSessionIds(_regAvailableSessions);
-            _regCurrentUser = await UserService.GetCurrentUserAsync();
-            _regOrganizerName = _selectedEventDetail.ActorDisplayName ?? "the organizer";
-
-            if (_selectedEventDetail.ActorId.HasValue)
-            {
-                try
-                {
-                    var hasConsent = await ConsentService.CheckConsentForOrganizerAsync(_selectedEventDetail.ActorId.Value);
-                    _regShowConsentOption = !hasConsent;
-                }
-                catch
-                {
-                    _regShowConsentOption = false;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error opening inline registration from event preview workspace.");
-            Snackbar.Add("Could not load registration form.", Severity.Error);
-            _showInlineRegistration = false;
-        }
-        finally
-        {
-            _regIsLoading = false;
-            await RefreshDetailPreviewAsync();
-        }
-    }
-
-    private async Task CloseInlineRegistrationAsync()
-    {
-        _showInlineRegistration = false;
-        _regIsComplete = false;
-        _regIsAlreadyRegistered = false;
-        _regIsWaitlisted = false;
-        await RefreshDetailPreviewAsync();
-    }
-
-    private async Task SetRegShareEmailAsync(bool value)
-    {
-        _regShareEmail = value;
-        await RefreshDetailPreviewAsync();
-    }
-
-    private async Task ToggleRegSessionAsync(Guid sessionId)
-    {
-        _regSelectedSessionIds = EventListRegistrationWorkflow.ToggleSession(_regSelectedSessionIds, sessionId);
-        await RefreshDetailPreviewAsync();
-    }
-
-    private async Task ToggleRegAllSessionsAsync()
-    {
-        _regSelectedSessionIds = EventListRegistrationWorkflow.ToggleAllSessions(
-            _regAvailableSessions,
-            _regSelectedSessionIds);
-        await RefreshDetailPreviewAsync();
-    }
-
-    private async Task HandleInlineRegistrationSubmitAsync()
-    {
-        if (_selectedEvent?.Id is not Guid eventId || _regCurrentUser is null || !_regSelectedSessionIds.Any())
-        {
-            return;
-        }
-
-        _regIsSubmitting = true;
-        await RefreshDetailPreviewAsync();
-
-        try
-        {
-            var dto = EventListRegistrationWorkflow.BuildRegistrationRequest(
-                eventId,
-                _regCurrentUser.Id,
-                _regAvailableSessions,
-                _regSelectedSessionIds,
-                _selectedEventDetail?.RegistrationPolicyId,
-                _regShareEmail,
-                _regOrganizerName);
-
-            var response = await RegistrationService.RegisterForSessionAsync(dto);
-            var outcome = EventListRegistrationWorkflow.ResolveOutcome(response);
-            if (outcome.IsSuccessful)
-            {
-                _regIsWaitlisted = outcome.IsWaitlisted;
-                _regIsAlreadyRegistered = outcome.IsAlreadyRegistered;
-                _regIsComplete = !outcome.IsAlreadyRegistered;
-                _registeredEventIds.Add(eventId);
-                Snackbar.Add(outcome.SnackbarMessage, outcome.SnackbarSeverity);
-                return;
-            }
-
-            Snackbar.Add(outcome.SnackbarMessage, outcome.SnackbarSeverity);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error during inline registration from event preview workspace.");
-            Snackbar.Add("Registration failed. Please try again.", Severity.Error);
-        }
-        finally
-        {
-            _regIsSubmitting = false;
-            await RefreshDetailPreviewAsync();
-        }
     }
 
     private async Task SetTagCategoryPopupVisibleAsync(bool value)

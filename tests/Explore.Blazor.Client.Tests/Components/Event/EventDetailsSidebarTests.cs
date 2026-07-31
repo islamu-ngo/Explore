@@ -18,30 +18,6 @@ public sealed class EventDetailsSidebarTests : IDisposable
     }
 
     [Test]
-    public async Task Render_WhenStartRegistrationHalLinkExists_ShowsNativeRegistrationAction()
-    {
-        var eventId = Guid.NewGuid();
-
-        var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
-            .Add(component => component.SelectedEvent, CreateEventListItem(eventId))
-            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeStartRegistrationLink: true)));
-
-        await Assert.That(cut.Markup).Contains("Register for this Event");
-    }
-
-    [Test]
-    public async Task Render_WhenSignInToRegisterHalLinkExists_ShowsNativeRegistrationAction()
-    {
-        var eventId = Guid.NewGuid();
-
-        var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
-            .Add(component => component.SelectedEvent, CreateEventListItem(eventId))
-            .Add(component => component.EventDetail, CreateEventDetail(eventId, "sign-in-to-register")));
-
-        await Assert.That(cut.Markup).Contains("Register for this Event");
-    }
-
-    [Test]
     public async Task Render_WhenParticipationLinksAreMissing_HidesParticipationActions()
     {
         var eventId = Guid.NewGuid();

@@ -25,21 +25,6 @@ public partial class EventDetailsSidebar : ComponentBase
     [Parameter] public bool IsDetailImageLoading { get; set; }
     [Parameter] public bool CanNavigatePrevious { get; set; }
     [Parameter] public bool CanNavigateNext { get; set; }
-    [Parameter] public bool IsUserRegistered { get; set; }
-
-    [Parameter] public bool ShowInlineRegistration { get; set; }
-    [Parameter] public bool RegIsLoading { get; set; }
-    [Parameter] public bool RegIsSubmitting { get; set; }
-    [Parameter] public bool RegIsComplete { get; set; }
-    [Parameter] public bool RegIsAlreadyRegistered { get; set; }
-    [Parameter] public bool RegIsWaitlisted { get; set; }
-    [Parameter] public bool RegShowConsentOption { get; set; }
-    [Parameter] public bool RegShareEmail { get; set; }
-    [Parameter] public string RegOrganizerName { get; set; } = string.Empty;
-    [Parameter] public ICollection<EventSessionListDto>? RegAvailableSessions { get; set; }
-    [Parameter] public IReadOnlySet<Guid> RegSelectedSessionIds { get; set; } = new HashSet<Guid>();
-    [Parameter] public bool RegAllSessionsSelected { get; set; }
-
     [Parameter] public bool TagCategoryPopupVisible { get; set; }
     [Parameter] public TagCategoryMode TagCategoryMode { get; set; }
     [Parameter] public IReadOnlyCollection<Guid> TagCategoryInitialAppliedIds { get; set; } = Array.Empty<Guid>();
@@ -53,13 +38,7 @@ public partial class EventDetailsSidebar : ComponentBase
     [Parameter] public EventCallback OnDetailImageError { get; set; }
     [Parameter] public EventCallback<EventListDto> OnEditRequested { get; set; }
     [Parameter] public EventCallback<EventListDto> OnDeleteRequested { get; set; }
-    [Parameter] public EventCallback OnOpenInlineRegistration { get; set; }
-    [Parameter] public EventCallback OnCloseInlineRegistration { get; set; }
-    [Parameter] public EventCallback OnSubmitInlineRegistration { get; set; }
     [Parameter] public EventCallback OnShareSelectedEvent { get; set; }
-    [Parameter] public EventCallback OnToggleRegAllSessions { get; set; }
-    [Parameter] public EventCallback<Guid> OnToggleRegSession { get; set; }
-    [Parameter] public EventCallback<bool> RegShareEmailChanged { get; set; }
     [Parameter] public EventCallback OnOpenTagManagement { get; set; }
     [Parameter] public EventCallback OnOpenCategoryManagement { get; set; }
     [Parameter] public EventCallback<bool> TagCategoryPopupVisibleChanged { get; set; }
@@ -97,10 +76,6 @@ public partial class EventDetailsSidebar : ComponentBase
 
     private string ExternalEventLinkLabel =>
         $"Open {SelectedEvent?.Title} on its external platform in a new tab";
-
-    private bool CanRegisterSelectedEvent =>
-        EventDetail?.HasHalLink("start-registration") == true ||
-        EventDetail?.HasHalLink("sign-in-to-register") == true;
 
     private string? ExternalParticipationUrl
     {
@@ -143,12 +118,6 @@ public partial class EventDetailsSidebar : ComponentBase
 
     private async Task HandleCloseClickAsync()
     {
-        if (ShowInlineRegistration)
-        {
-            await OnCloseInlineRegistration.InvokeAsync();
-            return;
-        }
-
         if (TagCategoryPopupVisible)
         {
             await TagCategoryPopupVisibleChanged.InvokeAsync(false);

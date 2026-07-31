@@ -1,0 +1,130 @@
+@* ABOUTME: Guest registration-order recovery page using only the opaque in-memory capability header. *@
+@* ABOUTME: Uses server lifecycle responses and DTO contribution options without locally calculating amounts. *@
+@page "/registration/guest/events/{EventId:guid}/orders/{OrderId:guid}"
+@using Explore.Blazor.Client.Helpers
+@rendermode InteractiveServer
+@inject IRegistrationOrderService RegistrationOrderService
+@inject IGuestRegistrationOrderCapabilityStore CapabilityStore
+@implements IDisposable
+
+<PageTitle>Guest registration order</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="guest-order-recovery">
+    <MudText Typo="Typo.h4" HtmlTag="h1">Guest registration order</MudText>
+
+    @if (_isLoading)
+    {
+        <div class="guest-order-recovery__state" role="status">Loading your registration order…</div>
+    }
+    else if (_order is null)
+    {
+        <div class="guest-order-recovery__state" role="alert">@(_error ?? "This registration order is unavailable.")</div>
+    }
+    else
+    {
+        <section class="guest-order-recovery__summary" aria-labelledby="guest-order-status">
+            <MudText Id="guest-order-status" Typo="Typo.h5" HtmlTag="h2">@(_order.StatusName ?? _order.StatusCode ?? "Status unavailable")</MudText>
+            <MudText Typo="Typo.body1">@RegistrationOrderRecovery.Guidance(_order.StatusCode)</MudText>
+            @if (RegistrationOrderRecovery.Countdown(_order.ExpiresAt, DateTimeOffset.UtcNow) is { } countdown)
+            {
+                <MudText Typo="Typo.body2" role="status">@countdown</MudText>
+            }
+        </section>
+
+        <section class="guest-order-recovery__details" aria-labelledby="guest-order-details">
+            <MudText Id="guest-order-details" Typo="Typo.h5" HtmlTag="h2">Order details</MudText>
+            <ul>
+                @foreach (var line in _order.Lines ?? [])
+                {
+                    <li>@(line.Quantity ?? 0) × @(line.TicketTypeName ?? "Ticket") — @RegistrationOrderMoneyFormatter.Format(line.SubtotalMinor, line.CurrencyCode ?? _order.CurrencyCode)</li>
+                }
+            </ul>
+            <MudText Typo="Typo.body1">Total due: @RegistrationOrderMoneyFormatter.Format(_order.TotalDueMinor, _order.CurrencyCode)</MudText>
+        </section>
+
+        @if (_order.PlatformContribution?.Options is { Count: > 0 })
+        {
+            <MudSelect T="int?" Label="Platform contribution" @bind-Value="_contributionBasisPoints">
+                @foreach (var option in _order.PlatformContribution.Options)
+                {
+                    <MudSelectItem Value="@option.ContributionBasisPoints">@FormatPercentage(option.ContributionBasisPoints) — @RegistrationOrderMoneyFormatter.Format(option.AmountMinor, _order.CurrencyCode)</MudSelectItem>
+                }
+            </MudSelect>
+        }
+
+        <div class="guest-order-recovery__actions">
+            @if (CanContinue)
+            {
+                <AppButton OnClick="ContinueAsync">Continue registration</AppButton>
+            }
+            @if (CanFinalize)
+            {
+                <AppButton OnClick="FinalizeAsync">Finalize registration</AppButton>
+            }
+            @if (CanCancel)
+            {
+                <AppButton Variant="Variant.Outlined" Color="Color.Error" OnClick="CancelAsync">Cancel registration order</AppButton>
+            }
+        </div>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+    [Parameter] public Guid OrderId { get; set; }
+
+    private GuestRegistrationOrderCapability? _capability;
+    private HalResourceOfGuestRegistrationOrderDto? _order;
+    private bool _isLoading = true;
+    private string? _error;
+    private int? _contributionBasisPoints;
+    private Timer? _timer;
+
+    private bool CanContinue => _order?._links?.ContainsKey("continue") == true;
+    private bool CanFinalize => _order?._links?.ContainsKey("finalize") == true;
+    private bool CanCancel => _order?._links?.ContainsKey("cancel") == true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _capability = CapabilityStore.TryGet(EventId, OrderId, out var capability) ? capability : null;
+        if (_capability is null)
+        {
+            _error = "Open this order from the same guest registration session to continue securely.";
+            _isLoading = false;
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _order = await RegistrationOrderService.GetGuestAsync(EventId, OrderId, _capability!);
+        _contributionBasisPoints = _order?.PlatformContribution?.SelectedBasisPoints;
+        _isLoading = false;
+        _timer?.Dispose();
+        _timer = _order?.ExpiresAt is null ? null : new Timer(_ => _ = InvokeAsync(StateHasChanged), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
+    private async Task ContinueAsync() => await ApplyAsync(() => RegistrationOrderService.ContinueGuestAsync(EventId, OrderId, _capability!, _contributionBasisPoints));
+    private async Task FinalizeAsync() => await ApplyAsync(() => RegistrationOrderService.FinalizeGuestAsync(EventId, OrderId, _capability!));
+    private async Task CancelAsync() => await ApplyAsync(() => RegistrationOrderService.CancelGuestAsync(EventId, OrderId, _capability!));
+
+    private async Task ApplyAsync(Func<Task<GuestRegistrationOrderLifecycleResponse?>> operation)
+    {
+        var response = await operation();
+        if (response?.Order is not null)
+        {
+            await LoadAsync();
+        }
+        else
+        {
+            _error = response?.Message ?? "This registration order could not be updated.";
+        }
+    }
+
+    private static string FormatPercentage(int? basisPoints) => $"{basisPoints.GetValueOrDefault() / 100m:0.##}%";
+
+    public void Dispose() => _timer?.Dispose();
+}

@@ -50,6 +50,12 @@
                     Tickets
                 </MudNavLink>
             }
+            @if (Resource.HasHalLink("view-registration-orders"))
+            {
+                <MudNavLink Href="@($"{StudioRoute}/orders")" Icon="@Icons.Material.Outlined.ReceiptLong" Match="NavLinkMatch.All" data-event-section="orders">
+                    Orders
+                </MudNavLink>
+            }
             @if (Resource.HasHalLink("publish-readiness"))
             {
                 <MudNavLink Href="@($"{StudioRoute}/publication")" Icon="@Icons.Material.Outlined.Publish" Match="NavLinkMatch.All" data-event-section="publication">
