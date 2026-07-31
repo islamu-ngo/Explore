@@ -13,6 +13,9 @@ public sealed class CreateRegistrationOrderWithHoldCommandValidator : AbstractVa
         RuleFor(command => command.EventId).NotEmpty();
         RuleFor(command => command.TicketCatalogVersionId).NotEmpty();
         RuleFor(command => command.BookingPartyType).IsInEnum();
+        RuleFor(command => command.PlatformContributionBasisPoints)
+            .InclusiveBetween(0, 10_000)
+            .When(command => command.PlatformContributionBasisPoints.HasValue);
         RuleFor(command => command.Lines).NotEmpty();
         RuleForEach(command => command.Lines).ChildRules(line =>
         {

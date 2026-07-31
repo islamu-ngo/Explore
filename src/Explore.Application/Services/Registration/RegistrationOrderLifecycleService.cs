@@ -13,17 +13,29 @@ namespace Explore.Application.Services.Registration;
 public sealed class RegistrationOrderLifecycleService(
     IRegistrationInventoryRepository inventory,
     IEventTicketCatalogRepository catalogs,
+    IPlatformContributionSettingRepository contributionSettings,
     IEventSessionRepository eventSessions,
     IOutboxRepository outbox,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider) : IRegistrationOrderLifecycleService
 {
-    public async Task<RegistrationOrderLifecycleResponse> SubmitAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
+    public Task<RegistrationOrderLifecycleResponse> SubmitAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken) => SubmitAsync(orderId, tenantId, null, cancellationToken);
+
+    public async Task<RegistrationOrderLifecycleResponse> SubmitAsync(
+        Guid orderId,
+        Guid tenantId,
+        int? platformContributionBasisPoints,
+        CancellationToken cancellationToken)
     {
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         return await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(orderId, tenantId, token);
+            RegistrationOrder? order = platformContributionBasisPoints.HasValue
+                ? await inventory.GetOrderForUpdateWithLinesAsync(orderId, tenantId, token)
+                : await inventory.GetOrderWithLinesAsync(orderId, tenantId, token);
             if (order is null)
             {
                 return Missing(orderId);
@@ -33,6 +45,51 @@ public sealed class RegistrationOrderLifecycleService(
             if (status != RegistrationOrderStatusEnum.AwaitingParticipantDetails)
             {
                 return Success(order, status, "Registration order is already submitted.");
+            }
+
+            if (platformContributionBasisPoints.HasValue)
+            {
+                if (platformContributionBasisPoints is < 0 or > 10_000)
+                {
+                    return Failure(orderId, order, "Platform contribution percentage is invalid.");
+                }
+
+                RegistrationOrderPlatformContribution? contribution = null;
+                if (platformContributionBasisPoints > 0)
+                {
+                    if (order.OrganizerDirectedTotalMinorSnapshot == 0)
+                    {
+                        return Failure(orderId, order, "Platform contributions require an existing payable order total.");
+                    }
+
+                    PlatformContributionSetting? setting = await contributionSettings.GetActiveAsync(token);
+                    if (setting is null || !setting.IsEnabled)
+                    {
+                        return Failure(orderId, order, "Platform contributions are not enabled.");
+                    }
+
+                    if (setting.Options.All(option => option.ContributionBasisPoints != platformContributionBasisPoints.Value))
+                    {
+                        return Failure(orderId, order, "Platform contribution percentage is invalid.");
+                    }
+
+                    contribution = RegistrationOrderPlatformContribution.CreateOrNull(
+                        order.Id,
+                        order.TenantId,
+                        setting,
+                        platformContributionBasisPoints.Value,
+                        order.OrganizerDirectedTotalMinorSnapshot,
+                        order.CurrencyCode);
+                }
+
+                order.SetPlatformContribution(contribution);
+                order.ApplyTotals(RegistrationOrderTotalsSnapshot.Create(
+                    order.CurrencyCode,
+                    order.OrganizerDirectedTotalMinorSnapshot,
+                    order.PlatformFeeTotalMinorSnapshot,
+                    order.OrganizerEarningsTotalMinorSnapshot,
+                    contribution?.AmountMinor ?? 0));
+                await inventory.SaveChangesAsync(token);
             }
 
             bool transitioned = await inventory.TryTransitionOrderAsync(
@@ -360,8 +417,11 @@ public sealed class RegistrationOrderLifecycleService(
                 }
 
                 IReadOnlyList<RegistrationInventoryHold> holds = await inventory.GetHoldsByOrderAsync(order.Id, tenantId, token);
-                if (!HasValidActiveHolds(holds, plan.CapacityReservations, now)
-                    || await inventory.TryConsumeActiveHoldsForOrderAsync(order.Id, tenantId, now, token) != holds.Count)
+                RegistrationInventoryHold[] activeHolds = holds
+                    .Where(hold => hold.RegistrationInventoryHoldStatusId == (int)RegistrationInventoryHoldStatusEnum.Active)
+                    .ToArray();
+                if (!HasValidActiveHolds(activeHolds, plan.CapacityReservations, now)
+                    || await inventory.TryConsumeActiveHoldsForOrderAsync(order.Id, tenantId, now, token) != activeHolds.Length)
                 {
                     throw new LifecycleRaceException();
                 }
@@ -478,7 +538,13 @@ public sealed class RegistrationOrderLifecycleService(
     public async Task<RegistrationOrderDto?> GetAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
     {
         RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(orderId, tenantId, cancellationToken);
-        return order is null ? null : RegistrationOrderDto.From(order);
+        if (order is null)
+        {
+            return null;
+        }
+
+        PlatformContributionSetting? contributionSetting = await contributionSettings.GetActiveAsync(cancellationToken);
+        return RegistrationOrderDto.From(order, contributionSetting: contributionSetting);
     }
 
     public async Task<IReadOnlyList<RegistrationOrderDto>> GetByEventAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken)

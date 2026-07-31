@@ -18,6 +18,11 @@ public interface IRegistrationInventoryRepository
         Guid tenantId,
         CancellationToken cancellationToken);
 
+    Task<RegistrationOrder?> GetOrderForUpdateWithLinesAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<RegistrationInventoryHold>> GetHoldsByOrderAsync(
         Guid orderId,
         Guid tenantId,
@@ -26,6 +31,23 @@ public interface IRegistrationInventoryRepository
     Task<IReadOnlyList<RegistrationOrder>> GetOrdersByEventAsync(
         Guid eventId,
         Guid tenantId,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<Guid>> GetRegisteredUserFanoutBatchAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid? afterUserId,
+        int batchSize,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<NotificationFanoutAudienceMember>> GetNotificationFanoutAudienceBatchAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid? sessionId,
+        DateTime audienceCutoffAt,
+        int deliveryPolicyId,
+        NotificationFanoutAudienceCursor? cursor,
+        int batchSize,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<EventCapacityPool>> GetPoolsForUpdateAsync(

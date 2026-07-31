@@ -2,6 +2,7 @@
 // ABOUTME: Verifies free admission materialization, hold release, and approval routing without API exposure.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -19,8 +20,39 @@ public sealed class RegistrationOrderLifecycleServiceTests
     private readonly Guid _eventId = Guid.CreateVersion7();
     private readonly IRegistrationInventoryRepository _inventory = Substitute.For<IRegistrationInventoryRepository>();
     private readonly IEventTicketCatalogRepository _catalogs = Substitute.For<IEventTicketCatalogRepository>();
+    private readonly IPlatformContributionSettingRepository _contributionSettings = Substitute.For<IPlatformContributionSettingRepository>();
     private readonly IEventSessionRepository _sessions = Substitute.For<IEventSessionRepository>();
     private readonly IOutboxRepository _outbox = Substitute.For<IOutboxRepository>();
+
+    [Test]
+    public async Task SubmitAsyncWithContributionPersistsServerComputedSnapshotBeforeAdvancing()
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(unitPriceMinor: 1_000);
+        MoveTo(order, RegistrationOrderStatusEnum.AwaitingParticipantDetails);
+        PlatformContributionSetting setting = PlatformContributionSetting.CreateInitial(
+            true,
+            "Support the platform",
+            "Optional contribution",
+            [PlatformContributionOption.Create(0, 0, true), PlatformContributionOption.Create(1_000, 1, false)]);
+        ConfigureOrder(order, []);
+        _inventory.GetOrderForUpdateWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
+        _contributionSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(setting);
+        _inventory.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+
+        RegistrationOrderLifecycleResponse result = await CreateService().SubmitAsync(
+            order.Id,
+            _tenantId,
+            1_000,
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingRequirements);
+        await Assert.That(order.PlatformContribution!.AmountMinor).IsEqualTo(100);
+        await Assert.That(order.OrganizerDirectedTotalMinorSnapshot).IsEqualTo(1_000);
+        await Assert.That(order.OrganizerEarningsTotalMinorSnapshot).IsEqualTo(1_000);
+        await Assert.That(order.TotalDueMinorSnapshot).IsEqualTo(1_100);
+        _ = _inventory.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
 
     [Test]
     public async Task FinalizeFreeAsyncWhenReadyConsumesHoldsCreatesAdmissionsAndWritesConfirmationOutbox()
@@ -79,6 +111,39 @@ public sealed class RegistrationOrderLifecycleServiceTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.ReadyForCheckout);
+        await _inventory.DidNotReceive().AddEventRegistrationsAsync(
+            Arg.Any<IReadOnlyCollection<EventRegistration>>(),
+            Arg.Any<CancellationToken>());
+        await _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task FinalizeFreeAsyncWhenCapacityBackedLineHasOnlyExpiredHoldDoesNotConfirm()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(capacityBacked: true);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        RegistrationInventoryHold expiredHold = RegistrationInventoryHold.Create(
+            order.Id,
+            ticket.CapacityPoolId!.Value,
+            ticket.Id,
+            _tenantId,
+            1,
+            UtcNow.AddMinutes(-15),
+            UtcNow.AddMinutes(-1));
+        expiredHold.TryExpire(UtcNow);
+        ConfigureOrder(order, [expiredHold]);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+
+        var result = await CreateService().FinalizeFreeAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.NeedsReconciliation);
+        await _inventory.DidNotReceive().TryConsumeActiveHoldsForOrderAsync(
+            order.Id,
+            _tenantId,
+            UtcNow,
+            Arg.Any<CancellationToken>());
         await _inventory.DidNotReceive().AddEventRegistrationsAsync(
             Arg.Any<IReadOnlyCollection<EventRegistration>>(),
             Arg.Any<CancellationToken>());
@@ -576,6 +641,70 @@ public sealed class RegistrationOrderLifecycleServiceTests
     }
 
     [Test]
+    public async Task RecoverExpiredHoldAsyncThenFinalizeFreeAsyncConsumesOnlyTheReplacementActiveHold()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(capacityBacked: true);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        order.TransitionTo(RegistrationOrderStatusEnum.NeedsReconciliation, UtcNow);
+        RegistrationInventoryHold expiredHold = RegistrationInventoryHold.Create(
+            order.Id,
+            ticket.CapacityPoolId!.Value,
+            ticket.Id,
+            _tenantId,
+            1,
+            UtcNow.AddMinutes(-15),
+            UtcNow.AddMinutes(-1));
+        expiredHold.TryExpire(UtcNow);
+        var holds = new List<RegistrationInventoryHold> { expiredHold };
+        var admissions = new List<EventRegistration>();
+        RegistrationInventoryHold? replacementHold = null;
+        ConfigureOrder(order, holds);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+        _inventory.ReserveRecoveredHoldsAsync(
+                _eventId,
+                _tenantId,
+                Arg.Any<IReadOnlyCollection<RegistrationInventoryReservation>>(),
+                UtcNow,
+                Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                replacementHold = RegistrationInventoryHold.Create(
+                    order.Id,
+                    ticket.CapacityPoolId!.Value,
+                    ticket.Id,
+                    _tenantId,
+                    1,
+                    UtcNow,
+                    UtcNow.AddMinutes(15));
+                holds.Add(replacementHold);
+                return new RegistrationInventoryReservationResult(Reserved: true, RequiresApproval: false, ShouldWaitlist: false);
+            });
+        _inventory.TryConsumeActiveHoldsForOrderAsync(order.Id, _tenantId, UtcNow, Arg.Any<CancellationToken>())
+            .Returns(_ => holds.Count(hold => hold.TryConsume(UtcNow)));
+        _inventory.AddEventRegistrationsAsync(Arg.Any<IReadOnlyCollection<EventRegistration>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                admissions.AddRange(call.ArgAt<IReadOnlyCollection<EventRegistration>>(0));
+                return Task.CompletedTask;
+            });
+        _outbox.Create(Arg.Any<OutboxMessage>()).Returns(call => Task.FromResult(call.ArgAt<OutboxMessage>(0)));
+
+        var recovery = await CreateService().RecoverExpiredHoldAsync(order.Id, _tenantId, CancellationToken.None);
+        var finalization = await CreateService().FinalizeFreeAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(recovery.Success).IsTrue();
+        await Assert.That(finalization.Success).IsTrue();
+        await Assert.That(finalization.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.Confirmed);
+        await Assert.That(expiredHold.RegistrationInventoryHoldStatusId).IsEqualTo((int)RegistrationInventoryHoldStatusEnum.Expired);
+        await Assert.That(replacementHold!.RegistrationInventoryHoldStatusId).IsEqualTo((int)RegistrationInventoryHoldStatusEnum.Consumed);
+        await Assert.That(admissions).HasSingleItem();
+        await _inventory.Received(1).TryConsumeActiveHoldsForOrderAsync(order.Id, _tenantId, UtcNow, Arg.Any<CancellationToken>());
+        await _inventory.Received(1).AddEventRegistrationsAsync(Arg.Any<IReadOnlyCollection<EventRegistration>>(), Arg.Any<CancellationToken>());
+        await _outbox.Received(1).Create(Arg.Is<OutboxMessage>(message => message.EventType == "RegistrationOrderConfirmed"));
+    }
+
+    [Test]
     public async Task RecoverExpiredHoldAsyncWhenWaitlistPolicyIsFullTransitionsToWaitlistedWithoutOversell()
     {
         (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(
@@ -661,6 +790,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
     private RegistrationOrderLifecycleService CreateService(IUnitOfWork? unitOfWork = null) => new(
         _inventory,
         _catalogs,
+        _contributionSettings,
         _sessions,
         _outbox,
         unitOfWork ?? new InlineUnitOfWork(),

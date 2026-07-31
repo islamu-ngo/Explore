@@ -275,6 +275,10 @@ public static class LinkRelations
     /// </summary>
     public const string Cancel = "cancel";
 
+    public const string Continue = "continue";
+
+    public const string Finalize = "finalize";
+
     public const string Complete = "complete";
 
     /// <summary>
@@ -319,7 +323,9 @@ public static class LinkRelations
     public const string CreateTicketType = "create-type";
     public const string CreateCapacityPool = "create-pool";
     public const string StartRegistration = "start-registration";
+    public const string StartGuestRegistration = "start-guest-registration";
     public const string SignInToRegister = "sign-in-to-register";
+    public const string ViewRegistrationOrders = "view-registration-orders";
     public const string ViewOriginalSource = "view-original-source";
     public const string ExternalEventPage = "external-event-page";
     public const string ExternalRegistration = "external-registration";

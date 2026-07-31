@@ -24,6 +24,8 @@ public sealed class CreateRegistrationOrderWithHoldCommand : IRequest<BaseComman
 
     public CapabilityTokenHash? GuestAccessTokenHash { get; init; }
 
+    public int? PlatformContributionBasisPoints { get; init; }
+
     public required IReadOnlyList<RegistrationOrderLineSelection> Lines { get; init; }
 }
 

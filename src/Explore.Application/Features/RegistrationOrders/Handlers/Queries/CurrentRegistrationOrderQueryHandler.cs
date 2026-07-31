@@ -1,0 +1,32 @@
+// ABOUTME: Returns a registration order only to its currently authenticated account owner.
+// ABOUTME: Leaves organizer and broader order-management authorization to the later policy/HAL slice.
+
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Features.RegistrationOrders.Handlers;
+using Explore.Application.Features.RegistrationOrders.Requests.Queries;
+using MediatR;
+
+namespace Explore.Application.Features.RegistrationOrders.Handlers.Queries;
+
+public sealed class GetCurrentRegistrationOrderQueryHandler(
+    IRegistrationInventoryRepository inventory,
+    IRegistrationOrderLifecycleService lifecycle,
+    ITenantContext tenant,
+    ICurrentUserService currentUser)
+    : IRequestHandler<GetCurrentRegistrationOrderQuery, RegistrationOrderDto?>
+{
+    public async Task<RegistrationOrderDto?> Handle(GetCurrentRegistrationOrderQuery request, CancellationToken cancellationToken)
+    {
+        return await RegistrationOrderAccessGuard.GetCurrentAccountOrderAsync(
+            inventory,
+            currentUser,
+            tenant.TenantId,
+            request.OrderId,
+            cancellationToken) is null
+            ? null
+            : await lifecycle.GetAsync(request.OrderId, tenant.TenantId, cancellationToken);
+    }
+}

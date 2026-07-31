@@ -1,0 +1,126 @@
+// ABOUTME: Centralizes tenant, event, account, expiry, and capability checks for order-facing CQRS wrappers.
+// ABOUTME: Returns no distinction between malformed, missing, cross-scope, expired, and mismatched guest access.
+
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Features.RegistrationOrders.Requests.Commands;
+using Explore.Application.Features.RegistrationOrders.Validators;
+using Explore.Domain;
+
+namespace Explore.Application.Features.RegistrationOrders.Handlers;
+
+internal static class RegistrationOrderAccessGuard
+{
+    public static async Task<RegistrationOrder?> GetGuestOrderAsync(
+        IRegistrationInventoryRepository inventory,
+        IGuestCapabilityTokenService capabilities,
+        Guid tenantId,
+        Guid eventId,
+        Guid orderId,
+        string? capabilityToken,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
+    {
+        RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(orderId, tenantId, cancellationToken);
+        if (order is null || order.EventId != eventId || order.GuestAccessTokenHash is null ||
+            order.ExpiresAt is { } expiresAt && expiresAt <= timeProvider.GetUtcNow().UtcDateTime)
+        {
+            return null;
+        }
+
+        return capabilities.Matches(capabilityToken, order.GuestAccessTokenHash) ? order : null;
+    }
+
+    public static async Task<RegistrationOrder?> GetCurrentAccountOrderAsync(
+        IRegistrationInventoryRepository inventory,
+        ICurrentUserService currentUser,
+        Guid tenantId,
+        Guid orderId,
+        CancellationToken cancellationToken) => await GetCurrentAccountOrderAsync(
+        inventory,
+        currentUser,
+        tenantId,
+        eventId: null,
+        orderId,
+        cancellationToken);
+
+    public static async Task<RegistrationOrder?> GetCurrentAccountOrderAsync(
+        IRegistrationInventoryRepository inventory,
+        ICurrentUserService currentUser,
+        Guid tenantId,
+        Guid? eventId,
+        Guid orderId,
+        CancellationToken cancellationToken)
+    {
+        if (!currentUser.IsAuthenticated || currentUser.UserId is not { } userId)
+        {
+            return null;
+        }
+
+        RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(orderId, tenantId, cancellationToken);
+        return order?.AccountUserId == userId && (!eventId.HasValue || order.EventId == eventId.Value) ? order : null;
+    }
+
+    public static async Task<RegistrationOrderLifecycleResponse> ExecuteGuestAsync<TCommand>(
+        TCommand request,
+        IRegistrationInventoryRepository inventory,
+        IGuestCapabilityTokenService capabilities,
+        ITenantContext tenant,
+        TimeProvider timeProvider,
+        Func<Guid, Guid, CancellationToken, Task<RegistrationOrderLifecycleResponse>> action,
+        CancellationToken cancellationToken)
+        where TCommand : IGuestRegistrationOrderAccessCommand
+    {
+        if (!(await new GuestRegistrationOrderAccessCommandValidator<TCommand>()
+                .ValidateAsync(request, cancellationToken)).IsValid ||
+            await GetGuestOrderAsync(
+                inventory,
+                capabilities,
+                tenant.TenantId,
+                request.EventId,
+                request.OrderId,
+                request.CapabilityToken,
+                timeProvider,
+                cancellationToken) is null)
+        {
+            return NotFound(request.OrderId);
+        }
+
+        return await action(request.OrderId, tenant.TenantId, cancellationToken);
+    }
+
+    public static async Task<RegistrationOrderLifecycleResponse> ExecuteCurrentAccountAsync<TCommand>(
+        TCommand request,
+        IRegistrationInventoryRepository inventory,
+        ITenantContext tenant,
+        ICurrentUserService currentUser,
+        Func<Guid, Guid, CancellationToken, Task<RegistrationOrderLifecycleResponse>> action,
+        CancellationToken cancellationToken)
+        where TCommand : IAuthenticatedRegistrationOrderAccessCommand
+    {
+        if (!(await new AuthenticatedRegistrationOrderAccessCommandValidator<TCommand>()
+                .ValidateAsync(request, cancellationToken)).IsValid ||
+            await GetCurrentAccountOrderAsync(
+                inventory,
+                currentUser,
+                tenant.TenantId,
+                request.EventId,
+                request.OrderId,
+                cancellationToken) is null)
+        {
+            return NotFound(request.OrderId);
+        }
+
+        return await action(request.OrderId, tenant.TenantId, cancellationToken);
+    }
+
+    public static RegistrationOrderLifecycleResponse NotFound(Guid orderId) => new()
+    {
+        Id = orderId,
+        Success = false,
+        FailureCode = "registration_order_not_found",
+        Message = "Registration order was not found."
+    };
+}

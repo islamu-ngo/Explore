@@ -23,6 +23,7 @@ using Explore.Application.Features.Footer.Handlers.Commands;
 using Explore.Application.Features.ManagedProviderProvisioning;
 using Explore.Application.Features.ManagedProviderProvisioning.Handlers.Commands;
 using Explore.Application.Features.Management;
+using Explore.Application.Features.RegistrationOrders.Handlers.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Application.Services.Federation;
@@ -203,9 +204,6 @@ public static class ApplicationServicesRegistration
             provider.GetRequiredService<NotificationFanoutRecipientMaterializationService>());
         services.AddScoped<NotificationFanoutPageProcessor>();
         services.AddScoped<NotificationFanoutOccurrenceCoordinator>();
-        services.AddScoped<IEventLifecycleEmailOutboxFactory, EventLifecycleEmailOutboxFactory>();
-        services.AddScoped<IListmonkRegistrationSyncOutboxFactory, ListmonkRegistrationSyncOutboxFactory>();
-        services.AddScoped<IRegistrationNotificationDeliveryService, RegistrationNotificationDeliveryService>();
         services.AddScoped<NotificationFanoutOccurrenceHandoffService>();
         services.AddScoped<IEventPublishedNotificationFanoutService, EventPublishedNotificationFanoutService>();
         services.AddScoped<IEventModerationNotificationFanoutService, EventModerationNotificationFanoutService>();
@@ -214,6 +212,7 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IEventLifecycleScheduler, EventLifecycleScheduler>();
         services.AddScoped<RegistrationOrderLifecycleService>();
         services.AddScoped<IRegistrationOrderLifecycleService>(provider => provider.GetRequiredService<RegistrationOrderLifecycleService>());
+        services.AddScoped<IRegistrationOrderStarter, CreateOrderWithHoldCommandHandler>();
         services.AddScoped<AtprotoEventGovernanceResolver>();
         services.AddScoped<AtprotoJetstreamTenantPresentationResolver>();
         services.AddScoped<AtprotoPdsRecoveryPolicyResolver>();

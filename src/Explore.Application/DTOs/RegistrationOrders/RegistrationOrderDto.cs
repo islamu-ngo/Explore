@@ -3,14 +3,19 @@
 
 using Explore.Domain;
 using Explore.Domain.Enums;
+using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.RegistrationOrders;
 
 public sealed class RegistrationOrderDto
 {
     public Guid Id { get; init; }
+    [JsonIgnore]
+    public Guid TenantId { get; init; }
     public Guid EventId { get; init; }
+    [JsonIgnore]
     public Guid? AccountUserId { get; init; }
+    [JsonIgnore]
     public Guid? PurchaserActorId { get; init; }
     public int StatusId { get; init; }
     public string StatusCode { get; init; } = string.Empty;
@@ -21,6 +26,7 @@ public sealed class RegistrationOrderDto
     public long OrganizerEarningsTotalMinor { get; init; }
     public long PlatformContributionTotalMinor { get; init; }
     public long TotalDueMinor { get; init; }
+    public RegistrationOrderPlatformContributionDto? PlatformContribution { get; init; }
     public DateTime? ExpiresAt { get; init; }
     public DateTime? SubmittedAt { get; init; }
     public DateTime? ConfirmedAt { get; init; }
@@ -28,13 +34,17 @@ public sealed class RegistrationOrderDto
     public DateTime? CancelledAt { get; init; }
     public IReadOnlyList<RegistrationOrderLineDto> Lines { get; init; } = [];
 
-    public static RegistrationOrderDto From(RegistrationOrder order, RegistrationOrderStatusEnum? statusOverride = null)
+    public static RegistrationOrderDto From(
+        RegistrationOrder order,
+        RegistrationOrderStatusEnum? statusOverride = null,
+        PlatformContributionSetting? contributionSetting = null)
     {
         ArgumentNullException.ThrowIfNull(order);
         RegistrationOrderStatusEnum status = statusOverride ?? (RegistrationOrderStatusEnum)order.RegistrationOrderStatusId;
         return new RegistrationOrderDto
         {
             Id = order.Id,
+            TenantId = order.TenantId,
             EventId = order.EventId,
             AccountUserId = order.AccountUserId,
             PurchaserActorId = order.PurchaserActorId,
@@ -47,6 +57,7 @@ public sealed class RegistrationOrderDto
             OrganizerEarningsTotalMinor = order.OrganizerEarningsTotalMinorSnapshot,
             PlatformContributionTotalMinor = order.PlatformContributionTotalMinorSnapshot,
             TotalDueMinor = order.TotalDueMinorSnapshot,
+            PlatformContribution = RegistrationOrderPlatformContributionDto.From(order, contributionSetting),
             ExpiresAt = order.ExpiresAt,
             SubmittedAt = order.SubmittedAt,
             ConfirmedAt = order.ConfirmedAt,
@@ -91,6 +102,49 @@ public sealed class RegistrationOrderDto
         RegistrationOrderStatusEnum.NeedsReconciliation => "Needs reconciliation",
         _ => throw new ArgumentOutOfRangeException(nameof(status))
     };
+}
+
+public sealed class RegistrationOrderPlatformContributionDto
+{
+    public string Heading { get; init; } = string.Empty;
+    public string Body { get; init; } = string.Empty;
+    public int SelectedBasisPoints { get; init; }
+    public long SelectedAmountMinor { get; init; }
+    public IReadOnlyList<RegistrationOrderPlatformContributionOptionDto> Options { get; init; } = [];
+
+    public static RegistrationOrderPlatformContributionDto? From(
+        RegistrationOrder order,
+        PlatformContributionSetting? setting)
+    {
+        if (setting is not { IsEnabled: true } || order.OrganizerDirectedTotalMinorSnapshot == 0)
+        {
+            return null;
+        }
+
+        return new RegistrationOrderPlatformContributionDto
+        {
+            Heading = setting.Heading,
+            Body = setting.Body,
+            SelectedBasisPoints = order.PlatformContribution?.ContributionBasisPointsSnapshot ?? 0,
+            SelectedAmountMinor = order.PlatformContribution?.AmountMinor ?? 0,
+            Options = setting.Options
+                .OrderBy(option => option.SortOrder)
+                .Select(option => new RegistrationOrderPlatformContributionOptionDto
+                {
+                    ContributionBasisPoints = option.ContributionBasisPoints,
+                    AmountMinor = option.CalculateAmountMinor(order.OrganizerDirectedTotalMinorSnapshot),
+                    IsDefault = option.IsDefault
+                })
+                .ToArray()
+        };
+    }
+}
+
+public sealed class RegistrationOrderPlatformContributionOptionDto
+{
+    public int ContributionBasisPoints { get; init; }
+    public long AmountMinor { get; init; }
+    public bool IsDefault { get; init; }
 }
 
 public sealed class RegistrationOrderLineDto

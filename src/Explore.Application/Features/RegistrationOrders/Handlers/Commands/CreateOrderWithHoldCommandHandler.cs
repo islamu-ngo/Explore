@@ -18,12 +18,19 @@ public sealed class CreateOrderWithHoldCommandHandler(
     IEventTicketCatalogRepository catalogs,
     IRegistrationInventoryRepository inventory,
     IPlatformFeePolicyRepository feePolicies,
+    IPlatformContributionSettingRepository contributionSettings,
     ITenantContext tenant,
     IOrganizerEarningsCalculator earningsCalculator,
     TimeProvider timeProvider,
-    IUnitOfWork unitOfWork) : IRequestHandler<CreateRegistrationOrderWithHoldCommand, BaseCommandResponse<Guid>>
+    IUnitOfWork unitOfWork) :
+    IRequestHandler<CreateRegistrationOrderWithHoldCommand, BaseCommandResponse<Guid>>,
+    IRegistrationOrderStarter
 {
-    public async Task<BaseCommandResponse<Guid>> Handle(
+    public Task<BaseCommandResponse<Guid>> Handle(
+        CreateRegistrationOrderWithHoldCommand request,
+        CancellationToken cancellationToken) => StartAsync(request, cancellationToken);
+
+    public async Task<BaseCommandResponse<Guid>> StartAsync(
         CreateRegistrationOrderWithHoldCommand request,
         CancellationToken cancellationToken)
     {
@@ -42,6 +49,11 @@ public sealed class CreateOrderWithHoldCommandHandler(
             } participationConfiguration)
         {
             return Missing(request.EventId);
+        }
+
+        if (!IsIdentityAccessAllowed(participationConfiguration.IdentityAccessModeId, request))
+        {
+            return IdentityRequired(request.EventId);
         }
 
         Guid orderId = Guid.CreateVersion7();
@@ -172,13 +184,35 @@ public sealed class CreateOrderWithHoldCommandHandler(
                 }
 
                 long lineTotal = order.Lines.Sum(line => line.LineSubtotalSnapshot);
+                if (request.PlatformContributionBasisPoints is > 0)
+                {
+                    if (lineTotal == 0)
+                    {
+                        return Invalid(request.EventId, "Platform contributions require an existing payable order total.");
+                    }
+
+                    PlatformContributionSetting? contributionSetting = await contributionSettings.GetActiveAsync(token);
+                    if (contributionSetting is null || !contributionSetting.IsEnabled)
+                    {
+                        return Invalid(request.EventId, "Platform contributions are not enabled.");
+                    }
+
+                    order.SetPlatformContribution(RegistrationOrderPlatformContribution.CreateOrNull(
+                        order.Id,
+                        order.TenantId,
+                        contributionSetting,
+                        request.PlatformContributionBasisPoints.Value,
+                        lineTotal,
+                        catalog.CurrencyCode));
+                }
+
                 OrganizerEarnings earnings = earningsCalculator.Calculate(catalog.CurrencyCode, lineTotal, feePolicy);
                 order.ApplyTotals(RegistrationOrderTotalsSnapshot.Create(
                     catalog.CurrencyCode,
                     earnings.OrganizerDirectedTotalMinor,
                     earnings.PlatformFeeMinor,
                     earnings.OrganizerEarningsMinor,
-                    platformContributionTotalMinor: 0));
+                    order.PlatformContribution?.AmountMinor ?? 0));
 
                 RegistrationInventoryHold[] holds = isWaitlisted || !reservesCapacityOnSelection
                     ? []
@@ -329,6 +363,21 @@ public sealed class CreateOrderWithHoldCommandHandler(
             ? null
             : verifiedContactNormalizedEmail.Trim().ToUpperInvariant();
 
+    private static bool IsIdentityAccessAllowed(
+        int? identityAccessModeId,
+        CreateRegistrationOrderWithHoldCommand request)
+    {
+        bool hasAccount = request.AccountUserId.HasValue;
+        bool hasGuestCapability = request.GuestAccessTokenHash is not null;
+        return (IdentityAccessModeEnum?)identityAccessModeId switch
+        {
+            IdentityAccessModeEnum.AccountRequired => hasAccount && !hasGuestCapability,
+            IdentityAccessModeEnum.GuestAllowed or IdentityAccessModeEnum.CapabilityTokenAllowed =>
+                hasAccount != hasGuestCapability,
+            _ => false
+        };
+    }
+
     private static BaseCommandResponse<Guid> Success(Guid orderId, string message) => new()
     {
         Id = orderId,
@@ -354,6 +403,15 @@ public sealed class CreateOrderWithHoldCommandHandler(
         FailureCode = "registration_order_validation_failed",
         Message = "Registration order configuration is invalid.",
         Errors = errors.ToList()
+    };
+
+    private static BaseCommandResponse<Guid> IdentityRequired(Guid id) => new()
+    {
+        Id = id,
+        Success = false,
+        FailureCode = "registration_order_identity_required",
+        Message = "Registration order requires an authenticated account.",
+        Errors = ["Registration order requires an authenticated account."]
     };
 
     private static BaseCommandResponse<Guid> LimitExceeded(Guid id, string error) => new()

@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Features.RegistrationOrders.Handlers.Commands;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using Explore.Application.Responses;
@@ -26,6 +27,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
     private readonly IEventTicketCatalogRepository _catalogs = Substitute.For<IEventTicketCatalogRepository>();
     private readonly IRegistrationInventoryRepository _inventory = Substitute.For<IRegistrationInventoryRepository>();
     private readonly IPlatformFeePolicyRepository _feePolicies = Substitute.For<IPlatformFeePolicyRepository>();
+    private readonly IPlatformContributionSettingRepository _contributionSettings = Substitute.For<IPlatformContributionSettingRepository>();
     private readonly ITenantContext _tenant = Substitute.For<ITenantContext>();
     private readonly Dictionary<Guid, RegistrationOrder> _orders = [];
     private readonly List<(RegistrationOrder Order, IReadOnlyCollection<RegistrationInventoryHold> Holds)> _saved = [];
@@ -35,6 +37,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
         _tenant.TenantId.Returns(_tenantId);
         _events.GetAuthorizationTargetByIdAsync(_eventId, Arg.Any<CancellationToken>()).Returns(CreatePlatformEvent());
         _feePolicies.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((PlatformFeePolicy?)null);
+        _contributionSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((PlatformContributionSetting?)null);
         _inventory.GetOrderByIdAsync(Arg.Any<Guid>(), _tenantId, Arg.Any<CancellationToken>())
             .Returns(callInfo => Task.FromResult(_orders.GetValueOrDefault(callInfo.ArgAt<Guid>(0))));
         _inventory.AddOrderWithHoldsAsync(
@@ -59,6 +62,128 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
                 Arg.Any<IReadOnlyCollection<Guid>>(),
                 Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, RegistrationTicketLimitUsage>());
+    }
+
+    [Test]
+    public async Task HandleWithEnabledContributionPersistsServerComputedAmountOutsideOrganizerEarnings()
+    {
+        (EventTicketCatalogVersion catalog, EventTicketType ticket, EventCapacityPool pool) = CreatePublishedCatalog(
+            maximumQuantity: 2,
+            fixedPriceMinor: 1_000);
+        PlatformContributionSetting setting = PlatformContributionSetting.CreateInitial(
+            true,
+            "Support the platform",
+            "Optional contribution",
+            [PlatformContributionOption.Create(0, 0, true), PlatformContributionOption.Create(1_000, 1, false)]);
+        _catalogs.GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _contributionSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(setting);
+        _inventory.GetPoolsForUpdateAsync(Arg.Any<IReadOnlyCollection<Guid>>(), _eventId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns([pool]);
+        _inventory.GetAllocatedQuantityAsync(pool.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(0);
+
+        BaseCommandResponse<Guid> result = await CreateHandler().Handle(
+            CreateCommand(catalog.Id, ticket.Id, quantity: 1, platformContributionBasisPoints: 1_000),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        RegistrationOrder order = _saved.Single().Order;
+        await Assert.That(order.OrganizerDirectedTotalMinorSnapshot).IsEqualTo(1_000);
+        await Assert.That(order.OrganizerEarningsTotalMinorSnapshot).IsEqualTo(1_000);
+        await Assert.That(order.PlatformContributionTotalMinorSnapshot).IsEqualTo(100);
+        await Assert.That(order.TotalDueMinorSnapshot).IsEqualTo(1_100);
+        await Assert.That(order.PlatformContribution!.ContributionBasisPointsSnapshot).IsEqualTo(1_000);
+        await Assert.That(order.PlatformContribution.PlatformContributionSettingVersionSnapshot).IsEqualTo(setting.VersionNumber);
+
+        RegistrationOrderDto dto = RegistrationOrderDto.From(order, contributionSetting: setting);
+        await Assert.That(dto.PlatformContribution!.Heading).IsEqualTo("Support the platform");
+        await Assert.That(dto.PlatformContribution.Options.Single(option => option.ContributionBasisPoints == 1_000).AmountMinor).IsEqualTo(100);
+        await Assert.That(RegistrationOrderDto.From(order).PlatformContribution).IsNull();
+    }
+
+    [Test]
+    public async Task HandleWithZeroContributionStoresNoRowWithoutReadingDisabledSetting()
+    {
+        (EventTicketCatalogVersion catalog, EventTicketType ticket, EventCapacityPool pool) = CreatePublishedCatalog(
+            maximumQuantity: 2,
+            fixedPriceMinor: 1_000);
+        _catalogs.GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _inventory.GetPoolsForUpdateAsync(Arg.Any<IReadOnlyCollection<Guid>>(), _eventId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns([pool]);
+        _inventory.GetAllocatedQuantityAsync(pool.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(0);
+
+        BaseCommandResponse<Guid> result = await CreateHandler().Handle(
+            CreateCommand(catalog.Id, ticket.Id, quantity: 1, platformContributionBasisPoints: 0),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(_saved.Single().Order.PlatformContribution).IsNull();
+        await Assert.That(_saved.Single().Order.PlatformContributionTotalMinorSnapshot).IsEqualTo(0);
+        _ = _contributionSettings.DidNotReceive().GetActiveAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task HandleWithPositiveContributionOnFreeOrderRejectsWithoutPersistence()
+    {
+        (EventTicketCatalogVersion catalog, EventTicketType ticket, EventCapacityPool pool) = CreatePublishedCatalog(maximumQuantity: 2);
+        _catalogs.GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _inventory.GetPoolsForUpdateAsync(Arg.Any<IReadOnlyCollection<Guid>>(), _eventId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns([pool]);
+        _inventory.GetAllocatedQuantityAsync(pool.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(0);
+
+        BaseCommandResponse<Guid> result = await CreateHandler().Handle(
+            CreateCommand(catalog.Id, ticket.Id, quantity: 1, platformContributionBasisPoints: 500),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("registration_order_validation_failed");
+        await Assert.That(_saved).IsEmpty();
+        _ = _contributionSettings.DidNotReceive().GetActiveAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task HandleWithPositiveContributionWhenSettingIsDisabledRejectsWithoutPersistence()
+    {
+        (EventTicketCatalogVersion catalog, EventTicketType ticket, EventCapacityPool pool) = CreatePublishedCatalog(
+            maximumQuantity: 2,
+            fixedPriceMinor: 1_000);
+        PlatformContributionSetting disabled = PlatformContributionSetting.CreateInitial(
+            false,
+            string.Empty,
+            string.Empty,
+            [PlatformContributionOption.Create(0, 0, true), PlatformContributionOption.Create(500, 1, false)]);
+        _catalogs.GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _contributionSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(disabled);
+        _inventory.GetPoolsForUpdateAsync(Arg.Any<IReadOnlyCollection<Guid>>(), _eventId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns([pool]);
+        _inventory.GetAllocatedQuantityAsync(pool.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(0);
+
+        BaseCommandResponse<Guid> result = await CreateHandler().Handle(
+            CreateCommand(catalog.Id, ticket.Id, quantity: 1, platformContributionBasisPoints: 500),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("registration_order_validation_failed");
+        await Assert.That(_saved).IsEmpty();
+    }
+
+    [Test]
+    [Arguments(-1)]
+    [Arguments(10_001)]
+    public async Task HandleWithOutOfRangeContributionRejectsBeforeTransaction(int contributionBasisPoints)
+    {
+        var unitOfWork = new RetryingUnitOfWork();
+
+        BaseCommandResponse<Guid> result = await CreateHandler(unitOfWork).Handle(
+            CreateCommand(
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                quantity: 1,
+                platformContributionBasisPoints: contributionBasisPoints),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("registration_order_validation_failed");
+        await Assert.That(unitOfWork.Attempts).IsEqualTo(0);
     }
 
     [Test]
@@ -110,6 +235,30 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
         await Assert.That(_saved).HasSingleItem();
         await Assert.That(_saved.Single().Order.RegistrationOrderStatusId).IsEqualTo((int)RegistrationOrderStatusEnum.Waitlisted);
         await Assert.That(_saved.Single().Holds).IsEmpty();
+    }
+
+    [Test]
+    public async Task HandleWhenAccountRequiredConfigurationReceivesNoAccountRejectsWithoutPersisting()
+    {
+        (EventTicketCatalogVersion catalog, EventTicketType ticket, EventCapacityPool pool) = CreatePublishedCatalog(
+            maximumQuantity: 1,
+            holdPolicy: CapacityHoldPolicyEnum.NoHoldUntilReady);
+        _events.GetAuthorizationTargetByIdAsync(_eventId, Arg.Any<CancellationToken>())
+            .Returns(CreatePlatformEvent(IdentityAccessModeEnum.AccountRequired));
+        _catalogs.GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _inventory.GetPoolsForUpdateAsync(Arg.Any<IReadOnlyCollection<Guid>>(), _eventId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns([pool]);
+
+        BaseCommandResponse<Guid> result = await CreateHandler().Handle(
+            CreateCommand(catalog.Id, ticket.Id, quantity: 1),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("registration_order_identity_required");
+        await _inventory.DidNotReceive().AddOrderWithHoldsAsync(
+            Arg.Any<RegistrationOrder>(),
+            Arg.Any<IReadOnlyCollection<RegistrationInventoryHold>>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -470,6 +619,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
         _catalogs,
         _inventory,
         _feePolicies,
+        _contributionSettings,
         _tenant,
         new OrganizerEarningsCalculator(),
         new FixedTimeProvider(UtcNow),
@@ -482,7 +632,8 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
         Guid? accountUserId = null,
         string? verifiedContactNormalizedEmail = null,
         Guid? purchaserActorId = null,
-        long? chosenUnitPriceMinor = null) => new()
+        long? chosenUnitPriceMinor = null,
+        int? platformContributionBasisPoints = null) => new()
     {
         EventId = _eventId,
         TicketCatalogVersionId = ticketCatalogVersionId,
@@ -490,7 +641,10 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
         PurchaserActorId = purchaserActorId,
         VerifiedContactNormalizedEmail = verifiedContactNormalizedEmail,
         BookingPartyType = BookingPartyTypeEnum.Individual,
-        GuestAccessTokenHash = CapabilityTokenHash.Create(Convert.ToBase64String(new byte[32])),
+        GuestAccessTokenHash = accountUserId.HasValue
+            ? null
+            : CapabilityTokenHash.Create(Convert.ToBase64String(new byte[32])),
+        PlatformContributionBasisPoints = platformContributionBasisPoints,
         Lines = [new RegistrationOrderLineSelection(ticketTypeId, quantity, chosenUnitPriceMinor)]
     };
 
@@ -505,7 +659,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
         Lines = lines
     };
 
-    private DomainEvent CreatePlatformEvent() => new()
+    private DomainEvent CreatePlatformEvent(IdentityAccessModeEnum identityAccessMode = IdentityAccessModeEnum.CapabilityTokenAllowed) => new()
     {
         Id = _eventId,
         TenantId = _tenantId,
@@ -515,18 +669,18 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
         VisibilityType = null!,
         EventStatus = null!,
         EventFormat = null!,
-        ParticipationConfiguration = CreateParticipationConfiguration()
+        ParticipationConfiguration = CreateParticipationConfiguration(identityAccessMode)
     };
 
-    private EventParticipationConfiguration CreateParticipationConfiguration()
+    private EventParticipationConfiguration CreateParticipationConfiguration(IdentityAccessModeEnum identityAccessMode = IdentityAccessModeEnum.CapabilityTokenAllowed)
     {
         EventParticipationConfiguration configuration = EventParticipationConfiguration.Create(
             _eventId,
             _tenantId,
             (int)ParticipationHandlingModeEnum.PlatformManaged,
             (int)AdvanceRegistrationObligationEnum.Required,
-            (int)IdentityAccessModeEnum.CapabilityTokenAllowed,
-            GuestRecoveryPolicyEnum.CapabilityLinkOnly,
+            (int)identityAccessMode,
+            identityAccessMode == IdentityAccessModeEnum.AccountRequired ? null : GuestRecoveryPolicyEnum.CapabilityLinkOnly,
             UtcNow);
         configuration.ConcurrencyStamp = Guid.CreateVersion7();
         return configuration;
@@ -537,7 +691,8 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
         CapacityHoldPolicyEnum holdPolicy = CapacityHoldPolicyEnum.TimedHoldOnSelection,
         int? perAccountLimit = null,
         int? perVerifiedContactLimit = null,
-        int? perBookingPartyLimit = null)
+        int? perBookingPartyLimit = null,
+        long? fixedPriceMinor = null)
     {
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(_tenantId, _eventId, "USD", 1);
         EventCapacityPool pool = EventCapacityPool.Create(
@@ -555,8 +710,8 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
             catalog.Id,
             "Admission",
             "USD",
-            TicketPricingModeEnum.Free,
-            null,
+            fixedPriceMinor.HasValue ? TicketPricingModeEnum.Fixed : TicketPricingModeEnum.Free,
+            fixedPriceMinor,
             null,
             null,
             ParticipantDataCollectionModeEnum.None,
