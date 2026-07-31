@@ -4,6 +4,7 @@
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
@@ -322,6 +323,340 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         await Assert.That(unrelatedEndpoint.Url).IsEqualTo("https://hooks.example.invalid/unrelated");
 
         await transaction.RollbackAsync();
+    }
+
+    [Test]
+    public async Task ProviderBackedLocalMetadata_CapturesDistinctProviderWorkBeforeExactCrossTenantClearing()
+    {
+        Guid intentId = Guid.CreateVersion7();
+        Guid ownerId;
+        Guid unrelatedId;
+        Guid ownerActorId;
+        Guid unrelatedActorId;
+        Guid ownerIdentityId;
+        Guid unrelatedIdentityId;
+        Guid ownerOspreyLinkId;
+        Guid ownerCoopLinkId;
+        Guid unrelatedLinkId;
+        Guid ownerEndpointAId;
+        Guid ownerEndpointBId;
+        Guid unrelatedEndpointId;
+        Guid ownerTargetAId;
+        Guid ownerTargetBId;
+        Guid unrelatedTargetId;
+
+        await using (var seedContext = fixture.CreateDbContext())
+        {
+            await LookupTableSeeder.SeedAsync(seedContext, CancellationToken.None);
+            var tenantA = CreateTenant("provider-clearing-a");
+            var tenantB = CreateTenant("provider-clearing-b");
+            var owner = CreateUser("provider-clearing-owner");
+            var unrelated = CreateUser("provider-clearing-unrelated");
+            ownerId = owner.Id;
+            unrelatedId = unrelated.Id;
+            seedContext.AddRange(tenantA, tenantB, owner, unrelated);
+            seedContext.TenantUsers.AddRange(
+                CreateTenantUser(tenantA, owner),
+                CreateTenantUser(tenantB, owner),
+                CreateTenantUser(tenantA, unrelated));
+
+            var ownerActor = CreateUserActor(owner);
+            var unrelatedActor = CreateUserActor(unrelated);
+            ownerActor.CreatedBy = owner.Id;
+            ownerActor.UpdatedBy = owner.Id;
+            ownerActor.DeletedBy = owner.Id;
+            AtprotoIdentity seededOwnerIdentity = ownerActor.AtprotoIdentities.Single();
+            seededOwnerIdentity.CreatedBy = owner.Id;
+            seededOwnerIdentity.UpdatedBy = owner.Id;
+            seededOwnerIdentity.DeletedBy = owner.Id;
+            unrelatedActor.CreatedBy = unrelated.Id;
+            unrelatedActor.UpdatedBy = unrelated.Id;
+            unrelatedActor.DeletedBy = unrelated.Id;
+            AtprotoIdentity seededUnrelatedIdentity = unrelatedActor.AtprotoIdentities.Single();
+            seededUnrelatedIdentity.CreatedBy = unrelated.Id;
+            seededUnrelatedIdentity.UpdatedBy = unrelated.Id;
+            seededUnrelatedIdentity.DeletedBy = unrelated.Id;
+            ownerActorId = ownerActor.Id;
+            unrelatedActorId = unrelatedActor.Id;
+            ownerIdentityId = seededOwnerIdentity.Id;
+            unrelatedIdentityId = seededUnrelatedIdentity.Id;
+            seedContext.Actors.AddRange(ownerActor, unrelatedActor);
+
+            int eventFormatId = await seedContext.Set<EventFormat>().Select(format => format.Id).FirstAsync();
+            int eventStatusId = await seedContext.Set<EventStatus>().Select(status => status.Id).FirstAsync();
+            int visibilityTypeId = await seedContext.Set<VisibilityType>().Select(visibility => visibility.Id).FirstAsync();
+            int eventProvenanceTypeId = await seedContext.Set<EventProvenanceType>()
+                .Select(provenance => provenance.Id)
+                .FirstAsync();
+            var ownerEventA = CreateEvent(
+                tenantA,
+                ownerActor,
+                eventFormatId,
+                eventStatusId,
+                visibilityTypeId,
+                eventProvenanceTypeId,
+                "provider-clearing-owner-a");
+            var ownerEventB = CreateEvent(
+                tenantB,
+                ownerActor,
+                eventFormatId,
+                eventStatusId,
+                visibilityTypeId,
+                eventProvenanceTypeId,
+                "provider-clearing-owner-b");
+            var unrelatedEvent = CreateEvent(
+                tenantA,
+                unrelatedActor,
+                eventFormatId,
+                eventStatusId,
+                visibilityTypeId,
+                eventProvenanceTypeId,
+                "provider-clearing-unrelated");
+            seedContext.Events.AddRange(ownerEventA, ownerEventB, unrelatedEvent);
+
+            EventReport ownerReportA = CreateReport(tenantA, ownerEventA, owner, ownerActor);
+            EventReport ownerReportB = CreateReport(tenantB, ownerEventB, owner, ownerActor);
+            EventReport unrelatedReport = CreateReport(tenantA, unrelatedEvent, unrelated, unrelatedActor);
+            seedContext.EventReports.AddRange(ownerReportA, ownerReportB, unrelatedReport);
+
+            EventReportExternalLink ownerOspreyLink = CreateExternalReportLink(
+                tenantA,
+                ownerReportA,
+                EventReportExternalProvider.Osprey,
+                "owner-osprey-case",
+                "owner-osprey-signal");
+            EventReportExternalLink ownerCoopLink = CreateExternalReportLink(
+                tenantB,
+                ownerReportB,
+                EventReportExternalProvider.Coop,
+                null,
+                "owner-coop-signal");
+            EventReportExternalLink unrelatedLink = CreateExternalReportLink(
+                tenantA,
+                unrelatedReport,
+                EventReportExternalProvider.Osprey,
+                "unrelated-osprey-case",
+                null);
+            ownerOspreyLinkId = ownerOspreyLink.Id;
+            ownerCoopLinkId = ownerCoopLink.Id;
+            unrelatedLinkId = unrelatedLink.Id;
+            seedContext.EventReportExternalLinks.AddRange(ownerOspreyLink, ownerCoopLink, unrelatedLink);
+
+            WebhookConsumerKindLookup webhookConsumerKind = await seedContext.WebhookConsumerKinds
+                .SingleAsync(kind => kind.MasterCode == "USER");
+            WebhookConsumerStatusLookup webhookConsumerStatus = await seedContext.WebhookConsumerStatuses
+                .SingleAsync(status => status.MasterCode == "ACTIVE");
+            WebhookProviderModeLookup webhookProviderMode = await seedContext.WebhookProviderModes
+                .SingleAsync(mode => mode.MasterCode == "COMPOSITE");
+            WebhookEndpointStatusLookup webhookEndpointStatus = await seedContext.WebhookEndpointStatuses
+                .SingleAsync(status => status.MasterCode == "ACTIVE");
+            var ownerConsumerA = CreateWebhookConsumer(
+                tenantA,
+                owner,
+                webhookConsumerKind,
+                webhookConsumerStatus,
+                webhookProviderMode,
+                "provider-owner-a");
+            var ownerConsumerB = CreateWebhookConsumer(
+                tenantB,
+                owner,
+                webhookConsumerKind,
+                webhookConsumerStatus,
+                webhookProviderMode,
+                "provider-owner-b");
+            var unrelatedConsumer = CreateWebhookConsumer(
+                tenantA,
+                unrelated,
+                webhookConsumerKind,
+                webhookConsumerStatus,
+                webhookProviderMode,
+                "provider-unrelated");
+            seedContext.WebhookConsumers.AddRange(ownerConsumerA, ownerConsumerB, unrelatedConsumer);
+
+            WebhookEndpoint ownerEndpointA = CreateWebhookEndpoint(
+                tenantA,
+                ownerConsumerA,
+                webhookEndpointStatus,
+                "https://hooks.example.invalid/provider-owner-a",
+                "endpoint-owner-a");
+            WebhookEndpoint ownerEndpointB = CreateWebhookEndpoint(
+                tenantB,
+                ownerConsumerB,
+                webhookEndpointStatus,
+                "https://hooks.example.invalid/provider-owner-b",
+                "endpoint-owner-b");
+            WebhookEndpoint unrelatedEndpoint = CreateWebhookEndpoint(
+                tenantA,
+                unrelatedConsumer,
+                webhookEndpointStatus,
+                "https://hooks.example.invalid/provider-unrelated",
+                "endpoint-unrelated");
+            ownerEndpointAId = ownerEndpointA.Id;
+            ownerEndpointBId = ownerEndpointB.Id;
+            unrelatedEndpointId = unrelatedEndpoint.Id;
+            seedContext.WebhookEndpoints.AddRange(ownerEndpointA, ownerEndpointB, unrelatedEndpoint);
+
+            WebhookTargetGraph ownerTargetA = CreateWebhookTargetGraph(tenantA, ownerConsumerA, ownerEndpointA);
+            WebhookTargetGraph ownerTargetB = CreateWebhookTargetGraph(tenantB, ownerConsumerB, ownerEndpointB);
+            WebhookTargetGraph unrelatedTarget = CreateWebhookTargetGraph(tenantA, unrelatedConsumer, unrelatedEndpoint);
+            ownerTargetAId = ownerTargetA.Target.Id;
+            ownerTargetBId = ownerTargetB.Target.Id;
+            unrelatedTargetId = unrelatedTarget.Target.Id;
+            seedContext.AddRange(
+                ownerTargetA.Message,
+                ownerTargetA.Plan,
+                ownerTargetA.Target,
+                ownerTargetB.Message,
+                ownerTargetB.Plan,
+                ownerTargetB.Target,
+                unrelatedTarget.Message,
+                unrelatedTarget.Plan,
+                unrelatedTarget.Target);
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using (var candidateContext = fixture.CreateTenantFilteredDbContext())
+        {
+            var repository = new UserLocationPrivacyErasureRepository(candidateContext);
+            IReadOnlyList<PrivacyErasureProviderCandidate> candidates =
+                await repository.GetProviderCandidatesAsync(ownerId, CancellationToken.None);
+            PrivacyErasureProviderCandidate[] reportCandidates = candidates
+                .Where(candidate => candidate.ProviderKind is
+                    PrivacyErasureProviderKind.Osprey or PrivacyErasureProviderKind.Coop)
+                .ToArray();
+
+            await Assert.That(candidates.Count).IsEqualTo(5);
+            await Assert.That(candidates.Select(candidate => (
+                    candidate.ProviderKind,
+                    candidate.Action,
+                    candidate.TenantId,
+                    candidate.TargetId)).Distinct().Count())
+                .IsEqualTo(candidates.Count);
+            await Assert.That(reportCandidates.Length).IsEqualTo(2);
+            await Assert.That(reportCandidates.Single(candidate =>
+                    candidate.TargetId == ownerOspreyLinkId).Locator)
+                .IsEqualTo("owner-osprey-case");
+            await Assert.That(reportCandidates.Single(candidate =>
+                    candidate.TargetId == ownerCoopLinkId).Locator)
+                .IsEqualTo("owner-coop-signal");
+        }
+
+        var authority = new RecordingPrivacyErasureAuthority();
+        await using (var runtimeContext = fixture.CreateTenantFilteredDbContext())
+        await using (GlobalLocationPrivacyErasureTests.ErasureRuntime runtime =
+            GlobalLocationPrivacyErasureTests.CreateRuntime(
+                runtimeContext,
+                authority))
+        {
+            runtimeContext.CurrentUserService = new TestCurrentUserService(ownerId);
+            await runtime.Service.EraseUserAsync(ownerId, intentId, CancellationToken.None);
+            await runtime.ReplayService.ReplayAsync(CancellationToken.None);
+        }
+
+        await using var verifyContext = fixture.CreateDbContext();
+        PrivacyErasureProviderWork[] providerWork = await verifyContext.PrivacyErasureProviderWork
+            .AsNoTracking()
+            .Where(work => work.IntentId == intentId)
+            .OrderBy(work => work.ProviderKind)
+            .ToArrayAsync();
+        await Assert.That(providerWork.Length).IsEqualTo(5);
+        await Assert.That(providerWork.All(work =>
+            work.ProtectedLocator is { Length: > 0 }
+            && work.Status == PrivacyErasureProviderWorkStatus.Pending)).IsTrue();
+        await Assert.That(providerWork.Select(work => (
+                work.ProviderKind,
+                work.Action,
+                work.TenantId,
+                work.TargetId)).Distinct().Count())
+            .IsEqualTo(providerWork.Length);
+        await Assert.That(providerWork.Select(work => work.TargetId))
+            .IsEquivalentTo(new Guid?[]
+            {
+                ownerIdentityId,
+                ownerOspreyLinkId,
+                ownerCoopLinkId,
+                ownerEndpointAId,
+                ownerEndpointBId
+            });
+        await Assert.That(providerWork.Select(work => work.TargetId))
+            .DoesNotContain(unrelatedIdentityId);
+        await Assert.That(providerWork.Select(work => work.TargetId))
+            .DoesNotContain(unrelatedLinkId);
+        await Assert.That(providerWork.Select(work => work.TargetId))
+            .DoesNotContain(unrelatedEndpointId);
+
+        AtprotoIdentity ownerIdentity = await verifyContext.AtprotoIdentities
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(identity => identity.Id == ownerIdentityId);
+        AtprotoIdentity unrelatedIdentity = await verifyContext.AtprotoIdentities
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(identity => identity.Id == unrelatedIdentityId);
+        Actor ownerActorRow = await verifyContext.Actors
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(actor => actor.Id == ownerActorId);
+        Actor unrelatedActorRow = await verifyContext.Actors
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(actor => actor.Id == unrelatedActorId);
+        await Assert.That(ownerActorRow.UserId).IsNull();
+        await Assert.That(ownerActorRow.IsDeleted).IsTrue();
+        await Assert.That(ownerActorRow.DeletedAt).IsNotNull();
+        await Assert.That(ownerActorRow.CreatedBy).IsNull();
+        await Assert.That(ownerActorRow.UpdatedBy).IsNull();
+        await Assert.That(ownerActorRow.DeletedBy).IsNull();
+        await Assert.That(ownerIdentity.Did).IsEqualTo($"did:deleted:{ownerIdentityId:N}");
+        await Assert.That(ownerIdentity.Handle).IsNull();
+        await Assert.That(ownerIdentity.PdsHost).IsEmpty();
+        await Assert.That(ownerIdentity.IsDeleted).IsTrue();
+        await Assert.That(ownerIdentity.CreatedBy).IsNull();
+        await Assert.That(ownerIdentity.UpdatedBy).IsNull();
+        await Assert.That(ownerIdentity.DeletedBy).IsNull();
+        await Assert.That(unrelatedIdentity.Handle).IsNotNull();
+        await Assert.That(unrelatedIdentity.PdsHost).IsNotEmpty();
+        await Assert.That(unrelatedIdentity.IsDeleted).IsFalse();
+        await Assert.That(unrelatedActorRow.CreatedBy).IsEqualTo(unrelatedId);
+        await Assert.That(unrelatedActorRow.UpdatedBy).IsEqualTo(unrelatedId);
+        await Assert.That(unrelatedActorRow.DeletedBy).IsEqualTo(unrelatedId);
+        await Assert.That(unrelatedIdentity.CreatedBy).IsEqualTo(unrelatedId);
+        await Assert.That(unrelatedIdentity.UpdatedBy).IsEqualTo(unrelatedId);
+        await Assert.That(unrelatedIdentity.DeletedBy).IsEqualTo(unrelatedId);
+
+        EventReportExternalLink[] ownerLinks = await verifyContext.EventReportExternalLinks
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .Where(link => link.Id == ownerOspreyLinkId || link.Id == ownerCoopLinkId)
+            .ToArrayAsync();
+        EventReportExternalLink unrelatedLinkRow = await verifyContext.EventReportExternalLinks
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(link => link.Id == unrelatedLinkId);
+        await Assert.That(ownerLinks).IsEmpty();
+        await Assert.That(unrelatedLinkRow.ProviderCaseId).IsNotNull();
+        await Assert.That(unrelatedLinkRow.SyncState).IsEqualTo(EventReportSyncState.Synced);
+
+        WebhookLocalTargetSnapshot[] ownerTargets = await verifyContext.WebhookLocalTargetSnapshots
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .Where(target => target.Id == ownerTargetAId || target.Id == ownerTargetBId)
+            .ToArrayAsync();
+        WebhookLocalTargetSnapshot unrelatedTargetRow = await verifyContext.WebhookLocalTargetSnapshots
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(target => target.Id == unrelatedTargetId);
+        await Assert.That(ownerTargets.Length).IsEqualTo(2);
+        await Assert.That(ownerTargets.Select(target => target.TenantId).Distinct().Count()).IsEqualTo(2);
+        await Assert.That(ownerTargets.All(target =>
+            target.DestinationUrl == string.Empty
+            && target.CredentialReference == string.Empty)).IsTrue();
+        await Assert.That(unrelatedTargetRow.DestinationUrl).IsNotEmpty();
+        await Assert.That(unrelatedTargetRow.CredentialReference).IsNotEmpty();
+    }
+
+    [Test]
+    public async Task ActorOwnershipConstraint_RejectsLiveOwnerlessActor()
+    {
+        await using var context = fixture.CreateDbContext();
+        Actor liveOwnerlessActor = CreateUserActor(CreateUser("live-ownerless-actor"));
+        liveOwnerlessActor.UserId = null;
+        liveOwnerlessActor.AtprotoIdentities.Clear();
+        context.Actors.Add(liveOwnerlessActor);
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
     }
 
     [Test]
@@ -736,6 +1071,168 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
             ConfigurationVersion = 1,
             CreatedAt = DateTime.UtcNow
         };
+
+    private static Explore.Domain.Event CreateEvent(
+        Tenant tenant,
+        Actor actor,
+        int eventFormatId,
+        int eventStatusId,
+        int visibilityTypeId,
+        int eventProvenanceTypeId,
+        string title) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        TenantId = tenant.Id,
+        Tenant = tenant,
+        ActorId = actor.Id,
+        Actor = actor,
+        Title = title,
+        PublicCode = Guid.CreateVersion7().ToString("N")[^12..],
+        VisibilityTypeId = visibilityTypeId,
+        VisibilityType = null!,
+        EventStatusId = eventStatusId,
+        EventStatus = null!,
+        EventFormatId = eventFormatId,
+        EventFormat = null!,
+        EventProvenanceTypeId = eventProvenanceTypeId,
+        EventProvenanceType = null!
+    };
+
+    private static EventReport CreateReport(
+        Tenant tenant,
+        Explore.Domain.Event @event,
+        User reporter,
+        Actor reporterActor) =>
+        EventReport.Create(
+            tenant.Id,
+            @event.Id,
+            reporter.Id,
+            reporterActor.Id,
+            EventReporterKind.AuthenticatedUser,
+            EventReportSourceKind.UserReport,
+            "privacy-erasure-canary",
+            null,
+            EventReportPriority.Normal,
+            null,
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: false,
+            null,
+            null,
+            null);
+
+    private static EventReportExternalLink CreateExternalReportLink(
+        Tenant tenant,
+        EventReport report,
+        EventReportExternalProvider provider,
+        string? providerCaseId,
+        string? providerSignalId)
+    {
+        EventReportExternalLink link = EventReportExternalLink.CreatePending(
+            tenant.Id,
+            report.Id,
+            null,
+            provider,
+            $"privacy-erasure-{Guid.CreateVersion7():N}");
+        link.MarkSynced(
+            providerCaseId,
+            providerSignalId,
+            "https://provider.example.invalid/report",
+            DateTime.UtcNow);
+        return link;
+    }
+
+    private static WebhookTargetGraph CreateWebhookTargetGraph(
+        Tenant tenant,
+        WebhookConsumer consumer,
+        WebhookEndpoint endpoint)
+    {
+        DateTime utcNow = DateTime.UtcNow;
+        WebhookMessage message = WebhookMessage.Create(
+            tenant.Id,
+            "privacy.erasure.canary",
+            Guid.CreateVersion7().ToString("N"),
+            "user",
+            Guid.CreateVersion7(),
+            consumer.Id,
+            System.Text.Encoding.UTF8.GetBytes("{\"canary\":true}"),
+            "application/json",
+            "utf-8",
+            utcNow,
+            utcNow.AddDays(30),
+            utcNow);
+        var capturedAtUtc = new DateTimeOffset(utcNow);
+        WebhookDeliveryPlanSnapshot plan = WebhookDeliveryPlanSnapshot.Create(
+            tenant.Id,
+            message.Id,
+            consumer.Id,
+            WebhookProviderMode.Composite,
+            $"consumer-v{consumer.ConfigurationVersion}",
+            "contract-v1",
+            "standard",
+            "retention-v1",
+            capturedAtUtc.AddDays(30),
+            capturedAtUtc.AddDays(60),
+            capturedAtUtc.AddDays(90),
+            capturedAtUtc.AddDays(90),
+            capturedAtUtc.AddDays(30),
+            capturedAtUtc);
+        WebhookLocalTargetSnapshot target = WebhookLocalTargetSnapshot.Create(
+            plan,
+            endpoint,
+            endpoint.ConfigurationVersion,
+            new DateTimeOffset(endpoint.SecretActivatedAt),
+            null,
+            capturedAtUtc);
+        return new WebhookTargetGraph(message, plan, target);
+    }
+
+    private sealed record WebhookTargetGraph(
+        WebhookMessage Message,
+        WebhookDeliveryPlanSnapshot Plan,
+        WebhookLocalTargetSnapshot Target);
+
+    private sealed record TestCurrentUserService(Guid Id) : ICurrentUserService
+    {
+        public Guid? UserId => Id;
+        public bool IsAuthenticated => true;
+    }
+
+    private sealed class RecordingPrivacyErasureAuthority : IPrivacyErasureAuthority
+    {
+        private PrivacyErasureIntent? _intent;
+
+        public Task<PrivacyErasureIntent> AppendAsync(
+            PrivacyErasureRequest intent,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            DateTime utcNow = DateTime.UtcNow;
+            utcNow = new DateTime(utcNow.Ticks - (utcNow.Ticks % 10), DateTimeKind.Utc);
+            _intent ??= PrivacyErasureIntent.Record(
+                intent.IntentId,
+                1,
+                intent.SubjectKind,
+                intent.SubjectId,
+                intent.ReasonCode,
+                intent.PolicyVersion,
+                utcNow,
+                utcNow);
+            return Task.FromResult(_intent);
+        }
+
+        public Task<IReadOnlyList<PrivacyErasureIntent>> ReadAfterAsync(
+            long authoritySequence,
+            int limit,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            IReadOnlyList<PrivacyErasureIntent> result =
+                _intent is not null && _intent.AuthoritySequence > authoritySequence && limit > 0
+                    ? [_intent]
+                    : [];
+            return Task.FromResult(result);
+        }
+    }
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
 }

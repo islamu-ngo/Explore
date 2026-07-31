@@ -144,6 +144,30 @@ public class Actor : IAuditableEntity, ISoftDeletable, IConcurrencyAware
         MarkUpdated(when, by);
     }
 
+    public void TombstoneForUserPrivacyErasure(DateTime when, Guid subjectId)
+    {
+        ValidateTransitionAudit(subjectId);
+        if (UserId != subjectId
+            || OrganizationId is not null || Organization is not null
+            || GroupId is not null || Group is not null
+            || ExternalActorSubjectId is not null || ExternalActorSubject is not null
+            || ServicePrincipalId is not null || ServicePrincipal is not null)
+        {
+            throw new InvalidOperationException(
+                "Only an exclusively user-owned Actor can be tombstoned for User privacy erasure.");
+        }
+
+        UserId = null;
+        User = null;
+        CreatedBy = null;
+        IsDeleted = true;
+        DeletedAt = when;
+        DeletedBy = null;
+        UpdatedAt = when;
+        UpdatedBy = null;
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
     public void Suspend(string reasonCode, DateTime when, Guid by)
     {
         string normalizedReasonCode = ValidateModerationTransition(reasonCode, when, by);

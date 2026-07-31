@@ -252,6 +252,28 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
                 .AnyAsync(user => user.Id == graph.OwnerUserId && !user.IsDeleted)).IsTrue();
             await Assert.That(await rollbackContext.UserPii
                 .AnyAsync(pii => pii.UserId == graph.OwnerUserId)).IsTrue();
+            await Assert.That(await rollbackContext.UserPii
+                .AnyAsync(pii => pii.UserId == graph.UnrelatedUserId)).IsTrue();
+            await Assert.That(await rollbackContext.UserAuthenticationTokens
+                .CountAsync(token => token.UserId == graph.OwnerUserId)).IsEqualTo(2);
+            await Assert.That(await rollbackContext.UserAuthenticationTokens
+                .CountAsync(token => token.UserId == graph.UnrelatedUserId)).IsEqualTo(1);
+            await Assert.That(await rollbackContext.UserExternalLogins
+                .CountAsync(login => login.UserId == graph.OwnerUserId)).IsEqualTo(2);
+            await Assert.That(await rollbackContext.UserExternalLogins
+                .CountAsync(login => login.UserId == graph.UnrelatedUserId)).IsEqualTo(1);
+            await Assert.That(await rollbackContext.AtprotoIdentities
+                .AnyAsync(identity => identity.ActorId == graph.OwnerActorId && !identity.IsDeleted)).IsTrue();
+            await Assert.That(await rollbackContext.AtprotoIdentities
+                .AnyAsync(identity => identity.ActorId == graph.UnrelatedActorId && !identity.IsDeleted)).IsTrue();
+            await Assert.That(await rollbackContext.TenantUsers
+                .CountAsync(membership => membership.UserId == graph.OwnerUserId)).IsEqualTo(2);
+            await Assert.That(await rollbackContext.TenantUsers
+                .CountAsync(membership => membership.UserId == graph.UnrelatedUserId)).IsEqualTo(1);
+            await Assert.That(await rollbackContext.UserPreferences
+                .CountAsync(preference => preference.UserId == graph.OwnerUserId)).IsEqualTo(2);
+            await Assert.That(await rollbackContext.UserPreferences
+                .CountAsync(preference => preference.UserId == graph.UnrelatedUserId)).IsEqualTo(1);
             await Assert.That(await rollbackContext.PrivacyErasureReplayCheckpoints.CountAsync())
                 .IsEqualTo(0);
             await Assert.That(await rollbackContext.PrivacyErasureIntents.CountAsync())
@@ -306,6 +328,24 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
                 .Where(eventLocation => graph.EventLocationIds.Contains(eventLocation.Id))
                 .OrderBy(eventLocation => eventLocation.Id)
                 .ToArrayAsync();
+            EventLocationDisclosureAudit[] retainedDisclosureAudits = await committedContext
+                .EventLocationDisclosureAudits
+                .IgnoreQueryFilters()
+                .Where(audit => audit.Id == graph.SubjectDisclosureAuditId
+                    || audit.Id == graph.UnrelatedDisclosureAuditId)
+                .ToArrayAsync();
+            EventLocationExactReadAudit[] retainedExactReadAudits = await committedContext
+                .EventLocationExactReadAudits
+                .IgnoreQueryFilters()
+                .Where(audit => audit.Id == graph.SubjectExactReadAuditId
+                    || audit.Id == graph.UnrelatedExactReadAuditId)
+                .ToArrayAsync();
+            EventLocationDisclosureAudit[] remediationAudits = await committedContext
+                .EventLocationDisclosureAudits
+                .IgnoreQueryFilters()
+                .Where(audit => graph.EventLocationIds.Contains(audit.EventLocationId)
+                    && audit.Reason == EventLocationDisclosureAuditReasonEnum.PrivacyErasureRemediation)
+                .ToArrayAsync();
             OutboxMessage[] messages = await committedContext.OutboxMessages
                 .Where(message =>
                     message.EventType == LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType
@@ -340,17 +380,84 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
                 eventLocation.LocationId.HasValue
                 && graph.LocationIds.Contains(eventLocation.LocationId.Value)
                 && eventLocation.NeedsPrivacyReview
+                && !eventLocation.ShowVenueName
+                && !eventLocation.ShowCity
+                && !eventLocation.ShowCountry
+                && !eventLocation.ShowRoomName
+                && !eventLocation.ShowStreetAddress
+                && !eventLocation.ShowPostcode
+                && !eventLocation.ShowCoordinates
                 && eventLocation.FullDetailsAudienceId == (int)LocationDisclosureAudienceEnum.Never
-                && eventLocation.PolicyVersion == 2)).IsTrue();
+                && eventLocation.PolicyVersion == 3)).IsTrue();
+            EventLocationDisclosureAudit subjectDisclosureAudit = retainedDisclosureAudits
+                .Single(audit => audit.Id == graph.SubjectDisclosureAuditId);
+            EventLocationDisclosureAudit unrelatedDisclosureAudit = retainedDisclosureAudits
+                .Single(audit => audit.Id == graph.UnrelatedDisclosureAuditId);
+            EventLocationExactReadAudit subjectExactReadAudit = retainedExactReadAudits
+                .Single(audit => audit.Id == graph.SubjectExactReadAuditId);
+            EventLocationExactReadAudit unrelatedExactReadAudit = retainedExactReadAudits
+                .Single(audit => audit.Id == graph.UnrelatedExactReadAuditId);
+            await Assert.That(subjectDisclosureAudit.ActorUserId).IsEqualTo(graph.OwnerUserId);
+            await Assert.That(subjectDisclosureAudit.Reason)
+                .IsEqualTo(EventLocationDisclosureAuditReasonEnum.OrganizerPolicyChange);
+            await Assert.That(subjectDisclosureAudit.PreviousPolicyVersion).IsEqualTo(1);
+            await Assert.That(subjectDisclosureAudit.NewPolicyVersion).IsEqualTo(2);
+            await Assert.That(unrelatedDisclosureAudit.ActorUserId).IsEqualTo(graph.UnrelatedUserId);
+            await Assert.That(unrelatedDisclosureAudit.Reason)
+                .IsEqualTo(EventLocationDisclosureAuditReasonEnum.OrganizerPolicyChange);
+            await Assert.That(unrelatedDisclosureAudit.PreviousPolicyVersion).IsEqualTo(1);
+            await Assert.That(unrelatedDisclosureAudit.NewPolicyVersion).IsEqualTo(2);
+            await Assert.That(subjectExactReadAudit.RequesterUserId).IsEqualTo(graph.OwnerUserId);
+            await Assert.That(subjectExactReadAudit.Purpose)
+                .IsEqualTo(EventLocationExactReadPurposeEnum.EventManagement);
+            await Assert.That(subjectExactReadAudit.WasAuthorized).IsTrue();
+            await Assert.That(unrelatedExactReadAudit.RequesterUserId).IsEqualTo(graph.UnrelatedUserId);
+            await Assert.That(unrelatedExactReadAudit.Purpose)
+                .IsEqualTo(EventLocationExactReadPurposeEnum.SupportCaseReview);
+            await Assert.That(unrelatedExactReadAudit.WasAuthorized).IsFalse();
+            await Assert.That(remediationAudits.Select(audit => audit.EventLocationId))
+                .IsEquivalentTo(graph.EventLocationIds);
+            await Assert.That(remediationAudits.All(audit =>
+                audit.ActorUserId == graph.OwnerUserId
+                && audit.PreviousFields != EventLocationDisclosureFields.None
+                && audit.NewFields == EventLocationDisclosureFields.None
+                && audit.PreviousAudienceId != (int)LocationDisclosureAudienceEnum.Never
+                && audit.NewAudienceId == (int)LocationDisclosureAudienceEnum.Never
+                && audit.PreviousPolicyVersion == 2
+                && audit.NewPolicyVersion == 3)).IsTrue();
             await Assert.That(await committedContext.Users
                 .IgnoreQueryFilters()
                 .AnyAsync(user => user.Id == graph.OwnerUserId && user.IsDeleted)).IsTrue();
             await Assert.That(await committedContext.UserPii
                 .AnyAsync(pii => pii.UserId == graph.OwnerUserId)).IsFalse();
+            await Assert.That(await committedContext.UserPii
+                .AnyAsync(pii => pii.UserId == graph.UnrelatedUserId)).IsTrue();
+            await Assert.That(await committedContext.UserAuthenticationTokens
+                .CountAsync(token => token.UserId == graph.OwnerUserId)).IsEqualTo(0);
+            await Assert.That(await committedContext.UserAuthenticationTokens
+                .CountAsync(token => token.UserId == graph.UnrelatedUserId)).IsEqualTo(1);
+            await Assert.That(await committedContext.UserExternalLogins
+                .CountAsync(login => login.UserId == graph.OwnerUserId)).IsEqualTo(0);
+            await Assert.That(await committedContext.UserExternalLogins
+                .CountAsync(login => login.UserId == graph.UnrelatedUserId)).IsEqualTo(1);
+            await Assert.That(await committedContext.TenantUsers
+                .CountAsync(membership => membership.UserId == graph.OwnerUserId)).IsEqualTo(0);
+            await Assert.That(await committedContext.TenantUsers
+                .CountAsync(membership => membership.UserId == graph.UnrelatedUserId)).IsEqualTo(1);
+            await Assert.That(await committedContext.UserPreferences
+                .CountAsync(preference => preference.UserId == graph.OwnerUserId)).IsEqualTo(0);
+            await Assert.That(await committedContext.UserPreferences
+                .CountAsync(preference => preference.UserId == graph.UnrelatedUserId)).IsEqualTo(1);
             await Assert.That(ownerActorPii.DisplayName).IsEqualTo("Deleted user");
             await Assert.That(ownerIdentity.Did).IsEqualTo($"did:deleted:{ownerIdentity.Id:N}");
             await Assert.That(ownerIdentity.Handle).IsNull();
+            await Assert.That(ownerIdentity.PdsHost).IsEqualTo(string.Empty);
+            await Assert.That(ownerIdentity.IsDeleted).IsTrue();
             await Assert.That(ownerActorPii.ProfilePictureUri).IsNull();
+            await Assert.That(await committedContext.AtprotoIdentities
+                .AnyAsync(identity => identity.ActorId == graph.UnrelatedActorId
+                    && identity.Did == "did:plc:unrelated"
+                    && !identity.IsDeleted)).IsTrue();
             await Assert.That(checkpoint.AuthoritySequence).IsEqualTo(retained.AuthoritySequence);
             await Assert.That(checkpoint.IntentId).IsEqualTo(retained.IntentId);
             await Assert.That(localMirror.IntentId).IsEqualTo(retained.IntentId);
@@ -388,6 +495,10 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
                 message.EventType == LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType
                 || message.EventType == LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType))
                 .IsEqualTo(outboxCount);
+            await Assert.That(await finalContext.UserAuthenticationTokens
+                .CountAsync(token => token.UserId == graph.UnrelatedUserId)).IsEqualTo(1);
+            await Assert.That(await finalContext.UserExternalLogins
+                .CountAsync(login => login.UserId == graph.UnrelatedUserId)).IsEqualTo(1);
         }
 
         ErasureGraph restoredGraph;
@@ -510,7 +621,8 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
         var tenantA = CreateTenant("workflow-a");
         var tenantB = CreateTenant("workflow-b");
         var owner = CreateUser("workflow-owner");
-        context.AddRange(tenantA, tenantB, owner);
+        var unrelated = CreateUser("workflow-unrelated");
+        context.AddRange(tenantA, tenantB, owner, unrelated);
         await context.SaveChangesAsync();
 
         var ownerActor = new Actor
@@ -542,10 +654,60 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             Id = Guid.CreateVersion7(),
             ActorTypeId = (int)ActorTypeEnum.Group,
             ActorType = null!,
+            GroupId = Guid.CreateVersion7(),
             Pii = new ActorPii { DisplayName = "Tenant B organizer" },
             ConcurrencyStamp = Guid.CreateVersion7(),
         };
-        context.AddRange(ownerActor, ownerIdentity, tenantBActor);
+        var tenantBGroup = new Group
+        {
+            Id = tenantBActor.GroupId.Value,
+            FullName = "Tenant B organizers",
+            Actor = tenantBActor,
+            ConcurrencyStamp = Guid.CreateVersion7(),
+        };
+        tenantBActor.Group = tenantBGroup;
+        var unrelatedActor = new Actor
+        {
+            Id = Guid.CreateVersion7(),
+            UserId = unrelated.Id,
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = null!,
+            Pii = new ActorPii { DisplayName = "Unrelated user" },
+            ConcurrencyStamp = Guid.CreateVersion7(),
+        };
+        var unrelatedIdentity = new AtprotoIdentity
+        {
+            Id = Guid.CreateVersion7(),
+            ActorId = unrelatedActor.Id,
+            Actor = unrelatedActor,
+            Did = "did:plc:unrelated",
+            Handle = "unrelated.example",
+            PdsHost = "https://pds.example.invalid",
+            IsActive = true,
+            LastResolvedAt = DateTime.UtcNow,
+        };
+        context.AddRange(
+            ownerActor,
+            ownerIdentity,
+            tenantBGroup,
+            tenantBActor,
+            unrelatedActor,
+            unrelatedIdentity);
+        await context.SaveChangesAsync();
+
+        context.AddRange(
+            CreateAuthenticationToken(tenantA, owner, "did:plc:owner-a"),
+            CreateAuthenticationToken(tenantB, owner, "did:plc:owner-b"),
+            CreateAuthenticationToken(tenantA, unrelated, "did:plc:unrelated"),
+            CreateExternalLogin(tenantA, owner, "owner-a"),
+            CreateExternalLogin(tenantB, owner, "owner-b"),
+            CreateExternalLogin(tenantA, unrelated, "unrelated"),
+            CreateTenantUser(tenantA, owner, ownerActor, TenantUserStatusEnum.Active),
+            CreateTenantUser(tenantB, owner, ownerActor, TenantUserStatusEnum.Removed),
+            CreateTenantUser(tenantA, unrelated, unrelatedActor, TenantUserStatusEnum.Active),
+            CreatePreference(tenantA, owner.Id, "owner-a"),
+            CreatePreference(tenantB, owner.Id, "owner-b"),
+            CreatePreference(tenantA, unrelated.Id, "unrelated"));
         await context.SaveChangesAsync();
 
         Location homeA = CreatePrivateHome(tenantA.Id, owner.Id, "HOME-A-NAME-CANARY");
@@ -594,12 +756,57 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
         await eventLocationRepository.AddAsync(eventLocationA, CancellationToken.None);
         await eventLocationRepository.AddAsync(eventLocationB, CancellationToken.None);
 
+        DateTime priorAuditAtUtc = DateTime.UtcNow;
+        EventLocationDisclosureAudit subjectDisclosureAudit = eventLocationA.ChangeDisclosurePolicy(
+            EventLocationDisclosureFields.VenueName,
+            LocationDisclosureAudienceEnum.AnyCurrentRegistrant,
+            null,
+            eventLocationA.PolicyVersion,
+            owner.Id,
+            EventLocationDisclosureAuditReasonEnum.OrganizerPolicyChange,
+            priorAuditAtUtc);
+        EventLocationDisclosureAudit unrelatedDisclosureAudit = eventLocationB.ChangeDisclosurePolicy(
+            EventLocationDisclosureFields.City,
+            LocationDisclosureAudienceEnum.ConfirmedParticipant,
+            null,
+            eventLocationB.PolicyVersion,
+            unrelated.Id,
+            EventLocationDisclosureAuditReasonEnum.OrganizerPolicyChange,
+            priorAuditAtUtc);
+        EventLocationExactReadAudit subjectExactReadAudit = EventLocationExactReadAudit.Create(
+            tenantA.Id,
+            eventLocationA.Id,
+            owner.Id,
+            EventLocationExactReadPurposeEnum.EventManagement,
+            wasAuthorized: true,
+            priorAuditAtUtc,
+            Guid.CreateVersion7(),
+            null);
+        EventLocationExactReadAudit unrelatedExactReadAudit = EventLocationExactReadAudit.Create(
+            tenantB.Id,
+            eventLocationB.Id,
+            unrelated.Id,
+            EventLocationExactReadPurposeEnum.SupportCaseReview,
+            wasAuthorized: false,
+            priorAuditAtUtc,
+            Guid.CreateVersion7(),
+            null);
+        context.EventLocationDisclosureAudits.AddRange(subjectDisclosureAudit, unrelatedDisclosureAudit);
+        context.EventLocationExactReadAudits.AddRange(subjectExactReadAudit, unrelatedExactReadAudit);
+        await context.SaveChangesAsync();
+
         return new ErasureGraph(
             owner.Id,
             ownerActor.Id,
+            unrelated.Id,
+            unrelatedActor.Id,
             [homeA.Id, homeB.Id],
             [roomA.Id, roomB.Id],
             [eventLocationA.Id, eventLocationB.Id],
+            subjectDisclosureAudit.Id,
+            unrelatedDisclosureAudit.Id,
+            subjectExactReadAudit.Id,
+            unrelatedExactReadAudit.Id,
             [homeA.FullName, homeB.FullName],
             [
                 owner.Pii.Email,
@@ -629,6 +836,8 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
         EventStatus = null!,
         EventFormatId = (int)EventFormatEnum.Local,
         EventFormat = null!,
+        EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
+        EventProvenanceType = null!,
         VisibilityTypeId = (int)VisibilityTypeEnum.Private,
         VisibilityType = null!,
         ConcurrencyStamp = Guid.CreateVersion7(),
@@ -686,6 +895,60 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             CreatedAt = DateTime.UtcNow,
         };
     }
+
+    private static UserAuthenticationToken CreateAuthenticationToken(
+        Tenant tenant,
+        User user,
+        string subjectDid) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        TenantId = tenant.Id,
+        Tenant = tenant,
+        UserId = user.Id,
+        User = user,
+        Provider = "atproto",
+        SubjectDid = subjectDid,
+        SessionCiphertext = Enumerable.Repeat((byte)1, 29).ToArray(),
+        EncryptionKeyId = "active-key",
+        OAuthClientKeyId = "oauth-client-key",
+        EnvelopeVersion = 1,
+        PdsHost = "https://pds.example.invalid",
+    };
+
+    private static UserExternalLogin CreateExternalLogin(
+        Tenant tenant,
+        User user,
+        string providerKey) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        TenantId = tenant.Id,
+        Tenant = tenant,
+        UserId = user.Id,
+        User = user,
+        Provider = "keycloak",
+        ProviderKey = providerKey,
+        ProviderDisplayName = "Keycloak",
+        CreatedAt = DateTime.UtcNow,
+    };
+
+    private static TenantUser CreateTenantUser(
+        Tenant tenant,
+        User user,
+        Actor actor,
+        TenantUserStatusEnum status) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        TenantId = tenant.Id,
+        Tenant = tenant,
+        UserId = user.Id,
+        User = user,
+        ActorId = actor.Id,
+        Actor = actor,
+        StatusId = (int)status,
+        JoinedAt = DateTime.UtcNow,
+        RemovedAt = status == TenantUserStatusEnum.Removed ? DateTime.UtcNow : null,
+        CreatedAt = DateTime.UtcNow,
+    };
 
     private static UserPreference CreatePreference(Tenant tenant, Guid userId, string value) => new()
     {
@@ -757,9 +1020,15 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
     internal sealed record ErasureGraph(
         Guid OwnerUserId,
         Guid OwnerActorId,
+        Guid UnrelatedUserId,
+        Guid UnrelatedActorId,
         Guid[] LocationIds,
         Guid[] RoomIds,
         Guid[] EventLocationIds,
+        Guid SubjectDisclosureAuditId,
+        Guid UnrelatedDisclosureAuditId,
+        Guid SubjectExactReadAuditId,
+        Guid UnrelatedExactReadAuditId,
         string[] HomeNames,
         string[] PiiCanaries);
 

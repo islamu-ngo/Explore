@@ -16,6 +16,29 @@ public sealed class ActorLifecycleTests
     }
 
     [Test]
+    public async Task TombstoneForUserPrivacyErasure_SeversUserOwnerAndRecordsDeletion()
+    {
+        Actor actor = CreateActor(ActorTypeEnum.User);
+        Guid erasedBy = Guid.CreateVersion7();
+        actor.UserId = erasedBy;
+        actor.CreatedBy = erasedBy;
+        actor.UpdatedBy = erasedBy;
+        actor.DeletedBy = erasedBy;
+        Guid concurrencyStamp = actor.ConcurrencyStamp;
+
+        actor.TombstoneForUserPrivacyErasure(TransitionedAt, erasedBy);
+
+        await Assert.That(OwnerCount(actor)).IsEqualTo(0);
+        await Assert.That(actor.IsDeleted).IsTrue();
+        await Assert.That(actor.DeletedAt).IsEqualTo(TransitionedAt);
+        await Assert.That(actor.CreatedBy).IsNull();
+        await Assert.That(actor.DeletedBy).IsNull();
+        await Assert.That(actor.UpdatedAt).IsEqualTo(TransitionedAt);
+        await Assert.That(actor.UpdatedBy).IsNull();
+        await Assert.That(actor.ConcurrencyStamp).IsNotEqualTo(concurrencyStamp);
+    }
+
+    [Test]
     public async Task PromoteToOrganization_PreservesIdentityAndPii_AndReplacesOnlyExternalOwner()
     {
         var (actor, externalSubject, pii, identity) = CreateExternalActor();

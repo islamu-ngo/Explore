@@ -26,7 +26,7 @@ public sealed class EfCorePrivacyErasureAuthorityRepository(
         try
         {
             await using NpgsqlCommand command = CreateCommand(
-                $"SELECT authority_sequence, intent_id, subject_kind, subject_id, reason_code, policy_version, requested_at_utc, recorded_at_utc, retention_expires_at_utc FROM {PrivacyErasureAuthorityDatabaseContract.AppendFunctionSql}(@intent_id, @subject_kind, @subject_id, @reason_code, @policy_version)");
+                $"SELECT authority_sequence, intent_id, subject_kind, subject_id, reason_code, policy_version, requested_at_utc, recorded_at_utc, retention_expires_at_utc FROM {PrivacyErasureAuthorityDatabaseContract.AppendFunctionSql}(@intent_id, @subject_kind, @subject_id, @reason_code, @policy_version, @authority_retention)");
             command.Parameters.AddWithValue("intent_id", NpgsqlDbType.Uuid, intent.IntentId);
             command.Parameters.AddWithValue("subject_kind", NpgsqlDbType.Smallint, (short)intent.SubjectKind);
             command.Parameters.AddWithValue("subject_id", NpgsqlDbType.Uuid, intent.SubjectId);

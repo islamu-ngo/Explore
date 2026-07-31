@@ -327,16 +327,6 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(value => value.UserId, (Guid?)null)
                 .SetProperty(value => value.ReviewerName, "Deleted user"), cancellationToken);
-        await dbContext.EventLocationDisclosureAudits
-            .IgnoreAllFilters(reason)
-            .Where(value => value.ActorUserId == subjectId)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(value => value.ActorUserId, (Guid?)null), cancellationToken);
-        await dbContext.EventLocationExactReadAudits
-            .IgnoreAllFilters(reason)
-            .Where(value => value.RequesterUserId == subjectId)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(value => value.RequesterUserId, (Guid?)null), cancellationToken);
         await dbContext.SupportAccessAuditEvents
             .Where(value => value.ActorUserId == subjectId)
             .ExecuteUpdateAsync(setters => setters
@@ -482,10 +472,6 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .Where(value => value.UserId == subjectId)
             .ExecuteDeleteAsync(cancellationToken);
         await dbContext.EventRegistrations
-            .IgnoreAllFilters(reason)
-            .Where(value => value.UserId == subjectId)
-            .ExecuteDeleteAsync(cancellationToken);
-        await dbContext.EventRegistrationIntents
             .IgnoreAllFilters(reason)
             .Where(value => value.UserId == subjectId)
             .ExecuteDeleteAsync(cancellationToken);
@@ -641,7 +627,7 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
     {
         ArgumentNullException.ThrowIfNull(audits);
         dbContext.EventLocationDisclosureAudits.AddRange(audits);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await dbContext.SavePrivacyErasureChangesAsync(cancellationToken);
     }
 
     private static void RequireId(Guid id, string parameterName)
