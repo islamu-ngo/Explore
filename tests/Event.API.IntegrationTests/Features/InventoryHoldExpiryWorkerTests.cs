@@ -24,8 +24,15 @@ public sealed class InventoryHoldExpiryWorkerTests
         RegistrationInventoryHold second = CreateHold(createdAt);
         var itemRepositories = new List<IRegistrationInventoryRepository>();
         var itemLifecycles = new List<IRegistrationOrderLifecycleService>();
+        var itemTenantAccessors = new List<ITenantContextAccessor>();
         int repositoryCount = 0;
         var services = new ServiceCollection();
+        services.AddScoped<ITenantContextAccessor>(_ =>
+        {
+            var tenantAccessor = Substitute.For<ITenantContextAccessor>();
+            itemTenantAccessors.Add(tenantAccessor);
+            return tenantAccessor;
+        });
         services.AddScoped<IRegistrationInventoryRepository>(_ =>
         {
             var repository = Substitute.For<IRegistrationInventoryRepository>();
@@ -77,6 +84,7 @@ public sealed class InventoryHoldExpiryWorkerTests
         await Assert.That(repositoryCount).IsEqualTo(3);
         await Assert.That(itemRepositories).Count().IsEqualTo(2);
         await Assert.That(itemLifecycles).Count().IsEqualTo(2);
+        await Assert.That(itemTenantAccessors).Count().IsEqualTo(2);
         await itemRepositories[0].Received(1).TryExpireDueHoldAsync(
             first.Id,
             Arg.Any<DateTime>(),
@@ -93,6 +101,10 @@ public sealed class InventoryHoldExpiryWorkerTests
             second.RegistrationOrderId,
             second.TenantId,
             CancellationToken.None);
+        itemTenantAccessors[0].Received(1).SetTenant(first.TenantId);
+        itemTenantAccessors[1].Received(1).SetTenant(second.TenantId);
+        itemTenantAccessors[0].Received(1).Clear();
+        itemTenantAccessors[1].Received(1).Clear();
     }
 
     [Test]
@@ -107,6 +119,7 @@ public sealed class InventoryHoldExpiryWorkerTests
         var itemLifecycles = new List<IRegistrationOrderLifecycleService>();
         int repositoryCount = 0;
         var services = new ServiceCollection();
+        services.AddScoped<ITenantContextAccessor>(_ => Substitute.For<ITenantContextAccessor>());
         services.AddScoped<IRegistrationInventoryRepository>(_ =>
         {
             var repository = Substitute.For<IRegistrationInventoryRepository>();
@@ -165,6 +178,7 @@ public sealed class InventoryHoldExpiryWorkerTests
         var itemLifecycles = new List<IRegistrationOrderLifecycleService>();
         int repositoryCount = 0;
         var services = new ServiceCollection();
+        services.AddScoped<ITenantContextAccessor>(_ => Substitute.For<ITenantContextAccessor>());
         services.AddScoped<IRegistrationInventoryRepository>(_ =>
         {
             var repository = Substitute.For<IRegistrationInventoryRepository>();

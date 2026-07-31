@@ -144,6 +144,74 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
     }
 
     [Test]
+    public async Task RecoveredHoldConsumption_RetainsExpiredAuditRowAndConsumesOnlyTheReplacementHold()
+    {
+        (Guid tenantId, Guid eventId, Guid poolId, Guid ticketTypeId, Guid _) = await SeedAsync();
+        Guid orderId = Guid.CreateVersion7();
+        Guid expiredHoldId = Guid.CreateVersion7();
+        Guid replacementHoldId = Guid.CreateVersion7();
+        await using (ExploreDbContext setupContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId)))
+        {
+            var catalogs = new EventTicketCatalogRepository(setupContext);
+            var inventory = new RegistrationInventoryRepository(setupContext);
+            EventTicketCatalogVersion catalog = (await catalogs.GetPublishedCatalogAsync(eventId, tenantId, CancellationToken.None))!;
+            EventTicketType ticketType = catalog.TicketTypes.Single(ticket => ticket.Id == ticketTypeId);
+            RegistrationOrder order = RegistrationOrder.Create(
+                orderId,
+                tenantId,
+                eventId,
+                accountUserId: null,
+                purchaserActorId: null,
+                bookingPartyType: BookingPartyTypeEnum.Individual,
+                ticketCatalogVersionId: catalog.Id,
+                participationSnapshot: RegistrationParticipationSnapshot.Create(Guid.CreateVersion7(), 4, 3, 2, GuestRecoveryPolicyEnum.VerifiedEmailRequired),
+                registrationWorkflowVersionId: null,
+                guestAccessTokenHash: CreateGuestCapabilityHash(orderId),
+                currencyCode: catalog.CurrencyCode,
+                createdAt: UtcNow.AddMinutes(-15),
+                expiresAt: UtcNow.AddMinutes(15));
+            order.AddLine(RegistrationOrderLine.Create(Guid.CreateVersion7(), catalog, ticketType, order.Id, 1, null, null));
+            RegistrationInventoryHold expiredHold = RegistrationInventoryHold.Create(
+                expiredHoldId,
+                order.Id,
+                poolId,
+                ticketType.Id,
+                tenantId,
+                1,
+                UtcNow.AddMinutes(-15),
+                UtcNow.AddMinutes(-1));
+            expiredHold.TryExpire(UtcNow);
+            RegistrationInventoryHold replacementHold = RegistrationInventoryHold.Create(
+                replacementHoldId,
+                order.Id,
+                poolId,
+                ticketType.Id,
+                tenantId,
+                1,
+                UtcNow,
+                UtcNow.AddMinutes(15));
+            await inventory.AddOrderWithHoldsAsync(order, [expiredHold, replacementHold], CancellationToken.None);
+            await inventory.SaveChangesAsync(CancellationToken.None);
+
+            await Assert.That(await inventory.TryConsumeActiveHoldsForOrderAsync(order.Id, tenantId, UtcNow, CancellationToken.None)).IsEqualTo(1);
+        }
+
+        await using ExploreDbContext verificationContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
+        RegistrationInventoryHold[] holds = await verificationContext.RegistrationInventoryHolds
+            .Where(hold => hold.RegistrationOrderId == orderId)
+            .ToArrayAsync();
+        RegistrationInventoryHold expiredHoldAudit = holds.Single(hold => hold.Id == expiredHoldId);
+        RegistrationInventoryHold consumedReplacementHold = holds.Single(hold => hold.Id == replacementHoldId);
+        var verificationRepository = new RegistrationInventoryRepository(verificationContext);
+
+        await Assert.That(expiredHoldAudit.RegistrationInventoryHoldStatusId).IsEqualTo((int)RegistrationInventoryHoldStatusEnum.Expired);
+        await Assert.That(expiredHoldAudit.ConsumedAt).IsNull();
+        await Assert.That(consumedReplacementHold.RegistrationInventoryHoldStatusId).IsEqualTo((int)RegistrationInventoryHoldStatusEnum.Consumed);
+        await Assert.That(consumedReplacementHold.ConsumedAt).IsEqualTo(UtcNow);
+        await Assert.That(await verificationRepository.GetAllocatedQuantityAsync(poolId, tenantId, CancellationToken.None)).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task CancelledOrderWithoutParticipants_ReleasesEveryActiveLineHold()
     {
         (Guid tenantId, Guid eventId, Guid poolId, Guid firstTicketTypeId, Guid secondTicketTypeId) =

@@ -29,6 +29,18 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
         dbContext.RegistrationOrders
             .AsNoTracking()
             .Include(order => order.Lines)
+            .Include(order => order.PlatformContribution)
+            .FirstOrDefaultAsync(
+                order => order.Id == orderId && order.TenantId == tenantId,
+                cancellationToken);
+
+    public Task<RegistrationOrder?> GetOrderForUpdateWithLinesAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken) =>
+        dbContext.RegistrationOrders
+            .Include(order => order.Lines)
+            .Include(order => order.PlatformContribution)
             .FirstOrDefaultAsync(
                 order => order.Id == orderId && order.TenantId == tenantId,
                 cancellationToken);
@@ -50,9 +62,78 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
         await dbContext.RegistrationOrders
             .AsNoTracking()
             .Include(order => order.Lines)
+            .Include(order => order.PlatformContribution)
             .Where(order => order.EventId == eventId && order.TenantId == tenantId)
             .OrderByDescending(order => order.CreatedAt)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Guid>> GetRegisteredUserFanoutBatchAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid? afterUserId,
+        int batchSize,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty || eventId == Guid.Empty || batchSize <= 0)
+        {
+            return [];
+        }
+
+        return await dbContext.RegistrationOrders
+            .AsNoTracking()
+            .Where(order => order.TenantId == tenantId
+                && order.EventId == eventId
+                && order.AccountUserId != null
+                && order.RegistrationOrderStatusId != (int)RegistrationOrderStatusEnum.Expired
+                && order.RegistrationOrderStatusId != (int)RegistrationOrderStatusEnum.Cancelled
+                && order.RegistrationOrderStatusId != (int)RegistrationOrderStatusEnum.Rejected
+                && (!afterUserId.HasValue || order.AccountUserId > afterUserId))
+            .Select(order => order.AccountUserId!.Value)
+            .Distinct()
+            .OrderBy(userId => userId)
+            .Take(batchSize)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<NotificationFanoutAudienceMember>> GetNotificationFanoutAudienceBatchAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid? sessionId,
+        DateTime audienceCutoffAt,
+        int deliveryPolicyId,
+        NotificationFanoutAudienceCursor? cursor,
+        int batchSize,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty || eventId == Guid.Empty || audienceCutoffAt.Kind != DateTimeKind.Utc || batchSize <= 0)
+        {
+            return [];
+        }
+
+        var audience = dbContext.RegistrationOrders
+            .AsNoTracking()
+            .Where(order => order.TenantId == tenantId
+                && order.EventId == eventId
+                && order.AccountUserId != null
+                && order.CreatedAt <= audienceCutoffAt
+                && order.RegistrationOrderStatusId != (int)RegistrationOrderStatusEnum.Expired
+                && order.RegistrationOrderStatusId != (int)RegistrationOrderStatusEnum.Cancelled
+                && order.RegistrationOrderStatusId != (int)RegistrationOrderStatusEnum.Rejected)
+            .GroupBy(order => order.AccountUserId!.Value)
+            .Select(group => new NotificationFanoutAudienceMember(group.Key, group.Min(order => order.CreatedAt)));
+
+        if (cursor is { } value)
+        {
+            audience = audience.Where(member => member.FirstEligibleRegistrationCreatedAt > value.FirstEligibleRegistrationCreatedAt
+                || member.FirstEligibleRegistrationCreatedAt == value.FirstEligibleRegistrationCreatedAt && member.UserId > value.UserId);
+        }
+
+        return await audience
+            .OrderBy(member => member.FirstEligibleRegistrationCreatedAt)
+            .ThenBy(member => member.UserId)
+            .Take(batchSize)
+            .ToListAsync(cancellationToken);
+    }
 
     public async Task<IReadOnlyList<EventCapacityPool>> GetPoolsForUpdateAsync(
         IReadOnlyCollection<Guid> capacityPoolIds,

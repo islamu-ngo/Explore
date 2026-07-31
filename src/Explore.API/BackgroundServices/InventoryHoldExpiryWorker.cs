@@ -56,17 +56,26 @@ public sealed class InventoryHoldExpiryWorker(IServiceProvider serviceProvider, 
         foreach (((Guid tenantId, Guid orderId), IReadOnlyList<Guid> holdIds) in recoveryOrders)
         {
             await using AsyncServiceScope itemScope = serviceProvider.CreateAsyncScope();
-            var repository = itemScope.ServiceProvider.GetRequiredService<IRegistrationInventoryRepository>();
-            bool holdExpired = false;
-            foreach (Guid holdId in holdIds)
+            var tenantAccessor = itemScope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
+            tenantAccessor.SetTenant(tenantId);
+            try
             {
-                holdExpired |= await repository.TryExpireDueHoldAsync(holdId, utcNow, cancellationToken);
-            }
+                var repository = itemScope.ServiceProvider.GetRequiredService<IRegistrationInventoryRepository>();
+                bool holdExpired = false;
+                foreach (Guid holdId in holdIds)
+                {
+                    holdExpired |= await repository.TryExpireDueHoldAsync(holdId, utcNow, cancellationToken);
+                }
 
-            if (holdExpired || recoveryTargets.Any(target => target.TenantId == tenantId && target.RegistrationOrderId == orderId))
+                if (holdExpired || recoveryTargets.Any(target => target.TenantId == tenantId && target.RegistrationOrderId == orderId))
+                {
+                    var lifecycle = itemScope.ServiceProvider.GetRequiredService<IRegistrationOrderLifecycleService>();
+                    await lifecycle.RecoverExpiredHoldAsync(orderId, tenantId, cancellationToken);
+                }
+            }
+            finally
             {
-                var lifecycle = itemScope.ServiceProvider.GetRequiredService<IRegistrationOrderLifecycleService>();
-                await lifecycle.RecoverExpiredHoldAsync(orderId, tenantId, cancellationToken);
+                tenantAccessor.Clear();
             }
         }
     }

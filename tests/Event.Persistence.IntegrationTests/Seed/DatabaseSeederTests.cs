@@ -308,7 +308,7 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
     }
 
     [Test]
-    public async Task SeedAsync_InDevelopment_PreservesRegistrationAndConsentAcrossStartups()
+    public async Task SeedAsync_InDevelopment_PreservesRegistrationOrderAndConsentAcrossStartups()
     {
         await fixture.ResetAsync();
 
@@ -317,7 +317,7 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
             await DatabaseSeeder.SeedAsync(context, DevelopmentEnvironment);
         }
 
-        var intentId = Guid.Parse("018e4e5c-7f00-7001-8000-000000010001");
+        var orderId = Guid.Parse("018e4e5c-7f00-7001-8000-000000010001");
         var registrationId = Guid.Parse("018e4e5c-7f00-7001-8000-000000010002");
         var consentId = Guid.Parse("018e4e5c-7f00-7001-8000-000000010003");
 
@@ -335,21 +335,37 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
                 .Select(e => e.ActorId)
                 .SingleAsync();
 
-            context.Set<EventRegistrationIntent>().Add(new EventRegistrationIntent
-            {
-                Id = intentId,
-                EventId = eventId,
-                Event = null!,
-                UserId = SeedIds.RegularUserId,
-                User = null!,
-                RegistrationScopeId = (int)RegistrationScopeEnum.SessionSelection,
-                RegistrationScope = null!,
-                ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
-                TenantId = SeedIds.DefaultTenantId,
-                Tenant = null!,
-                CreatedAt = DateTime.UtcNow,
-                ConcurrencyStamp = Guid.Parse("018e4e5c-7f00-7001-8000-000000010004")
-            });
+            DateTime now = DateTime.UtcNow;
+            EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(
+                SeedIds.DefaultTenantId,
+                eventId,
+                "USD",
+                versionNumber: 10_001);
+            RegistrationOrder order = RegistrationOrder.Create(
+                orderId,
+                SeedIds.DefaultTenantId,
+                eventId,
+                SeedIds.RegularUserId,
+                purchaserActorId: null,
+                BookingPartyTypeEnum.Individual,
+                catalog.Id,
+                RegistrationParticipationSnapshot.Create(
+                    Guid.CreateVersion7(),
+                    4,
+                    3,
+                    2,
+                    GuestRecoveryPolicyEnum.VerifiedEmailRequired),
+                registrationWorkflowVersionId: null,
+                guestAccessTokenHash: null,
+                "USD",
+                now,
+                expiresAt: null);
+            order.TransitionTo(RegistrationOrderStatusEnum.AwaitingParticipantDetails, now);
+            order.TransitionTo(RegistrationOrderStatusEnum.AwaitingRequirements, now);
+            order.TransitionTo(RegistrationOrderStatusEnum.ReadyForCheckout, now);
+            order.TransitionTo(RegistrationOrderStatusEnum.Confirmed, now);
+            context.EventTicketCatalogVersions.Add(catalog);
+            context.RegistrationOrders.Add(order);
             context.Set<EventRegistration>().Add(new EventRegistration
             {
                 Id = registrationId,
@@ -359,11 +375,11 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
                 User = null!,
                 EventSessionId = sessionId,
                 EventSession = null!,
-                EventRegistrationIntentId = intentId,
+                RegistrationOrderId = orderId,
                 ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
                 TenantId = SeedIds.DefaultTenantId,
                 Tenant = null!,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = now
             });
             context.Set<EventContactShareConsent>().Add(new EventContactShareConsent
             {
@@ -372,15 +388,15 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
                 SourceEventId = eventId,
                 UserId = SeedIds.RegularUserId,
                 RecipientActorId = recipientActorId,
-                SourceEventRegistrationIntentId = intentId,
+                SourceRegistrationOrderId = orderId,
                 PurposeCode = ConsentPurposeCodes.OrganizerFutureCommunications,
                 Status = ConsentStatus.Granted,
                 EmailSnapshot = "user@example.test",
                 EmailNormalizedSnapshot = "user@example.test",
                 ConsentTextSnapshot = "Share my email with the organizer.",
                 ConsentUiVersion = "v1",
-                GrantedAt = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow
+                GrantedAt = now,
+                CreatedAt = now
             });
             await context.SaveChangesAsync();
         }
@@ -391,16 +407,16 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
         }
 
         await using var verifyContext = fixture.CreateDbContext();
-        var intentExists = await verifyContext.Set<EventRegistrationIntent>()
+        var orderExists = await verifyContext.RegistrationOrders
             .IgnoreQueryFilters()
-            .AnyAsync(intent => intent.Id == intentId && !intent.IsDeleted);
+            .AnyAsync(order => order.Id == orderId && !order.IsDeleted);
         var registrationExists = await verifyContext.Set<EventRegistration>()
             .IgnoreQueryFilters()
             .AnyAsync(registration => registration.Id == registrationId && !registration.IsDeleted);
         var consentExists = await verifyContext.Set<EventContactShareConsent>()
             .AnyAsync(consent => consent.Id == consentId && consent.Status == ConsentStatus.Granted);
 
-        await Assert.That(intentExists).IsTrue();
+        await Assert.That(orderExists).IsTrue();
         await Assert.That(registrationExists).IsTrue();
         await Assert.That(consentExists).IsTrue();
     }

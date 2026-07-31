@@ -28,6 +28,33 @@ public partial class ExploreDbContext
         return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
+    internal async Task<int> SavePrivacyErasureChangesAsync(CancellationToken cancellationToken)
+    {
+        PrepareTrackedEntities();
+        foreach (var entry in ChangeTracker.Entries()
+                     .Where(item => item.State is EntityState.Added or EntityState.Modified))
+        {
+            switch (entry.Entity)
+            {
+                case Actor actor when actor.IsDeleted
+                    && actor.UserId is null
+                    && actor.OrganizationId is null
+                    && actor.GroupId is null
+                    && actor.ExternalActorSubjectId is null
+                    && actor.ServicePrincipalId is null:
+                    ClearAuditOwnership(actor);
+                    break;
+
+                case AtprotoIdentity identity when identity.IsDeleted
+                    && identity.Did.StartsWith("did:deleted:", StringComparison.Ordinal):
+                    ClearAuditOwnership(identity);
+                    break;
+            }
+        }
+
+        return await base.SaveChangesAsync(acceptAllChangesOnSuccess: true, cancellationToken);
+    }
+
     private void PrepareTrackedEntities()
     {
         ValidateEventLocationCarrierConsistency();
@@ -259,6 +286,14 @@ public partial class ExploreDbContext
     private Guid? GetCurrentUserId()
     {
         return CurrentUserService?.UserId;
+    }
+
+    private static void ClearAuditOwnership<T>(T tombstone)
+        where T : IAuditableEntity, ISoftDeletable
+    {
+        tombstone.CreatedBy = null;
+        tombstone.UpdatedBy = null;
+        tombstone.DeletedBy = null;
     }
 
     private static string GeneratePublicCode()

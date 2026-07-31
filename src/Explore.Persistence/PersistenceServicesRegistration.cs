@@ -236,7 +236,6 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventSessionGroupSessionRepository, EventSessionGroupSessionRepository>();
         services.AddScoped<IEventSessionIslamicAspectRepository, EventSessionIslamicAspectRepository>();
         services.AddScoped<IEventRegistrationRepository, EventRegistrationRepository>();
-        services.AddScoped<IEventRegistrationIntentRepository, EventRegistrationIntentRepository>();
         services.AddScoped<IEventDayRepository, EventDayRepository>();
         services.AddScoped<IEventAgendaItemRepository, EventAgendaItemRepository>();
         services.AddScoped<IEventSessionAgendaItemRepository, EventSessionAgendaItemRepository>();
