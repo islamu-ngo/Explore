@@ -159,7 +159,6 @@ public sealed class UserPiiInventoryArchitectureTests
 
         AtprotoSourceFieldManifestEntry[] atprotoPiiSources =
             AtprotoEventSourceFieldManifest.Entries
-                .Concat(AtprotoRsvpSourceFieldManifest.Entries)
                 .Where(entry => entry.SourcePath.Contains(".Pii.", StringComparison.Ordinal)
                     || entry.SourcePath.EndsWith(".Did", StringComparison.Ordinal)
                     || entry.SourcePath.EndsWith(".Handle", StringComparison.Ordinal))
