@@ -13,7 +13,6 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventDay;
 using Explore.Application.DTOs.EventOrganizerClaim;
-using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.EventSessionGroup;
@@ -128,9 +127,6 @@ public static class ResourceDescriptorRegistry
         [typeof(EventSessionSpeakerDto)] = global::Explore.Application.Authorization.ResourceKinds.EventSession,
         [typeof(EventSessionSpeakerListDto)] = global::Explore.Application.Authorization.ResourceKinds.EventSession,
 
-        // Event Registration
-        [typeof(EventRegistrationDto)] = global::Explore.Application.Authorization.ResourceKinds.EventRegistration,
-        [typeof(EventRegistrationListDto)] = global::Explore.Application.Authorization.ResourceKinds.EventRegistration,
         [typeof(EventOrganizerClaimDto)] = global::Explore.Application.Authorization.ResourceKinds.EventOrganizerClaim,
 
         // Category

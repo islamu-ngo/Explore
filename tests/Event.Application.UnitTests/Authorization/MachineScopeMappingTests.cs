@@ -82,17 +82,6 @@ public class MachineScopeMappingTests
     }
 
     [Test]
-    public async Task ScopesPermit_WithRegistrationsWrite_AllowsRegistrationWrites()
-    {
-        var scopes = new[] { ExternalApiKeyScopes.RegistrationsWrite };
-
-        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EventRegistration, AuthorizationActions.Create)).IsTrue();
-        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EventRegistration, AuthorizationActions.View)).IsTrue();
-        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EventRegistration, AuthorizationActions.Update)).IsTrue();
-        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.Event, AuthorizationActions.Create)).IsFalse();
-    }
-
-    [Test]
     public async Task ScopesPermit_WithOrganizationsRead_AllowsOrgReadButDeniesWrite()
     {
         var scopes = new[] { ExternalApiKeyScopes.OrganizationsRead };

@@ -398,37 +398,38 @@ public partial class FallbackAuthorizationService
             or AuthorizationActions.Delete
             or AuthorizationActions.ManageMembers;
 
-    private async Task<bool> EvaluateEventRegistrationAccessAsync(
+    private async Task<bool> EvaluateRegistrationOrderAccessAsync(
         string resourceId,
         string action,
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
-        if (!TryResolveEventContext("islamuevent_event_registration", resourceId, resourceAttributes, out var tenantId, out var eventId))
+        if (action is not (AuthorizationActions.RegistrationOrders.View
+            or AuthorizationActions.RegistrationOrders.Cancel
+            or AuthorizationActions.RegistrationOrders.Continue
+            or AuthorizationActions.RegistrationOrders.Finalize) ||
+            !TryResolveEventContext(ResourceKinds.RegistrationOrder, resourceId, resourceAttributes, out var tenantId, out var eventId) ||
+            tenantId != _tenantContext.TenantId)
         {
-            LogDecision("deny", "missing_event_context", "islamuevent_event_registration", resourceId, action);
             return false;
         }
 
-        if (tenantId != _tenantContext.TenantId)
-        {
-            LogDecision("deny", "tenant_mismatch", "islamuevent_event_registration", resourceId, action);
-            return false;
-        }
-
-        if (action is "create" or "view")
-            return true;
-
-        if (action == AuthorizationActions.Delete &&
-            await IsActorUserOwnerAsync(resourceAttributes, cancellationToken))
+        var currentUserId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
+        if (currentUserId.HasValue &&
+            TryResolveGuidAttribute(resourceAttributes, "accountUserId", out var accountUserId) &&
+            currentUserId == accountUserId)
         {
             return true;
         }
 
-        if (await EvaluateEventRolePermissionAsync("islamuevent_event_registration", resourceId, action, tenantId, eventId, cancellationToken))
-            return true;
-
-        return await EvaluateOrgScopedAccessAsync("islamuevent_event_registration", resourceId, action, resourceAttributes, cancellationToken);
+        return action == AuthorizationActions.RegistrationOrders.View &&
+               await EvaluateManageRegistrationsAccessAsync(
+                   ResourceKinds.Event,
+                   eventId.ToString("D"),
+                   resourceAttributes,
+                   tenantId,
+                   eventId,
+                   cancellationToken);
     }
 
     private async Task<bool> EvaluateEventScopedAccessAsync(

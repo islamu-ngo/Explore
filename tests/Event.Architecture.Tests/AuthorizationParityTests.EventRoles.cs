@@ -38,7 +38,6 @@ public partial class AuthorizationParityTests
         "islamuevent_event_day",
         "islamuevent_event_agenda_item",
         "islamuevent_event_session_agenda_item",
-        "islamuevent_event_registration",
         "islamuevent_event_organizer_claim"
     ];
 
@@ -190,7 +189,7 @@ public partial class AuthorizationParityTests
         var source = File.ReadAllText(sourceFile);
 
         var eventScopedKinds = EventFamilyResourceKinds
-            .Where(k => k != "islamuevent_event_registration" && k != "islamuevent_event_contact_share_consent")
+            .Where(k => k != "islamuevent_event_contact_share_consent")
             .ToList();
 
         var missing = eventScopedKinds

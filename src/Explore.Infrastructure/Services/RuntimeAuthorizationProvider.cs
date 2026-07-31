@@ -431,7 +431,6 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
             ResourceKinds.EventSessionAgendaItem or
             ResourceKinds.EventDay or
             ResourceKinds.EventAgendaItem or
-            ResourceKinds.EventRegistration or
             ResourceKinds.EventContactShareConsent or
             ResourceKinds.StorageObject or
             ResourceKinds.Actor;

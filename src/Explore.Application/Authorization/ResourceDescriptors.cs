@@ -11,7 +11,6 @@ using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventCustomProperty;
 using Explore.Application.DTOs.EventDay;
 using Explore.Application.DTOs.EventOrganizerClaim;
-using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.EventSessionCustomProperty;
@@ -365,18 +364,6 @@ public static class ResourceDescriptors
         dto => new Dictionary<string, object>
         {
             ["locationId"] = dto.LocationId.ToString(),
-            ["tenantId"] = dto.TenantId.ToString()
-        },
-        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
-
-    public static readonly ResourceDescriptor<EventRegistrationDto> EventRegistration = new(
-        ResourceKinds.EventRegistration,
-        dto => dto.Id.ToString(),
-        dto => new Dictionary<string, object>
-        {
-            ["eventId"] = dto.EventId.ToString(),
-            ["eventSessionId"] = dto.EventSessionId.ToString(),
-            ["userId"] = dto.UserId.ToString(),
             ["tenantId"] = dto.TenantId.ToString()
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));

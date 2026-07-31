@@ -164,8 +164,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             "islamuevent_event_agenda_item" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_event_organizer_claim" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
 
-            // Event registration: all authenticated can create/view only when the parent event context is present.
-            "islamuevent_event_registration" => await EvaluateEventRegistrationAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_registration_order" => await EvaluateRegistrationOrderAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
 
             // Contact share consent: tenant/org admin can view and export shared contacts
             "islamuevent_event_contact_share_consent" => await EvaluateContactShareConsentAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
@@ -309,8 +308,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or "islamuevent_event_session_agenda_item"
             or "islamuevent_event_day"
             or "islamuevent_event_agenda_item"
-            or "islamuevent_event_organizer_claim"
-            or "islamuevent_event_registration";
+            or "islamuevent_event_organizer_claim";
 
     private static bool RequiresDirectEventAuthority(string resourceKind, string action) =>
         resourceKind is ResourceKinds.Event or ResourceKinds.EventOrganizerClaim &&

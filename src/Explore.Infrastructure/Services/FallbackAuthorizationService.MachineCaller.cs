@@ -240,7 +240,6 @@ public partial class FallbackAuthorizationService
         || resourceKind == ResourceKinds.EventSessionAgendaItem
         || resourceKind == ResourceKinds.EventDay
         || resourceKind == ResourceKinds.EventAgendaItem
-        || resourceKind == ResourceKinds.EventRegistration
         || resourceKind == ResourceKinds.EventContactShareConsent
         || resourceKind == ResourceKinds.StorageObject
         || resourceKind == ResourceKinds.CustomPropertyValue;

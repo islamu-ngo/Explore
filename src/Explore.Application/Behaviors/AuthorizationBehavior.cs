@@ -46,7 +46,6 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
     private readonly IStorageObjectRepository? _storageObjectRepository;
     private readonly IEventSessionRepository? _eventSessionRepository;
     private readonly IWebhookOwnershipScopeResolver? _webhookOwnershipScopeResolver;
-    private readonly IEventRegistrationRepository? _eventRegistrationRepository;
     private readonly IEventSessionLanguageRepository? _eventSessionLanguageRepository;
     private readonly IEventCategoriesRepository? _eventCategoriesRepository;
     private readonly IEventTagsRepository? _eventTagsRepository;
@@ -70,7 +69,6 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         IStorageObjectRepository? storageObjectRepository = null,
         IEventSessionRepository? eventSessionRepository = null,
         IWebhookOwnershipScopeResolver? webhookOwnershipScopeResolver = null,
-        IEventRegistrationRepository? eventRegistrationRepository = null,
         ITenantContext? tenantContext = null,
         IEventSessionLanguageRepository? eventSessionLanguageRepository = null,
         IEventCategoriesRepository? eventCategoriesRepository = null,
@@ -93,7 +91,6 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         _storageObjectRepository = storageObjectRepository;
         _eventSessionRepository = eventSessionRepository;
         _webhookOwnershipScopeResolver = webhookOwnershipScopeResolver;
-        _eventRegistrationRepository = eventRegistrationRepository;
         _tenantContext = tenantContext;
         _eventSessionLanguageRepository = eventSessionLanguageRepository;
         _eventCategoriesRepository = eventCategoriesRepository;
@@ -375,9 +372,6 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
                 resourceAttributes,
                 cancellationToken);
 
-            if (attribute.Resource == ResourceKinds.EventRegistration && resourceAttributes is null)
-                throw new AuthorizationException(attribute.Resource, attribute.Action);
-
             BindPersistedUserOwner(request, resourceAttributes);
 
             await EnforceAuthorizationAsync(
@@ -458,7 +452,6 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
                 ? await EnrichEventResourceAttributesAsync(eventId.ToString("D"), resourceAttributes, cancellationToken)
                 : resourceAttributes,
             ResourceKinds.EventSession => await EnrichEventSessionResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
-            ResourceKinds.EventRegistration => await EnrichEventRegistrationResourceAttributesAsync(resourceId, cancellationToken),
             ResourceKinds.OrganizationMember => await EnrichOrganizationMemberResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.StorageObject => await EnrichStorageObjectResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.CustomPropertyProjection => await EnrichCustomPropertyProjectionResourceAttributesAsync(resourceAttributes, cancellationToken),
@@ -506,40 +499,6 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         AddIfMissing(attributes, "claimantUserId", claimantActor.UserId);
         AddIfMissing(attributes, "claimantOrganizationId", claimantActor.OrganizationId);
         AddIfMissing(attributes, "claimantGroupId", claimantActor.GroupId);
-        return attributes;
-    }
-
-    private async Task<IDictionary<string, object>?> EnrichEventRegistrationResourceAttributesAsync(
-        string resourceId,
-        CancellationToken cancellationToken)
-    {
-        if (_eventRegistrationRepository is null ||
-            _eventRepository is null ||
-            _tenantContext is null ||
-            !Guid.TryParse(resourceId, out var registrationId))
-        {
-            return null;
-        }
-
-        var registration = await _eventRegistrationRepository.GetByIdWithDetails(
-            registrationId,
-            cancellationToken);
-        if (registration is null || registration.TenantId != _tenantContext.TenantId)
-            return null;
-
-        var eventEntity = await _eventRepository.GetEventWithDetails(registration.EventId);
-        if (eventEntity is null || eventEntity.TenantId != _tenantContext.TenantId)
-            return null;
-
-        var attributes = new Dictionary<string, object>
-        {
-            ["eventId"] = registration.EventId.ToString("D"),
-            ["eventSessionId"] = registration.EventSessionId.ToString("D"),
-            ["tenantId"] = registration.TenantId.ToString("D")
-        };
-        AddIfMissing(attributes, "userId", registration.UserId);
-        AddIfMissing(attributes, "organizationId", eventEntity.Actor?.OrganizationId);
-        AddIfMissing(attributes, "groupId", eventEntity.Actor?.GroupId);
         return attributes;
     }
 

@@ -51,11 +51,6 @@ public static class MachineScopeMapping
                     ? HasAny(scopeSet, ExternalApiKeyScopes.EventsWrite, ExternalApiKeyScopes.AdminTenant)
                     : HasAny(scopeSet, ExternalApiKeyScopes.EventsRead, ExternalApiKeyScopes.EventsWrite, ExternalApiKeyScopes.AdminTenant);
 
-            case ResourceKinds.EventRegistration:
-                return action == AuthorizationActions.View
-                    ? HasAny(scopeSet, ExternalApiKeyScopes.EventsRead, ExternalApiKeyScopes.EventsWrite, ExternalApiKeyScopes.RegistrationsWrite, ExternalApiKeyScopes.AdminTenant)
-                    : HasAny(scopeSet, ExternalApiKeyScopes.RegistrationsWrite, ExternalApiKeyScopes.EventsWrite, ExternalApiKeyScopes.AdminTenant);
-
             case ResourceKinds.Organization:
             case ResourceKinds.OrganizationMember:
             case ResourceKinds.OrganizationReview:
