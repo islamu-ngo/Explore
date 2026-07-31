@@ -27,7 +27,6 @@ public class UserProfileTests : IDisposable
         _ctx.Services.AddSingleton(_reviewService);
         _ctx.Services.AddSingleton(_userSettingsService);
         _ctx.Services.AddSingleton(Substitute.For<IContactShareConsentService>());
-        _ctx.Services.AddSingleton(Substitute.For<IEventRegistrationService>());
         _ctx.Services.AddSingleton(Substitute.For<ILogger<UserProfile>>());
 
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User", "test@example.com");
@@ -113,28 +112,6 @@ public class UserProfileTests : IDisposable
             EmailVerified = true
         });
 
-        _eventService.GetRegistrationEventsByUserAsync(userId).Returns(
-        [
-            new EventListDto
-            {
-                Id = Guid.NewGuid(),
-                Title = "Registered Conference",
-                EventTypeFullName = "Conference",
-                FirstSessionDate = DateTimeOffset.UtcNow.AddDays(7),
-                LastSessionDate = DateTimeOffset.UtcNow.AddDays(7),
-                IsPast = false
-            },
-            new EventListDto
-            {
-                Id = Guid.NewGuid(),
-                Title = "Past Workshop",
-                EventTypeFullName = "Workshop",
-                FirstSessionDate = DateTimeOffset.UtcNow.AddDays(-7),
-                LastSessionDate = DateTimeOffset.UtcNow.AddDays(-7),
-                IsPast = true
-            }
-        ]);
-
         _reviewService.GetReviewsByUserId(userId).Returns(
         [
             new OrganizationReviewDto
@@ -155,15 +132,6 @@ public class UserProfileTests : IDisposable
         await Assert.That(cut.Markup).Contains("Amina Rahman");
         await Assert.That(cut.Markup).Contains("amina@example.com");
         await Assert.That(cut.Markup).Contains("Email Verified");
-        await Assert.That(cut.Markup).Contains("events attended");
-
-        cut.FindAll("[role='tab']")
-            .First(tab => tab.TextContent.Contains("Registration", StringComparison.OrdinalIgnoreCase))
-            .Click();
-
-        await Assert.That(cut.Markup).Contains("Registered Conference");
-        await Assert.That(cut.Markup).Contains("Past Workshop");
-
         cut.FindAll("[role='tab']")
             .First(tab => tab.TextContent.Contains("Reviews", StringComparison.OrdinalIgnoreCase))
             .Click();
@@ -317,7 +285,6 @@ public class UserProfileTests : IDisposable
             LastName = "Rahman",
             Email = "amina@example.com"
         });
-        _eventService.GetRegistrationEventsByUserAsync(userId).Returns([]);
         _eventService.GetMyEventsAsync().Returns([]);
         _reviewService.GetReviewsByUserId(userId).Returns([]);
     }

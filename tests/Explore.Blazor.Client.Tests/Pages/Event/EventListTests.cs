@@ -20,7 +20,6 @@ public class EventListTests : IDisposable
     private readonly ITagService _tagService;
     private readonly IAdminService _adminService;
     private readonly ILocationService _locationService;
-    private readonly IEventRegistrationService _registrationService;
     private readonly IPublicExperienceService _publicExperienceService;
     private readonly DockLayoutState _dockLayoutState;
     private readonly IDockLayoutPersistence _dockLayoutPersistence;
@@ -34,7 +33,6 @@ public class EventListTests : IDisposable
         _tagService = Substitute.For<ITagService>();
         _adminService = Substitute.For<IAdminService>();
         _locationService = Substitute.For<ILocationService>();
-        _registrationService = Substitute.For<IEventRegistrationService>();
         _publicExperienceService = Substitute.For<IPublicExperienceService>();
         _dockLayoutState = new DockLayoutState();
         _dockLayoutPersistence = Substitute.For<IDockLayoutPersistence>();
@@ -50,7 +48,6 @@ public class EventListTests : IDisposable
         _ctx.Services.AddSingleton(_tagService);
         _ctx.Services.AddSingleton(_adminService);
         _ctx.Services.AddSingleton(_locationService);
-        _ctx.Services.AddSingleton(_registrationService);
         _ctx.Services.AddSingleton(_publicExperienceService);
         _ctx.Services.AddSingleton(_dockLayoutState);
         _ctx.Services.AddSingleton(_dockLayoutPersistence);
@@ -91,7 +88,6 @@ public class EventListTests : IDisposable
         _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
         _adminService.GetRegistrationModesAsync().Returns(new List<RegistrationModeListDto>());
         _adminService.GetLanguagesAsync().Returns(new List<LanguageListDto>());
-        _eventService.GetRegistrationsByUserAsync(Arg.Any<Guid>()).Returns(new List<EventRegistrationListDto>());
     }
 
     private static PaginatedResult<EventListDto> CreateResult(int pageNumber, int pageSize, List<EventListDto> items)
@@ -297,22 +293,6 @@ public class EventListTests : IDisposable
             ?? throw new InvalidOperationException($"{fieldName} not found — EventList state contract may have changed.");
 
         field.SetValue(instance, value);
-    }
-
-    private async Task RenderInlineRegistrationStateAsync(
-        IRenderedComponent<EventList> cut,
-        EventListDto selectedEvent,
-        string stateField,
-        bool isWaitlisted = false)
-    {
-        SetPrivateField(cut.Instance, "_selectedEvent", selectedEvent);
-        SetPrivateField(cut.Instance, "_detailDrawerOpen", true);
-        SetPrivateField(cut.Instance, "_showInlineRegistration", true);
-        SetPrivateField(cut.Instance, stateField, true);
-        SetPrivateField(cut.Instance, "_regIsWaitlisted", isWaitlisted);
-
-        _dockLayoutState.Open(EventDockPanels.EventPreviewId);
-        await cut.InvokeAsync(() => cut.Render());
     }
 
     private void SetupEventDetailResponses(Guid eventId)
@@ -802,7 +782,6 @@ public class EventListTests : IDisposable
             Title = "Dock Baseline Event"
         });
 
-        SetPrivateField(cut.Instance, "_showInlineRegistration", true);
         SetPrivateField(cut.Instance, "_showTagCatPopup", true);
 
         await InvokePrivateTaskAsync(cut, "CloseDetailDrawer");
@@ -811,7 +790,6 @@ public class EventListTests : IDisposable
         await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsFalse();
         await Assert.That(GetPrivateField<EventDto?>(cut.Instance, "_selectedEventDetail")).IsNull();
         await Assert.That(GetPrivateField<ICollection<EventSessionListDto>?>(cut.Instance, "_selectedEventSessions")).IsNull();
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_showInlineRegistration")).IsFalse();
         await Assert.That(GetPrivateField<bool>(cut.Instance, "_showTagCatPopup")).IsFalse();
     }
 
@@ -829,14 +807,12 @@ public class EventListTests : IDisposable
             Title = "Dock Backdrop Event"
         });
 
-        SetPrivateField(cut.Instance, "_showInlineRegistration", true);
         SetPrivateField(cut.Instance, "_showTagCatPopup", true);
         await cut.Find("[data-testid='dock-overlay-backdrop']").ClickAsync(new MouseEventArgs());
 
         cut.WaitForAssertion(() =>
         {
             Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsFalse();
-            Assert.That(GetPrivateField<bool>(cut.Instance, "_showInlineRegistration")).IsFalse();
             Assert.That(GetPrivateField<bool>(cut.Instance, "_showTagCatPopup")).IsFalse();
             Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsFalse();
         });
@@ -861,283 +837,14 @@ public class EventListTests : IDisposable
         await InvokeLoadEventsAsync(cut);
         await InvokePrivateTaskAsync(cut, "SelectEvent", events[0]);
 
-        SetPrivateField(cut.Instance, "_showInlineRegistration", true);
         SetPrivateField(cut.Instance, "_showTagCatPopup", true);
 
         await InvokePrivateTaskAsync(cut, "NavigateNextEvent");
 
         await Assert.That(GetPrivateField<EventListDto?>(cut.Instance, "_selectedEvent")?.Id).IsEqualTo(nextEventId);
         await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsTrue();
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_showInlineRegistration")).IsFalse();
         await Assert.That(GetPrivateField<bool>(cut.Instance, "_showTagCatPopup")).IsFalse();
         await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsTrue();
     }
 
-    [Test]
-    public async Task InlineRegistrationSuccess_RendersThreeActionChoices()
-    {
-        var eventId = Guid.NewGuid();
-        SetupEventDetailResponses(eventId);
-
-        var cut = _ctx.RenderMudComponent<EventList>();
-
-        await RenderInlineRegistrationStateAsync(cut, new EventListDto
-        {
-            Id = eventId,
-            Title = "Shareable Event"
-        }, "_regIsComplete");
-
-        await Assert.That(cut.Markup).Contains("Add to Calendar");
-        await Assert.That(cut.Markup).Contains($"href=\"/api/event/{eventId}/calendar\"");
-        await Assert.That(cut.Markup).Contains("Share this Event");
-        await Assert.That(cut.Markup).Contains("View Registrations");
-        await Assert.That(cut.Markup).Contains("href=\"/my/profile\"");
-    }
-
-    [Test]
-    public async Task OpenInlineRegistration_WhenSignInRelationExists_ShowsExistingLoginPrompt()
-    {
-        var eventId = Guid.NewGuid();
-        _ctx.SetAnonymousUser();
-        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
-        var dialogService = _ctx.Services.GetRequiredService<IDialogService>();
-        var cut = _ctx.RenderMudComponent<EventList>();
-        SetPrivateField(cut.Instance, "_selectedEvent", new EventListDto
-        {
-            Id = eventId,
-            Title = "Anonymous Registration Event"
-        });
-        SetPrivateField(cut.Instance, "_selectedEventDetail", new EventDto
-        {
-            Id = eventId,
-            Title = "Anonymous Registration Event",
-            AdditionalProperties = CreateHalLinks("sign-in-to-register")
-        });
-
-        await InvokePrivateTaskAsync(cut, "OpenInlineRegistration");
-
-        await dialogService.Received(1).ShowAsync<LoginPromptDialog>(
-            "Sign in",
-            Arg.Is<DialogParameters>(parameters =>
-                parameters.Get<string>("ReturnUrl") == $"/events/{eventId}" &&
-                parameters.Get<string>("Message").StartsWith("Sign in to register", StringComparison.Ordinal)),
-            Arg.Any<DialogOptions>());
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_showInlineRegistration")).IsFalse();
-    }
-
-    [Test]
-    public async Task InlineRegistrationWaitlist_RendersWaitlistFeedbackAndFollowUpActions()
-    {
-        var eventId = Guid.NewGuid();
-        SetupEventDetailResponses(eventId);
-
-        var cut = _ctx.RenderMudComponent<EventList>();
-
-        await RenderInlineRegistrationStateAsync(cut, new EventListDto
-        {
-            Id = eventId,
-            Title = "Full Event"
-        }, "_regIsComplete", isWaitlisted: true);
-
-        await Assert.That(cut.Markup).Contains("You're on the Waitlist!");
-        await Assert.That(cut.Markup).Contains("You have been added to the waitlist");
-        await Assert.That(cut.Markup).Contains("Share this Event");
-        await Assert.That(cut.Markup).Contains("View Registrations");
-    }
-
-    [Test]
-    public async Task InlineAlreadyRegisteredState_RendersShareAndRegistrationActions()
-    {
-        var eventId = Guid.NewGuid();
-        SetupEventDetailResponses(eventId);
-
-        var cut = _ctx.RenderMudComponent<EventList>();
-
-        await RenderInlineRegistrationStateAsync(cut, new EventListDto
-        {
-            Id = eventId,
-            Title = "Shareable Event"
-        }, "_regIsAlreadyRegistered");
-
-        await Assert.That(cut.Markup).Contains("Already Registered");
-        await Assert.That(cut.Markup).Contains("Share this Event");
-        await Assert.That(cut.Markup).Contains("View Registrations");
-        await Assert.That(cut.Markup).Contains("href=\"/my/profile\"");
-    }
-
-    [Test]
-    public async Task InlineRegistrationSubmit_UsesRegistrationServiceWithConsentSnapshot()
-    {
-        var eventId = Guid.NewGuid();
-        var sessionId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
-        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
-        _registrationService.RegisterForSessionAsync(Arg.Any<CreateEventRegistrationDto>())
-            .Returns(Task.FromResult<BaseCommandResponseOfGuid?>(new BaseCommandResponseOfGuid
-            {
-                Success = true,
-                Message = "Event Registration created successfully."
-            }));
-
-        var cut = _ctx.RenderMudComponent<EventList>();
-        SetPrivateField(cut.Instance, "_selectedEvent", new EventListDto
-        {
-            Id = eventId,
-            Title = "Registration Service Event"
-        });
-        SetPrivateField(cut.Instance, "_regCurrentUser", new UserDto
-        {
-            Id = userId,
-            Email = "registrant@example.com",
-            FirstName = "Test",
-            LastName = "Registrant"
-        });
-        SetPrivateField(cut.Instance, "_regSelectedSessionIds", new HashSet<Guid> { sessionId });
-        SetPrivateField(cut.Instance, "_regShareEmail", true);
-        SetPrivateField(cut.Instance, "_regOrganizerName", "Community Organizer");
-
-        await InvokePrivateTaskAsync(cut, "HandleInlineRegistrationSubmit");
-
-        await _registrationService.Received(1).RegisterForSessionAsync(Arg.Is<CreateEventRegistrationDto>(dto =>
-            dto != null
-            && dto.EventId == eventId
-            && dto.UserId == userId
-            && dto.RegistrationScopeId == 3
-            && dto.SelectedSessionIds != null
-            && dto.SelectedSessionIds.SequenceEqual(new[] { sessionId })
-            && dto.ShareEmailWithOrganizer == true
-            && dto.ConsentTextAcknowledged != null
-            && dto.ConsentTextAcknowledged.Contains("Community Organizer", StringComparison.Ordinal)
-            && dto.ConsentUiVersion == "v1"));
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_regIsComplete")).IsTrue();
-    }
-
-    [Test]
-    public async Task InlineRegistrationSubmit_WhenWholeEventPolicyAndAllSessionsSelected_UsesEventScope()
-    {
-        var eventId = Guid.NewGuid();
-        var firstSessionId = Guid.NewGuid();
-        var secondSessionId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
-        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
-        _registrationService.RegisterForSessionAsync(Arg.Any<CreateEventRegistrationDto>())
-            .Returns(Task.FromResult<BaseCommandResponseOfGuid?>(new BaseCommandResponseOfGuid
-            {
-                Success = true,
-                Message = "Event Registration created successfully."
-            }));
-
-        var cut = _ctx.RenderMudComponent<EventList>();
-        SetPrivateField(cut.Instance, "_selectedEvent", new EventListDto
-        {
-            Id = eventId,
-            Title = "Whole Event Registration"
-        });
-        SetPrivateField(cut.Instance, "_selectedEventDetail", new EventDto
-        {
-            Id = eventId,
-            Title = "Whole Event Registration",
-            Description = "Event that only permits whole-event registration.",
-            RegistrationPolicyId = 1
-        });
-        SetPrivateField<ICollection<EventSessionListDto>>(cut.Instance, "_regAvailableSessions",
-        [
-            new EventSessionListDto { Id = firstSessionId },
-            new EventSessionListDto { Id = secondSessionId }
-        ]);
-        SetPrivateField(cut.Instance, "_regCurrentUser", new UserDto
-        {
-            Id = userId,
-            Email = "registrant@example.com",
-            FirstName = "Test",
-            LastName = "Registrant"
-        });
-        SetPrivateField(cut.Instance, "_regSelectedSessionIds", new HashSet<Guid> { firstSessionId, secondSessionId });
-        SetPrivateField(cut.Instance, "_regShareEmail", true);
-        SetPrivateField(cut.Instance, "_regOrganizerName", "Community Organizer");
-
-        await InvokePrivateTaskAsync(cut, "HandleInlineRegistrationSubmit");
-
-        await _registrationService.Received(1).RegisterForSessionAsync(Arg.Is<CreateEventRegistrationDto>(dto =>
-            dto != null
-            && dto.EventId == eventId
-            && dto.UserId == userId
-            && dto.RegistrationScopeId == 1
-            && dto.SelectedSessionIds == null
-            && dto.SelectedEventDayId == null
-            && dto.ShareEmailWithOrganizer == true
-            && dto.ConsentTextAcknowledged != null
-            && dto.ConsentTextAcknowledged.Contains("Community Organizer", StringComparison.Ordinal)
-            && dto.ConsentUiVersion == "v1"));
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_regIsComplete")).IsTrue();
-    }
-
-    [Test]
-    public async Task InlineRegistrationSubmit_WhenApiReturnsAlreadyExists_ShowsAlreadyRegisteredState()
-    {
-        var eventId = Guid.NewGuid();
-        var sessionId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
-        var snackbar = _ctx.Services.GetRequiredService<ISnackbar>();
-        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
-        _registrationService.RegisterForSessionAsync(Arg.Any<CreateEventRegistrationDto>())
-            .Returns(Task.FromResult<BaseCommandResponseOfGuid?>(new BaseCommandResponseOfGuid
-            {
-                Success = true,
-                Message = "Event Registration already exists."
-            }));
-
-        var cut = _ctx.RenderMudComponent<EventList>();
-        SetPrivateField(cut.Instance, "_selectedEvent", new EventListDto
-        {
-            Id = eventId,
-            Title = "Repeat Registration Event"
-        });
-        SetPrivateField(cut.Instance, "_regCurrentUser", new UserDto
-        {
-            Id = userId,
-            Email = "registrant@example.com",
-            FirstName = "Test",
-            LastName = "Registrant"
-        });
-        SetPrivateField(cut.Instance, "_regSelectedSessionIds", new HashSet<Guid> { sessionId });
-
-        await InvokePrivateTaskAsync(cut, "HandleInlineRegistrationSubmit");
-
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_regIsAlreadyRegistered")).IsTrue();
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_regIsComplete")).IsFalse();
-        snackbar.Received().Add("You are already registered for this event.", Severity.Info);
-    }
-
-    [Test]
-    public async Task InlineRegistrationSubmit_WhenRegistrationThrows_ShowsGenericErrorOnly()
-    {
-        var eventId = Guid.NewGuid();
-        var sessionId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
-        var snackbar = _ctx.Services.GetRequiredService<ISnackbar>();
-        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
-        _registrationService.RegisterForSessionAsync(Arg.Any<CreateEventRegistrationDto>())
-            .Returns(_ => Task.FromException<BaseCommandResponseOfGuid?>(new InvalidOperationException("database exploded")));
-
-        var cut = _ctx.RenderMudComponent<EventList>();
-        SetPrivateField(cut.Instance, "_selectedEvent", new EventListDto
-        {
-            Id = eventId,
-            Title = "Registration Error Event"
-        });
-        SetPrivateField(cut.Instance, "_regCurrentUser", new UserDto
-        {
-            Id = userId,
-            Email = "registrant@example.com",
-            FirstName = "Test",
-            LastName = "Registrant"
-        });
-        SetPrivateField(cut.Instance, "_regSelectedSessionIds", new HashSet<Guid> { sessionId });
-
-        await InvokePrivateTaskAsync(cut, "HandleInlineRegistrationSubmit");
-
-        snackbar.Received().Add("Registration failed. Please try again.", Severity.Error);
-        snackbar.DidNotReceive().Add(Arg.Is<string>(message => message.Contains("database exploded", StringComparison.OrdinalIgnoreCase)), Severity.Error);
-    }
 }

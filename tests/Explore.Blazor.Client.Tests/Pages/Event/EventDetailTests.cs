@@ -110,6 +110,29 @@ public sealed class EventDetailTests : IDisposable
     }
 
     [Test]
+    public async Task Render_WhenStartRegistrationLinkExists_ShowsTicketSelectionAction()
+    {
+        var eventDto = CreateEventDto("PUBLISHED", "Published", "start-registration");
+        RegisterEventDetailServices(eventDto);
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForAssertion(() => cut.Markup.Contains("Select tickets", StringComparison.Ordinal));
+
+        await Assert.That(cut.FindAll($"a[href='/registration/events/{eventDto.Id}/tickets']").Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Render_WhenRegistrationLinksAreMissing_HidesTicketSelectionAction()
+    {
+        RegisterEventDetailServices(CreateEventDto("PUBLISHED", "Published"));
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).DoesNotContain("Select tickets");
+    }
+
+    [Test]
     public async Task Render_WhenParticipationLinksAreMissing_HidesParticipationCard()
     {
         RegisterEventDetailServices(CreateEventDto("PUBLISHED", "Published"));
@@ -119,30 +142,6 @@ public sealed class EventDetailTests : IDisposable
 
         await Assert.That(cut.Markup).DoesNotContain("event-registration-card");
         await Assert.That(cut.Markup).DoesNotContain("Register now");
-    }
-
-    [Test]
-    public async Task Render_WhenStartRegistrationLinkExists_ShowsNativeRegistrationAction()
-    {
-        RegisterEventDetailServices(CreateEventDto("PUBLISHED", "Published", "start-registration"));
-
-        var cut = _ctx.RenderMudComponent<EventDetail>();
-        cut.WaitForState(() => cut.Markup.Contains("Register now", StringComparison.Ordinal), TimeSpan.FromSeconds(3));
-
-        await Assert.That(cut.Markup).Contains("Register now");
-        await Assert.That(cut.Markup).DoesNotContain("Continue on external site");
-    }
-
-    [Test]
-    public async Task Render_WhenSignInToRegisterLinkExists_ShowsNativeRegistrationAction()
-    {
-        RegisterEventDetailServices(CreateEventDto("PUBLISHED", "Published", "sign-in-to-register"));
-
-        var cut = _ctx.RenderMudComponent<EventDetail>();
-        cut.WaitForState(() => cut.Markup.Contains("Register now", StringComparison.Ordinal), TimeSpan.FromSeconds(3));
-
-        await Assert.That(cut.Markup).Contains("Register now");
-        await Assert.That(cut.Markup).DoesNotContain("Continue on external site");
     }
 
     [Test]
@@ -464,41 +463,6 @@ public sealed class EventDetailTests : IDisposable
         await InvokePrivateTaskAsync(component, "RefreshRestoredEventDetailsAsync");
 
         await Assert.That(GetProperty<bool>(component, "HasManagementTopBar")).IsTrue();
-    }
-
-    [Test]
-    public async Task CheckRegistrationStatusAsync_WhenRegistrationCarriesEventId_MarksUserRegistered()
-    {
-        var eventId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
-        var registrationId = Guid.NewGuid();
-
-        _ctx.SetAuthenticatedUser(userId, "Registered User", "registered@example.test");
-
-        var eventService = Substitute.For<IEventService>();
-        eventService.GetRegistrationsByUserAsync(userId).Returns(
-        [
-            new EventRegistrationListDto
-            {
-                Id = registrationId,
-                EventId = eventId
-            }
-        ]);
-
-        var userService = Substitute.For<IUserService>();
-        userService.GetCurrentUserAsync().Returns(new UserDto { Id = userId });
-
-        var component = new EventDetail();
-        SetProperty(component, "EventId", eventId);
-        SetProperty(component, "EventService", eventService);
-        SetProperty(component, "UserService", userService);
-        SetProperty(component, "AuthStateProvider", _ctx.Services.GetRequiredService<AuthenticationStateProvider>());
-        SetProperty(component, "Logger", Substitute.For<ILogger<EventDetail>>());
-
-        await InvokePrivateTaskAsync(component, "CheckRegistrationStatusAsync");
-
-        await Assert.That(GetField<bool>(component, "_isUserRegistered")).IsTrue();
-        await Assert.That(GetField<List<Guid>>(component, "_userRegistrationIds")).Contains(registrationId);
     }
 
     public void Dispose() => _ctx.Dispose();

@@ -24,21 +24,16 @@ public partial class OrganizationProfile
     private OrganizationDto? _organization;
     private bool _isLoading = true;
     private bool _isLoadingEvents;
-    private bool _isLoadingRegistrationEvents;
     private List<OrganizationReviewDto> _reviews = new();
     private List<EventListDto> _upcomingEvents = new();
     private List<EventListDto> _pastEvents = new();
     private List<KeyValuePair<DateTime, List<EventListDto>>> _pastEventsByDate = new();
-    private List<EventListDto> _upcomingRegistrationEvents = new();
-    private List<EventListDto> _pastRegistrationEvents = new();
-    private List<KeyValuePair<DateTime, List<EventListDto>>> _pastRegistrationEventsByDate = new();
     private AppearanceSettings _appearance = new();
     private string _bannerStyle = AppearanceStyleBuilder.BuildBannerStyle(new AppearanceSettings(), "#1f6feb");
 
     private string? _errorMessage;
 
     private List<EventListDto> PostEvents => _upcomingEvents.Concat(_pastEvents).ToList();
-    private List<EventListDto> RegistrationEvents => _upcomingRegistrationEvents.Concat(_pastRegistrationEvents).ToList();
 
     [PersistentState]
     public OrganizationProfileState? PersistedState { get; set; }
@@ -99,7 +94,6 @@ public partial class OrganizationProfile
         if (_organization?.ActorId.HasValue == true)
         {
             _ = InvokeAsync(LoadEventsAsync);
-            _ = InvokeAsync(LoadRegistrationEventsAsync);
         }
     }
 
@@ -134,39 +128,6 @@ public partial class OrganizationProfile
         finally
         {
             _isLoadingEvents = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task LoadRegistrationEventsAsync()
-    {
-        _isLoadingRegistrationEvents = true;
-        StateHasChanged();
-
-        try
-        {
-            var allEvents = await EventService.GetRegistrationEventsByActorAsync(_organization!.ActorId!.Value);
-
-            _upcomingRegistrationEvents = allEvents
-                .Where(e => e.IsPast != true)
-                .OrderBy(e => e.FirstSessionDate)
-                .ToList();
-
-            _pastRegistrationEvents = allEvents
-                .Where(e => e.IsPast == true)
-                .OrderByDescending(e => e.FirstSessionDate)
-                .ToList();
-
-            _pastRegistrationEventsByDate = GroupEventsByDate(_pastRegistrationEvents);
-
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading registration events for organization {OrganizationId}", Id);
-        }
-        finally
-        {
-            _isLoadingRegistrationEvents = false;
             StateHasChanged();
         }
     }
@@ -232,7 +193,6 @@ public partial class OrganizationProfile
         if (_organization?.ActorId.HasValue == true)
         {
             _ = InvokeAsync(LoadEventsAsync);
-            _ = InvokeAsync(LoadRegistrationEventsAsync);
         }
 
         return true;

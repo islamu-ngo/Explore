@@ -25,20 +25,15 @@ public partial class GroupProfile
     private HalResourceOfGroupDto? _group;
     private bool _isLoading = true;
     private bool _isLoadingEvents;
-    private bool _isLoadingRegistrationEvents;
     private List<EventListDto> _upcomingEvents = new();
     private List<EventListDto> _pastEvents = new();
     private List<KeyValuePair<DateTime, List<EventListDto>>> _pastEventsByDate = new();
-    private List<EventListDto> _upcomingRegistrationEvents = new();
-    private List<EventListDto> _pastRegistrationEvents = new();
-    private List<KeyValuePair<DateTime, List<EventListDto>>> _pastRegistrationEventsByDate = new();
     private AppearanceSettings _branding = new();
     private string _bannerStyle = AppearanceStyleBuilder.BuildBannerStyle(new AppearanceSettings(), "#334155");
 
     private string? _errorMessage;
 
     private List<EventListDto> PostEvents => _upcomingEvents.Concat(_pastEvents).ToList();
-    private List<EventListDto> RegistrationEvents => _upcomingRegistrationEvents.Concat(_pastRegistrationEvents).ToList();
 
     [PersistentState]
     public GroupProfileState? PersistedState { get; set; }
@@ -91,7 +86,6 @@ public partial class GroupProfile
         if (_group?.ActorId.HasValue == true)
         {
             _ = InvokeAsync(LoadEventsAsync);
-            _ = InvokeAsync(LoadRegistrationEventsAsync);
         }
     }
 
@@ -136,39 +130,6 @@ public partial class GroupProfile
         }
     }
 
-    private async Task LoadRegistrationEventsAsync()
-    {
-        _isLoadingRegistrationEvents = true;
-        StateHasChanged();
-
-        try
-        {
-            var allEvents = await EventService.GetRegistrationEventsByActorAsync(_group!.ActorId!.Value);
-
-            _upcomingRegistrationEvents = allEvents
-                .Where(e => e.IsPast != true)
-                .OrderBy(e => e.FirstSessionDate)
-                .ToList();
-
-            _pastRegistrationEvents = allEvents
-                .Where(e => e.IsPast == true)
-                .OrderByDescending(e => e.FirstSessionDate)
-                .ToList();
-
-            _pastRegistrationEventsByDate = GroupEventsByDate(_pastRegistrationEvents);
-
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading registration events for group {GroupId}", Id);
-        }
-        finally
-        {
-            _isLoadingRegistrationEvents = false;
-            StateHasChanged();
-        }
-    }
-
     private string GetGroupPlaceholder()
     {
         return ImageHelper.GetOrganizationPlaceholder(null, _group?.FullName ?? "GRP");
@@ -204,7 +165,6 @@ public partial class GroupProfile
         if (_group?.ActorId.HasValue == true)
         {
             _ = InvokeAsync(LoadEventsAsync);
-            _ = InvokeAsync(LoadRegistrationEventsAsync);
         }
 
         return true;

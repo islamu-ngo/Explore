@@ -88,19 +88,6 @@ else
                                           EmptyCopy="Subscribe to get notified when new events are posted." />
                 </MudTabPanel>
 
-                <MudTabPanel Text="Registration">
-                    <ProfileEventSections IsLoading="@_isLoadingRegistrationEvents"
-                                          NavigationEvents="@RegistrationEvents"
-                                          UpcomingEvents="@_upcomingRegistrationEvents"
-                                          PastEventsByDate="@_pastRegistrationEventsByDate"
-                                          CssPrefix="group-profile"
-                                          UpcomingTitle="Upcoming Events"
-                                          PastTitle="Past Events"
-                                          UpcomingAriaLabel="Upcoming group registration events"
-                                          PastAriaLabelPrefix="Past group registration events on"
-                                          EmptyTitle="No registered events"
-                                          EmptyCopy="Events this group attends will appear here." />
-                </MudTabPanel>
 
                 <MudTabPanel Text="Notifications">
                     <NotificationPreferenceMatrix Scope="group"

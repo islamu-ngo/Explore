@@ -114,19 +114,6 @@ else
                                           EmptyCopy="Subscribe to get notified when new events are posted." />
                 </MudTabPanel>
 
-                <MudTabPanel Text="Registration">
-                    <ProfileEventSections IsLoading="@_isLoadingRegistrationEvents"
-                                          NavigationEvents="@RegistrationEvents"
-                                          UpcomingEvents="@_upcomingRegistrationEvents"
-                                          PastEventsByDate="@_pastRegistrationEventsByDate"
-                                          CssPrefix="org-profile"
-                                          UpcomingTitle="Upcoming Events"
-                                          PastTitle="Past Events"
-                                          UpcomingAriaLabel="Upcoming organization registration events"
-                                          PastAriaLabelPrefix="Past organization registration events on"
-                                          EmptyTitle="No registered events"
-                                          EmptyCopy="Events this organization attends will appear here." />
-                </MudTabPanel>
 
                 <MudTabPanel Text="Notifications">
                     <NotificationPreferenceMatrix Scope="organization"

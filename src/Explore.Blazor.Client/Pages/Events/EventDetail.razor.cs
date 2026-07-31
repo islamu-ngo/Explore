@@ -140,10 +140,6 @@ public partial class EventDetail : ComponentBase, IDisposable
     private ICollection<EventSessionListDto>? _eventSessions;
     private EventSessionListDto? _primarySession;
     private bool _isLoading = true;
-    private bool _isUserRegistered;
-    private bool _isCheckingRegistration = true;
-    private bool _isCancellingRegistration = false;
-    private List<Guid> _userRegistrationIds = new();
     private bool _canDelete = false;
     private bool _canEdit = false;
     private bool _canManageTeam = false;
@@ -259,7 +255,6 @@ public partial class EventDetail : ComponentBase, IDisposable
     private async Task LoadEventDataAsync(string? slugCode = null)
     {
         _isLoading = true;
-        _isCheckingRegistration = true;
         _isCheckingAuth = true;
         _errorMessage = null;
         _imageLoadFailed = false;
@@ -301,8 +296,6 @@ public partial class EventDetail : ComponentBase, IDisposable
                 _primarySession = _eventSessions?.FirstOrDefault();
                 Logger.LogInformation("Loaded {SessionCount} sessions", _eventSessions?.Count ?? 0);
 
-                // Check registration status and load aspects in parallel
-                var registrationTask = CheckRegistrationStatusAsync();
                 var aspectsTask = NeedsAspectFallbackLoad()
                     ? LoadEventAspectsAsync()
                     : Task.CompletedTask;
@@ -311,7 +304,7 @@ public partial class EventDetail : ComponentBase, IDisposable
                 var agendaTask = _primarySession?.Id != null && _primarySession.Id != Guid.Empty
                     ? AgendaItemService.GetAgendaItemsBySessionAsync(_primarySession.Id.Value)
                     : Task.FromResult<ICollection<EventSessionAgendaItemListDto>>(new List<EventSessionAgendaItemListDto>());
-                await Task.WhenAll(registrationTask, aspectsTask, daysTask, eventAgendaTask, agendaTask);
+                await Task.WhenAll(aspectsTask, daysTask, eventAgendaTask, agendaTask);
                 _agendaItems = RemovePhysicalLocationData(await agendaTask);
                 _eventDays = await daysTask;
                 _eventAgendaItems = await eventAgendaTask;
@@ -325,7 +318,6 @@ public partial class EventDetail : ComponentBase, IDisposable
         finally
         {
             _isLoading = false;
-            _isCheckingRegistration = false;
             _isCheckingAuth = false;
         }
 
@@ -360,7 +352,6 @@ public partial class EventDetail : ComponentBase, IDisposable
         _imageLoadFailed = false;
         PublishMainContentAppearance();
         _isLoading = false;
-        _isCheckingRegistration = true;
         _isCheckingAuth = true;
 
         CheckAuthorizationFromHalLinks();
@@ -368,13 +359,7 @@ public partial class EventDetail : ComponentBase, IDisposable
 
         _ = InvokeAsync(async () =>
         {
-            var registrationTask = CheckRegistrationStatusAsync();
-
             await RefreshRestoredEventDetailsAsync();
-            StateHasChanged();
-
-            await registrationTask;
-            _isCheckingRegistration = false;
             StateHasChanged();
         });
 
@@ -507,94 +492,6 @@ public partial class EventDetail : ComponentBase, IDisposable
         }
 
         StateHasChanged();
-    }
-
-    private async Task CheckRegistrationStatusAsync()
-    {
-        try
-        {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
-            if (_isAuthenticated)
-            {
-                var user = await UserService.GetCurrentUserAsync();
-                if (user?.Id != null)
-                {
-                    var registrations = await EventService.GetRegistrationsByUserAsync(user.Id.Value);
-                    var sessionIds = _eventSessions?
-                        .Where(s => s.Id.HasValue)
-                        .Select(s => s.Id!.Value)
-                        .ToHashSet() ?? [];
-
-                    var matchingRegistrations = registrations?
-                        .Where(r => r.Id.HasValue
-                            && (r.EventId == EventId
-                                || (r.EventId is null
-                                    && r.EventSessionId.HasValue
-                                    && sessionIds.Contains(r.EventSessionId.Value))))
-                        .ToList() ?? [];
-
-                    _isUserRegistered = matchingRegistrations.Any();
-                    _userRegistrationIds = matchingRegistrations.Select(r => r.Id!.Value).ToList();
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error checking registration status");
-        }
-    }
-
-    /// <summary>
-    /// Cancels the user's registration(s) for this event.
-    /// </summary>
-    private async Task CancelRegistrationAsync()
-    {
-        if (!_userRegistrationIds.Any()) return;
-
-        await AccessibilityFocusService.SaveFocusAsync();
-        var confirm = await DialogService.ShowMessageBoxAsync(
-            "Cancel Registration",
-            $"Are you sure you want to cancel your registration for \"{_eventDetails?.Title}\"?",
-            yesText: "Cancel Registration",
-            cancelText: "Keep Registration");
-        await AccessibilityFocusService.RestoreFocusAsync();
-
-        if (confirm != true) return;
-
-        _isCancellingRegistration = true;
-
-        try
-        {
-            var allCancelled = true;
-            foreach (var registrationId in _userRegistrationIds)
-            {
-                var success = await EventService.CancelEventRegistrationAsync(registrationId);
-                if (!success) allCancelled = false;
-            }
-
-            if (allCancelled)
-            {
-                _isUserRegistered = false;
-                _userRegistrationIds.Clear();
-                Logger.LogInformation("Registration cancelled for event {EventId}", EventId);
-            }
-            else
-            {
-                _errorMessage = "Some registrations could not be cancelled. Please try again.";
-                // Refresh to get accurate state
-                await CheckRegistrationStatusAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error cancelling registration for event {EventId}", EventId);
-            _errorMessage = "An error occurred while cancelling registration.";
-        }
-        finally
-        {
-            _isCancellingRegistration = false;
-        }
     }
 
     /// <summary>
@@ -789,135 +686,6 @@ public partial class EventDetail : ComponentBase, IDisposable
         {
             NavigateToOrganizer();
         }
-    }
-
-    /// <summary>
-    /// Opens the registration dialog for the event.
-    /// Handles single vs multiple session scenarios.
-    /// </summary>
-    private async Task OpenRegistrationDialog()
-    {
-        if (_eventDetails == null || !CanStartRegistration) return;
-
-        if (!await IsAuthenticatedForProtectedActionAsync())
-        {
-            await AccessibilityFocusService.SaveFocusAsync();
-            await LoginPromptDialog.ShowAsync(
-                DialogService,
-                new Uri(Navigation.Uri).PathAndQuery,
-                "Sign in to register for this event. After you sign in, we will bring you back here to finish registration.");
-            await AccessibilityFocusService.RestoreFocusAsync();
-            return;
-        }
-
-        var allowedScopes = RegistrationPolicyHelper.GetAllowedScopes(_eventDetails.RegistrationPolicyId);
-
-        var needsSessions = allowedScopes.Contains(RegistrationPolicyHelper.ScopeSessionSelection);
-        if (needsSessions && (_eventSessions == null || !_eventSessions.Any()))
-        {
-            var onlySessionScope = allowedScopes.Count == 1;
-            if (onlySessionScope)
-            {
-                await AccessibilityFocusService.SaveFocusAsync();
-                await DialogService.ShowMessageBoxAsync(
-                    "Registration unavailable",
-                    "No sessions are available for this event yet.",
-                    yesText: "OK");
-                await AccessibilityFocusService.RestoreFocusAsync();
-                return;
-            }
-        }
-
-        var needsDays = allowedScopes.Contains(RegistrationPolicyHelper.ScopeDay);
-        if (needsDays && (_eventDays == null || !_eventDays.Any()) && !allowedScopes.Contains(RegistrationPolicyHelper.ScopeEvent))
-        {
-            await AccessibilityFocusService.SaveFocusAsync();
-            await DialogService.ShowMessageBoxAsync(
-                "Registration unavailable",
-                "No event days are available for this event yet.",
-                yesText: "OK");
-            await AccessibilityFocusService.RestoreFocusAsync();
-            return;
-        }
-
-        await AccessibilityFocusService.SaveFocusAsync();
-
-        var parameters = new DialogParameters
-        {
-            { "EventId", _eventDetails.Id },
-            { "Title", $"Register for {_eventDetails.Title}" },
-            { "Slug", _eventDetails.Slug },
-            { "PublicCode", _eventDetails.PublicCode },
-            { "RegistrationPolicyId", _eventDetails.RegistrationPolicyId },
-            { "Days", _eventDays },
-            { "Sessions", _eventSessions },
-            { "RecipientActorId", _eventDetails.ActorId },
-            { "PublisherOrganizationName", _eventDetails.ActorDisplayName }
-        };
-
-        var options = DialogOptionsFactory.Medium();
-
-        var dialog = await DialogService.ShowAsync<EventRegistration>(
-            "Register",
-            parameters,
-            options);
-
-        var result = await dialog.Result;
-
-        if (result != null && !result.Canceled)
-        {
-            await CheckRegistrationStatusAsync();
-        }
-
-        await AccessibilityFocusService.RestoreFocusAsync();
-    }
-
-    /// <summary>
-    /// Gets the registration button text based on current state.
-    /// </summary>
-    private string GetButtonText()
-    {
-        if (_isCheckingRegistration) return "Checking...";
-        if (_isCancellingRegistration) return "Cancelling...";
-        if (IsCancelledEvent()) return "Event Cancelled";
-        if (_isAuthenticated && _isUserRegistered) return "Already Registered";
-        if (!HasAvailableRegistrationTarget()) return "Registration unavailable";
-        // This will now catch both authenticated (but not registered) users
-        // AND unauthenticated users perfectly
-        return "Register now";
-    }
-
-    /// <summary>
-    /// Determines if the registration button should be disabled.
-    /// </summary>
-    private bool IsButtonDisabled()
-    {
-        return _isCheckingRegistration
-            || _isCancellingRegistration
-            || _isUserRegistered
-            || IsCancelledEvent()
-            || !HasAvailableRegistrationTarget();
-    }
-
-    /// <summary>
-    /// Gets the registration button color based on registration status.
-    /// </summary>
-    private Color GetButtonColor()
-    {
-        return _isUserRegistered ? Color.Success : Color.Primary;
-    }
-
-    private bool HasAvailableRegistrationTarget()
-    {
-        if (_eventDetails is null || !CanStartRegistration)
-        {
-            return false;
-        }
-
-        var allowedScopes = RegistrationPolicyHelper.GetAllowedScopes(_eventDetails.RegistrationPolicyId);
-        return allowedScopes.Contains(RegistrationPolicyHelper.ScopeEvent)
-            || (allowedScopes.Contains(RegistrationPolicyHelper.ScopeDay) && _eventDays?.Any() == true)
-            || (allowedScopes.Contains(RegistrationPolicyHelper.ScopeSessionSelection) && _eventSessions?.Any() == true);
     }
 
     #region OG Metadata Helpers

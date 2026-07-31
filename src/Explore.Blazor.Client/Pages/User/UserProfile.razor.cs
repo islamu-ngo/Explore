@@ -38,10 +38,6 @@ public partial class UserProfile : ComponentBase, IDisposable
     private int ReviewsGiven { get; set; }
     private ICollection<OrganizationReviewDto> MyReviews { get; set; } = new List<OrganizationReviewDto>();
     private ICollection<EventListDto> _posts = new List<EventListDto>();
-    private List<EventListDto> _upcomingRegistrationEvents = new();
-    private List<EventListDto> _pastRegistrationEvents = new();
-    private List<KeyValuePair<DateTime, List<EventListDto>>> _pastRegistrationEventsByDate = new();
-    private bool _isLoadingRegistrationEvents;
     private SettingGroupResponseDto? _atprotoSettings;
     private bool _isLoadingAtprotoSettings;
     private bool _isSavingAtprotoConsent;
@@ -53,9 +49,6 @@ public partial class UserProfile : ComponentBase, IDisposable
     private const string AtprotoCategory = "AtprotoFederation";
     private const string AtprotoEventsEnabledKey = "federation.atproto_events_enabled";
     private const string AtprotoPublishMyEventsKey = "federation.atproto_publish_my_events";
-
-    private List<EventListDto> RegistrationEvents =>
-        _upcomingRegistrationEvents.Concat(_pastRegistrationEvents).ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -134,49 +127,11 @@ public partial class UserProfile : ComponentBase, IDisposable
 
     private async Task LoadStatisticsAsync(Guid userId)
     {
-        // Load event registrations, reviews, and posts in parallel
-        var registrationsTask = LoadEventRegistrationsAsync(userId);
         var reviewsTask = LoadReviewsAsync(userId);
         var postsTask = LoadPostsAsync();
         var atprotoSettingsTask = LoadAtprotoSettingsAsync();
 
-        await Task.WhenAll(registrationsTask, reviewsTask, postsTask, atprotoSettingsTask);
-    }
-
-    private async Task LoadEventRegistrationsAsync(Guid userId)
-    {
-        _isLoadingRegistrationEvents = true;
-
-        try
-        {
-            var registrationEvents = await EventService.GetRegistrationEventsByUserAsync(userId);
-
-            _upcomingRegistrationEvents = registrationEvents
-                .Where(evt => evt.IsPast != true)
-                .OrderBy(evt => evt.FirstSessionDate)
-                .ToList();
-
-            _pastRegistrationEvents = registrationEvents
-                .Where(evt => evt.IsPast == true)
-                .OrderByDescending(evt => evt.FirstSessionDate)
-                .ToList();
-
-            _pastRegistrationEventsByDate = GroupEventsByDate(_pastRegistrationEvents);
-            EventsAttended = RegistrationEvents.Count;
-            Logger.LogInformation("[UserProfile] Loaded {Count} event registrations", EventsAttended);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "[UserProfile] Error loading registrations");
-            _upcomingRegistrationEvents = new List<EventListDto>();
-            _pastRegistrationEvents = new List<EventListDto>();
-            _pastRegistrationEventsByDate = new List<KeyValuePair<DateTime, List<EventListDto>>>();
-            EventsAttended = 0;
-        }
-        finally
-        {
-            _isLoadingRegistrationEvents = false;
-        }
+        await Task.WhenAll(reviewsTask, postsTask, atprotoSettingsTask);
     }
 
     private async Task LoadPostsAsync()

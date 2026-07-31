@@ -412,7 +412,7 @@
                     </div>
 
                     @* Participation Card *@
-                    @if (HasParticipationAction || _isUserRegistered)
+                    @if (HasParticipationAction)
                     {
                     <div class="event-registration-card mb-12">
                         <div class="event-registration-card__header">
@@ -439,42 +439,6 @@
                                     </div>
                                 </div>
                             }
-                            else if (CanStartRegistration)
-                            {
-                                <div class="d-flex flex-column flex-sm-row justify-space-between align-sm-center gap-4 mb-4">
-                                    <div>
-                                        <MudText Typo="Typo.body1" Style="font-weight: 600;">Welcome! To join the event, please register below.</MudText>
-                                        @if (GetTicketPriceSummaryDisplay() is { } registrationPriceSummary)
-                                        {
-                                            <MudText Typo="Typo.body2" Color="Color.Secondary" Style="font-weight: 700;">@registrationPriceSummary</MudText>
-                                        }
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                            @GetRegistrationPolicyDisplay()
-                                        </MudText>
-                                    </div>
-                                    
-                                    <MudButton Variant="Variant.Filled" Color="GetButtonColor()"
-                                               Size="Size.Large"
-                                               Class="py-2 px-8 rounded-lg font-weight-bold"
-                                               Style="min-width: 160px;"
-                                               OnClick="OpenRegistrationDialog"
-                                               Disabled="IsButtonDisabled()"
-                                               Elevation="0"
-                                               StartIcon="@(_isUserRegistered ? Icons.Material.Filled.CheckCircle : null)">
-                                        @GetButtonText()
-                                    </MudButton>
-                                </div>
-
-                                @if (_isUserRegistered)
-                                {
-                                    <div class="d-flex align-center justify-space-between mt-4 pt-4 border-t-1" style="border-top: 1px solid var(--isl-color-border, rgba(128,128,128,0.2));">
-                                        <MudText Typo="Typo.body2" Color="Color.Success" Style="font-weight: 600;">You are going to this event!</MudText>
-                                        <MudLink OnClick="CancelRegistrationAsync" Typo="Typo.caption" Color="Color.Error" Underline="Underline.Hover" Style="cursor: pointer;">
-                                            Cancel registration
-                                        </MudLink>
-                                    </div>
-                                }
-                            }
                             else if (ExternalParticipationHref is { } externalParticipationHref)
                             {
                                 <div class="d-flex flex-column flex-sm-row justify-space-between align-sm-center gap-4">
@@ -490,6 +454,14 @@
                                         <span class="sr-only">(opens in new tab)</span>
                                     </a>
                                 </div>
+                            }
+                            else if (_eventDetails.HasHalLink("start-registration"))
+                            {
+                                <AppButton Href="@($"/registration/events/{_eventDetails.Id}/tickets")">Select tickets</AppButton>
+                            }
+                            else if (_eventDetails.HasHalLink("sign-in-to-register"))
+                            {
+                                <AppButton Href="@($"/auth/login?returnUrl={Uri.EscapeDataString($"/registration/events/{_eventDetails.Id}/tickets")}")">Sign in to register</AppButton>
                             }
                         </div>
                     </div>

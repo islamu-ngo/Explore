@@ -707,26 +707,6 @@ public static class HalResourceExtensions
         return JsonSerializer.Deserialize<TenantOnboardingStatusDto>(json, JsonOptions);
     }
 
-    // ========== Non-HAL Paginated Result Mappers ==========
-
-    /// <summary>
-    /// Maps a NSwag-generated <see cref="PaginatedResultOfEventRegistrationListDto"/> to a <see cref="PaginatedResult{T}"/>.
-    /// Unlike HAL collections, registrations use a plain PaginatedResult response from the API.
-    /// </summary>
-    public static PaginatedResult<EventRegistrationListDto> ToPaginatedResult(this PaginatedResultOfEventRegistrationListDto? result)
-    {
-        if (result is null)
-            return PaginatedResult<EventRegistrationListDto>.Empty();
-
-        return new PaginatedResult<EventRegistrationListDto>
-        {
-            Items = result.Items?.ToList() ?? [],
-            PageNumber = result.PageNumber ?? 1,
-            PageSize = result.PageSize ?? 20,
-            TotalCount = result.TotalCount ?? 0
-        };
-    }
-
     // ========== HAL Link Helpers ==========
 
     public static bool HasHalLink(this EventListDto dto, string linkRel)
