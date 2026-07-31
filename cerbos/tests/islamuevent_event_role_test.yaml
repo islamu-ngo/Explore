@@ -197,16 +197,6 @@ resources:
       eventSessionId: "session-1"
       organizationId: "org-1"
 
-  event_registration_1:
-    kind: "islamuevent_event_registration"
-    id: "reg-1"
-    attr:
-      tenantId: "tenant-1"
-      eventId: "event-1"
-      eventSessionId: "session-1"
-      userId: "user-attendee"
-      organizationId: "org-1"
-
 tests:
   - name: "Event owner can manage event-owner-only event actions"
     input:

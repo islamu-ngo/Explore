@@ -95,7 +95,6 @@ public class CerbosPolicyCompilationTests : IDisposable
         yield return "islamuevent_event_day";
         yield return "islamuevent_event_agenda_item";
         yield return "islamuevent_event_session_agenda_item";
-        yield return "islamuevent_event_registration";
         yield return "islamuevent_event_contact_share_consent";
         yield return "islamuevent_support_access_session";
         yield return "islamuevent_notification";

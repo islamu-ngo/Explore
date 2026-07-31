@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for registration-order resources. Buyer ownership is accountUserId; organizer reads inherit event registration-management authority.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier."
+    },
+    "eventId": {
+      "type": "string",
+      "description": "Parent event identifier used by registration-manager derived roles."
+    },
+    "accountUserId": {
+      "type": "string",
+      "description": "Linked account owner when the order is account-scoped."
+    }
+  },
+  "required": ["tenantId", "eventId"]
+}

@@ -583,11 +583,11 @@ public sealed class EventLinkPolicyTests
         await Assert.That(platformLinks.Count).IsEqualTo(1);
         var platform = platformLinks.Single();
         await Assert.That(platform.Rel).IsEqualTo(LinkRelations.StartRegistration);
-        await Assert.That(platform.RouteName).IsEqualTo(RouteNames.CreateEventRegistration);
+        await Assert.That(platform.RouteName).IsEqualTo(RouteNames.StartAuthenticatedRegistrationOrder);
         await Assert.That(platform.Method).IsEqualTo(HttpMethods.Post);
         await Assert.That(platform.RequiresAuth).IsTrue();
         await Assert.That(platform.PermissionAction).IsEqualTo(AuthorizationActions.Create);
-        await Assert.That(platform.PermissionResourceKind).IsEqualTo(ResourceKinds.EventRegistration);
+        await Assert.That(platform.PermissionResourceKind).IsEqualTo(ResourceKinds.RegistrationOrder);
         await Assert.That(platform.PermissionResourceId).IsEqualTo(eventId.ToString());
         await Assert.That(platform.PermissionScope?.TenantId).IsEqualTo(tenantId.ToString());
         await Assert.That(platform.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
@@ -607,8 +607,10 @@ public sealed class EventLinkPolicyTests
         {
             ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.ExternalManaged
         };
+        dto.IsManagementView = true;
         var externalLinks = policy.GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test"))).ToList();
         await Assert.That(externalLinks.Any(link => link.Rel == LinkRelations.ManageTicketTypes || link.Rel == LinkRelations.ManageCapacityPools)).IsFalse();
+        await Assert.That(externalLinks.Any(link => link.Rel == LinkRelations.ViewRegistrationOrders)).IsFalse();
 
         dto.ParticipationConfiguration = new EventParticipationConfigurationDto
         {
@@ -633,6 +635,39 @@ public sealed class EventLinkPolicyTests
             await Assert.That(link.PermissionResourceAttributes!["eventId"]).IsEqualTo(dto.Id.ToString());
             await Assert.That(link.PermissionResourceAttributes["tenantId"]).IsEqualTo(dto.TenantId.ToString());
         }
+
+        var orders = platformLinks.Single(link => link.Rel == LinkRelations.ViewRegistrationOrders);
+        await Assert.That(orders.RouteName).IsEqualTo(RouteNames.GetEventRegistrationOrders);
+        await Assert.That(new RouteValueDictionary(orders.RouteValues)["eventId"]).IsEqualTo(dto.Id);
+        await Assert.That(orders.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManageRegistrations);
+        await Assert.That(orders.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
+    }
+
+    [Test]
+    public async Task RegistrationOrderLink_UsesTheEventScopedOrganizerCollectionRoute()
+    {
+        var dto = CreateEventDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            status: EventStatusEnum.Published,
+            statusName: "Published",
+            statusCode: "PUBLISHED");
+        dto.IsManagementView = true;
+        dto.ParticipationConfiguration = new EventParticipationConfigurationDto
+        {
+            ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.PlatformManaged
+        };
+
+        var link = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .Single(definition => definition.Rel == LinkRelations.ViewRegistrationOrders);
+
+        await Assert.That(link.RouteName).IsEqualTo("GetEventRegistrationOrders");
+        var routeValues = new RouteValueDictionary(link.RouteValues);
+        await Assert.That(routeValues["eventId"]).IsEqualTo(dto.Id);
+        await Assert.That(routeValues.ContainsKey("actorId")).IsFalse();
+        await Assert.That(link.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManageRegistrations);
     }
 
     [Test]
@@ -658,12 +693,40 @@ public sealed class EventLinkPolicyTests
 
         var signIn = participationLinks.Single();
         await Assert.That(signIn.Rel).IsEqualTo(LinkRelations.SignInToRegister);
-        await Assert.That(signIn.RouteName).IsEqualTo(RouteNames.CreateEventRegistration);
+        await Assert.That(signIn.RouteName).IsEqualTo(RouteNames.StartAuthenticatedRegistrationOrder);
         await Assert.That(signIn.Method).IsEqualTo(HttpMethods.Post);
         await Assert.That(signIn.RequiresAuth).IsTrue();
         await Assert.That(signIn.AdvertiseWhenAnonymous).IsTrue();
         await Assert.That(signIn.PermissionResourceKind).IsNull();
         await Assert.That(participationLinks.Any(link => link.Rel == LinkRelations.StartRegistration)).IsFalse();
+    }
+
+    [Test]
+    public async Task PlatformManagedGuestMode_UsesGuestOrderRouteWithoutAnAccountCapability()
+    {
+        var dto = CreateEventDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            status: EventStatusEnum.Published,
+            statusName: "Published",
+            statusCode: "PUBLISHED");
+        dto.ParticipationConfiguration = new EventParticipationConfigurationDto
+        {
+            ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.PlatformManaged,
+            IdentityAccessModeId = (int)IdentityAccessModeEnum.GuestAllowed
+        };
+
+        var links = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity()))
+            .ToList();
+
+        var guestStart = links.Single(link => link.Rel == LinkRelations.StartGuestRegistration);
+        await Assert.That(guestStart.RouteName).IsEqualTo(RouteNames.StartGuestRegistrationOrder);
+        await Assert.That(guestStart.Method).IsEqualTo(HttpMethods.Post);
+        await Assert.That(guestStart.RequiresAuth).IsFalse();
+        await Assert.That(guestStart.PermissionResourceKind).IsNull();
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.SignInToRegister)).IsFalse();
     }
 
     [Test]

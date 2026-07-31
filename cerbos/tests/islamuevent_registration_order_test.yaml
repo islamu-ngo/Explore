@@ -1,0 +1,127 @@
+# ABOUTME: Cerbos policy tests for account-scoped registration-order access and organizer management reads.
+# ABOUTME: Confirms tenant and instance administrators cannot inherit tenant business-order access.
+
+name: RegistrationOrderPolicyTests
+description: "Validates buyer cancellation and event registration-manager order visibility"
+
+principals:
+  account_owner:
+    id: "account-owner"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "user-owner"
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  other_account:
+    id: "other-account"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "user-other"
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  registration_manager:
+    id: "registration-manager"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventAssignments:
+        "event-1":
+          tenantId: "tenant-1"
+          roles: ["event.registration_manager"]
+          permissions: ["event_registration:manage"]
+
+  tenant_admin:
+    id: "tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  instance_admin:
+    id: "instance-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+resources:
+  account_order:
+    kind: "islamuevent_registration_order"
+    id: "order-1"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      accountUserId: "user-owner"
+
+tests:
+  - name: "Account owner may view and use lifecycle actions on its linked order"
+    input:
+      principals: ["account_owner"]
+      resources: ["account_order"]
+      actions: ["view", "cancel", "continue", "finalize"]
+    expected:
+      - principal: "account_owner"
+        resource: "account_order"
+        actions:
+          view: EFFECT_ALLOW
+          cancel: EFFECT_ALLOW
+          continue: EFFECT_ALLOW
+          finalize: EFFECT_ALLOW
+
+  - name: "Unrelated accounts cannot view or use lifecycle actions"
+    input:
+      principals: ["other_account"]
+      resources: ["account_order"]
+      actions: ["view", "cancel", "continue", "finalize"]
+    expected:
+      - principal: "other_account"
+        resource: "account_order"
+        actions:
+          view: EFFECT_DENY
+          cancel: EFFECT_DENY
+          continue: EFFECT_DENY
+          finalize: EFFECT_DENY
+
+  - name: "Registration managers may inspect but not mutate buyer orders"
+    input:
+      principals: ["registration_manager"]
+      resources: ["account_order"]
+      actions: ["view", "cancel", "continue", "finalize"]
+    expected:
+      - principal: "registration_manager"
+        resource: "account_order"
+        actions:
+          view: EFFECT_ALLOW
+          cancel: EFFECT_DENY
+          continue: EFFECT_DENY
+          finalize: EFFECT_DENY
+
+  - name: "Platform and tenant administration do not grant order authority"
+    input:
+      principals: ["tenant_admin", "instance_admin"]
+      resources: ["account_order"]
+      actions: ["view", "cancel", "continue", "finalize"]
+    expected:
+      - principal: "tenant_admin"
+        resource: "account_order"
+        actions:
+          view: EFFECT_DENY
+          cancel: EFFECT_DENY
+          continue: EFFECT_DENY
+          finalize: EFFECT_DENY
+      - principal: "instance_admin"
+        resource: "account_order"
+        actions:
+          view: EFFECT_DENY
+          cancel: EFFECT_DENY
+          continue: EFFECT_DENY
+          finalize: EFFECT_DENY

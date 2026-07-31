@@ -173,7 +173,6 @@ public static class RouteNames
     public const string DeleteEventSessionSpeaker = "DeleteEventSessionSpeaker";
     public const string GetEventSessionAgendaItems = "GetEventSessionAgendaItems";
     public const string GetManagedEventSessionAgendaItemsBySession = "GetManagedEventSessionAgendaItemsBySession";
-    public const string GetEventRegistrations = "GetEventRegistrations";
     public const string GetEventSessionTemplateSyncDiff = "GetEventSessionTemplateSyncDiff";
     public const string ApplyEventSessionTemplateSync = "ApplyEventSessionTemplateSync";
     public const string GetEventSessionTemplateSyncHistory = "GetEventSessionTemplateSyncHistory";
@@ -246,6 +245,20 @@ public static class RouteNames
 
     #region Registration Routes
 
+    public const string StartGuestRegistrationOrder = "StartGuestRegistrationOrder";
+    public const string GetGuestRegistrationOrder = "GetGuestRegistrationOrder";
+    public const string GetRegistrationCheckoutComposition = "GetRegistrationCheckoutComposition";
+    public const string ContinueGuestRegistrationOrder = "ContinueGuestRegistrationOrder";
+    public const string FinalizeGuestRegistrationOrder = "FinalizeGuestRegistrationOrder";
+    public const string CancelGuestRegistrationOrder = "CancelGuestRegistrationOrder";
+    public const string StartAuthenticatedRegistrationOrder = "StartAuthenticatedRegistrationOrder";
+    public const string GetCurrentRegistrationOrder = "GetCurrentRegistrationOrder";
+    public const string ContinueAuthenticatedRegistrationOrder = "ContinueAuthenticatedRegistrationOrder";
+    public const string FinalizeAuthenticatedRegistrationOrder = "FinalizeAuthenticatedRegistrationOrder";
+    public const string CancelAuthenticatedRegistrationOrder = "CancelAuthenticatedRegistrationOrder";
+    public const string GetEventRegistrationOrders = "GetEventRegistrationOrders";
+    public const string GetStudioContext = "GetStudioContext";
+
     #endregion
 
     #region Lookup Table Routes
@@ -312,12 +325,6 @@ public static class RouteNames
     public const string UpdateEventSeries = "UpdateEventSeries";
     public const string DeleteEventSeries = "DeleteEventSeries";
     public const string GetEventRegistrationPolicies = "GetEventRegistrationPolicies";
-    public const string GetEventRegistrationById = "GetEventRegistrationById";
-    public const string GetRegistrationsBySession = "GetRegistrationsBySession";
-    public const string GetRegistrationsByUser = "GetRegistrationsByUser";
-    public const string CreateEventRegistration = "CreateEventRegistration";
-    public const string UpdateEventRegistration = "UpdateEventRegistration";
-    public const string DeleteEventRegistration = "DeleteEventRegistration";
 
     #endregion
 

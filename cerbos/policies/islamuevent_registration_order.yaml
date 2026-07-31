@@ -1,0 +1,39 @@
+# ABOUTME: Cerbos policy for tenant-bound registration orders with buyer and organizer read boundaries.
+# ABOUTME: Grants lifecycle actions only to the linked account and uses event-registration-manager authority for organizer reads.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "islamuevent_registration_order"
+  version: "default"
+  importDerivedRoles:
+    - islamuevent_explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///islamuevent_principal.json
+    resourceSchema:
+      ref: cerbos:///islamuevent_registration_order.json
+  rules:
+    - actions: ["view", "cancel", "continue", "finalize"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.accountUserId) &&
+            has(request.principal.attr.userId) &&
+            request.resource.attr.accountUserId == request.principal.attr.userId &&
+            (!has(request.principal.attr.is_machine) ||
+             request.principal.attr.is_machine != true)
+
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_registration_manager
+      condition:
+        match:
+          expr: >
+            request.principal.attr.isInstanceAdmin != true &&
+            !(request.resource.attr.tenantId in request.principal.attr.tenantMemberships) &&
+            (!has(request.principal.attr.is_machine) ||
+             request.principal.attr.is_machine != true)

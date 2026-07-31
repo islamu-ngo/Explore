@@ -10,7 +10,6 @@ using Explore.API.Hateoas;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Event;
-using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.Hateoas;
@@ -476,22 +475,51 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 yield break;
             case ParticipationHandlingModeEnum.PlatformManaged:
                 var isAuthenticated = user?.Identity?.IsAuthenticated == true;
-                var registrationLink = new LinkDefinition(
-                    isAuthenticated ? LinkRelations.StartRegistration : LinkRelations.SignInToRegister,
-                    RouteNames.CreateEventRegistration,
-                    new { eventId = dto.Id },
-                    HttpMethods.Post,
-                    "Register for event",
-                    RequiresAuth: true);
+                if (isAuthenticated)
+                {
+                    yield return new LinkDefinition(
+                        LinkRelations.StartRegistration,
+                        RouteNames.StartAuthenticatedRegistrationOrder,
+                        new { eventId = dto.Id },
+                        HttpMethods.Post,
+                        "Start registration",
+                        RequiresAuth: true)
+                    .RequirePermission(AuthorizationActions.Create, ResourceKinds.RegistrationOrder, dto.Id.ToString(), ResourceDescriptors.Event.GetResourceAttributes(dto), ResourceDescriptors.Event.GetScope(dto));
+                }
+                else if (dto.ParticipationConfiguration?.IdentityAccessModeId is
+                    (int)IdentityAccessModeEnum.GuestAllowed or (int)IdentityAccessModeEnum.CapabilityTokenAllowed)
+                {
+                    yield return new LinkDefinition(
+                        LinkRelations.StartGuestRegistration,
+                        RouteNames.StartGuestRegistrationOrder,
+                        new { eventId = dto.Id },
+                        HttpMethods.Post,
+                        "Start guest registration");
+                }
+                else
+                {
 
-                yield return isAuthenticated
-                    ? registrationLink.RequirePermission(
-                        AuthorizationActions.Create,
-                        ResourceKinds.EventRegistration,
-                        dto.Id.ToString(),
-                        ResourceDescriptors.Event.GetResourceAttributes(dto),
-                        ResourceDescriptors.Event.GetScope(dto))
-                    : registrationLink.AdvertisedWhenAnonymous();
+                    yield return new LinkDefinition(
+                        LinkRelations.SignInToRegister,
+                        RouteNames.StartAuthenticatedRegistrationOrder,
+                        new { eventId = dto.Id },
+                        HttpMethods.Post,
+                        "Sign in to register",
+                        RequiresAuth: true)
+                        .AdvertisedWhenAnonymous();
+                }
+
+                if (dto.IsManagementView)
+                {
+                    yield return new LinkDefinition(
+                        LinkRelations.ViewRegistrationOrders,
+                        RouteNames.GetEventRegistrationOrders,
+                        new { eventId = dto.Id },
+                        HttpMethods.Get,
+                        "View registration orders",
+                        RequiresAuth: true)
+                        .RequirePermission(AuthorizationActions.Events.ManageRegistrations, ResourceDescriptors.Event, dto);
+                }
 
                 yield break;
         }

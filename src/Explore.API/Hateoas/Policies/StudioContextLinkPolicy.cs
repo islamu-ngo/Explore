@@ -1,0 +1,50 @@
+// ABOUTME: HAL policy for private actor-scoped Studio navigation context.
+// ABOUTME: Emits the managed-event route only after the query handler granted order-management capability.
+
+namespace Explore.API.Hateoas.Policies;
+
+using System.Security.Claims;
+using Explore.API.Hateoas;
+using Explore.Application.Contracts.Hateoas;
+using Explore.Application.DTOs.Studio;
+using Explore.Application.Hateoas;
+
+public sealed class StudioContextLinkPolicy : ILinkPolicy<StudioContextDto>
+{
+    public IEnumerable<LinkDefinition> GetLinks(StudioContextDto dto, ClaimsPrincipal? user)
+    {
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetStudioContext,
+            null,
+            HttpMethods.Get,
+            "Studio context",
+            RequiresAuth: true);
+
+        Guid? selectedActorId = dto.SelectedActorId;
+        if (dto.AllowedLinkRelations.Contains(LinkRelations.ViewRegistrationOrders)
+            && selectedActorId is Guid actorId)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.ViewRegistrationOrders,
+                RouteNames.GetManagedEventsByActor,
+                new { actorId },
+                HttpMethods.Get,
+                "View registration orders",
+                RequiresAuth: true);
+        }
+    }
+}
+
+public sealed class StudioContextCollectionLinkPolicy : ICollectionLinkPolicy<StudioContextDto>
+{
+    public IEnumerable<LinkDefinition> GetItemLinks(StudioContextDto dto, ClaimsPrincipal? user)
+    {
+        yield break;
+    }
+
+    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
+    {
+        yield break;
+    }
+}

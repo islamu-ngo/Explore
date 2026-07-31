@@ -22,12 +22,12 @@ using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventCustomProperty;
 using Explore.Application.DTOs.EventDay;
 using Explore.Application.DTOs.EventOrganizerClaim;
-using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventReporting;
 using Explore.Application.DTOs.EventSeries;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.EventSessionCustomProperty;
+using Explore.Application.DTOs.Studio;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.DTOs.EventSessionSpeaker;
@@ -47,6 +47,7 @@ using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.PlatformMonetization;
 using Explore.Application.DTOs.PublicExperience;
+using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.DTOs.Settings;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.SupportAccess;
@@ -154,6 +155,10 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ICollectionLinkPolicy<AiConversationSummaryDto>, AiConversationCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<AiConversationDto, AiConversationSummaryDto>, AiConversationResourceAssembler>();
 
+        services.AddScoped<ILinkPolicy<StudioContextDto>, StudioContextLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<StudioContextDto>, StudioContextCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<StudioContextDto, StudioContextDto>, StudioContextResourceAssembler>();
+
         // Location
         services.AddScoped<ILinkPolicy<LocationDto>, LocationDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<LocationListDto>, LocationCollectionLinkPolicy>();
@@ -244,10 +249,9 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ICollectionLinkPolicy<OrganizationMemberDto>, OrganizationMemberCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<OrganizationMemberDto, OrganizationMemberDto>, OrganizationMemberResourceAssembler>();
 
-        // EventRegistration (relationship with payload)
-        services.AddScoped<ILinkPolicy<EventRegistrationDto>, EventRegistrationDetailLinkPolicy>();
-        services.AddScoped<ICollectionLinkPolicy<EventRegistrationListDto>, EventRegistrationCollectionLinkPolicy>();
-        services.AddScoped<IResourceAssembler<EventRegistrationDto, EventRegistrationListDto>, EventRegistrationResourceAssembler>();
+        services.AddScoped<ILinkPolicy<RegistrationOrderDto>, RegistrationOrderLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<RegistrationOrderDto>, RegistrationOrderCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto>, RegistrationOrderResourceAssembler>();
 
         // EventSessionAgendaItem
         services.AddScoped<ILinkPolicy<EventSessionAgendaItemDto>, EventSessionAgendaItemDetailLinkPolicy>();

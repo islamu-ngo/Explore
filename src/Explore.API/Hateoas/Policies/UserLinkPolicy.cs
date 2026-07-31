@@ -59,15 +59,6 @@ public sealed class UserDetailLinkPolicy : ILinkPolicy<UserDto>
             "User's organizations",
             RequiresAuth: true);
 
-        // Registrations link
-        yield return new LinkDefinition(
-            "registrations",
-            RouteNames.GetRegistrationsByUser,
-            new { userId = dto.Id },
-            "GET",
-            "User's event registrations",
-            RequiresAuth: true);
-
     }
 }
 

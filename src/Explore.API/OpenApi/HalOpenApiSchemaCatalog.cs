@@ -124,6 +124,10 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.EmailDispatch.EmailDispatchStatusDto),
         typeof(Explore.Application.DTOs.EmailDispatch.EmailDispatchProcessorControlDto),
 
+        typeof(Explore.Application.DTOs.RegistrationOrders.RegistrationOrderDto),
+        typeof(Explore.Application.DTOs.RegistrationOrders.GuestRegistrationOrderDto),
+        typeof(Explore.Application.DTOs.Studio.StudioContextDto),
+
         typeof(Explore.Application.DTOs.SupportAccess.SupportAccessSessionDto),
         typeof(Explore.Application.DTOs.SupportAccess.SupportAccessAuditEventDto),
 
@@ -187,6 +191,8 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfMyEventReportDto"] = typeof(Explore.Application.DTOs.EventReporting.MyEventReportDto),
         ["HalResourceOfModerationReportDetailDto"] = typeof(Explore.Application.DTOs.EventReporting.ModerationReportDetailDto),
         ["HalResourceOfModerationReportQueueItemDto"] = typeof(Explore.Application.DTOs.EventReporting.ModerationReportQueueItemDto),
+        ["HalResourceOfRegistrationOrderDto"] = typeof(Explore.Application.DTOs.RegistrationOrders.RegistrationOrderDto),
+        ["HalResourceOfGuestRegistrationOrderDto"] = typeof(Explore.Application.DTOs.RegistrationOrders.GuestRegistrationOrderDto),
         ["HalResourceOfReportingRoutingStateDto"] = typeof(Explore.Application.DTOs.EventReporting.ReportingRoutingStateDto),
         ["HalResourceOfTenantModerationReportingDashboardDto"] = typeof(Explore.Application.DTOs.EventReporting.TenantModerationReportingDashboardDto),
         ["HalResourceOfEventSessionDto"] = typeof(Explore.Application.DTOs.EventSession.EventSessionDto),
@@ -257,6 +263,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfAiRunDto"] = typeof(Explore.Application.DTOs.Ai.AiRunDto),
         ["HalResourceOfStorageObjectDto"] = typeof(Explore.Application.DTOs.StorageObject.StorageObjectDto),
         ["HalResourceOfStorageObjectListDto"] = typeof(Explore.Application.DTOs.StorageObject.StorageObjectListDto),
+        ["HalResourceOfStudioContextDto"] = typeof(Explore.Application.DTOs.Studio.StudioContextDto),
         ["HalResourceOfControlPlaneOverviewDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneOverviewDto),
         ["HalResourceOfControlPlaneDomainOverviewDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneDomainOverviewDto),
         ["HalResourceOfControlPlaneOperationsDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneOperationsDto),
@@ -295,6 +302,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfEventReportOptionsDto"] = "HalResourceOfEventReportOptionsDto",
         ["HalCollectionEmbeddedOfMyEventReportDto"] = "HalResourceOfMyEventReportDto",
         ["HalCollectionEmbeddedOfModerationReportQueueItemDto"] = "HalResourceOfModerationReportQueueItemDto",
+        ["HalCollectionEmbeddedOfRegistrationOrderDto"] = "HalResourceOfRegistrationOrderDto",
         ["HalCollectionEmbeddedOfEventSessionCustomPropertyDefinitionListDto"] = "HalResourceOfEventSessionCustomPropertyDefinitionListDto",
         ["HalCollectionEmbeddedOfEventSessionGroupListDto"] = "HalResourceOfEventSessionGroupListDto",
         ["HalCollectionEmbeddedOfEventSessionListDto"] = "HalResourceOfEventSessionListDto",
