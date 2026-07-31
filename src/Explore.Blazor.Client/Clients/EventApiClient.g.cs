@@ -1946,83 +1946,6 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Get current user's Event Registrations
-        /// </summary>
-        /// <remarks>
-        /// Retrieve a paginated list of the authenticated user's event registrations. Default page size is 20, max is 100.
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PaginatedResultOfEventRegistrationListDto> GetEventRegistrationsAsync(int? pageNumber = null, int? pageSize = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Register User for Event Session
-        /// </summary>
-        /// <remarks>
-        /// Create a new event registration (may require approval depending on registration mode)
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CreateEventRegistrationAsync(string? api_version = null, string? x_Api_Version = null, CreateEventRegistrationDto? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Get Event Registration by ID
-        /// </summary>
-        /// <remarks>
-        /// Retrieve details of the authenticated user's specific event registration including approval status.
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<EventRegistrationDto> GetEventRegistrationByIdAsync(System.Guid id, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Update Event Registration
-        /// </summary>
-        /// <remarks>
-        /// Update an existing event registration (e.g., change approval status)
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventRegistrationAsync(System.Guid id, UpdateEventRegistrationDto body, string? if_Match = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Cancel Event Registration
-        /// </summary>
-        /// <remarks>
-        /// Delete/cancel a user's event registration
-        /// </remarks>
-        /// <returns>No Content</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task DeleteEventRegistrationAsync(System.Guid id, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Get current user's Registration by Event Session
-        /// </summary>
-        /// <remarks>
-        /// Retrieve the authenticated user's registration for a specific event session.
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventRegistrationListDto>> GetRegistrationsBySessionAsync(System.Guid eventSessionId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Get Registrations by User
-        /// </summary>
-        /// <remarks>
-        /// Retrieve registrations only when the route user matches the authenticated user.
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventRegistrationListDto>> GetRegistrationsByUserAsync(System.Guid userId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
         /// Get all Event Registration Policies
         /// </summary>
         /// <remarks>
@@ -5051,6 +4974,138 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get registration checkout composition
+        /// </summary>
+        /// <remarks>
+        /// Returns the current published ticket choices for a publicly eligible platform-managed event.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<RegistrationCheckoutCompositionDto> GetRegistrationCheckoutCompositionAsync(System.Guid eventId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Start guest registration order
+        /// </summary>
+        /// <remarks>
+        /// Creates an anonymous registration order and reveals its opaque recovery capability once in a response header.
+        /// </remarks>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<GuestRegistrationOrderStartDto> StartGuestRegistrationOrderAsync(System.Guid eventId, string? api_version = null, string? x_Api_Version = null, StartRegistrationOrderRequest? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get guest registration order
+        /// </summary>
+        /// <remarks>
+        /// Returns a registration order only when the route event, order, and opaque capability header match.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfGuestRegistrationOrderDto> GetGuestRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? x_Registration_Order_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Cancel guest registration order
+        /// </summary>
+        /// <remarks>
+        /// Cancels a guest registration order only when its opaque capability header matches the scoped route.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<GuestRegistrationOrderLifecycleResponse> CancelGuestRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? x_Registration_Order_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get event registration orders
+        /// </summary>
+        /// <remarks>
+        /// Returns registration orders for one event after event-scoped registration-management authorization.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalCollectionResourceOfRegistrationOrderDto> GetEventRegistrationOrdersAsync(System.Guid eventId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Start authenticated registration order
+        /// </summary>
+        /// <remarks>
+        /// Creates a registration order owned by the authenticated current account.
+        /// </remarks>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> StartAuthenticatedRegistrationOrderAsync(System.Guid eventId, string? api_version = null, string? x_Api_Version = null, StartRegistrationOrderRequest? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Continue guest registration order
+        /// </summary>
+        /// <remarks>
+        /// Advances the guest order only when its opaque capability header matches the scoped route.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<GuestRegistrationOrderLifecycleResponse> ContinueGuestRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? x_Registration_Order_Capability = null, string? api_version = null, string? x_Api_Version = null, ContinueRegistrationOrderRequest? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Finalize guest registration order
+        /// </summary>
+        /// <remarks>
+        /// Finalizes a free guest registration order only when its opaque capability header matches the scoped route.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<GuestRegistrationOrderLifecycleResponse> FinalizeGuestRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? x_Registration_Order_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get current registration order
+        /// </summary>
+        /// <remarks>
+        /// Returns a registration order only to its authenticated current-account owner.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfRegistrationOrderDto> GetCurrentRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Cancel authenticated registration order
+        /// </summary>
+        /// <remarks>
+        /// Cancels a registration order owned by the authenticated current account.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfRegistrationOrderDto> CancelAuthenticatedRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Continue authenticated registration order
+        /// </summary>
+        /// <remarks>
+        /// Advances a registration order owned by the authenticated current account.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfRegistrationOrderDto> ContinueAuthenticatedRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? api_version = null, string? x_Api_Version = null, ContinueRegistrationOrderRequest? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Finalize authenticated registration order
+        /// </summary>
+        /// <remarks>
+        /// Finalizes a free registration order owned by the authenticated current account.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfRegistrationOrderDto> FinalizeAuthenticatedRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get all Registration Scopes
         /// </summary>
         /// <remarks>
@@ -5378,6 +5433,17 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BaseCommandResponseOfStorageUploadSessionDto> CancelStorageUploadSessionAsync(System.Guid uploadSessionId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Studio context
+        /// </summary>
+        /// <remarks>
+        /// Returns private HAL navigation affordances for the authenticated actor context.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfStudioContextDto> GetStudioContextAsync(System.Guid? actorId = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -29154,814 +29220,6 @@ namespace Explore.Blazor.Client.Clients
                         {
 
                             return;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Get current user's Event Registrations
-        /// </summary>
-        /// <remarks>
-        /// Retrieve a paginated list of the authenticated user's event registrations. Default page size is 20, max is 100.
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PaginatedResultOfEventRegistrationListDto> GetEventRegistrationsAsync(int? pageNumber = null, int? pageSize = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
-        {
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-
-                    if (x_Api_Version != null)
-                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
-                    request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/eventregistration"
-                    urlBuilder_.Append("api/eventregistration");
-                    urlBuilder_.Append('?');
-                    if (pageNumber != null)
-                    {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("PageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    }
-                    if (pageSize != null)
-                    {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("PageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    }
-                    if (api_version != null)
-                    {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    }
-                    urlBuilder_.Length--;
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedResultOfEventRegistrationListDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Register User for Event Session
-        /// </summary>
-        /// <remarks>
-        /// Create a new event registration (may require approval depending on registration mode)
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CreateEventRegistrationAsync(string? api_version = null, string? x_Api_Version = null, CreateEventRegistrationDto? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
-        {
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-
-                    if (x_Api_Version != null)
-                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
-                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
-                    var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
-                    request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/eventregistration"
-                    urlBuilder_.Append("api/eventregistration");
-                    urlBuilder_.Append('?');
-                    if (api_version != null)
-                    {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    }
-                    urlBuilder_.Length--;
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Get Event Registration by ID
-        /// </summary>
-        /// <remarks>
-        /// Retrieve details of the authenticated user's specific event registration including approval status.
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<EventRegistrationDto> GetEventRegistrationByIdAsync(System.Guid id, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
-        {
-            if (id == null)
-                throw new System.ArgumentNullException("id");
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-
-                    if (x_Api_Version != null)
-                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
-                    request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/eventregistration/{id}"
-                    urlBuilder_.Append("api/eventregistration/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append('?');
-                    if (api_version != null)
-                    {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    }
-                    urlBuilder_.Length--;
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<EventRegistrationDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 403)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Update Event Registration
-        /// </summary>
-        /// <remarks>
-        /// Update an existing event registration (e.g., change approval status)
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateEventRegistrationAsync(System.Guid id, UpdateEventRegistrationDto body, string? if_Match = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
-        {
-            if (id == null)
-                throw new System.ArgumentNullException("id");
-
-            if (body == null)
-                throw new System.ArgumentNullException("body");
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-
-                    if (if_Match != null)
-                        request_.Headers.TryAddWithoutValidation("If-Match", ConvertToString(if_Match, System.Globalization.CultureInfo.InvariantCulture));
-
-                    if (x_Api_Version != null)
-                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
-                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
-                    var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
-                    request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/eventregistration/{id}"
-                    urlBuilder_.Append("api/eventregistration/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append('?');
-                    if (api_version != null)
-                    {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    }
-                    urlBuilder_.Length--;
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 403)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 409)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Cancel Event Registration
-        /// </summary>
-        /// <remarks>
-        /// Delete/cancel a user's event registration
-        /// </remarks>
-        /// <returns>No Content</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task DeleteEventRegistrationAsync(System.Guid id, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
-        {
-            if (id == null)
-                throw new System.ArgumentNullException("id");
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-
-                    if (x_Api_Version != null)
-                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
-                    request_.Method = new System.Net.Http.HttpMethod("DELETE");
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/eventregistration/{id}"
-                    urlBuilder_.Append("api/eventregistration/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append('?');
-                    if (api_version != null)
-                    {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    }
-                    urlBuilder_.Length--;
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 204)
-                        {
-                            return;
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 404)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Get current user's Registration by Event Session
-        /// </summary>
-        /// <remarks>
-        /// Retrieve the authenticated user's registration for a specific event session.
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventRegistrationListDto>> GetRegistrationsBySessionAsync(System.Guid eventSessionId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
-        {
-            if (eventSessionId == null)
-                throw new System.ArgumentNullException("eventSessionId");
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-
-                    if (x_Api_Version != null)
-                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
-                    request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/eventregistration/by-session/{eventSessionId}"
-                    urlBuilder_.Append("api/eventregistration/by-session/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventSessionId, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append('?');
-                    if (api_version != null)
-                    {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    }
-                    urlBuilder_.Length--;
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<EventRegistrationListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Get Registrations by User
-        /// </summary>
-        /// <remarks>
-        /// Retrieve registrations only when the route user matches the authenticated user.
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<EventRegistrationListDto>> GetRegistrationsByUserAsync(System.Guid userId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
-        {
-            if (userId == null)
-                throw new System.ArgumentNullException("userId");
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-
-                    if (x_Api_Version != null)
-                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
-                    request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/eventregistration/by-user/{userId}"
-                    urlBuilder_.Append("api/eventregistration/by-user/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append('?');
-                    if (api_version != null)
-                    {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    }
-                    urlBuilder_.Length--;
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<EventRegistrationListDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 403)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         {
@@ -64686,6 +63944,1594 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get registration checkout composition
+        /// </summary>
+        /// <remarks>
+        /// Returns the current published ticket choices for a publicly eligible platform-managed event.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<RegistrationCheckoutCompositionDto> GetRegistrationCheckoutCompositionAsync(System.Guid eventId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/checkout"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/checkout");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<RegistrationCheckoutCompositionDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Start guest registration order
+        /// </summary>
+        /// <remarks>
+        /// Creates an anonymous registration order and reveals its opaque recovery capability once in a response header.
+        /// </remarks>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<GuestRegistrationOrderStartDto> StartGuestRegistrationOrderAsync(System.Guid eventId, string? api_version = null, string? x_Api_Version = null, StartRegistrationOrderRequest? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/guest"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/guest");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<GuestRegistrationOrderStartDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get guest registration order
+        /// </summary>
+        /// <remarks>
+        /// Returns a registration order only when the route event, order, and opaque capability header match.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfGuestRegistrationOrderDto> GetGuestRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? x_Registration_Order_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Registration_Order_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Registration-Order-Capability", ConvertToString(x_Registration_Order_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/guest/{orderId}"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/guest/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfGuestRegistrationOrderDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Cancel guest registration order
+        /// </summary>
+        /// <remarks>
+        /// Cancels a guest registration order only when its opaque capability header matches the scoped route.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<GuestRegistrationOrderLifecycleResponse> CancelGuestRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? x_Registration_Order_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Registration_Order_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Registration-Order-Capability", ConvertToString(x_Registration_Order_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("DELETE");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/guest/{orderId}"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/guest/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<GuestRegistrationOrderLifecycleResponse>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get event registration orders
+        /// </summary>
+        /// <remarks>
+        /// Returns registration orders for one event after event-scoped registration-management authorization.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfRegistrationOrderDto> GetEventRegistrationOrdersAsync(System.Guid eventId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalCollectionResourceOfRegistrationOrderDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Start authenticated registration order
+        /// </summary>
+        /// <remarks>
+        /// Creates a registration order owned by the authenticated current account.
+        /// </remarks>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> StartAuthenticatedRegistrationOrderAsync(System.Guid eventId, string? api_version = null, string? x_Api_Version = null, StartRegistrationOrderRequest? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Continue guest registration order
+        /// </summary>
+        /// <remarks>
+        /// Advances the guest order only when its opaque capability header matches the scoped route.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<GuestRegistrationOrderLifecycleResponse> ContinueGuestRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? x_Registration_Order_Capability = null, string? api_version = null, string? x_Api_Version = null, ContinueRegistrationOrderRequest? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Registration_Order_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Registration-Order-Capability", ConvertToString(x_Registration_Order_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/guest/{orderId}/continue"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/guest/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/continue");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<GuestRegistrationOrderLifecycleResponse>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Finalize guest registration order
+        /// </summary>
+        /// <remarks>
+        /// Finalizes a free guest registration order only when its opaque capability header matches the scoped route.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<GuestRegistrationOrderLifecycleResponse> FinalizeGuestRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? x_Registration_Order_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Registration_Order_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Registration-Order-Capability", ConvertToString(x_Registration_Order_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/guest/{orderId}/finalize"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/guest/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/finalize");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<GuestRegistrationOrderLifecycleResponse>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get current registration order
+        /// </summary>
+        /// <remarks>
+        /// Returns a registration order only to its authenticated current-account owner.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfRegistrationOrderDto> GetCurrentRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/{orderId}"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfRegistrationOrderDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Cancel authenticated registration order
+        /// </summary>
+        /// <remarks>
+        /// Cancels a registration order owned by the authenticated current account.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfRegistrationOrderDto> CancelAuthenticatedRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("DELETE");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/{orderId}"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfRegistrationOrderDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Continue authenticated registration order
+        /// </summary>
+        /// <remarks>
+        /// Advances a registration order owned by the authenticated current account.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfRegistrationOrderDto> ContinueAuthenticatedRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? api_version = null, string? x_Api_Version = null, ContinueRegistrationOrderRequest? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/{orderId}/continue"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/continue");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfRegistrationOrderDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Finalize authenticated registration order
+        /// </summary>
+        /// <remarks>
+        /// Finalizes a free registration order owned by the authenticated current account.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfRegistrationOrderDto> FinalizeAuthenticatedRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/{orderId}/finalize"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/finalize");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfRegistrationOrderDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get all Registration Scopes
         /// </summary>
         /// <remarks>
@@ -68106,6 +68952,116 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Studio context
+        /// </summary>
+        /// <remarks>
+        /// Returns private HAL navigation affordances for the authenticated actor context.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfStudioContextDto> GetStudioContextAsync(System.Guid? actorId = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/studio/context"
+                    urlBuilder_.Append("api/studio/context");
+                    urlBuilder_.Append('?');
+                    if (actorId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("actorId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(actorId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfStudioContextDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         {
@@ -82734,6 +83690,25 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ContinueRegistrationOrderRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformContributionBasisPoints")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PlatformContributionBasisPoints { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ControlPlaneDeploymentModeRunbookDto
     {
 
@@ -84404,50 +85379,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("timezone")]
         public string? Timezone { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class CreateEventRegistrationDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
-        public System.Guid? EventId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("userId")]
-        public System.Guid? UserId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("registrationScopeId")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? RegistrationScopeId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("selectedEventDayId")]
-        public System.Guid? SelectedEventDayId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("selectedSessionIds")]
-        public System.Collections.Generic.ICollection<System.Guid>? SelectedSessionIds { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("approvalStatusId")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? ApprovalStatusId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("shareEmailWithOrganizer")]
-        public bool? ShareEmailWithOrganizer { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("consentTextAcknowledged")]
-        public string? ConsentTextAcknowledged { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("consentUiVersion")]
-        public string? ConsentUiVersion { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -89124,120 +90055,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class EventRegistrationDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("concurrencyStamp")]
-        public System.Guid? ConcurrencyStamp { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
-        public System.Guid? EventId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventTitle")]
-        public string? EventTitle { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventRegistrationIntentId")]
-        public System.Guid? EventRegistrationIntentId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventSessionId")]
-        public System.Guid? EventSessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventSessionTitle")]
-        public string? EventSessionTitle { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("registrationModeId")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? RegistrationModeId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("registrationModeFullName")]
-        public string? RegistrationModeFullName { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("approvalStatusId")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? ApprovalStatusId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("approvalStatusFullName")]
-        public string? ApprovalStatusFullName { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("approvalStatusMasterCode")]
-        public string? ApprovalStatusMasterCode { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
-        public System.Guid? TenantId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("atprotoRecordId")]
-        public System.Guid? AtprotoRecordId { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class EventRegistrationListDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid? Id { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("concurrencyStamp")]
-        public System.Guid? ConcurrencyStamp { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventRegistrationIntentId")]
-        public System.Guid? EventRegistrationIntentId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventSessionId")]
-        public System.Guid? EventSessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventSessionTitle")]
-        public string? EventSessionTitle { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
-        public System.Guid? EventId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventTitle")]
-        public string? EventTitle { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventFeaturedImageUri")]
-        public string? EventFeaturedImageUri { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventStartTime")]
-        public System.DateTimeOffset? EventStartTime { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("approvalStatusId")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? ApprovalStatusId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("approvalStatusFullName")]
-        public string? ApprovalStatusFullName { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("approvalStatusMasterCode")]
-        public string? ApprovalStatusMasterCode { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
-        public System.Guid? TenantId { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class EventRegistrationPolicyListDto
     {
 
@@ -92466,6 +93283,150 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class GuestRegistrationOrderDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        public string? StatusCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusName")]
+        public string? StatusName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("organizerDirectedTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? OrganizerDirectedTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformFeeTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? PlatformFeeTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("organizerEarningsTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? OrganizerEarningsTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformContributionTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? PlatformContributionTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalDueMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? TotalDueMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformContribution")]
+        public RegistrationOrderPlatformContributionDto? PlatformContribution { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        public System.DateTimeOffset? ExpiresAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("submittedAt")]
+        public System.DateTimeOffset? SubmittedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("confirmedAt")]
+        public System.DateTimeOffset? ConfirmedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("rejectedAt")]
+        public System.DateTimeOffset? RejectedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("cancelledAt")]
+        public System.DateTimeOffset? CancelledAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lines")]
+        public System.Collections.Generic.ICollection<RegistrationOrderLineDto>? Lines { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class GuestRegistrationOrderLifecycleResponse
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("order")]
+        public GuestRegistrationOrderDto? Order { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("success")]
+        public bool? Success { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("message")]
+        public string? Message { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<string>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("failureCode")]
+        public string? FailureCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
+        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class GuestRegistrationOrderStartDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("success")]
+        public bool? Success { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("message")]
+        public string? Message { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<string>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("failureCode")]
+        public string? FailureCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
+        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HalCollectionEmbeddedOfActorListDto
     {
 
@@ -93137,6 +94098,24 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("items")]
         public System.Collections.Generic.ICollection<HalResourceOfProjectionStatusDto>? Items { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalCollectionEmbeddedOfRegistrationOrderDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("items")]
+        public System.Collections.Generic.ICollection<HalResourceOfRegistrationOrderDto>? Items { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -94969,6 +95948,49 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
         public HalCollectionEmbeddedOfProjectionStatusDto? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalCollectionResourceOfRegistrationOrderDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PageNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PageSize { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalPages { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
+        public bool? HasPrevious { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
+        public bool? HasNext { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public HalCollectionEmbeddedOfRegistrationOrderDto? _embedded { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -99919,6 +100941,93 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfGuestRegistrationOrderDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        public string? StatusCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusName")]
+        public string? StatusName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("organizerDirectedTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? OrganizerDirectedTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformFeeTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? PlatformFeeTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("organizerEarningsTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? OrganizerEarningsTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformContributionTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? PlatformContributionTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalDueMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? TotalDueMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformContribution")]
+        public PlatformContribution? PlatformContribution { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        public System.DateTimeOffset? ExpiresAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("submittedAt")]
+        public System.DateTimeOffset? SubmittedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("confirmedAt")]
+        public System.DateTimeOffset? ConfirmedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("rejectedAt")]
+        public System.DateTimeOffset? RejectedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("cancelledAt")]
+        public System.DateTimeOffset? CancelledAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lines")]
+        public System.Collections.Generic.ICollection<Lines>? Lines { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HalResourceOfIncomingWebhookEffectStatusDto
     {
 
@@ -101371,6 +102480,93 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfRegistrationOrderDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        public string? StatusCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusName")]
+        public string? StatusName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("organizerDirectedTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? OrganizerDirectedTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformFeeTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? PlatformFeeTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("organizerEarningsTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? OrganizerEarningsTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformContributionTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? PlatformContributionTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalDueMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? TotalDueMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformContribution")]
+        public PlatformContribution2? PlatformContribution { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        public System.DateTimeOffset? ExpiresAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("submittedAt")]
+        public System.DateTimeOffset? SubmittedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("confirmedAt")]
+        public System.DateTimeOffset? ConfirmedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("rejectedAt")]
+        public System.DateTimeOffset? RejectedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("cancelledAt")]
+        public System.DateTimeOffset? CancelledAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lines")]
+        public System.Collections.Generic.ICollection<Lines2>? Lines { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HalResourceOfReportingRoutingStateDto
     {
 
@@ -101639,6 +102835,33 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfStudioContextDto
+    {
 
         /// <summary>
         /// HAL hypermedia links
@@ -108144,46 +109367,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PaginatedResultOfEventRegistrationListDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("items")]
-        public System.Collections.Generic.ICollection<EventRegistrationListDto>? Items { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? PageNumber { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? PageSize { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? TotalCount { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? TotalPages { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasPreviousPage")]
-        public bool? HasPreviousPage { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasNextPage")]
-        public bool? HasNextPage { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PaginatedResultOfEventSessionAgendaItemListDto
     {
 
@@ -110843,6 +112026,103 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationCheckoutCompositionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketCatalogVersionId")]
+        public System.Guid? TicketCatalogVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketTypes")]
+        public System.Collections.Generic.ICollection<RegistrationCheckoutTicketTypeDto>? TicketTypes { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationCheckoutSlidingScaleOptionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("buyerPriceMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? BuyerPriceMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("organizerEarningsMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? OrganizerEarningsMinor { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationCheckoutTicketTypeDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string? Name { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketPricingModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TicketPricingModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketPricingModeCode")]
+        public string? TicketPricingModeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fixedPriceMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? FixedPriceMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("minimumPriceMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? MinimumPriceMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("suggestedPriceMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? SuggestedPriceMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("perOrderLimit")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PerOrderLimit { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("slidingScaleOptions")]
+        public System.Collections.Generic.ICollection<RegistrationCheckoutSlidingScaleOptionDto>? SlidingScaleOptions { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RegistrationModeDto
     {
 
@@ -110890,6 +112170,210 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationOrderDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        public string? StatusCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusName")]
+        public string? StatusName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("organizerDirectedTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? OrganizerDirectedTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformFeeTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? PlatformFeeTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("organizerEarningsTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? OrganizerEarningsTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformContributionTotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? PlatformContributionTotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalDueMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? TotalDueMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformContribution")]
+        public PlatformContribution3? PlatformContribution { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        public System.DateTimeOffset? ExpiresAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("submittedAt")]
+        public System.DateTimeOffset? SubmittedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("confirmedAt")]
+        public System.DateTimeOffset? ConfirmedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("rejectedAt")]
+        public System.DateTimeOffset? RejectedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("cancelledAt")]
+        public System.DateTimeOffset? CancelledAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lines")]
+        public System.Collections.Generic.ICollection<Lines3>? Lines { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationOrderLineDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketTypeId")]
+        public System.Guid? TicketTypeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quantity")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Quantity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketTypeName")]
+        public string? TicketTypeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("unitPriceMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? UnitPriceMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("chosenUnitPriceMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ChosenUnitPriceMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subtotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? SubtotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationOrderLineSelection
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketTypeId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid TicketTypeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quantity")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Quantity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("chosenUnitPriceMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ChosenUnitPriceMinor { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationOrderPlatformContributionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("heading")]
+        public string? Heading { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("body")]
+        public string? Body { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedBasisPoints")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SelectedBasisPoints { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedAmountMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? SelectedAmountMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("options")]
+        public System.Collections.Generic.ICollection<RegistrationOrderPlatformContributionOptionDto>? Options { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationOrderPlatformContributionOptionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("contributionBasisPoints")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ContributionBasisPoints { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("amountMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? AmountMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isDefault")]
+        public bool? IsDefault { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112493,6 +113977,34 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class StartRegistrationOrderRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketCatalogVersionId")]
+        public System.Guid? TicketCatalogVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bookingPartyType")]
+        public int? BookingPartyType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lines")]
+        public System.Collections.Generic.ICollection<RegistrationOrderLineSelection>? Lines { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformContributionBasisPoints")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PlatformContributionBasisPoints { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class StartSupportAccessSessionRequestDto
     {
 
@@ -112984,6 +114496,21 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("hasValue")]
         public bool? HasValue { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class StudioContextDto
+    {
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -116375,110 +117902,11 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UpdateEventRegistrationApprovalStatusDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("approvalStatusId")]
-        public OptionalUpdateOfint? ApprovalStatusId { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UpdateEventRegistrationDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("user")]
-        public UpdateEventRegistrationUserDto? User { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("session")]
-        public UpdateEventRegistrationSessionDto? Session { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("intent")]
-        public UpdateEventRegistrationIntentDto? Intent { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("approvalStatus")]
-        public UpdateEventRegistrationApprovalStatusDto? ApprovalStatus { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UpdateEventRegistrationIntentDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventRegistrationIntentId")]
-        public OptionalUpdateOfGuid? EventRegistrationIntentId { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UpdateEventRegistrationPolicyDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("value")]
         public OptionalUpdateOfint? Value { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UpdateEventRegistrationSessionDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("eventSessionId")]
-        public System.Guid? EventSessionId { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UpdateEventRegistrationUserDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("userId")]
-        public System.Guid? UserId { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -123393,6 +124821,81 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PlatformContribution
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("heading")]
+        public string? Heading { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("body")]
+        public string? Body { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedBasisPoints")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SelectedBasisPoints { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedAmountMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? SelectedAmountMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("options")]
+        public System.Collections.Generic.ICollection<Options11>? Options { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Lines
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketTypeId")]
+        public System.Guid? TicketTypeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quantity")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Quantity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketTypeName")]
+        public string? TicketTypeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("unitPriceMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? UnitPriceMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("chosenUnitPriceMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ChosenUnitPriceMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subtotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? SubtotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Routes
     {
 
@@ -124216,6 +125719,81 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("isDefault")]
         public bool? IsDefault { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PlatformContribution2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("heading")]
+        public string? Heading { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("body")]
+        public string? Body { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedBasisPoints")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SelectedBasisPoints { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedAmountMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? SelectedAmountMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("options")]
+        public System.Collections.Generic.ICollection<Options12>? Options { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Lines2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketTypeId")]
+        public System.Guid? TicketTypeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quantity")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Quantity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketTypeName")]
+        public string? TicketTypeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("unitPriceMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? UnitPriceMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("chosenUnitPriceMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ChosenUnitPriceMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subtotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? SubtotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -125298,6 +126876,81 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("isDefault")]
         public bool? IsDefault { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PlatformContribution3
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("heading")]
+        public string? Heading { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("body")]
+        public string? Body { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedBasisPoints")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SelectedBasisPoints { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedAmountMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? SelectedAmountMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("options")]
+        public System.Collections.Generic.ICollection<Options13>? Options { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Lines3
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketTypeId")]
+        public System.Guid? TicketTypeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quantity")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Quantity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketTypeName")]
+        public string? TicketTypeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("unitPriceMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? UnitPriceMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("chosenUnitPriceMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ChosenUnitPriceMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subtotalMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? SubtotalMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("currencyCode")]
+        public string? CurrencyCode { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -126415,6 +128068,32 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Options11
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("contributionBasisPoints")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ContributionBasisPoints { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("amountMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? AmountMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isDefault")]
+        public bool? IsDefault { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Routes5
     {
 
@@ -126506,6 +128185,32 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("steps")]
         public System.Collections.Generic.ICollection<Steps>? Steps { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Options12
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("contributionBasisPoints")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ContributionBasisPoints { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("amountMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? AmountMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isDefault")]
+        public bool? IsDefault { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -126644,6 +128349,32 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("steps")]
         public System.Collections.Generic.ICollection<Steps2>? Steps { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Options13
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("contributionBasisPoints")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ContributionBasisPoints { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("amountMinor")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? AmountMinor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isDefault")]
+        public bool? IsDefault { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
