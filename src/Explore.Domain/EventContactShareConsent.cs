@@ -36,12 +36,12 @@ public class EventContactShareConsent : ITenantEntity, IAuditableEntity
     public Actor? RecipientActor { get; set; }
 
     /// <summary>
-    /// The registration intent that triggered this consent. Nullable because the intent
-    /// could be deleted while the consent audit trail must persist.
+    /// The registration order that triggered this consent. Nullable because the order
+    /// lifecycle is distinct from the consent audit trail.
     /// </summary>
-    [ForeignKey("SourceEventRegistrationIntent")]
-    public Guid? SourceEventRegistrationIntentId { get; set; }
-    public EventRegistrationIntent? SourceEventRegistrationIntent { get; set; }
+    [ForeignKey("SourceRegistrationOrder")]
+    public Guid? SourceRegistrationOrderId { get; set; }
+    public RegistrationOrder? SourceRegistrationOrder { get; set; }
 
     public required string PurposeCode { get; set; }
 

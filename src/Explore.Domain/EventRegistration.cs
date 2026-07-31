@@ -1,4 +1,4 @@
-// ABOUTME: Concrete per-session admission row derived from legacy intents or interim registration orders.
+// ABOUTME: Concrete per-session admission row derived from a registration order.
 // ABOUTME: Keeps participant and linked-user references nullable until participant assignment is introduced.
 
 using System;
@@ -25,15 +25,6 @@ public class EventRegistration : ITenantEntity, IAuditableEntity, ISoftDeletable
     public required EventSession EventSession { get; set; }
 
     public DateTime CoverageEstablishedAt { get; set; }
-
-    /// <summary>
-    /// Parent registration-intent row. Nullable during rollout so existing session-level rows transition safely;
-    /// newly created EventRegistration rows must always link to an <see cref="EventRegistrationIntent"/> once
-    /// registration handlers land in a later slice.
-    /// </summary>
-    [ForeignKey("EventRegistrationIntent")]
-    public Guid? EventRegistrationIntentId { get; set; }
-    public EventRegistrationIntent? EventRegistrationIntent { get; set; }
 
     [ForeignKey("RegistrationOrder")]
     public Guid? RegistrationOrderId { get; set; }

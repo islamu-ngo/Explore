@@ -155,10 +155,6 @@ public partial class ExploreDbContext
         modelBuilder.Entity<EventSessionTag>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
-        modelBuilder.Entity<EventRegistrationIntent>()
-            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
-            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
-
         modelBuilder.Entity<EventContactShareConsent>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 

@@ -152,7 +152,6 @@ public partial class ExploreDbContext
     public DbSet<LocationRoom> LocationRooms { get; set; }
     public DbSet<EventSessionCategory> EventSessionCategories { get; set; }
     public DbSet<EventSessionTag> EventSessionTags { get; set; }
-    public DbSet<EventRegistrationIntent> EventRegistrationIntents { get; set; }
     public DbSet<EventTicketCatalogVersion> EventTicketCatalogVersions { get; set; }
     public DbSet<EventTicketType> EventTicketTypes { get; set; }
     public DbSet<TicketTypeEntitlement> TicketTypeEntitlements { get; set; }

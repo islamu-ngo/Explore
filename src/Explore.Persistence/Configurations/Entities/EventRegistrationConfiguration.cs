@@ -1,4 +1,4 @@
-// ABOUTME: EF configuration for concrete session admissions from legacy intents or registration orders.
+// ABOUTME: EF configuration for concrete session admissions from registration orders.
 // ABOUTME: Preserves tenant-safe lineage and makes interim participant linkage nullable.
 
 using Explore.Domain;
@@ -34,12 +34,6 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
         builder.HasOne(e => e.EventSession)
             .WithMany()
             .HasForeignKey(e => new { e.TenantId, e.EventId, e.EventSessionId })
-            .HasPrincipalKey(e => new { e.TenantId, e.EventId, e.Id })
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasOne(e => e.EventRegistrationIntent)
-            .WithMany()
-            .HasForeignKey(e => new { e.TenantId, e.EventId, e.EventRegistrationIntentId })
             .HasPrincipalKey(e => new { e.TenantId, e.EventId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
@@ -85,10 +79,6 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
         // Registrations by user (my registrations)
         builder.HasIndex(e => e.UserId)
             .HasDatabaseName("ix_eventregistrations_user");
-
-        // Children by parent intent (to walk a user's registration intent down to concrete access rows).
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventRegistrationIntentId })
-            .HasDatabaseName("ix_eventregistrations_intent");
 
         builder.HasIndex(e => new
             {

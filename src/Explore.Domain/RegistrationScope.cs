@@ -1,5 +1,5 @@
-// ABOUTME: Lookup describing the three registration-intent scopes (Event, Day, SessionSelection) a user can register under.
-// ABOUTME: Referenced by EventRegistrationIntent.RegistrationScopeId and enforced against EventRegistrationPolicy on the parent Event.
+// ABOUTME: Lookup describing the three legacy registration scopes retained as workflow vocabulary.
+// ABOUTME: Enforced against EventRegistrationPolicy on the parent Event without owning registration authority.
 
 namespace Explore.Domain;
 

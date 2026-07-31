@@ -1,5 +1,5 @@
-// ABOUTME: Enum mirror of the RegistrationScope lookup expressing why a user registered (whole event, whole day, or picked sessions).
-// ABOUTME: Values are stable lookup ids consumed by EventRegistrationIntent and the policy-aware registration UX.
+// ABOUTME: Enum mirror of the RegistrationScope lookup for whole-event, day, and session-selection workflow vocabulary.
+// ABOUTME: Values are stable lookup ids consumed by registration policy rules and legacy lookup displays.
 
 namespace Explore.Domain.Enums;
 
