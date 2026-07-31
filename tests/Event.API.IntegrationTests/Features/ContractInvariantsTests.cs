@@ -497,6 +497,46 @@ public class ContractInvariantsTests
     }
 
     [Test]
+    public async Task OpenApiDocument_RegistrationOrderAndStudioContextHalResourcesAreFlattened()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        var expectedPropertiesBySchema = new Dictionary<string, string[]>
+        {
+            ["HalResourceOfRegistrationOrderDto"] = ["id", "statusCode", "lines", "_links"],
+            ["HalResourceOfStudioContextDto"] = ["_links"]
+        };
+
+        var missingProperties = expectedPropertiesBySchema
+            .SelectMany(expected =>
+            {
+                var properties = GetSchemaProperties(document, expected.Key);
+                return expected.Value
+                    .Where(propertyName => !properties.TryGetProperty(propertyName, out _))
+                    .Select(propertyName => $"{expected.Key}.{propertyName}");
+            })
+            .ToList();
+
+        await Assert.That(missingProperties)
+            .IsEmpty()
+            .Because($"Registration order and Studio context HAL resources must expose typed DTO fields and server-authored affordances. Missing: {string.Join(", ", missingProperties)}");
+
+        var registrationOrderProperties = GetSchemaProperties(document, "HalResourceOfRegistrationOrderDto");
+        var studioContextProperties = GetSchemaProperties(document, "HalResourceOfStudioContextDto");
+
+        await Assert.That(GetStringProperty(registrationOrderProperties.GetProperty("statusCode"), "type"))
+            .IsEqualTo("string");
+        await Assert.That(GetStringProperty(registrationOrderProperties.GetProperty("lines"), "type"))
+            .IsEqualTo("array");
+        await Assert.That(GetStringProperty(
+                registrationOrderProperties.GetProperty("lines").GetProperty("items").GetProperty("properties").GetProperty("ticketTypeName"),
+                "type"))
+            .IsEqualTo("string");
+        await Assert.That(GetReference(studioContextProperties.GetProperty("_links").GetProperty("additionalProperties")))
+            .IsEqualTo("#/components/schemas/HalLink");
+    }
+
+    [Test]
     public async Task OpenApiDocument_CatalogedHalResourceSchemasAreFlattened()
     {
         using var document = await GetOpenApiDocumentAsync();

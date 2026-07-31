@@ -194,7 +194,7 @@ namespace Explore.Persistence.Migrations
 
                     b.ToTable("actors", null, t =>
                         {
-                            t.HasCheckConstraint("ck_actors_exactly_one_owner", "num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 1");
+                            t.HasCheckConstraint("ck_actors_exactly_one_owner", "num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 1 OR (is_deleted AND num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 0)");
 
                             t.HasCheckConstraint("ck_actors_external_type_matches_owner", "(external_actor_subject_id IS NULL AND actor_type_id <> 6) OR (external_actor_subject_id IS NOT NULL AND actor_type_id = 6)");
                         });
@@ -3068,9 +3068,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("recipient_user_id");
 
-                    b.Property<Guid?>("RegistrationIntentId")
+                    b.Property<Guid?>("RegistrationOrderId")
                         .HasColumnType("uuid")
-                        .HasColumnName("registration_intent_id");
+                        .HasColumnName("registration_order_id");
 
                     b.Property<string>("ReplyTo")
                         .HasMaxLength(320)
@@ -3138,9 +3138,6 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("ManagedTenantProvisioningOperationId")
                         .HasDatabaseName("ix_email_dispatch_outbox_managed_tenant_provisioning_operation");
 
-                    b.HasIndex("RegistrationIntentId")
-                        .HasDatabaseName("ix_email_dispatch_outbox_registration_intent_id");
-
                     b.HasIndex("TenantId", "NotificationIntentId")
                         .IsUnique()
                         .HasDatabaseName("ux_email_dispatch_outbox_tenant_intent");
@@ -3151,6 +3148,9 @@ namespace Explore.Persistence.Migrations
 
                     b.HasIndex("TenantId", "RecipientUserId")
                         .HasDatabaseName("ix_email_dispatch_outbox_tenant_id_recipient_user_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId")
+                        .HasDatabaseName("ix_email_dispatch_outbox_tenant_id_registration_order_id");
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
                         .HasDatabaseName("ix_email_dispatch_outbox_worker_poll");
@@ -4158,9 +4158,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("source_event_id");
 
-                    b.Property<Guid?>("SourceEventRegistrationIntentId")
+                    b.Property<Guid?>("SourceRegistrationOrderId")
                         .HasColumnType("uuid")
-                        .HasColumnName("source_event_registration_intent_id");
+                        .HasColumnName("source_registration_order_id");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -4198,8 +4198,8 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "SourceEventId")
                         .HasDatabaseName("ix_event_contact_share_consents_tenant_id_source_event_id");
 
-                    b.HasIndex("TenantId", "SourceEventRegistrationIntentId")
-                        .HasDatabaseName("ix_event_contact_share_consents_tenant_id_source_event_registr");
+                    b.HasIndex("TenantId", "SourceRegistrationOrderId")
+                        .HasDatabaseName("ix_event_contact_share_consents_tenant_id_source_registration_");
 
                     b.HasIndex("TenantId", "RecipientActorId", "Status")
                         .HasDatabaseName("ix_eventcontactshareconsents_recipient_status");
@@ -5923,10 +5923,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
 
-                    b.Property<Guid?>("EventRegistrationIntentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_registration_intent_id");
-
                     b.Property<Guid>("EventSessionId")
                         .HasColumnType("uuid")
                         .HasColumnName("event_session_id");
@@ -5985,9 +5981,6 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "TicketTypeEntitlementId")
                         .HasDatabaseName("ix_event_registrations_tenant_id_ticket_type_entitlement_id");
 
-                    b.HasIndex("TenantId", "EventId", "EventRegistrationIntentId")
-                        .HasDatabaseName("ix_eventregistrations_intent");
-
                     b.HasIndex("TenantId", "EventId", "EventSessionId", "UserId")
                         .HasDatabaseName("ix_eventregistrations_session_user")
                         .HasFilter("is_deleted = false");
@@ -5998,122 +5991,6 @@ namespace Explore.Persistence.Migrations
                         .HasFilter("registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false");
 
                     b.ToTable("event_registrations", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventRegistrationIntent", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int?>("ApprovalStatusId")
-                        .HasColumnType("integer")
-                        .HasColumnName("approval_status_id");
-
-                    b.Property<Guid>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("uuid")
-                        .HasColumnName("concurrency_stamp");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("deleted_by");
-
-                    b.Property<Guid>("EventId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_id");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<int?>("RegistrationPolicySnapshotId")
-                        .HasColumnType("integer")
-                        .HasColumnName("registration_policy_snapshot_id");
-
-                    b.Property<int>("RegistrationScopeId")
-                        .HasColumnType("integer")
-                        .HasColumnName("registration_scope_id");
-
-                    b.Property<Guid?>("SelectedEventDayId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("selected_event_day_id");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_event_registration_intents");
-
-                    b.HasAlternateKey("TenantId", "Id")
-                        .HasName("ak_event_registration_intents_tenant_id_id");
-
-                    b.HasAlternateKey("TenantId", "EventId", "Id")
-                        .HasName("ak_event_registration_intents_tenant_id_event_id_id");
-
-                    b.HasIndex("ApprovalStatusId")
-                        .HasDatabaseName("ix_event_registration_intents_approval_status_id");
-
-                    b.HasIndex("RegistrationPolicySnapshotId")
-                        .HasDatabaseName("ix_event_registration_intents_registration_policy_snapshot_id");
-
-                    b.HasIndex("RegistrationScopeId")
-                        .HasDatabaseName("ix_event_registration_intents_registration_scope_id");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_event_registration_intents_user_id");
-
-                    b.HasIndex("TenantId", "UserId")
-                        .HasDatabaseName("ix_event_registration_intents_tenant_user");
-
-                    b.HasIndex("TenantId", "EventId", "SelectedEventDayId")
-                        .HasDatabaseName("ix_event_registration_intents_tenant_event_day");
-
-                    b.HasIndex("TenantId", "EventId", "UserId", "RegistrationScopeId")
-                        .HasDatabaseName("ix_event_registration_intents_tenant_event_user_scope");
-
-                    b.HasIndex("TenantId", "EventId", "UserId", "SelectedEventDayId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_event_registration_intents_unique_day_scope")
-                        .HasFilter("registration_scope_id = 2 AND is_deleted = false");
-
-                    b.HasIndex(new[] { "TenantId", "EventId", "UserId" }, "ix_event_registration_intents_unique_event_scope")
-                        .IsUnique()
-                        .HasDatabaseName("ix_event_registration_intents_unique_event_scope")
-                        .HasFilter("registration_scope_id = 1 AND is_deleted = false");
-
-                    b.HasIndex(new[] { "TenantId", "EventId", "UserId" }, "ix_event_registration_intents_unique_session_selection_scope")
-                        .IsUnique()
-                        .HasDatabaseName("ix_event_registration_intents_unique_session_selection_scope")
-                        .HasFilter("registration_scope_id = 3 AND is_deleted = false");
-
-                    b.ToTable("event_registration_intents", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventRegistrationPolicy", b =>
@@ -12316,9 +12193,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("processing_started_at");
 
-                    b.Property<Guid?>("RegistrationIntentId")
+                    b.Property<Guid?>("RegistrationOrderId")
                         .HasColumnType("uuid")
-                        .HasColumnName("registration_intent_id");
+                        .HasColumnName("registration_order_id");
 
                     b.Property<Guid>("SourceId")
                         .HasColumnType("uuid")
@@ -12372,11 +12249,11 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("EventId")
                         .HasDatabaseName("ix_integration_sync_outbox_event_id");
 
-                    b.HasIndex("RegistrationIntentId")
-                        .HasDatabaseName("ix_integration_sync_outbox_registration_intent_id");
-
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_integration_sync_outbox_user_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId")
+                        .HasDatabaseName("ix_integration_sync_outbox_tenant_id_registration_order_id");
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
                         .HasDatabaseName("ix_integration_sync_outbox_worker_poll");
@@ -24707,12 +24584,6 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_email_dispatch_outbox_managed_tenant_provisioning_operation");
 
-                    b.HasOne("Explore.Domain.EventRegistrationIntent", "RegistrationIntent")
-                        .WithMany()
-                        .HasForeignKey("RegistrationIntentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_email_dispatch_outbox_event_registration_intents_registrati");
-
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -24727,6 +24598,13 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_email_dispatch_outbox_tenant_users_tenant_id_recipient_user");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_email_dispatch_outbox_registration_orders_tenant_id_registr");
 
                     b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
                         .WithMany()
@@ -24744,7 +24622,7 @@ namespace Explore.Persistence.Migrations
 
                     b.Navigation("RecipientTenantUser");
 
-                    b.Navigation("RegistrationIntent");
+                    b.Navigation("RegistrationOrder");
 
                     b.Navigation("Tenant");
                 });
@@ -25091,18 +24969,18 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_event_contact_share_consents_events_tenant_id_source_event_");
 
-                    b.HasOne("Explore.Domain.EventRegistrationIntent", "SourceEventRegistrationIntent")
+                    b.HasOne("Explore.Domain.RegistrationOrder", "SourceRegistrationOrder")
                         .WithMany()
-                        .HasForeignKey("TenantId", "SourceEventRegistrationIntentId")
+                        .HasForeignKey("TenantId", "SourceRegistrationOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_event_contact_share_consents_event_registration_intents_ten");
+                        .HasConstraintName("fk_event_contact_share_consents_registration_orders_tenant_id_");
 
                     b.Navigation("RecipientActor");
 
                     b.Navigation("SourceEvent");
 
-                    b.Navigation("SourceEventRegistrationIntent");
+                    b.Navigation("SourceRegistrationOrder");
 
                     b.Navigation("Tenant");
 
@@ -25698,13 +25576,6 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_event_registrations_ticket_type_entitlements_tenant_id_tick");
 
-                    b.HasOne("Explore.Domain.EventRegistrationIntent", "EventRegistrationIntent")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "EventId", "EventRegistrationIntentId")
-                        .HasPrincipalKey("TenantId", "EventId", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .HasConstraintName("fk_event_registrations_event_registration_intents_tenant_id_ev");
-
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "EventSessionId")
@@ -25719,8 +25590,6 @@ namespace Explore.Persistence.Migrations
 
                     b.Navigation("Event");
 
-                    b.Navigation("EventRegistrationIntent");
-
                     b.Navigation("EventSession");
 
                     b.Navigation("RegistrationOrder");
@@ -25730,71 +25599,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
 
                     b.Navigation("TicketTypeEntitlement");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventRegistrationIntent", b =>
-                {
-                    b.HasOne("Explore.Domain.ApprovalStatus", "ApprovalStatus")
-                        .WithMany()
-                        .HasForeignKey("ApprovalStatusId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_event_registration_intents_approval_statuses_approval_statu");
-
-                    b.HasOne("Explore.Domain.EventRegistrationPolicy", "RegistrationPolicySnapshot")
-                        .WithMany()
-                        .HasForeignKey("RegistrationPolicySnapshotId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_event_registration_intents_event_registration_policies_regi");
-
-                    b.HasOne("Explore.Domain.RegistrationScope", "RegistrationScope")
-                        .WithMany()
-                        .HasForeignKey("RegistrationScopeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_registration_intents_registration_scopes_registration");
-
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_registration_intents_tenants_tenant_id");
-
-                    b.HasOne("Explore.Domain.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_registration_intents_users_user_id");
-
-                    b.HasOne("Explore.Domain.Event", "Event")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "EventId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_registration_intents_events_tenant_id_event_id");
-
-                    b.HasOne("Explore.Domain.EventDay", "SelectedEventDay")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "EventId", "SelectedEventDayId")
-                        .HasPrincipalKey("TenantId", "EventId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_event_registration_intents_event_days_tenant_id_event_id_se");
-
-                    b.Navigation("ApprovalStatus");
-
-                    b.Navigation("Event");
-
-                    b.Navigation("RegistrationPolicySnapshot");
-
-                    b.Navigation("RegistrationScope");
-
-                    b.Navigation("SelectedEventDay");
-
-                    b.Navigation("Tenant");
 
                     b.Navigation("User");
                 });
@@ -27435,12 +27239,6 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_integration_sync_outbox_events_event_id");
 
-                    b.HasOne("Explore.Domain.EventRegistrationIntent", "RegistrationIntent")
-                        .WithMany()
-                        .HasForeignKey("RegistrationIntentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_integration_sync_outbox_event_registration_intents_registra");
-
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -27454,9 +27252,16 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_integration_sync_outbox_users_user_id");
 
+                    b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_integration_sync_outbox_registration_orders_tenant_id_regis");
+
                     b.Navigation("Event");
 
-                    b.Navigation("RegistrationIntent");
+                    b.Navigation("RegistrationOrder");
 
                     b.Navigation("Tenant");
 

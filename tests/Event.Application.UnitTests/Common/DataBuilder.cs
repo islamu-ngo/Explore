@@ -173,13 +173,6 @@ public static class DataBuilder
         .RuleFor(e => e.Capacity, f => f.Random.Int(10, 500))
         .RuleFor(e => e.SortOrder, f => f.Random.Int(0, 10));
 
-    public static Faker<EventRegistrationIntent> EventRegistrationIntent => new Faker<EventRegistrationIntent>()
-        .RuleFor(e => e.Id, f => Guid.NewGuid())
-        .RuleFor(e => e.EventId, f => Guid.NewGuid())
-        .RuleFor(e => e.UserId, f => Guid.NewGuid())
-        .RuleFor(e => e.RegistrationScopeId, f => f.Random.Int(1, 3))
-        .RuleFor(e => e.ApprovalStatusId, f => f.Random.Int(1, 4));
-
     public static Faker<RegistrationScope> RegistrationScope => new Faker<RegistrationScope>()
         .RuleFor(e => e.Id, f => f.Random.Int(1, 3))
         .RuleFor(e => e.MasterCode, f => f.PickRandom("EVENT", "DAY", "SESSION_SELECTION"))

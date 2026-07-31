@@ -17,7 +17,7 @@ public sealed class LaunchAccessibilitySourceTests
         await Assert.That(eventDetailMarkup).Contains("HtmlTag=\"h1\"");
         await Assert.That(eventDetailMarkup).Contains("role=\"region\" aria-label=\"Event management actions\"");
         await Assert.That(eventDetailMarkup).Contains("event-registration-card");
-        await Assert.That(eventDetailCode).Contains("OpenRegistrationDialog");
+        await Assert.That(eventDetailCode).Contains("ExternalParticipationHref");
         await Assert.That(eventDetailCode).Contains("AccessibilityFocusService.SaveFocusAsync()");
         await Assert.That(eventDetailCode).Contains("AccessibilityFocusService.RestoreFocusAsync()");
         await Assert.That(eventDetailCode).Contains("AnnouncerService.Announce");
@@ -26,7 +26,6 @@ public sealed class LaunchAccessibilitySourceTests
         await Assert.That(createEventMarkup).Contains("HtmlTag=\"h1\"");
         await Assert.That(createEventMarkup).Contains("role=\"alert\"");
         await Assert.That(createEventMarkup).Contains("aria-label=\"Upload event image\"");
-        await Assert.That(createEventMarkup).Contains("aria-label=\"Registration policy\"");
 
         await Assert.That(errorShellMarkup).Contains("role=\"alert\"");
         await Assert.That(errorShellMarkup).Contains("role=\"search\"");
