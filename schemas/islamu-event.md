@@ -1427,7 +1427,7 @@ Table "email_dispatch_outbox" {
   "source_type" varchar(100) [not null]
   "source_id" uuid [not null]
   "event_id" uuid
-  "registration_intent_id" uuid
+  "registration_order_id" uuid
   "notification_intent_id" uuid [not null]
   "recipient_user_id" uuid [not null]
   "recipient_address_source" int [not null, note: 'Only 1=TenantUserVerifiedEmail or 2=ManagedTenantAdministratorInvitation']
@@ -1467,7 +1467,7 @@ Table "email_dispatch_outbox" {
 
   indexes {
     event_id [name: 'ix_email_dispatch_outbox_event_id']
-    registration_intent_id [name: 'ix_email_dispatch_outbox_registration_intent_id']
+    (tenant_id, registration_order_id) [name: 'ix_email_dispatch_outbox_tenant_id_registration_order_id']
     managed_tenant_provisioning_operation_id [name: 'ix_email_dispatch_outbox_managed_tenant_provisioning_operation']
     (tenant_id, id) [unique, name: 'ak_email_dispatch_outbox_tenant_id']
     (tenant_id, id, notification_intent_id) [unique, name: 'ak_email_dispatch_outbox_tenant_id_intent']
@@ -4751,7 +4751,6 @@ Table "event_registrations" {
   "user_id" uuid
   "event_session_id" uuid [not null]
   "coverage_established_at" timestamptz [not null, default: `NOW()`]
-  "event_registration_intent_id" uuid
   "registration_order_id" uuid
   "registration_order_line_id" uuid
   "registration_participant_id" uuid
@@ -4771,40 +4770,9 @@ Table "event_registrations" {
   indexes {
     (tenant_id, event_id, event_session_id, user_id) [name: 'ix_eventregistrations_session_user', note: 'filter: is_deleted = false']
     user_id [name: 'ix_eventregistrations_user']
-    (tenant_id, event_id, event_registration_intent_id) [name: 'ix_eventregistrations_intent']
     (tenant_id, registration_order_id) [name: 'ix_event_registrations_tenant_id_registration_order_id']
     (tenant_id, ticket_type_entitlement_id) [name: 'ix_event_registrations_tenant_id_ticket_type_entitlement_id']
     (tenant_id, registration_order_line_id, ticket_type_entitlement_id, event_session_id, entitlement_ordinal) [unique, name: 'ix_eventregistrations_order_admission', note: 'filter: registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false']
-  }
-}
-
-Table "event_registration_intents" {
-  "id" uuid [pk, not null, note: 'uuidv7()']
-  "event_id" uuid [not null]
-  "user_id" uuid [not null]
-  "registration_scope_id" int [not null]
-  "selected_event_day_id" uuid
-  "registration_policy_snapshot_id" int
-  "approval_status_id" int
-  "tenant_id" uuid [not null]
-  "created_at" timestamptz [not null]
-  "created_by" uuid
-  "updated_at" timestamptz
-  "updated_by" uuid
-  "is_deleted" boolean [not null]
-  "deleted_at" timestamptz
-  "deleted_by" uuid
-  "concurrency_stamp" uuid [not null]
-
-  indexes {
-    (tenant_id, id) [unique, name: 'ak_event_registration_intents_tenant_id_id']
-    (tenant_id, event_id, id) [unique, name: 'ak_event_registration_intents_tenant_id_event_id_id']
-    (tenant_id, event_id, user_id, registration_scope_id) [name: 'ix_event_registration_intents_tenant_event_user_scope']
-    (tenant_id, event_id, selected_event_day_id) [name: 'ix_event_registration_intents_tenant_event_day']
-    (tenant_id, user_id) [name: 'ix_event_registration_intents_tenant_user']
-    (tenant_id, event_id, user_id) [unique, name: 'ix_event_registration_intents_unique_event_scope', note: 'filter: scope=1']
-    (tenant_id, event_id, user_id, selected_event_day_id) [unique, name: 'ix_event_registration_intents_unique_day_scope', note: 'filter: scope=2']
-    (tenant_id, event_id, user_id) [unique, name: 'ix_event_registration_intents_unique_session_selection_scope', note: 'filter: scope=3']
   }
 }
 
@@ -4848,7 +4816,7 @@ Table "event_contact_share_consents" {
   "source_event_id" uuid
   "user_id" uuid [not null]
   "recipient_actor_id" uuid [not null]
-  "source_event_registration_intent_id" uuid
+  "source_registration_order_id" uuid
   "purpose_code" varchar(100) [not null]
   "status" int [not null]
   "email_snapshot" varchar(320) [not null]
@@ -4867,7 +4835,7 @@ Table "event_contact_share_consents" {
     (tenant_id, recipient_actor_id, status) [name: 'ix_eventcontactshareconsents_recipient_status']
     (tenant_id, user_id, status) [name: 'ix_eventcontactshareconsents_user_status']
     (tenant_id, source_event_id) [name: 'ix_event_contact_share_consents_tenant_id_source_event_id']
-    (tenant_id, source_event_registration_intent_id) [name: 'ix_event_contact_share_consents_tenant_id_source_event_registration_intent_id']
+    (tenant_id, source_registration_order_id) [name: 'ix_event_contact_share_consents_tenant_id_source_registration_']
   }
 }
 
@@ -5725,14 +5693,7 @@ Ref: "event_session_tags".("tenant_id", "event_session_id") > "event_sessions".(
 Ref: "event_session_tags".("tenant_id", "tag_id") > "tags".("tenant_id", "id") [delete: cascade]
 
 // Registration
-Ref: "event_registration_intents".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: cascade]
-Ref: "event_registration_intents"."user_id" > "users"."id" [delete: restrict]
-Ref: "event_registration_intents"."registration_scope_id" > "registration_scopes"."id" [delete: restrict]
-Ref: "event_registration_intents".("tenant_id", "event_id", "selected_event_day_id") > "event_days".("tenant_id", "event_id", "id") [delete: restrict]
-Ref: "event_registration_intents"."registration_policy_snapshot_id" > "event_registration_policies"."id" [delete: restrict]
-Ref: "event_registration_intents"."approval_status_id" > "approval_statuses"."id" [delete: restrict]
 Ref: "event_registrations".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: cascade]
-Ref: "event_registrations".("tenant_id", "event_id", "event_registration_intent_id") > "event_registration_intents".("tenant_id", "event_id", "id") [delete: cascade]
 Ref: "event_registrations".("tenant_id", "event_id", "event_session_id") > "event_sessions".("tenant_id", "event_id", "id") [delete: cascade]
 Ref: "event_registrations"."user_id" > "users"."id" [delete: restrict]
 Ref: "event_registrations".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
@@ -5746,7 +5707,7 @@ Ref: "incoming_webhook_effect_outbox".("tenant_id", "incoming_webhook_message_id
 
 Ref: "email_dispatch_outbox"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "email_dispatch_outbox"."event_id" > "events"."id" [delete: restrict]
-Ref: "email_dispatch_outbox"."registration_intent_id" > "event_registration_intents"."id" [delete: restrict]
+Ref: "email_dispatch_outbox".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
 Ref: "email_dispatch_outbox".("tenant_id", "recipient_user_id") > "tenant_users".("tenant_id", "user_id") [delete: restrict]
 Ref: "email_dispatch_outbox".("tenant_id", "notification_intent_id", "recipient_user_id") > "notification_intents".("tenant_id", "id", "recipient_user_id") [delete: restrict]
 Ref: "email_dispatch_outbox"."managed_tenant_provisioning_operation_id" > "managed_tenant_provisioning_operations"."id" [delete: restrict]
@@ -5786,7 +5747,7 @@ Ref: "notification_fanout_occurrences".("tenant_id", "superseded_by_occurrence_i
 Ref: "event_contact_share_consents"."user_id" > "users"."id" [delete: restrict]
 Ref: "event_contact_share_consents".("tenant_id", "recipient_actor_id") > "actors".("tenant_id", "id") [delete: restrict]
 Ref: "event_contact_share_consents".("tenant_id", "source_event_id") > "events".("tenant_id", "id") [delete: restrict]
-Ref: "event_contact_share_consents".("tenant_id", "source_event_registration_intent_id") > "event_registration_intents".("tenant_id", "id") [delete: restrict]
+Ref: "event_contact_share_consents".("tenant_id", "source_registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
 Ref: "event_contact_share_exports".("tenant_id", "recipient_actor_id") > "actors".("tenant_id", "id") [delete: restrict]
 Ref: "event_contact_share_exports".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
 Ref: "event_contact_share_exports"."exported_by_user_id" > "users"."id" [delete: restrict]

@@ -3,6 +3,10 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## 2026-07-31
+
+- Breaking registration-order lifecycle contract naming for API version `0.1`: `RegistrationOrderLifecycleResponse` and `GuestRegistrationOrderLifecycleResponse` are renamed to `RegistrationOrderLifecycleResponseDto` and `GuestRegistrationOrderLifecycleResponseDto` across Application, API, and generated Blazor contracts. The pre-1.0 contract has no aliases or compatibility shims; regenerate clients from `schemas/openapi_islamu-event.json`.
+
 ## 2026-07-30
 
 - Additive deletion-conflict contract for API version `0.1`: `DELETE /api/eventday/{id}` and `DELETE /api/eventsession/{id}` now return typed `409 Conflict` ProblemDetails when a published ticket entitlement references the schedule target. Successful deletion remains `204 No Content`, missing targets remain `404`, and generated clients now surface the conflict response instead of treating a guarded no-op as success.
