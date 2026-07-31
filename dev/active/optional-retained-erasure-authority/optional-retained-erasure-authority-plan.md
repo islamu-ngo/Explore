@@ -11,10 +11,10 @@ Last Updated: 2026-07-22 Europe/Brussels
 |---|---|
 | Task ID | `optional-retained-erasure-authority` |
 | Canonical intent | `platform-privacy-erasure` |
-| Status | Active — Phases 1 and 2 accepted; Phase 3 User fence, saga, and complete local settlement in progress |
+| Status | Active — Phases 1 and 2 accepted; OREA-310 provider-backed local clearing is PostgreSQL-proven; Phase 3 remains in progress |
 | Owner | Unassigned |
 | Change type | Cross-layer privacy policy, erasure orchestration, infrastructure, API, persistence, hosting, tests, and operator documentation |
-| Execution boundary | Phase-ordered implementation; current next dependency is the pre-enumeration User fence and policy-versioned saga in `OREA-300` |
+| Execution boundary | Phase-ordered implementation; next implementation dependency is specialized provider settlement under `OREA-400` / `OREA-410` while unresolved AI/Listmonk locators remain uninferred |
 
 ### Scope
 
