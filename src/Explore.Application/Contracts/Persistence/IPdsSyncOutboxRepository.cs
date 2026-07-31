@@ -65,14 +65,6 @@ public interface IPdsSyncOutboxRepository
         string collection,
         CancellationToken cancellationToken = default);
 
-    Task<PdsSyncOutbox?> GetLatestUnsettledRsvpMutationAsync(
-        Guid tenantId,
-        Guid userId,
-        Guid eventId,
-        string sourceEntityType,
-        string collection,
-        CancellationToken cancellationToken = default);
-
     Task<PdsSyncCompensationEvidence> GetCompensationEvidenceAsync(
         PdsSyncOutbox successor,
         CancellationToken cancellationToken = default);
@@ -107,31 +99,4 @@ public interface IPdsSyncOutboxRepository
         DateTime supersededAt,
         CancellationToken cancellationToken = default);
 
-    Task<int> SupersedePriorRsvpAsync(
-        Guid tenantId,
-        Guid userId,
-        Guid eventId,
-        string collection,
-        Guid supersedingOutboxId,
-        DateTime supersededAt,
-        CancellationToken cancellationToken = default);
-
-    Task<bool> HasActiveRsvpPublicationAsync(
-        Guid tenantId,
-        Guid userId,
-        Guid eventId,
-        string sourceEntityType,
-        string collection,
-        CancellationToken cancellationToken = default);
-
-    Task<bool> HasTerminalRsvpPublicationAttemptAsync(
-        Guid tenantId,
-        Guid userId,
-        Guid eventId,
-        Guid sourceVersion,
-        PdsSyncOperation operation,
-        string payloadHash,
-        string sourceEntityType,
-        string collection,
-        CancellationToken cancellationToken = default);
 }

@@ -78,7 +78,6 @@ public sealed class AtprotoEventDescriptionFormatterTests
     public async Task SourceFieldManifests_AreIndependentCompleteAndReasoned()
     {
         AtprotoSourceFieldManifestEntry[] eventEntries = AtprotoEventSourceFieldManifest.Entries.ToArray();
-        AtprotoSourceFieldManifestEntry[] rsvpEntries = AtprotoRsvpSourceFieldManifest.Entries.ToArray();
 
         string[] sourcePaths = AtprotoEventProjectionSourceContract.SourcePaths.ToArray();
         string[] uncovered = sourcePaths
@@ -99,8 +98,6 @@ public sealed class AtprotoEventDescriptionFormatterTests
         await Assert.That(staleManifestRules).IsEmpty();
         await Assert.That(ambiguous).IsEmpty();
         await Assert.That(eventEntries.All(entry => !string.IsNullOrWhiteSpace(entry.Reason))).IsTrue();
-        await Assert.That(rsvpEntries).Contains(entry => entry.SourcePath == "EventRegistrationIntent.ApprovalStatus"
-            && entry.Disposition == AtprotoSourceFieldDisposition.Excluded);
     }
 
     private static int MostSpecificMatches(

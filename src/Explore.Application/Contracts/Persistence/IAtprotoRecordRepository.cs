@@ -27,14 +27,6 @@ public interface IAtprotoRecordRepository
         Guid sourceEntityId,
         CancellationToken cancellationToken = default);
 
-    Task<AtprotoOutboundRecordOwnership?> GetOwnedRsvpForUserEventAsync(
-        Guid tenantId,
-        Guid userId,
-        Guid eventId,
-        string sourceEntityType,
-        string collection,
-        CancellationToken cancellationToken = default);
-
     Task<List<AtprotoOutboundRecordOwnership>> GetLiveGroundedEventOwnershipsForActorAsync(
         Guid actorId,
         CancellationToken cancellationToken = default);

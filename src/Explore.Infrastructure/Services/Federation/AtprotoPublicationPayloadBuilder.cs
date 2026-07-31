@@ -1,4 +1,4 @@
-// ABOUTME: Builds exact community event and RSVP JSON through generated CarpaNet bindings and semantic validators.
+// ABOUTME: Builds exact community event JSON through generated CarpaNet bindings and semantic validators.
 // ABOUTME: Returns immutable SHA-256 payloads only after exhaustive projection and encoded-size checks pass.
 
 using System.Security.Cryptography;
@@ -32,15 +32,6 @@ public sealed class AtprotoPublicationPayloadBuilder(
             ? Build(record.ToJson().GetRawText())
             : AtprotoPublicationPayloadBuildResult.Invalid("payload_invalid");
     }
-
-    public AtprotoPublicationPayloadBuildResult BuildRsvp(AtprotoRsvpPublicationSnapshot snapshot)
-    {
-        var record = AtprotoCalendarRsvpRecordMapper.Map(snapshot);
-        return AtprotoCalendarRsvpRecordValidator.Validate(record).IsValid
-            ? Build(record.ToJson().GetRawText())
-            : AtprotoPublicationPayloadBuildResult.Invalid("payload_invalid");
-    }
-
     private static AtprotoPublicationPayloadBuildResult Build(string json)
     {
         var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(json)));

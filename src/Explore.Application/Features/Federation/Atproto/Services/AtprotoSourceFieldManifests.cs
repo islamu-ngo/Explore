@@ -548,20 +548,3 @@ public static class AtprotoEventSourceFieldManifest
         yield return Excluded($"{prefix}.SourceTemplateVersion", "template provenance version");
     }
 }
-
-public static class AtprotoRsvpSourceFieldManifest
-{
-    public static ImmutableArray<AtprotoSourceFieldManifestEntry> Entries { get; } =
-    [
-        new("EventRegistrationIntent.ActiveLifecycle", AtprotoSourceFieldDisposition.Native, "maps only to #going"),
-        new("SettledEvent.Uri", AtprotoSourceFieldDisposition.Native, "strongRef URI"),
-        new("SettledEvent.Cid", AtprotoSourceFieldDisposition.Native, "strongRef CID"),
-        new("OwnerDid", AtprotoSourceFieldDisposition.Native, "PDS owner context only"),
-        new("EventRegistrationIntent.ApprovalStatus", AtprotoSourceFieldDisposition.Excluded, "organizer workflow never expresses user intent"),
-        new("EventRegistrationIntent.User", AtprotoSourceFieldDisposition.Excluded, "attendee PII"),
-        new("EventRegistrationIntent.SelectedEventDayId", AtprotoSourceFieldDisposition.Excluded, "internal registration scope"),
-        new("EventRegistration.*", AtprotoSourceFieldDisposition.Excluded, "session access, answers, approval, and internal identifiers"),
-        new("Payment.*", AtprotoSourceFieldDisposition.Excluded, "payment data"),
-        new("Audit.*", AtprotoSourceFieldDisposition.Excluded, "audit and concurrency metadata")
-    ];
-}

@@ -33,7 +33,6 @@ internal static class AtprotoPublicationPlannerTestFactory
         return new(
             new AtprotoEventGovernanceResolver(settings),
             Substitute.For<IEventRepository>(),
-            Substitute.For<IEventRegistrationIntentRepository>(),
             Substitute.For<IAtprotoRecordRepository>(),
             Substitute.For<IUserAuthenticationTokenRepository>(),
             Substitute.For<IUserExternalLoginRepository>(),
@@ -127,7 +126,6 @@ internal static class AtprotoPublicationPlannerTestFactory
         return new(
             new AtprotoEventGovernanceResolver(settings),
             eventRepository ?? Substitute.For<IEventRepository>(),
-            Substitute.For<IEventRegistrationIntentRepository>(),
             records,
             sessions,
             logins,

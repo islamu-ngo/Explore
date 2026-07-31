@@ -421,19 +421,15 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
     }
 
     [Test]
-    [Arguments(AtprotoEventPublicationPlanner.EventCollection, false)]
-    [Arguments(AtprotoEventPublicationPlanner.RsvpCollection, true)]
-    public async Task Handle_ProjectionPresenceDoesNotMatchCollection_WritesNothing(
-        string collection,
-        bool includeProjection)
+    public async Task Handle_ProjectionPresenceDoesNotMatchEventCollection_WritesNothing()
     {
         var fixture = new Fixture();
-        AtprotoRecord record = Record(Did, collection);
-        var identity = new AtprotoPdsSnapshotIdentity(collection, record.RecordKey);
+        AtprotoRecord record = Record(Did, AtprotoEventPublicationPlanner.EventCollection);
+        var identity = new AtprotoPdsSnapshotIdentity(AtprotoEventPublicationPlanner.EventCollection, record.RecordKey);
         var snapshot = new AtprotoPdsSnapshot(
             Did,
             [identity],
-            [new AtprotoPdsSnapshotItem(record, includeProjection ? Projection(record) : null)]);
+            [new AtprotoPdsSnapshotItem(record, null)]);
         fixture.Gateway.FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(AtprotoPdsSnapshotFetchResult.Complete(snapshot));
 

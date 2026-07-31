@@ -219,8 +219,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandler(
     }
 
     private static bool IsSupportedCollection(string collection) =>
-        collection is AtprotoEventPublicationPlanner.EventCollection
-            or AtprotoEventPublicationPlanner.RsvpCollection;
+        collection == AtprotoEventPublicationPlanner.EventCollection;
 
     private static bool IsSupportedPdsDid(string did) =>
         did.StartsWith("did:plc:", StringComparison.Ordinal)

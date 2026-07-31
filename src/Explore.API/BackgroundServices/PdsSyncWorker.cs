@@ -15,8 +15,6 @@ public sealed class PdsSyncWorker(
 {
     private readonly PdsSyncWorkerOptions _options = options.Value;
     private readonly string _leaseOwner = BuildLeaseOwner();
-    private Guid? _rsvpReconciliationCursor;
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!_options.Enabled)
@@ -67,18 +65,6 @@ public sealed class PdsSyncWorker(
         using (IServiceScope claimScope = scopeFactory.CreateScope())
         {
             var repository = claimScope.ServiceProvider.GetRequiredService<IPdsSyncOutboxRepository>();
-            var planner = claimScope.ServiceProvider.GetRequiredService<AtprotoEventPublicationPlanner>();
-            var unitOfWork = claimScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            Guid? reconciliationCursor = _rsvpReconciliationCursor;
-            DateTime reconciliationObservedAt = timeProvider.GetUtcNow().UtcDateTime;
-            AtprotoRsvpReconciliationResult reconciliation = await unitOfWork.ExecuteSerializableAsync(
-                token => planner.ReconcileMissingRsvpsAsync(
-                    reconciliationCursor,
-                    _options.BatchSize,
-                    reconciliationObservedAt,
-                    token),
-                cancellationToken);
-            _rsvpReconciliationCursor = reconciliation.NextIntentId;
             claims = await repository.ClaimDueAsync(
                 _options.BatchSize,
                 _leaseOwner,

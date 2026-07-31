@@ -212,33 +212,6 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
                     && eventEntity.ActorId == actorId))
             .ToListAsync(cancellationToken);
 
-    public Task<PdsSyncOutbox?> GetLatestUnsettledRsvpMutationAsync(
-        Guid tenantId,
-        Guid userId,
-        Guid eventId,
-        string sourceEntityType,
-        string collection,
-        CancellationToken cancellationToken = default) =>
-        CrossTenantOutbox()
-            .AsNoTracking()
-            .Where(outbox =>
-                outbox.TenantId == tenantId &&
-                outbox.UserId == userId &&
-                outbox.SourceEntityType == sourceEntityType &&
-                outbox.Collection == collection &&
-                (outbox.Status == PdsSyncStatus.Pending || outbox.Status == PdsSyncStatus.Processing) &&
-                outbox.SupersededAt == null &&
-                _dbContext.EventRegistrationIntents
-                    .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoTenantOperation)
-                    .Any(intent =>
-                        intent.Id == outbox.SourceEntityId &&
-                        intent.TenantId == tenantId &&
-                        intent.UserId == userId &&
-                        intent.EventId == eventId))
-            .OrderByDescending(value => value.CreatedAt)
-            .ThenByDescending(value => value.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-
     public async Task<PdsSyncCompensationEvidence> GetCompensationEvidenceAsync(
         PdsSyncOutbox successor,
         CancellationToken cancellationToken = default)
@@ -523,30 +496,8 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
             {
                 if (ownership.SourceEntityId != outbox.SourceEntityId)
                 {
-                    if (!string.Equals(
-                            outbox.SourceEntityType,
-                            "EventRegistrationIntent",
-                            StringComparison.Ordinal)
-                        || !await _dbContext.EventRegistrationIntents
-                            .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoTenantOperation)
-                            .AnyAsync(current =>
-                                current.Id == outbox.SourceEntityId
-                                && current.TenantId == outbox.TenantId
-                                && current.UserId == outbox.UserId
-                                && _dbContext.EventRegistrationIntents
-                                    .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoTenantOperation)
-                                    .Any(previous =>
-                                        previous.Id == ownership.SourceEntityId
-                                        && previous.TenantId == current.TenantId
-                                        && previous.UserId == current.UserId
-                                        && previous.EventId == current.EventId),
-                                cancellationToken))
-                    {
-                        await transaction.RollbackAsync(cancellationToken);
-                        return false;
-                    }
-
-                    ownership.SourceEntityId = outbox.SourceEntityId;
+                    await transaction.RollbackAsync(cancellationToken);
+                    return false;
                 }
 
                 ownership.SourceVersion = outbox.SourceVersion;
@@ -667,102 +618,6 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
 
         return rows.Count;
     }
-
-    public async Task<int> SupersedePriorRsvpAsync(
-        Guid tenantId,
-        Guid userId,
-        Guid eventId,
-        string collection,
-        Guid supersedingOutboxId,
-        DateTime supersededAt,
-        CancellationToken cancellationToken = default)
-    {
-        var rows = await CrossTenantOutbox()
-            .Where(outbox =>
-                outbox.TenantId == tenantId
-                && outbox.UserId == userId
-                && outbox.SourceEntityType == "EventRegistrationIntent"
-                && outbox.Collection == collection
-                && outbox.Id != supersedingOutboxId
-                && outbox.Status != PdsSyncStatus.Completed
-                && outbox.Status != PdsSyncStatus.Superseded
-                && _dbContext.EventRegistrationIntents
-                    .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoTenantOperation)
-                    .Any(intent =>
-                        intent.Id == outbox.SourceEntityId
-                        && intent.TenantId == tenantId
-                        && intent.UserId == userId
-                        && intent.EventId == eventId))
-            .ToListAsync(cancellationToken);
-        foreach (PdsSyncOutbox row in rows)
-        {
-            row.Status = PdsSyncStatus.Superseded;
-            row.SupersededById = supersedingOutboxId;
-            row.SupersededAt = supersededAt;
-            ClearLease(row);
-        }
-
-        return rows.Count;
-    }
-
-    public Task<bool> HasActiveRsvpPublicationAsync(
-        Guid tenantId,
-        Guid userId,
-        Guid eventId,
-        string sourceEntityType,
-        string collection,
-        CancellationToken cancellationToken = default) =>
-        CrossTenantOutbox()
-            .AsNoTracking()
-            .AnyAsync(outbox =>
-                outbox.TenantId == tenantId
-                && outbox.UserId == userId
-                && outbox.SourceEntityType == sourceEntityType
-                && outbox.Collection == collection
-                && (outbox.Status == PdsSyncStatus.Pending
-                    || outbox.Status == PdsSyncStatus.Processing)
-                && (outbox.Operation == PdsSyncOperation.Create
-                    || outbox.Operation == PdsSyncOperation.Update)
-                && outbox.SupersededAt == null
-                && _dbContext.EventRegistrationIntents
-                    .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoTenantOperation)
-                    .Any(intent =>
-                        intent.Id == outbox.SourceEntityId
-                        && intent.TenantId == tenantId
-                        && intent.UserId == userId
-                        && intent.EventId == eventId),
-                cancellationToken);
-
-    public Task<bool> HasTerminalRsvpPublicationAttemptAsync(
-        Guid tenantId,
-        Guid userId,
-        Guid eventId,
-        Guid sourceVersion,
-        PdsSyncOperation operation,
-        string payloadHash,
-        string sourceEntityType,
-        string collection,
-        CancellationToken cancellationToken = default) =>
-        CrossTenantOutbox()
-            .AsNoTracking()
-            .AnyAsync(outbox =>
-                outbox.TenantId == tenantId
-                && outbox.UserId == userId
-                && outbox.SourceEntityType == sourceEntityType
-                && outbox.SourceVersion == sourceVersion
-                && outbox.Collection == collection
-                && outbox.Operation == operation
-                && outbox.PayloadHash == payloadHash
-                && outbox.Status == PdsSyncStatus.DeadLettered
-                && outbox.SupersededAt == null
-                && _dbContext.EventRegistrationIntents
-                    .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoTenantOperation)
-                    .Any(intent =>
-                        intent.Id == outbox.SourceEntityId
-                        && intent.TenantId == tenantId
-                        && intent.UserId == userId
-                        && intent.EventId == eventId),
-                cancellationToken);
 
     private IQueryable<PdsSyncOutbox> CrossTenantOutbox() =>
         _dbContext.PdsSyncOutbox.IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoPdsWorkerCrossTenantQueue);

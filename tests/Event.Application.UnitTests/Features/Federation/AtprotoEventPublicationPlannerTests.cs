@@ -868,7 +868,6 @@ public sealed class AtprotoEventPublicationPlannerTests
         var planner = new AtprotoEventPublicationPlanner(
             new AtprotoEventGovernanceResolver(settings),
             events,
-            Substitute.For<IEventRegistrationIntentRepository>(),
             records,
             sessions,
             logins,
