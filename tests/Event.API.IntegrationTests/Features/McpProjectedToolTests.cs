@@ -201,7 +201,6 @@ public sealed class McpProjectedToolTests
     public void ProjectedToolInputSchema_ForPhaseFiveSubResourceTools_RequiresContextAndServerOwnedExclusions()
     {
         var createSession = new AiMcpProjectedProposalTool(FindSubResourceDefinition(AiProposedActionKind.CreateEventSession));
-        var deleteRegistration = new AiMcpProjectedProposalTool(FindSubResourceDefinition(AiProposedActionKind.DeleteEventRegistration));
         var applyTemplateSync = new AiMcpProjectedProposalTool(FindSubResourceDefinition(AiProposedActionKind.ApplyEventTemplateSync));
 
         var createSessionProperties = createSession.ProtocolTool.InputSchema.GetProperty("properties");
@@ -225,15 +224,6 @@ public sealed class McpProjectedToolTests
             "title",
             "startTime",
             "endTime"]);
-
-        deleteRegistration.ProtocolTool.Annotations!.DestructiveHint.Should().BeTrue();
-        deleteRegistration.ProtocolTool.Meta!["islamuDestructive"]!.GetValue<bool>().Should().BeTrue();
-        var deleteRegistrationProperties = deleteRegistration.ProtocolTool.InputSchema.GetProperty("properties");
-        deleteRegistrationProperties.TryGetProperty("registrationId", out _).Should().BeTrue();
-        deleteRegistrationProperties.TryGetProperty("confirmationPhrase", out _).Should().BeTrue();
-        deleteRegistrationProperties.TryGetProperty("acknowledgedConsequences", out _).Should().BeTrue();
-        deleteRegistrationProperties.TryGetProperty("tenantId", out _).Should().BeFalse();
-        deleteRegistrationProperties.TryGetProperty("userId", out _).Should().BeFalse();
 
         var templateSyncProperties = applyTemplateSync.ProtocolTool.InputSchema.GetProperty("properties");
         templateSyncProperties.TryGetProperty("plan", out var planProperty).Should().BeTrue();

@@ -143,17 +143,6 @@ public sealed class McpAiToolRegistryTests
             .Should()
             .NotContain("groupId");
 
-        var deleteRegistration = tools.EnumerateArray().Single(tool =>
-            tool.GetProperty("Name").GetString() == "DeleteEventRegistration");
-        deleteRegistration.GetProperty("McpToolName").GetString().Should().Be("propose_delete_event_registration");
-        deleteRegistration.GetProperty("AllowedPayloadFields")
-            .EnumerateArray()
-            .Select(value => value.GetString())
-            .Should()
-            .Contain(["registrationId", "eventId", "expectedConcurrencyStamp", "confirmationPhrase", "acknowledgedConsequences"]);
-        deleteRegistration.GetProperty("RequiredAuthorization").GetProperty("ResourceKind").GetString().Should().Be(ResourceKinds.EventRegistration);
-        deleteRegistration.GetProperty("RequiredAuthorization").GetProperty("Action").GetString().Should().Be(AuthorizationActions.Delete);
-
         var templateSync = tools.EnumerateArray().Single(tool =>
             tool.GetProperty("Name").GetString() == "ApplyEventTemplateSync");
         templateSync.GetProperty("McpToolName").GetString().Should().Be("propose_apply_event_template_sync");

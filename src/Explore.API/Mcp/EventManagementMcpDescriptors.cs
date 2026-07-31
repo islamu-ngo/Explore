@@ -268,14 +268,14 @@ public sealed record EventMcpRegistrationsContextDescriptor(
     IReadOnlyList<string> TruncatedFields);
 
 public sealed record EventMcpRegistrationDescriptor(
-    Guid RegistrationId,
+    Guid RegistrationOrderId,
     Guid EventId,
-    Guid EventSessionId,
-    string? EventSessionTitle,
-    Guid? EventRegistrationIntentId,
-    int? ApprovalStatusId,
-    string? ApprovalStatusName,
-    string? ApprovalStatusCode);
+    int StatusId,
+    string? StatusCode,
+    string? StatusName,
+    string? CurrencyCode,
+    long TotalDueMinor,
+    DateTime? ExpiresAt);
 
 public sealed record EventMcpTeamContextResultDescriptor(
     bool Found,

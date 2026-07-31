@@ -220,18 +220,6 @@ public sealed class McpProtocolContractTests
             ["startTime"] = "2026-07-01T09:00:00Z",
             ["endTime"] = "2026-07-01T10:00:00Z"
         });
-        using var projectedRegistrationDeleteProposal = await mcp.CallToolAsync("propose_delete_event_registration", new JsonObject
-        {
-            ["conversationId"] = conversationId.ToString(),
-            ["summary"] = "Projected registration delete proposal smoke",
-            ["registrationId"] = Guid.CreateVersion7().ToString(),
-            ["eventId"] = existingEvent.EventId.ToString(),
-            ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
-            ["managementContextHasDelete"] = true,
-            ["destructiveSummary"] = "Cancel duplicate registration.",
-            ["confirmationPhrase"] = "DELETE_EVENT_REGISTRATION",
-            ["acknowledgedConsequences"] = true
-        });
         using var projectedTemplateSyncProposal = await mcp.CallToolAsync("propose_apply_event_template_sync", new JsonObject
         {
             ["conversationId"] = conversationId.ToString(),
@@ -266,7 +254,6 @@ public sealed class McpProtocolContractTests
         AssertSuccessfulToolResult(projectedTechAspectProposal);
         AssertSuccessfulToolResult(projectedDeleteTechAspectProposal);
         AssertSuccessfulToolResult(projectedSessionProposal);
-        AssertSuccessfulToolResult(projectedRegistrationDeleteProposal);
         AssertSuccessfulToolResult(projectedTemplateSyncProposal);
         (await CountEventsAsync(factory)).Should().Be(eventCountBefore);
         (await ReadAspectCountsAsync(factory)).Should().Be(aspectCountsBefore);

@@ -14,7 +14,7 @@ using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventCustomProperty;
 using Explore.Application.DTOs.EventDay;
 using Explore.Application.DTOs.EventProgram;
-using Explore.Application.DTOs.EventRegistration;
+using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.DTOs.EventRoleAssignment;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionGroup;
@@ -27,7 +27,7 @@ using Explore.Application.Features.EventAgendaItems.Requests.Queries;
 using Explore.Application.Features.EventCustomProperties.Requests.Queries;
 using Explore.Application.Features.EventDays.Requests.Queries;
 using Explore.Application.Features.EventPrograms.Requests.Queries;
-using Explore.Application.Features.EventRegistrations.Requests.Queries;
+using Explore.Application.Features.RegistrationOrders.Requests.Queries;
 using Explore.Application.Features.EventRoleAssignments.Requests.Queries;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Features.EventSessionGroups.Requests.Queries;
@@ -665,7 +665,7 @@ public sealed class EventManagementMcpTools(
         Idempotent = true,
         OpenWorld = false)]
     [Authorize(Policy = McpAuthorizationPolicies.EventManagementRead)]
-    [Description("Read a bounded event-scoped registration management page. Requires MCP read authorization and the REST HAL edit affordance for the event.")]
+    [Description("Read a bounded event-scoped registration-order management page. Requires MCP read authorization and the REST HAL order affordance for the event.")]
     public Task<string> GetEventRegistrationsContextAsync(
         [Description("Event identifier whose registration context should be read.")]
         Guid eventId,
@@ -904,7 +904,7 @@ public sealed class EventManagementMcpTools(
         Guid eventId,
         CancellationToken cancellationToken)
     {
-        var gate = await BuildManagementReadGateAsync(eventId, LinkRelations.Edit, cancellationToken);
+        var gate = await BuildManagementReadGateAsync(eventId, LinkRelations.ViewRegistrationOrders, cancellationToken);
         if (!gate.Found)
         {
             return EventMcpProgramManagementResultDescriptor.NotFound(eventId);
@@ -1110,27 +1110,30 @@ public sealed class EventManagementMcpTools(
         var eventDto = gate.Event!;
         var (normalizedPageNumber, normalizedPageSize, pageSizeWasClamped) =
             NormalizeManagementPage(pageNumber, pageSize, MaxManagedRegistrations);
-        var registrations = await mediator.Send(
-            new GetEventRegistrationsByEventRequest
-            {
-                EventId = eventDto.Id,
-                PageNumber = normalizedPageNumber,
-                PageSize = normalizedPageSize
-            },
+        IReadOnlyList<RegistrationOrderDto> orders = await mediator.Send(
+            new GetEventRegistrationOrdersQuery(eventDto.Id),
             cancellationToken);
+        int totalOrderCount = orders.Count;
+        int totalPages = totalOrderCount == 0
+            ? 0
+            : (int)Math.Ceiling(totalOrderCount / (double)normalizedPageSize);
+        RegistrationOrderDto[] page = orders
+            .Skip((normalizedPageNumber - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToArray();
 
         var truncatedFields = new List<string>();
         var context = new EventMcpRegistrationsContextDescriptor(
             eventDto.Id,
             eventDto.ConcurrencyStamp,
-            registrations.PageNumber,
-            registrations.PageSize,
+            normalizedPageNumber,
+            normalizedPageSize,
             pageSizeWasClamped,
-            registrations.TotalCount,
-            registrations.TotalPages,
-            registrations.HasPreviousPage,
-            registrations.HasNextPage,
-            registrations.Items.Select(registration => MapRegistration(registration, truncatedFields)).ToArray(),
+            totalOrderCount,
+            totalPages,
+            normalizedPageNumber > 1 && totalPages > 0,
+            normalizedPageNumber < totalPages,
+            page.Select(order => MapRegistrationOrder(order, truncatedFields)).ToArray(),
             truncatedFields);
 
         return new EventMcpRegistrationsContextResultDescriptor(
@@ -1616,18 +1619,18 @@ public sealed class EventManagementMcpTools(
         return ("Empty", null);
     }
 
-    private static EventMcpRegistrationDescriptor MapRegistration(
-        EventRegistrationListDto dto,
+    private static EventMcpRegistrationDescriptor MapRegistrationOrder(
+        RegistrationOrderDto dto,
         ICollection<string> truncatedFields)
         => new(
             dto.Id,
             dto.EventId,
-            dto.EventSessionId,
-            TrimToNull(dto.EventSessionTitle, MaxShortTextLength, truncatedFields, nameof(dto.EventSessionTitle)),
-            dto.EventRegistrationIntentId,
-            dto.ApprovalStatusId,
-            TrimToNull(dto.ApprovalStatusFullName, MaxShortTextLength, truncatedFields, nameof(dto.ApprovalStatusFullName)),
-            TrimToNull(dto.ApprovalStatusMasterCode, MaxShortTextLength, truncatedFields, nameof(dto.ApprovalStatusMasterCode)));
+            dto.StatusId,
+            TrimToNull(dto.StatusCode, MaxShortTextLength, truncatedFields, nameof(dto.StatusCode)),
+            TrimToNull(dto.StatusName, MaxShortTextLength, truncatedFields, nameof(dto.StatusName)),
+            TrimToNull(dto.CurrencyCode, MaxShortTextLength, truncatedFields, nameof(dto.CurrencyCode)),
+            dto.TotalDueMinor,
+            dto.ExpiresAt);
 
     private static EventMcpTeamMemberDescriptor MapTeamMember(
         EventTeamMemberDto dto,
