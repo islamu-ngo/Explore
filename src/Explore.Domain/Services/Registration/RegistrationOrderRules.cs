@@ -7,6 +7,60 @@ namespace Explore.Domain.Services.Registration;
 
 public static class RegistrationOrderRules
 {
+    public static bool CanConfirmParticipantAssignments(
+        ParticipantDataCollectionModeEnum mode,
+        int ticketUnitCount,
+        IReadOnlyCollection<RegistrationTicketAssignment> assignments,
+        DateTime? assignmentDeadline,
+        DateTime evaluatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(assignments);
+        if (!Enum.IsDefined(mode) || ticketUnitCount <= 0)
+        {
+            throw new ArgumentException("Participant collection mode and ticket quantity are invalid.");
+        }
+
+        if (evaluatedAt.Kind != DateTimeKind.Utc || assignmentDeadline is { Kind: not DateTimeKind.Utc })
+        {
+            throw new ArgumentException("Participant assignment timestamps must be UTC.");
+        }
+
+        if (assignments.Count > ticketUnitCount ||
+            assignments.Any(x => x.Ordinal > ticketUnitCount) ||
+            assignments.Select(x => x.Id).Distinct().Count() != assignments.Count ||
+            assignments.Select(x => x.Ordinal).Distinct().Count() != assignments.Count)
+        {
+            throw new ArgumentException("Ticket assignments must fit distinct ticket-unit ordinals.", nameof(assignments));
+        }
+
+        return mode switch
+        {
+            ParticipantDataCollectionModeEnum.None or ParticipantDataCollectionModeEnum.LeadBookerOnly =>
+                assignments.Count == 0 && assignmentDeadline is null
+                    ? true
+                    : throw new ArgumentException("This collection mode does not permit ticket assignments.", nameof(assignments)),
+            ParticipantDataCollectionModeEnum.PerTicketOptional =>
+                assignmentDeadline is null && assignments.All(IsAssigned),
+            ParticipantDataCollectionModeEnum.PerTicketRequired =>
+                assignmentDeadline is null && assignments.Count == ticketUnitCount && assignments.All(IsAssigned),
+            ParticipantDataCollectionModeEnum.DeferredAssignment =>
+                assignmentDeadline > evaluatedAt && assignments.Count == ticketUnitCount && assignments.All(
+                    assignment => IsAssigned(assignment) ||
+                                  assignment.AssignmentStatusId == (int)AssignmentStatusEnum.Deferred &&
+                                  assignment.ParticipantId is null &&
+                                  assignment.AssignmentDeadline == assignmentDeadline),
+            _ => false
+        };
+    }
+
+    public static bool IsParticipantEligibleForTicket(RegistrationParticipant participant)
+    {
+        ArgumentNullException.ThrowIfNull(participant);
+        ParticipantTypeEnum type = (ParticipantTypeEnum)participant.ParticipantTypeId;
+        return type is not (ParticipantTypeEnum.Child or ParticipantTypeEnum.Dependent) ||
+               participant.GuardianParticipantId is not null;
+    }
+
     public static bool IsTerminal(RegistrationOrderStatusEnum status) => status is
         RegistrationOrderStatusEnum.Confirmed or
         RegistrationOrderStatusEnum.Rejected or
@@ -57,4 +111,7 @@ public static class RegistrationOrderRules
             throw new InvalidOperationException($"Registration order cannot transition from {current} to {desired}.");
         }
     }
+
+    private static bool IsAssigned(RegistrationTicketAssignment assignment) =>
+        assignment.AssignmentStatusId == (int)AssignmentStatusEnum.Assigned && assignment.ParticipantId is not null;
 }

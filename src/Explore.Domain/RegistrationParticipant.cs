@@ -1,0 +1,116 @@
+// ABOUTME: Defines a tenant-scoped participant independently from purchaser and user identity.
+// ABOUTME: Enforces same-order adult guardians while keeping participant PII in a split entity.
+
+using Explore.Domain.Enums;
+using Explore.Domain.Interfaces;
+
+namespace Explore.Domain;
+
+public sealed class RegistrationParticipant : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
+{
+    private RegistrationParticipant()
+    {
+    }
+
+    private RegistrationParticipant(
+        Guid id,
+        Guid tenantId,
+        Guid registrationOrderId,
+        Guid? linkedUserId,
+        ParticipantTypeEnum participantType,
+        RegistrationParticipant? guardian)
+    {
+        Id = id;
+        TenantId = tenantId;
+        RegistrationOrderId = registrationOrderId;
+        LinkedUserId = linkedUserId;
+        ParticipantTypeId = (int)participantType;
+        GuardianParticipantId = guardian?.Id;
+        GuardianParticipant = guardian;
+    }
+
+    public Guid Id { get; private set; }
+
+    public Guid TenantId { get; set; }
+
+    public Guid RegistrationOrderId { get; private set; }
+
+    public RegistrationOrder? RegistrationOrder { get; private set; }
+
+    public Guid? LinkedUserId { get; private set; }
+
+    public int ParticipantTypeId { get; private set; }
+
+    public ParticipantType? ParticipantType { get; private set; }
+
+    public Guid? GuardianParticipantId { get; private set; }
+
+    public RegistrationParticipant? GuardianParticipant { get; private set; }
+
+    public RegistrationParticipantPii? Pii { get; private set; }
+
+    public Guid ConcurrencyStamp { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    public Guid? CreatedBy { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public Guid? UpdatedBy { get; set; }
+
+    public bool IsDeleted { get; set; }
+
+    public DateTime? DeletedAt { get; set; }
+
+    public Guid? DeletedBy { get; set; }
+
+    public static RegistrationParticipant Create(
+        Guid tenantId,
+        Guid registrationOrderId,
+        Guid? linkedUserId,
+        ParticipantTypeEnum participantType,
+        RegistrationParticipant? guardian) => Create(
+        Guid.CreateVersion7(), tenantId, registrationOrderId, linkedUserId, participantType, guardian);
+
+    public static RegistrationParticipant Create(
+        Guid id,
+        Guid tenantId,
+        Guid registrationOrderId,
+        Guid? linkedUserId,
+        ParticipantTypeEnum participantType,
+        RegistrationParticipant? guardian)
+    {
+        if (id == Guid.Empty || tenantId == Guid.Empty || registrationOrderId == Guid.Empty ||
+            linkedUserId == Guid.Empty || !Enum.IsDefined(participantType))
+        {
+            throw new ArgumentException("Participant identity and type are invalid.");
+        }
+
+        bool requiresGuardian = participantType is ParticipantTypeEnum.Child or ParticipantTypeEnum.Dependent;
+        if (requiresGuardian != (guardian is not null))
+        {
+            throw new ArgumentException("Only child and dependent participants require a guardian.", nameof(guardian));
+        }
+
+        if (guardian is not null &&
+            (guardian.Id == id || guardian.TenantId != tenantId || guardian.RegistrationOrderId != registrationOrderId ||
+             guardian.ParticipantTypeId != (int)ParticipantTypeEnum.Adult))
+        {
+            throw new ArgumentException("A guardian must be a different adult participant in the same order.", nameof(guardian));
+        }
+
+        return new RegistrationParticipant(id, tenantId, registrationOrderId, linkedUserId, participantType, guardian);
+    }
+
+    public void SetPii(RegistrationParticipantPii pii)
+    {
+        ArgumentNullException.ThrowIfNull(pii);
+        if (pii.RegistrationParticipantId != Id || pii.TenantId != TenantId)
+        {
+            throw new ArgumentException("Participant PII does not belong to this participant.", nameof(pii));
+        }
+
+        Pii = pii;
+    }
+}
