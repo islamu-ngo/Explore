@@ -58,6 +58,8 @@ internal static class UserPiiInventory
         Local("TenantUser.UserId", "TenantUser.UserId", "Tenant membership handlers", UserPiiDisposition.HardDelete),
         Local("EventRegistration.UserId", "EventRegistration.UserId", "RegistrationOrderLifecycleService", UserPiiDisposition.HardDelete),
         Local("RegistrationOrder.AccountUserId", "RegistrationOrder.AccountUserId", "Registration order handlers", UserPiiDisposition.HardDelete),
+        Local("RegistrationOrderLine.TicketTypeNameSnapshot", "RegistrationOrderLine.RegistrationOrderId -> RegistrationOrder.AccountUserId", "RegistrationOrderLine.Create", UserPiiDisposition.BoundedRetain,
+            "Preserve the ticket display name for order history", "Configured registration-order retention horizon"),
         Local("RegistrationOrderPii.ContactName", "RegistrationOrder.AccountUserId -> RegistrationOrderPii.RegistrationOrderId", "Registration order handlers", UserPiiDisposition.HardDelete),
         Local("RegistrationOrderPii.Email", "RegistrationOrder.AccountUserId -> RegistrationOrderPii.RegistrationOrderId", "Registration order handlers", UserPiiDisposition.HardDelete),
         Local("RegistrationOrderPii.NormalizedEmail", "RegistrationOrder.AccountUserId -> RegistrationOrderPii.RegistrationOrderId", "Registration order handlers", UserPiiDisposition.HardDelete),

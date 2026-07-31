@@ -52240,17 +52240,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponse"
+                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponseDto"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponse"
+                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponseDto"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponse"
+                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponseDto"
                 }
               }
             }
@@ -52700,17 +52700,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponse"
+                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponseDto"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponse"
+                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponseDto"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponse"
+                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponseDto"
                 }
               }
             }
@@ -52876,17 +52876,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponse"
+                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponseDto"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponse"
+                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponseDto"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponse"
+                  "$ref": "#/components/schemas/GuestRegistrationOrderLifecycleResponseDto"
                 }
               }
             }
@@ -83143,7 +83143,7 @@
           }
         }
       },
-      "GuestRegistrationOrderLifecycleResponse": {
+      "GuestRegistrationOrderLifecycleResponseDto": {
         "type": "object",
         "properties": {
           "order": {
