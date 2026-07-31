@@ -63,13 +63,13 @@ internal static class RegistrationOrderAccessGuard
         return order?.AccountUserId == userId && (!eventId.HasValue || order.EventId == eventId.Value) ? order : null;
     }
 
-    public static async Task<RegistrationOrderLifecycleResponse> ExecuteGuestAsync<TCommand>(
+    public static async Task<RegistrationOrderLifecycleResponseDto> ExecuteGuestAsync<TCommand>(
         TCommand request,
         IRegistrationInventoryRepository inventory,
         IGuestCapabilityTokenService capabilities,
         ITenantContext tenant,
         TimeProvider timeProvider,
-        Func<Guid, Guid, CancellationToken, Task<RegistrationOrderLifecycleResponse>> action,
+        Func<Guid, Guid, CancellationToken, Task<RegistrationOrderLifecycleResponseDto>> action,
         CancellationToken cancellationToken)
         where TCommand : IGuestRegistrationOrderAccessCommand
     {
@@ -91,12 +91,12 @@ internal static class RegistrationOrderAccessGuard
         return await action(request.OrderId, tenant.TenantId, cancellationToken);
     }
 
-    public static async Task<RegistrationOrderLifecycleResponse> ExecuteCurrentAccountAsync<TCommand>(
+    public static async Task<RegistrationOrderLifecycleResponseDto> ExecuteCurrentAccountAsync<TCommand>(
         TCommand request,
         IRegistrationInventoryRepository inventory,
         ITenantContext tenant,
         ICurrentUserService currentUser,
-        Func<Guid, Guid, CancellationToken, Task<RegistrationOrderLifecycleResponse>> action,
+        Func<Guid, Guid, CancellationToken, Task<RegistrationOrderLifecycleResponseDto>> action,
         CancellationToken cancellationToken)
         where TCommand : IAuthenticatedRegistrationOrderAccessCommand
     {
@@ -116,7 +116,7 @@ internal static class RegistrationOrderAccessGuard
         return await action(request.OrderId, tenant.TenantId, cancellationToken);
     }
 
-    public static RegistrationOrderLifecycleResponse NotFound(Guid orderId) => new()
+    public static RegistrationOrderLifecycleResponseDto NotFound(Guid orderId) => new()
     {
         Id = orderId,
         Success = false,

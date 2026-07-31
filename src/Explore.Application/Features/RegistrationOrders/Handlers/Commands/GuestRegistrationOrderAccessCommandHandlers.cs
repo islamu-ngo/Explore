@@ -50,11 +50,11 @@ public sealed class ContinueGuestRegistrationOrderCommandHandler(
     IGuestCapabilityTokenService capabilities,
     ITenantContext tenant,
     TimeProvider timeProvider)
-    : IRequestHandler<ContinueGuestRegistrationOrderCommand, GuestRegistrationOrderLifecycleResponse>
+    : IRequestHandler<ContinueGuestRegistrationOrderCommand, GuestRegistrationOrderLifecycleResponseDto>
 {
-    public async Task<GuestRegistrationOrderLifecycleResponse> Handle(
+    public async Task<GuestRegistrationOrderLifecycleResponseDto> Handle(
         ContinueGuestRegistrationOrderCommand request,
-        CancellationToken cancellationToken) => GuestRegistrationOrderLifecycleResponse.From(
+        CancellationToken cancellationToken) => GuestRegistrationOrderLifecycleResponseDto.From(
         await RegistrationOrderAccessGuard.ExecuteGuestAsync(
             request,
             inventory,
@@ -75,11 +75,11 @@ public sealed class FinalizeGuestRegistrationOrderCommandHandler(
     IGuestCapabilityTokenService capabilities,
     ITenantContext tenant,
     TimeProvider timeProvider)
-    : IRequestHandler<FinalizeGuestRegistrationOrderCommand, GuestRegistrationOrderLifecycleResponse>
+    : IRequestHandler<FinalizeGuestRegistrationOrderCommand, GuestRegistrationOrderLifecycleResponseDto>
 {
-    public async Task<GuestRegistrationOrderLifecycleResponse> Handle(
+    public async Task<GuestRegistrationOrderLifecycleResponseDto> Handle(
         FinalizeGuestRegistrationOrderCommand request,
-        CancellationToken cancellationToken) => GuestRegistrationOrderLifecycleResponse.From(
+        CancellationToken cancellationToken) => GuestRegistrationOrderLifecycleResponseDto.From(
         await RegistrationOrderAccessGuard.ExecuteGuestAsync(
             request, inventory, capabilities, tenant, timeProvider, lifecycle.FinalizeFreeAsync, cancellationToken));
 }
@@ -90,11 +90,11 @@ public sealed class CancelGuestRegistrationOrderCommandHandler(
     IGuestCapabilityTokenService capabilities,
     ITenantContext tenant,
     TimeProvider timeProvider)
-    : IRequestHandler<CancelGuestRegistrationOrderCommand, GuestRegistrationOrderLifecycleResponse>
+    : IRequestHandler<CancelGuestRegistrationOrderCommand, GuestRegistrationOrderLifecycleResponseDto>
 {
-    public async Task<GuestRegistrationOrderLifecycleResponse> Handle(
+    public async Task<GuestRegistrationOrderLifecycleResponseDto> Handle(
         CancelGuestRegistrationOrderCommand request,
-        CancellationToken cancellationToken) => GuestRegistrationOrderLifecycleResponse.From(
+        CancellationToken cancellationToken) => GuestRegistrationOrderLifecycleResponseDto.From(
         await RegistrationOrderAccessGuard.ExecuteGuestAsync(
             request, inventory, capabilities, tenant, timeProvider, lifecycle.CancelAsync, cancellationToken));
 }

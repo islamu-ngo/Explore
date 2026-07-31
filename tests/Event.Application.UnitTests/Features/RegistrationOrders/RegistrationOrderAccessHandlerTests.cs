@@ -94,7 +94,7 @@ public sealed class RegistrationOrderAccessHandlerTests
         RegistrationOrder order = CreateGuestOrder(eventId: Guid.CreateVersion7());
         _inventory.GetOrderWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
 
-        GuestRegistrationOrderLifecycleResponse result = await CreateGuestContinueHandler().Handle(
+        GuestRegistrationOrderLifecycleResponseDto result = await CreateGuestContinueHandler().Handle(
             new ContinueGuestRegistrationOrderCommand(_eventId, _orderId, "guessed-token"),
             CancellationToken.None);
 
@@ -108,12 +108,12 @@ public sealed class RegistrationOrderAccessHandlerTests
     public async Task ContinueGuestRegistrationOrderForwardsContributionAfterCapabilityValidation()
     {
         RegistrationOrder order = CreateGuestOrder();
-        RegistrationOrderLifecycleResponse expected = new() { Id = _orderId, Success = true };
+        RegistrationOrderLifecycleResponseDto expected = new() { Id = _orderId, Success = true };
         _inventory.GetOrderWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _capabilities.Matches("guest-token", order.GuestAccessTokenHash!).Returns(true);
         _lifecycle.SubmitAsync(_orderId, _tenantId, 500, Arg.Any<CancellationToken>()).Returns(expected);
 
-        GuestRegistrationOrderLifecycleResponse result = await CreateGuestContinueHandler().Handle(
+        GuestRegistrationOrderLifecycleResponseDto result = await CreateGuestContinueHandler().Handle(
             new ContinueGuestRegistrationOrderCommand(_eventId, _orderId, "guest-token", 500),
             CancellationToken.None);
 
@@ -127,7 +127,7 @@ public sealed class RegistrationOrderAccessHandlerTests
     public async Task GuestLifecycleActionWhenCapabilityIsValidDelegatesToExistingLifecycleService(GuestLifecycleAction action)
     {
         RegistrationOrder order = CreateGuestOrder();
-        RegistrationOrderLifecycleResponse expected = new() { Id = _orderId, Success = true };
+        RegistrationOrderLifecycleResponseDto expected = new() { Id = _orderId, Success = true };
         _inventory.GetOrderWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _capabilities.Matches("guest-token", order.GuestAccessTokenHash!).Returns(true);
         if (action == GuestLifecycleAction.Finalize)
@@ -139,7 +139,7 @@ public sealed class RegistrationOrderAccessHandlerTests
             _lifecycle.CancelAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(expected);
         }
 
-        GuestRegistrationOrderLifecycleResponse result = action == GuestLifecycleAction.Finalize
+        GuestRegistrationOrderLifecycleResponseDto result = action == GuestLifecycleAction.Finalize
             ? await new FinalizeGuestRegistrationOrderCommandHandler(
                 _inventory,
                 _lifecycle,
@@ -257,7 +257,7 @@ public sealed class RegistrationOrderAccessHandlerTests
         _currentUser.UserId.Returns(Guid.CreateVersion7());
         _inventory.GetOrderWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
 
-        RegistrationOrderLifecycleResponse result = await new CancelAuthenticatedRegistrationOrderCommandHandler(
+        RegistrationOrderLifecycleResponseDto result = await new CancelAuthenticatedRegistrationOrderCommandHandler(
             _inventory,
             _lifecycle,
             _tenant,
@@ -277,7 +277,7 @@ public sealed class RegistrationOrderAccessHandlerTests
         _currentUser.UserId.Returns(userId);
         _inventory.GetOrderWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
 
-        RegistrationOrderLifecycleResponse result = await new ContinueAuthenticatedRegistrationOrderCommandHandler(
+        RegistrationOrderLifecycleResponseDto result = await new ContinueAuthenticatedRegistrationOrderCommandHandler(
             _inventory,
             _lifecycle,
             _tenant,

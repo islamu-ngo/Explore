@@ -194,7 +194,7 @@ public sealed class RegistrationOrderControllerTests
     {
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ContinueGuestRegistrationOrderCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new GuestRegistrationOrderLifecycleResponse { Id = Guid.CreateVersion7(), Success = true });
+            .Returns(new GuestRegistrationOrderLifecycleResponseDto { Id = Guid.CreateVersion7(), Success = true });
         var controller = CreateController(mediator);
 
         await controller.ContinueGuest(
@@ -239,11 +239,11 @@ public sealed class RegistrationOrderControllerTests
         var resource = new HalResource<RegistrationOrderDto>(order);
         mediator.Send(Arg.Any<GetCurrentRegistrationOrderQuery>(), Arg.Any<CancellationToken>()).Returns(order);
         mediator.Send(Arg.Any<ContinueAuthenticatedRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(
-            new RegistrationOrderLifecycleResponse { Id = order.Id, Success = true, Order = order });
+            new RegistrationOrderLifecycleResponseDto { Id = order.Id, Success = true, Order = order });
         mediator.Send(Arg.Any<FinalizeAuthenticatedRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(
-            new RegistrationOrderLifecycleResponse { Id = order.Id, Success = true, Order = order });
+            new RegistrationOrderLifecycleResponseDto { Id = order.Id, Success = true, Order = order });
         mediator.Send(Arg.Any<CancelAuthenticatedRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(
-            new RegistrationOrderLifecycleResponse { Id = order.Id, Success = true, Order = order });
+            new RegistrationOrderLifecycleResponseDto { Id = order.Id, Success = true, Order = order });
         assembler.ToResource(order, Arg.Any<HttpContext>()).Returns(resource);
         var controller = CreateController(mediator, assembler);
 

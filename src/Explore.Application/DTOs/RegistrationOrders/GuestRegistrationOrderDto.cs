@@ -53,14 +53,14 @@ public sealed class GuestRegistrationOrderDto
     }
 }
 
-public sealed class GuestRegistrationOrderLifecycleResponse : BaseCommandResponse<Guid>
+public sealed class GuestRegistrationOrderLifecycleResponseDto : BaseCommandResponse<Guid>
 {
     public GuestRegistrationOrderDto? Order { get; init; }
 
-    public static GuestRegistrationOrderLifecycleResponse From(RegistrationOrderLifecycleResponse response)
+    public static GuestRegistrationOrderLifecycleResponseDto From(RegistrationOrderLifecycleResponseDto response)
     {
         ArgumentNullException.ThrowIfNull(response);
-        return new GuestRegistrationOrderLifecycleResponse
+        return new GuestRegistrationOrderLifecycleResponseDto
         {
             Id = response.Id,
             Success = response.Success,

@@ -111,7 +111,7 @@
     private async Task FinalizeAsync() => await ApplyAsync(() => RegistrationOrderService.FinalizeGuestAsync(EventId, OrderId, _capability!));
     private async Task CancelAsync() => await ApplyAsync(() => RegistrationOrderService.CancelGuestAsync(EventId, OrderId, _capability!));
 
-    private async Task ApplyAsync(Func<Task<GuestRegistrationOrderLifecycleResponse?>> operation)
+    private async Task ApplyAsync(Func<Task<GuestRegistrationOrderLifecycleResponseDto?>> operation)
     {
         var response = await operation();
         if (response?.Order is not null)

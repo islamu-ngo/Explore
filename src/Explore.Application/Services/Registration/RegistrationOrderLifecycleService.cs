@@ -19,12 +19,12 @@ public sealed class RegistrationOrderLifecycleService(
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider) : IRegistrationOrderLifecycleService
 {
-    public Task<RegistrationOrderLifecycleResponse> SubmitAsync(
+    public Task<RegistrationOrderLifecycleResponseDto> SubmitAsync(
         Guid orderId,
         Guid tenantId,
         CancellationToken cancellationToken) => SubmitAsync(orderId, tenantId, null, cancellationToken);
 
-    public async Task<RegistrationOrderLifecycleResponse> SubmitAsync(
+    public async Task<RegistrationOrderLifecycleResponseDto> SubmitAsync(
         Guid orderId,
         Guid tenantId,
         int? platformContributionBasisPoints,
@@ -105,7 +105,7 @@ public sealed class RegistrationOrderLifecycleService(
         }, cancellationToken);
     }
 
-    public async Task<RegistrationOrderLifecycleResponse> ReadyForCheckoutAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
+    public async Task<RegistrationOrderLifecycleResponseDto> ReadyForCheckoutAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
     {
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         RegistrationOrder? initialOrder = await inventory.GetOrderWithLinesAsync(orderId, tenantId, cancellationToken);
@@ -213,7 +213,7 @@ public sealed class RegistrationOrderLifecycleService(
         }
     }
 
-    public async Task<RegistrationOrderLifecycleResponse> ApproveAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
+    public async Task<RegistrationOrderLifecycleResponseDto> ApproveAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
     {
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         RegistrationOrder? initialOrder = await inventory.GetOrderWithLinesAsync(orderId, tenantId, cancellationToken);
@@ -304,7 +304,7 @@ public sealed class RegistrationOrderLifecycleService(
         }
     }
 
-    public Task<RegistrationOrderLifecycleResponse> RejectAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken) =>
+    public Task<RegistrationOrderLifecycleResponseDto> RejectAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken) =>
         EndAsync(
             orderId,
             tenantId,
@@ -314,7 +314,7 @@ public sealed class RegistrationOrderLifecycleService(
             "Registration order rejected.",
             cancellationToken);
 
-    public async Task<RegistrationOrderLifecycleResponse> CancelAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
+    public async Task<RegistrationOrderLifecycleResponseDto> CancelAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
     {
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         Guid outboxMessageId = Guid.CreateVersion7();
@@ -354,7 +354,7 @@ public sealed class RegistrationOrderLifecycleService(
         }, cancellationToken);
     }
 
-    public async Task<RegistrationOrderLifecycleResponse> FinalizeFreeAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
+    public async Task<RegistrationOrderLifecycleResponseDto> FinalizeFreeAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
     {
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         RegistrationOrder? initialOrder = await inventory.GetOrderWithLinesAsync(orderId, tenantId, cancellationToken);
@@ -451,7 +451,7 @@ public sealed class RegistrationOrderLifecycleService(
         }
     }
 
-    public async Task<RegistrationOrderLifecycleResponse> RecoverExpiredHoldAsync(
+    public async Task<RegistrationOrderLifecycleResponseDto> RecoverExpiredHoldAsync(
         Guid orderId,
         Guid tenantId,
         CancellationToken cancellationToken)
@@ -553,7 +553,7 @@ public sealed class RegistrationOrderLifecycleService(
         return orders.Select(order => RegistrationOrderDto.From(order)).ToArray();
     }
 
-    private async Task<RegistrationOrderLifecycleResponse> EndAsync(
+    private async Task<RegistrationOrderLifecycleResponseDto> EndAsync(
         Guid orderId,
         Guid tenantId,
         RegistrationOrderStatusEnum expectedStatus,
@@ -612,7 +612,7 @@ public sealed class RegistrationOrderLifecycleService(
         return ResolveEntitledSessions(ticketTypes, sessions).Any(session => session.RegistrationModeId == (int)RegistrationModeEnum.ApprovalRequired);
     }
 
-    private async Task<RegistrationOrderLifecycleResponse> TransitionForApprovalAsync(
+    private async Task<RegistrationOrderLifecycleResponseDto> TransitionForApprovalAsync(
         RegistrationOrder order,
         DateTime now,
         CancellationToken cancellationToken)
@@ -631,7 +631,7 @@ public sealed class RegistrationOrderLifecycleService(
         return Success(order, RegistrationOrderStatusEnum.AwaitingApproval, "Registration order submitted for approval.");
     }
 
-    private async Task<RegistrationOrderLifecycleResponse> RouteToPaymentAsync(
+    private async Task<RegistrationOrderLifecycleResponseDto> RouteToPaymentAsync(
         RegistrationOrder order,
         DateTime now,
         CancellationToken cancellationToken)
@@ -853,7 +853,7 @@ public sealed class RegistrationOrderLifecycleService(
         };
     }
 
-    private async Task<RegistrationOrderLifecycleResponse> CurrentOrConflictAsync(
+    private async Task<RegistrationOrderLifecycleResponseDto> CurrentOrConflictAsync(
         Guid orderId,
         Guid tenantId,
         string message,
@@ -863,7 +863,7 @@ public sealed class RegistrationOrderLifecycleService(
         return current is null ? Missing(orderId) : Failure(orderId, current, message);
     }
 
-    private async Task<RegistrationOrderLifecycleResponse> CurrentRecoveryOrConflictAsync(
+    private async Task<RegistrationOrderLifecycleResponseDto> CurrentRecoveryOrConflictAsync(
         Guid orderId,
         Guid tenantId,
         CancellationToken cancellationToken)
@@ -876,7 +876,7 @@ public sealed class RegistrationOrderLifecycleService(
                 : Success(current, (RegistrationOrderStatusEnum)current.RegistrationOrderStatusId, "Registration order hold recovery was already resolved.");
     }
 
-    private static RegistrationOrderLifecycleResponse Success(
+    private static RegistrationOrderLifecycleResponseDto Success(
         RegistrationOrder order,
         RegistrationOrderStatusEnum status,
         string message) => new()
@@ -887,14 +887,14 @@ public sealed class RegistrationOrderLifecycleService(
         Order = RegistrationOrderDto.From(order, status)
     };
 
-    private static RegistrationOrderLifecycleResponse Missing(Guid orderId) => new()
+    private static RegistrationOrderLifecycleResponseDto Missing(Guid orderId) => new()
     {
         Id = orderId,
         Success = false,
         Message = "Registration order was not found."
     };
 
-    private static RegistrationOrderLifecycleResponse Failure(
+    private static RegistrationOrderLifecycleResponseDto Failure(
         Guid orderId,
         RegistrationOrder? order,
         string error) => new()

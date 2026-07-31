@@ -102,10 +102,10 @@ public sealed class RegistrationOrderService(
     public Task<HalResourceOfGuestRegistrationOrderDto?> GetGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default) =>
         ExecuteAsync(() => apiClient.GetGuestRegistrationOrderAsync(eventId, orderId, capability.Value, cancellationToken: cancellationToken));
 
-    public Task<GuestRegistrationOrderLifecycleResponse?> CancelGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default) =>
+    public Task<GuestRegistrationOrderLifecycleResponseDto?> CancelGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default) =>
         ExecuteAsync(() => apiClient.CancelGuestRegistrationOrderAsync(eventId, orderId, capability.Value, cancellationToken: cancellationToken));
 
-    public Task<GuestRegistrationOrderLifecycleResponse?> ContinueGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, int? contributionBasisPoints, CancellationToken cancellationToken = default) =>
+    public Task<GuestRegistrationOrderLifecycleResponseDto?> ContinueGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, int? contributionBasisPoints, CancellationToken cancellationToken = default) =>
         ExecuteAsync(() => apiClient.ContinueGuestRegistrationOrderAsync(
             eventId,
             orderId,
@@ -113,7 +113,7 @@ public sealed class RegistrationOrderService(
             body: new ContinueRegistrationOrderRequest { PlatformContributionBasisPoints = contributionBasisPoints },
             cancellationToken: cancellationToken));
 
-    public Task<GuestRegistrationOrderLifecycleResponse?> FinalizeGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default) =>
+    public Task<GuestRegistrationOrderLifecycleResponseDto?> FinalizeGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default) =>
         ExecuteAsync(() => apiClient.FinalizeGuestRegistrationOrderAsync(eventId, orderId, capability.Value, cancellationToken: cancellationToken));
 
     private async Task<T?> ExecuteAsync<T>(Func<Task<T>> execute)

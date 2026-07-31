@@ -39,7 +39,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         _contributionSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(setting);
         _inventory.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
 
-        RegistrationOrderLifecycleResponse result = await CreateService().SubmitAsync(
+        RegistrationOrderLifecycleResponseDto result = await CreateService().SubmitAsync(
             order.Id,
             _tenantId,
             1_000,

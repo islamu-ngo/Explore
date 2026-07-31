@@ -5,7 +5,7 @@ using Explore.Application.Responses;
 
 namespace Explore.Application.DTOs.RegistrationOrders;
 
-public sealed class RegistrationOrderLifecycleResponse : BaseCommandResponse<Guid>
+public sealed class RegistrationOrderLifecycleResponseDto : BaseCommandResponse<Guid>
 {
     public RegistrationOrderDto? Order { get; init; }
 }

@@ -12,33 +12,33 @@ public interface IRegistrationOrderLifecycleService
         Guid tenantId,
         CancellationToken cancellationToken);
 
-    Task<RegistrationOrderLifecycleResponse> SubmitAsync(
+    Task<RegistrationOrderLifecycleResponseDto> SubmitAsync(
         Guid orderId,
         Guid tenantId,
         CancellationToken cancellationToken);
 
-    Task<RegistrationOrderLifecycleResponse> SubmitAsync(
+    Task<RegistrationOrderLifecycleResponseDto> SubmitAsync(
         Guid orderId,
         Guid tenantId,
         int? platformContributionBasisPoints,
         CancellationToken cancellationToken);
 
-    Task<RegistrationOrderLifecycleResponse> ReadyForCheckoutAsync(
+    Task<RegistrationOrderLifecycleResponseDto> ReadyForCheckoutAsync(
         Guid orderId,
         Guid tenantId,
         CancellationToken cancellationToken);
 
-    Task<RegistrationOrderLifecycleResponse> FinalizeFreeAsync(
+    Task<RegistrationOrderLifecycleResponseDto> FinalizeFreeAsync(
         Guid orderId,
         Guid tenantId,
         CancellationToken cancellationToken);
 
-    Task<RegistrationOrderLifecycleResponse> CancelAsync(
+    Task<RegistrationOrderLifecycleResponseDto> CancelAsync(
         Guid orderId,
         Guid tenantId,
         CancellationToken cancellationToken);
 
-    Task<RegistrationOrderLifecycleResponse> RecoverExpiredHoldAsync(
+    Task<RegistrationOrderLifecycleResponseDto> RecoverExpiredHoldAsync(
         Guid orderId,
         Guid tenantId,
         CancellationToken cancellationToken);

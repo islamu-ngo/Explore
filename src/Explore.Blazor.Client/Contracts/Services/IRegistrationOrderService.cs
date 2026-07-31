@@ -17,14 +17,7 @@ public interface IRegistrationOrderService
     Task<HalResourceOfRegistrationOrderDto?> FinalizeCurrentAsync(Guid eventId, Guid orderId, CancellationToken cancellationToken = default);
     Task<HalResourceOfRegistrationOrderDto?> CancelCurrentAsync(Guid eventId, Guid orderId, CancellationToken cancellationToken = default);
     Task<HalResourceOfGuestRegistrationOrderDto?> GetGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default);
-    Task<GuestRegistrationOrderLifecycleResponse?> CancelGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default);
-    Task<GuestRegistrationOrderLifecycleResponse?> ContinueGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, int? contributionBasisPoints, CancellationToken cancellationToken = default);
-    Task<GuestRegistrationOrderLifecycleResponse?> FinalizeGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default);
-}
-
-public sealed record GuestRegistrationOrderCapability
-{
-    internal GuestRegistrationOrderCapability(string value) => Value = value;
-
-    internal string Value { get; }
+    Task<GuestRegistrationOrderLifecycleResponseDto?> CancelGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default);
+    Task<GuestRegistrationOrderLifecycleResponseDto?> ContinueGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, int? contributionBasisPoints, CancellationToken cancellationToken = default);
+    Task<GuestRegistrationOrderLifecycleResponseDto?> FinalizeGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default);
 }

@@ -12,19 +12,19 @@ public interface IRegistrationOrderLifecycleCommand
 }
 
 public sealed record SubmitRegistrationOrderCommand(Guid OrderId)
-    : IRequest<RegistrationOrderLifecycleResponse>, IRegistrationOrderLifecycleCommand;
+    : IRequest<RegistrationOrderLifecycleResponseDto>, IRegistrationOrderLifecycleCommand;
 
 public sealed record ReadyRegistrationOrderForCheckoutCommand(Guid OrderId)
-    : IRequest<RegistrationOrderLifecycleResponse>, IRegistrationOrderLifecycleCommand;
+    : IRequest<RegistrationOrderLifecycleResponseDto>, IRegistrationOrderLifecycleCommand;
 
 public sealed record FinalizeFreeRegistrationOrderCommand(Guid OrderId)
-    : IRequest<RegistrationOrderLifecycleResponse>, IRegistrationOrderLifecycleCommand;
+    : IRequest<RegistrationOrderLifecycleResponseDto>, IRegistrationOrderLifecycleCommand;
 
 public sealed record CancelRegistrationOrderCommand(Guid OrderId)
-    : IRequest<RegistrationOrderLifecycleResponse>, IRegistrationOrderLifecycleCommand;
+    : IRequest<RegistrationOrderLifecycleResponseDto>, IRegistrationOrderLifecycleCommand;
 
 public sealed record ApproveRegistrationOrderCommand(Guid OrderId)
-    : IRequest<RegistrationOrderLifecycleResponse>, IRegistrationOrderLifecycleCommand;
+    : IRequest<RegistrationOrderLifecycleResponseDto>, IRegistrationOrderLifecycleCommand;
 
 public sealed record RejectRegistrationOrderCommand(Guid OrderId)
-    : IRequest<RegistrationOrderLifecycleResponse>, IRegistrationOrderLifecycleCommand;
+    : IRequest<RegistrationOrderLifecycleResponseDto>, IRegistrationOrderLifecycleCommand;

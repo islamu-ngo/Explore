@@ -50,9 +50,9 @@ public sealed class ContinueAuthenticatedRegistrationOrderCommandHandler(
     IRegistrationOrderLifecycleService lifecycle,
     ITenantContext tenant,
     ICurrentUserService currentUser)
-    : IRequestHandler<ContinueAuthenticatedRegistrationOrderCommand, RegistrationOrderLifecycleResponse>
+    : IRequestHandler<ContinueAuthenticatedRegistrationOrderCommand, RegistrationOrderLifecycleResponseDto>
 {
-    public Task<RegistrationOrderLifecycleResponse> Handle(
+    public Task<RegistrationOrderLifecycleResponseDto> Handle(
         ContinueAuthenticatedRegistrationOrderCommand request,
         CancellationToken cancellationToken) => RegistrationOrderAccessGuard.ExecuteCurrentAccountAsync(
         request,
@@ -72,9 +72,9 @@ public sealed class FinalizeAuthenticatedRegistrationOrderCommandHandler(
     IRegistrationOrderLifecycleService lifecycle,
     ITenantContext tenant,
     ICurrentUserService currentUser)
-    : IRequestHandler<FinalizeAuthenticatedRegistrationOrderCommand, RegistrationOrderLifecycleResponse>
+    : IRequestHandler<FinalizeAuthenticatedRegistrationOrderCommand, RegistrationOrderLifecycleResponseDto>
 {
-    public async Task<RegistrationOrderLifecycleResponse> Handle(
+    public async Task<RegistrationOrderLifecycleResponseDto> Handle(
         FinalizeAuthenticatedRegistrationOrderCommand request,
         CancellationToken cancellationToken) => await RegistrationOrderAccessGuard.ExecuteCurrentAccountAsync(
         request, inventory, tenant, currentUser, lifecycle.FinalizeFreeAsync, cancellationToken);
@@ -85,9 +85,9 @@ public sealed class CancelAuthenticatedRegistrationOrderCommandHandler(
     IRegistrationOrderLifecycleService lifecycle,
     ITenantContext tenant,
     ICurrentUserService currentUser)
-    : IRequestHandler<CancelAuthenticatedRegistrationOrderCommand, RegistrationOrderLifecycleResponse>
+    : IRequestHandler<CancelAuthenticatedRegistrationOrderCommand, RegistrationOrderLifecycleResponseDto>
 {
-    public async Task<RegistrationOrderLifecycleResponse> Handle(
+    public async Task<RegistrationOrderLifecycleResponseDto> Handle(
         CancelAuthenticatedRegistrationOrderCommand request,
         CancellationToken cancellationToken) => await RegistrationOrderAccessGuard.ExecuteCurrentAccountAsync(
         request, inventory, tenant, currentUser, lifecycle.CancelAsync, cancellationToken);

@@ -42,22 +42,22 @@ public sealed record ContinueGuestRegistrationOrderCommand(
     Guid OrderId,
     string? CapabilityToken,
     int? PlatformContributionBasisPoints = null)
-    : IRequest<GuestRegistrationOrderLifecycleResponse>, IGuestRegistrationOrderAccessCommand;
+    : IRequest<GuestRegistrationOrderLifecycleResponseDto>, IGuestRegistrationOrderAccessCommand;
 
 public sealed record FinalizeGuestRegistrationOrderCommand(Guid EventId, Guid OrderId, string? CapabilityToken)
-    : IRequest<GuestRegistrationOrderLifecycleResponse>, IGuestRegistrationOrderAccessCommand;
+    : IRequest<GuestRegistrationOrderLifecycleResponseDto>, IGuestRegistrationOrderAccessCommand;
 
 public sealed record CancelGuestRegistrationOrderCommand(Guid EventId, Guid OrderId, string? CapabilityToken)
-    : IRequest<GuestRegistrationOrderLifecycleResponse>, IGuestRegistrationOrderAccessCommand;
+    : IRequest<GuestRegistrationOrderLifecycleResponseDto>, IGuestRegistrationOrderAccessCommand;
 
 public sealed record ContinueAuthenticatedRegistrationOrderCommand(
     Guid EventId,
     Guid OrderId,
     int? PlatformContributionBasisPoints = null)
-    : IRequest<RegistrationOrderLifecycleResponse>, IAuthenticatedRegistrationOrderAccessCommand;
+    : IRequest<RegistrationOrderLifecycleResponseDto>, IAuthenticatedRegistrationOrderAccessCommand;
 
 public sealed record FinalizeAuthenticatedRegistrationOrderCommand(Guid EventId, Guid OrderId)
-    : IRequest<RegistrationOrderLifecycleResponse>, IAuthenticatedRegistrationOrderAccessCommand;
+    : IRequest<RegistrationOrderLifecycleResponseDto>, IAuthenticatedRegistrationOrderAccessCommand;
 
 public sealed record CancelAuthenticatedRegistrationOrderCommand(Guid EventId, Guid OrderId)
-    : IRequest<RegistrationOrderLifecycleResponse>, IAuthenticatedRegistrationOrderAccessCommand;
+    : IRequest<RegistrationOrderLifecycleResponseDto>, IAuthenticatedRegistrationOrderAccessCommand;

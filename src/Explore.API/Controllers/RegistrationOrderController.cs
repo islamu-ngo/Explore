@@ -155,13 +155,13 @@ public sealed class RegistrationOrderController(
     [HttpPost("guest/{orderId:guid}/continue", Name = RouteNames.ContinueGuestRegistrationOrder)]
     [EndpointSummary("Continue guest registration order")]
     [EndpointDescription("Advances the guest order only when its opaque capability header matches the scoped route.")]
-    [ProducesResponseType(typeof(GuestRegistrationOrderLifecycleResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(GuestRegistrationOrderLifecycleResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<ActionResult<GuestRegistrationOrderLifecycleResponse>> ContinueGuest(
+    public async Task<ActionResult<GuestRegistrationOrderLifecycleResponseDto>> ContinueGuest(
         Guid eventId,
         Guid orderId,
         [FromHeader(Name = CapabilityHeader)] string? capability,
@@ -182,13 +182,13 @@ public sealed class RegistrationOrderController(
     [HttpPost("guest/{orderId:guid}/finalize", Name = RouteNames.FinalizeGuestRegistrationOrder)]
     [EndpointSummary("Finalize guest registration order")]
     [EndpointDescription("Finalizes a free guest registration order only when its opaque capability header matches the scoped route.")]
-    [ProducesResponseType(typeof(GuestRegistrationOrderLifecycleResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(GuestRegistrationOrderLifecycleResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<ActionResult<GuestRegistrationOrderLifecycleResponse>> FinalizeGuest(
+    public async Task<ActionResult<GuestRegistrationOrderLifecycleResponseDto>> FinalizeGuest(
         Guid eventId,
         Guid orderId,
         [FromHeader(Name = CapabilityHeader)] string? capability,
@@ -204,12 +204,12 @@ public sealed class RegistrationOrderController(
     [HttpDelete("guest/{orderId:guid}", Name = RouteNames.CancelGuestRegistrationOrder)]
     [EndpointSummary("Cancel guest registration order")]
     [EndpointDescription("Cancels a guest registration order only when its opaque capability header matches the scoped route.")]
-    [ProducesResponseType(typeof(GuestRegistrationOrderLifecycleResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(GuestRegistrationOrderLifecycleResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
-    public async Task<ActionResult<GuestRegistrationOrderLifecycleResponse>> CancelGuest(
+    public async Task<ActionResult<GuestRegistrationOrderLifecycleResponseDto>> CancelGuest(
         Guid eventId,
         Guid orderId,
         [FromHeader(Name = CapabilityHeader)] string? capability,
@@ -294,7 +294,7 @@ public sealed class RegistrationOrderController(
         [FromBody] ContinueRegistrationOrderRequest? request = null,
         CancellationToken cancellationToken = default)
     {
-        RegistrationOrderLifecycleResponse response = await mediator.Send(
+        RegistrationOrderLifecycleResponseDto response = await mediator.Send(
             new ContinueAuthenticatedRegistrationOrderCommand(
                 eventId,
                 orderId,
@@ -319,7 +319,7 @@ public sealed class RegistrationOrderController(
         Guid orderId,
         CancellationToken cancellationToken = default)
     {
-        RegistrationOrderLifecycleResponse response = await mediator.Send(
+        RegistrationOrderLifecycleResponseDto response = await mediator.Send(
             new FinalizeAuthenticatedRegistrationOrderCommand(eventId, orderId),
             cancellationToken);
         return await MapAuthenticatedLifecycle(eventId, response);
@@ -341,7 +341,7 @@ public sealed class RegistrationOrderController(
         Guid orderId,
         CancellationToken cancellationToken = default)
     {
-        RegistrationOrderLifecycleResponse response = await mediator.Send(
+        RegistrationOrderLifecycleResponseDto response = await mediator.Send(
             new CancelAuthenticatedRegistrationOrderCommand(eventId, orderId),
             cancellationToken);
         return await MapAuthenticatedLifecycle(eventId, response);
@@ -365,8 +365,8 @@ public sealed class RegistrationOrderController(
             _ => this.ToCommandValidationProblem(response, RegistrationOrderValidationProblem)
         };
 
-    private ActionResult<GuestRegistrationOrderLifecycleResponse> MapGuestLifecycle(
-        GuestRegistrationOrderLifecycleResponse response) =>
+    private ActionResult<GuestRegistrationOrderLifecycleResponseDto> MapGuestLifecycle(
+        GuestRegistrationOrderLifecycleResponseDto response) =>
         response.Success
             ? Ok(response)
             : response.FailureCode == "registration_order_not_found" || response.Order is null
@@ -399,7 +399,7 @@ public sealed class RegistrationOrderController(
 
     private async Task<ActionResult<HalResource<RegistrationOrderDto>>> MapAuthenticatedLifecycle(
         Guid eventId,
-        RegistrationOrderLifecycleResponse response)
+        RegistrationOrderLifecycleResponseDto response)
     {
         if (response.Success && response.Order is { } order && order.EventId == eventId)
         {

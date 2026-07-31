@@ -67,7 +67,7 @@ public sealed class InventoryHoldExpiryWorkerTests
                     Arg.Any<Guid>(),
                     Arg.Any<Guid>(),
                     Arg.Any<CancellationToken>())
-                .Returns(Task.FromResult(new RegistrationOrderLifecycleResponse()));
+                .Returns(Task.FromResult(new RegistrationOrderLifecycleResponseDto()));
             itemLifecycles.Add(lifecycle);
             return lifecycle;
         });
@@ -148,7 +148,7 @@ public sealed class InventoryHoldExpiryWorkerTests
         {
             var lifecycle = Substitute.For<IRegistrationOrderLifecycleService>();
             lifecycle.RecoverExpiredHoldAsync(orderId, tenantId, CancellationToken.None)
-                .Returns(Task.FromResult(new RegistrationOrderLifecycleResponse()));
+                .Returns(Task.FromResult(new RegistrationOrderLifecycleResponseDto()));
             itemLifecycles.Add(lifecycle);
             return lifecycle;
         });
@@ -196,7 +196,7 @@ public sealed class InventoryHoldExpiryWorkerTests
         {
             var lifecycle = Substitute.For<IRegistrationOrderLifecycleService>();
             lifecycle.RecoverExpiredHoldAsync(orderId, tenantId, CancellationToken.None)
-                .Returns(Task.FromResult(new RegistrationOrderLifecycleResponse()));
+                .Returns(Task.FromResult(new RegistrationOrderLifecycleResponseDto()));
             itemLifecycles.Add(lifecycle);
             return lifecycle;
         });
