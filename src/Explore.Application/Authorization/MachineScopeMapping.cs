@@ -24,7 +24,7 @@ public static class MachineScopeMapping
 
         var scopeSet = new HashSet<string>(scopes, StringComparer.OrdinalIgnoreCase);
 
-        if (resourceKind == ResourceKinds.EventOrganizerClaim)
+        if (resourceKind is ResourceKinds.EventOrganizerClaim or ResourceKinds.RegistrationForm)
             return false;
 
         if (scopeSet.Contains(ExternalApiKeyScopes.AdminInstance))

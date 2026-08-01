@@ -441,6 +441,130 @@ public class AuthorizationBehaviorTests
     }
 
     [Test]
+    public async Task Handle_WithRegistrationFormResource_ReplacesCallerAuthorizationAttributesFromPersistedEvent()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var eventId = Guid.NewGuid();
+        var formId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var organizerActorId = Guid.NewGuid();
+        var organizerUserId = Guid.NewGuid();
+        var attackerId = Guid.NewGuid();
+        tenantContext.TenantId.Returns(tenantId);
+        eventRepository.GetEventWithDetails(eventId).Returns(new Explore.Domain.Event
+        {
+            Id = eventId,
+            TenantId = tenantId,
+            Title = "Registration authoring",
+            ActorId = actorId,
+            Actor = new Actor
+            {
+                Id = actorId,
+                ActorTypeId = 2,
+                ActorType = null!,
+                Pii = new ActorPii { DisplayName = "Event actor" }
+            },
+            OrganizerActorId = organizerActorId,
+            OrganizerActor = new Actor
+            {
+                Id = organizerActorId,
+                UserId = organizerUserId,
+                ActorTypeId = 1,
+                ActorType = null!,
+                Pii = new ActorPii { DisplayName = "Verified organizer" }
+            },
+            Tenant = null!,
+            EventStatus = null!,
+            EventFormat = null!,
+            VisibilityType = null!
+        });
+        var command = new TestRegistrationFormSecureCommand(
+            formId,
+            eventId,
+            new Dictionary<string, object>
+            {
+                ["tenantId"] = Guid.NewGuid().ToString("D"),
+                ["organizerActorId"] = attackerId.ToString("D"),
+                ["organizerUserId"] = attackerId.ToString("D"),
+                ["status"] = "DRAFT"
+            });
+        _authService.IsAllowedAsync(
+                ResourceKinds.RegistrationForm,
+                formId.ToString("D"),
+                AuthorizationActions.RegistrationForms.Update,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    attributes != null
+                    && attributes["tenantId"].Equals(tenantId.ToString("D"))
+                    && attributes["eventId"].Equals(eventId.ToString("D"))
+                    && attributes["organizerActorId"].Equals(organizerActorId.ToString("D"))
+                    && attributes["organizerUserId"].Equals(organizerUserId.ToString("D"))
+                    && attributes["status"].Equals("DRAFT")
+                    && !attributes.Values.Contains(attackerId.ToString("D"))),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var behavior = new AuthorizationBehavior<TestRegistrationFormSecureCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<TestRegistrationFormSecureCommand, BaseCommandResponse<Guid>>>>(),
+            eventRepository,
+            tenantContext: tenantContext);
+
+        var result = await behavior.Handle(
+            command,
+            _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await eventRepository.Received(1).GetEventWithDetails(eventId);
+    }
+
+    [Test]
+    public async Task Handle_WithRegistrationFormResource_WhenPersistedEventIsMissing_DeniesBeforeProvider()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var eventId = Guid.NewGuid();
+        var command = new TestRegistrationFormSecureCommand(Guid.NewGuid(), eventId);
+        var behavior = new AuthorizationBehavior<TestRegistrationFormSecureCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<TestRegistrationFormSecureCommand, BaseCommandResponse<Guid>>>>(),
+            eventRepository);
+
+        await Assert.ThrowsAsync<AuthorizationException>(async () =>
+            await behavior.Handle(
+                command,
+                _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+                CancellationToken.None));
+        await _authService.DidNotReceiveWithAnyArgs().IsAllowedAsync(default!, default!, default!, default, default);
+    }
+
+    [Test]
+    public async Task Handle_WithRegistrationFormResource_WhenPersistedEventTenantMismatches_DeniesBeforeProvider()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var eventId = Guid.NewGuid();
+        tenantContext.TenantId.Returns(Guid.NewGuid());
+        eventRepository.GetEventWithDetails(eventId).Returns(CreateAuthorizationEvent(
+            eventId,
+            Guid.NewGuid(),
+            Guid.NewGuid()));
+        var command = new TestRegistrationFormSecureCommand(Guid.NewGuid(), eventId);
+        var behavior = new AuthorizationBehavior<TestRegistrationFormSecureCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<TestRegistrationFormSecureCommand, BaseCommandResponse<Guid>>>>(),
+            eventRepository,
+            tenantContext: tenantContext);
+
+        await Assert.ThrowsAsync<AuthorizationException>(async () =>
+            await behavior.Handle(
+                command,
+                _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
+                CancellationToken.None));
+        await _authService.DidNotReceiveWithAnyArgs().IsAllowedAsync(default!, default!, default!, default, default);
+    }
+
+    [Test]
     public async Task Handle_WithEventSessionResource_EnrichesMissingEventAuthorizationContext()
     {
         var eventSessionRepository = Substitute.For<IEventSessionRepository>();
@@ -1458,4 +1582,19 @@ public class TestSecureCommandWithNullId : IRequest<BaseCommandResponse<Guid>>, 
 public sealed class TestEventSessionSecureCommand(Guid eventSessionId) : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => eventSessionId.ToString();
+}
+
+[AuthorizeResource(ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Update)]
+public sealed class TestRegistrationFormSecureCommand(
+    Guid formId,
+    Guid eventId,
+    IDictionary<string, object>? suppliedAttributes = null) : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+{
+    string? ISecureRequest.ResourceId => formId.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>(
+        suppliedAttributes ?? new Dictionary<string, object>())
+    {
+        ["eventId"] = eventId.ToString("D")
+    };
 }

@@ -38,7 +38,8 @@ public partial class AuthorizationParityTests
         "islamuevent_event_day",
         "islamuevent_event_agenda_item",
         "islamuevent_event_session_agenda_item",
-        "islamuevent_event_organizer_claim"
+        "islamuevent_event_organizer_claim",
+        "islamuevent_registration_form"
     ];
 
     [Test]
@@ -86,6 +87,7 @@ public partial class AuthorizationParityTests
     }
 
     [Test]
+    [Category("RegistrationFormAuthorization")]
     [DisplayName("Event-family policies import the derived roles set")]
     public async Task EventFamilyPolicies_ShouldImport_DerivedRoles()
     {
@@ -143,6 +145,7 @@ public partial class AuthorizationParityTests
     }
 
     [Test]
+    [Category("RegistrationFormAuthorization")]
     [DisplayName("Event-family resource schemas include eventId property")]
     public async Task EventFamilySchemas_ShouldInclude_EventId()
     {
@@ -182,6 +185,7 @@ public partial class AuthorizationParityTests
     }
 
     [Test]
+    [Category("RegistrationFormAuthorization")]
     [DisplayName("Event-scoped fallback evaluator routes to event-scoped method for all event-family resources")]
     public async Task FallbackEvaluator_ShouldRoute_EventFamilyResources()
     {

@@ -247,6 +247,8 @@ public sealed class WebhookPortalHalAuthorityTests
 
             var evaluator = new HateoasAuthorizationEvaluator(
                 AuthorizationProvider,
+                NSubstitute.Substitute.For<Explore.Application.Contracts.Persistence.IEventRepository>(),
+                NSubstitute.Substitute.For<ITenantContext>(),
                 NullLogger<HateoasAuthorizationEvaluator>.Instance);
             var services = new ServiceCollection().AddSingleton<IHateoasAuthorizationEvaluator>(evaluator);
             HttpContext = new DefaultHttpContext

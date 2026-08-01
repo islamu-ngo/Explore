@@ -1903,6 +1903,73 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
+    public async Task IsAllowed_ManageRegistrations_AllowsVerifiedOrganizerWhoIsAlsoBootstrapAdmin()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminGroupIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        var attributes = CreateVerifiedOrganizerAttributes(eventId, userId: userId);
+
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            eventId.ToString(),
+            AuthorizationActions.Events.ManageRegistrationWorkflow,
+            attributes)).IsTrue();
+
+        var batch = await _service.IsAllowedBatchAsync(
+        [
+            new(
+                ResourceKinds.Event,
+                eventId.ToString(),
+                AuthorizationActions.Events.ManageRegistrationWorkflow,
+                attributes)
+        ]);
+
+        await Assert.That(batch).IsEquivalentTo([true]);
+
+        attributes["tenantId"] = Guid.NewGuid();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            eventId.ToString(),
+            AuthorizationActions.Events.ManageRegistrationWorkflow,
+            attributes)).IsFalse();
+
+        var crossTenantBatch = await _service.IsAllowedBatchAsync(
+        [
+            new(
+                ResourceKinds.Event,
+                eventId.ToString(),
+                AuthorizationActions.Events.ManageRegistrationWorkflow,
+                attributes)
+        ]);
+
+        await Assert.That(crossTenantBatch).IsEquivalentTo([false]);
+
+        attributes["tenantId"] = TestTenantId;
+        attributes["organizerUserId"] = Guid.NewGuid();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            eventId.ToString(),
+            AuthorizationActions.Events.ManageRegistrationWorkflow,
+            attributes)).IsFalse();
+
+        var deniedBatch = await _service.IsAllowedBatchAsync(
+        [
+            new(
+                ResourceKinds.Event,
+                eventId.ToString(),
+                AuthorizationActions.Events.ManageRegistrationWorkflow,
+                attributes)
+        ]);
+
+        await Assert.That(deniedBatch).IsEquivalentTo([false]);
+    }
+
+    [Test]
     public async Task IsAllowed_ManageRegistrations_DeniesContributorUnrelatedControllerAndAdminBypasses()
     {
         var userId = Guid.NewGuid();
@@ -2003,6 +2070,88 @@ public class FallbackAuthorizationServiceTests
         ]);
 
         await Assert.That(results).IsEquivalentTo([false, false, false]);
+    }
+
+    [Test]
+    public async Task IsAllowed_RegistrationFormActions_UseRegistrationManagementAuthority()
+    {
+        var userId = Guid.NewGuid();
+        var organizerEventId = Guid.NewGuid();
+        var assignedEventId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        ConfigureEventAuthority(userId, assignedEventId, PermissionCodes.EventRegistrationManage);
+
+        var actions = new[]
+        {
+            AuthorizationActions.RegistrationForms.View,
+            AuthorizationActions.RegistrationForms.Create,
+            AuthorizationActions.RegistrationForms.Update,
+            AuthorizationActions.RegistrationForms.Delete,
+            AuthorizationActions.RegistrationForms.Preflight,
+            AuthorizationActions.RegistrationForms.Publish,
+            AuthorizationActions.RegistrationForms.ManageRequirements,
+            AuthorizationActions.RegistrationForms.Attach,
+            AuthorizationActions.RegistrationForms.Detach
+        };
+
+        foreach (var action in actions)
+        {
+            await Assert.That(await _service.IsAllowedAsync(
+                ResourceKinds.RegistrationForm,
+                Guid.NewGuid().ToString(),
+                action,
+                CreateVerifiedOrganizerAttributes(organizerEventId, userId: userId))).IsTrue();
+
+            await Assert.That(await _service.IsAllowedAsync(
+                ResourceKinds.RegistrationForm,
+                Guid.NewGuid().ToString(),
+                action,
+                CreateEventContextAttributes(assignedEventId))).IsTrue();
+        }
+
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.RegistrationForm,
+            Guid.NewGuid().ToString(),
+            AuthorizationActions.RegistrationForms.Publish,
+            CreateEventContextAttributes())).IsFalse();
+
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            organizerEventId.ToString(),
+            AuthorizationActions.Events.ManageRegistrationWorkflow,
+            CreateVerifiedOrganizerAttributes(organizerEventId, userId: userId))).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_RegistrationFormActions_MatchSingleDecisions()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminGroupIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var results = await _service.IsAllowedBatchAsync(
+        [
+            new(ResourceKinds.RegistrationForm, Guid.NewGuid().ToString(), AuthorizationActions.RegistrationForms.View, CreateVerifiedOrganizerAttributes(eventId, userId: userId)),
+            new(ResourceKinds.RegistrationForm, Guid.NewGuid().ToString(), AuthorizationActions.RegistrationForms.Publish, CreateEventContextAttributes(eventId))
+        ]);
+
+        await Assert.That(results).IsEquivalentTo([true, false]);
     }
 
     [Test]

@@ -29,6 +29,7 @@ public sealed class StudioEventNavigationTests : IDisposable
     [Arguments("configure-participation", "Registration")]
     [Arguments("view-registration-orders", "Orders")]
     [Arguments("view-participants", "Attendees")]
+    [Arguments("manage-registration-workflow", "Forms")]
     [Arguments("team", "Team")]
     [Arguments("delete", "Danger zone")]
     public async Task Render_ShowsSectionOnlyWhenMappedHalRelationExists(string relation, string expectedLabel)
@@ -97,6 +98,18 @@ public sealed class StudioEventNavigationTests : IDisposable
 
         cut.WaitForElement("[data-testid='studio-event-navigation']");
         await Assert.That(cut.FindAll("[data-event-section='tickets']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task Render_FormsSectionRequiresManageRegistrationWorkflowRelation()
+    {
+        var resource = CreateEvent();
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        var cut = _ctx.RenderMudComponent<StudioEventNavigation>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='studio-event-navigation']");
+        await Assert.That(cut.FindAll("[data-event-section='forms']")).IsEmpty();
     }
 
     [Test]

@@ -91,6 +91,8 @@ public sealed class TenantFooterSettingsLinkPolicyTests
             .Returns([isAuthorized]);
         var evaluator = new HateoasAuthorizationEvaluator(
             authorizationProvider,
+            Substitute.For<Explore.Application.Contracts.Persistence.IEventRepository>(),
+            Substitute.For<ITenantContext>(),
             Substitute.For<ILogger<HateoasAuthorizationEvaluator>>());
         var httpContext = new DefaultHttpContext { User = user };
         var allowed = await evaluator.AreLinksAllowedAsync(definitions, user, httpContext);

@@ -241,6 +241,18 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Events.ManageRegistrations, ResourceDescriptors.Event, dto);
 
+        if (dto.IsManagementView)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.ManageRegistrationWorkflow,
+                RouteNames.GetRegistrationWorkflow,
+                new { eventId = dto.Id, purpose = "registration" },
+                HttpMethods.Get,
+                "Manage registration workflow",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Events.ManageRegistrationWorkflow, ResourceDescriptors.Event, dto);
+        }
+
         if (dto.ParticipationConfiguration?.ParticipationHandlingModeId == (int)ParticipationHandlingModeEnum.PlatformManaged)
         {
             yield return new LinkDefinition(LinkRelations.ManageTicketTypes, RouteNames.GetEventTicketCatalogManagement, new { eventId = dto.Id }, HttpMethods.Get, "Manage ticket types", RequiresAuth: true)
@@ -485,7 +497,18 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
         switch ((ParticipationHandlingModeEnum)participationModeId.Value)
         {
             case ParticipationHandlingModeEnum.InformationOnly:
+                yield break;
             case ParticipationHandlingModeEnum.WalkIn:
+                if (dto.ParticipationConfiguration!.HasValidOptionalQuestionnaire)
+                {
+                    yield return new LinkDefinition(
+                        LinkRelations.OptionalQuestionnaire,
+                        RouteNames.GetOptionalQuestionnaire,
+                        new { eventId = dto.Id },
+                        HttpMethods.Get,
+                        "Optional questionnaire");
+                }
+
                 yield break;
             case ParticipationHandlingModeEnum.ExternalManaged:
                 foreach (var link in GetExternalRegistrationLinks(dto))

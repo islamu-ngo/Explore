@@ -7,7 +7,9 @@ using System.Security.Claims;
 using Explore.API.Hateoas;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Hateoas;
+using Explore.Domain;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -18,13 +20,16 @@ using TUnit.Core;
 public class HateoasAuthorizationEvaluatorTests
 {
     private readonly IAuthorizationProvider _authProvider = Substitute.For<IAuthorizationProvider>();
+    private readonly Explore.Application.Contracts.Persistence.IEventRepository _eventRepository =
+        Substitute.For<Explore.Application.Contracts.Persistence.IEventRepository>();
+    private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly ILogger<HateoasAuthorizationEvaluator> _logger = Substitute.For<ILogger<HateoasAuthorizationEvaluator>>();
     private readonly HateoasAuthorizationEvaluator _sut;
     private readonly HttpContext _httpContext = new DefaultHttpContext();
 
     public HateoasAuthorizationEvaluatorTests()
     {
-        _sut = new HateoasAuthorizationEvaluator(_authProvider, _logger);
+        _sut = new HateoasAuthorizationEvaluator(_authProvider, _eventRepository, _tenantContext, _logger);
     }
 
     private static ClaimsPrincipal AuthenticatedUser(params string[] roles)
@@ -80,6 +85,112 @@ public class HateoasAuthorizationEvaluatorTests
         await Assert.That(result[0]).IsTrue();
         await _authProvider.Received(1).IsAllowedBatchAsync(
             Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks => checks.Count == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RegistrationFormChecksReplaceSpoofedAuthorityFromOnePersistedEventLoad()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        Guid organizerUserId = Guid.CreateVersion7();
+        Guid attackerUserId = Guid.CreateVersion7();
+        IEventRepository repository = Substitute.For<IEventRepository>();
+        ITenantContext tenantContext = Substitute.For<ITenantContext>();
+        tenantContext.TenantId.Returns(tenantId);
+        repository.GetAuthorizationTargetsByIdsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(eventId)),
+                Arg.Any<CancellationToken>())
+            .Returns([AuthorizationEvent(tenantId, eventId, attackerUserId, organizerUserId)]);
+        IReadOnlyList<AuthorizationCheck>? captured = null;
+        _authProvider.IsAllowedBatchAsync(
+                Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                captured = call.Arg<IReadOnlyList<AuthorizationCheck>>();
+                return captured.Select(_ => true).ToArray();
+            });
+        var evaluator = new HateoasAuthorizationEvaluator(_authProvider, repository, tenantContext, _logger);
+        Dictionary<string, object> spoofed = new()
+        {
+            ["eventId"] = eventId.ToString("D"),
+            ["tenantId"] = Guid.CreateVersion7().ToString("D"),
+            ["organizerUserId"] = attackerUserId.ToString("D")
+        };
+        LinkDefinition[] links =
+        [
+            LinkDefinition.Action("publish", "Publish", "POST").WithPermission(
+                ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Publish, "form", spoofed),
+            LinkDefinition.Action("edit", "Edit", "PATCH").WithPermission(
+                ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Update, "form", spoofed),
+            LinkDefinition.Action("delete", "Delete", "DELETE").WithPermission(
+                ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Delete, "form", spoofed)
+        ];
+
+        IReadOnlyList<bool> result = await evaluator.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
+
+        await Assert.That(result.All(value => value)).IsTrue();
+        await Assert.That(captured).IsNotNull();
+        await Assert.That(captured!.All(check =>
+            check.ResourceAttributes!["tenantId"].Equals(tenantId.ToString("D")) &&
+            check.ResourceAttributes["organizerUserId"].Equals(organizerUserId.ToString("D")) &&
+            check.ResourceAttributes["userId"].Equals(attackerUserId.ToString("D")))).IsTrue();
+        await repository.Received(1).GetAuthorizationTargetsByIdsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RegistrationFormChecksFailClosedForMissingAndCrossTenantParents()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        IAuthorizationProvider authorizationProvider = Substitute.For<IAuthorizationProvider>();
+        IEventRepository repository = Substitute.For<IEventRepository>();
+        ITenantContext tenantContext = Substitute.For<ITenantContext>();
+        tenantContext.TenantId.Returns(Guid.CreateVersion7());
+        repository.GetAuthorizationTargetsByIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(),
+                Arg.Any<CancellationToken>())
+            .Returns([AuthorizationEvent(Guid.CreateVersion7(), eventId, Guid.CreateVersion7(), Guid.CreateVersion7())]);
+        var evaluator = new HateoasAuthorizationEvaluator(authorizationProvider, repository, tenantContext, _logger);
+        LinkDefinition missing = RegistrationLink(new Dictionary<string, object>());
+        LinkDefinition crossTenant = RegistrationLink(
+            new Dictionary<string, object> { ["eventId"] = eventId.ToString("D") });
+
+        IReadOnlyList<bool> result = await evaluator.AreLinksAllowedAsync(
+            [missing, crossTenant],
+            AuthenticatedUser(),
+            _httpContext);
+
+        await Assert.That(result.All(value => !value)).IsTrue();
+        await authorizationProvider.DidNotReceive().IsAllowedBatchAsync(
+            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RegistrationFormChecksFailClosedAboveRepositoryBatchBound()
+    {
+        IAuthorizationProvider authorizationProvider = Substitute.For<IAuthorizationProvider>();
+        IEventRepository repository = Substitute.For<IEventRepository>();
+        ITenantContext tenantContext = Substitute.For<ITenantContext>();
+        var evaluator = new HateoasAuthorizationEvaluator(authorizationProvider, repository, tenantContext, _logger);
+        LinkDefinition[] links = Enumerable.Range(0, IEventRepository.MaximumAuthorizationTargetBatchSize + 1)
+            .Select(_ => RegistrationLink(new Dictionary<string, object>
+            {
+                ["eventId"] = Guid.CreateVersion7().ToString("D")
+            }))
+            .ToArray();
+
+        IReadOnlyList<bool> result = await evaluator.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
+
+        await Assert.That(result.All(value => !value)).IsTrue();
+        await repository.DidNotReceive().GetAuthorizationTargetsByIdsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<CancellationToken>());
+        await authorizationProvider.DidNotReceive().IsAllowedBatchAsync(
+            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -457,6 +568,51 @@ public class HateoasAuthorizationEvaluatorTests
         check.ResourceAttributes is not null &&
         check.ResourceAttributes.TryGetValue("tenantId", out var value) &&
         string.Equals(value as string, tenantId, StringComparison.Ordinal);
+
+    private static LinkDefinition RegistrationLink(IReadOnlyDictionary<string, object> attributes) =>
+        LinkDefinition.Action("publish", "Publish", "POST").WithPermission(
+            ResourceKinds.RegistrationForm,
+            AuthorizationActions.RegistrationForms.Publish,
+            "form",
+            attributes);
+
+    private static Explore.Domain.Event AuthorizationEvent(
+        Guid tenantId,
+        Guid eventId,
+        Guid actorUserId,
+        Guid organizerUserId)
+    {
+        var actor = new Actor
+        {
+            Id = Guid.CreateVersion7(),
+            Pii = new ActorPii { DisplayName = "Contributor" },
+            ActorTypeId = 1,
+            ActorType = null!,
+            UserId = actorUserId
+        };
+        var organizer = new Actor
+        {
+            Id = Guid.CreateVersion7(),
+            Pii = new ActorPii { DisplayName = "Organizer" },
+            ActorTypeId = 1,
+            ActorType = null!,
+            UserId = organizerUserId
+        };
+        return new Explore.Domain.Event
+        {
+            Id = eventId,
+            TenantId = tenantId,
+            Tenant = null!,
+            Title = "Authorization target",
+            ActorId = actor.Id,
+            Actor = actor,
+            OrganizerActorId = organizer.Id,
+            OrganizerActor = organizer,
+            EventStatus = null!,
+            EventFormat = null!,
+            VisibilityType = null!
+        };
+    }
 
     private sealed record TestResource(string Id, string TenantId, string OrganizationId);
 }

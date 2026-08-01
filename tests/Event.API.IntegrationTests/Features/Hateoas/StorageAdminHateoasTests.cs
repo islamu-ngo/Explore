@@ -277,6 +277,8 @@ public sealed class StorageAdminHateoasTests
         var authorizationProvider = new StubAuthorizationProvider { CheckPredicate = predicate };
         return new HateoasAuthorizationEvaluator(
             authorizationProvider,
+            Substitute.For<Explore.Application.Contracts.Persistence.IEventRepository>(),
+            Substitute.For<ITenantContext>(),
             Substitute.For<ILogger<HateoasAuthorizationEvaluator>>());
     }
 

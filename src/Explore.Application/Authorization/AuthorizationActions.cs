@@ -87,6 +87,7 @@ public static class AuthorizationActions
         public const string TransferOwnership = "transfer-ownership";
         public const string ManageFinance = "manage-finance";
         public const string ManagePublicActions = "manage-public-actions";
+        public const string ManageRegistrationWorkflow = "manage-registration-workflow";
         public const string ClaimOrganizer = "claim-organizer";
         public const string WithdrawOrganizerClaim = "withdraw-organizer-claim";
         public const string ReviewOrganizerClaim = "review-organizer-claim";
@@ -94,6 +95,19 @@ public static class AuthorizationActions
         public const string ManageRegistrations = "manage-registrations";
         public const string ManageTickets = "manage-tickets";
         public const string ManageAttendees = "manage-attendees";
+    }
+
+    public static class RegistrationForms
+    {
+        public const string View = AuthorizationActions.View;
+        public const string Create = AuthorizationActions.Create;
+        public const string Update = AuthorizationActions.Update;
+        public const string Delete = AuthorizationActions.Delete;
+        public const string Preflight = "preflight";
+        public const string Publish = "publish";
+        public const string ManageRequirements = "manage-requirements";
+        public const string Attach = "attach";
+        public const string Detach = "detach";
     }
 
     /// <summary>Valid actions for the <c>islamuevent_event_session</c> resource kind.</summary>

@@ -454,11 +454,13 @@ public partial class FallbackAuthorizationService
             return false;
         }
 
-        if (resourceKind == ResourceKinds.Event
-            && action == AuthorizationActions.Events.ManageRegistrations)
+        if ((resourceKind == ResourceKinds.Event
+                && action is AuthorizationActions.Events.ManageRegistrations
+                    or AuthorizationActions.Events.ManageRegistrationWorkflow)
+            || resourceKind == ResourceKinds.RegistrationForm)
         {
             return await EvaluateManageRegistrationsAccessAsync(
-                resourceKind,
+                ResourceKinds.Event,
                 resourceId,
                 resourceAttributes,
                 tenantId,
@@ -543,8 +545,7 @@ public partial class FallbackAuthorizationService
         Guid eventId,
         CancellationToken cancellationToken)
     {
-        if (_machinePrincipalAccessor.IsMachineCaller
-            || await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
+        if (_machinePrincipalAccessor.IsMachineCaller)
         {
             return false;
         }
@@ -552,6 +553,11 @@ public partial class FallbackAuthorizationService
         if (await IsVerifiedOrganizerControllerAsync(resourceAttributes, cancellationToken))
         {
             return true;
+        }
+
+        if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
+        {
+            return false;
         }
 
         return await EvaluateEventRolePermissionAsync(

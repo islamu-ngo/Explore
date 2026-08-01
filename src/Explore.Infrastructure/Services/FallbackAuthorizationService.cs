@@ -94,7 +94,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(cancellationToken);
         if (isInstanceAdmin
             && resourceKind == ResourceKinds.Event
-            && action is AuthorizationActions.Events.ManageRegistrations or AuthorizationActions.Events.ManageTickets)
+            && action == AuthorizationActions.Events.ManageTickets)
         {
             LogDecision("deny", "event_management_requires_event_authority", resourceKind, resourceId, action);
             return false;
@@ -163,6 +163,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             "islamuevent_event_day" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_event_agenda_item" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_event_organizer_claim" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_registration_form" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
 
             "islamuevent_registration_order" => await EvaluateRegistrationOrderAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
 
@@ -308,11 +309,14 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or "islamuevent_event_session_agenda_item"
             or "islamuevent_event_day"
             or "islamuevent_event_agenda_item"
-            or "islamuevent_event_organizer_claim";
+            or "islamuevent_event_organizer_claim"
+            or "islamuevent_registration_form";
 
     private static bool RequiresDirectEventAuthority(string resourceKind, string action) =>
-        resourceKind is ResourceKinds.Event or ResourceKinds.EventOrganizerClaim &&
-        action is AuthorizationActions.Update
+        resourceKind == ResourceKinds.RegistrationForm
+            ? IsRegistrationFormAction(action)
+            : resourceKind is ResourceKinds.Event or ResourceKinds.EventOrganizerClaim &&
+              action is AuthorizationActions.Update
             or AuthorizationActions.Delete
             or AuthorizationActions.Events.Publish
             or AuthorizationActions.Events.ManageTeam
@@ -321,6 +325,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Events.ManageFinance
             or AuthorizationActions.Events.ManagePublicActions
             or AuthorizationActions.Events.ManageRegistrations
+            or AuthorizationActions.Events.ManageRegistrationWorkflow
             or AuthorizationActions.Events.ManageTickets
             or AuthorizationActions.Events.ClaimOrganizer
             or AuthorizationActions.Events.WithdrawOrganizerClaim
@@ -337,8 +342,20 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
     {
         ResourceKinds.Event => IsEventAction(action),
         ResourceKinds.EventOrganizerClaim => IsOrganizerClaimAction(action),
+        ResourceKinds.RegistrationForm => IsRegistrationFormAction(action),
         _ => true
     };
+
+    private static bool IsRegistrationFormAction(string action) =>
+        action is AuthorizationActions.RegistrationForms.View
+            or AuthorizationActions.RegistrationForms.Create
+            or AuthorizationActions.RegistrationForms.Update
+            or AuthorizationActions.RegistrationForms.Delete
+            or AuthorizationActions.RegistrationForms.Preflight
+            or AuthorizationActions.RegistrationForms.Publish
+            or AuthorizationActions.RegistrationForms.ManageRequirements
+            or AuthorizationActions.RegistrationForms.Attach
+            or AuthorizationActions.RegistrationForms.Detach;
 
     private static bool IsEventAction(string action) =>
         action is AuthorizationActions.View
@@ -356,6 +373,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Events.ManageFinance
             or AuthorizationActions.Events.ManagePublicActions
             or AuthorizationActions.Events.ManageRegistrations
+            or AuthorizationActions.Events.ManageRegistrationWorkflow
             or AuthorizationActions.Events.ManageTickets;
 
     private static bool IsTenantAdminEventAction(string action) =>
@@ -382,7 +400,18 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             : resourceKind.StartsWith(productNamespacePrefix, StringComparison.Ordinal)
                 ? resourceKind[productNamespacePrefix.Length..]
                 : resourceKind;
-        if (resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ManageRegistrations)
+        if (resourceKind is ResourceKinds.Event or ResourceKinds.RegistrationForm &&
+            action is AuthorizationActions.Events.ManageRegistrations
+                or AuthorizationActions.Events.ManageRegistrationWorkflow
+                or AuthorizationActions.RegistrationForms.View
+                or AuthorizationActions.RegistrationForms.Create
+                or AuthorizationActions.RegistrationForms.Update
+                or AuthorizationActions.RegistrationForms.Delete
+                or AuthorizationActions.RegistrationForms.Preflight
+                or AuthorizationActions.RegistrationForms.Publish
+                or AuthorizationActions.RegistrationForms.ManageRequirements
+                or AuthorizationActions.RegistrationForms.Attach
+                or AuthorizationActions.RegistrationForms.Detach)
             return PermissionCodes.EventRegistrationManage;
         if (resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ManageTickets)
             return PermissionCodes.EventManageTickets;

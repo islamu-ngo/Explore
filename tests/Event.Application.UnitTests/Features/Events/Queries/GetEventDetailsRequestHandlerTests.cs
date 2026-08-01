@@ -7,7 +7,10 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.Caching;
 using Explore.Application.Features.Events.Handlers.Queries;
 using Explore.Application.Features.Events.Requests.Queries;
+using Explore.Application.Features.RegistrationForms.Requests.Queries;
+using Explore.Application.DTOs.RegistrationForms;
 using Explore.Domain.Enums;
+using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
@@ -20,6 +23,7 @@ public class GetEventDetailsRequestHandlerTests
     private readonly IEventRepository _eventRepository;
     private readonly IEventDetailsProjectionService _detailsProjectionService;
     private readonly TestHybridCache _cache;
+    private readonly ISender _sender;
     private readonly GetEventDetailsRequestHandler _handler;
 
     public GetEventDetailsRequestHandlerTests()
@@ -27,7 +31,61 @@ public class GetEventDetailsRequestHandlerTests
         _eventRepository = Substitute.For<IEventRepository>();
         _detailsProjectionService = Substitute.For<IEventDetailsProjectionService>();
         _cache = new TestHybridCache();
-        _handler = new GetEventDetailsRequestHandler(_eventRepository, _detailsProjectionService, _cache);
+        _sender = Substitute.For<ISender>();
+        _handler = new GetEventDetailsRequestHandler(
+            _eventRepository, _detailsProjectionService, _cache, _sender);
+    }
+
+    [Test]
+    public async Task Handle_WithCacheRehydratedFlagFalse_EnrichesFromOptionalQuestionnaireQuery()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        EventDto cachedEvent = EligibleEvent(eventId);
+        cachedEvent.ParticipationConfiguration!.HasValidOptionalQuestionnaire = false;
+        var descriptor = new OptionalQuestionnaireDto(
+            eventId,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            1,
+            "en",
+            "hash",
+            "{}",
+            "{}",
+            "{}",
+            "{}",
+            Guid.CreateVersion7());
+        _detailsProjectionService.BuildAsync(eventId, Arg.Any<CancellationToken>()).Returns(cachedEvent);
+        _eventRepository.IsPubliclyEligibleAsync(cachedEvent.TenantId, eventId, Arg.Any<CancellationToken>())
+            .Returns(true);
+        _sender.Send(
+                Arg.Is<GetOptionalQuestionnaireQuery>(query => query.EventId == eventId),
+                Arg.Any<CancellationToken>())
+            .Returns(descriptor);
+
+        EventDto? result = await _handler.Handle(
+            new GetEventDetailsRequest { Id = eventId }, CancellationToken.None);
+
+        await Assert.That(result!.ParticipationConfiguration!.HasValidOptionalQuestionnaire).IsTrue();
+        await Assert.That(cachedEvent.ParticipationConfiguration.HasValidOptionalQuestionnaire).IsFalse();
+    }
+
+    [Test]
+    public async Task Handle_WhenOptionalQuestionnaireIsMissing_KeepsServerOnlyFlagFalse()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        EventDto cachedEvent = EligibleEvent(eventId);
+        _detailsProjectionService.BuildAsync(eventId, Arg.Any<CancellationToken>()).Returns(cachedEvent);
+        _eventRepository.IsPubliclyEligibleAsync(cachedEvent.TenantId, eventId, Arg.Any<CancellationToken>())
+            .Returns(true);
+        _sender.Send(Arg.Any<GetOptionalQuestionnaireQuery>(), Arg.Any<CancellationToken>())
+            .Returns((OptionalQuestionnaireDto?)null);
+
+        EventDto? result = await _handler.Handle(
+            new GetEventDetailsRequest { Id = eventId }, CancellationToken.None);
+
+        await Assert.That(result!.ParticipationConfiguration!.HasValidOptionalQuestionnaire).IsFalse();
     }
 
     private sealed class TestHybridCache : HybridCache
@@ -254,4 +312,26 @@ public class GetEventDetailsRequestHandlerTests
         await _detailsProjectionService.Received(1).BuildAsync(eventId, Arg.Any<CancellationToken>());
         await _detailsProjectionService.DidNotReceive().ResolveImageUrlsAsync(Arg.Any<EventDto>(), Arg.Any<CancellationToken>());
     }
+
+    private static EventDto EligibleEvent(Guid eventId) => new()
+    {
+        Id = eventId,
+        TenantId = Guid.CreateVersion7(),
+        Title = "Cached Event",
+        EventStatusId = (int)EventStatusEnum.Published,
+        ActorDisplayName = string.Empty,
+        ActorTypeFullName = string.Empty,
+        EventStatusFullName = "Published",
+        EventStatusMasterCode = "PUBLISHED",
+        VisibilityTypeFullName = "Public",
+        VisibilityTypeMasterCode = "PUBLIC",
+        EventFormatFullName = string.Empty,
+        EventFormatMasterCode = string.Empty,
+        ParticipationConfiguration = new EventParticipationConfigurationDto
+        {
+            EventId = eventId,
+            ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.WalkIn,
+            AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable
+        }
+    };
 }

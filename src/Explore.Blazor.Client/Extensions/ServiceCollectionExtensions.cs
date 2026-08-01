@@ -67,6 +67,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRegistrationOrderService, RegistrationOrderService>();
         services.AddScoped<IGuestRegistrationOrderCapabilityStore, GuestRegistrationOrderCapabilityStore>();
         services.AddScoped<IEventTicketingService, EventTicketingService>();
+        services.AddScoped<IRegistrationFormAuthoringService, RegistrationFormAuthoringService>();
         services.AddScoped<IPlatformMonetizationService, PlatformMonetizationService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddScoped<IGroupService, GroupService>();

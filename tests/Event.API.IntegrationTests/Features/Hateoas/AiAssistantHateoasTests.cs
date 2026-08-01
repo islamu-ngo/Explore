@@ -137,6 +137,8 @@ public sealed class AiAssistantHateoasTests
             .ToList();
         var evaluator = new HateoasAuthorizationEvaluator(
             Substitute.For<IAuthorizationProvider>(),
+            Substitute.For<Explore.Application.Contracts.Persistence.IEventRepository>(),
+            Substitute.For<ITenantContext>(),
             Substitute.For<ILogger<HateoasAuthorizationEvaluator>>());
 
         var decisions = await evaluator.AreLinksAllowedAsync(definitions, new ClaimsPrincipal(new ClaimsIdentity()), new DefaultHttpContext());

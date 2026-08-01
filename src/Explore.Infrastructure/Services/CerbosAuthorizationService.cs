@@ -8,6 +8,7 @@ using Cerbos.Sdk;
 using Cerbos.Sdk.Builder;
 using Cerbos.Sdk.Response;
 using Cerbos.Sdk.Utility;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Settings;
@@ -178,7 +179,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
             }
         }
 
-        var resourceEntries = BuildResourceEntries(checks);
+        var resourceEntries = BuildResourceEntries(checks, machineContext is not null);
 
         _logger.LogDebug(
             "Cerbos gRPC batch request: {CheckCount} checks, requestId={RequestId} correlationId={CorrelationId}",
@@ -210,7 +211,9 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         }
     }
 
-    private CerbosResourceEntry[] BuildResourceEntries(IReadOnlyList<AuthorizationCheck> checks)
+    private CerbosResourceEntry[] BuildResourceEntries(
+        IReadOnlyList<AuthorizationCheck> checks,
+        bool isMachine)
     {
         var ambientTenantId = _tenantContext.TenantId;
 
@@ -244,6 +247,12 @@ public class CerbosAuthorizationService : IAuthorizationProvider
                     (check.ResourceAttributes is null || !check.ResourceAttributes.ContainsKey("tenantId")))
                 {
                     entry = entry.WithAttribute("tenantId", AttributeValue.StringValue(effectiveTenantId));
+                }
+
+                if (check.ResourceKind == ResourceKinds.RegistrationForm &&
+                    (check.ResourceAttributes is null || !check.ResourceAttributes.ContainsKey("isMachine")))
+                {
+                    entry = entry.WithAttribute("isMachine", AttributeValue.BoolValue(isMachine));
                 }
 
                 return entry;

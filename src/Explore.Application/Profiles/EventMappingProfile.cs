@@ -53,7 +53,22 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.AdvanceRegistrationObligationCode, opt => opt.MapFrom(src => src.AdvanceRegistrationObligation != null ? src.AdvanceRegistrationObligation.MasterCode : null))
             .ForMember(dest => dest.AdvanceRegistrationObligationName, opt => opt.MapFrom(src => src.AdvanceRegistrationObligation != null ? src.AdvanceRegistrationObligation.FullName : null))
             .ForMember(dest => dest.IdentityAccessModeCode, opt => opt.MapFrom(src => src.IdentityAccessMode != null ? src.IdentityAccessMode.MasterCode : null))
-            .ForMember(dest => dest.IdentityAccessModeName, opt => opt.MapFrom(src => src.IdentityAccessMode != null ? src.IdentityAccessMode.FullName : null));
+            .ForMember(dest => dest.IdentityAccessModeName, opt => opt.MapFrom(src => src.IdentityAccessMode != null ? src.IdentityAccessMode.FullName : null))
+            .ForMember(dest => dest.HasValidOptionalQuestionnaire, opt => opt.MapFrom(src =>
+                src.RequirementAttachments.Any(attachment =>
+                    attachment.IsStandaloneQuestionnaire &&
+                    attachment.RegistrationRequirement != null &&
+                    !attachment.RegistrationRequirement.IsDeleted &&
+                    attachment.RegistrationRequirement.CompletionEffectId ==
+                        (int)RegistrationRequirementCompletionEffectEnum.NoRegistrationEffect &&
+                    attachment.RegistrationFormVersion != null &&
+                    !attachment.RegistrationFormVersion.IsDeleted &&
+                    attachment.RegistrationFormVersion.StatusId == (int)RegistrationFormStatusEnum.Published &&
+                    !string.IsNullOrWhiteSpace(attachment.RegistrationFormVersion.SchemaHash) &&
+                    !string.IsNullOrWhiteSpace(attachment.RegistrationFormVersion.DataSchemaArtifact) &&
+                    !string.IsNullOrWhiteSpace(attachment.RegistrationFormVersion.UiSchemaArtifact) &&
+                    !string.IsNullOrWhiteSpace(attachment.RegistrationFormVersion.LogicSchemaArtifact) &&
+                    !string.IsNullOrWhiteSpace(attachment.RegistrationFormVersion.MappingArtifact))));
 
         CreateMap<EventOrganizerClaim, EventOrganizerClaimDto>()
             .ForMember(dest => dest.ClaimantActorDisplayName, opt => opt.MapFrom(src => src.ClaimantActor != null ? src.ClaimantActor.DisplayName : null))

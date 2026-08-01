@@ -160,6 +160,8 @@ public sealed class EventLocationHateoasTests
         };
         var evaluator = new HateoasAuthorizationEvaluator(
             authorizationProvider,
+            Substitute.For<Explore.Application.Contracts.Persistence.IEventRepository>(),
+            Substitute.For<ITenantContext>(),
             Substitute.For<Microsoft.Extensions.Logging.ILogger<HateoasAuthorizationEvaluator>>());
         var linkGenerator = Substitute.For<IHateoasLinkGenerator>();
         linkGenerator.GenerateLink(Arg.Any<LinkDefinition>(), Arg.Any<HttpContext>())

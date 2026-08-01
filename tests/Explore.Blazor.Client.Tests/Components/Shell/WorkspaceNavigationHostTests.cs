@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Components.Shell.Workspaces;
+using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Pages.Studio;
 using Explore.Blazor.Client.Services;
@@ -27,6 +28,7 @@ public sealed class WorkspaceNavigationHostTests : IDisposable
         _ctx.Services.AddScoped<StudioEventContextState>();
         _ctx.Services.AddScoped<DockLayoutState>();
         _ctx.Services.AddScoped<IDockPanelRegistry>(p => p.GetRequiredService<DockLayoutState>());
+        _ctx.AddMockService<IStudioContextService>();
 
         var publicExperience = Substitute.For<IPublicExperienceService>();
         publicExperience.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto());

@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.EventParticipation.Handlers.Commands;
 using Explore.Application.Features.EventParticipation.Requests.Commands;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -110,6 +111,58 @@ public sealed class ConfigureEventParticipationCommandHandlerTests
         await Assert.That(configuration.ParticipationHandlingModeId)
             .IsEqualTo((int)ParticipationHandlingModeEnum.InformationOnly);
         await configurations.DidNotReceive().UpdateAsync(Arg.Any<EventParticipationConfiguration>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenModeWouldInvalidateAttachment_ReturnsStableConflictWithoutUpdate()
+    {
+        var configurations = Substitute.For<IEventParticipationConfigurationRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        Guid eventId = Guid.CreateVersion7();
+        Guid tenantId = Guid.CreateVersion7();
+        DateTime now = DateTime.UtcNow;
+        EventParticipationConfiguration configuration = EventParticipationConfiguration.Create(
+            eventId, tenantId,
+            (int)ParticipationHandlingModeEnum.PlatformManaged,
+            (int)AdvanceRegistrationObligationEnum.Required,
+            (int)IdentityAccessModeEnum.AccountRequired,
+            null,
+            now);
+        RegistrationWorkflow workflow = RegistrationWorkflow.Create(tenantId, eventId, "registration", now);
+        RegistrationRequirement requirement = RegistrationRequirement.Create(
+            workflow, 1, RegistrationRequirementCriticalityEnum.Required, false,
+            RegistrationRequirementCompletionEffectEnum.BlocksRegistration,
+            RegistrationAnswerSyncModeEnum.COMPLETION_ONLY,
+            RegistrationRequirementSubjectTypeEnum.AllOrders,
+            null,
+            now);
+        requirement.AddChannel(RegistrationChannel.Create(requirement, 1, true, null, now));
+        workflow.AddRequirement(requirement);
+        configuration.AttachRequirement(Guid.CreateVersion7(), workflow, requirement, null, false, now);
+        tenantContext.TenantId.Returns(tenantId);
+        configurations.GetByEventAndTenantAsync(eventId, tenantId, Arg.Any<CancellationToken>())
+            .Returns(configuration);
+        var handler = new ConfigureEventParticipationCommandHandler(
+            configurations,
+            tenantContext,
+            Substitute.For<HybridCache>());
+
+        BaseCommandResponse<Guid> result = await handler.Handle(new ConfigureEventParticipationCommand
+        {
+            EventId = eventId,
+            ExpectedConcurrencyStamp = configuration.ConcurrencyStamp,
+            ParticipationConfiguration = new ConfigureEventParticipationDto
+            {
+                ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.WalkIn,
+                AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo("event_participation_configuration_attachment_conflict");
+        await configurations.DidNotReceive().UpdateAsync(
+            Arg.Any<EventParticipationConfiguration>(), Arg.Any<CancellationToken>());
     }
 
     private static EventParticipationConfiguration CreateConfiguration(Guid eventId, Guid tenantId)

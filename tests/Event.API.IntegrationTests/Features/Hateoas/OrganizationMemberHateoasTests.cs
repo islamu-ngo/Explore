@@ -134,6 +134,8 @@ public sealed class OrganizationMemberHateoasTests
         var authorizationProvider = new StubAuthorizationProvider { CheckPredicate = predicate };
         var evaluator = new HateoasAuthorizationEvaluator(
             authorizationProvider,
+            Substitute.For<Explore.Application.Contracts.Persistence.IEventRepository>(),
+            Substitute.For<ITenantContext>(),
             Substitute.For<ILogger<HateoasAuthorizationEvaluator>>());
         var linkGenerator = Substitute.For<IHateoasLinkGenerator>();
         linkGenerator.GeneratePath(Arg.Any<string>(), Arg.Any<object?>(), Arg.Any<HttpContext>())

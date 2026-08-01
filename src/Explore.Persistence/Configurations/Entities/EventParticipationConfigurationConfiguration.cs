@@ -17,6 +17,7 @@ public sealed class EventParticipationConfigurationConfiguration
         builder.Property(row => row.CreatedAt).IsRequired();
         builder.Property(row => row.IsDeleted).HasDefaultValue(false);
         builder.Property(row => row.ConcurrencyStamp).IsConcurrencyToken();
+        builder.HasAlternateKey(row => new { row.TenantId, row.Id });
 
         builder.HasOne(row => row.Tenant)
             .WithMany()

@@ -372,6 +372,11 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
                 resourceAttributes,
                 cancellationToken);
 
+            if (attribute.Resource == ResourceKinds.RegistrationForm && resourceAttributes is null)
+            {
+                throw new AuthorizationException(attribute.Resource, attribute.Action);
+            }
+
             BindPersistedUserOwner(request, resourceAttributes);
 
             await EnforceAuthorizationAsync(
@@ -451,6 +456,13 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
             ResourceKinds.EventOrganizerClaim => TryGetGuidAttribute(resourceAttributes, "eventId", out var eventId)
                 ? await EnrichEventResourceAttributesAsync(eventId.ToString("D"), resourceAttributes, cancellationToken)
                 : resourceAttributes,
+            ResourceKinds.RegistrationForm => resourceAttributes is not null &&
+                                                 TryGetGuidAttribute(resourceAttributes, "eventId", out var registrationEventId)
+                ? await EnrichRegistrationFormResourceAttributesAsync(
+                    registrationEventId,
+                    resourceAttributes,
+                    cancellationToken)
+                : null,
             ResourceKinds.EventSession => await EnrichEventSessionResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.OrganizationMember => await EnrichOrganizationMemberResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.StorageObject => await EnrichStorageObjectResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
@@ -588,6 +600,45 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         AddIfMissing(enriched, "organizerOrganizationId", eventEntity.OrganizerActor?.OrganizationId);
         AddIfMissing(enriched, "organizerGroupId", eventEntity.OrganizerActor?.GroupId);
 
+        return enriched;
+    }
+
+    private async Task<IDictionary<string, object>?> EnrichRegistrationFormResourceAttributesAsync(
+        Guid eventId,
+        IDictionary<string, object> resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        if (_eventRepository is null)
+        {
+            return null;
+        }
+
+        var eventEntity = await _eventRepository.GetEventWithDetails(eventId);
+        if (eventEntity is null || _tenantContext is not null && eventEntity.TenantId != _tenantContext.TenantId)
+        {
+            return null;
+        }
+
+        var enriched = new Dictionary<string, object>(resourceAttributes);
+        foreach (string key in new[]
+                 {
+                     "tenantId", "eventId", "actorId", "userId", "organizationId", "groupId",
+                     "organizerActorId", "organizerUserId", "organizerOrganizationId", "organizerGroupId"
+                 })
+        {
+            enriched.Remove(key);
+        }
+
+        enriched["eventId"] = eventEntity.Id.ToString("D");
+        enriched["tenantId"] = eventEntity.TenantId.ToString("D");
+        AddIfMissing(enriched, "actorId", eventEntity.ActorId);
+        AddIfMissing(enriched, "userId", eventEntity.Actor?.UserId);
+        AddIfMissing(enriched, "organizationId", eventEntity.Actor?.OrganizationId);
+        AddIfMissing(enriched, "groupId", eventEntity.Actor?.GroupId);
+        AddIfMissing(enriched, "organizerActorId", eventEntity.OrganizerActorId);
+        AddIfMissing(enriched, "organizerUserId", eventEntity.OrganizerActor?.UserId);
+        AddIfMissing(enriched, "organizerOrganizationId", eventEntity.OrganizerActor?.OrganizationId);
+        AddIfMissing(enriched, "organizerGroupId", eventEntity.OrganizerActor?.GroupId);
         return enriched;
     }
 

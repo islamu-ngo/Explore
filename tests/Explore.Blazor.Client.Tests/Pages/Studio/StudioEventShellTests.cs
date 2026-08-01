@@ -20,6 +20,7 @@ public sealed class StudioEventShellTests : IDisposable
     {
         _eventService = _ctx.AddMockService<IEventService>();
         _ctx.AddMockService<IEventTicketingService>();
+        _ctx.AddMockService<IRegistrationFormAuthoringService>();
         _ctx.AddMockService<IEventDayService>();
         _ctx.AddMockService<Explore.Blazor.Client.Contracts.Services.Accessibility.IAccessibilityAnnouncerService>();
         _ctx.AddMockService<Explore.Blazor.Client.Contracts.Services.Accessibility.IAccessibilityFocusService>();
@@ -98,6 +99,37 @@ public sealed class StudioEventShellTests : IDisposable
         var editor = cut.FindComponent<EventTicketCatalogEditor>();
         await Assert.That(editor.Instance.CanManageTicketTypes).IsEqualTo(canManageTicketTypes);
         await Assert.That(editor.Instance.CanManageCapacityPools).IsEqualTo(canManageCapacityPools);
+    }
+
+    [Test]
+    public async Task FormsRoute_WithoutManageRegistrationWorkflowRelation_FailsClosed()
+    {
+        var resource = CreateEvent();
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        _ctx.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo($"/studio/events/{resource.Id}/forms");
+
+        var cut = _ctx.RenderMudComponent<StudioEventShell>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='registration-forms-route-unavailable']");
+        await Assert.That(cut.FindAll("[data-testid='registration-form-builder']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task FormsRoute_WithManageRegistrationWorkflowRelation_UsesSameShellBuilder()
+    {
+        var resource = CreateEvent("manage-registration-workflow");
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        _ctx.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo($"/studio/events/{resource.Id}/forms");
+
+        var cut = _ctx.RenderMudComponent<StudioEventShell>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='registration-form-builder']");
+        await Assert.That(cut.FindAll("h1").Count).IsEqualTo(1);
+        await _eventService.Received(1).GetEventByIdAsync(resource.Id.Value);
     }
 
     private static EventDto CreateEvent(params string[] relations)

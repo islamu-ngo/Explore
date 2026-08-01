@@ -5,6 +5,7 @@
 @page "/studio/events/{EventId:guid}/registration"
 @page "/studio/events/{EventId:guid}/tickets"
 @page "/studio/events/{EventId:guid}/orders"
+@page "/studio/events/{EventId:guid}/forms"
 @page "/studio/events/{EventId:guid}/publication"
 @using Blazouter.Services
 @using Microsoft.AspNetCore.Authorization
@@ -96,6 +97,19 @@
                     <StudioOrderList EventId="EventId" />
                 }
             }
+            else if (Section == "forms")
+            {
+                @if (!CanManageRegistrationWorkflow)
+                {
+                    <div class="studio-event-shell__state" role="alert" data-testid="registration-forms-route-unavailable">
+                        Registration form management is not available for this event.
+                    </div>
+                }
+                else
+                {
+                    <Explore.Blazor.Client.Pages.Studio.RegistrationForms.RegistrationFormBuilder EventId="EventId" />
+                }
+            }
             else
             {
                 <div class="studio-event-shell__actions">
@@ -124,6 +138,7 @@
         "registration" => "Registration",
         "tickets" => "Tickets",
         "orders" => "Orders",
+        "forms" => "Forms",
         "publication" => "Publication",
         _ => "Details"
     };
@@ -133,6 +148,7 @@
         "registration" => "Define how people participate, whether advance registration applies, and which identity options are available.",
         "tickets" => "Define ticket types, shared capacity pools, prices, limits, and admission entitlements.",
         "orders" => "Review registration order status and server-calculated commercial snapshots.",
+        "forms" => "Author versioned registration questions, conditional rules, and publication readiness.",
         "publication" => "Review and edit publication details in the existing event editor.",
         _ => "Edit this event using the existing event editor."
     };
@@ -143,6 +159,7 @@
     private bool CanManageCapacityPools => Resource?.HasHalLink("manage-capacity-pools") == true;
     private bool CanManageTickets => CanManageTicketTypes || CanManageCapacityPools;
     private bool CanViewOrders => Resource?.HasHalLink("view-registration-orders") == true;
+    private bool CanManageRegistrationWorkflow => Resource?.HasHalLink("manage-registration-workflow") == true;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -165,6 +182,7 @@
             : path.EndsWith("/registration", StringComparison.OrdinalIgnoreCase) ? "registration"
             : path.EndsWith("/tickets", StringComparison.OrdinalIgnoreCase) ? "tickets"
             : path.EndsWith("/orders", StringComparison.OrdinalIgnoreCase) ? "orders"
+            : path.EndsWith("/forms", StringComparison.OrdinalIgnoreCase) ? "forms"
             : path.EndsWith("/publication", StringComparison.OrdinalIgnoreCase) ? "publication"
             : "details";
     }

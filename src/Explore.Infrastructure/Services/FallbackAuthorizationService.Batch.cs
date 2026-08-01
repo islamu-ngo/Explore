@@ -146,7 +146,10 @@ public partial class FallbackAuthorizationService
             "islamuevent_group" => action is "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "islamuevent_group_member" => action is "view" or "create" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "islamuevent_event" when action is "create" => IsEventCreateAllowedForProfile(profile, resourceAttributes),
-            "islamuevent_event" when action == AuthorizationActions.Events.ManageRegistrations
+            "islamuevent_event" when action is AuthorizationActions.Events.ManageRegistrations
+                or AuthorizationActions.Events.ManageRegistrationWorkflow
+                => EvaluateManageRegistrationsWithProfile(profile, eventAuthority, resourceId, resourceAttributes),
+            "islamuevent_registration_form"
                 => EvaluateManageRegistrationsWithProfile(profile, eventAuthority, resourceId, resourceAttributes),
             "islamuevent_event" when action == AuthorizationActions.Events.ManageTickets
                 => EvaluateManageTicketsWithProfile(profile, eventAuthority, resourceId, resourceAttributes),
@@ -202,15 +205,19 @@ public partial class FallbackAuthorizationService
         string resourceId,
         IDictionary<string, object>? resourceAttributes)
     {
-        if (profile.IsInstanceAdmin
-            || profile.IsTenantAdmin
-            || !HasEventContextForProfile(profile, ResourceKinds.Event, resourceId, resourceAttributes))
+        if (!HasEventContextForProfile(profile, ResourceKinds.Event, resourceId, resourceAttributes))
         {
             return false;
         }
 
-        return IsVerifiedOrganizerControllerFromProfile(profile, resourceAttributes)
-            || HasEventRolePermission(
+        if (IsVerifiedOrganizerControllerFromProfile(profile, resourceAttributes))
+        {
+            return true;
+        }
+
+        return !profile.IsInstanceAdmin
+            && !profile.IsTenantAdmin
+            && HasEventRolePermission(
                 eventAuthority,
                 ResourceKinds.Event,
                 resourceId,

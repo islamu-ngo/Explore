@@ -113,7 +113,8 @@ public sealed class OrderRecoveryTests : IDisposable
             .Add(component => component.OrderId, order.Id.Value));
 
         cut.WaitForAssertion(() => Assert.That(cut.Markup).Contains("Continue registration"));
-        await cut.FindAll("button").Single(button => button.TextContent.Contains("Continue registration", StringComparison.Ordinal)).ClickAsync(new());
+        await cut.InvokeAsync(() => cut.FindAll("button").Single(button =>
+            button.TextContent.Contains("Continue registration", StringComparison.Ordinal)).Click());
 
         await _service.Received(1).ContinueCurrentAsync(order.EventId.Value, order.Id.Value, null, Arg.Any<CancellationToken>());
         await _service.DidNotReceive().FinalizeCurrentAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -131,7 +132,8 @@ public sealed class OrderRecoveryTests : IDisposable
             .Add(component => component.OrderId, order.Id.Value));
 
         cut.WaitForAssertion(() => Assert.That(cut.Markup).Contains("Finalize registration"));
-        await cut.FindAll("button").Single(button => button.TextContent.Contains("Finalize registration", StringComparison.Ordinal)).ClickAsync(new());
+        await cut.InvokeAsync(() => cut.FindAll("button").Single(button =>
+            button.TextContent.Contains("Finalize registration", StringComparison.Ordinal)).Click());
 
         await _service.Received(1).FinalizeCurrentAsync(order.EventId.Value, order.Id.Value, Arg.Any<CancellationToken>());
         await _service.DidNotReceive().ContinueCurrentAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
@@ -154,7 +156,8 @@ public sealed class OrderRecoveryTests : IDisposable
             .Add(component => component.OrderId, order.Id.Value));
 
         cut.WaitForAssertion(() => Assert.That(cut.Markup).Contains("Platform contribution"));
-        await cut.FindAll("button").Single(button => button.TextContent.Contains("Continue registration", StringComparison.Ordinal)).ClickAsync(new());
+        await cut.InvokeAsync(() => cut.FindAll("button").Single(button =>
+            button.TextContent.Contains("Continue registration", StringComparison.Ordinal)).Click());
 
         await _service.Received(1).ContinueCurrentAsync(order.EventId.Value, order.Id.Value, 500, Arg.Any<CancellationToken>());
     }

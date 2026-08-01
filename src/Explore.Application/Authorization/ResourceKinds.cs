@@ -19,6 +19,7 @@ public static class ResourceKinds
     public const string EventSessionAgendaItem = "islamuevent_event_session_agenda_item";
     public const string EventDay = "islamuevent_event_day";
     public const string EventAgendaItem = "islamuevent_event_agenda_item";
+    public const string RegistrationForm = "islamuevent_registration_form";
     public const string RegistrationOrder = "islamuevent_registration_order";
     public const string EventOrganizerClaim = "islamuevent_event_organizer_claim";
     public const string EventContactShareConsent = "islamuevent_event_contact_share_consent";

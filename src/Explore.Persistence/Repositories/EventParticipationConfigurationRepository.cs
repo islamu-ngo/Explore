@@ -33,5 +33,10 @@ public sealed class EventParticipationConfigurationRepository(ExploreDbContext d
         dbContext.EventParticipationConfigurations
             .Include(configuration => configuration.ParticipationHandlingMode)
             .Include(configuration => configuration.AdvanceRegistrationObligation)
-            .Include(configuration => configuration.IdentityAccessMode);
+            .Include(configuration => configuration.IdentityAccessMode)
+            .Include(configuration => configuration.RequirementAttachments)
+            .ThenInclude(attachment => attachment.RegistrationRequirement)
+            .ThenInclude(requirement => requirement!.Channels)
+            .Include(configuration => configuration.RequirementAttachments)
+            .ThenInclude(attachment => attachment.RegistrationFormVersion);
 }

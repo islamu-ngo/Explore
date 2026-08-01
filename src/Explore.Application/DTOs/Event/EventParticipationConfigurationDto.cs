@@ -1,6 +1,7 @@
 // ABOUTME: Generated-contract-ready event participation read DTO.
 // ABOUTME: Carries normalized lookup facts, scalar recovery policy, and concurrency metadata without legacy flags.
 
+using System.Text.Json.Serialization;
 using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.Event;
@@ -23,4 +24,7 @@ public sealed class EventParticipationConfigurationDto
     public string? IdentityAccessModeName { get; set; }
 
     public GuestRecoveryPolicyEnum? GuestRecoveryPolicy { get; set; }
+
+    [JsonIgnore]
+    public bool HasValidOptionalQuestionnaire { get; set; }
 }

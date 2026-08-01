@@ -220,6 +220,8 @@ public static class PersistenceServicesRegistration
         // Event Repositories
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IEventParticipationConfigurationRepository, EventParticipationConfigurationRepository>();
+        services.AddScoped<IRegistrationFormAuthoringRepository, RegistrationFormAuthoringRepository>();
+        services.AddScoped<IParticipationRequirementAttachmentRepository, ParticipationRequirementAttachmentRepository>();
         services.AddScoped<IEventTicketCatalogRepository, EventTicketCatalogRepository>();
         services.AddScoped<IRegistrationInventoryRepository, RegistrationInventoryRepository>();
         services.AddScoped<IRegistrationParticipantRepository, RegistrationParticipantRepository>();

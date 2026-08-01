@@ -87,6 +87,13 @@ public sealed class ConfigureEventParticipationCommandHandler(
                 "Event participation configuration is invalid.",
                 exception.Errors.Select(error => $"{error.Code}: {error.Message}"));
         }
+        catch (InvalidOperationException)
+        {
+            return Failure(
+                request.EventId,
+                "event_participation_configuration_attachment_conflict",
+                "Existing registration requirement attachments are incompatible with the requested participation mode.");
+        }
 
         await configurations.UpdateAsync(configuration, cancellationToken);
         await cache.RemoveAsync($"event:detail:{request.EventId}", cancellationToken);

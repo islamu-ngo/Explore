@@ -6,8 +6,12 @@ namespace Explore.API.Hateoas;
 using System.Diagnostics;
 using System.Reflection;
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Hateoas;
+using Explore.Domain;
+using Explore.Domain.Constants;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
@@ -16,13 +20,19 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
     private static readonly ActivitySource HateoasAuthorizationSource = new("Explore.Hateoas.Authorization");
 
     private readonly IAuthorizationProvider _authorizationProvider;
+    private readonly IEventRepository _eventRepository;
+    private readonly ITenantContext _tenantContext;
     private readonly ILogger<HateoasAuthorizationEvaluator> _logger;
 
     public HateoasAuthorizationEvaluator(
         IAuthorizationProvider authorizationProvider,
+        IEventRepository eventRepository,
+        ITenantContext tenantContext,
         ILogger<HateoasAuthorizationEvaluator> logger)
     {
         _authorizationProvider = authorizationProvider;
+        _eventRepository = eventRepository;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -70,6 +80,22 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             }
 
             pendingChecks.Add((i, check, check.ToDeduplicationKey()));
+        }
+
+        if (pendingChecks.Count == 0)
+            return results;
+
+        try
+        {
+            pendingChecks = await EnrichRegistrationFormChecksAsync(
+                pendingChecks,
+                results,
+                httpContext.RequestAborted);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "HATEOAS trusted registration-form context resolution failed; denying permission-bound links.");
+            return results;
         }
 
         if (pendingChecks.Count == 0)
@@ -176,6 +202,82 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
     private static bool RequiresExplicitPermissionAction(LinkDefinition definition) =>
         !string.IsNullOrWhiteSpace(definition.PermissionResourceKind) &&
         string.IsNullOrWhiteSpace(definition.PermissionAction);
+
+    private async Task<List<(int Index, AuthorizationCheck Check, string Key)>> EnrichRegistrationFormChecksAsync(
+        List<(int Index, AuthorizationCheck Check, string Key)> pendingChecks,
+        bool[] results,
+        CancellationToken cancellationToken)
+    {
+        Guid[] eventIds = pendingChecks
+            .Where(item => item.Check.ResourceKind == ResourceKinds.RegistrationForm)
+            .Select(item => EventId(item.Check.ResourceAttributes))
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToArray();
+        if (!pendingChecks.Any(item => item.Check.ResourceKind == ResourceKinds.RegistrationForm))
+            return pendingChecks;
+        if (eventIds.Length > IEventRepository.MaximumAuthorizationTargetBatchSize)
+            throw new InvalidOperationException("Registration-form HAL event batch exceeds the authorization lookup bound.");
+
+        IReadOnlyDictionary<Guid, Event> events = eventIds.Length == 0
+            ? new Dictionary<Guid, Event>()
+            : (await _eventRepository.GetAuthorizationTargetsByIdsAsync(eventIds, cancellationToken))
+                .Where(item => item.TenantId == _tenantContext.TenantId)
+                .ToDictionary(item => item.Id);
+        var enriched = new List<(int Index, AuthorizationCheck Check, string Key)>(pendingChecks.Count);
+        foreach ((int index, AuthorizationCheck check, string key) in pendingChecks)
+        {
+            if (check.ResourceKind != ResourceKinds.RegistrationForm)
+            {
+                enriched.Add((index, check, key));
+                continue;
+            }
+
+            if (!events.TryGetValue(EventId(check.ResourceAttributes), out Event? eventEntity))
+            {
+                results[index] = false;
+                continue;
+            }
+
+            var attributes = check.ResourceAttributes is null
+                ? new Dictionary<string, object>()
+                : new Dictionary<string, object>(check.ResourceAttributes);
+            foreach (string authorityKey in AuthorityAttributeKeys)
+                attributes.Remove(authorityKey);
+            attributes["eventId"] = eventEntity.Id.ToString("D");
+            attributes["tenantId"] = eventEntity.TenantId.ToString("D");
+            Add(attributes, "actorId", eventEntity.ActorId);
+            Add(attributes, "userId", eventEntity.Actor?.UserId);
+            Add(attributes, "organizationId", eventEntity.Actor?.OrganizationId);
+            Add(attributes, "groupId", eventEntity.Actor?.GroupId);
+            Add(attributes, "organizerActorId", eventEntity.OrganizerActorId);
+            Add(attributes, "organizerUserId", eventEntity.OrganizerActor?.UserId);
+            Add(attributes, "organizerOrganizationId", eventEntity.OrganizerActor?.OrganizationId);
+            Add(attributes, "organizerGroupId", eventEntity.OrganizerActor?.GroupId);
+            var trusted = check with { ResourceAttributes = attributes };
+            enriched.Add((index, trusted, trusted.ToDeduplicationKey()));
+        }
+
+        return enriched;
+    }
+
+    private static Guid EventId(IReadOnlyDictionary<string, object>? attributes) =>
+        attributes?.TryGetValue("eventId", out object? value) == true
+            && Guid.TryParse(value?.ToString(), out Guid eventId)
+                ? eventId
+                : Guid.Empty;
+
+    private static void Add(Dictionary<string, object> attributes, string key, Guid? value)
+    {
+        if (value is { } id)
+            attributes[key] = id.ToString("D");
+    }
+
+    private static readonly string[] AuthorityAttributeKeys =
+    [
+        "tenantId", "eventId", "actorId", "userId", "organizationId", "groupId",
+        "organizerActorId", "organizerUserId", "organizerOrganizationId", "organizerGroupId"
+    ];
 
     private static string? ExtractResourceId(object? routeValues)
     {
