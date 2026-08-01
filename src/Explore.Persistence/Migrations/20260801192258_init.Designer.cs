@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260801000023_init")]
+    [Migration("20260801192258_init")]
     partial class init
     {
         /// <inheritdoc />
@@ -5689,6 +5689,9 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_event_participation_configurations");
 
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_participation_configurations_tenant_id_id");
+
                     b.HasIndex("AdvanceRegistrationObligationId")
                         .HasDatabaseName("ix_event_participation_configurations_advance_registration_obl");
 
@@ -5697,10 +5700,6 @@ namespace Explore.Persistence.Migrations
 
                     b.HasIndex("ParticipationHandlingModeId")
                         .HasDatabaseName("ix_event_participation_configurations_participation_handling_m");
-
-                    b.HasIndex("TenantId", "Id")
-                        .IsUnique()
-                        .HasDatabaseName("ix_event_participation_configurations_tenant_id_id");
 
                     b.ToTable("event_participation_configurations", (string)null);
                 });
@@ -15607,6 +15606,112 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("participation_handling_modes", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.ParticipationRequirementAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsStandaloneQuestionnaire")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_standalone_questionnaire");
+
+                    b.Property<Guid>("ParticipationConfigurationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("participation_configuration_id");
+
+                    b.Property<Guid?>("RegistrationFormId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_id");
+
+                    b.Property<Guid?>("RegistrationFormVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_version_id");
+
+                    b.Property<Guid>("RegistrationRequirementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_requirement_id");
+
+                    b.Property<Guid>("RegistrationWorkflowId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_workflow_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_participation_requirement_attachments");
+
+                    b.HasIndex("ParticipationConfigurationId", "IsStandaloneQuestionnaire")
+                        .IsUnique()
+                        .HasDatabaseName("ix_participation_requirement_attachments_participation_configu")
+                        .HasFilter("is_deleted = false AND is_standalone_questionnaire = true");
+
+                    b.HasIndex("ParticipationConfigurationId", "RegistrationRequirementId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_participation_requirement_attachments_participation_configu1")
+                        .HasFilter("is_deleted = false");
+
+                    b.HasIndex("TenantId", "EventId")
+                        .HasDatabaseName("ix_participation_requirement_attachments_tenant_id_event_id");
+
+                    b.HasIndex("TenantId", "ParticipationConfigurationId")
+                        .HasDatabaseName("ix_participation_requirement_attachments_tenant_id_participati");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId")
+                        .HasDatabaseName("ix_participation_requirement_attachments_tenant_id_event_id_re");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId")
+                        .HasDatabaseName("ix_participation_requirement_attachments_tenant_id_event_id_re1");
+
+                    b.ToTable("participation_requirement_attachments", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_participation_requirement_attachments_configuration_event", "event_id = participation_configuration_id");
+
+                            t.HasCheckConstraint("ck_participation_requirement_attachments_questionnaire_form", "(is_standalone_questionnaire = true AND registration_form_id IS NOT NULL AND registration_form_version_id IS NOT NULL) OR (is_standalone_questionnaire = false AND registration_form_id IS NULL AND registration_form_version_id IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.Permission", b =>
                 {
                     b.Property<int>("Id")
@@ -16659,6 +16764,752 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("registration_channels", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.RegistrationFieldType", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_field_types");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_field_types_master_code");
+
+                    b.ToTable("registration_field_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationForm", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Namespace")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("namespace");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_forms");
+
+                    b.HasAlternateKey("TenantId", "EventId", "Id")
+                        .HasName("ak_registration_forms_tenant_id_event_id_id");
+
+                    b.HasIndex("TenantId", "EventId", "Namespace", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_forms_tenant_id_event_id_namespace_key")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("registration_forms", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormField", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AllowedUrlSchemes")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("allowed_url_schemes");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<string>("ConsentPurposeCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("consent_purpose_code");
+
+                    b.Property<string>("ConsentTextVersion")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("consent_text_version");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<int>("FieldTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("field_type_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsMulti")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_multi");
+
+                    b.Property<bool>("IsProviderTransferAllowed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_provider_transfer_allowed");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_required");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("label");
+
+                    b.Property<DateTimeOffset?>("MaxDateTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("max_date_time");
+
+                    b.Property<int?>("MaxLength")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_length");
+
+                    b.Property<decimal?>("MaxNumber")
+                        .HasColumnType("numeric")
+                        .HasColumnName("max_number");
+
+                    b.Property<DateTimeOffset?>("MinDateTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("min_date_time");
+
+                    b.Property<int?>("MinLength")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_length");
+
+                    b.Property<decimal?>("MinNumber")
+                        .HasColumnType("numeric")
+                        .HasColumnName("min_number");
+
+                    b.Property<string>("Namespace")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("namespace");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
+                    b.Property<int>("OrganizerVisibilityId")
+                        .HasColumnType("integer")
+                        .HasColumnName("organizer_visibility_id");
+
+                    b.Property<string>("RegexPattern")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("regex_pattern");
+
+                    b.Property<Guid>("RegistrationFormId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_id");
+
+                    b.Property<Guid>("RegistrationFormSectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_section_id");
+
+                    b.Property<Guid>("RegistrationFormVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_version_id");
+
+                    b.Property<bool>("RequiresExplicitConsent")
+                        .HasColumnType("boolean")
+                        .HasColumnName("requires_explicit_consent");
+
+                    b.Property<int>("RetentionPolicyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("retention_policy_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_form_fields");
+
+                    b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Id")
+                        .HasName("ak_registration_form_fields_tenant_id_event_id_registration_fo");
+
+                    b.HasIndex("FieldTypeId")
+                        .HasDatabaseName("ix_registration_form_fields_field_type_id");
+
+                    b.HasIndex("OrganizerVisibilityId")
+                        .HasDatabaseName("ix_registration_form_fields_organizer_visibility_id");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Namespace", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_form_fields_tenant_id_event_id_registration_fo")
+                        .HasFilter("is_deleted = false");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Ordinal")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_form_fields_tenant_id_event_id_registration_fo1")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("registration_form_fields", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text_version IS NOT NULL AND length(btrim(consent_purpose_code)) > 0 AND length(btrim(consent_text_version)) > 0) OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text_version IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormFieldOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("label");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
+                    b.Property<Guid>("RegistrationFormFieldId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_field_id");
+
+                    b.Property<Guid>("RegistrationFormId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_id");
+
+                    b.Property<Guid>("RegistrationFormSectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_section_id");
+
+                    b.Property<Guid>("RegistrationFormVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_version_id");
+
+                    b.Property<DateTime?>("RetiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retired_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_form_field_options");
+
+                    b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "Id")
+                        .HasName("ak_registration_form_field_options_tenant_id_event_id_registra");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "RegistrationFormFieldId", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_form_field_options_tenant_id_event_id_registra")
+                        .HasFilter("is_deleted = false");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "RegistrationFormFieldId", "Ordinal")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_form_field_options_tenant_id_event_id_registra1")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("registration_form_field_options", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<string>("Condition")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("condition");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<int>("Effect")
+                        .HasColumnType("integer")
+                        .HasColumnName("effect");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
+                    b.Property<Guid>("RegistrationFormId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_id");
+
+                    b.Property<Guid>("RegistrationFormVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_version_id");
+
+                    b.Property<string>("TargetKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("target_key");
+
+                    b.Property<string>("TargetNamespace")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("target_namespace");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_form_rules");
+
+                    b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
+                        .HasName("ak_registration_form_rules_tenant_id_event_id_registration_for");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Ordinal")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_form_rules_tenant_id_event_id_registration_for")
+                        .HasFilter("is_deleted = false");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "TargetNamespace", "TargetKey")
+                        .HasDatabaseName("ix_registration_form_rules_tenant_id_event_id_registration_for1");
+
+                    b.ToTable("registration_form_rules", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_registration_form_rules_effect", "effect BETWEEN 1 AND 4");
+
+                            t.HasCheckConstraint("ck_registration_form_rules_ordinal_positive", "ordinal > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormSection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
+                    b.Property<Guid>("RegistrationFormId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_id");
+
+                    b.Property<Guid>("RegistrationFormVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_version_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_form_sections");
+
+                    b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
+                        .HasName("ak_registration_form_sections_tenant_id_event_id_registration_");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Ordinal")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_form_sections_tenant_id_event_id_registration_")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("registration_form_sections", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_form_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_form_statuses_master_code");
+
+                    b.ToTable("registration_form_statuses", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("DataSchemaArtifact")
+                        .HasColumnType("text")
+                        .HasColumnName("data_schema_artifact");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("LanguageTag")
+                        .IsRequired()
+                        .HasMaxLength(35)
+                        .HasColumnType("character varying(35)")
+                        .HasColumnName("language_tag");
+
+                    b.Property<string>("LogicSchemaArtifact")
+                        .HasColumnType("text")
+                        .HasColumnName("logic_schema_artifact");
+
+                    b.Property<string>("MappingArtifact")
+                        .HasColumnType("text")
+                        .HasColumnName("mapping_artifact");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<Guid>("RegistrationFormId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_form_id");
+
+                    b.Property<DateTime?>("RetiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retired_at");
+
+                    b.Property<string>("SchemaHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("schema_hash");
+
+                    b.Property<Guid?>("SourceTemplateFormId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_template_form_id");
+
+                    b.Property<Guid?>("SourceTemplateVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_template_version_id");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("UiSchemaArtifact")
+                        .HasColumnType("text")
+                        .HasColumnName("ui_schema_artifact");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_form_versions");
+
+                    b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "Id")
+                        .HasName("ak_registration_form_versions_tenant_id_event_id_registration_");
+
+                    b.HasIndex("StatusId")
+                        .HasDatabaseName("ix_registration_form_versions_status_id");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationFormId", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_form_versions_tenant_id_event_id_registration_")
+                        .HasFilter("is_deleted = false");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationFormId", "StatusId", "LanguageTag")
+                        .HasDatabaseName("ix_registration_form_versions_tenant_id_event_id_registration_1");
+
+                    b.ToTable("registration_form_versions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_registration_form_versions_schema_artifacts", "(status_id = 1 AND schema_hash IS NULL AND data_schema_artifact IS NULL AND ui_schema_artifact IS NULL AND logic_schema_artifact IS NULL AND mapping_artifact IS NULL) OR (status_id IN (2, 3) AND schema_hash IS NOT NULL AND data_schema_artifact IS NOT NULL AND ui_schema_artifact IS NOT NULL AND logic_schema_artifact IS NOT NULL AND mapping_artifact IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.RegistrationInventoryHold", b =>
                 {
                     b.Property<Guid>("Id")
@@ -17246,6 +18097,39 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_registration_order_statuses_master_code");
 
                     b.ToTable("registration_order_statuses", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationOrganizerVisibility", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_organizer_visibilities");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_organizer_visibilities_master_code");
+
+                    b.ToTable("registration_organizer_visibilities", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationParticipant", b =>
@@ -28825,6 +29709,44 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.ParticipationRequirementAttachment", b =>
+                {
+                    b.HasOne("Explore.Domain.EventParticipationConfiguration", null)
+                        .WithMany("RequirementAttachments")
+                        .HasForeignKey("TenantId", "ParticipationConfigurationId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_participation_requirement_attachments_event_participation_c");
+
+                    b.HasOne("Explore.Domain.RegistrationWorkflow", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationWorkflowId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_participation_requirement_attachments_registration_workflow");
+
+                    b.HasOne("Explore.Domain.RegistrationFormVersion", "RegistrationFormVersion")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_participation_requirement_attachments_registration_form_ver");
+
+                    b.HasOne("Explore.Domain.RegistrationRequirement", "RegistrationRequirement")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_participation_requirement_attachments_registration_requirem");
+
+                    b.Navigation("RegistrationFormVersion");
+
+                    b.Navigation("RegistrationRequirement");
+                });
+
             modelBuilder.Entity("Explore.Domain.Permission", b =>
                 {
                     b.HasOne("Explore.Domain.RoleScope", "RoleScope")
@@ -31168,6 +32090,149 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_registration_channels_registration_requirements_tenant_id_e");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationForm", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_forms_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_forms_events_tenant_id_event_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormField", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationFieldType", "FieldType")
+                        .WithMany()
+                        .HasForeignKey("FieldTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_fields_registration_field_types_field_typ");
+
+                    b.HasOne("Explore.Domain.RegistrationOrganizerVisibility", "OrganizerVisibility")
+                        .WithMany()
+                        .HasForeignKey("OrganizerVisibilityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_fields_registration_organizer_visibilitie");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_fields_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationFormSection", null)
+                        .WithMany("Fields")
+                        .HasForeignKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_fields_registration_form_sections_tenant_");
+
+                    b.Navigation("FieldType");
+
+                    b.Navigation("OrganizerVisibility");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormFieldOption", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_field_options_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationFormField", null)
+                        .WithMany("Options")
+                        .HasForeignKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_field_options_registration_form_fields_te");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormRule", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_rules_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationFormVersion", null)
+                        .WithMany("Rules")
+                        .HasForeignKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_rules_registration_form_versions_tenant_i");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormSection", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_sections_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationFormVersion", null)
+                        .WithMany("Sections")
+                        .HasForeignKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_sections_registration_form_versions_tenan");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormVersion", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationFormStatus", "Status")
+                        .WithMany()
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_versions_registration_form_statuses_statu");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_versions_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_versions_events_tenant_id_event_id");
+
+                    b.HasOne("Explore.Domain.RegistrationForm", null)
+                        .WithMany("Versions")
+                        .HasForeignKey("TenantId", "EventId", "RegistrationFormId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_versions_registration_forms_tenant_id_eve");
+
+                    b.Navigation("Status");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationInventoryHold", b =>
@@ -33855,6 +34920,11 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("ChildOptions");
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventParticipationConfiguration", b =>
+                {
+                    b.Navigation("RequirementAttachments");
+                });
+
             modelBuilder.Entity("Explore.Domain.EventReport", b =>
                 {
                     b.Navigation("Cases");
@@ -34016,6 +35086,28 @@ namespace Explore.Persistence.Migrations
             modelBuilder.Entity("Explore.Domain.PlatformFeePolicy", b =>
                 {
                     b.Navigation("FixedCharges");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationForm", b =>
+                {
+                    b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormField", b =>
+                {
+                    b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormSection", b =>
+                {
+                    b.Navigation("Fields");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormVersion", b =>
+                {
+                    b.Navigation("Rules");
+
+                    b.Navigation("Sections");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrder", b =>

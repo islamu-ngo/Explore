@@ -1542,6 +1542,34 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "registration_field_types",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_field_types", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_form_statuses",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_form_statuses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "registration_inventory_hold_statuses",
                 columns: table => new
                 {
@@ -1581,6 +1609,20 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_registration_order_statuses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_organizer_visibilities",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_organizer_visibilities", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -6945,6 +6987,7 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_event_participation_configurations", x => x.id);
+                    table.UniqueConstraint("ak_event_participation_configurations_tenant_id_id", x => new { x.tenant_id, x.id });
                     table.ForeignKey(
                         name: "fk_event_participation_configurations_advance_registration_obl",
                         column: x => x.advance_registration_obligation_id,
@@ -7305,6 +7348,43 @@ namespace Explore.Persistence.Migrations
                         name: "fk_organization_reviews_users_user_id",
                         column: x => x.user_id,
                         principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_forms",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_forms", x => x.id);
+                    table.UniqueConstraint("ak_registration_forms_tenant_id_event_id_id", x => new { x.tenant_id, x.event_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_registration_forms_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_forms_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -8295,6 +8375,66 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "registration_form_versions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_form_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    version = table.Column<int>(type: "integer", nullable: false),
+                    status_id = table.Column<int>(type: "integer", nullable: false),
+                    language_tag = table.Column<string>(type: "character varying(35)", maxLength: 35, nullable: false),
+                    schema_hash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    data_schema_artifact = table.Column<string>(type: "text", nullable: true),
+                    ui_schema_artifact = table.Column<string>(type: "text", nullable: true),
+                    logic_schema_artifact = table.Column<string>(type: "text", nullable: true),
+                    mapping_artifact = table.Column<string>(type: "text", nullable: true),
+                    published_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    retired_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    source_template_form_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_template_version_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_form_versions", x => x.id);
+                    table.UniqueConstraint("ak_registration_form_versions_tenant_id_event_id_registration_", x => new { x.tenant_id, x.event_id, x.registration_form_id, x.id });
+                    table.CheckConstraint("ck_registration_form_versions_schema_artifacts", "(status_id = 1 AND schema_hash IS NULL AND data_schema_artifact IS NULL AND ui_schema_artifact IS NULL AND logic_schema_artifact IS NULL AND mapping_artifact IS NULL) OR (status_id IN (2, 3) AND schema_hash IS NOT NULL AND data_schema_artifact IS NOT NULL AND ui_schema_artifact IS NOT NULL AND logic_schema_artifact IS NOT NULL AND mapping_artifact IS NOT NULL)");
+                    table.ForeignKey(
+                        name: "fk_registration_form_versions_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_form_versions_registration_form_statuses_statu",
+                        column: x => x.status_id,
+                        principalTable: "registration_form_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_form_versions_registration_forms_tenant_id_eve",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_form_id },
+                        principalTable: "registration_forms",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_form_versions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "registration_requirements",
                 columns: table => new
                 {
@@ -9272,6 +9412,140 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "registration_form_rules",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_form_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_form_version_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ordinal = table.Column<int>(type: "integer", nullable: false),
+                    target_namespace = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    target_key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    effect = table.Column<int>(type: "integer", nullable: false),
+                    condition = table.Column<string>(type: "text", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_form_rules", x => x.id);
+                    table.UniqueConstraint("ak_registration_form_rules_tenant_id_event_id_registration_for", x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.id });
+                    table.CheckConstraint("ck_registration_form_rules_effect", "effect BETWEEN 1 AND 4");
+                    table.CheckConstraint("ck_registration_form_rules_ordinal_positive", "ordinal > 0");
+                    table.ForeignKey(
+                        name: "fk_registration_form_rules_registration_form_versions_tenant_i",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id },
+                        principalTable: "registration_form_versions",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_form_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_form_rules_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_form_sections",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_form_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_form_version_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ordinal = table.Column<int>(type: "integer", nullable: false),
+                    title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_form_sections", x => x.id);
+                    table.UniqueConstraint("ak_registration_form_sections_tenant_id_event_id_registration_", x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_registration_form_sections_registration_form_versions_tenan",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id },
+                        principalTable: "registration_form_versions",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_form_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_form_sections_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "participation_requirement_attachments",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    participation_configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_workflow_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_requirement_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_form_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    registration_form_version_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_standalone_questionnaire = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_participation_requirement_attachments", x => x.id);
+                    table.CheckConstraint("ck_participation_requirement_attachments_configuration_event", "event_id = participation_configuration_id");
+                    table.CheckConstraint("ck_participation_requirement_attachments_questionnaire_form", "(is_standalone_questionnaire = true AND registration_form_id IS NOT NULL AND registration_form_version_id IS NOT NULL) OR (is_standalone_questionnaire = false AND registration_form_id IS NULL AND registration_form_version_id IS NULL)");
+                    table.ForeignKey(
+                        name: "fk_participation_requirement_attachments_event_participation_c",
+                        columns: x => new { x.tenant_id, x.participation_configuration_id },
+                        principalTable: "event_participation_configurations",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_participation_requirement_attachments_registration_form_ver",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id },
+                        principalTable: "registration_form_versions",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_form_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_participation_requirement_attachments_registration_requirem",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id },
+                        principalTable: "registration_requirements",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_participation_requirement_attachments_registration_workflow",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id },
+                        principalTable: "registration_workflows",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "registration_channels",
                 columns: table => new
                 {
@@ -9625,6 +9899,119 @@ namespace Explore.Persistence.Migrations
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_registration_ticket_assignments_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_form_fields",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_form_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_form_version_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_form_section_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ordinal = table.Column<int>(type: "integer", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    label = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    field_type_id = table.Column<int>(type: "integer", nullable: false),
+                    retention_policy_id = table.Column<int>(type: "integer", nullable: false),
+                    organizer_visibility_id = table.Column<int>(type: "integer", nullable: false),
+                    requires_explicit_consent = table.Column<bool>(type: "boolean", nullable: false),
+                    consent_purpose_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    consent_text_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    is_provider_transfer_allowed = table.Column<bool>(type: "boolean", nullable: false),
+                    is_required = table.Column<bool>(type: "boolean", nullable: false),
+                    is_multi = table.Column<bool>(type: "boolean", nullable: false),
+                    min_length = table.Column<int>(type: "integer", nullable: true),
+                    max_length = table.Column<int>(type: "integer", nullable: true),
+                    regex_pattern = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    min_number = table.Column<decimal>(type: "numeric", nullable: true),
+                    max_number = table.Column<decimal>(type: "numeric", nullable: true),
+                    min_date_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    max_date_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    allowed_url_schemes = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_form_fields", x => x.id);
+                    table.UniqueConstraint("ak_registration_form_fields_tenant_id_event_id_registration_fo", x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.registration_form_section_id, x.id });
+                    table.CheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text_version IS NOT NULL AND length(btrim(consent_purpose_code)) > 0 AND length(btrim(consent_text_version)) > 0) OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text_version IS NULL)");
+                    table.ForeignKey(
+                        name: "fk_registration_form_fields_registration_field_types_field_typ",
+                        column: x => x.field_type_id,
+                        principalTable: "registration_field_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_form_fields_registration_form_sections_tenant_",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.registration_form_section_id },
+                        principalTable: "registration_form_sections",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_form_fields_registration_organizer_visibilitie",
+                        column: x => x.organizer_visibility_id,
+                        principalTable: "registration_organizer_visibilities",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_form_fields_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_form_field_options",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_form_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_form_version_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_form_section_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_form_field_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ordinal = table.Column<int>(type: "integer", nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    label = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    retired_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_form_field_options", x => x.id);
+                    table.UniqueConstraint("ak_registration_form_field_options_tenant_id_event_id_registra", x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.registration_form_section_id, x.registration_form_field_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_registration_form_field_options_registration_form_fields_te",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.registration_form_section_id, x.registration_form_field_id },
+                        principalTable: "registration_form_fields",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "registration_form_section_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_form_field_options_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
@@ -12627,12 +13014,6 @@ namespace Explore.Persistence.Migrations
                 column: "participation_handling_mode_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_participation_configurations_tenant_id_id",
-                table: "event_participation_configurations",
-                columns: new[] { "tenant_id", "id" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "ix_event_provenance_types_master_code",
                 table: "event_provenance_types",
                 column: "master_code",
@@ -14667,6 +15048,40 @@ namespace Explore.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_participation_requirement_attachments_participation_configu",
+                table: "participation_requirement_attachments",
+                columns: new[] { "participation_configuration_id", "is_standalone_questionnaire" },
+                unique: true,
+                filter: "is_deleted = false AND is_standalone_questionnaire = true");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_participation_requirement_attachments_participation_configu1",
+                table: "participation_requirement_attachments",
+                columns: new[] { "participation_configuration_id", "registration_requirement_id" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_participation_requirement_attachments_tenant_id_event_id",
+                table: "participation_requirement_attachments",
+                columns: new[] { "tenant_id", "event_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_participation_requirement_attachments_tenant_id_event_id_re",
+                table: "participation_requirement_attachments",
+                columns: new[] { "tenant_id", "event_id", "registration_form_id", "registration_form_version_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_participation_requirement_attachments_tenant_id_event_id_re1",
+                table: "participation_requirement_attachments",
+                columns: new[] { "tenant_id", "event_id", "registration_workflow_id", "registration_requirement_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_participation_requirement_attachments_tenant_id_participati",
+                table: "participation_requirement_attachments",
+                columns: new[] { "tenant_id", "participation_configuration_id" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_pds_sync_outbox_atproto_record_id",
                 table: "pds_sync_outbox",
                 column: "atproto_record_id");
@@ -14871,6 +15286,99 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "tenant_id", "event_id", "registration_workflow_id", "registration_requirement_id" });
 
             migrationBuilder.CreateIndex(
+                name: "ix_registration_field_types_master_code",
+                table: "registration_field_types",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_form_field_options_tenant_id_event_id_registra",
+                table: "registration_form_field_options",
+                columns: new[] { "tenant_id", "event_id", "registration_form_version_id", "registration_form_field_id", "key" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_form_field_options_tenant_id_event_id_registra1",
+                table: "registration_form_field_options",
+                columns: new[] { "tenant_id", "event_id", "registration_form_version_id", "registration_form_field_id", "ordinal" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_form_fields_field_type_id",
+                table: "registration_form_fields",
+                column: "field_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_form_fields_organizer_visibility_id",
+                table: "registration_form_fields",
+                column: "organizer_visibility_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_form_fields_tenant_id_event_id_registration_fo",
+                table: "registration_form_fields",
+                columns: new[] { "tenant_id", "event_id", "registration_form_version_id", "namespace", "key" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_form_fields_tenant_id_event_id_registration_fo1",
+                table: "registration_form_fields",
+                columns: new[] { "tenant_id", "event_id", "registration_form_version_id", "registration_form_section_id", "ordinal" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_form_rules_tenant_id_event_id_registration_for",
+                table: "registration_form_rules",
+                columns: new[] { "tenant_id", "event_id", "registration_form_version_id", "ordinal" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_form_rules_tenant_id_event_id_registration_for1",
+                table: "registration_form_rules",
+                columns: new[] { "tenant_id", "event_id", "registration_form_version_id", "target_namespace", "target_key" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_form_sections_tenant_id_event_id_registration_",
+                table: "registration_form_sections",
+                columns: new[] { "tenant_id", "event_id", "registration_form_version_id", "ordinal" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_form_statuses_master_code",
+                table: "registration_form_statuses",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_form_versions_status_id",
+                table: "registration_form_versions",
+                column: "status_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_form_versions_tenant_id_event_id_registration_",
+                table: "registration_form_versions",
+                columns: new[] { "tenant_id", "event_id", "registration_form_id", "version" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_form_versions_tenant_id_event_id_registration_1",
+                table: "registration_form_versions",
+                columns: new[] { "tenant_id", "event_id", "registration_form_id", "status_id", "language_tag" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_forms_tenant_id_event_id_namespace_key",
+                table: "registration_forms",
+                columns: new[] { "tenant_id", "event_id", "namespace", "key" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_registration_inventory_hold_statuses_master_code",
                 table: "registration_inventory_hold_statuses",
                 column: "master_code",
@@ -14958,6 +15466,12 @@ namespace Explore.Persistence.Migrations
                 name: "ix_registration_orders_tenant_id_ticket_catalog_version_id",
                 table: "registration_orders",
                 columns: new[] { "tenant_id", "ticket_catalog_version_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_organizer_visibilities_master_code",
+                table: "registration_organizer_visibilities",
+                column: "master_code",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_registration_participant_pii_tenant_id_normalized_email",
@@ -16932,9 +17446,6 @@ namespace Explore.Persistence.Migrations
                 name: "event_organizer_claims");
 
             migrationBuilder.DropTable(
-                name: "event_participation_configurations");
-
-            migrationBuilder.DropTable(
                 name: "event_public_actions");
 
             migrationBuilder.DropTable(
@@ -17067,6 +17578,9 @@ namespace Explore.Persistence.Migrations
                 name: "owner_types");
 
             migrationBuilder.DropTable(
+                name: "participation_requirement_attachments");
+
+            migrationBuilder.DropTable(
                 name: "pds_sync_outbox");
 
             migrationBuilder.DropTable(
@@ -17092,6 +17606,12 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "registration_channels");
+
+            migrationBuilder.DropTable(
+                name: "registration_form_field_options");
+
+            migrationBuilder.DropTable(
+                name: "registration_form_rules");
 
             migrationBuilder.DropTable(
                 name: "registration_inventory_holds");
@@ -17268,15 +17788,6 @@ namespace Explore.Persistence.Migrations
                 name: "event_organizer_claim_statuses");
 
             migrationBuilder.DropTable(
-                name: "advance_registration_obligations");
-
-            migrationBuilder.DropTable(
-                name: "identity_access_modes");
-
-            migrationBuilder.DropTable(
-                name: "participation_handling_modes");
-
-            migrationBuilder.DropTable(
                 name: "event_public_action_health_states");
 
             migrationBuilder.DropTable(
@@ -17343,6 +17854,9 @@ namespace Explore.Persistence.Migrations
                 name: "organization_positions");
 
             migrationBuilder.DropTable(
+                name: "event_participation_configurations");
+
+            migrationBuilder.DropTable(
                 name: "platform_contribution_settings");
 
             migrationBuilder.DropTable(
@@ -17353,6 +17867,9 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "registration_requirements");
+
+            migrationBuilder.DropTable(
+                name: "registration_form_fields");
 
             migrationBuilder.DropTable(
                 name: "registration_inventory_hold_statuses");
@@ -17505,6 +18022,15 @@ namespace Explore.Persistence.Migrations
                 name: "notification_intents");
 
             migrationBuilder.DropTable(
+                name: "advance_registration_obligations");
+
+            migrationBuilder.DropTable(
+                name: "identity_access_modes");
+
+            migrationBuilder.DropTable(
+                name: "participation_handling_modes");
+
+            migrationBuilder.DropTable(
                 name: "erasure_intents",
                 schema: "privacy_erasure_authority");
 
@@ -17522,6 +18048,15 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "registration_workflows");
+
+            migrationBuilder.DropTable(
+                name: "registration_field_types");
+
+            migrationBuilder.DropTable(
+                name: "registration_form_sections");
+
+            migrationBuilder.DropTable(
+                name: "registration_organizer_visibilities");
 
             migrationBuilder.DropTable(
                 name: "event_ticket_types");
@@ -17584,6 +18119,9 @@ namespace Explore.Persistence.Migrations
                 name: "notification_recipient_kinds");
 
             migrationBuilder.DropTable(
+                name: "registration_form_versions");
+
+            migrationBuilder.DropTable(
                 name: "event_capacity_pools");
 
             migrationBuilder.DropTable(
@@ -17615,6 +18153,12 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "notification_delivery_policies");
+
+            migrationBuilder.DropTable(
+                name: "registration_form_statuses");
+
+            migrationBuilder.DropTable(
+                name: "registration_forms");
 
             migrationBuilder.DropTable(
                 name: "capacity_hold_policies");
