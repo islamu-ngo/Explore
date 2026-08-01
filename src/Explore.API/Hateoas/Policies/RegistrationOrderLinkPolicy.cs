@@ -22,6 +22,15 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                 RequiresAuth: true)
             .RequirePermission(AuthorizationActions.RegistrationOrders.View, ResourceKinds.RegistrationOrder, dto.Id.ToString("D"), Attributes(dto));
 
+        yield return new LinkDefinition(
+                LinkRelations.ViewParticipants,
+                RouteNames.GetAuthenticatedRegistrationOrderParticipants,
+                new { eventId = dto.EventId, orderId = dto.Id },
+                HttpMethods.Get,
+                "View participants",
+                RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.RegistrationOrders.View, ResourceKinds.RegistrationOrder, dto.Id.ToString("D"), Attributes(dto));
+
         if (dto.StatusCode is "AWAITING_REQUIREMENTS" or "READY_FOR_CHECKOUT")
         {
             yield return new LinkDefinition(

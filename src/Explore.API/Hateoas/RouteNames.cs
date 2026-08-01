@@ -257,6 +257,16 @@ public static class RouteNames
     public const string FinalizeAuthenticatedRegistrationOrder = "FinalizeAuthenticatedRegistrationOrder";
     public const string CancelAuthenticatedRegistrationOrder = "CancelAuthenticatedRegistrationOrder";
     public const string GetEventRegistrationOrders = "GetEventRegistrationOrders";
+    public const string GetGuestRegistrationOrderParticipants = "GetGuestRegistrationOrderParticipants";
+    public const string AddGuestRegistrationOrderParticipant = "AddGuestRegistrationOrderParticipant";
+    public const string UpdateGuestRegistrationOrderParticipant = "UpdateGuestRegistrationOrderParticipant";
+    public const string AssignGuestRegistrationOrderTickets = "AssignGuestRegistrationOrderTickets";
+    public const string DeferGuestRegistrationOrderTickets = "DeferGuestRegistrationOrderTickets";
+    public const string GetAuthenticatedRegistrationOrderParticipants = "GetAuthenticatedRegistrationOrderParticipants";
+    public const string AddAuthenticatedRegistrationOrderParticipant = "AddAuthenticatedRegistrationOrderParticipant";
+    public const string UpdateAuthenticatedRegistrationOrderParticipant = "UpdateAuthenticatedRegistrationOrderParticipant";
+    public const string AssignAuthenticatedRegistrationOrderTickets = "AssignAuthenticatedRegistrationOrderTickets";
+    public const string DeferAuthenticatedRegistrationOrderTickets = "DeferAuthenticatedRegistrationOrderTickets";
     public const string GetStudioContext = "GetStudioContext";
 
     #endregion

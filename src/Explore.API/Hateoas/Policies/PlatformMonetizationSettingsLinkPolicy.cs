@@ -15,8 +15,7 @@ public sealed class PlatformMonetizationSettingsLinkPolicy : ILinkPolicy<Platfor
     public IEnumerable<LinkDefinition> GetLinks(PlatformMonetizationSettingsDto dto, ClaimsPrincipal? user)
     {
         yield return LinkDefinition.Self(RouteNames.GetInstancePlatformMonetizationSettings)
-            .RequirePermission(
-                AuthorizationActions.InstanceSettings.View,
+            .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 GetPlatformMonetizationSettingsQuery.SettingKey,
                 Attributes());
@@ -27,8 +26,7 @@ public sealed class PlatformMonetizationSettingsLinkPolicy : ILinkPolicy<Platfor
                 null,
                 HttpMethods.Put,
                 RequiresAuth: true)
-            .RequirePermission(
-                AuthorizationActions.InstanceSettings.Update,
+            .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 GetPlatformMonetizationSettingsQuery.SettingKey,
                 Attributes());

@@ -148,8 +148,7 @@ public sealed class EventTicketCatalogManagementLinkPolicy : ILinkPolicy<EventTi
     private static LinkDefinition Manage(
         LinkDefinition link,
         EventTicketCatalogManagementDto catalog) =>
-        link.RequirePermission(
-            AuthorizationActions.Events.ManageTickets,
+        link.RequirePermission(AuthorizationActions.Events.ManageTickets,
             ResourceKinds.Event,
             catalog.EventId.ToString("D"),
             BuildEventAttributes(catalog),

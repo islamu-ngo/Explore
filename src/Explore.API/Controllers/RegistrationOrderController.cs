@@ -123,6 +123,88 @@ public sealed class RegistrationOrderController(
         return response is null ? this.ToNotFoundProblem(RegistrationOrderNotFoundProblem) : Ok(ToGuestHalResource(response));
     }
 
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [PrivateNoStore]
+    [HttpGet("guest/{orderId:guid}/participants", Name = RouteNames.GetGuestRegistrationOrderParticipants)]
+    [EndpointSummary("Get guest registration participants")]
+    [ProducesResponseType(typeof(HalResource<RegistrationOrderParticipantsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<RegistrationOrderParticipantsDto>>> GetGuestParticipants(
+        Guid eventId,
+        Guid orderId,
+        [FromHeader(Name = CapabilityHeader)] string? capability,
+        CancellationToken cancellationToken = default)
+    {
+        RegistrationOrderParticipantsDto? response = await mediator.Send(
+            new GetGuestRegistrationOrderParticipantsQuery(eventId, orderId, capability), cancellationToken);
+        return response is null
+            ? this.ToNotFoundProblem(RegistrationOrderNotFoundProblem)
+            : Ok(ToParticipantsHalResource(response, eventId, guest: true));
+    }
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.PublicTransactional)]
+    [EnableRateLimiting(RateLimitingExtensions.PublicTransactionalPolicy)]
+    [RequireIdempotencyKey]
+    [HttpPost("guest/{orderId:guid}/participants", Name = RouteNames.AddGuestRegistrationOrderParticipant)]
+    [EndpointSummary("Add guest registration participant")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> AddGuestParticipant(
+        Guid eventId, Guid orderId, [FromHeader(Name = CapabilityHeader)] string? capability,
+        [FromBody] RegistrationParticipantRequest request, CancellationToken cancellationToken = default) =>
+        MutateGuest(eventId, orderId, capability,
+            new AddRegistrationParticipantCommand(orderId, request.ParticipantTypeId, request.GuardianParticipantId, request.Details),
+            cancellationToken);
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.PublicTransactional)]
+    [EnableRateLimiting(RateLimitingExtensions.PublicTransactionalPolicy)]
+    [RequireIdempotencyKey]
+    [HttpPut("guest/{orderId:guid}/participants/{participantId:guid}", Name = RouteNames.UpdateGuestRegistrationOrderParticipant)]
+    [EndpointSummary("Update guest registration participant")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> UpdateGuestParticipant(
+        Guid eventId, Guid orderId, Guid participantId, [FromHeader(Name = CapabilityHeader)] string? capability,
+        [FromBody] RegistrationParticipantRequest request, CancellationToken cancellationToken = default) =>
+        MutateGuest(eventId, orderId, capability,
+            new UpdateRegistrationParticipantCommand(orderId, participantId, request.ParticipantTypeId, request.GuardianParticipantId, request.Details),
+            cancellationToken);
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.PublicTransactional)]
+    [EnableRateLimiting(RateLimitingExtensions.PublicTransactionalPolicy)]
+    [RequireIdempotencyKey]
+    [HttpPut("guest/{orderId:guid}/assignments", Name = RouteNames.AssignGuestRegistrationOrderTickets)]
+    [EndpointSummary("Assign guest registration tickets")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> AssignGuestTickets(
+        Guid eventId, Guid orderId, [FromHeader(Name = CapabilityHeader)] string? capability,
+        [FromBody] RegistrationTicketAssignmentsRequest request, CancellationToken cancellationToken = default) =>
+        MutateGuest(eventId, orderId, capability,
+            new BulkAssignRegistrationTicketsCommand(orderId, request.Assignments), cancellationToken);
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.PublicTransactional)]
+    [EnableRateLimiting(RateLimitingExtensions.PublicTransactionalPolicy)]
+    [RequireIdempotencyKey]
+    [HttpPut("guest/{orderId:guid}/assignments/deferred", Name = RouteNames.DeferGuestRegistrationOrderTickets)]
+    [EndpointSummary("Defer guest registration ticket assignments")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> DeferGuestTickets(
+        Guid eventId, Guid orderId, [FromHeader(Name = CapabilityHeader)] string? capability,
+        [FromBody] RegistrationTicketDeferralsRequest request, CancellationToken cancellationToken = default) =>
+        MutateGuest(eventId, orderId, capability,
+            new BulkDeferRegistrationTicketsCommand(orderId, request.Assignments, request.AssignmentDeadline), cancellationToken);
+
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
@@ -279,6 +361,91 @@ public sealed class RegistrationOrderController(
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
+    [PrivateNoStore]
+    [HttpGet("{orderId:guid}/participants", Name = RouteNames.GetAuthenticatedRegistrationOrderParticipants)]
+    [EndpointSummary("Get registration participants")]
+    [ProducesResponseType(typeof(HalResource<RegistrationOrderParticipantsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<RegistrationOrderParticipantsDto>>> GetAuthenticatedParticipants(
+        Guid eventId, Guid orderId, CancellationToken cancellationToken = default)
+    {
+        RegistrationOrderParticipantsDto? response = await mediator.Send(
+            new GetAuthenticatedRegistrationOrderParticipantsQuery(eventId, orderId), cancellationToken);
+        return response is null
+            ? this.ToNotFoundProblem(RegistrationOrderNotFoundProblem)
+            : Ok(ToParticipantsHalResource(response, eventId, guest: false));
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [HttpPost("{orderId:guid}/participants", Name = RouteNames.AddAuthenticatedRegistrationOrderParticipant)]
+    [EndpointSummary("Add registration participant")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> AddAuthenticatedParticipant(
+        Guid eventId, Guid orderId, [FromBody] RegistrationParticipantRequest request,
+        CancellationToken cancellationToken = default) =>
+        MutateAuthenticated(eventId, orderId,
+            new AddRegistrationParticipantCommand(orderId, request.ParticipantTypeId, request.GuardianParticipantId, request.Details),
+            cancellationToken);
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [HttpPut("{orderId:guid}/participants/{participantId:guid}", Name = RouteNames.UpdateAuthenticatedRegistrationOrderParticipant)]
+    [EndpointSummary("Update registration participant")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAuthenticatedParticipant(
+        Guid eventId, Guid orderId, Guid participantId, [FromBody] RegistrationParticipantRequest request,
+        CancellationToken cancellationToken = default) =>
+        MutateAuthenticated(eventId, orderId,
+            new UpdateRegistrationParticipantCommand(orderId, participantId, request.ParticipantTypeId, request.GuardianParticipantId, request.Details),
+            cancellationToken);
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [HttpPut("{orderId:guid}/assignments", Name = RouteNames.AssignAuthenticatedRegistrationOrderTickets)]
+    [EndpointSummary("Assign registration tickets")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> AssignAuthenticatedTickets(
+        Guid eventId, Guid orderId, [FromBody] RegistrationTicketAssignmentsRequest request,
+        CancellationToken cancellationToken = default) =>
+        MutateAuthenticated(eventId, orderId,
+            new BulkAssignRegistrationTicketsCommand(orderId, request.Assignments), cancellationToken);
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [HttpPut("{orderId:guid}/assignments/deferred", Name = RouteNames.DeferAuthenticatedRegistrationOrderTickets)]
+    [EndpointSummary("Defer registration ticket assignments")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> DeferAuthenticatedTickets(
+        Guid eventId, Guid orderId, [FromBody] RegistrationTicketDeferralsRequest request,
+        CancellationToken cancellationToken = default) =>
+        MutateAuthenticated(eventId, orderId,
+            new BulkDeferRegistrationTicketsCommand(orderId, request.Assignments, request.AssignmentDeadline), cancellationToken);
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [HttpPost("{orderId:guid}/continue", Name = RouteNames.ContinueAuthenticatedRegistrationOrder)]
     [EndpointSummary("Continue authenticated registration order")]
@@ -356,6 +523,53 @@ public sealed class RegistrationOrderController(
             "registration_order_not_found" => this.ToNotFoundProblem(RegistrationOrderNotFoundProblem),
             _ => this.ToCommandValidationProblem(response, RegistrationOrderValidationProblem)
         };
+
+    private async Task<ActionResult<BaseCommandResponse<Guid>>> MutateGuest(
+        Guid eventId, Guid orderId, string? capability, IRegistrationParticipantMutation mutation,
+        CancellationToken cancellationToken) => MapParticipantMutation(await mediator.Send(
+            new MutateGuestRegistrationParticipantsCommand(eventId, orderId, capability, mutation), cancellationToken));
+
+    private async Task<ActionResult<BaseCommandResponse<Guid>>> MutateAuthenticated(
+        Guid eventId, Guid orderId, IRegistrationParticipantMutation mutation,
+        CancellationToken cancellationToken) => MapParticipantMutation(await mediator.Send(
+            new MutateAuthenticatedRegistrationParticipantsCommand(eventId, orderId, mutation), cancellationToken));
+
+    private ActionResult<BaseCommandResponse<Guid>> MapParticipantMutation(BaseCommandResponse<Guid> response) =>
+        response.Success
+            ? Ok(response)
+            : response.FailureCode == "registration_order_not_found"
+                ? this.ToNotFoundProblem(RegistrationOrderNotFoundProblem)
+                : this.ToCommandValidationProblem(response, RegistrationOrderValidationProblem);
+
+    private HalResource<RegistrationOrderParticipantsDto> ToParticipantsHalResource(
+        RegistrationOrderParticipantsDto participants, Guid eventId, bool guest)
+    {
+        string prefix = guest ? "guest/" : string.Empty;
+        var values = new { eventId, orderId = participants.RegistrationOrderId };
+        string selfRoute = guest
+            ? RouteNames.GetGuestRegistrationOrderParticipants
+            : RouteNames.GetAuthenticatedRegistrationOrderParticipants;
+        var resource = new HalResource<RegistrationOrderParticipantsDto>(participants)
+            .WithLink(LinkRelations.Self, HalLink.Create(Url.Link(selfRoute, values)!));
+        if (!participants.CanManage)
+        {
+            return resource;
+        }
+
+        resource.WithLink(LinkRelations.AddParticipant, HalLink.CreateAction(
+            Url.Link(guest ? RouteNames.AddGuestRegistrationOrderParticipant : RouteNames.AddAuthenticatedRegistrationOrderParticipant, values)!, HttpMethods.Post));
+        resource.WithLink(LinkRelations.UpdateParticipant, new HalLink
+        {
+            Href = $"/api/events/{eventId:D}/registration-orders/{prefix}{participants.RegistrationOrderId:D}/participants/{{participantId}}",
+            Templated = true,
+            Method = HttpMethods.Put
+        });
+        resource.WithLink(LinkRelations.AssignTickets, HalLink.CreateAction(
+            Url.Link(guest ? RouteNames.AssignGuestRegistrationOrderTickets : RouteNames.AssignAuthenticatedRegistrationOrderTickets, values)!, HttpMethods.Put));
+        resource.WithLink(LinkRelations.DeferTickets, HalLink.CreateAction(
+            Url.Link(guest ? RouteNames.DeferGuestRegistrationOrderTickets : RouteNames.DeferAuthenticatedRegistrationOrderTickets, values)!, HttpMethods.Put));
+        return resource;
+    }
 
     private ActionResult<BaseCommandResponse<Guid>> MapAuthenticatedStartFailure(BaseCommandResponse<Guid> response) =>
         response.FailureCode switch

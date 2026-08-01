@@ -78,6 +78,29 @@ public sealed class RegistrationOrderControllerTests
         await AssertRoute<RegistrationOrderController, HttpDeleteAttribute>(
             nameof(RegistrationOrderController.CancelAuthenticated), "{orderId:guid}", RouteNames.CancelAuthenticatedRegistrationOrder,
             EndpointClass.Authenticated, requiresIdempotency: false);
+        await AssertRoute<RegistrationOrderController, HttpGetAttribute>(
+            nameof(RegistrationOrderController.GetAuthenticatedParticipants), "{orderId:guid}/participants", RouteNames.GetAuthenticatedRegistrationOrderParticipants,
+            EndpointClass.Authenticated, requiresIdempotency: false);
+        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
+            nameof(RegistrationOrderController.AddAuthenticatedParticipant), "{orderId:guid}/participants", RouteNames.AddAuthenticatedRegistrationOrderParticipant,
+            EndpointClass.Authenticated, requiresIdempotency: true);
+    }
+
+    [Test]
+    public async Task GuestParticipantRoutes_KeepCapabilityInHeaderAndWritesTransactional()
+    {
+        await AssertRoute<RegistrationOrderController, HttpGetAttribute>(
+            nameof(RegistrationOrderController.GetGuestParticipants), "guest/{orderId:guid}/participants", RouteNames.GetGuestRegistrationOrderParticipants,
+            EndpointClass.Public, requiresIdempotency: false);
+        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
+            nameof(RegistrationOrderController.AddGuestParticipant), "guest/{orderId:guid}/participants", RouteNames.AddGuestRegistrationOrderParticipant,
+            EndpointClass.PublicTransactional, requiresIdempotency: true);
+
+        MethodInfo read = typeof(RegistrationOrderController).GetMethod(nameof(RegistrationOrderController.GetGuestParticipants))!;
+        ParameterInfo capability = read.GetParameters()
+            .Single(parameter => parameter.GetCustomAttribute<FromHeaderAttribute>()?.Name == CapabilityHeader);
+        await Assert.That(capability.ParameterType).IsEqualTo(typeof(string));
+        await Assert.That(read.GetCustomAttribute<PrivateNoStoreAttribute>()).IsNotNull();
     }
 
     [Test]
@@ -187,6 +210,30 @@ public sealed class RegistrationOrderControllerTests
         var notFound = result.Result as ObjectResult;
         await Assert.That(notFound?.StatusCode).IsEqualTo(StatusCodes.Status404NotFound);
         await Assert.That(JsonSerializer.Serialize(notFound?.Value)).DoesNotContain("guessed-capability");
+    }
+
+    [Test]
+    public async Task ParticipantHalMutationRelationsFollowServerManageDecision()
+    {
+        var mediator = Substitute.For<IMediator>();
+        var eventId = Guid.CreateVersion7();
+        var orderId = Guid.CreateVersion7();
+        var viewOnly = new RegistrationOrderParticipantsDto(orderId, [], []);
+        var manageable = viewOnly with { CanManage = true };
+        mediator.Send(Arg.Any<GetAuthenticatedRegistrationOrderParticipantsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(viewOnly, manageable);
+        var controller = CreateController(mediator);
+
+        var organizerResult = await controller.GetAuthenticatedParticipants(eventId, orderId);
+        var ownerResult = await controller.GetAuthenticatedParticipants(eventId, orderId);
+        var organizerResource = (organizerResult.Result as OkObjectResult)?.Value as HalResource<RegistrationOrderParticipantsDto>;
+        var ownerResource = (ownerResult.Result as OkObjectResult)?.Value as HalResource<RegistrationOrderParticipantsDto>;
+
+        await Assert.That(organizerResource!.Links.Keys).IsEquivalentTo([LinkRelations.Self]);
+        await Assert.That(ownerResource!.Links.Keys).Contains(LinkRelations.AddParticipant);
+        await Assert.That(ownerResource.Links.Keys).Contains(LinkRelations.UpdateParticipant);
+        await Assert.That(ownerResource.Links.Keys).Contains(LinkRelations.AssignTickets);
+        await Assert.That(ownerResource.Links.Keys).Contains(LinkRelations.DeferTickets);
     }
 
     [Test]

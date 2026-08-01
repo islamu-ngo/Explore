@@ -24,13 +24,14 @@ public sealed class RegistrationOrderLinkPolicyTests
         var links = new RegistrationOrderLinkPolicy().GetLinks(order, null).ToList();
 
         await Assert.That(links.Select(link => link.Rel)).IsEquivalentTo(
-            [LinkRelations.Self, LinkRelations.Cancel]);
+            [LinkRelations.Self, LinkRelations.ViewParticipants, LinkRelations.Cancel]);
         await Assert.That(links.All(link => link.PermissionResourceKind == ResourceKinds.RegistrationOrder)).IsTrue();
         await Assert.That(links.Single(link => link.Rel == LinkRelations.Self).PermissionAction)
             .IsEqualTo(AuthorizationActions.RegistrationOrders.View);
         await Assert.That(links.Single(link => link.Rel == LinkRelations.Cancel).PermissionAction)
             .IsEqualTo(AuthorizationActions.RegistrationOrders.Cancel);
-        await Assert.That(links.All(link => link.RouteName is RouteNames.GetCurrentRegistrationOrder or RouteNames.CancelAuthenticatedRegistrationOrder)).IsTrue();
+        await Assert.That(links.Single(link => link.Rel == LinkRelations.ViewParticipants).PermissionAction)
+            .IsEqualTo(AuthorizationActions.RegistrationOrders.View);
     }
 
     [Test]
@@ -47,7 +48,7 @@ public sealed class RegistrationOrderLinkPolicyTests
         var links = new RegistrationOrderLinkPolicy().GetLinks(order, null).ToList();
 
         await Assert.That(links.Select(link => link.Rel)).IsEquivalentTo(
-            [LinkRelations.Self, LinkRelations.Continue, LinkRelations.Finalize, LinkRelations.Cancel]);
+            [LinkRelations.Self, LinkRelations.ViewParticipants, LinkRelations.Continue, LinkRelations.Finalize, LinkRelations.Cancel]);
         await Assert.That(links.Single(link => link.Rel == LinkRelations.Continue).RouteName)
             .IsEqualTo(RouteNames.ContinueAuthenticatedRegistrationOrder);
         await Assert.That(links.Single(link => link.Rel == LinkRelations.Finalize).RouteName)
@@ -72,6 +73,6 @@ public sealed class RegistrationOrderLinkPolicyTests
         var links = new RegistrationOrderLinkPolicy().GetLinks(order, null).ToList();
 
         await Assert.That(links.Select(link => link.Rel)).IsEquivalentTo(
-            [LinkRelations.Self, LinkRelations.Continue, LinkRelations.Cancel]);
+            [LinkRelations.Self, LinkRelations.ViewParticipants, LinkRelations.Continue, LinkRelations.Cancel]);
     }
 }

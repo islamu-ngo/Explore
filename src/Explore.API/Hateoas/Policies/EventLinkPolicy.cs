@@ -247,6 +247,27 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 .RequirePermission(AuthorizationActions.Events.ManageTickets, ResourceDescriptors.Event, dto);
             yield return new LinkDefinition(LinkRelations.ManageCapacityPools, RouteNames.GetEventTicketCatalogManagement, new { eventId = dto.Id }, HttpMethods.Get, "Manage capacity pools", RequiresAuth: true)
                 .RequirePermission(AuthorizationActions.Events.ManageTickets, ResourceDescriptors.Event, dto);
+
+            if (dto.IsManagementView)
+            {
+                yield return new LinkDefinition(
+                    LinkRelations.ViewRegistrationOrders,
+                    RouteNames.GetEventRegistrationOrders,
+                    new { eventId = dto.Id },
+                    HttpMethods.Get,
+                    "View registration orders",
+                    RequiresAuth: true)
+                    .RequirePermission(AuthorizationActions.Events.ManageRegistrations, ResourceDescriptors.Event, dto);
+
+                yield return new LinkDefinition(
+                    LinkRelations.ViewParticipants,
+                    RouteNames.GetEventRegistrationOrders,
+                    new { eventId = dto.Id },
+                    HttpMethods.Get,
+                    "View participants",
+                    RequiresAuth: true)
+                    .RequirePermission(AuthorizationActions.Events.ManageRegistrations, ResourceDescriptors.Event, dto);
+            }
         }
 
         if (dto.IsPubliclyEligible)
@@ -507,18 +528,6 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                         "Sign in to register",
                         RequiresAuth: true)
                         .AdvertisedWhenAnonymous();
-                }
-
-                if (dto.IsManagementView)
-                {
-                    yield return new LinkDefinition(
-                        LinkRelations.ViewRegistrationOrders,
-                        RouteNames.GetEventRegistrationOrders,
-                        new { eventId = dto.Id },
-                        HttpMethods.Get,
-                        "View registration orders",
-                        RequiresAuth: true)
-                        .RequirePermission(AuthorizationActions.Events.ManageRegistrations, ResourceDescriptors.Event, dto);
                 }
 
                 yield break;

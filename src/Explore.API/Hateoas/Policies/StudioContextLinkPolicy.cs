@@ -33,6 +33,18 @@ public sealed class StudioContextLinkPolicy : ILinkPolicy<StudioContextDto>
                 "View registration orders",
                 RequiresAuth: true);
         }
+
+        if (dto.AllowedLinkRelations.Contains(LinkRelations.ViewParticipants)
+            && selectedActorId is Guid participantActorId)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.ViewParticipants,
+                RouteNames.GetManagedEventsByActor,
+                new { actorId = participantActorId },
+                HttpMethods.Get,
+                "View participants",
+                RequiresAuth: true);
+        }
     }
 }
 

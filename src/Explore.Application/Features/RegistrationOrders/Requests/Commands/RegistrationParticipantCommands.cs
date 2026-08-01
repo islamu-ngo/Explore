@@ -1,0 +1,47 @@
+// ABOUTME: Defines participant, concrete ticket-unit assignment, and deferred-assignment commands.
+// ABOUTME: Accepts collection payloads for company bookings while leaving CSV parsing to a later phase.
+
+using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Responses;
+using MediatR;
+
+namespace Explore.Application.Features.RegistrationOrders.Requests.Commands;
+
+public interface IRegistrationParticipantMutation : IRequest<BaseCommandResponse<Guid>>
+{
+    Guid RegistrationOrderId { get; }
+}
+
+public sealed record AddRegistrationParticipantCommand(
+    Guid RegistrationOrderId,
+    int ParticipantTypeId,
+    Guid? GuardianParticipantId,
+    ParticipantDetailsDto Details) : IRegistrationParticipantMutation;
+
+public sealed record UpdateRegistrationParticipantCommand(
+    Guid RegistrationOrderId,
+    Guid ParticipantId,
+    int ParticipantTypeId,
+    Guid? GuardianParticipantId,
+    ParticipantDetailsDto Details) : IRegistrationParticipantMutation;
+
+public sealed record AssignRegistrationTicketCommand(
+    Guid RegistrationOrderId,
+    Guid RegistrationOrderLineId,
+    int Ordinal,
+    Guid ParticipantId) : IRegistrationParticipantMutation;
+
+public sealed record BulkAssignRegistrationTicketsCommand(
+    Guid RegistrationOrderId,
+    IReadOnlyCollection<TicketParticipantAssignmentInputDto> Assignments) : IRegistrationParticipantMutation;
+
+public sealed record DeferRegistrationTicketCommand(
+    Guid RegistrationOrderId,
+    Guid RegistrationOrderLineId,
+    int Ordinal,
+    DateTime AssignmentDeadline) : IRegistrationParticipantMutation;
+
+public sealed record BulkDeferRegistrationTicketsCommand(
+    Guid RegistrationOrderId,
+    IReadOnlyCollection<TicketDeferralInputDto> Assignments,
+    DateTime AssignmentDeadline) : IRegistrationParticipantMutation;

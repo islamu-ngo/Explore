@@ -126,6 +126,8 @@ internal static class HalOpenApiSchemaCatalog
 
         typeof(Explore.Application.DTOs.RegistrationOrders.RegistrationOrderDto),
         typeof(Explore.Application.DTOs.RegistrationOrders.GuestRegistrationOrderDto),
+        typeof(Explore.Application.DTOs.RegistrationOrders.RegistrationOrderParticipantsDto),
+        typeof(Explore.Application.DTOs.EventTicketing.EventTicketCatalogManagementDto),
         typeof(Explore.Application.DTOs.Studio.StudioContextDto),
 
         typeof(Explore.Application.DTOs.SupportAccess.SupportAccessSessionDto),
@@ -193,6 +195,8 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfModerationReportQueueItemDto"] = typeof(Explore.Application.DTOs.EventReporting.ModerationReportQueueItemDto),
         ["HalResourceOfRegistrationOrderDto"] = typeof(Explore.Application.DTOs.RegistrationOrders.RegistrationOrderDto),
         ["HalResourceOfGuestRegistrationOrderDto"] = typeof(Explore.Application.DTOs.RegistrationOrders.GuestRegistrationOrderDto),
+        ["HalResourceOfRegistrationOrderParticipantsDto"] = typeof(Explore.Application.DTOs.RegistrationOrders.RegistrationOrderParticipantsDto),
+        ["HalResourceOfEventTicketCatalogManagementDto"] = typeof(Explore.Application.DTOs.EventTicketing.EventTicketCatalogManagementDto),
         ["HalResourceOfReportingRoutingStateDto"] = typeof(Explore.Application.DTOs.EventReporting.ReportingRoutingStateDto),
         ["HalResourceOfTenantModerationReportingDashboardDto"] = typeof(Explore.Application.DTOs.EventReporting.TenantModerationReportingDashboardDto),
         ["HalResourceOfEventSessionDto"] = typeof(Explore.Application.DTOs.EventSession.EventSessionDto),

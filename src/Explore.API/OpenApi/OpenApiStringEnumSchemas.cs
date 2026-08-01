@@ -41,7 +41,7 @@ internal static class OpenApiStringEnumSchemaCatalog
         typeof(EventReportProviderEvidenceMode),
         typeof(EventReportPriority),
         typeof(EventReportSeverityHint),
-        typeof(EventOrganizerClaimReviewDecision),
+        typeof(EventOrganizerClaimReviewDecisionDto),
         typeof(EventLocationDisclosureField),
         typeof(EventLocationDisclosureFieldClass),
         typeof(EventLocationDisclosureFields),
@@ -130,9 +130,37 @@ internal sealed class OpenApiStringEnumDocumentTransformer : IOpenApiDocumentTra
                 schema.Properties["endTimeType"] =
                     new OpenApiSchemaReference(nameof(SessionEndTimeType), document);
             }
+
+            NormalizeGuestRecoveryPolicy(schema, document);
         }
 
         return Task.CompletedTask;
+    }
+
+    private static void NormalizeGuestRecoveryPolicy(IOpenApiSchema schema, OpenApiDocument document)
+    {
+        if (schema.Properties is null)
+        {
+            return;
+        }
+
+        if (schema.Properties.TryGetValue("guestRecoveryPolicy", out var guestRecoveryPolicy)
+            && guestRecoveryPolicy is OpenApiSchema { Type: JsonSchemaType.Integer })
+        {
+            schema.Properties["guestRecoveryPolicy"] = new OpenApiSchema
+            {
+                OneOf =
+                [
+                    new OpenApiSchema { Type = JsonSchemaType.Null },
+                    new OpenApiSchemaReference(nameof(GuestRecoveryPolicyEnum), document)
+                ]
+            };
+        }
+
+        foreach (var property in schema.Properties.Values.OfType<OpenApiSchema>())
+        {
+            NormalizeGuestRecoveryPolicy(property, document);
+        }
     }
 }
 
