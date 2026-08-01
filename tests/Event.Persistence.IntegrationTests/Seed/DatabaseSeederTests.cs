@@ -366,16 +366,25 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
             order.TransitionTo(RegistrationOrderStatusEnum.Confirmed, now);
             context.EventTicketCatalogVersions.Add(catalog);
             context.RegistrationOrders.Add(order);
+            RegistrationParticipant participant = RegistrationParticipant.Create(
+                SeedIds.DefaultTenantId,
+                orderId,
+                SeedIds.RegularUserId,
+                ParticipantTypeEnum.Adult,
+                guardian: null);
+            context.RegistrationParticipants.Add(participant);
             context.Set<EventRegistration>().Add(new EventRegistration
             {
                 Id = registrationId,
                 EventId = eventId,
                 Event = null!,
-                UserId = SeedIds.RegularUserId,
-                User = null!,
+                LinkedUserId = SeedIds.RegularUserId,
+                LinkedUser = null!,
                 EventSessionId = sessionId,
                 EventSession = null!,
                 RegistrationOrderId = orderId,
+                RegistrationParticipantId = participant.Id,
+                RegistrationParticipant = participant,
                 ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
                 TenantId = SeedIds.DefaultTenantId,
                 Tenant = null!,

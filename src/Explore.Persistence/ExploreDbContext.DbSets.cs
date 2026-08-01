@@ -167,6 +167,11 @@ public partial class ExploreDbContext
     public DbSet<RegistrationWorkflow> RegistrationWorkflows { get; set; }
     public DbSet<RegistrationRequirement> RegistrationRequirements { get; set; }
     public DbSet<RegistrationChannel> RegistrationChannels { get; set; }
+    public DbSet<RegistrationForm> RegistrationForms { get; set; }
+    public DbSet<RegistrationFormVersion> RegistrationFormVersions { get; set; }
+    public DbSet<RegistrationFormSection> RegistrationFormSections { get; set; }
+    public DbSet<RegistrationFormField> RegistrationFormFields { get; set; }
+    public DbSet<RegistrationFormFieldOption> RegistrationFormFieldOptions { get; set; }
 
     // ===== Event Lookup Tables =====
     public DbSet<EventType> EventTypes { get; set; }
@@ -202,6 +207,9 @@ public partial class ExploreDbContext
     public DbSet<RegistrationRequirementCompletionEffect> RegistrationRequirementCompletionEffects { get; set; }
     public DbSet<RegistrationAnswerSyncMode> RegistrationAnswerSyncModes { get; set; }
     public DbSet<RegistrationRequirementSubjectType> RegistrationRequirementSubjectTypes { get; set; }
+    public DbSet<RegistrationFormStatus> RegistrationFormStatuses { get; set; }
+    public DbSet<RegistrationFieldType> RegistrationFieldTypes { get; set; }
+    public DbSet<RegistrationOrganizerVisibility> RegistrationOrganizerVisibilities { get; set; }
 
     // ===== Instance Monetization =====
     public DbSet<PlatformFeePolicy> PlatformFeePolicies { get; set; }

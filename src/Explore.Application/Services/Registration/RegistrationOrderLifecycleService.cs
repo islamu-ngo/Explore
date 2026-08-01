@@ -12,6 +12,7 @@ namespace Explore.Application.Services.Registration;
 
 public sealed class RegistrationOrderLifecycleService(
     IRegistrationInventoryRepository inventory,
+    IRegistrationParticipantRepository participants,
     IEventTicketCatalogRepository catalogs,
     IPlatformContributionSettingRepository contributionSettings,
     IEventSessionRepository eventSessions,
@@ -405,6 +406,25 @@ public sealed class RegistrationOrderLifecycleService(
                     throw new LifecycleRaceException();
                 }
 
+                if (order.PurchaserActorId.HasValue)
+                {
+                    EventTicketCatalogVersion catalog = await GetPinnedCatalogAsync(order, tenantId, token);
+                    EventTicketType[] ticketTypes = ResolveTicketTypes(order, catalog);
+                    IReadOnlyDictionary<Guid, RegistrationTicketLimitUsage> usage = await inventory.GetTicketLimitUsageAsync(
+                        order.EventId,
+                        order.TenantId,
+                        accountUserId: null,
+                        verifiedContactNormalizedEmail: null,
+                        order.PurchaserActorId,
+                        ticketTypes.Select(ticket => ticket.Id).ToArray(),
+                        token);
+                    if (ticketTypes.Any(ticket => ticket.PerBookingPartyLimit is int limit &&
+                            usage.GetValueOrDefault(ticket.Id)?.BookingPartyQuantity > limit))
+                    {
+                        return Failure(order.Id, order, "Registration order exceeds its booking-party ticket limit.");
+                    }
+                }
+
                 if (!await inventory.TryTransitionOrderAsync(
                         order.Id,
                         tenantId,
@@ -426,6 +446,7 @@ public sealed class RegistrationOrderLifecycleService(
                     throw new LifecycleRaceException();
                 }
 
+                await participants.AddParticipantsAsync(plan.Placeholders, token);
                 await inventory.AddEventRegistrationsAsync(plan.Admissions, token);
                 await outbox.Create(plan.OutboxMessage);
                 if (!await inventory.TryTransitionOrderAsync(
@@ -744,6 +765,8 @@ public sealed class RegistrationOrderLifecycleService(
     {
         EventTicketCatalogVersion? catalog = await GetPinnedCatalogAsync(order, order.TenantId, cancellationToken);
         EventTicketType[] ticketTypes = ResolveTicketTypes(order, catalog);
+        IReadOnlyList<RegistrationTicketAssignment> assignments =
+            await participants.GetAssignmentsWithParticipantsByOrderAsync(order.Id, order.TenantId, cancellationToken);
         List<EventSession> sessions = await eventSessions.GetSessionsByEvent(order.EventId);
         List<EventSession> entitledSessions = ResolveEntitledSessions(ticketTypes, sessions);
         if (entitledSessions.Count == 0)
@@ -758,38 +781,67 @@ public sealed class RegistrationOrderLifecycleService(
 
         var ticketTypesById = ticketTypes.ToDictionary(ticketType => ticketType.Id);
         var sessionsById = sessions.ToDictionary(session => session.Id);
+        var orderLinesById = order.Lines.ToDictionary(line => line.Id);
+        if (assignments.Any(assignment => assignment.TenantId != order.TenantId ||
+                assignment.RegistrationOrderId != order.Id ||
+                !orderLinesById.ContainsKey(assignment.RegistrationOrderLineId)))
+        {
+            throw new InvalidOperationException("Ticket assignments do not belong to this registration order.");
+        }
+
+        var placeholders = new List<RegistrationParticipant>();
         var admissions = new List<EventRegistration>();
         foreach (RegistrationOrderLine line in order.Lines.OrderBy(line => line.Id))
         {
             EventTicketType ticketType = ticketTypesById[line.TicketTypeId];
-            foreach (TicketTypeEntitlement entitlement in ticketType.Entitlements.OrderBy(entitlement => entitlement.Id))
+            RegistrationTicketAssignment[] lineAssignments = assignments
+                .Where(assignment => assignment.RegistrationOrderLineId == line.Id)
+                .OrderBy(assignment => assignment.Ordinal)
+                .ToArray();
+            DateTime? assignmentDeadline = ResolveCommonAssignmentDeadline(lineAssignments);
+            try
             {
-                foreach (EventSession session in ResolveEntitlementSessions(entitlement, sessionsById.Values).OrderBy(session => session.Id))
+                if (!RegistrationOrderRules.CanConfirmParticipantAssignments(
+                        (ParticipantDataCollectionModeEnum)ticketType.ParticipantDataCollectionModeId,
+                        line.Quantity,
+                        lineAssignments,
+                        assignmentDeadline,
+                        now))
                 {
-                    int count = checked(line.Quantity * entitlement.IncludedQuantity);
-                    for (int ordinal = 0; ordinal < count; ordinal++)
-                    {
-                        admissions.Add(new EventRegistration
-                        {
-                            Id = Guid.CreateVersion7(),
-                            ConcurrencyStamp = Guid.CreateVersion7(),
-                            EventId = order.EventId,
-                            Event = null!,
-                            UserId = order.AccountUserId,
-                            User = null,
-                            EventSessionId = session.Id,
-                            EventSession = null!,
-                            RegistrationOrderId = order.Id,
-                            RegistrationOrderLineId = line.Id,
-                            TicketTypeEntitlementId = entitlement.Id,
-                            RegistrationParticipantId = null,
-                            EntitlementOrdinal = ordinal,
-                            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
-                            TenantId = order.TenantId,
-                            Tenant = null!,
-                            CoverageEstablishedAt = now
-                        });
-                    }
+                    throw new InvalidOperationException("Ticket participant assignments are incomplete.");
+                }
+            }
+            catch (ArgumentException exception)
+            {
+                throw new InvalidOperationException(exception.Message, exception);
+            }
+
+            var assignmentsByOrdinal = lineAssignments.ToDictionary(assignment => assignment.Ordinal);
+            for (int unitOrdinal = 1; unitOrdinal <= line.Quantity; unitOrdinal++)
+            {
+                RegistrationParticipant? participant = ResolveUnitParticipant(
+                    order,
+                    ticketType,
+                    assignmentsByOrdinal.GetValueOrDefault(unitOrdinal),
+                    placeholders);
+                if (participant is null)
+                {
+                    continue;
+                }
+
+                foreach ((TicketTypeEntitlement entitlement, EventSession session) in
+                         RegistrationAdmissionMaterializer.Expand(ticketType, sessions))
+                {
+                    admissions.Add(RegistrationAdmissionMaterializer.Create(
+                        Guid.CreateVersion7(),
+                        Guid.CreateVersion7(),
+                        order,
+                        line,
+                        entitlement,
+                        session,
+                        participant,
+                        unitOrdinal,
+                        now));
                 }
             }
         }
@@ -797,6 +849,7 @@ public sealed class RegistrationOrderLifecycleService(
         CapacityReservationPlan capacityReservations = CreateCapacityReservationPlan(order, ticketTypes);
         return new FinalizationPlan(
             order.ConcurrencyStamp,
+            placeholders,
             admissions,
             capacityReservations,
             RegistrationOrderOutboxMessageFactory.Create(
@@ -805,6 +858,60 @@ public sealed class RegistrationOrderLifecycleService(
                 RegistrationOrderStatusEnum.Confirmed,
                 now,
                 admissions.Count));
+    }
+
+    private static DateTime? ResolveCommonAssignmentDeadline(
+        IReadOnlyCollection<RegistrationTicketAssignment> assignments)
+    {
+        DateTime[] deadlines = assignments
+            .Where(assignment => assignment.AssignmentStatusId == (int)AssignmentStatusEnum.Deferred)
+            .Select(assignment => assignment.AssignmentDeadline ?? DateTime.MinValue)
+            .Distinct()
+            .ToArray();
+        return deadlines.Length == 1 ? deadlines[0] : null;
+    }
+
+    private static RegistrationParticipant? ResolveUnitParticipant(
+        RegistrationOrder order,
+        EventTicketType ticketType,
+        RegistrationTicketAssignment? assignment,
+        ICollection<RegistrationParticipant> placeholders)
+    {
+        ParticipantDataCollectionModeEnum mode =
+            (ParticipantDataCollectionModeEnum)ticketType.ParticipantDataCollectionModeId;
+        if (mode == ParticipantDataCollectionModeEnum.DeferredAssignment &&
+            assignment?.AssignmentStatusId == (int)AssignmentStatusEnum.Deferred)
+        {
+            return null;
+        }
+
+        if (assignment?.Participant is { } assignedParticipant)
+        {
+            if (assignedParticipant.Id != assignment.ParticipantId ||
+                assignedParticipant.TenantId != order.TenantId ||
+                assignedParticipant.RegistrationOrderId != order.Id ||
+                !RegistrationOrderRules.IsParticipantEligibleForTicket(assignedParticipant))
+            {
+                throw new InvalidOperationException("Assigned participant is not eligible for this registration order.");
+            }
+
+            return assignedParticipant;
+        }
+
+        if (assignment?.ParticipantId is not null)
+        {
+            throw new InvalidOperationException("Assigned participant details could not be loaded.");
+        }
+
+        RegistrationParticipant placeholder = RegistrationParticipant.Create(
+            Guid.CreateVersion7(),
+            order.TenantId,
+            order.Id,
+            linkedUserId: null,
+            ParticipantTypeEnum.Unnamed,
+            guardian: null);
+        placeholders.Add(placeholder);
+        return placeholder;
     }
 
     private async Task<EventTicketCatalogVersion> GetPinnedCatalogAsync(
@@ -908,6 +1015,7 @@ public sealed class RegistrationOrderLifecycleService(
 
     private sealed record FinalizationPlan(
         Guid ConcurrencyStamp,
+        IReadOnlyList<RegistrationParticipant> Placeholders,
         IReadOnlyList<EventRegistration> Admissions,
         CapacityReservationPlan CapacityReservations,
         OutboxMessage OutboxMessage);

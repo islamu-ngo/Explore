@@ -74,6 +74,7 @@ public static class LookupTableSeeder
         await SeedParticipantLookupsAsync(context, cancellationToken);
         await SeedRegistrationOrderLookupsAsync(context, cancellationToken);
         await SeedRegistrationWorkflowLookupsAsync(context, cancellationToken);
+        await SeedRegistrationFormLookupsAsync(context, cancellationToken);
         await SeedPlatformMonetizationDefaultsAsync(context, cancellationToken);
         await SeedEventStatusesAsync(context, cancellationToken);
         await SeedEventSessionStatusesAsync(context, cancellationToken);
@@ -1623,6 +1624,45 @@ public static class LookupTableSeeder
             new RegistrationRequirementSubjectType { Id = (int)RegistrationRequirementSubjectTypeEnum.LeadBookerOnly, MasterCode = "LEAD_BOOKER_ONLY", FullName = "Lead booker only" },
             new RegistrationRequirementSubjectType { Id = (int)RegistrationRequirementSubjectTypeEnum.ChildParticipants, MasterCode = "CHILD_PARTICIPANTS", FullName = "Child participants" },
             new RegistrationRequirementSubjectType { Id = (int)RegistrationRequirementSubjectTypeEnum.SpecificSessionSelection, MasterCode = "SPECIFIC_SESSION_SELECTION", FullName = "Specific session selection" }
+        ], row => row.Id, ct);
+    }
+
+    internal static async Task SeedRegistrationFormLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationFormStatus { Id = (int)RegistrationFormStatusEnum.Draft, MasterCode = "DRAFT", FullName = "Draft" },
+            new RegistrationFormStatus { Id = (int)RegistrationFormStatusEnum.Published, MasterCode = "PUBLISHED", FullName = "Published" },
+            new RegistrationFormStatus { Id = (int)RegistrationFormStatusEnum.Retired, MasterCode = "RETIRED", FullName = "Retired" }
+        ], row => row.Id, ct);
+
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.ShortText, MasterCode = "SHORT_TEXT", FullName = "Short text" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.LongText, MasterCode = "LONG_TEXT", FullName = "Long text" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.Integer, MasterCode = "INTEGER", FullName = "Integer" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.Decimal, MasterCode = "DECIMAL", FullName = "Decimal" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.Boolean, MasterCode = "BOOLEAN", FullName = "Boolean" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.Date, MasterCode = "DATE", FullName = "Date" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.Time, MasterCode = "TIME", FullName = "Time" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.Instant, MasterCode = "INSTANT", FullName = "Instant" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.Email, MasterCode = "EMAIL", FullName = "Email" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.Phone, MasterCode = "PHONE", FullName = "Phone" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.Url, MasterCode = "URL", FullName = "URL" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.CountryCode, MasterCode = "COUNTRY_CODE", FullName = "Country code" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.LanguageTag, MasterCode = "LANGUAGE_TAG", FullName = "Language tag" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.SingleChoice, MasterCode = "SINGLE_CHOICE", FullName = "Single choice" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.MultipleChoice, MasterCode = "MULTIPLE_CHOICE", FullName = "Multiple choice" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.Rating, MasterCode = "RATING", FullName = "Rating" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.Consent, MasterCode = "CONSENT", FullName = "Consent" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.File, MasterCode = "FILE", FullName = "File" },
+            new RegistrationFieldType { Id = (int)RegistrationFieldTypeEnum.OpaqueExternal, MasterCode = "OPAQUE_EXTERNAL", FullName = "Opaque external" }
+        ], row => row.Id, ct);
+
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationOrganizerVisibility { Id = (int)RegistrationOrganizerVisibilityEnum.Hidden, MasterCode = "HIDDEN", FullName = "Hidden" },
+            new RegistrationOrganizerVisibility { Id = (int)RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, MasterCode = "AUTHORIZED_ORGANIZERS", FullName = "Authorized organizers" }
         ], row => row.Id, ct);
     }
 

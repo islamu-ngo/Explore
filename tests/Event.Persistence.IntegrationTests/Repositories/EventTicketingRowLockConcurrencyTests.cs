@@ -1,13 +1,21 @@
-// ABOUTME: Proves PostgreSQL ticketing row locks in both deletion-winning and assignment-winning races.
-// ABOUTME: Uses real draft ticket mutations, live-reference guards, and explicit task gates without arbitrary delays.
+// ABOUTME: Proves PostgreSQL ticketing contention and provider-neutral assignment/deletion races.
+// ABOUTME: Runs real handlers against tracked EF concurrency anchors with deterministic task gates.
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.EventTicketing;
+using Explore.Application.Features.EventTicketing.Handlers.Commands;
+using Explore.Application.Features.EventTicketing.Requests.Commands;
+using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -20,269 +28,276 @@ namespace Event.Persistence.IntegrationTests.Repositories;
 public sealed class EventTicketingRowLockConcurrencyTests(PostgreSqlContainerFixture fixture)
 {
     [Test]
-    public async Task DeleteWinningPoolLock_LeavesNoLiveTicketTypeReferencingDeletedPool()
+    public async Task DeleteWinningPoolRace_RetryRejectsAssignmentAndLeavesNoLiveReference()
     {
-        (Guid tenantId, Guid eventId, Guid poolId) = await SeedAsync();
-        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
-        CancellationToken cancellationToken = timeout.Token;
-        await using ExploreDbContext assignmentContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
-        await using ExploreDbContext deletionContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
-        var assignmentRepository = new EventTicketCatalogRepository(assignmentContext);
-        var deletionRepository = new EventTicketCatalogRepository(deletionContext);
-        var assignmentUow = new EfCoreUnitOfWork(assignmentContext);
-        var deletionUow = new EfCoreUnitOfWork(deletionContext);
-        var deletionPoolLocked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var deletionMayCommit = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var competingAssignmentStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        DeletionWinningScenarioResult result = await new EventTicketingRowLockScenarioRunner(fixture)
+            .RunDeletionWinningAsync();
 
-        Task<bool> deletion = deletionUow.ExecuteInTransactionAsync(async token =>
-        {
-            EventCapacityPool? pool = await deletionRepository.GetActiveCapacityPoolForUpdateAsync(poolId, eventId, tenantId, token);
-            await Assert.That(pool).IsNotNull();
-            deletionPoolLocked.TrySetResult();
-            await deletionMayCommit.Task.WaitAsync(token);
-            await Assert.That(await deletionRepository.HasLiveTicketTypeReferencesAsync(poolId, eventId, tenantId, token)).IsFalse();
-            pool!.Delete(DateTime.UtcNow, Guid.NewGuid());
-            await deletionRepository.UpdateCapacityPoolAsync(pool, token);
-            return true;
-        }, cancellationToken);
-
-        Task? competingAssignment = null;
-        bool deleted = false;
-        Exception? testFailure = null;
-        try
-        {
-            await deletionPoolLocked.Task.WaitAsync(cancellationToken);
-            competingAssignment = assignmentUow.ExecuteInTransactionAsync(async token =>
-            {
-                EventTicketCatalogVersion? draft = await assignmentRepository.GetDraftCatalogForUpdateAsync(eventId, tenantId, token);
-                await Assert.That(draft).IsNotNull();
-                await assignmentContext.Database.ExecuteSqlRawAsync("SET LOCAL lock_timeout = '250ms'", token);
-                competingAssignmentStarted.TrySetResult();
-                await assignmentRepository.GetActiveCapacityPoolForUpdateAsync(poolId, eventId, tenantId, token);
-                throw new InvalidOperationException("The competing assignment unexpectedly acquired the deletion pool lock.");
-            }, cancellationToken);
-
-            await competingAssignmentStarted.Task.WaitAsync(cancellationToken);
-            PostgresException? lockException = null;
-            Exception? competingAssignmentException = null;
-            try
-            {
-                await competingAssignment.WaitAsync(cancellationToken);
-            }
-            catch (PostgresException exception)
-            {
-                lockException = exception;
-            }
-            catch (Exception exception) when (exception.GetBaseException() is PostgresException postgresException)
-            {
-                lockException = postgresException;
-            }
-            catch (Exception exception)
-            {
-                competingAssignmentException = exception;
-            }
-
-            if (competingAssignmentException is not null)
-            {
-                throw competingAssignmentException;
-            }
-
-            PostgresException observedLockException = lockException
-                ?? throw new InvalidOperationException("The competing assignment did not observe a PostgreSQL lock timeout.");
-            await Assert.That(observedLockException.SqlState).IsEqualTo(PostgresErrorCodes.LockNotAvailable);
-        }
-        catch (Exception exception)
-        {
-            testFailure = exception;
-            throw;
-        }
-        finally
-        {
-            deletionMayCommit.TrySetResult();
-            if (competingAssignment is not null)
-            {
-                await competingAssignment.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
-            }
-
-            if (testFailure is null)
-            {
-                deleted = await deletion;
-            }
-            else
-            {
-                await ((Task)deletion).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
-            }
-        }
-
-        await Assert.That(deleted).IsTrue();
-
-        await using ExploreDbContext retryAssignmentContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
-        var retryAssignmentRepository = new EventTicketCatalogRepository(retryAssignmentContext);
-        var retryAssignmentUow = new EfCoreUnitOfWork(retryAssignmentContext);
-        Guid? retriedTicketId = await retryAssignmentUow.ExecuteInTransactionAsync(async token =>
-        {
-            EventTicketCatalogVersion? draft = await retryAssignmentRepository.GetDraftCatalogForUpdateAsync(eventId, tenantId, token);
-            await Assert.That(draft).IsNotNull();
-            EventCapacityPool? pool = await retryAssignmentRepository.GetActiveCapacityPoolForUpdateAsync(poolId, eventId, tenantId, token);
-            return await AssignTicketTypeAsync(retryAssignmentRepository, draft!, pool, tenantId, eventId, token);
-        }, cancellationToken);
-
-        await Assert.That(retriedTicketId).IsNull();
-
-        await using ExploreDbContext verifyContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
-        var verifyRepository = new EventTicketCatalogRepository(verifyContext);
-        await Assert.That(await verifyContext.EventCapacityPools.AnyAsync(pool => pool.Id == poolId)).IsFalse();
-        await Assert.That(await verifyRepository.HasLiveTicketTypeReferencesAsync(poolId, eventId, tenantId, CancellationToken.None)).IsFalse();
+        await Assert.That(result.LockSqlState).IsEqualTo(PostgresErrorCodes.LockNotAvailable);
+        await Assert.That(result.ConcurrentAssignmentFailureCode).IsEqualTo("event_ticketing_concurrency_conflict");
+        await Assert.That(result.RetryFailureCode).IsEqualTo("event_ticketing_not_found");
+        await Assert.That(result.FinalState).IsEqualTo("pool_deleted_no_live_ticket");
+        await Assert.That(result.TenantIsolated).IsTrue();
+        Console.WriteLine($"deletion_lock={result.LockSqlState}");
+        Console.WriteLine($"deletion_response={result.ConcurrentAssignmentFailureCode}");
+        Console.WriteLine($"deletion_final={result.FinalState}");
+        Console.WriteLine($"tenant_isolated={result.TenantIsolated.ToString().ToLowerInvariant()}");
     }
 
     [Test]
-    public async Task AssignmentWinningPoolLock_PersistsTicketAndRejectsConcurrentPoolDeletion()
+    public async Task AssignmentWinningPoolRace_RetryRejectsDeletionAndKeepsTicketAndPool()
+    {
+        AssignmentWinningScenarioResult result = await new EventTicketingRowLockScenarioRunner(fixture)
+            .RunAssignmentWinningAsync();
+
+        await Assert.That(result.LockSqlState).IsEqualTo(PostgresErrorCodes.LockNotAvailable);
+        await Assert.That(result.AssignmentSucceeded).IsTrue();
+        await Assert.That(result.ConcurrentDeletionFailureCode).IsEqualTo("event_ticketing_validation_failed");
+        await Assert.That(result.RetryFailureCode).IsEqualTo("event_ticketing_validation_failed");
+        await Assert.That(result.FinalState).IsEqualTo("ticket_and_pool_active");
+        await Assert.That(result.TenantIsolated).IsTrue();
+        Console.WriteLine($"assignment_lock={result.LockSqlState}");
+        Console.WriteLine($"assignment_final={result.FinalState}");
+        Console.WriteLine($"tenant_isolated={result.TenantIsolated.ToString().ToLowerInvariant()}");
+    }
+}
+
+public sealed record DeletionWinningScenarioResult(
+    string LockSqlState,
+    string? ConcurrentAssignmentFailureCode,
+    string? RetryFailureCode,
+    string FinalState,
+    bool TenantIsolated);
+
+public sealed record AssignmentWinningScenarioResult(
+    string LockSqlState,
+    bool AssignmentSucceeded,
+    string? ConcurrentDeletionFailureCode,
+    string? RetryFailureCode,
+    string FinalState,
+    bool TenantIsolated);
+
+public sealed class EventTicketingRowLockScenarioRunner(PostgreSqlContainerFixture fixture)
+{
+    public async Task<DeletionWinningScenarioResult> RunDeletionWinningAsync()
     {
         (Guid tenantId, Guid eventId, Guid poolId) = await SeedAsync();
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
-        CancellationToken cancellationToken = timeout.Token;
-        await using ExploreDbContext assignmentContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
+        string lockSqlState = await ObservePostgreSqlLockContentionAsync(tenantId, eventId, poolId, timeout.Token);
+
+        var deletionLoaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var assignmentLoaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseDeletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseAssignment = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         await using ExploreDbContext deletionContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
-        var assignmentRepository = new EventTicketCatalogRepository(assignmentContext);
-        var deletionRepository = new EventTicketCatalogRepository(deletionContext);
-        var assignmentUow = new EfCoreUnitOfWork(assignmentContext);
-        var deletionUow = new EfCoreUnitOfWork(deletionContext);
-        var assignmentPoolLocked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var deletionAttemptStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var assignmentMayCommit = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using ExploreDbContext assignmentContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
+        await using ServiceProvider services = CreateServices();
+        var deletionRepository = new GatedTicketCatalogRepository(
+            new EventTicketCatalogRepository(deletionContext), deletionLoaded, releaseDeletion);
+        var assignmentRepository = new GatedTicketCatalogRepository(
+            new EventTicketCatalogRepository(assignmentContext), assignmentLoaded, releaseAssignment);
 
-        Task<Guid?> assignment = assignmentUow.ExecuteInTransactionAsync(async token =>
-        {
-            EventTicketCatalogVersion? draft = await assignmentRepository.GetDraftCatalogForUpdateAsync(eventId, tenantId, token);
-            await Assert.That(draft).IsNotNull();
-            EventCapacityPool? pool = await assignmentRepository.GetActiveCapacityPoolForUpdateAsync(poolId, eventId, tenantId, token);
-            await Assert.That(pool).IsNotNull();
-            assignmentPoolLocked.TrySetResult();
-            await assignmentMayCommit.Task.WaitAsync(token);
-            return await AssignTicketTypeAsync(assignmentRepository, draft!, pool, tenantId, eventId, token);
-        }, cancellationToken);
+        Task<BaseCommandResponse<Guid>> deletion = CreateDeletionHandler(
+            deletionContext, deletionRepository, tenantId, services)
+            .Handle(new DeleteEventCapacityPoolCommand { EventId = eventId, CapacityPoolId = poolId }, timeout.Token);
+        Task<BaseCommandResponse<Guid>> assignment = CreateAssignmentHandler(
+            assignmentContext, assignmentRepository, tenantId, services)
+            .Handle(CreateAssignment(eventId, poolId), timeout.Token);
 
-        await assignmentPoolLocked.Task.WaitAsync(cancellationToken);
-        Task competingDeletion = deletionUow.ExecuteInTransactionAsync(async token =>
-        {
-            deletionAttemptStarted.TrySetResult();
-            await deletionContext.Database.ExecuteSqlRawAsync("SET LOCAL lock_timeout = '250ms'", token);
-            await deletionRepository.GetActiveCapacityPoolForUpdateAsync(poolId, eventId, tenantId, token);
-            throw new InvalidOperationException("The competing deletion unexpectedly acquired the assignment pool lock.");
-        }, cancellationToken);
+        await Task.WhenAll(deletionLoaded.Task, assignmentLoaded.Task).WaitAsync(timeout.Token);
+        releaseDeletion.TrySetResult();
+        BaseCommandResponse<Guid> deletionResult = await deletion.WaitAsync(timeout.Token);
+        releaseAssignment.TrySetResult();
+        BaseCommandResponse<Guid> losingAssignment = await assignment.WaitAsync(timeout.Token);
 
-        await deletionAttemptStarted.Task.WaitAsync(cancellationToken);
-        PostgresException? lockException = null;
-        Exception? competingDeletionException = null;
+        await using ExploreDbContext retryContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
+        BaseCommandResponse<Guid> retry = await CreateAssignmentHandler(
+            retryContext, new EventTicketCatalogRepository(retryContext), tenantId, services)
+            .Handle(CreateAssignment(eventId, poolId), timeout.Token);
+        await using ExploreDbContext verifyContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
+        var verifyRepository = new EventTicketCatalogRepository(verifyContext);
+        bool poolDeleted = await verifyRepository.GetCapacityPoolByIdEventAndTenantAsync(
+            poolId, eventId, tenantId, timeout.Token) is null;
+        bool hasLiveReference = await verifyRepository.HasLiveTicketTypeReferencesAsync(
+            poolId, eventId, tenantId, timeout.Token);
+        bool tenantIsolated = await CheckScopedMalformedInputsAsync(
+            eventId, poolId, tenantId, services, timeout.Token);
+
+        return new DeletionWinningScenarioResult(
+            lockSqlState,
+            losingAssignment.FailureCode,
+            retry.FailureCode,
+            deletionResult.Success && poolDeleted && !hasLiveReference
+                ? "pool_deleted_no_live_ticket"
+                : "invalid",
+            tenantIsolated);
+    }
+
+    public async Task<AssignmentWinningScenarioResult> RunAssignmentWinningAsync()
+    {
+        (Guid tenantId, Guid eventId, Guid poolId) = await SeedAsync();
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
+        string lockSqlState = await ObservePostgreSqlLockContentionAsync(tenantId, eventId, poolId, timeout.Token);
+
+        var deletionLoaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var assignmentLoaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseDeletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseAssignment = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using ExploreDbContext deletionContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
+        await using ExploreDbContext assignmentContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
+        await using ServiceProvider services = CreateServices();
+        var deletionRepository = new GatedTicketCatalogRepository(
+            new EventTicketCatalogRepository(deletionContext), deletionLoaded, releaseDeletion);
+        var assignmentRepository = new GatedTicketCatalogRepository(
+            new EventTicketCatalogRepository(assignmentContext), assignmentLoaded, releaseAssignment);
+
+        Task<BaseCommandResponse<Guid>> deletion = CreateDeletionHandler(
+            deletionContext, deletionRepository, tenantId, services)
+            .Handle(new DeleteEventCapacityPoolCommand { EventId = eventId, CapacityPoolId = poolId }, timeout.Token);
+        Task<BaseCommandResponse<Guid>> assignment = CreateAssignmentHandler(
+            assignmentContext, assignmentRepository, tenantId, services)
+            .Handle(CreateAssignment(eventId, poolId), timeout.Token);
+
+        await Task.WhenAll(deletionLoaded.Task, assignmentLoaded.Task).WaitAsync(timeout.Token);
+        releaseAssignment.TrySetResult();
+        BaseCommandResponse<Guid> assignmentResult = await assignment.WaitAsync(timeout.Token);
+        releaseDeletion.TrySetResult();
+        BaseCommandResponse<Guid> losingDeletion = await deletion.WaitAsync(timeout.Token);
+        await using ExploreDbContext retryContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
+        BaseCommandResponse<Guid> retry = await CreateDeletionHandler(
+            retryContext, new EventTicketCatalogRepository(retryContext), tenantId, services)
+            .Handle(new DeleteEventCapacityPoolCommand { EventId = eventId, CapacityPoolId = poolId }, timeout.Token);
+        await using ExploreDbContext verifyContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
+        var verifyRepository = new EventTicketCatalogRepository(verifyContext);
+        EventTicketType? ticket = await verifyRepository.GetTicketTypeByIdEventAndTenantAsync(
+            assignmentResult.Id, eventId, tenantId, timeout.Token);
+        bool poolActive = await verifyRepository.GetCapacityPoolByIdEventAndTenantAsync(
+            poolId, eventId, tenantId, timeout.Token) is not null;
+        bool hasLiveReference = await verifyRepository.HasLiveTicketTypeReferencesAsync(
+            poolId, eventId, tenantId, timeout.Token);
+        bool tenantIsolated = await CheckScopedMalformedInputsAsync(
+            eventId, poolId, tenantId, services, timeout.Token);
+
+        return new AssignmentWinningScenarioResult(
+            lockSqlState,
+            assignmentResult.Success,
+            losingDeletion.FailureCode,
+            retry.FailureCode,
+            ticket?.CapacityPoolId == poolId && poolActive && hasLiveReference
+                ? "ticket_and_pool_active"
+                : "invalid",
+            tenantIsolated);
+    }
+
+    private async Task<string> ObservePostgreSqlLockContentionAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid poolId,
+        CancellationToken cancellationToken)
+    {
+        await using ExploreDbContext holder = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
+        await using ExploreDbContext contender = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
+        await using var holderTransaction = await holder.Database.BeginTransactionAsync(cancellationToken);
+        await holder.Database.ExecuteSqlInterpolatedAsync($"""
+            SELECT id FROM event_capacity_pools
+            WHERE id = {poolId} AND event_id = {eventId} AND tenant_id = {tenantId}
+            FOR UPDATE
+            """, cancellationToken);
+        await using var contenderTransaction = await contender.Database.BeginTransactionAsync(cancellationToken);
+        await contender.Database.ExecuteSqlRawAsync("SET LOCAL lock_timeout = '250ms'", cancellationToken);
+
+        PostgresException? observed = null;
         try
         {
-            await competingDeletion.WaitAsync(cancellationToken);
+            await contender.Database.ExecuteSqlInterpolatedAsync($"""
+                SELECT id FROM event_capacity_pools
+                WHERE id = {poolId} AND event_id = {eventId} AND tenant_id = {tenantId}
+                FOR UPDATE
+                """, cancellationToken);
         }
         catch (PostgresException exception)
         {
-            lockException = exception;
-        }
-        catch (Exception exception) when (exception.GetBaseException() is PostgresException postgresException)
-        {
-            lockException = postgresException;
-        }
-        catch (Exception exception)
-        {
-            competingDeletionException = exception;
-        }
-        finally
-        {
-            assignmentMayCommit.TrySetResult();
+            observed = exception;
         }
 
-        Guid assignedTicketId = (await assignment.WaitAsync(cancellationToken))
-            ?? throw new InvalidOperationException("The assignment transaction did not persist a ticket type.");
-        if (competingDeletionException is not null)
-        {
-            throw competingDeletionException;
-        }
-
-        PostgresException observedLockException = lockException
-            ?? throw new InvalidOperationException("The competing deletion did not observe a PostgreSQL lock timeout.");
-        await Assert.That(observedLockException.SqlState).IsEqualTo(PostgresErrorCodes.LockNotAvailable);
-
-        await using ExploreDbContext retryDeletionContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
-        var retryDeletionRepository = new EventTicketCatalogRepository(retryDeletionContext);
-        var retryDeletionUow = new EfCoreUnitOfWork(retryDeletionContext);
-        (bool deleted, bool poolRemainedActive, bool hasLiveReferences) = await retryDeletionUow.ExecuteInTransactionAsync(async token =>
-        {
-            EventCapacityPool? pool = await retryDeletionRepository.GetActiveCapacityPoolForUpdateAsync(poolId, eventId, tenantId, token);
-            if (pool is null)
-            {
-                return (false, false, false);
-            }
-
-            bool hasReferences = await retryDeletionRepository.HasLiveTicketTypeReferencesAsync(poolId, eventId, tenantId, token);
-            if (hasReferences)
-            {
-                return (false, true, true);
-            }
-
-            pool.Delete(DateTime.UtcNow, Guid.NewGuid());
-            await retryDeletionRepository.UpdateCapacityPoolAsync(pool, token);
-            return (true, true, false);
-        }, cancellationToken);
-
-        await Assert.That(deleted).IsFalse();
-        await Assert.That(poolRemainedActive).IsTrue();
-        await Assert.That(hasLiveReferences).IsTrue();
-
-        await using ExploreDbContext verifyContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
-        var verifyRepository = new EventTicketCatalogRepository(verifyContext);
-        EventTicketType? persistedTicket = await verifyRepository.GetTicketTypeByIdEventAndTenantAsync(
-            assignedTicketId,
-            eventId,
-            tenantId,
-            CancellationToken.None);
-        await Assert.That(persistedTicket).IsNotNull();
-        await Assert.That(persistedTicket!.CapacityPoolId).IsEqualTo(poolId);
-        await Assert.That(await verifyRepository.HasLiveTicketTypeReferencesAsync(poolId, eventId, tenantId, CancellationToken.None)).IsTrue();
-        await Assert.That(await verifyRepository.GetCapacityPoolByIdEventAndTenantAsync(poolId, eventId, tenantId, CancellationToken.None)).IsNotNull();
+        return observed?.SqlState ?? "none";
     }
 
-    private static async Task<Guid?> AssignTicketTypeAsync(
-        EventTicketCatalogRepository repository,
-        EventTicketCatalogVersion catalog,
-        EventCapacityPool? pool,
-        Guid tenantId,
+    private async Task<bool> CheckScopedMalformedInputsAsync(
         Guid eventId,
+        Guid poolId,
+        Guid tenantId,
+        ServiceProvider services,
         CancellationToken cancellationToken)
     {
-        if (pool is null)
-        {
-            return null;
-        }
+        await using ExploreDbContext wrongEventContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantId));
+        BaseCommandResponse<Guid> wrongEvent = await CreateAssignmentHandler(
+            wrongEventContext, new EventTicketCatalogRepository(wrongEventContext), tenantId, services)
+            .Handle(CreateAssignment(Guid.CreateVersion7(), poolId), cancellationToken);
+        Guid wrongTenantId = Guid.CreateVersion7();
+        await using ExploreDbContext wrongTenantContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(wrongTenantId));
+        BaseCommandResponse<Guid> wrongTenant = await CreateAssignmentHandler(
+            wrongTenantContext, new EventTicketCatalogRepository(wrongTenantContext), wrongTenantId, services)
+            .Handle(CreateAssignment(eventId, poolId), cancellationToken);
+        return wrongEvent.FailureCode == "event_ticketing_not_found"
+            && wrongTenant.FailureCode == "event_ticketing_not_found";
+    }
 
-        EventTicketType ticket = EventTicketType.Create(
-            Guid.CreateVersion7(),
-            tenantId,
-            catalog.Id,
-            "Assigned ticket",
-            catalog.CurrencyCode,
-            TicketPricingModeEnum.Free,
-            null,
-            null,
-            null,
-            ParticipantDataCollectionModeEnum.None,
-            pool.Id,
-            null,
-            null,
-            false,
-            false,
-            null,
-            null,
-            null,
-            null);
-        catalog.AddTicketType(ticket, pool);
-        catalog.AddEntitlement(ticket, TicketTypeEntitlement.CreateForEvent(ticket.Id, tenantId, eventId, 1));
-        await repository.UpdateAsync(catalog, cancellationToken);
-        return ticket.Id;
+    private static CreateEventTicketTypeCommand CreateAssignment(Guid eventId, Guid poolId) => new()
+    {
+        EventId = eventId,
+        TicketType = new ManageEventTicketTypeDto
+        {
+            Name = "Assigned ticket",
+            TicketPricingModeId = (int)TicketPricingModeEnum.Free,
+            ParticipantDataCollectionModeId = (int)ParticipantDataCollectionModeEnum.None,
+            CapacityPoolId = poolId,
+            Entitlements =
+            [
+                new ManageTicketTypeEntitlementDto
+                {
+                    EntitlementScopeTypeId = (int)EntitlementScopeTypeEnum.Event,
+                    IncludedQuantity = 1,
+                    EntitlementSelectionRuleId = (int)EntitlementSelectionRuleEnum.AllIncluded
+                }
+            ]
+        }
+    };
+
+    private static CreateEventTicketTypeCommandHandler CreateAssignmentHandler(
+        ExploreDbContext context,
+        IEventTicketCatalogRepository catalogs,
+        Guid tenantId,
+        ServiceProvider services)
+    {
+        var tenant = new TestTenantContext(tenantId);
+        return new CreateEventTicketTypeCommandHandler(
+            new EventRepository(context),
+            catalogs,
+            new TicketTypeEntitlementResolver(new EventDayRepository(context), new EventSessionRepository(context), tenant),
+            tenant,
+            new EfCoreUnitOfWork(context),
+            services.GetRequiredService<HybridCache>());
+    }
+
+    private static DeleteEventCapacityPoolCommandHandler CreateDeletionHandler(
+        ExploreDbContext context,
+        IEventTicketCatalogRepository catalogs,
+        Guid tenantId,
+        ServiceProvider services) => new(
+        new EventRepository(context),
+        catalogs,
+        new TestTenantContext(tenantId),
+        new TestCurrentUser(Guid.CreateVersion7()),
+        TimeProvider.System,
+        new EfCoreUnitOfWork(context),
+        services.GetRequiredService<HybridCache>());
+
+    private static ServiceProvider CreateServices()
+    {
+        var services = new ServiceCollection();
+        services.AddHybridCache();
+        return services.BuildServiceProvider();
     }
 
     private async Task<(Guid TenantId, Guid EventId, Guid PoolId)> SeedAsync()
@@ -300,12 +315,17 @@ public sealed class EventTicketingRowLockConcurrencyTests(PostgreSqlContainerFix
         await context.SaveChangesAsync();
 
         Guid eventId = Guid.CreateVersion7();
+        DateTime now = DateTime.UtcNow;
         var eventTarget = new DomainEvent
         {
-            Id = eventId, Title = "Ticket lock event", Subtitle = "", Description = "", FirstSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), LastSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            Id = eventId, Title = "Ticket lock event", Subtitle = "", Description = "", FirstSessionDate = DateOnly.FromDateTime(now.AddDays(1)), LastSessionDate = DateOnly.FromDateTime(now.AddDays(1)),
             EventTypeId = 1, AudienceGenderId = 1, AudienceAgeId = 1, ActorId = actor.Id, Actor = null!, OrganizerActorId = actor.Id,
             TenantId = tenant.Id, Tenant = tenant, VisibilityTypeId = 1, VisibilityType = null!, EventStatusId = 1, EventStatus = null!, EventFormatId = 1, EventFormat = null!, EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated, TotalViews = 0
         };
+        eventTarget.ParticipationConfiguration = EventParticipationConfiguration.Create(
+            eventId, tenant.Id, (int)ParticipationHandlingModeEnum.PlatformManaged,
+            (int)AdvanceRegistrationObligationEnum.Required, (int)IdentityAccessModeEnum.AccountRequired,
+            guestRecoveryPolicy: null, now);
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(tenant.Id, eventId, "USD", 1);
         EventCapacityPool pool = EventCapacityPool.Create(tenant.Id, eventId, "Pool", 10, 900, CapacityHoldPolicyEnum.TimedHoldOnSelection, CapacityOversellPolicyEnum.Disallow, true);
         context.AddRange(eventTarget, catalog, pool);
@@ -314,4 +334,39 @@ public sealed class EventTicketingRowLockConcurrencyTests(PostgreSqlContainerFix
     }
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
+
+    private sealed record TestCurrentUser(Guid UserIdValue) : ICurrentUserService
+    {
+        public Guid? UserId => UserIdValue;
+        public bool IsAuthenticated => true;
+    }
+
+    private sealed class GatedTicketCatalogRepository(
+        IEventTicketCatalogRepository inner,
+        TaskCompletionSource loaded,
+        TaskCompletionSource release) : IEventTicketCatalogRepository
+    {
+        public Task<EventTicketCatalogVersion?> GetManagementCatalogAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken) => inner.GetManagementCatalogAsync(eventId, tenantId, cancellationToken);
+        public Task<EventTicketCatalogVersion?> GetPublishedCatalogAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken) => inner.GetPublishedCatalogAsync(eventId, tenantId, cancellationToken);
+        public Task<EventTicketCatalogVersion?> GetOrderCatalogAsync(Guid catalogId, Guid eventId, Guid tenantId, CancellationToken cancellationToken) => inner.GetOrderCatalogAsync(catalogId, eventId, tenantId, cancellationToken);
+        public Task<EventTicketCatalogVersion?> GetDraftCatalogForUpdateAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken) => inner.GetDraftCatalogForUpdateAsync(eventId, tenantId, cancellationToken);
+        public Task<EventTicketCatalogVersion?> GetPublishedForUpdateAsync(Guid eventId, Guid tenantId, CancellationToken cancellationToken) => inner.GetPublishedForUpdateAsync(eventId, tenantId, cancellationToken);
+        public Task<EventTicketCatalogVersion?> GetByEventVersionAndTenantAsync(Guid eventId, int versionNumber, Guid tenantId, CancellationToken cancellationToken) => inner.GetByEventVersionAndTenantAsync(eventId, versionNumber, tenantId, cancellationToken);
+        public Task<EventTicketType?> GetTicketTypeByIdEventAndTenantAsync(Guid ticketTypeId, Guid eventId, Guid tenantId, CancellationToken cancellationToken) => inner.GetTicketTypeByIdEventAndTenantAsync(ticketTypeId, eventId, tenantId, cancellationToken);
+        public Task<EventCapacityPool?> GetCapacityPoolByIdEventAndTenantAsync(Guid capacityPoolId, Guid eventId, Guid tenantId, CancellationToken cancellationToken) => inner.GetCapacityPoolByIdEventAndTenantAsync(capacityPoolId, eventId, tenantId, cancellationToken);
+        public async Task<EventCapacityPool?> GetActiveCapacityPoolForUpdateAsync(Guid capacityPoolId, Guid eventId, Guid tenantId, CancellationToken cancellationToken)
+        {
+            EventCapacityPool? pool = await inner.GetActiveCapacityPoolForUpdateAsync(capacityPoolId, eventId, tenantId, cancellationToken);
+            loaded.TrySetResult();
+            await release.Task.WaitAsync(cancellationToken);
+            return pool;
+        }
+        public Task<bool> HasLiveTicketTypeReferencesAsync(Guid capacityPoolId, Guid eventId, Guid tenantId, CancellationToken cancellationToken) => inner.HasLiveTicketTypeReferencesAsync(capacityPoolId, eventId, tenantId, cancellationToken);
+        public Task AddAsync(EventTicketCatalogVersion catalog, CancellationToken cancellationToken) => inner.AddAsync(catalog, cancellationToken);
+        public Task UpdateAsync(EventTicketCatalogVersion catalog, CancellationToken cancellationToken) => inner.UpdateAsync(catalog, cancellationToken);
+        public Task RemoveEntitlementsAsync(IEnumerable<TicketTypeEntitlement> entitlements, CancellationToken cancellationToken) => inner.RemoveEntitlementsAsync(entitlements, cancellationToken);
+        public Task AddCapacityPoolAsync(EventCapacityPool pool, CancellationToken cancellationToken) => inner.AddCapacityPoolAsync(pool, cancellationToken);
+        public Task UpdateCapacityPoolAsync(EventCapacityPool pool, CancellationToken cancellationToken) => inner.UpdateCapacityPoolAsync(pool, cancellationToken);
+        public Task SaveChangesAsync(CancellationToken cancellationToken) => inner.SaveChangesAsync(cancellationToken);
+    }
 }

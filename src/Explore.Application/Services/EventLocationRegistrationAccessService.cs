@@ -136,7 +136,7 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
         Event? @event = registration.Event;
         return registration.TenantId == tenantId
             && registration.EventId == eventId
-            && registration.UserId == userId
+            && registration.LinkedUserId == userId
             && registration.RegistrationOrderId is { } orderId
             && order is not null
             && order.Id == orderId

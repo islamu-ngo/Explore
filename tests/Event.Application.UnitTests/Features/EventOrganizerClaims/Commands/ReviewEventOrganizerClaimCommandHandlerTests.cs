@@ -78,7 +78,7 @@ public sealed class ReviewEventOrganizerClaimCommandHandlerTests
             ClaimId = claim.Id,
             Review = new ReviewEventOrganizerClaimDto
             {
-                Decision = EventOrganizerClaimReviewDecision.Approve,
+                Decision = EventOrganizerClaimReviewDecisionDto.Approve,
                 ReasonCode = "VERIFIED_CONTROL",
                 ExpectedConcurrencyStamp = concurrencyStamp
             }
@@ -149,7 +149,7 @@ public sealed class ReviewEventOrganizerClaimCommandHandlerTests
             ClaimId = claim.Id,
             Review = new ReviewEventOrganizerClaimDto
             {
-                Decision = EventOrganizerClaimReviewDecision.Approve,
+                Decision = EventOrganizerClaimReviewDecisionDto.Approve,
                 ReasonCode = "VERIFIED_CONTROL",
                 ExpectedConcurrencyStamp = concurrencyStamp
             }

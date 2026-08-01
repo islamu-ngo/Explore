@@ -72,6 +72,8 @@ public sealed class CreateEventTicketTypeCommandHandler(
                     return null;
                 }
 
+                pool?.RegisterTicketAssignment();
+
                 EventTicketType ticketType = CreateTicketType(stableTicketTypeId, catalog, request.TicketType);
                 IReadOnlyList<TicketTypeEntitlement> entitlements = await entitlementResolver.ResolveAsync(
                     ticketType.Id,
@@ -100,6 +102,10 @@ public sealed class CreateEventTicketTypeCommandHandler(
         catch (TicketingNotFoundException)
         {
             return Missing(request.EventId);
+        }
+        catch (ConcurrencyConflictException exception)
+        {
+            return Conflict(request.EventId, exception.Message);
         }
         catch (ArgumentException exception)
         {
@@ -162,5 +168,14 @@ public sealed class CreateEventTicketTypeCommandHandler(
         FailureCode = "event_ticketing_validation_failed",
         Message = "Ticketing configuration is invalid.",
         Errors = errors.ToList()
+    };
+
+    private static BaseCommandResponse<Guid> Conflict(Guid id, string error) => new()
+    {
+        Id = id,
+        Success = false,
+        FailureCode = "event_ticketing_concurrency_conflict",
+        Message = "Ticketing configuration was updated by another request.",
+        Errors = [error]
     };
 }

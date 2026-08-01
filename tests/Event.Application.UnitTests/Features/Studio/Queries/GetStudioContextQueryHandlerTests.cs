@@ -91,6 +91,7 @@ public sealed class GetStudioContextQueryHandlerTests
         StudioContextDto result = await CreateHandler().Handle(new GetStudioContextQuery(actorId), CancellationToken.None);
 
         await Assert.That(result.AllowedLinkRelations).Contains(LinkRelations.ViewRegistrationOrders);
+        await Assert.That(result.AllowedLinkRelations).Contains(LinkRelations.ViewParticipants);
         await _authorization.Received(1).IsAllowedBatchAsync(
             Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks =>
                 checks.Count == 1 &&

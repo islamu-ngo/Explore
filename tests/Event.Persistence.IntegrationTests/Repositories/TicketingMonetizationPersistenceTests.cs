@@ -22,6 +22,77 @@ namespace Event.Persistence.IntegrationTests.Repositories;
 public sealed class TicketingMonetizationPersistenceTests
 {
     [Test]
+    public async Task EfModel_MapsParticipantAssignmentsAndRequiredAdmissionLinkage()
+    {
+        await using var context = CreateModelContext();
+        IModel model = context.GetService<IDesignTimeModel>().Model;
+
+        IEntityType participant = model.FindEntityType(typeof(RegistrationParticipant))!;
+        IEntityType pii = model.FindEntityType(typeof(RegistrationParticipantPii))!;
+        IEntityType assignment = model.FindEntityType(typeof(RegistrationTicketAssignment))!;
+        IEntityType admission = model.FindEntityType(typeof(EventRegistration))!;
+
+        await Assert.That(participant.GetTableName()).IsEqualTo("registration_participants");
+        await Assert.That(pii.GetTableName()).IsEqualTo("registration_participant_pii");
+        await Assert.That(assignment.GetTableName()).IsEqualTo("registration_ticket_assignments");
+        await Assert.That(participant.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(participant.FindDeclaredQueryFilter(QueryFilterNames.SoftDelete)).IsNotNull();
+        await Assert.That(pii.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(assignment.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(admission.FindProperty(nameof(EventRegistration.RegistrationParticipantId))!.IsNullable).IsFalse();
+        await Assert.That(admission.FindProperty("UserId")).IsNull();
+        await Assert.That(admission.FindProperty(nameof(EventRegistration.LinkedUserId))!.IsNullable).IsTrue();
+        await Assert.That(participant.GetForeignKeys().Any(foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(RegistrationOrder)
+            && foreignKey.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(RegistrationParticipant.TenantId), nameof(RegistrationParticipant.RegistrationOrderId)])
+            && foreignKey.DeleteBehavior == DeleteBehavior.Restrict)).IsTrue();
+        await Assert.That(participant.GetForeignKeys().Any(foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(RegistrationParticipant)
+            && foreignKey.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(RegistrationParticipant.TenantId),
+                nameof(RegistrationParticipant.RegistrationOrderId),
+                nameof(RegistrationParticipant.GuardianParticipantId)])
+            && foreignKey.DeleteBehavior == DeleteBehavior.Restrict)).IsTrue();
+        await Assert.That(participant.GetKeys().Any(key => key.Properties.Select(property => property.Name).SequenceEqual([
+            nameof(RegistrationParticipant.TenantId),
+            nameof(RegistrationParticipant.RegistrationOrderId),
+            nameof(RegistrationParticipant.Id)]))).IsTrue();
+        await Assert.That(assignment.GetForeignKeys().Any(foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(RegistrationOrderLine)
+            && foreignKey.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(RegistrationTicketAssignment.TenantId),
+                nameof(RegistrationTicketAssignment.RegistrationOrderId),
+                nameof(RegistrationTicketAssignment.RegistrationOrderLineId)])
+            && foreignKey.DeleteBehavior == DeleteBehavior.Restrict)).IsTrue();
+        await Assert.That(assignment.GetForeignKeys().Any(foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(RegistrationParticipant)
+            && foreignKey.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(RegistrationTicketAssignment.TenantId),
+                nameof(RegistrationTicketAssignment.RegistrationOrderId),
+                nameof(RegistrationTicketAssignment.ParticipantId)])
+            && foreignKey.DeleteBehavior == DeleteBehavior.Restrict)).IsTrue();
+        await Assert.That(admission.GetForeignKeys().Any(foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(RegistrationParticipant)
+            && foreignKey.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(EventRegistration.TenantId),
+                nameof(EventRegistration.RegistrationOrderId),
+                nameof(EventRegistration.RegistrationParticipantId)])
+            && foreignKey.DeleteBehavior == DeleteBehavior.Restrict)).IsTrue();
+        await Assert.That(admission.GetIndexes().Any(index => index.IsUnique
+            && index.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(EventRegistration.TenantId),
+                nameof(EventRegistration.EventSessionId),
+                nameof(EventRegistration.RegistrationParticipantId)])
+            && index.GetFilter() == "is_deleted = false")).IsTrue();
+        await Assert.That(assignment.GetIndexes().Any(index => index.IsUnique
+            && index.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(RegistrationTicketAssignment.TenantId),
+                nameof(RegistrationTicketAssignment.RegistrationOrderLineId),
+                nameof(RegistrationTicketAssignment.Ordinal)]))).IsTrue();
+    }
+
+    [Test]
     public async Task EfModel_MapsTicketingIsolationHistoryAndMinorUnitConstraints()
     {
         await using var context = CreateModelContext();
@@ -100,6 +171,23 @@ public sealed class TicketingMonetizationPersistenceTests
         await Assert.That(setting.IsEnabled).IsFalse();
         await Assert.That(setting.Options.OrderBy(option => option.SortOrder).Select(option => option.ContributionBasisPoints).SequenceEqual([0, 500, 1_000, 1_500, 2_000])).IsTrue();
         await Assert.That(setting.Options.Single(option => option.IsDefault).ContributionBasisPoints).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task RuntimeSeeder_RepairsParticipantLookupParity()
+    {
+        await using var context = CreateInMemoryContext("participant-seeder");
+
+        await LookupTableSeeder.SeedParticipantLookupsAsync(context, CancellationToken.None);
+        context.ParticipantTypes.Remove(await context.ParticipantTypes.SingleAsync(type => type.Id == (int)ParticipantTypeEnum.Unnamed));
+        await context.SaveChangesAsync();
+        await LookupTableSeeder.SeedParticipantLookupsAsync(context, CancellationToken.None);
+        await context.SaveChangesAsync();
+
+        await Assert.That((await context.ParticipantTypes.OrderBy(row => row.Id).Select(row => row.MasterCode).ToArrayAsync())
+            .SequenceEqual(["ADULT", "CHILD", "DEPENDENT", "EMPLOYEE", "GUEST", "UNNAMED"])).IsTrue();
+        await Assert.That((await context.AssignmentStatuses.OrderBy(row => row.Id).Select(row => row.MasterCode).ToArrayAsync())
+            .SequenceEqual(["UNASSIGNED", "ASSIGNED", "DEFERRED"])).IsTrue();
     }
 
     [Test]

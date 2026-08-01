@@ -19,6 +19,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
     private readonly Guid _tenantId = Guid.CreateVersion7();
     private readonly Guid _eventId = Guid.CreateVersion7();
     private readonly IRegistrationInventoryRepository _inventory = Substitute.For<IRegistrationInventoryRepository>();
+    private readonly IRegistrationParticipantRepository _participants = Substitute.For<IRegistrationParticipantRepository>();
     private readonly IEventTicketCatalogRepository _catalogs = Substitute.For<IEventTicketCatalogRepository>();
     private readonly IPlatformContributionSettingRepository _contributionSettings = Substitute.For<IPlatformContributionSettingRepository>();
     private readonly IEventSessionRepository _sessions = Substitute.For<IEventSessionRepository>();
@@ -52,6 +53,296 @@ public sealed class RegistrationOrderLifecycleServiceTests
         await Assert.That(order.OrganizerEarningsTotalMinorSnapshot).IsEqualTo(1_000);
         await Assert.That(order.TotalDueMinorSnapshot).IsEqualTo(1_100);
         _ = _inventory.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task FinalizeFreeAsyncNoneModeCreatesOneParticipantBackedAdmissionPerTicketUnit()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(quantity: 2);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        var admissions = new List<EventRegistration>();
+        var placeholders = new List<RegistrationParticipant>();
+        ConfigureOrder(order, []);
+        _participants.GetAssignmentsWithParticipantsByOrderAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns([]);
+        _participants.AddParticipantsAsync(Arg.Any<IReadOnlyCollection<RegistrationParticipant>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                placeholders.AddRange(call.ArgAt<IReadOnlyCollection<RegistrationParticipant>>(0));
+                return Task.CompletedTask;
+            });
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+        _inventory.AddEventRegistrationsAsync(Arg.Any<IReadOnlyCollection<EventRegistration>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                admissions.AddRange(call.ArgAt<IReadOnlyCollection<EventRegistration>>(0));
+                return Task.CompletedTask;
+            });
+        _outbox.Create(Arg.Any<OutboxMessage>()).Returns(call => Task.FromResult(call.ArgAt<OutboxMessage>(0)));
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizeFreeAsync(
+            order.Id,
+            _tenantId,
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(placeholders).Count().IsEqualTo(2);
+        await Assert.That(placeholders.All(participant =>
+            participant.ParticipantTypeId == (int)ParticipantTypeEnum.Unnamed &&
+            participant.LinkedUserId is null &&
+            participant.Pii is null)).IsTrue();
+        await Assert.That(admissions).Count().IsEqualTo(2);
+        await Assert.That(admissions.All(admission => admission.RegistrationParticipantId != Guid.Empty)).IsTrue();
+        await Assert.That(admissions.Select(admission => admission.RegistrationParticipantId).Distinct()).Count().IsEqualTo(2);
+        await Assert.That(admissions.All(admission => admission.LinkedUserId is null)).IsTrue();
+    }
+
+    [Test]
+    public async Task FinalizeFreeAsyncBookingPartyOverageStopsBeforeHoldsAdmissionsAndOutbox()
+    {
+        Guid purchaserActorId = Guid.CreateVersion7();
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(
+            purchaserActorId: purchaserActorId,
+            perBookingPartyLimit: 1);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        ConfigureOrder(order, []);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _participants.GetAssignmentsWithParticipantsByOrderAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns([]);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+        _inventory.GetTicketLimitUsageAsync(
+                _eventId, _tenantId, null, null, purchaserActorId,
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, RegistrationTicketLimitUsage>
+            {
+                [ticket.Id] = new(ticket.Id, 0, 0, 2)
+            });
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizeFreeAsync(
+            order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("Registration order exceeds its booking-party ticket limit.");
+        _ = _inventory.DidNotReceive().GetHoldsByOrderAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        _ = _inventory.DidNotReceive().AddEventRegistrationsAsync(Arg.Any<IReadOnlyCollection<EventRegistration>>(), Arg.Any<CancellationToken>());
+        _ = _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task FinalizeFreeAsyncAbsentBookingPartyIdentityDoesNotInventCrossOrderLimit()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(perBookingPartyLimit: 1);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        var placeholders = new List<RegistrationParticipant>();
+        var admissions = new List<EventRegistration>();
+        ConfigureFinalization(order, catalog, [], placeholders, admissions);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizeFreeAsync(
+            order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        _ = _inventory.DidNotReceive().GetTicketLimitUsageAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Arguments(ParticipantDataCollectionModeEnum.None)]
+    [Arguments(ParticipantDataCollectionModeEnum.LeadBookerOnly)]
+    public async Task FinalizeFreeAsyncNonAssignedModesCreatePiiFreeUnitPlaceholders(
+        ParticipantDataCollectionModeEnum mode)
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(quantity: 2, participantMode: mode);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        var placeholders = new List<RegistrationParticipant>();
+        var admissions = new List<EventRegistration>();
+        ConfigureFinalization(order, catalog, [], placeholders, admissions);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizeFreeAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(placeholders).Count().IsEqualTo(2);
+        await Assert.That(placeholders.All(participant => participant.ParticipantTypeId == (int)ParticipantTypeEnum.Unnamed &&
+            participant.LinkedUserId is null && participant.Pii is null)).IsTrue();
+        await Assert.That(admissions.Select(admission => admission.RegistrationParticipantId).SequenceEqual(
+            placeholders.Select(participant => participant.Id))).IsTrue();
+        await Assert.That(admissions.All(admission => admission.LinkedUserId is null)).IsTrue();
+    }
+
+    [Test]
+    public async Task FinalizeFreeAsyncOptionalModeUsesAssignedParticipantAndPlaceholderForMissingUnit()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(
+            quantity: 2,
+            participantMode: ParticipantDataCollectionModeEnum.PerTicketOptional);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        Guid linkedUserId = Guid.CreateVersion7();
+        RegistrationParticipant participant = RegistrationParticipant.Create(
+            _tenantId, order.Id, linkedUserId, ParticipantTypeEnum.Adult, null);
+        RegistrationTicketAssignment assignment = RegistrationTicketAssignment.CreateAssigned(
+            Guid.CreateVersion7(), order.Lines.Single().Id, 1, participant, UtcNow);
+        var placeholders = new List<RegistrationParticipant>();
+        var admissions = new List<EventRegistration>();
+        ConfigureFinalization(order, catalog, [assignment], placeholders, admissions);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizeFreeAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(placeholders).HasSingleItem();
+        await Assert.That(admissions).Count().IsEqualTo(2);
+        await Assert.That(admissions.Single(admission => admission.RegistrationParticipantId == participant.Id).LinkedUserId)
+            .IsEqualTo(linkedUserId);
+        await Assert.That(admissions.Single(admission => admission.RegistrationParticipantId == placeholders.Single().Id).LinkedUserId)
+            .IsNull();
+    }
+
+    [Test]
+    public async Task FinalizeFreeAsyncRequiredModeMissingAssignmentFailsBeforeTransactionEffects()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(
+            quantity: 2,
+            participantMode: ParticipantDataCollectionModeEnum.PerTicketRequired);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        ConfigureOrder(order, []);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+        _participants.GetAssignmentsWithParticipantsByOrderAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns([]);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizeFreeAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _inventory.DidNotReceive().TryConsumeActiveHoldsForOrderAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
+        await _participants.DidNotReceive().AddParticipantsAsync(
+            Arg.Any<IReadOnlyCollection<RegistrationParticipant>>(), Arg.Any<CancellationToken>());
+        await _inventory.DidNotReceive().AddEventRegistrationsAsync(
+            Arg.Any<IReadOnlyCollection<EventRegistration>>(), Arg.Any<CancellationToken>());
+        await _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task FinalizeFreeAsyncRequiredModeMapsParticipantAndLinkedUser()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(
+            participantMode: ParticipantDataCollectionModeEnum.PerTicketRequired);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        Guid linkedUserId = Guid.CreateVersion7();
+        RegistrationParticipant participant = RegistrationParticipant.Create(
+            _tenantId, order.Id, linkedUserId, ParticipantTypeEnum.Adult, null);
+        RegistrationTicketAssignment assignment = RegistrationTicketAssignment.CreateAssigned(
+            Guid.CreateVersion7(), order.Lines.Single().Id, 1, participant, UtcNow);
+        var placeholders = new List<RegistrationParticipant>();
+        var admissions = new List<EventRegistration>();
+        ConfigureFinalization(order, catalog, [assignment], placeholders, admissions);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizeFreeAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(placeholders).IsEmpty();
+        await Assert.That(admissions).HasSingleItem();
+        await Assert.That(admissions.Single().RegistrationParticipantId).IsEqualTo(participant.Id);
+        await Assert.That(admissions.Single().LinkedUserId).IsEqualTo(linkedUserId);
+    }
+
+    [Test]
+    public async Task FinalizeFreeAsyncDeferredModeMaterializesOnlyAssignedUnits()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(
+            quantity: 2,
+            participantMode: ParticipantDataCollectionModeEnum.DeferredAssignment);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        RegistrationParticipant participant = RegistrationParticipant.Create(
+            _tenantId, order.Id, null, ParticipantTypeEnum.Adult, null);
+        DateTime deadline = UtcNow.AddDays(1);
+        RegistrationTicketAssignment[] assignments =
+        [
+            RegistrationTicketAssignment.CreateAssigned(
+                Guid.CreateVersion7(), order.Lines.Single().Id, 1, participant, UtcNow),
+            RegistrationTicketAssignment.Create(
+                _tenantId, order.Id, order.Lines.Single().Id, 2, null,
+                AssignmentStatusEnum.Deferred, deadline, UtcNow)
+        ];
+        var placeholders = new List<RegistrationParticipant>();
+        var admissions = new List<EventRegistration>();
+        ConfigureFinalization(order, catalog, assignments, placeholders, admissions);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizeFreeAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(placeholders).IsEmpty();
+        await Assert.That(admissions).HasSingleItem();
+        await Assert.That(admissions.Single().RegistrationParticipantId).IsEqualTo(participant.Id);
+    }
+
+    [Test]
+    public async Task FinalizeFreeAsyncDeferredModeAllUnassignedConfirmsWithoutAdmissions()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(
+            quantity: 2,
+            participantMode: ParticipantDataCollectionModeEnum.DeferredAssignment);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        DateTime deadline = UtcNow.AddDays(1);
+        RegistrationTicketAssignment[] assignments = new[] { 1, 2 }
+            .Select(ordinal => RegistrationTicketAssignment.Create(
+                _tenantId, order.Id, order.Lines.Single().Id, ordinal, null,
+                AssignmentStatusEnum.Deferred, deadline, UtcNow))
+            .ToArray();
+        var placeholders = new List<RegistrationParticipant>();
+        var admissions = new List<EventRegistration>();
+        ConfigureFinalization(order, catalog, assignments, placeholders, admissions);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizeFreeAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(placeholders).IsEmpty();
+        await Assert.That(admissions).IsEmpty();
+        await _outbox.Received(1).Create(Arg.Is<OutboxMessage>(message => message.EventType == "RegistrationOrderConfirmed"));
+    }
+
+    [Test]
+    public async Task FinalizeFreeAsyncRetryReusesParticipantAdmissionAndOutboxIds()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(quantity: 2);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        ConfigureOrder(order, []);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+        _participants.GetAssignmentsWithParticipantsByOrderAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns([]);
+        _inventory.TryTransitionOrderAsync(
+            order.Id, _tenantId, Arg.Any<RegistrationOrderStatusEnum>(), Arg.Any<RegistrationOrderStatusEnum>(),
+            UtcNow, Arg.Any<CancellationToken>()).Returns(true);
+        var participantAttempts = new List<Guid[]>();
+        var admissionAttempts = new List<Guid[]>();
+        var outboxIds = new List<Guid>();
+        _participants.AddParticipantsAsync(Arg.Any<IReadOnlyCollection<RegistrationParticipant>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                participantAttempts.Add(call.ArgAt<IReadOnlyCollection<RegistrationParticipant>>(0).Select(item => item.Id).ToArray());
+                return Task.CompletedTask;
+            });
+        _inventory.AddEventRegistrationsAsync(Arg.Any<IReadOnlyCollection<EventRegistration>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                admissionAttempts.Add(call.ArgAt<IReadOnlyCollection<EventRegistration>>(0).Select(item => item.Id).ToArray());
+                return Task.CompletedTask;
+            });
+        _outbox.Create(Arg.Any<OutboxMessage>()).Returns(call =>
+        {
+            OutboxMessage message = call.ArgAt<OutboxMessage>(0);
+            outboxIds.Add(message.Id);
+            return Task.FromResult(message);
+        });
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService(new RetryingUnitOfWork())
+            .FinalizeFreeAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(participantAttempts).Count().IsEqualTo(2);
+        await Assert.That(admissionAttempts).Count().IsEqualTo(2);
+        await Assert.That(participantAttempts[0].SequenceEqual(participantAttempts[1])).IsTrue();
+        await Assert.That(admissionAttempts[0].SequenceEqual(admissionAttempts[1])).IsTrue();
+        await Assert.That(participantAttempts.SelectMany(ids => ids).Distinct()).Count().IsEqualTo(2);
+        await Assert.That(admissionAttempts.SelectMany(ids => ids).Distinct()).Count().IsEqualTo(2);
+        await Assert.That(outboxIds.Distinct()).HasSingleItem();
     }
 
     [Test]
@@ -789,6 +1080,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
 
     private RegistrationOrderLifecycleService CreateService(IUnitOfWork? unitOfWork = null) => new(
         _inventory,
+        _participants,
         _catalogs,
         _contributionSettings,
         _sessions,
@@ -821,11 +1113,41 @@ public sealed class RegistrationOrderLifecycleServiceTests
             });
     }
 
+    private void ConfigureFinalization(
+        RegistrationOrder order,
+        EventTicketCatalogVersion catalog,
+        IReadOnlyList<RegistrationTicketAssignment> assignments,
+        List<RegistrationParticipant> placeholders,
+        List<EventRegistration> admissions)
+    {
+        ConfigureOrder(order, []);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+        _participants.GetAssignmentsWithParticipantsByOrderAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(assignments);
+        _participants.AddParticipantsAsync(Arg.Any<IReadOnlyCollection<RegistrationParticipant>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                placeholders.AddRange(call.ArgAt<IReadOnlyCollection<RegistrationParticipant>>(0));
+                return Task.CompletedTask;
+            });
+        _inventory.AddEventRegistrationsAsync(Arg.Any<IReadOnlyCollection<EventRegistration>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                admissions.AddRange(call.ArgAt<IReadOnlyCollection<EventRegistration>>(0));
+                return Task.CompletedTask;
+            });
+        _outbox.Create(Arg.Any<OutboxMessage>()).Returns(call => Task.FromResult(call.ArgAt<OutboxMessage>(0)));
+    }
+
     private (RegistrationOrder Order, EventTicketCatalogVersion Catalog, EventTicketType Ticket) CreateOrder(
         bool addLine = true,
         long unitPriceMinor = 0,
         bool capacityBacked = false,
-        CapacityHoldPolicyEnum holdPolicy = CapacityHoldPolicyEnum.NoHoldUntilReady)
+        CapacityHoldPolicyEnum holdPolicy = CapacityHoldPolicyEnum.NoHoldUntilReady,
+        int quantity = 1,
+        ParticipantDataCollectionModeEnum participantMode = ParticipantDataCollectionModeEnum.None,
+        Guid? purchaserActorId = null,
+        int? perBookingPartyLimit = null)
     {
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(_tenantId, _eventId, "USD", 1);
         EventCapacityPool? pool = capacityBacked
@@ -843,18 +1165,19 @@ public sealed class RegistrationOrderLifecycleServiceTests
             Guid.CreateVersion7(), _tenantId, catalog.Id, "Admission", "USD",
             unitPriceMinor == 0 ? TicketPricingModeEnum.Free : TicketPricingModeEnum.Fixed,
             unitPriceMinor == 0 ? null : unitPriceMinor, null, null,
-            ParticipantDataCollectionModeEnum.None, pool?.Id, null, null, false, false, null, null, null, null);
+            participantMode, pool?.Id, null, null, false, false, null, null, null, perBookingPartyLimit);
         catalog.AddTicketType(ticket, pool);
         catalog.AddEntitlement(ticket, TicketTypeEntitlement.CreateForEvent(ticket.Id, _tenantId, _eventId, 1));
         catalog.Publish();
         RegistrationOrder order = RegistrationOrder.Create(
-            _tenantId, _eventId, Guid.CreateVersion7(), null, BookingPartyTypeEnum.Individual, catalog.Id,
+            _tenantId, _eventId, Guid.CreateVersion7(), purchaserActorId, BookingPartyTypeEnum.Individual, catalog.Id,
             RegistrationParticipationSnapshot.Create(Guid.CreateVersion7(), 4, 3, 2, GuestRecoveryPolicyEnum.VerifiedEmailRequired),
             null, null, "USD", UtcNow, UtcNow.AddMinutes(15));
         if (addLine)
         {
-            order.AddLine(RegistrationOrderLine.Create(catalog, ticket, order.Id, 1, null, null));
-            order.ApplyTotals(RegistrationOrderTotalsSnapshot.Create("USD", unitPriceMinor, 0, unitPriceMinor, 0));
+            order.AddLine(RegistrationOrderLine.Create(catalog, ticket, order.Id, quantity, null, null));
+            long lineTotal = checked(unitPriceMinor * quantity);
+            order.ApplyTotals(RegistrationOrderTotalsSnapshot.Create("USD", lineTotal, 0, lineTotal, 0));
         }
 
         return (order, catalog, ticket);

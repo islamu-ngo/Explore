@@ -11,3 +11,11 @@ public sealed record GetGuestRegistrationOrderQuery(Guid EventId, Guid OrderId, 
 
 public sealed record GetCurrentRegistrationOrderQuery(Guid OrderId)
     : IRequest<RegistrationOrderDto?>;
+
+public sealed record GetGuestRegistrationOrderParticipantsQuery(
+    Guid EventId,
+    Guid OrderId,
+    string? CapabilityToken) : IRequest<RegistrationOrderParticipantsDto?>;
+
+public sealed record GetAuthenticatedRegistrationOrderParticipantsQuery(Guid EventId, Guid OrderId)
+    : IRequest<RegistrationOrderParticipantsDto?>;

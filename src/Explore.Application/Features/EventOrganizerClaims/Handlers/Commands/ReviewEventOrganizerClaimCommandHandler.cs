@@ -64,7 +64,7 @@ public sealed class ReviewEventOrganizerClaimCommandHandler(
 
             try
             {
-                if (request.Review.Decision == EventOrganizerClaimReviewDecision.Approve)
+                if (request.Review.Decision == EventOrganizerClaimReviewDecisionDto.Approve)
                 {
                     if (!await ClaimantActorAccessEvaluator.IsEligibleAsync(
                             claim.ClaimantActorId,
@@ -87,7 +87,7 @@ public sealed class ReviewEventOrganizerClaimCommandHandler(
                     claim.Approve(@event, reviewerUserId, reasonCode, reviewedAt);
                     await claimRepository.UpdateApprovalAsync(claim, @event, token);
                 }
-                else if (request.Review.Decision == EventOrganizerClaimReviewDecision.RequestEvidence)
+                else if (request.Review.Decision == EventOrganizerClaimReviewDecisionDto.RequestEvidence)
                 {
                     claim.RequestEvidence(reviewerUserId, reasonCode, reviewedAt);
                 }
@@ -101,7 +101,7 @@ public sealed class ReviewEventOrganizerClaimCommandHandler(
                 return Failure(request.ClaimId, "Organizer claim could not be reviewed.", [exception.Message]);
             }
 
-            if (request.Review.Decision != EventOrganizerClaimReviewDecision.Approve)
+            if (request.Review.Decision != EventOrganizerClaimReviewDecisionDto.Approve)
             {
                 await claimRepository.Update(claim);
             }
@@ -109,11 +109,11 @@ public sealed class ReviewEventOrganizerClaimCommandHandler(
         }, cancellationToken);
     }
 
-    private static int GetTargetStatusId(EventOrganizerClaimReviewDecision decision) => decision switch
+    private static int GetTargetStatusId(EventOrganizerClaimReviewDecisionDto decision) => decision switch
     {
-        EventOrganizerClaimReviewDecision.RequestEvidence => (int)EventOrganizerClaimStatusEnum.EvidenceRequired,
-        EventOrganizerClaimReviewDecision.Approve => (int)EventOrganizerClaimStatusEnum.Approved,
-        EventOrganizerClaimReviewDecision.Reject => (int)EventOrganizerClaimStatusEnum.Rejected,
+        EventOrganizerClaimReviewDecisionDto.RequestEvidence => (int)EventOrganizerClaimStatusEnum.EvidenceRequired,
+        EventOrganizerClaimReviewDecisionDto.Approve => (int)EventOrganizerClaimStatusEnum.Approved,
+        EventOrganizerClaimReviewDecisionDto.Reject => (int)EventOrganizerClaimStatusEnum.Rejected,
         _ => throw new ArgumentOutOfRangeException(nameof(decision), decision, null)
     };
 

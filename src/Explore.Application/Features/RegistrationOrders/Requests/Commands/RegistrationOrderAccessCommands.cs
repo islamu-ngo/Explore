@@ -61,3 +61,16 @@ public sealed record FinalizeAuthenticatedRegistrationOrderCommand(Guid EventId,
 
 public sealed record CancelAuthenticatedRegistrationOrderCommand(Guid EventId, Guid OrderId)
     : IRequest<RegistrationOrderLifecycleResponseDto>, IAuthenticatedRegistrationOrderAccessCommand;
+
+public sealed record MutateGuestRegistrationParticipantsCommand(
+    Guid EventId,
+    Guid OrderId,
+    string? CapabilityToken,
+    IRegistrationParticipantMutation Mutation)
+    : IRequest<BaseCommandResponse<Guid>>, IGuestRegistrationOrderAccessCommand;
+
+public sealed record MutateAuthenticatedRegistrationParticipantsCommand(
+    Guid EventId,
+    Guid OrderId,
+    IRegistrationParticipantMutation Mutation)
+    : IRequest<BaseCommandResponse<Guid>>, IAuthenticatedRegistrationOrderAccessCommand;

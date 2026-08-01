@@ -1,5 +1,5 @@
 // ABOUTME: Maps tenant-owned public event actions, validated destinations, and lookup relationships.
-// ABOUTME: Enforces one active primary action per event while retaining soft-deleted history.
+// ABOUTME: Indexes event-scoped action reads used by the portable serializable primary-action guard.
 
 using Explore.Domain;
 using Explore.Persistence.ValueGenerators;
@@ -43,8 +43,6 @@ public sealed class EventPublicActionConfiguration : IEntityTypeConfiguration<Ev
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(row => new { row.TenantId, row.EventId })
-            .IsUnique()
-            .HasFilter("is_primary = true AND is_deleted = false")
-            .HasDatabaseName("ux_event_public_actions_tenant_event_primary");
+            .HasDatabaseName("ix_event_public_actions_tenant_event");
     }
 }

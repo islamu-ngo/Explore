@@ -4,6 +4,8 @@
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Seed;
@@ -17,6 +19,34 @@ namespace Event.Persistence.IntegrationTests.Seed;
 [Category("EventAuthorityLookup")]
 public sealed class EventAuthorityLookupSeederTests
 {
+    [Test]
+    public async Task TenantAndSoftDeleteFilters_FailClosedAndRemainIndependent()
+    {
+        string databaseName = $"event-authority-filters-{Guid.NewGuid():N}";
+        Guid tenantA = Guid.CreateVersion7();
+        Guid tenantB = Guid.CreateVersion7();
+
+        await using (var seedContext = CreateSharedSeederContext(databaseName))
+        {
+            seedContext.Set<EventPublicAction>().AddRange(
+                CreateAction(tenantA, isDeleted: false),
+                CreateAction(tenantA, isDeleted: true),
+                CreateAction(tenantB, isDeleted: false));
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using var missingTenantContext = CreateSharedSeederContext(databaseName);
+        await Assert.That(await missingTenantContext.Set<EventPublicAction>().CountAsync()).IsEqualTo(0);
+
+        await using var tenantContext = CreateSharedSeederContext(databaseName);
+        tenantContext.TenantContext = new TestTenantContext(tenantA);
+        await Assert.That(await tenantContext.Set<EventPublicAction>().CountAsync()).IsEqualTo(1);
+        await Assert.That(await tenantContext.Set<EventPublicAction>()
+                .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+                .CountAsync())
+            .IsEqualTo(2);
+    }
+
     [Test]
     public async Task EfModelUsesNormalizedLookupsAndNamedAggregateFilters()
     {
@@ -37,9 +67,9 @@ public sealed class EventAuthorityLookupSeederTests
 
         var actionType = context.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(EventPublicAction))!;
         await Assert.That(actionType.GetIndexes().Any(index =>
-            index.IsUnique
+            !index.IsUnique
             && index.Properties.Select(property => property.Name).SequenceEqual(["TenantId", "EventId"])
-            && index.GetFilter() == "is_primary = true AND is_deleted = false")).IsTrue();
+            && index.GetFilter() is null)).IsTrue();
     }
 
     [Test]
@@ -115,6 +145,31 @@ public sealed class EventAuthorityLookupSeederTests
             .Options;
 
         return new EventAuthorityTestDbContext(options);
+    }
+
+    private static ExploreDbContext CreateSharedSeederContext(string databaseName)
+    {
+        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+
+        return new EventAuthorityTestDbContext(options);
+    }
+
+    private static EventPublicAction CreateAction(Guid tenantId, bool isDeleted)
+    {
+        var action = new EventPublicAction
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            EventId = Guid.CreateVersion7(),
+            EventPublicActionKindId = (int)EventPublicActionKindEnum.OriginalSource,
+            HealthStateId = (int)EventPublicActionHealthStateEnum.Active,
+            IsDeleted = isDeleted,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        action.SetDestination(ExternalActionUrl.Create($"https://{action.Id:N}.example.org"));
+        return action;
     }
 
     private static async Task AssertLookupModelAsync<TLookup>(ExploreDbContext context, string tableName)
@@ -199,4 +254,6 @@ public sealed class EventAuthorityLookupSeederTests
             modelBuilder.Ignore<ActorMerge>();
         }
     }
+
+    private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
 }

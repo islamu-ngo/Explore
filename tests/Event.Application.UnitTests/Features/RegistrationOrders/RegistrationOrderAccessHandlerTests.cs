@@ -18,6 +18,7 @@ using Explore.Domain.ValueObjects;
 using NSubstitute;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using MediatR;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -102,6 +103,51 @@ public sealed class RegistrationOrderAccessHandlerTests
         await Assert.That(result.FailureCode).IsEqualTo("registration_order_not_found");
         _ = _capabilities.DidNotReceive().Matches(Arg.Any<string?>(), Arg.Any<CapabilityTokenHash>());
         _ = _lifecycle.DidNotReceive().SubmitAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GuestParticipantMutationWithScopedCapabilityDispatchesExistingCommand()
+    {
+        RegistrationOrder order = CreateGuestOrder();
+        var sender = Substitute.For<ISender>();
+        var mutation = new AddRegistrationParticipantCommand(
+            _orderId, (int)ParticipantTypeEnum.Adult, null, new ParticipantDetailsDto("Guest", null, null));
+        _inventory.GetOrderWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
+        _capabilities.Matches("guest-token", order.GuestAccessTokenHash!).Returns(true);
+        sender.Send(mutation, Arg.Any<CancellationToken>()).Returns(new Explore.Application.Responses.BaseCommandResponse<Guid>
+        {
+            Id = Guid.CreateVersion7(),
+            Success = true
+        });
+
+        var handler = new MutateGuestRegistrationParticipantsCommandHandler(
+            _inventory, _capabilities, _tenant, new FixedTimeProvider(UtcNow), sender);
+        Explore.Application.Responses.BaseCommandResponse<Guid> result = await handler.Handle(
+            new MutateGuestRegistrationParticipantsCommand(_eventId, _orderId, "guest-token", mutation),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        _ = sender.Received(1).Send(mutation, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task GuestParticipantMutationWithCrossEventCapabilityReturnsGenericNotFound()
+    {
+        RegistrationOrder order = CreateGuestOrder(eventId: Guid.CreateVersion7());
+        var sender = Substitute.For<ISender>();
+        var mutation = new AddRegistrationParticipantCommand(
+            _orderId, (int)ParticipantTypeEnum.Adult, null, new ParticipantDetailsDto(null, null, null));
+        _inventory.GetOrderWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
+        var handler = new MutateGuestRegistrationParticipantsCommandHandler(
+            _inventory, _capabilities, _tenant, new FixedTimeProvider(UtcNow), sender);
+
+        Explore.Application.Responses.BaseCommandResponse<Guid> result = await handler.Handle(
+            new MutateGuestRegistrationParticipantsCommand(_eventId, _orderId, "guest-token", mutation),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("registration_order_not_found");
+        _ = sender.DidNotReceive().Send(Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

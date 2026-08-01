@@ -67,6 +67,8 @@ public sealed class UpdateEventTicketTypeCommandHandler(
                     return null;
                 }
 
+                pool?.RegisterTicketAssignment();
+
                 IReadOnlyList<TicketTypeEntitlement> entitlements = await entitlementResolver.ResolveAsync(
                     ticketType.Id,
                     request.TicketType.Entitlements,

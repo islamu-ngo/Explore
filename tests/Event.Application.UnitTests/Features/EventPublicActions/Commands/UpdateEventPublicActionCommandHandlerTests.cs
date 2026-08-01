@@ -35,6 +35,7 @@ public sealed class UpdateEventPublicActionCommandHandlerTests
         var handler = new UpdateEventPublicActionCommandHandler(
             eventRepository,
             actionRepository,
+            new EventPublicActionTestUnitOfWork(),
             tenantContext,
             currentUser);
 
@@ -71,6 +72,7 @@ public sealed class UpdateEventPublicActionCommandHandlerTests
         var handler = new UpdateEventPublicActionCommandHandler(
             eventRepository,
             actionRepository,
+            new EventPublicActionTestUnitOfWork(),
             tenantContext,
             currentUser);
 

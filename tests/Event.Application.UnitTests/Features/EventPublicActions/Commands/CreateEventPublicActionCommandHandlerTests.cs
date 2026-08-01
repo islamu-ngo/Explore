@@ -6,9 +6,11 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventPublicAction;
 using Explore.Application.Features.EventPublicActions.Handlers.Commands;
 using Explore.Application.Features.EventPublicActions.Requests.Commands;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using NSubstitute;
+using System.Collections.Concurrent;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -34,6 +36,7 @@ public sealed class CreateEventPublicActionCommandHandlerTests
         var handler = new CreateEventPublicActionCommandHandler(
             eventRepository,
             actionRepository,
+            new EventPublicActionTestUnitOfWork(),
             tenantContext,
             currentUser);
 
@@ -72,6 +75,7 @@ public sealed class CreateEventPublicActionCommandHandlerTests
         var handler = new CreateEventPublicActionCommandHandler(
             eventRepository,
             actionRepository,
+            new EventPublicActionTestUnitOfWork(),
             tenantContext,
             currentUser);
 
@@ -88,6 +92,44 @@ public sealed class CreateEventPublicActionCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await actionRepository.DidNotReceive().Create(Arg.Any<EventPublicAction>());
+    }
+
+    [Test]
+    public async Task Handle_ConcurrentPrimaryActions_OnlyOneSucceeds()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var eventId = Guid.CreateVersion7();
+        var eventRepository = Substitute.For<IEventRepository>();
+        eventRepository.GetAuthorizationTargetByIdAsync(eventId, Arg.Any<CancellationToken>())
+            .Returns(CreateEvent(tenantId, eventId));
+        var actionRepository = Substitute.For<IEventPublicActionRepository>();
+        var created = new ConcurrentBag<EventPublicAction>();
+        actionRepository.HasOtherPrimaryAsync(eventId, null, Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult(created.Any(action => action.IsPrimary)));
+        actionRepository.Create(Arg.Any<EventPublicAction>())
+            .Returns(call =>
+            {
+                var action = call.Arg<EventPublicAction>();
+                created.Add(action);
+                return action;
+            });
+        var tenantContext = Substitute.For<ITenantContext>();
+        tenantContext.TenantId.Returns(tenantId);
+        var currentUser = Substitute.For<ICurrentUserService>();
+        currentUser.UserId.Returns(Guid.CreateVersion7());
+        var handler = new CreateEventPublicActionCommandHandler(
+            eventRepository,
+            actionRepository,
+            new EventPublicActionTestUnitOfWork(),
+            tenantContext,
+            currentUser);
+
+        BaseCommandResponse<Guid>[] results = await Task.WhenAll(
+            handler.Handle(CreatePrimaryCommand(eventId, "https://one.example.org"), CancellationToken.None),
+            handler.Handle(CreatePrimaryCommand(eventId, "https://two.example.org"), CancellationToken.None));
+
+        await Assert.That(results.Count(result => result.Success)).IsEqualTo(1);
+        await Assert.That(created.Count).IsEqualTo(1);
     }
 
     [Test]
@@ -110,6 +152,7 @@ public sealed class CreateEventPublicActionCommandHandlerTests
         var handler = new CreateEventPublicActionCommandHandler(
             eventRepository,
             actionRepository,
+            new EventPublicActionTestUnitOfWork(),
             tenantContext,
             currentUser);
 
@@ -150,6 +193,17 @@ public sealed class CreateEventPublicActionCommandHandlerTests
             ? CreateParticipationConfiguration(eventId, tenantId, participationHandlingModeId.Value)
             : null
         };
+
+    private static CreateEventPublicActionCommand CreatePrimaryCommand(Guid eventId, string url) => new()
+    {
+        EventId = eventId,
+        Action = new ManageEventPublicActionDto
+        {
+            KindId = (int)EventPublicActionKindEnum.ExternalRegistration,
+            Url = url,
+            IsPrimary = true
+        }
+    };
 
     private static EventParticipationConfiguration CreateParticipationConfiguration(
         Guid eventId,

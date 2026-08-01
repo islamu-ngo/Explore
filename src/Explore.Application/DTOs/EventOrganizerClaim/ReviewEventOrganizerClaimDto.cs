@@ -5,12 +5,12 @@ namespace Explore.Application.DTOs.EventOrganizerClaim;
 
 public sealed class ReviewEventOrganizerClaimDto
 {
-    public EventOrganizerClaimReviewDecision Decision { get; set; }
+    public EventOrganizerClaimReviewDecisionDto Decision { get; set; }
     public required string ReasonCode { get; set; }
     public Guid ExpectedConcurrencyStamp { get; set; }
 }
 
-public enum EventOrganizerClaimReviewDecision
+public enum EventOrganizerClaimReviewDecisionDto
 {
     RequestEvidence = 1,
     Approve = 2,

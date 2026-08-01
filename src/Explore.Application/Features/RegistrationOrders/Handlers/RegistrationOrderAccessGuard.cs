@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using Explore.Application.Features.RegistrationOrders.Validators;
+using Explore.Application.Responses;
 using Explore.Domain;
 
 namespace Explore.Application.Features.RegistrationOrders.Handlers;
@@ -117,6 +118,14 @@ internal static class RegistrationOrderAccessGuard
     }
 
     public static RegistrationOrderLifecycleResponseDto NotFound(Guid orderId) => new()
+    {
+        Id = orderId,
+        Success = false,
+        FailureCode = "registration_order_not_found",
+        Message = "Registration order was not found."
+    };
+
+    public static BaseCommandResponse<Guid> ParticipantNotFound(Guid orderId) => new()
     {
         Id = orderId,
         Success = false,

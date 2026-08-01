@@ -40,7 +40,7 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
                     .ThenInclude(session => session.EventLocation)
             .Where(registration => registration.TenantId == tenantId
                 && registration.EventId == eventId
-                && registration.UserId == userId
+                && registration.LinkedUserId == userId
                 && registration.RegistrationOrderId != null
                 && registration.RegistrationOrder != null
                 && registration.RegistrationOrder.TenantId == tenantId

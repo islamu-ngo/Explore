@@ -66,6 +66,7 @@ public sealed class GetStudioContextQueryHandler(
             if (decisions.Any(allowed => allowed))
             {
                 context.AllowedLinkRelations.Add(LinkRelations.ViewRegistrationOrders);
+                context.AllowedLinkRelations.Add(LinkRelations.ViewParticipants);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

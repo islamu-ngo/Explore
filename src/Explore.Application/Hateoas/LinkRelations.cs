@@ -326,6 +326,11 @@ public static class LinkRelations
     public const string StartGuestRegistration = "start-guest-registration";
     public const string SignInToRegister = "sign-in-to-register";
     public const string ViewRegistrationOrders = "view-registration-orders";
+    public const string ViewParticipants = "view-participants";
+    public const string AddParticipant = "add-participant";
+    public const string UpdateParticipant = "update-participant";
+    public const string AssignTickets = "assign-tickets";
+    public const string DeferTickets = "defer-tickets";
     public const string ViewOriginalSource = "view-original-source";
     public const string ExternalEventPage = "external-event-page";
     public const string ExternalRegistration = "external-registration";

@@ -17,6 +17,7 @@ namespace Explore.Application.Features.EventPublicActions.Handlers.Commands;
 public sealed class CreateEventPublicActionCommandHandler(
     IEventRepository eventRepository,
     IEventPublicActionRepository actionRepository,
+    IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
     ICurrentUserService currentUserService)
     : IRequestHandler<CreateEventPublicActionCommand, BaseCommandResponse<Guid>>
@@ -53,12 +54,6 @@ public sealed class CreateEventPublicActionCommandHandler(
                 ["Public action kind is not available for this event's participation mode."]);
         }
 
-        if (request.Action.IsPrimary
-            && await actionRepository.HasOtherPrimaryAsync(request.EventId, excludedActionId: null, cancellationToken))
-        {
-            return Failure("Public action could not be created.", ["The event already has a primary public action."]);
-        }
-
         var action = new EventPublicAction
         {
             Id = Guid.CreateVersion7(),
@@ -72,8 +67,21 @@ public sealed class CreateEventPublicActionCommandHandler(
         };
         action.SetDestination(ExternalActionUrl.Create(request.Action.Url));
 
-        var created = await actionRepository.Create(action);
-        return Success(created.Id, "Public action created pending review.");
+        async Task<BaseCommandResponse<Guid>> PersistAsync(CancellationToken ct)
+        {
+            if (request.Action.IsPrimary
+                && await actionRepository.HasOtherPrimaryAsync(request.EventId, excludedActionId: null, ct))
+            {
+                return Failure("Public action could not be created.", ["The event already has a primary public action."]);
+            }
+
+            var created = await actionRepository.Create(action);
+            return Success(created.Id, "Public action created pending review.");
+        }
+
+        return request.Action.IsPrimary
+            ? await unitOfWork.ExecuteSerializableAsync(PersistAsync, cancellationToken)
+            : await PersistAsync(cancellationToken);
     }
 
     private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

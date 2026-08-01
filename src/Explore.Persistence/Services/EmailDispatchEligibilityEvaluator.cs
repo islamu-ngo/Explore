@@ -699,7 +699,7 @@ public sealed class EmailDispatchEligibilityEvaluator(
                 where child.TenantId == dispatch.TenantId
                        && child.RegistrationOrderId == registrationOrderId
                       && child.EventId == eventId
-                      && child.UserId == dispatch.RecipientUserId
+                      && child.LinkedUserId == dispatch.RecipientUserId
                       && !child.IsDeleted
                       && child.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
                       && session.EventId == eventId

@@ -321,6 +321,16 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .Where(value => value.UserId == subjectId)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(value => value.UserId, (Guid?)null), cancellationToken);
+        await dbContext.EventOrganizerClaims
+            .IgnoreAllFilters(reason)
+            .Where(value => value.ReviewerUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.ReviewerUserId, (Guid?)null), cancellationToken);
+        await dbContext.Events
+            .IgnoreAllFilters(reason)
+            .Where(value => value.SubmittedByUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.SubmittedByUserId, (Guid?)null), cancellationToken);
         await dbContext.OrganizationReviews
             .IgnoreAllFilters(reason)
             .Where(value => value.UserId == subjectId)
@@ -471,9 +481,19 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .IgnoreAllFilters(reason)
             .Where(value => value.UserId == subjectId)
             .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.RegistrationParticipantPii
+            .IgnoreAllFilters(reason)
+            .Where(value => value.RegistrationParticipant != null
+                && value.RegistrationParticipant.LinkedUserId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.RegistrationParticipants
+            .IgnoreAllFilters(reason)
+            .Where(value => value.LinkedUserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.LinkedUserId, (Guid?)null), cancellationToken);
         await dbContext.EventRegistrations
             .IgnoreAllFilters(reason)
-            .Where(value => value.UserId == subjectId)
+            .Where(value => value.LinkedUserId == subjectId)
             .ExecuteDeleteAsync(cancellationToken);
         string subjectKey = subjectId.ToString();
         await dbContext.IdempotencyRecords

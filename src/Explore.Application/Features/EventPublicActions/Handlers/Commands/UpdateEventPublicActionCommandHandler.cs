@@ -16,6 +16,7 @@ namespace Explore.Application.Features.EventPublicActions.Handlers.Commands;
 public sealed class UpdateEventPublicActionCommandHandler(
     IEventRepository eventRepository,
     IEventPublicActionRepository actionRepository,
+    IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
     ICurrentUserService currentUserService)
     : IRequestHandler<UpdateEventPublicActionCommand, BaseCommandResponse<Guid>>
@@ -64,21 +65,28 @@ public sealed class UpdateEventPublicActionCommandHandler(
             return Failure(request.ActionId, "Public action could not be updated.", ["Public action changed since it was loaded."]);
         }
 
-        if (request.Action.IsPrimary
-            && await actionRepository.HasOtherPrimaryAsync(request.EventId, request.ActionId, cancellationToken))
+        async Task<BaseCommandResponse<Guid>> PersistAsync(CancellationToken ct)
         {
-            return Failure(request.ActionId, "Public action could not be updated.", ["The event already has a primary public action."]);
+            if (request.Action.IsPrimary
+                && await actionRepository.HasOtherPrimaryAsync(request.EventId, request.ActionId, ct))
+            {
+                return Failure(request.ActionId, "Public action could not be updated.", ["The event already has a primary public action."]);
+            }
+
+            action.EventPublicActionKindId = request.Action.KindId;
+            action.HealthStateId = (int)EventPublicActionHealthStateEnum.PendingReview;
+            action.Label = NormalizeOptional(request.Action.Label);
+            action.SortOrder = request.Action.SortOrder;
+            action.IsPrimary = request.Action.IsPrimary;
+            action.SetDestination(ExternalActionUrl.Create(request.Action.Url));
+
+            await actionRepository.Update(action);
+            return Success(action.Id, "Public action updated pending review.");
         }
 
-        action.EventPublicActionKindId = request.Action.KindId;
-        action.HealthStateId = (int)EventPublicActionHealthStateEnum.PendingReview;
-        action.Label = NormalizeOptional(request.Action.Label);
-        action.SortOrder = request.Action.SortOrder;
-        action.IsPrimary = request.Action.IsPrimary;
-        action.SetDestination(ExternalActionUrl.Create(request.Action.Url));
-
-        await actionRepository.Update(action);
-        return Success(action.Id, "Public action updated pending review.");
+        return request.Action.IsPrimary
+            ? await unitOfWork.ExecuteSerializableAsync(PersistAsync, cancellationToken)
+            : await PersistAsync(cancellationToken);
     }
 
     private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
