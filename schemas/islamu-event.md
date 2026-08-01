@@ -4572,12 +4572,245 @@ Table "registration_order_lines" {
 
   indexes {
     (tenant_id, id) [unique, name: 'ak_registration_order_lines_tenant_id_id']
+    (tenant_id, registration_order_id, id) [unique, name: 'ak_registration_order_lines_tenant_id_registration_order_id_id']
     (tenant_id, registration_order_id, ticket_type_id) [unique, name: 'ix_registration_order_lines_tenant_id_registration_order_id_ti']
     (tenant_id, ticket_catalog_version_id) [name: 'ix_registration_order_lines_tenant_id_ticket_catalog_version_id']
     (tenant_id, ticket_type_id) [name: 'ix_registration_order_lines_tenant_id_ticket_type_id']
   }
 
   Note: 'Immutable selected-ticket and price snapshots for one registration order.'
+}
+
+Table "participant_types" {
+  "id" int [pk, not null]
+  "master_code" varchar(50) [not null]
+  "full_name" varchar(100) [not null]
+  "description" text
+
+  indexes {
+    master_code [unique, name: 'ix_participant_types_master_code']
+  }
+
+  Note: 'Lookup: Adult(1), Child(2), Dependent(3), Employee(4), Guest(5), Unnamed(6). Seeded.'
+}
+
+Table "assignment_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(50) [not null]
+  "full_name" varchar(100) [not null]
+  "description" text
+
+  indexes {
+    master_code [unique, name: 'ix_assignment_statuses_master_code']
+  }
+
+  Note: 'Lookup: Unassigned(1), Assigned(2), Deferred(3). Seeded.'
+}
+
+Table "registration_requirement_criticalities" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_registration_requirement_criticalities_master_code']
+  }
+
+  Note: 'Lookup: Required(1), Optional(2), Informational(3), Post-registration(4). Seeded.'
+}
+
+Table "registration_requirement_completion_effects" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_registration_requirement_completion_effects_master_code']
+  }
+
+  Note: 'Lookup: Blocks registration(1), Enriches registration(2), No registration effect(3). Seeded.'
+}
+
+Table "registration_answer_sync_modes" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_registration_answer_sync_modes_master_code']
+  }
+
+  Note: 'Lookup: None(1), Completion only(2), Selected fields(3), Full canonical(4), Mirror only(5). Seeded.'
+}
+
+Table "registration_requirement_subject_types" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_registration_requirement_subject_types_master_code']
+  }
+
+  Note: 'Lookup: All orders(1), Specific ticket type(2), Every participant(3), Lead booker only(4), Child participants(5), Specific session selection(6). Seeded.'
+}
+
+Table "registration_workflows" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "purpose" varchar(100) [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, event_id, id) [unique, name: 'ak_registration_workflows_tenant_id_event_id_id']
+    (tenant_id, event_id, purpose) [unique, name: 'ix_registration_workflows_tenant_id_event_id_purpose']
+  }
+
+  Note: 'One tenant/event registration workflow per stable purpose.'
+}
+
+Table "registration_requirements" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_workflow_id" uuid [not null]
+  "ordinal" int [not null]
+  "criticality_id" int [not null]
+  "completion_effect_id" int [not null]
+  "answer_sync_mode_id" int [not null]
+  "applies_to_subject_type_id" int [not null]
+  "applies_to_subject_id" uuid
+  "can_skip" boolean [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, event_id, registration_workflow_id, id) [unique, name: 'ak_registration_requirements_tenant_id_event_id_registration_w']
+    (registration_workflow_id, ordinal) [unique, name: 'ix_registration_requirements_registration_workflow_id_ordinal']
+    (tenant_id, event_id) [name: 'ix_registration_requirements_tenant_id_event_id']
+  }
+
+  Note: 'Workflow-owned requirement with ALL-at-workflow evaluation and typed applicability.'
+}
+
+Table "registration_channels" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_workflow_id" uuid [not null]
+  "registration_requirement_id" uuid [not null]
+  "ordinal" int [not null]
+  "registration_provider_binding_id" uuid
+  "is_native" boolean [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (registration_requirement_id, ordinal) [unique, name: 'ix_registration_channels_registration_requirement_id_ordinal']
+    registration_provider_binding_id [name: 'ix_registration_channels_registration_provider_binding_id']
+    (tenant_id, event_id) [name: 'ix_registration_channels_tenant_id_event_id']
+  }
+
+  Note: 'Requirement-owned alternative channel; native channels have no provider binding.'
+}
+
+Table "registration_participants" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "linked_user_id" uuid
+  "participant_type_id" int [not null]
+  "guardian_participant_id" uuid
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_participants_tenant_id_id']
+    (tenant_id, registration_order_id, id) [unique, name: 'ak_registration_participants_tenant_id_registration_order_id_id']
+    (tenant_id, registration_order_id) [name: 'ix_registration_participants_tenant_id_registration_order_id']
+    (tenant_id, linked_user_id) [name: 'ix_registration_participants_tenant_id_linked_user_id']
+    (tenant_id, guardian_participant_id) [name: 'ix_registration_participants_tenant_id_guardian_participant_id']
+    (tenant_id, registration_order_id, guardian_participant_id) [name: 'ix_registration_participants_tenant_id_registration_order_id_guardian_participant_id']
+  }
+
+  Note: 'Tenant-scoped named or unnamed participant owned by one registration order; PII is split.'
+}
+
+Table "registration_participant_pii" {
+  "registration_participant_id" uuid [pk, not null]
+  "tenant_id" uuid [not null]
+  "display_name" varchar(200)
+  "email" varchar(320)
+  "normalized_email" varchar(320)
+  "phone" varchar(50)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, registration_participant_id) [unique, name: 'ak_registration_participant_pii_tenant_id_registration_participant_id']
+    (tenant_id, normalized_email) [name: 'ix_registration_participant_pii_tenant_id_normalized_email']
+  }
+
+  Note: 'Removable one-to-one PII extension for a registration participant.'
+}
+
+Table "registration_ticket_assignments" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "registration_order_line_id" uuid [not null]
+  "participant_id" uuid
+  "ordinal" int [not null, note: 'positive; unique active slot within concrete order line']
+  "assignment_status_id" int [not null]
+  "assignment_deadline" timestamptz
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_ticket_assignments_tenant_id_id']
+    (tenant_id, registration_order_id) [name: 'ix_registration_ticket_assignments_tenant_id_registration_order_id']
+    (tenant_id, participant_id) [name: 'ix_registration_ticket_assignments_tenant_id_participant_id']
+    (tenant_id, registration_order_id, participant_id) [name: 'ix_registration_ticket_assignments_tenant_id_registration_order_id_participant_id']
+    (tenant_id, registration_order_line_id, ordinal) [unique, name: 'ix_registration_ticket_assignments_tenant_id_registration_order_line_id_ordinal', note: 'filter: is_deleted = false']
+  }
+
+  Note: 'Concrete ticket-unit slot. PostgreSQL trigger locks the order line and rejects active assignment count above its quantity.'
 }
 
 Table "registration_order_pii" {
@@ -4712,10 +4945,10 @@ Table "event_public_actions" {
 
   indexes {
     (tenant_id, id) [unique, name: 'ak_event_public_actions_tenant_id_id']
-    (tenant_id, event_id) [unique, name: 'ux_event_public_actions_tenant_event_primary', note: 'filter: is_primary = true AND is_deleted = false']
+    (tenant_id, event_id) [name: 'ix_event_public_actions_tenant_event']
   }
 
-  Note: 'Tenant-scoped moderated external actions. At most one active primary action may exist per event.'
+  Note: 'Tenant-scoped moderated external actions. Application handlers enforce at most one active primary action per event inside a serializable EF transaction.'
 }
 
 Table "event_organizer_claims" {
@@ -4748,12 +4981,12 @@ Table "event_organizer_claims" {
 Table "event_registrations" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "event_id" uuid [not null, note: 'denormalized from EventSession for same-event composite FK enforcement']
-  "user_id" uuid
+  "linked_user_id" uuid
   "event_session_id" uuid [not null]
   "coverage_established_at" timestamptz [not null, default: `NOW()`]
   "registration_order_id" uuid
   "registration_order_line_id" uuid
-  "registration_participant_id" uuid
+  "registration_participant_id" uuid [not null]
   "ticket_type_entitlement_id" uuid
   "entitlement_ordinal" int
   "approval_status_id" int
@@ -4768,8 +5001,9 @@ Table "event_registrations" {
   "deleted_by" uuid
 
   indexes {
-    (tenant_id, event_id, event_session_id, user_id) [name: 'ix_eventregistrations_session_user', note: 'filter: is_deleted = false']
-    user_id [name: 'ix_eventregistrations_user']
+    (tenant_id, event_id, event_session_id, linked_user_id) [name: 'ix_eventregistrations_session_user', note: 'filter: is_deleted = false']
+    linked_user_id [name: 'ix_eventregistrations_user']
+    (tenant_id, event_session_id, registration_participant_id) [unique, name: 'ix_eventregistrations_session_participant', note: 'filter: is_deleted = false']
     (tenant_id, registration_order_id) [name: 'ix_event_registrations_tenant_id_registration_order_id']
     (tenant_id, ticket_type_entitlement_id) [name: 'ix_event_registrations_tenant_id_ticket_type_entitlement_id']
     (tenant_id, registration_order_line_id, ticket_type_entitlement_id, event_session_id, entitlement_ordinal) [unique, name: 'ix_eventregistrations_order_admission', note: 'filter: registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false']
@@ -5635,6 +5869,30 @@ Ref: "registration_inventory_holds"."registration_inventory_hold_status_id" > "r
 Ref: "registration_order_lines".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
 Ref: "registration_order_lines".("tenant_id", "ticket_type_id") > "event_ticket_types".("tenant_id", "id") [delete: restrict]
 Ref: "registration_order_lines".("tenant_id", "ticket_catalog_version_id") > "event_ticket_catalog_versions".("tenant_id", "id") [delete: restrict]
+Ref: "registration_participants"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_participants".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "registration_participants"."linked_user_id" > "users"."id" [delete: restrict]
+Ref: "registration_participants"."participant_type_id" > "participant_types"."id" [delete: restrict]
+Ref: "registration_participants".("tenant_id", "registration_order_id", "guardian_participant_id") > "registration_participants".("tenant_id", "registration_order_id", "id") [delete: restrict]
+Ref: "registration_participant_pii".("tenant_id", "registration_participant_id") - "registration_participants".("tenant_id", "id") [delete: restrict]
+Ref: "registration_participant_pii"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_ticket_assignments"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_ticket_assignments".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "registration_ticket_assignments".("tenant_id", "registration_order_id", "registration_order_line_id") > "registration_order_lines".("tenant_id", "registration_order_id", "id") [delete: restrict]
+Ref: "registration_ticket_assignments".("tenant_id", "registration_order_id", "participant_id") > "registration_participants".("tenant_id", "registration_order_id", "id") [delete: restrict]
+Ref: "registration_ticket_assignments"."assignment_status_id" > "assignment_statuses"."id" [delete: restrict]
+Ref: "registration_workflows"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_workflows".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "registration_requirements"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_requirements".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "registration_requirements".("tenant_id", "event_id", "registration_workflow_id") > "registration_workflows".("tenant_id", "event_id", "id") [delete: cascade]
+Ref: "registration_requirements"."criticality_id" > "registration_requirement_criticalities"."id" [delete: restrict]
+Ref: "registration_requirements"."completion_effect_id" > "registration_requirement_completion_effects"."id" [delete: restrict]
+Ref: "registration_requirements"."answer_sync_mode_id" > "registration_answer_sync_modes"."id" [delete: restrict]
+Ref: "registration_requirements"."applies_to_subject_type_id" > "registration_requirement_subject_types"."id" [delete: restrict]
+Ref: "registration_channels"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_channels".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "registration_channels".("tenant_id", "event_id", "registration_workflow_id", "registration_requirement_id") > "registration_requirements".("tenant_id", "event_id", "registration_workflow_id", "id") [delete: cascade]
 Ref: "registration_order_pii".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
 Ref: "registration_order_platform_contributions".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
 Ref: "platform_fee_fixed_charges"."platform_fee_policy_id" > "platform_fee_policies"."id" [delete: restrict]
@@ -5695,10 +5953,11 @@ Ref: "event_session_tags".("tenant_id", "tag_id") > "tags".("tenant_id", "id") [
 // Registration
 Ref: "event_registrations".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: cascade]
 Ref: "event_registrations".("tenant_id", "event_id", "event_session_id") > "event_sessions".("tenant_id", "event_id", "id") [delete: cascade]
-Ref: "event_registrations"."user_id" > "users"."id" [delete: restrict]
+Ref: "event_registrations"."linked_user_id" > "users"."id" [delete: restrict]
 Ref: "event_registrations".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
 Ref: "event_registrations".("tenant_id", "registration_order_line_id") > "registration_order_lines".("tenant_id", "id") [delete: restrict]
 Ref: "event_registrations".("tenant_id", "ticket_type_entitlement_id") > "ticket_type_entitlements".("tenant_id", "id") [delete: restrict]
+Ref: "event_registrations".("tenant_id", "registration_order_id", "registration_participant_id") > "registration_participants".("tenant_id", "registration_order_id", "id") [delete: restrict]
 Ref: "event_registrations"."atproto_record_id" > "atproto_records"."id" [delete: set null]
 
 // Email Dispatch

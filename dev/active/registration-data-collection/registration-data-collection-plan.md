@@ -3,9 +3,45 @@
 
 # Registration Data Collection & Participation Platform — Implementation Plan
 
-Last Updated: 2026-07-31 Europe/Brussels
+Last Updated: 2026-08-01 Europe/Brussels
 
 ---
+
+## Handoff — 2026-08-01 Europe/Brussels: Task 7.1 Complete
+
+### Current State
+- Phase 6 and its owned verification debt are complete. Task 7.1, `Workflow + requirement + channel skeleton`, is checked; Phase 7 remains in progress because Tasks 7.2–7.8 and the Phase 7 verification boxes are still open.
+- Task 7.1 ships `RegistrationWorkflow`, `RegistrationRequirement`, and `RegistrationChannel`; four normalized lookup row/enum families; pure ALL/ANY evaluation; typed applicability; explicit Native/provider-bound channels; positive owner-scoped ordinals; and duplicate guards. `SkippedByRegistrant` is an evaluation outcome only; Task 8.5 owns durable subject fulfillment/skip persistence.
+- Fresh evidence is green: Domain 11/11, characterization 1/1, Domain architecture 6/6, naming 11/11, and the six-predicate harness; Persistence 4/4; rootless Podman-backed PostgreSQL 1/1; scoped Release builds 0 errors; EF reports no pending model changes for generated `20260801000023_init`; and all seven protected migration hashes are unchanged.
+- Independent code review is PASS with no findings and adversarial QA is `confirmed`. Cleanup leaves only the pre-existing `happy_curie` container. The full solution baseline is not green: two unrelated Blazor test compile errors assign `int`/`int?` values to `GuestRecoveryPolicyEnum?`; no full-build success is claimed.
+
+### Next Action
+1. Start Task 7.2: form/version/section/field/option model with immutability.
+2. Keep Phase 7 in progress until Tasks 7.2–7.8 and the two Phase 7 verification commands are complete; retain the unrelated full-build baseline blocker.
+
+### Blockers
+- No product decision is blocking. The Domain/Persistence naming is settled: keep `Purpose`, `RegistrationProviderBindingId`, and explicit positive `Ordinal`; do not introduce shadow properties or compatibility overloads.
+- Full-solution verification remains blocked by two unrelated Blazor test compile errors assigning `int`/`int?` to `GuestRecoveryPolicyEnum?`; Task 7.1 scoped builds and tests are independently green.
+- The shared worktree remains dirty. Preserve unrelated edits and never reset or revert them.
+
+### Modified Files
+- Task 7.1 Domain source, four lookup row/enum families, Persistence configurations/DbSets/seeding, generated `20260801000023_init` artifacts, DBML, and focused tests are complete.
+- Reviewable harness, stop-hook, code-review, QA, and final evidence are under `.omo/start-work/artifacts/registration-data-collection-phase7/` and `.omo/evidence/`.
+
+### Validation
+- Domain receipts: Task 7.1 selector 11/11; unchanged participant characterization 1/1; Domain Clean Architecture 6/6; naming 11/11; harness exit 0 with `required_complete`, `required_skip_rejected`, `optional_skip_recorded`, `blocking_effect_satisfied`, `ordering_enforced`, and `tenant_isolated` all true.
+- Persistence receipts: focused 4/4; rootless Podman/PostgreSQL 1/1; scoped Release builds 0 errors; EF `has-pending-model-changes` reports no changes; generated `20260801000023_init`; seven protected hashes unchanged; container cleanup leaves only `happy_curie`.
+- Evidence: `.omo/evidence/task-7.1-final-verification.md`, `.omo/evidence/task-7.1-persistence-stop-hook-verification.md`, `.omo/evidence/task-7.1-code-review.md`, and `.omo/start-work/artifacts/registration-data-collection-phase7/task-7.1-session-handoff-verify.md`.
+
+### Documentation Impact
+- Task 7.1 closeout synchronizes the plan, context, task ledger, and `docs/DOMAIN.md`; generated migration/schema artifacts remain generated outputs and are not hand-edited.
+
+### Risks And Notes For The Next Agent
+- Never write registrant-specific skip state onto the shared authoring requirement. Task 7.1 returns a pure outcome; Task 8.5 persists fulfillment/skip evidence per registration subject.
+- Never hide ordering in EF shadow state. Positive requirement/channel ordinals and duplicate guards are Domain invariants.
+- Keep requirement evaluation and provider semantics in C#/EF. No triggers, stored procedures, functions, provider branches, raw business SQL, or PostgreSQL-only Task 7.1 mappings.
+- Migrations and snapshots are generated artifacts only. Fix entity/configuration/seeder source, then delete/regenerate the unapplied development migration through EF CLI.
+- PostgreSQL is one runtime proof, not a claim for MySQL, MariaDB, or SQL Server. Do not treat Task 7.1 completion as Phase 7 completion.
 
 ## 0. Planning Metadata
 
@@ -14,7 +50,7 @@ Last Updated: 2026-07-31 Europe/Brussels
 - **Licensing correction (2026-07-21):** ISLAMU Event operates under a CLA that enables dual-licensing (offering the software under a non-AGPLv3 license to recipients who cannot use AGPLv3). Therefore **zero code may be copied from the Hi.Events repository** — copying AGPLv3-licensed third-party code would contaminate the codebase and destroy the dual-licensing capability. Hi.Events remains a *behavior, design, and data-model* reference only; the report's §10 code-reuse permission is explicitly overridden by this workstream (see §4.13, D19).
 - **Studio integration re-baseline (2026-07-26):** Treat the implemented workspace shell from `dev/active/dynamic-event-management-ui/` as current architecture. Organizer ticketing, orders, attendees, registration forms, and provider operations extend the existing Studio workspace and its single contextual sidebar; they do not create a parallel `/events/manage` navigation system. Public and guest checkout remains outside Studio.
 - **Task directory:** `dev/active/registration-data-collection/`
-- **Planning status:** Approved by the user on 2026-07-26; re-baselined after the Phase 4 findings on 2026-07-29. The task ledger has 32/88 implementation-task boxes checked, and Task 5.8 is verified. The registration-order lifecycle source receipt is now frozen at `RegistrationOrderLifecycleResponseDto` / `GuestRegistrationOrderLifecycleResponseDto`; focused Application/API/Blazor lanes, API/OpenAPI/NSwag generation, and canonical Release builds are green. Phase 5 is complete under the shared-baseline blocker policy used by prior phases: the remaining Architecture failures are unrelated shared-baseline debt (327/337 passed, 9 failed, 1 skip), not Phase 5 causal failures. Commit `ff30795a2` owns the participation/ticketing migration artifact; generated `20260729183118_RemoveLegacyEventPricing` removes legacy pricing schema and EF reports no pending model changes. Only `schemas/islamu-event.md` changed for current-model DBML parity, and no database apply/revert claim is made.
+- **Planning status:** Approved by the user on 2026-07-26; re-baselined after the Phase 4 findings on 2026-07-29. The task ledger has 35/88 implementation-task boxes checked after Task 7.1 closeout; Task 7.2 is next and Phase 7 remains in progress. The registration-order lifecycle source receipt is now frozen at `RegistrationOrderLifecycleResponseDto` / `GuestRegistrationOrderLifecycleResponseDto`; focused Application/API/Blazor lanes, API/OpenAPI/NSwag generation, and canonical Release builds are green. Phase 5 is complete under the shared-baseline blocker policy used by prior phases: the remaining Architecture failures are unrelated shared-baseline debt (327/337 passed, 9 failed, 1 skip), not Phase 5 causal failures. Commit `ff30795a2` owns the participation/ticketing migration artifact; generated `20260729183118_RemoveLegacyEventPricing` removes legacy pricing schema and EF reports no pending model changes. Only `schemas/islamu-event.md` changed for current-model DBML parity, and no database apply/revert claim is made.
 - **Matched intent:** `registration-data-collection`, the dedicated cross-cutting intent created in Phase 0. Its related granular intents remain `add-write-endpoint`, `add-get-endpoint`, `add-hal-link`, `add-cqrs-handler`, `add-ef-migration`, `update-repository-query`, `blazor-component-affordance`, `cerbos-policy-change`, and `openapi-contract-change`.
 - **Relevant skills:** `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, `outbox-pattern`, `auth-patterns`, `blazor-bff-patterns`, `blazor-ui-conventions`, `error-tracking`.
 - **Relevant rules:** `.claude/rules/domain.md`, `application-layer.md`, `efcore-persistence.md`, `efcore-migrations.md`, `api-controllers.md`, `api-hateoas.md`, `blazor-server.md`, `blazor-client.md`, `tests.md`.
@@ -26,42 +62,45 @@ Last Updated: 2026-07-31 Europe/Brussels
 ## Handoff — 2026-07-31 Europe/Brussels: Phase 6
 
 ### Current State
-- Phase 5 is complete under the shared-baseline blocker policy. Task 6.1 is independently verified, bringing the ledger to 33/88 implementation tasks; this is not Phase 6 or workstream completion.
+- Phase 5 is complete under the shared-baseline blocker policy. Tasks 6.1 through 6.5 are independently verified, bringing the ledger to 37/88 implementation tasks; Phase 6 implementation is complete, but its verification/privacy audit and the broader workstream remain open.
 - The registration-order lifecycle contract is frozen at `RegistrationOrderLifecycleResponseDto` and `GuestRegistrationOrderLifecycleResponseDto`. Focused Application, API, Blazor, contract-generation, Release-build, and EF model checks are green.
-- The Phase 6.1 Domain slice now contains tenant/audit-aware participants, split participant PII, concrete order-line ticket assignments, normalized participant/assignment lookups, and explicit confirmation rules for all five `ParticipantDataCollectionMode` values. Child/dependent eligibility requires a different adult guardian in the same order.
-- Full Architecture is not broadly green: 327/337 passed, 9 unrelated failures remain, and 1 test is skipped. No Docker-backed persistence, database apply/revert, browser, Aspire, or visual-runtime result is claimed.
+- Task 6.2 persists those entities and lookups, requires order-qualified participant lineage on admissions, enforces active participant/session and order-line/ordinal uniqueness, and adds a PostgreSQL row-locking quantity trigger. Free finalization now resolves assigned participants or retry-stable PII-free unnamed placeholders according to all five collection modes before transactional effects.
+- Task 6.3 adds add/update/assign/bulk/defer CQRS handlers, atomic participant/assignment amendments, confirmed-order admission reassignment/materialization, and purchaser-actor booking-party limit rechecks before finalization effects. The preserved non-test family harness confirms five participants, five concrete assignments, and five unique Confirmed admissions without emitting PII.
+- Task 6.4 exposes those handlers through event/order-bound guest-capability and authenticated participant/assignment routes, keeps reads private/no-store and writes idempotent/rate-limited, and emits organizer navigation plus mutation affordances exclusively through authorization-gated HAL relations. A preserved WebApplicationFactory harness confirms valid guest access, generic wrong-scope/malformed 404 behavior, exact manageable relations, and no capability disclosure.
+- Task 6.5 consumes the generated participant client in authenticated/guest recovery, renders per-ticket optional/required/deferred fields from pinned catalog metadata, keeps copied buyer details editable, and adds actor/event Studio attendee routes. Actor, event, per-order row, and order-operation visibility fail closed on their exact HAL relations; direct reruns and the independent adversarial audit are confirmed.
+- Full Architecture is not broadly green: 327/337 passed, 9 unrelated failures remain, and 1 test is skipped. Docker-backed PostgreSQL assertions remain fixture-blocked; database apply/revert, browser, Aspire, and visual-runtime results remain unclaimed.
 
 ### Next Action
 1. Read `registration-data-collection-context.md` and `registration-data-collection-tasks.md`, then read only this Phase 6 section plus the required rules and skills.
-2. Start Task 6.2 persistence and `EventRegistration` participant linkage from the verified Task 6.1 entities. Keep persistence configuration, seeding, repositories, migration work, and database tests inside that slice.
-3. Enforce the per-order-line assignment multiset and participant/session admission uniqueness at the database boundary; do not infer those guarantees from the Phase 6.1 in-memory rules.
+2. Run the Phase 6 Release/Application verification commands, then complete the participant-PII inventory/privacy audit without weakening the required admission-participant linkage.
+3. Keep owned Phase 6 evidence separate from unrelated shared Architecture/OpenAPI debt and do not infer Docker/browser runtime success.
 
 ### Blockers
 - The shared Architecture baseline remains non-green for unrelated failures, so Phase 6 verification must keep owned evidence separate from that baseline.
-- Database rollout evidence remains absent. Docker/Testcontainers and browser/runtime evidence are unavailable and must not be inferred from source or build checks.
+- Database rollout evidence remains absent. Three PostgreSQL scenarios were discovered but fixture-blocked by unavailable Docker before assertions; the corrected four-scenario class compiles, but runtime success must not be inferred.
 - The worktree is shared and dirty. Do not reset, revert, delete, or overwrite unrelated files.
 
 ### Modified Files
-- Task 6.1 added `RegistrationParticipant`, `RegistrationParticipantPii`, `RegistrationTicketAssignment`, `ParticipantType`/`AssignmentStatus` lookups and enums, extended `RegistrationOrderRules`, and added focused Domain tests.
-- This closeout changes only `.omo/start-work/ledger.jsonl`, `registration-data-collection-plan.md`, and `registration-data-collection-context.md`; the task checkbox was reconciled separately by the root orchestrator.
+- Task 6.5 added the pinned ticket-line read metadata, generated-client participant adapters, registration participant editor, actor/event Studio attendee pages/navigation, isolated token CSS, focused Application/bUnit/service tests, and preserved render-tree evidence.
+- This state-only closeout changes only `.omo/start-work/ledger.jsonl`, the current Phase 6 handoffs in `registration-data-collection-plan.md` and `registration-data-collection-context.md`, and its `.omo/evidence/` report; task checkboxes are untouched.
 
 ### Validation
-- Task 6.1 focused participant/rule tests pass 9/9, the unchanged `RegistrationOrderRulesTests` characterization passes 2/2, and the full Release Domain suite passes 630/630 with nonempty TRX evidence.
-- A disposable .NET 10 console probe referenced the actual Domain project and printed PASS for all five collection modes, required-mode rejection, deferred future/missing/expired deadline behavior, and guardian enforcement; its temporary directory was removed.
-- Full Architecture remains 327/337 passed, 9 failed, 1 governed skip. Docker-backed persistence and database apply/revert remain unclaimed.
+- Fresh direct Task 6.5 reruns passed the pinned-catalog Application selector, participant/Studio/service bUnit selectors, generated-client drift check, and zero-error Blazor Client build.
+- The preserved render-tree harness produced five authorized/fail-closed states at three width contracts with every predicate true. Independent accessibility and design reviews passed; the final adversarial audit returned `confirmed` at 0.99 after adding exact negative order-operation and production per-order row-filter characterization tests.
+- Docker-backed PostgreSQL runtime remains pending from Task 6.2; no database runtime pass or apply/revert is inferred.
 - Handoff-doc verification: `git diff --check -- dev/active/registration-data-collection/registration-data-collection-plan.md dev/active/registration-data-collection/registration-data-collection-context.md dev/active/registration-data-collection/registration-data-collection-tasks.md`.
 
 ### Documentation Impact
-- Updated the current Phase 6 handoffs in the plan/context and appended the confirmed Task 6.1 evidence record. No historical handoff, journal, or canonical product/operator document changed.
+- Updated the current Phase 6 handoffs in the plan/context and appended the independently confirmed Task 6.5 evidence record. No historical handoff, task checkbox, journal, or canonical product/operator document changed.
 
 ### Risks
-- Preserve buyer != participant and keep participant PII in the split PII entity.
-- Every ticket assignment must reference a concrete order line, and Task 6.2 must enforce the per-line assignment multiset so assignments cannot exceed or substitute that line's quantity/tier.
-- Studio and attendee navigation, actions, and row operations remain HAL-only. Never infer affordances from local roles, claims, status, provenance, or capability booleans.
+- Preserve buyer != participant, split participant PII, order-qualified lineage, nullable unnamed pre-assignment, and required admission participant linkage.
+- Preserve Task 6.5's generated-client-only access and HAL-only checkout/Studio navigation, rows, and actions; never replace the exact relation gates with local roles, claims, status, provenance, or capability booleans.
+- The Phase 6 privacy audit must inventory split participant PII accurately without exposing purchaser or attendee data in logs/evidence.
 
 ### Notes For Next Agent
-- Task 6.1 executor evidence: `.omo/start-work/artifacts/registration-data-collection-phase6/task-6.1-done-claim.md`; independent verification: `.omo/evidence/registration-data-collection-phase6/task-6.1-verification.md`.
-- Task 6.2 owns EF configurations, lookup seeding, repositories, migration artifacts, required `EventRegistration.RegistrationParticipantId`, and real persistence proof. It must not reopen or weaken the verified five-mode Domain behavior.
+- Task 6.5 evidence: `.omo/start-work/artifacts/registration-data-collection-phase6/task-6.5-done-claim.md`; direct verification: `.omo/evidence/task-6.5-direct-verification.md`; confirmed audit: `.omo/evidence/task-6.5-direct-adversarial-verify.md`; visual design: `.omo/evidence/registration-data-collection-phase6-task65-clone-fidelity.md`; accessibility: `.omo/start-work/artifacts/registration-data-collection-phase6/task-6.5-visual-accessibility-review.md`.
+- Phase 6 verification and participant-PII privacy inventory are next. Do not start Phase 7 until their owned gates are adjudicated.
 - Keep implementation clean-room: zero Hi.Events code, SQL, migration, snippet, or asset copy. Use only the approved behavior report and this plan.
 - Load the `registration-data-collection` intent's required Domain/Application/Persistence/API/Blazor rules and listed skills for the slice being implemented.
 - Preserve the shared dirty worktree. Do not reset or revert unrelated changes, and do not turn unavailable Docker/database/browser checks into completion claims.
@@ -525,10 +564,12 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Type:** create/modify
 - **Layer:** Persistence
 - **Files:** new `src/Explore.Persistence/Configurations/Entities/{EventPublicActionConfiguration,EventOrganizerClaimConfiguration,EventProvenanceTypeConfiguration,EventPublicActionKindConfiguration,EventPublicActionHealthStateConfiguration,EventOrganizerClaimStatusConfiguration}.cs`; existing `ExploreDbContext.DbSets.cs`, `ExploreDbContext.QueryFilters.cs`, `Seed/LookupTableSeeder.cs`, `schemas/islamu-event.md`; repository contracts/implementations move to Task 1.5 when real access paths exist.
-- **Description:** Tenant + soft-delete filters, stable lookup IDs in the seeder (document ID ranges in `schemas/islamu-event.md`), unique index one-primary-action-per-event (filtered). Do not add speculative repositories before Application consumers exist. Commit `ff30795a2` owns the additive `20260728152646_AddParticipationHandlingModes` migration, designer, and snapshot. Preserve migration history and never rewrite committed migration artifacts; the commit does not prove database application.
+- **Description:** Tenant + soft-delete filters, stable lookup IDs in the seeder (document ID ranges in `schemas/islamu-event.md`), and a provider-neutral non-unique `(TenantId, EventId)` index. The one-active-primary rule belongs to the existing serializable Application/EF unit-of-work boundary, not a filtered index, trigger, stored procedure, or provider-specific SQL. Do not add speculative repositories before Application consumers exist. The reset main Explore chain is generated as `20260731204537_init`; never hand-edit its migration, designer, or snapshot. This proves model/artifact parity, not database application or runtime rollout.
 - **Acceptance Criteria:**
-  - [ ] Lookup seeder parity (enum ↔ seeded rows) covered by existing seeder-parity test pattern
-  - [ ] Query filters verified by a persistence test for cross-tenant invisibility
+  - [x] Lookup seeder parity (enum ↔ seeded rows) covered by exact/idempotent missing-row repair tests
+  - [x] Named Tenant and SoftDelete filters verified for fail-closed, cross-tenant, and independent-filter behavior
+  - [x] Concurrent primary-action commands yield one committed primary through `IUnitOfWork.ExecuteSerializableAsync`, with no Phase 1 provider-specific business-rule DDL
+  - [x] Generated `20260731204537_init` matches the model; PrivacyErasureAuthority/DataProtection chains are unchanged; database application remains unclaimed
 - **Dependencies:** 1.1–1.3; migration generation additionally depends on `atproto-federation-actor-lifecycle` Task 2.1 because both workstreams modify the shared Event/Actor model snapshot
 - **Effort:** L
 
@@ -549,9 +590,9 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Files:** new `src/Explore.API/Controllers/EventPublicActionController.cs`, `EventOrganizerClaimController.cs`, new `src/Explore.API/Hateoas/Policies/{EventPublicActionLinkPolicy,EventOrganizerClaimLinkPolicy}.cs`; existing `EventLinkPolicy.cs`, `RouteNames.cs`, `LinkRelations.cs`, `cerbos/policies/islamuevent_event.yaml`, new `cerbos/policies/islamuevent_event_organizer_claim.yaml` + `_schemas` entry
 - **Description:** Named routes + classifications (`Public` reads, `Authenticated` writes), ProducesResponseType coverage, HAL relations `view-original-source`, `external-event-page`, `external-registration`, `optional-questionnaire`, `claim-event`, `suggest-correction`, `report-external-link`; Cerbos attributes per D9; redirect endpoint resolves stored action IDs only (no `?url=`); `noopener/noreferrer` guidance in DTO metadata. Regenerate OpenAPI + NSwag client as the discrete contract step; update `docs/API_CHANGELOG.md`.
 - **Acceptance Criteria:**
-  - [ ] Contract invariants + endpoint-classification architecture tests pass
-  - [ ] Cerbos parity test covers claim review deny-by-default
-  - [ ] No open-redirect endpoint exists (API test asserts stored-action resolution)
+  - [x] Contract invariants + endpoint-classification architecture tests pass on focused current-source selectors
+  - [x] Cerbos service/fallback parity tests cover claim review and machine/unrelated deny-by-default behavior; native CLI compilation remains an environment gap
+  - [x] No open-redirect endpoint exists; non-test in-process HTTP proves hostile caller URL input cannot override the stored validated destination
 - **Dependencies:** 1.5
 - **Effort:** L
 
@@ -991,9 +1032,10 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Files:** `RegistrationWorkflow.cs`, `RegistrationRequirement.cs`, `RegistrationChannel.cs` (channel references binding — nullable provider fields until Phase 9; Native channel kind works standalone), lookups + configurations + seeder
 - **Description:** Workflow per event/purpose; requirement completion semantics (`ALL` mandatory at workflow, `ANY` across channels, optional/informational/post-registration never block per FR-SYNC-03); applicability (`AllOrders/SpecificTicketType/EveryParticipant/LeadBookerOnly/ChildParticipants/SpecificSessionSelection`) as typed rules.
 - **Acceptance Criteria:**
-  - [ ] Requirement evaluation rules unit-tested incl. skip recording (`SkippedByRegistrant`)
+  - [x] Requirement evaluation rules unit-tested incl. skip recording (`SkippedByRegistrant`)
 - **Dependencies:** Phase 5
 - **Effort:** L
+- **Evidence:** Domain 11/11, characterization 1/1, architecture 6/6, naming 11/11, six-predicate harness; Persistence 4/4; rootless Podman/PostgreSQL 1/1; scoped Release builds 0 errors; EF no pending model changes for generated `20260801000023_init`; seven protected migration hashes unchanged; code review PASS with no findings; adversarial QA `confirmed`. Durable subject fulfillment/skip persistence remains Task 8.5.
 
 #### Task 7.2: Form/version/section/field/option model with immutability
 - **Type:** create

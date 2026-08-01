@@ -129,6 +129,23 @@ Domain rules reject illegal combinations. Information-only and walk-in require a
 
 External participation destinations are reviewed `EventPublicAction` records, not fields on the event. Public HAL synthesis may emit one stored-ID redirect only when the participation mode permits that action. Native workflow authorization is permitted only for `PLATFORM_MANAGED`; a click or redirect is engagement, never proof of registration.
 
+### Registration Workflow Authoring
+
+`RegistrationWorkflow` is the event- and purpose-owned authoring aggregate. It owns ordered `RegistrationRequirement` rows, and each requirement owns ordered `RegistrationChannel` rows. Requirements and channels require positive owner-scoped ordinals; aggregate mutators reject duplicate IDs or ordinals. A native channel has no provider binding; a provider channel carries `RegistrationProviderBindingId`.
+
+The four Task 7.1 lookup families are normalized rows with stable integer IDs and stable `MasterCode` values (enum mirrors are convenience constants, not persisted enum columns):
+
+| Lookup family | Stable code examples | Meaning |
+|---|---|---|
+| `RegistrationRequirementCriticality` | `REQUIRED`, `OPTIONAL`, `INFORMATIONAL`, `POST_REGISTRATION` | Blocking and lifecycle criticality. |
+| `RegistrationRequirementCompletionEffect` | `BLOCKS_REGISTRATION`, `ENRICHES_REGISTRATION`, `NO_REGISTRATION_EFFECT` | Effect of completion on registration. |
+| `RegistrationAnswerSyncMode` | `NONE`, `COMPLETION_ONLY`, `SELECTED_FIELDS`, `FULL_CANONICAL`, `MIRROR_ONLY` | What completion may synchronize. |
+| `RegistrationRequirementSubjectType` | `ALL_ORDERS`, `SPECIFIC_TICKET_TYPE`, `EVERY_PARTICIPANT`, `LEAD_BOOKER_ONLY`, `CHILD_PARTICIPANTS`, `SPECIFIC_SESSION_SELECTION` | Typed applicability target. |
+
+Evaluation is pure. The workflow applies **ALL** semantics across applicable requirements; a requirement applies **ANY** semantics across its channel completions (subject to its sync mode). Required incomplete requirements block registration. Optional, informational, and post-registration requirements are nonblocking. A permitted registrant skip returns `SkippedByRegistrant`; required or non-skippable requirements reject the skip. This result is not durable registrant state: Task 8.5 owns subject-scoped `RegistrationRequirementFulfillment` and durable skip/finalization persistence.
+
+All three entities are tenant-scoped, audited, soft-deletable, and concurrency-aware. EF named Tenant and SoftDelete filters provide default isolation, while composite tenant/event/workflow foreign keys prevent cross-tenant lineage and generated constraints enforce ownership and ordinal uniqueness.
+
 ### Ticketing And Instance Monetization
 
 `EventTicketCatalogVersion` owns immutable published catalog revisions. Drafts contain `EventTicketType` rows with one of five normalized pricing modes, optional shared `EventCapacityPool` references, and `TicketTypeEntitlement` rows targeting the Event, a day, or a session. Published edits clone to a new draft. Ticket and capacity rows are tenant-scoped, concurrency-protected, and soft-deletable where their lifecycle permits it.

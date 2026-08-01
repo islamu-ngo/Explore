@@ -5,6 +5,7 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 ## 2026-07-31
 
+- Additive registration-participant contract for API version `0.1`: current-account and capability-header guest order surfaces now expose private/no-store participant reads plus idempotent participant, assignment, and deferral writes. Organizer discovery uses permission-gated `view-participants` HAL relations only for platform-managed events; guest capability values remain header-only and never enter JSON or links.
 - Breaking registration-order lifecycle contract naming for API version `0.1`: `RegistrationOrderLifecycleResponse` and `GuestRegistrationOrderLifecycleResponse` are renamed to `RegistrationOrderLifecycleResponseDto` and `GuestRegistrationOrderLifecycleResponseDto` across Application, API, and generated Blazor contracts. The pre-1.0 contract has no aliases or compatibility shims; regenerate clients from `schemas/openapi_islamu-event.json`.
 
 ## 2026-07-30
