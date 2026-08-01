@@ -11,11 +11,17 @@ public sealed class RegistrationFormFieldConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<RegistrationFormField> builder)
     {
-        builder.ToTable("registration_form_fields");
+        builder.ToTable("registration_form_fields", table => table.HasCheckConstraint(
+            "ck_registration_form_fields_consent_metadata",
+            "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text_version IS NOT NULL " +
+            "AND length(btrim(consent_purpose_code)) > 0 AND length(btrim(consent_text_version)) > 0) OR " +
+            "(NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text_version IS NULL)"));
         builder.Property(field => field.Id).ValueGeneratedNever();
         builder.Property(field => field.Namespace).IsRequired().HasMaxLength(100);
         builder.Property(field => field.Key).IsRequired().HasMaxLength(100);
         builder.Property(field => field.Label).IsRequired().HasMaxLength(500);
+        builder.Property(field => field.ConsentPurposeCode).HasMaxLength(100);
+        builder.Property(field => field.ConsentTextVersion).HasMaxLength(100);
         builder.Property(field => field.RegexPattern).HasMaxLength(1000);
         builder.Property(field => field.AllowedUrlSchemes).HasMaxLength(200);
         builder.Property(field => field.CreatedAt).IsRequired();

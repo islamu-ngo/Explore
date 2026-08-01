@@ -31,6 +31,8 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
     public int OrganizerVisibilityId { get; private set; }
     public RegistrationOrganizerVisibility? OrganizerVisibility { get; private set; }
     public bool RequiresExplicitConsent { get; private set; }
+    public string? ConsentPurposeCode { get; private set; }
+    public string? ConsentTextVersion { get; private set; }
     public bool IsProviderTransferAllowed { get; private set; }
     public bool IsRequired { get; private set; }
     public bool IsMulti { get; private set; }
@@ -64,7 +66,9 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
         RegistrationOrganizerVisibilityEnum organizerVisibility,
         bool requiresExplicitConsent,
         bool isProviderTransferAllowed,
-        DateTime createdAt)
+        DateTime createdAt,
+        string? consentPurposeCode = null,
+        string? consentTextVersion = null)
     {
         ArgumentNullException.ThrowIfNull(section);
         if (id == Guid.Empty)
@@ -80,6 +84,8 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
         FormVersionRules.ValidateGovernance(fieldType, retentionPolicyId, organizerVisibility,
             requiresExplicitConsent, isProviderTransferAllowed);
+        (string? normalizedPurposeCode, string? normalizedTextVersion) = NormalizeConsentMetadata(
+            requiresExplicitConsent, consentPurposeCode, consentTextVersion);
         FormVersionRules.RequireUtc(createdAt, nameof(createdAt));
         return new RegistrationFormField
         {
@@ -97,6 +103,8 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
             RetentionPolicyId = retentionPolicyId,
             OrganizerVisibilityId = (int)organizerVisibility,
             RequiresExplicitConsent = requiresExplicitConsent,
+            ConsentPurposeCode = normalizedPurposeCode,
+            ConsentTextVersion = normalizedTextVersion,
             IsProviderTransferAllowed = isProviderTransferAllowed,
             CreatedAt = createdAt
         };
@@ -106,14 +114,42 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
         int retentionPolicyId,
         RegistrationOrganizerVisibilityEnum organizerVisibility,
         bool requiresExplicitConsent,
-        bool isProviderTransferAllowed)
+        bool isProviderTransferAllowed,
+        string? consentPurposeCode = null,
+        string? consentTextVersion = null)
     {
         FormVersionRules.ValidateGovernance((RegistrationFieldTypeEnum)FieldTypeId, retentionPolicyId,
             organizerVisibility, requiresExplicitConsent, isProviderTransferAllowed);
+        (string? normalizedPurposeCode, string? normalizedTextVersion) = NormalizeConsentMetadata(
+            requiresExplicitConsent, consentPurposeCode, consentTextVersion);
         RetentionPolicyId = retentionPolicyId;
         OrganizerVisibilityId = (int)organizerVisibility;
         RequiresExplicitConsent = requiresExplicitConsent;
+        ConsentPurposeCode = normalizedPurposeCode;
+        ConsentTextVersion = normalizedTextVersion;
         IsProviderTransferAllowed = isProviderTransferAllowed;
+    }
+
+    internal void UpdateDetails(int ordinal, string label)
+    {
+        if (ordinal <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        Ordinal = ordinal;
+        Label = label.Trim();
+    }
+
+    internal void Reorder(int ordinal)
+    {
+        if (ordinal <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        }
+
+        Ordinal = ordinal;
     }
 
     internal void UpdateValidation(
@@ -163,6 +199,24 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
         _options.Add(option);
     }
 
+    internal void UpdateOption(RegistrationFormFieldOption option, int ordinal, string key, string label)
+    {
+        ArgumentNullException.ThrowIfNull(option);
+        if (!_options.Contains(option) || option.IsDeleted)
+        {
+            throw new ArgumentException("Option does not belong to this field.", nameof(option));
+        }
+
+        string normalizedKey = FormVersionRules.NormalizeKey(key);
+        if (_options.Any(existing => existing != option && !existing.IsDeleted &&
+                (existing.Ordinal == ordinal || existing.Key == normalizedKey)))
+        {
+            throw new ArgumentException("Option key and ordinal must be unique within the field.", nameof(option));
+        }
+
+        option.Update(ordinal, normalizedKey, label);
+    }
+
     internal void RetireOption(RegistrationFormFieldOption option, DateTime retiredAt)
     {
         ArgumentNullException.ThrowIfNull(option);
@@ -172,6 +226,13 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
         }
 
         option.Retire(retiredAt);
+    }
+
+    internal void Remove(DateTime removedAt)
+    {
+        FormVersionRules.RequireUtc(removedAt, nameof(removedAt));
+        IsDeleted = true;
+        DeletedAt ??= removedAt;
     }
 
     internal RegistrationFormField CloneTo(Guid versionId, Guid sectionId)
@@ -192,6 +253,8 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
             RetentionPolicyId = RetentionPolicyId,
             OrganizerVisibilityId = OrganizerVisibilityId,
             RequiresExplicitConsent = RequiresExplicitConsent,
+            ConsentPurposeCode = ConsentPurposeCode,
+            ConsentTextVersion = ConsentTextVersion,
             IsProviderTransferAllowed = IsProviderTransferAllowed,
             IsRequired = IsRequired,
             IsMulti = IsMulti,
@@ -211,5 +274,35 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
         }
 
         return clone;
+    }
+
+    private static (string? PurposeCode, string? TextVersion) NormalizeConsentMetadata(
+        bool requiresExplicitConsent,
+        string? consentPurposeCode,
+        string? consentTextVersion)
+    {
+        string? purposeCode = string.IsNullOrWhiteSpace(consentPurposeCode)
+            ? null
+            : consentPurposeCode.Trim().ToUpperInvariant();
+        string? textVersion = string.IsNullOrWhiteSpace(consentTextVersion) ? null : consentTextVersion.Trim();
+        if (purposeCode?.Length > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(consentPurposeCode));
+        }
+
+        if (textVersion?.Length > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(consentTextVersion));
+        }
+
+        if (requiresExplicitConsent
+                ? purposeCode is null || textVersion is null
+                : purposeCode is not null || textVersion is not null)
+        {
+            throw new ArgumentException(
+                "Explicit-consent fields require both a purpose code and text version; other fields require neither.");
+        }
+
+        return (purposeCode, textVersion);
     }
 }

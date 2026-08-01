@@ -1,6 +1,7 @@
 // ABOUTME: Defines the tenant, event, and purpose-owned registration workflow aggregate.
 // ABOUTME: Evaluates required child requirements with ALL semantics and deterministic tenant isolation.
 
+using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
@@ -71,6 +72,42 @@ public sealed class RegistrationWorkflow : ITenantEntity, IAuditableEntity, ISof
         }
 
         _requirements.Add(requirement);
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public void UpdatePurpose(string purpose)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(purpose);
+        Purpose = purpose.Trim();
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public void UpdateRequirement(
+        RegistrationRequirement requirement,
+        int ordinal,
+        RegistrationRequirementCriticalityEnum criticality,
+        bool canSkip,
+        RegistrationRequirementCompletionEffectEnum completionEffect,
+        RegistrationAnswerSyncModeEnum answerSyncMode,
+        RegistrationRequirementSubjectTypeEnum appliesToSubjectType,
+        Guid? appliesToSubjectId)
+    {
+        EnsureContains(requirement);
+        if (_requirements.Any(existing => existing != requirement && !existing.IsDeleted && existing.Ordinal == ordinal))
+        {
+            throw new ArgumentException("Requirement ordinal must be unique within the workflow.", nameof(ordinal));
+        }
+
+        requirement.Update(ordinal, criticality, canSkip, completionEffect, answerSyncMode,
+            appliesToSubjectType, appliesToSubjectId);
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public void RemoveRequirement(RegistrationRequirement requirement, DateTime removedAt)
+    {
+        EnsureContains(requirement);
+        requirement.Remove(removedAt);
+        ConcurrencyStamp = Guid.CreateVersion7();
     }
 
     public RegistrationWorkflowEvaluation Evaluate(
@@ -103,6 +140,15 @@ public sealed class RegistrationWorkflow : ITenantEntity, IAuditableEntity, ISof
                 skipped.Contains(requirement.Id)))
             .ToArray();
         return new(evaluations.All(value => !value.BlocksRegistration), evaluations);
+    }
+
+    private void EnsureContains(RegistrationRequirement requirement)
+    {
+        ArgumentNullException.ThrowIfNull(requirement);
+        if (!_requirements.Contains(requirement) || requirement.IsDeleted)
+        {
+            throw new ArgumentException("Requirement does not belong to this workflow.", nameof(requirement));
+        }
     }
 }
 

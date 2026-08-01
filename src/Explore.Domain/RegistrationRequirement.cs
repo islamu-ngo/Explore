@@ -72,25 +72,7 @@ public sealed class RegistrationRequirement : ITenantEntity, IAuditableEntity, I
             throw new ArgumentException("Requirement identity and lookup values must be valid.");
         }
 
-        bool needsSpecificSubject = appliesToSubjectType is RegistrationRequirementSubjectTypeEnum.SpecificTicketType or
-            RegistrationRequirementSubjectTypeEnum.SpecificSessionSelection;
-        if (needsSpecificSubject != appliesToSubjectId.HasValue)
-        {
-            throw new ArgumentException("Only specific ticket or session requirements need a subject id.", nameof(appliesToSubjectId));
-        }
-
-        bool validPolicy = criticality switch
-        {
-            RegistrationRequirementCriticalityEnum.Required => !canSkip && completionEffect == RegistrationRequirementCompletionEffectEnum.BlocksRegistration,
-            RegistrationRequirementCriticalityEnum.Optional => canSkip && completionEffect == RegistrationRequirementCompletionEffectEnum.EnrichesRegistration,
-            RegistrationRequirementCriticalityEnum.Informational or RegistrationRequirementCriticalityEnum.PostRegistration =>
-                canSkip && completionEffect == RegistrationRequirementCompletionEffectEnum.NoRegistrationEffect,
-            _ => false
-        };
-        if (!validPolicy)
-        {
-            throw new ArgumentException("Criticality, completion effect, and skip policy are inconsistent.");
-        }
+        ValidatePolicy(criticality, canSkip, completionEffect, appliesToSubjectType, appliesToSubjectId);
 
         return new RegistrationRequirement
         {
@@ -120,6 +102,43 @@ public sealed class RegistrationRequirement : ITenantEntity, IAuditableEntity, I
         }
 
         _channels.Add(channel);
+    }
+
+    internal void Update(
+        int ordinal,
+        RegistrationRequirementCriticalityEnum criticality,
+        bool canSkip,
+        RegistrationRequirementCompletionEffectEnum completionEffect,
+        RegistrationAnswerSyncModeEnum answerSyncMode,
+        RegistrationRequirementSubjectTypeEnum appliesToSubjectType,
+        Guid? appliesToSubjectId)
+    {
+        if (ordinal <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ordinal), "Requirement ordinal must be positive.");
+        }
+
+        if (!Enum.IsDefined(criticality) || !Enum.IsDefined(completionEffect) || !Enum.IsDefined(answerSyncMode) ||
+            !Enum.IsDefined(appliesToSubjectType) || appliesToSubjectId == Guid.Empty)
+        {
+            throw new ArgumentException("Requirement lookup values must be valid.");
+        }
+
+        ValidatePolicy(criticality, canSkip, completionEffect, appliesToSubjectType, appliesToSubjectId);
+        Ordinal = ordinal;
+        CriticalityId = (int)criticality;
+        CanSkip = canSkip;
+        CompletionEffectId = (int)completionEffect;
+        AnswerSyncModeId = (int)answerSyncMode;
+        AppliesToSubjectTypeId = (int)appliesToSubjectType;
+        AppliesToSubjectId = appliesToSubjectId;
+    }
+
+    internal void Remove(DateTime removedAt)
+    {
+        EnsureUtc(removedAt);
+        IsDeleted = true;
+        DeletedAt = removedAt;
     }
 
     public RegistrationRequirementEvaluation Evaluate(
@@ -183,6 +202,34 @@ public sealed class RegistrationRequirement : ITenantEntity, IAuditableEntity, I
             RegistrationRequirementSubjectTypeEnum.SpecificSessionSelection => subject.SessionSelectionId == AppliesToSubjectId,
             _ => false
         };
+
+    private static void ValidatePolicy(
+        RegistrationRequirementCriticalityEnum criticality,
+        bool canSkip,
+        RegistrationRequirementCompletionEffectEnum completionEffect,
+        RegistrationRequirementSubjectTypeEnum appliesToSubjectType,
+        Guid? appliesToSubjectId)
+    {
+        bool needsSpecificSubject = appliesToSubjectType is RegistrationRequirementSubjectTypeEnum.SpecificTicketType or
+            RegistrationRequirementSubjectTypeEnum.SpecificSessionSelection;
+        if (needsSpecificSubject != appliesToSubjectId.HasValue)
+        {
+            throw new ArgumentException("Only specific ticket or session requirements need a subject id.", nameof(appliesToSubjectId));
+        }
+
+        bool validPolicy = criticality switch
+        {
+            RegistrationRequirementCriticalityEnum.Required => !canSkip && completionEffect == RegistrationRequirementCompletionEffectEnum.BlocksRegistration,
+            RegistrationRequirementCriticalityEnum.Optional => canSkip && completionEffect == RegistrationRequirementCompletionEffectEnum.EnrichesRegistration,
+            RegistrationRequirementCriticalityEnum.Informational or RegistrationRequirementCriticalityEnum.PostRegistration =>
+                canSkip && completionEffect == RegistrationRequirementCompletionEffectEnum.NoRegistrationEffect,
+            _ => false
+        };
+        if (!validPolicy)
+        {
+            throw new ArgumentException("Criticality, completion effect, and skip policy are inconsistent.");
+        }
+    }
 
     private static DateTime EnsureUtc(DateTime value)
     {

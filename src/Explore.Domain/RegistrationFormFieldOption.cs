@@ -75,6 +75,19 @@ public sealed class RegistrationFormFieldOption : ITenantEntity, IAuditableEntit
         RetiredAt ??= retiredAt;
     }
 
+    internal void Update(int ordinal, string key, string label)
+    {
+        if (ordinal <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        Ordinal = ordinal;
+        Key = FormVersionRules.NormalizeKey(key);
+        Label = label.Trim();
+    }
+
     internal RegistrationFormFieldOption CloneTo(Guid versionId, Guid sectionId, Guid fieldId) => new()
     {
         Id = Guid.CreateVersion7(),

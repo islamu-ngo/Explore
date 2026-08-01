@@ -70,6 +70,34 @@ public sealed class RegistrationFormSection : ITenantEntity, IAuditableEntity, I
         Title = title.Trim();
     }
 
+    internal void Update(int ordinal, string title)
+    {
+        if (ordinal <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        }
+
+        Rename(title);
+        Ordinal = ordinal;
+    }
+
+    internal void Reorder(int ordinal)
+    {
+        if (ordinal <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        }
+
+        Ordinal = ordinal;
+    }
+
+    internal void Remove(DateTime removedAt)
+    {
+        FormVersionRules.RequireUtc(removedAt, nameof(removedAt));
+        IsDeleted = true;
+        DeletedAt = removedAt;
+    }
+
     internal void AddField(RegistrationFormField field)
     {
         ArgumentNullException.ThrowIfNull(field);

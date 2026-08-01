@@ -117,6 +117,7 @@ public partial class ExploreDbContext
     // ===== Events =====
     public DbSet<Event> Events { get; set; }
     public DbSet<EventParticipationConfiguration> EventParticipationConfigurations { get; set; }
+    public DbSet<ParticipationRequirementAttachment> ParticipationRequirementAttachments { get; set; }
     public DbSet<EventPublicAction> EventPublicActions { get; set; }
     public DbSet<EventOrganizerClaim> EventOrganizerClaims { get; set; }
     public DbSet<EventSession> EventSessions { get; set; }
@@ -172,6 +173,7 @@ public partial class ExploreDbContext
     public DbSet<RegistrationFormSection> RegistrationFormSections { get; set; }
     public DbSet<RegistrationFormField> RegistrationFormFields { get; set; }
     public DbSet<RegistrationFormFieldOption> RegistrationFormFieldOptions { get; set; }
+    public DbSet<RegistrationFormRule> RegistrationFormRules { get; set; }
 
     // ===== Event Lookup Tables =====
     public DbSet<EventType> EventTypes { get; set; }
