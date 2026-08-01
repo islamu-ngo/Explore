@@ -148,7 +148,9 @@ public sealed class ParticipationConfigurationEditorTests : IDisposable
             ParticipationHandlingModeId = handling,
             AdvanceRegistrationObligationId = advance,
             IdentityAccessModeId = identity,
-            GuestRecoveryPolicy = recovery
+            GuestRecoveryPolicy = recovery is { } value
+                ? (GuestRecoveryPolicyEnum?)value
+                : null
         };
     }
 }
