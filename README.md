@@ -53,7 +53,7 @@ It is built as a **white-label platform engine**: the hosted ISLAMU instance foc
 - **🧩 Custom Properties:** Per-event-type custom fields, single- and multi-select options, relations, and typed validation — see [Custom Properties][custom-properties-doc]
 - **🔔 Notifications, Email & Webhooks:** In-app notifications, built-in/Svix-compatible outgoing webhooks, and templated email pipelines — see [Notifications][notifications-doc], [Webhooks][webhooks-doc], and [Email Notifications][email-notifications-doc]
 - **📇 Contact Sharing:** Share contact information with explicit, revocable consent — see [Contact Sharing][contact-sharing-doc]
-- **🎟️ Ticketing & Pricing:** Create versioned ticket catalogs with multiple ticket types, capacity pools, and minor-unit pricing. Publish a catalog to attach structured pricing to an event; ticket price summaries appear in public discovery automatically. Draft, clone, and iterate before publishing — see [API Changelog][api-changelog-doc]
+- **🎟️ Ticketing & Pricing:** Create versioned ticket catalogs with multiple ticket types, capacity pools, and minor-unit pricing. Publish a catalog to attach structured pricing to an event; ticket price summaries appear in public discovery automatically. Draft, clone, and iterate before publishing
 - **📬 Mailing List Integration (Listmonk):** Optionally connect a self-hosted [Listmonk][listmonk-link] instance to automatically sync attendee registrations as newsletter subscribers, with pre-confirmation support and per-tenant configuration
 - **🤖 AI Assistant (when enabled):** Ask the assistant to draft event listings, suggest categories/tags, and propose schedule improvements; every AI-proposed change is reviewed and explicitly confirmed before any side effect
 
@@ -69,9 +69,9 @@ It is built as a **white-label platform engine**: the hosted ISLAMU instance foc
 - **🌍 Federation Foundation:** ATProto-oriented models and outbound sync plumbing exist, while public ActivityPub and ATProto server endpoints remain roadmap work — see [Federation][federation-doc]
 - **🗄️ Privacy Erasure Authority:** GDPR-compliant user data erasure with two topology options: **Co-located** (default — erasure authority shares the main database, simplest to operate) or **External Database** (a dedicated isolated PostgreSQL instance for stricter compliance separation). Operators choose topology at deployment time; the runtime erasure receipt flow and provider-work reconciliation behave identically in both modes.
 - **📬 Mailing List Integration (Listmonk):** Integrate with a self-hosted [Listmonk][listmonk-link] instance to sync attendee registrations as mailing-list subscribers. Connection, behavior, and privacy-erasure authority settings are independently configurable per tenant via grouped settings patches.
-- **🎛️ ISLAMU Event Control Plane *(optional, commercial)*:** A separate commercial product for managed multi-instance operators. The Control Plane provides centralized fleet orchestration, automated instance provisioning, cross-instance telemetry, tenant quota management, and billing integration. ISLAMU Event itself remains fully self-hostable and open-source without it; the Control Plane is an add-on for operators running many instances at scale. See the [ISLAMU website][islamu-platform] for early-access information.
 - **📚 Comprehensive Docs:** Architecture, deployment, configuration, troubleshooting, and API reference
 - **🔐 Enterprise Security:** BFF pattern, Cerbos authorization, Infisical secrets, and HATEOAS REST API
+- **🎛️ ISLAMU Event Control Plane *(optional, commercial)*:** A separate commercial product for managed multi-instance operators. The Control Plane provides centralized fleet orchestration, automated instance provisioning, cross-instance telemetry, tenant quota management, and billing integration. ISLAMU Event itself remains fully self-hostable and open-source without it; the Control Plane is an add-on for operators running many instances at scale.
 
 ## Deployment & Hosting Options
 
@@ -377,7 +377,6 @@ The CLA is versioned. The current version and full legal text live in [`legal/CL
 [cerbos-link]: https://www.cerbos.dev/
 [svix-link]: https://www.svix.com/
 [webhooks-doc]: docs/WEBHOOKS.md
-[api-changelog-doc]: docs/API_CHANGELOG.md
 [infisical-link]: https://infisical.com/
 [listmonk-link]: https://listmonk.app/
 [mudblazor-link]: https://www.mudblazor.com/

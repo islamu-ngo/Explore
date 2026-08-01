@@ -125,6 +125,7 @@ Infrastructure floor rules for minimal operators:
 
 - Core launch requires API + Blazor + PostgreSQL and working identity bootstrap.
 - `event-migrationservice` is only mandatory for `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase`; in that case keep `privacy-erasure-db` and profile `privacy-erasure-external`.
+- For `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=CoLocated` (default), the authority ledger and application mirror run in the main PostgreSQL database with zero extra DevOps overhead. For detailed guidance on choosing between `CoLocated` and `ExternalDatabase` modes, see [Privacy Erasure Authority & Storage Topologies](PRIVACY_ERASURE.md).
 
 ### 1) Minimal self-hosted instance (small org, fast start)
 

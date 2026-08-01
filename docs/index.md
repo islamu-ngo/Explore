@@ -89,6 +89,8 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [INTEGRATIONS.md](INTEGRATIONS.md) - incoming provider callbacks, Coop/Osprey/Svix operational verification, and idempotency.
 - [SEO.md](SEO.md) - sitemap, robots, render-policy, and public-discovery SEO behavior.
 - [SECURITY.md](SECURITY.md) - auth/authz model and trust boundaries.
+- [SECURITY-MODEL.md](SECURITY-MODEL.md) - platform security invariants, privilege isolation, and privacy boundaries.
+- [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) - Privacy Erasure Authority, concrete meaning, storage topologies (CoLocated vs ExternalDatabase), CoLocated utility rationale, and self-hoster decision guide.
 - [OPERATIONS.md](OPERATIONS.md) - deployment, health, observability.
 - [TESTING.md](TESTING.md) - TUnit framework, test projects, TDD workflow.
 - [TEST_RELIABILITY.md](TEST_RELIABILITY.md) - flaky/deferred runtime, stress, and manual-test tracking.

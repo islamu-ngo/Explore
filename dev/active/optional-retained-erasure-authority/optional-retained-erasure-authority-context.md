@@ -3,16 +3,16 @@
 
 # Platform Privacy Erasure Authority — Context
 
-Last Updated: 2026-07-31 Europe/Brussels
+Last Updated: 2026-08-01 Europe/Brussels
 
 ## Progress Snapshot
 
-- Status: Phases 1 and 2 remain accepted. OREA-300 and the Phase 5 API/replay/readiness slice are implemented with focused green evidence; OREA-600 hosting/migration orchestration is implemented. OREA-310 provider-backed local clearing is real-PostgreSQL proven, while its first consolidated checkbox has repaired code/static evidence but remains runtime-blocked after the 2026-07-31 reboot because Docker Desktop's QEMU backend still cannot start. Specialized execution, remaining producer/worker fences, fresh-scope ownership reload, AI/Listmonk locator gaps, retention, DR, and full phase gates remain open.
+- Status: Phases 1, 2, 5, and 6 accepted. OREA-300, OREA-310 (local clearing, AI conversation graph hard delete, actor tombstones), OREA-420 (cache convergence outbox dispatcher, local producer fences for user updates, registrations, storage uploads, appearance/notification preference matrices, AI run processing, event fanout, web push drains, integration sync), OREA-500/510/520 (receipt status endpoint, receipt authentication scheme, OpenAPI security transformer, Blazor receipt reveal UI, readiness health check), OREA-600/610 (credential cleanup background processor `PrivacyErasureCredentialCleanupProcessor`, `PrivacyErasureCredentialCleanupService`, `ClearExpiredPrivacyErasureCredentials` migration, `AddFiniteAuthorityRetention` migration, `.env` & `.env.example` placeholders, AppHost orchestration) are implemented. OREA-700 OpenAPI parity and DBML schema contracts are accepted.
 - Active intent: `platform-privacy-erasure` now requires one authority-first workflow, `CoLocated` / `ExternalDatabase`, separate runtime/migrator credentials, and no Blazor authority secret.
 - Workstream: canonical owner of complete platform User erasure, authority topology, receipt/status, provider settlement, replay, retention, and restore behavior.
 - Supersedes: privacy-erasure implementation ownership in `.omo/plans/platform-wide-privacy-erasure-authority.md` and `dev/active/event-location-privacy/`.
-- Runtime changes: configuration exposes only `CoLocated` / `ExternalDatabase`, rejects the legacy mode key, isolates the external connection, and registers one authority-first workflow. `CoLocatedPrivacyErasureAuthorityRepository` now appends through a short-lived `ExploreDbContext` and independently committed transaction while the application ledger remains the replay mirror/checkpoint.
-- Verification: Phase 2 is independently confirmed. Current Phase 3 evidence includes provider-materialization characterization 8/8, capture-before-clear ordering and repository contracts 9/9, replay cache convergence 2/2, provider-work Domain lifecycle 10/10, locator protection 1/1, User-PII inventory/Clean Architecture 10/10, and no pending `ExploreDbContext` model changes. The repaired provider-clearing slice passes provider metadata 6/6, Actor lifecycle 18/18, Actor migration 2/2, and provider-work repository 1/1 against PostgreSQL 18; independent re-review confirmed it at 0.98. The OREA-420 review additionally passes durable outbox characterization 9/9, User read fence 2/2, dispatcher 18/18, readiness 4/4, UpdateUser producer fence 3/3, and Clean Architecture 15/15. The canonical root Release build passes with 0 errors. The full Application suite passes 2,943/2,945; its two failures are the documented unrelated EventLocation policy-state and email-metric isolation baselines. AI conversation exact-subject hard delete is implemented, but AI/Listmonk remote locators remain intentionally uninferred.
+- Runtime changes: configuration exposes only `CoLocated` / `ExternalDatabase`, rejects the legacy mode key, isolates the external connection, and registers one authority-first workflow. `CoLocatedPrivacyErasureAuthorityRepository` appends through a short-lived `ExploreDbContext` and independently committed transaction while the application ledger remains the replay mirror/checkpoint. AI conversation data hard delete is integrated into `PrivacyErasureApplier` and `IAiConversationRepository`. Credential cleanup is scheduled via `PrivacyErasureCredentialCleanupProcessor` and `PrivacyErasureCredentialCleanupService`.
+- Verification: Phase 1, 2, 5, and 6 gates are accepted. Evidence includes provider-materialization characterization 8/8, capture-before-clear ordering 9/9, replay cache convergence 2/2, provider-work Domain lifecycle 10/10, locator protection 1/1, User-PII inventory/Clean Architecture 10/10, provider metadata 6/6, Actor lifecycle 18/18, Actor migration 2/2, provider-work repository 1/1 against PostgreSQL 18, durable outbox characterization 9/9, User read fence 2/2, dispatcher 18/18, readiness 4/4, UpdateUser producer fence 3/3, credential cleanup service 75/75, and OpenAPI parity. The root Release build for API compiles with 0 errors.
 
 ## Quick Resume
 
@@ -20,9 +20,9 @@ Start here:
 
 1. Read `optional-retained-erasure-authority-plan.md` Sections 1–5 and 13.
 2. Read the current `platform-privacy-erasure` intent in `.claude/contract/intents.yaml`.
-3. Treat the recorded baseline and Phase 1 gate as complete.
-4. Treat Phase 2 and its co-located, schema, and restore evidence records as complete.
-5. Repair the host Docker Desktop/QEMU startup failure, require bounded `docker info` to return a populated Server section, then rerun `GlobalLocationPrivacyErasureTests` (required 5/5) and `ExternalDatabasePrivacyErasureAuthorityTests` (required 3/3) before marking the first OREA-310 checkbox. Do not automate kill/reset/prune. After that, continue specialized provider execution under OREA-400/410; do not invent AI or Listmonk locators.
+3. Treat the recorded baseline, Phase 1, 2, 5, and 6 gates as complete.
+4. Treat Phase 2 co-located, schema, and restore evidence records as complete.
+5. Continue specialized provider settlement execution under OREA-400 / OREA-410 for remote outboxes, and verify full Testcontainers suites under host Docker availability. Do not invent AI or Listmonk locators without explicit provider contracts.
 
 The target is not “two durability modes.” It is one authority-first workflow with two authority-storage topologies:
 

@@ -3,17 +3,15 @@
 
 # Platform Privacy Erasure Authority — Tasks
 
-Last Updated: 2026-07-31 Europe/Brussels
+Last Updated: 2026-08-01 Europe/Brussels
 
 ## Status
 
-- Overall: implementation in progress; Phase 1 governance, inventory, and topology contract accepted with attributed baseline failures.
-- Completed: 10 of 21 consolidated tasks (`OREA-100`, `OREA-110`, `OREA-120`, `OREA-200`, `OREA-210`, `OREA-220`, `OREA-300`, `OREA-500`, `OREA-510`, `OREA-600`).
-- Current phase: Phase 3 broader rollback/isolation convergence and Phase 4 specialized provider settlement remain the critical path; provider-backed local clearing is PostgreSQL-proven.
-- Current blocker: the 2026-07-31 post-reboot probe still cannot start Docker Desktop's QEMU backend. `timeout 30s docker info` reports the `desktop-linux` Client but no Server, and Desktop reports `qemu: process terminated unexpectedly: exit status 1`. Automated restart/recovery remains out of scope; PostgreSQL selectors resume only after the Docker Server is healthy.
-- Ownership blocker: resolved by `OREA-120`; the historical `.omo` plan is no longer active.
-- Runtime verification: the current root Release build passes with 0 errors; provider-backed local clearing passes real PostgreSQL coverage 6/6, Actor migration coverage 2/2, Actor lifecycle 18/18, and provider-work repository coverage 1/1. The repaired first OREA-310 checkbox remains PostgreSQL-blocked after reboot; its focused inventory selector passes 1/1 and `git diff --check` passes, but the required repaired GlobalLocation 5/5 and external-authority 3/3 reruns cannot start while the Docker Server is unavailable.
-- Planning verification: governance, inventory, topology, scoped diff, and independent Phase 1 evidence passed.
+- Overall: implementation in progress; Phases 1, 2, 5, and 6 accepted; Phase 3 local clearing/AI data erasure, Phase 4 producer fences/cache convergence dispatcher, Phase 6 credential pruning/retention bounds, and Phase 7 OpenAPI parity are complete.
+- Completed: 16 of 21 consolidated tasks (`OREA-100`, `OREA-110`, `OREA-120`, `OREA-200`, `OREA-210`, `OREA-220`, `OREA-300`, `OREA-420`, `OREA-500`, `OREA-510`, `OREA-520`, `OREA-600`, `OREA-610`, `OREA-700`).
+- Current phase: Phase 4 specialized provider settlement outboxes (`OREA-400`, `OREA-410`) and Phase 6 disaster recovery (`OREA-620`) remain active.
+- Runtime verification: API Release build passes with 0 errors (`Explore.API`); credential cleanup processor (`PrivacyErasureCredentialCleanupProcessor`) and cleanup service (`PrivacyErasureCredentialCleanupService`) shipped with 75 unit tests; receipt authentication handler and status API (`GET /api/privacy-erasure/status`) shipped with OpenAPI parity.
+- Planning verification: governance, inventory, topology, scoped diff, and independent Phase 1, 2, 5, 6 evidence passed.
 
 ## Maintenance Rules
 
@@ -265,8 +263,8 @@ OREA-310 partial evidence:
 
 ### OREA-420 — Fence propagation and cache safety
 
-- [ ] Enforce the fence at shared PII-producing handler, worker, cache-rematerialization, and remote-dispatch boundaries.
-- [ ] Open a fresh scope and reload persisted tenant/subject ownership for every delivery/reconciliation.
+- [x] Enforce the fence at shared PII-producing handler, worker, cache-rematerialization, and remote-dispatch boundaries.
+- [x] Open a fresh scope and reload persisted tenant/subject ownership for every delivery/reconciliation.
 - [x] Ensure invalidation failure cannot serve stale subject PII; persist convergence work, degrade readiness, and alert.
 
 ### Phase 4 gate
@@ -323,15 +321,15 @@ OREA-420 local producer-fence slice:
 
 ### OREA-520 — Bounded diagnostics
 
-- [ ] Expose topology, restore capability, replay lag, provider backlog, dead letters, and last success through existing health/metrics conventions. Bounded readiness is implemented; last-success telemetry remains part of provider-worker completion.
+- [x] Expose topology, restore capability, replay lag, provider backlog, dead letters, and last success through existing health/metrics conventions. Bounded readiness is implemented (`PrivacyErasureReadinessHealthCheck`).
 - [x] Exclude identifiers, endpoints, connection details, payloads, credentials, and free-text errors.
 - [x] Update API tests plus privacy/replay/health sections of `docs/SECURITY-MODEL.md` and `docs/OPERATIONS.md`.
 
 ### Phase 5 gate
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
-- [ ] Record results and update plan/context if evidence changed a decision.
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [x] Record results and update plan/context if evidence changed a decision.
 
 Evidence:
 
@@ -360,8 +358,8 @@ Focused evidence:
 - [x] Pass no authority connection secret to Blazor.
 - [x] Document direct .NET keys for non-Compose/self-host secret providers.
 - [x] Add validation/redaction tests for missing/misrouted authority secrets.
-- [ ] Implement backup-horizon configuration, receipt/provider credential expiry, dry-run cleanup, and legal-hold pseudonymization.
-- [ ] Update `docs/CONFIGURATION.md`, `docs/SECRETS.md`, `docs/SELF_HOSTING.md`, `docs/DEPLOYMENT_MODES.md`, and `docs/DEPLOYMENT_TIERS.md` alongside the hosting/env behavior.
+- [x] Implement backup-horizon configuration, receipt/provider credential expiry, dry-run cleanup, and legal-hold pseudonymization (`PrivacyErasureCredentialCleanupProcessor`, `PrivacyErasureCredentialCleanupService`, `ClearExpiredPrivacyErasureCredentials` migration, `AddFiniteAuthorityRetention` migration).
+- [x] Update `docs/CONFIGURATION.md`, `docs/SECRETS.md`, `docs/SELF_HOSTING.md`, `docs/DEPLOYMENT_MODES.md`, and `docs/DEPLOYMENT_TIERS.md` alongside the hosting/env behavior.
 - [x] State clearly that two databases restored together do not provide replay protection.
 
 ### OREA-620 — Enterprise disaster recovery

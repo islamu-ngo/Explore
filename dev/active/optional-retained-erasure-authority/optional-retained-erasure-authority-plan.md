@@ -3,7 +3,7 @@
 
 # Platform Privacy Erasure Authority — Implementation Plan
 
-Last Updated: 2026-07-22 Europe/Brussels
+Last Updated: 2026-08-01 Europe/Brussels
 
 ## 0. Plan Metadata
 
@@ -11,10 +11,10 @@ Last Updated: 2026-07-22 Europe/Brussels
 |---|---|
 | Task ID | `optional-retained-erasure-authority` |
 | Canonical intent | `platform-privacy-erasure` |
-| Status | Active — Phases 1 and 2 accepted; OREA-310 provider-backed local clearing is PostgreSQL-proven; Phase 3 remains in progress |
+| Status | Active — Phases 1, 2, 5, and 6 accepted; Phase 3 local clearing and AI data erasure implemented; Phase 4 provider outbox fencing and cache convergence active; Phase 6 credential pruning and retention bounds shipped; Phase 7 contract/evidence convergence active |
 | Owner | Unassigned |
 | Change type | Cross-layer privacy policy, erasure orchestration, infrastructure, API, persistence, hosting, tests, and operator documentation |
-| Execution boundary | Phase-ordered implementation; next implementation dependency is specialized provider settlement under `OREA-400` / `OREA-410` while unresolved AI/Listmonk locators remain uninferred |
+| Execution boundary | Phase-ordered implementation; specialized provider settlement under `OREA-400` / `OREA-410` and full test suite verification under host Docker availability |
 
 ### Scope
 
