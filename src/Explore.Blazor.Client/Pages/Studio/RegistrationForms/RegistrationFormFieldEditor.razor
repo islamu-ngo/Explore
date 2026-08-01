@@ -1,0 +1,100 @@
+@* ABOUTME: Edits one registration field through labeled generated-contract controls. *@
+@* ABOUTME: Groups common governance and type-specific constraints without owning transport. *@
+@inject ITranslationService Translation
+
+<section class="registration-form-field-editor" data-testid="registration-form-field-editor">
+    <fieldset class="registration-form-field-editor__group">
+        <legend>@T("field.definition", "Field definition")</legend>
+        <div class="registration-form-field-editor__grid">
+            <MudNumericField T="int" Label="@T("field.position", "Position")" @bind-Value="Model.Ordinal" Min="1" Variant="Variant.Outlined" Disabled="IsSaving" />
+            <AppTextField T="string" Label="@T("field.namespace", "Namespace")" @bind-Value="Model.Namespace" Disabled="@(IsSaving || Model.Source is not null)" />
+            <AppTextField T="string" Label="@T("field.key", "Key")" @bind-Value="Model.Key" Disabled="@(IsSaving || Model.Source is not null)" />
+            <AppTextField T="string" Label="@T("field.label", "Label")" @bind-Value="Model.Label" Required="true" Disabled="IsSaving" />
+            <MudSelect T="int" Label="@T("field.type", "Field type")" Value="Model.FieldTypeId" ValueChanged="Model.SetFieldType" Variant="Variant.Outlined" Disabled="@(IsSaving || Model.Source is not null)">
+                @foreach (RegistrationFormFieldTypeChoice type in RegistrationFormFieldEditModel.FieldTypes)
+                {
+                    <MudSelectItem T="int" Value="type.Id">@T($"field.type.{type.Code.ToLowerInvariant()}", type.Name)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField T="int" Label="@T("field.retention_policy_id", "Retention policy ID")" @bind-Value="Model.RetentionPolicyId" Min="1" Variant="Variant.Outlined" Disabled="IsSaving" />
+            <MudSelect T="int" Label="@T("field.organizer_visibility", "Organizer visibility")" @bind-Value="Model.OrganizerVisibilityId" Variant="Variant.Outlined" Disabled="IsSaving">
+                <MudSelectItem T="int" Value="1">@T("field.visibility.hidden", "Hidden")</MudSelectItem>
+                <MudSelectItem T="int" Value="2">@T("field.visibility.authorized", "Authorized organizers")</MudSelectItem>
+            </MudSelect>
+        </div>
+        <div class="registration-form-field-editor__checks">
+            <MudCheckBox T="bool" Label="@T("field.required", "Required")" @bind-Value="Model.IsRequired" Disabled="IsSaving" />
+            <MudCheckBox T="bool" Label="@T("field.multiple_values", "Multiple values")" @bind-Value="Model.IsMulti" Disabled="IsSaving" />
+            <MudCheckBox T="bool" Label="@T("field.explicit_consent", "Requires explicit consent")" @bind-Value="Model.RequiresExplicitConsent" Disabled="@(IsSaving || Model.IsConsent)" />
+            <MudCheckBox T="bool" Label="@T("field.provider_transfer", "Provider transfer allowed")" @bind-Value="Model.IsProviderTransferAllowed" Disabled="IsSaving" />
+        </div>
+    </fieldset>
+
+    @if (Model.IsTextLike)
+    {
+        <fieldset class="registration-form-field-editor__group">
+            <legend>@T("field.text_constraints", "Text constraints")</legend>
+            <div class="registration-form-field-editor__grid">
+                <MudNumericField T="int?" Label="@T("field.minimum_length", "Minimum length")" @bind-Value="Model.MinLength" Min="0" Variant="Variant.Outlined" Disabled="IsSaving" />
+                <MudNumericField T="int?" Label="@T("field.maximum_length", "Maximum length")" @bind-Value="Model.MaxLength" Min="0" Variant="Variant.Outlined" Disabled="IsSaving" />
+                <AppTextField T="string" Label="@T("field.validation_pattern", "Validation pattern")" @bind-Value="Model.RegexPattern" Disabled="IsSaving" />
+                @if (Model.FieldTypeId == 11)
+                {
+                    <AppTextField T="string" Label="@T("field.allowed_url_schemes", "Allowed URL schemes")" @bind-Value="Model.AllowedUrlSchemes" Disabled="IsSaving" />
+                }
+            </div>
+        </fieldset>
+    }
+    else if (Model.IsNumeric)
+    {
+        <fieldset class="registration-form-field-editor__group">
+            <legend>@T("field.numeric_constraints", "Numeric constraints")</legend>
+            <div class="registration-form-field-editor__grid">
+                <MudNumericField T="double?" Label="@T("field.minimum_value", "Minimum value")" @bind-Value="Model.MinNumber" Variant="Variant.Outlined" Disabled="IsSaving" />
+                <MudNumericField T="double?" Label="@T("field.maximum_value", "Maximum value")" @bind-Value="Model.MaxNumber" Variant="Variant.Outlined" Disabled="IsSaving" />
+            </div>
+        </fieldset>
+    }
+    else if (Model.IsTemporal)
+    {
+        <fieldset class="registration-form-field-editor__group">
+            <legend>@T("field.temporal_constraints", "Date and time constraints")</legend>
+            <div class="registration-form-field-editor__grid">
+                <label class="registration-form-field-editor__native-control">
+                    <span>@T("field.earliest_value", "Earliest value")</span>
+                    <input type="datetime-local" @bind="Model.MinDateTime" disabled="@IsSaving" />
+                </label>
+                <label class="registration-form-field-editor__native-control">
+                    <span>@T("field.latest_value", "Latest value")</span>
+                    <input type="datetime-local" @bind="Model.MaxDateTime" disabled="@IsSaving" />
+                </label>
+            </div>
+        </fieldset>
+    }
+    else if (Model.IsConsent)
+    {
+        <fieldset class="registration-form-field-editor__group">
+            <legend>@T("field.consent_evidence", "Consent evidence")</legend>
+            <div class="registration-form-field-editor__grid">
+                <AppTextField T="string" Label="@T("field.consent_purpose", "Consent purpose code")" @bind-Value="Model.ConsentPurposeCode" Required="true" Disabled="IsSaving" />
+                <AppTextField T="string" Label="@T("field.consent_version", "Consent text version")" @bind-Value="Model.ConsentTextVersion" Required="true" Disabled="IsSaving" />
+            </div>
+        </fieldset>
+    }
+
+    <div class="registration-form-field-editor__actions">
+        <AppButton OnClick="SaveAsync" Disabled="@(IsSaving || !Model.IsValid)" data-testid="save-registration-form-field">@T("field.save", "Save field")</AppButton>
+        <AppButton OnClick="CancelAsync" Disabled="IsSaving" Variant="Variant.Text">@T("common.cancel", "Cancel")</AppButton>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public RegistrationFormFieldEditModel Model { get; set; } = null!;
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public EventCallback<RegistrationFormFieldEditModel> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private string T(string key, string fallback) => Translation.T($"studio.registration_forms.{key}", fallback);
+    private Task SaveAsync() => OnSave.InvokeAsync(Model);
+    private Task CancelAsync() => OnCancel.InvokeAsync();
+}

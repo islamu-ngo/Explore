@@ -1,0 +1,52 @@
+/* ABOUTME: Styles recursive condition clauses with tokenized semantic grouping. */
+/* ABOUTME: Keeps nested condition controls readable and RTL-safe at narrow widths. */
+
+.registration-form-condition {
+    display: grid;
+    gap: var(--isl-space-3);
+    min-inline-size: 0;
+    margin: 0;
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+    padding: var(--isl-space-4);
+}
+
+.registration-form-condition__grid,
+.registration-form-condition__scalar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--isl-space-3);
+}
+
+.registration-form-condition__clauses,
+.registration-form-condition__nested,
+.registration-form-condition__value {
+    display: grid;
+    gap: var(--isl-space-3);
+}
+
+.registration-form-condition__nested {
+    border-inline-start: var(--isl-card-border);
+    padding-inline-start: var(--isl-space-3);
+}
+
+.registration-form-condition__native-control {
+    display: grid;
+    gap: var(--isl-space-2);
+}
+
+.registration-form-condition__native-control input {
+    min-block-size: var(--isl-target-min);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-input);
+    padding: var(--isl-space-3);
+    color: var(--isl-color-text);
+    background: var(--isl-color-surface);
+}
+
+@container (max-width: 42rem) {
+    .registration-form-condition__grid,
+    .registration-form-condition__scalar {
+        grid-template-columns: 1fr;
+    }
+}

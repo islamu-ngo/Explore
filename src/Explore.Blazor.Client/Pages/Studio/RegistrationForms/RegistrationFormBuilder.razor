@@ -1,0 +1,900 @@
+@* ABOUTME: Event-scoped Studio registration-form builder driven by nested HAL affordances. *@
+@* ABOUTME: Owns cancellable authoring orchestration, authoritative ordering, and accessible outcomes. *@
+@using System.Globalization
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Events
+@implements IDisposable
+@inject IRegistrationFormAuthoringService Authoring
+@inject IAccessibilityAnnouncerService Announcer
+@inject IAccessibilityFocusService FocusService
+@inject IDialogService DialogService
+@inject ITranslationService Translation
+
+<div class="registration-form-builder" data-testid="registration-form-builder">
+    @if (_loading)
+    {
+        <div class="registration-form-builder__state" role="status" data-testid="registration-form-loading">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            @T("loading", "Loading registration forms…")
+        </div>
+    }
+    else if (_workflow is null)
+    {
+        <div class="registration-form-builder__state" role="alert" data-testid="registration-form-error">@(_error ?? T("load_failed_short", "Registration forms could not be loaded."))</div>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <div class="registration-form-builder__message" role="alert" data-testid="registration-form-error">@_error</div>
+        }
+        else if (!string.IsNullOrWhiteSpace(_status))
+        {
+            <div class="registration-form-builder__message" role="status" aria-live="polite" data-testid="registration-form-status">@_status</div>
+        }
+
+        @if (_workflow.Forms.Count == 0)
+        {
+            <section class="registration-form-builder__empty" aria-labelledby="registration-form-empty-title" data-testid="registration-form-empty">
+                <h3 id="registration-form-empty-title">@T("empty.title", "No registration form yet")</h3>
+                @if (WorkflowLink("create-form") is not null)
+                {
+                    <div class="registration-form-builder__inline-editor">
+                        <AppTextField T="string" Label="@T("form.name", "Form name")" @bind-Value="_newFormName" Disabled="_mutating" />
+                        <AppButton OnClick="CreateFormAsync" Disabled="@(_mutating || string.IsNullOrWhiteSpace(_newFormName))">@T("form.create", "Create form")</AppButton>
+                    </div>
+                }
+                else
+                {
+                    <p>@T("workflow.read_only", "This workflow is read-only.")</p>
+                }
+            </section>
+        }
+        else
+        {
+            <div class="registration-form-builder__selector">
+                <MudSelect T="Guid" Label="@T("form.label", "Form")" Value="_formId" ValueChanged="SelectFormAsync" Variant="Variant.Outlined" Disabled="_mutating">
+                    @foreach (RegistrationFormDto form in _workflow.Forms)
+                    {
+                        <MudSelectItem T="Guid" Value="form.Id">@form.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                @if (_form is not null)
+                {
+                    <MudSelect T="Guid" Label="@T("version.label", "Version")" Value="_versionId" ValueChanged="SelectVersionAsync" Variant="Variant.Outlined" Disabled="_mutating">
+                        @foreach (RegistrationFormVersionSummaryDto version in _form.Versions.OrderByDescending(item => item.Version))
+                        {
+                            <MudSelectItem T="Guid" Value="version.Id">@F("version.option", "Version {0} · {1}", version.Version, version.StatusName)</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+            </div>
+
+            @if (_version is not null)
+            {
+                <article class="registration-form-builder__version" data-testid="registration-form-version" data-version-status="@_version.StatusCode">
+                    <header class="registration-form-builder__version-header">
+                        <div>
+                            <h3>@F("version.heading", "Version {0}", _version.Version)</h3>
+                            <span class="registration-form-builder__badge">@_version.StatusName</span>
+                            <span lang="@_version.LanguageTag">@_version.LanguageTag</span>
+                        </div>
+                        <div class="registration-form-builder__actions">
+                            @if (FormLink("create-version") is not null)
+                            {
+                                <AppButton Variant="Variant.Outlined" OnClick="CloneVersionAsync" Disabled="_mutating" data-testid="clone-registration-form-version">@T("version.clone", "Edit as new version")</AppButton>
+                            }
+                            @if (VersionLink("preflight") is not null)
+                            {
+                                <AppButton Variant="Variant.Outlined" OnClick="PreflightAsync" Disabled="_mutating" data-testid="preflight-registration-form-version">@T("version.preflight", "Check readiness")</AppButton>
+                            }
+                            @if (VersionLink("publish") is not null)
+                            {
+                                <AppButton OnClick="PublishAsync" Disabled="_mutating" StartIcon="@Icons.Material.Filled.Publish" data-testid="publish-registration-form-version">@T("version.publish", "Publish")</AppButton>
+                            }
+                        </div>
+                    </header>
+
+                    @if (_preflight is not null)
+                    {
+                        <section class="registration-form-builder__preflight" aria-labelledby="preflight-title" data-testid="registration-form-preflight" role="status">
+                            <h4 id="preflight-title">@T("preflight.title", "Publication readiness")</h4>
+                            <p>@(_preflight.CanPublish ? T("preflight.ready", "Ready to publish.") : T("preflight.blocked", "Resolve these issues before publishing."))</p>
+                            @if (_preflight.Issues.Count > 0)
+                            {
+                                <ul>
+                                    @foreach (RegistrationFormPublishPreflightIssueDto issue in _preflight.Issues)
+                                    {
+                                        <li><strong>@issue.Code</strong>: @issue.Message</li>
+                                    }
+                                </ul>
+                            }
+                        </section>
+                    }
+
+                    <section aria-labelledby="sections-title">
+                        <div class="registration-form-builder__section-heading">
+                            <h4 id="sections-title">@T("sections.title", "Sections and fields")</h4>
+                            @if (VersionLink("add-section") is not null)
+                            {
+                                <div class="registration-form-builder__inline-editor">
+                                    <AppTextField T="string" Label="@T("section.new_title", "New section title")" @bind-Value="_newSectionTitle" Disabled="_mutating" />
+                                    <AppButton OnClick="AddSectionAsync" Disabled="@(_mutating || string.IsNullOrWhiteSpace(_newSectionTitle))" data-testid="add-registration-form-section">@T("section.add", "Add section")</AppButton>
+                                </div>
+                            }
+                        </div>
+
+                        @if (_version.Sections.Count == 0)
+                        {
+                            <p data-testid="registration-form-sections-empty">@T("sections.empty", "This version has no sections.")</p>
+                        }
+                        else
+                        {
+                            <ol class="registration-form-builder__list" data-testid="registration-form-sections">
+                                @foreach ((RegistrationFormSectionDto section, int index) in OrderedSections().Select((item, index) => (item, index)))
+                                {
+                                    <li>
+                                        <article class="registration-form-builder__section"
+                                                 data-section-id="@section.Id"
+                                                 data-testid="registration-form-section-drag-target"
+                                                 draggable="@(VersionLink("reorder-sections") is not null && !_mutating ? "true" : "false")"
+                                                 @ondragstart="@(() => StartSectionDrag(section.Id))"
+                                                 @ondragover:preventDefault
+                                                 @ondrop="@(() => DropSectionAsync(section.Id))"
+                                                 @ondragend="ClearDragState">
+                                            <header class="registration-form-builder__item-header">
+                                                <h5>@section.Title</h5>
+                                                <div class="registration-form-builder__actions">
+                                                    @if (VersionLink("reorder-sections") is not null)
+                                                    {
+                                                        <div class="registration-form-builder__reorder" aria-label="@F("section.reorder", "Reorder section {0}", section.Title)">
+                                                            <AppButton id="@SectionMoveId(section.Id, -1)" Variant="Variant.Text" OnClick="@(() => MoveSectionAsync(index, -1))" Disabled="@(_mutating || index == 0)" aria-label="@F("section.move_up_named", "Move section {0} up", section.Title)">@T("move.up", "Move up")</AppButton>
+                                                            <AppButton id="@SectionMoveId(section.Id, 1)" Variant="Variant.Text" OnClick="@(() => MoveSectionAsync(index, 1))" Disabled="@(_mutating || index == _version.Sections.Count - 1)" aria-label="@F("section.move_down_named", "Move section {0} down", section.Title)">@T("move.down", "Move down")</AppButton>
+                                                        </div>
+                                                    }
+                                                    @if (SectionLink(section, "edit") is not null)
+                                                    {
+                                                        <AppButton Variant="Variant.Text" OnClick="@(() => StartSectionEdit(section))" Disabled="_mutating" data-testid="edit-registration-form-section">@T("common.edit", "Edit")</AppButton>
+                                                    }
+                                                    @if (SectionLink(section, "delete") is not null)
+                                                    {
+                                                        <AppButton Variant="Variant.Text" Color="Color.Error" OnClick="@(() => DeleteSectionAsync(section))" Disabled="_mutating" data-testid="delete-registration-form-section">@T("common.delete", "Delete")</AppButton>
+                                                    }
+                                                    @if (SectionLink(section, "add-field") is not null)
+                                                    {
+                                                        <AppButton Variant="Variant.Text" OnClick="@(() => StartFieldAdd(section))" Disabled="_mutating" data-testid="add-registration-form-field">@T("field.add", "Add field")</AppButton>
+                                                    }
+                                                </div>
+                                            </header>
+
+                                            @if (_editingSectionId == section.Id)
+                                            {
+                                                <div class="registration-form-builder__inline-editor">
+                                                    <AppTextField T="string" Label="@T("section.title", "Section title")" @bind-Value="_editingSectionTitle" Disabled="_mutating" />
+                                                    <AppButton OnClick="@(() => SaveSectionAsync(section))" Disabled="@(_mutating || string.IsNullOrWhiteSpace(_editingSectionTitle))">@T("section.save", "Save section")</AppButton>
+                                                    <AppButton Variant="Variant.Text" OnClick="CancelSectionEdit" Disabled="_mutating">@T("common.cancel", "Cancel")</AppButton>
+                                                </div>
+                                            }
+
+                                            @if (_fieldSectionId == section.Id && _fieldEditor is not null)
+                                            {
+                                                <RegistrationFormFieldEditor Model="_fieldEditor" IsSaving="_mutating" OnSave="SaveFieldAsync" OnCancel="CancelFieldEdit" />
+                                            }
+
+                                            @if (section.Fields.Count == 0)
+                                            {
+                                                <p>@T("fields.empty", "No fields in this section.")</p>
+                                            }
+                                            else
+                                            {
+                                                <ol class="registration-form-builder__fields">
+                                                    @foreach ((RegistrationFormFieldDto field, int fieldIndex) in section.Fields.OrderBy(item => item.Ordinal).Select((item, itemIndex) => (item, itemIndex)))
+                                                    {
+                                                        <li>
+                                                            <article class="registration-form-builder__field"
+                                                                     data-field-id="@field.Id"
+                                                                     data-testid="registration-form-field-drag-target"
+                                                                     draggable="@(SectionLink(section, "reorder-fields") is not null && !_mutating ? "true" : "false")"
+                                                                     @ondragstart="@(() => StartFieldDrag(section.Id, field.Id))"
+                                                                     @ondragstart:stopPropagation
+                                                                     @ondragover:preventDefault
+                                                                     @ondrop="@(() => DropFieldAsync(section, field.Id))"
+                                                                     @ondragend="ClearDragState">
+                                                                <div class="registration-form-builder__field-summary">
+                                                                    <h6>@field.Label</h6>
+                                                                    <MudText Typo="Typo.caption">@field.FieldTypeName · @(field.IsRequired ? T("field.required", "Required") : T("field.optional", "Optional"))</MudText>
+                                                                    @if (field.Options.Count > 0)
+                                                                    {
+                                                                        <ul class="registration-form-builder__options" aria-label="@F("option.list_for", "Options for {0}", field.Label)">
+                                                                            @foreach (RegistrationFormFieldOptionDto option in field.Options.OrderBy(item => item.Ordinal))
+                                                                            {
+                                                                                <li>
+                                                                                    <span>@option.Label @(option.RetiredAt is null ? null : T("option.retired_marker", "(retired)"))</span>
+                                                                                    <span class="registration-form-builder__actions">
+                                                                                        @if (OptionLink(option, "edit") is not null)
+                                                                                        {
+                                                                                            <AppButton Variant="Variant.Text" OnClick="@(() => StartOptionEdit(section, field, option))" Disabled="_mutating" data-testid="edit-registration-form-option">@T("common.edit", "Edit")</AppButton>
+                                                                                        }
+                                                                                        @if (OptionLink(option, "retire") is not null)
+                                                                                        {
+                                                                                            <AppButton Variant="Variant.Text" Color="Color.Error" OnClick="@(() => RetireOptionAsync(section, field, option))" Disabled="_mutating" data-testid="retire-registration-form-option">@T("option.retire", "Retire")</AppButton>
+                                                                                        }
+                                                                                    </span>
+                                                                                </li>
+                                                                            }
+                                                                        </ul>
+                                                                    }
+                                                                    @if (FieldLink(field, "add-option") is not null)
+                                                                    {
+                                                                        <AppButton Variant="Variant.Text" OnClick="@(() => StartOptionAdd(section, field))" Disabled="_mutating" data-testid="add-registration-form-option">@T("option.add", "Add option")</AppButton>
+                                                                    }
+                                                                    @if (_optionEditor?.Field.Id == field.Id)
+                                                                    {
+                                                                        <fieldset class="registration-form-builder__option-editor">
+                                                                            <legend>@(_optionEditor.Option is null ? T("option.new", "New option") : T("option.edit", "Edit option"))</legend>
+                                                                            <MudNumericField T="int" Label="@T("option.position", "Position")" @bind-Value="_optionEditor.Ordinal" Min="1" Variant="Variant.Outlined" Disabled="_mutating" />
+                                                                            <AppTextField T="string" Label="@T("option.key", "Option key")" @bind-Value="_optionEditor.Key" Disabled="_mutating" />
+                                                                            <AppTextField T="string" Label="@T("option.label", "Option label")" @bind-Value="_optionEditor.Label" Disabled="_mutating" />
+                                                                            <AppButton OnClick="SaveOptionAsync" Disabled="@(_mutating || !_optionEditor.IsValid)">@T("option.save", "Save option")</AppButton>
+                                                                            <AppButton Variant="Variant.Text" OnClick="CancelOptionEdit" Disabled="_mutating">@T("common.cancel", "Cancel")</AppButton>
+                                                                        </fieldset>
+                                                                    }
+                                                                </div>
+                                                                <div class="registration-form-builder__actions">
+                                                                    @if (SectionLink(section, "reorder-fields") is not null)
+                                                                    {
+                                                                        <div class="registration-form-builder__reorder" aria-label="@F("field.reorder", "Reorder field {0}", field.Label)">
+                                                                            <AppButton id="@FieldMoveId(field.Id, -1)" Variant="Variant.Text" OnClick="@(() => MoveFieldAsync(section, fieldIndex, -1))" Disabled="@(_mutating || fieldIndex == 0)" aria-label="@F("field.move_up_named", "Move field {0} up", field.Label)">@T("move.up", "Move up")</AppButton>
+                                                                            <AppButton id="@FieldMoveId(field.Id, 1)" Variant="Variant.Text" OnClick="@(() => MoveFieldAsync(section, fieldIndex, 1))" Disabled="@(_mutating || fieldIndex == section.Fields.Count - 1)" aria-label="@F("field.move_down_named", "Move field {0} down", field.Label)">@T("move.down", "Move down")</AppButton>
+                                                                        </div>
+                                                                    }
+                                                                    @if (FieldLink(field, "edit") is not null)
+                                                                    {
+                                                                        <AppButton Variant="Variant.Text" OnClick="@(() => StartFieldEdit(section, field))" Disabled="_mutating" data-testid="edit-registration-form-field">@T("common.edit", "Edit")</AppButton>
+                                                                    }
+                                                                    @if (FieldLink(field, "delete") is not null)
+                                                                    {
+                                                                        <AppButton Variant="Variant.Text" Color="Color.Error" OnClick="@(() => DeleteFieldAsync(section, field))" Disabled="_mutating" data-testid="delete-registration-form-field">@T("common.delete", "Delete")</AppButton>
+                                                                    }
+                                                                </div>
+                                                            </article>
+                                                        </li>
+                                                    }
+                                                </ol>
+                                            }
+                                        </article>
+                                    </li>
+                                }
+                            </ol>
+                        }
+                    </section>
+
+                    <section aria-labelledby="conditions-title">
+                        <div class="registration-form-builder__section-heading">
+                            <h4 id="conditions-title">@T("conditions.title", "Conditions")</h4>
+                            @if (VersionLink("add-rule") is not null && AllFields.Count > 1)
+                            {
+                                <AppButton Variant="Variant.Text" OnClick="StartRuleAdd" Disabled="_mutating" data-testid="add-registration-form-rule">@T("rule.add", "Add rule")</AppButton>
+                            }
+                        </div>
+                        @if (_ruleEditor is not null)
+                        {
+                            <RegistrationFormRuleEditor Model="_ruleEditor" Fields="AllFields" IsSaving="_mutating" OnSave="SaveRuleAsync" OnCancel="CancelRuleEdit" />
+                        }
+                        @if (_version.Rules.Count == 0)
+                        {
+                            <p>@T("rules.empty", "No conditional rules.")</p>
+                        }
+                        else
+                        {
+                            <ul class="registration-form-builder__rules">
+                                @foreach (RegistrationFormRuleDto rule in _version.Rules.OrderBy(item => item.Ordinal))
+                                {
+                                    <li>
+                                        <article class="registration-form-builder__rule">
+                                            <span><strong>@rule.TargetNamespace.@rule.TargetKey</strong> · @rule.Condition.Operator</span>
+                                            <span class="registration-form-builder__actions">
+                                                @if (RuleLink(rule, "edit") is not null)
+                                                {
+                                                    <AppButton Variant="Variant.Text" OnClick="@(() => StartRuleEdit(rule))" Disabled="_mutating" data-testid="edit-registration-form-rule">@T("common.edit", "Edit")</AppButton>
+                                                }
+                                                @if (RuleLink(rule, "delete") is not null)
+                                                {
+                                                    <AppButton Variant="Variant.Text" Color="Color.Error" OnClick="@(() => DeleteRuleAsync(rule))" Disabled="_mutating" data-testid="delete-registration-form-rule">@T("common.delete", "Delete")</AppButton>
+                                                }
+                                            </span>
+                                        </article>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </section>
+                </article>
+            }
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+
+    private HalResourceOfRegistrationWorkflowDto? _workflow;
+    private HalResourceOfRegistrationFormDto? _form;
+    private HalResourceOfRegistrationFormVersionDto? _version;
+    private HalResourceOfRegistrationFormPublishPreflightDto? _preflight;
+    private Guid _formId;
+    private Guid _versionId;
+    private Guid _loadedEventId;
+    private bool _loading;
+    private bool _mutating;
+    private bool _disposed;
+    private string? _error;
+    private string? _status;
+    private string _newFormName = string.Empty;
+    private string _newSectionTitle = string.Empty;
+    private Guid? _editingSectionId;
+    private string _editingSectionTitle = string.Empty;
+    private Guid? _fieldSectionId;
+    private RegistrationFormFieldEditModel? _fieldEditor;
+    private OptionEditorState? _optionEditor;
+    private RegistrationFormRuleEditModel? _ruleEditor;
+    private Guid? _draggedSectionId;
+    private (Guid SectionId, Guid FieldId)? _draggedField;
+    private CancellationTokenSource? _requestCancellation;
+
+    private IReadOnlyList<RegistrationFormFieldDto> AllFields => _version?.Sections
+        .OrderBy(section => section.Ordinal)
+        .SelectMany(section => section.Fields.OrderBy(item => item.Ordinal))
+        .ToArray() ?? [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_disposed || EventId == _loadedEventId)
+        {
+            return;
+        }
+
+        CancelPendingRequests();
+        ResetState();
+        _loadedEventId = EventId;
+        _loading = EventId != Guid.Empty;
+        if (EventId == Guid.Empty)
+        {
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        _requestCancellation = cancellation;
+        await LoadAsync(EventId, cancellation.Token);
+    }
+
+    private async Task LoadAsync(Guid eventId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            HalResourceOfRegistrationWorkflowDto workflow = await Authoring.GetWorkflowAsync(eventId, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCurrent(eventId, cancellationToken)) return;
+            _workflow = workflow;
+            if (workflow.Forms.FirstOrDefault() is { } first)
+            {
+                await SelectFormCoreAsync(eventId, first.Id, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            if (!IsCurrent(eventId, cancellationToken)) return;
+            _error = T("load_failed", "Registration forms could not be loaded. Refresh and try again.");
+            await Announcer.AnnounceAssertiveAsync(_error);
+        }
+        finally
+        {
+            if (IsCurrent(eventId, cancellationToken)) _loading = false;
+        }
+    }
+
+    private async Task SelectFormAsync(Guid formId)
+    {
+        CancellationToken token = CurrentToken;
+        try
+        {
+            await SelectFormCoreAsync(EventId, formId, token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            await ShowSelectionErrorAsync(EventId, token);
+        }
+    }
+
+    private async Task SelectFormCoreAsync(Guid eventId, Guid formId, CancellationToken cancellationToken)
+    {
+        HalResourceOfRegistrationFormDto form = await Authoring.GetFormAsync(eventId, formId, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!IsCurrent(eventId, cancellationToken)) return;
+        _formId = formId;
+        _form = form;
+        if (form.Versions.OrderByDescending(item => item.Version).FirstOrDefault() is { } version)
+        {
+            await SelectVersionCoreAsync(eventId, formId, version.Id, cancellationToken);
+        }
+        else
+        {
+            _version = null;
+            _versionId = Guid.Empty;
+        }
+    }
+
+    private async Task SelectVersionAsync(Guid versionId)
+    {
+        CancellationToken token = CurrentToken;
+        try
+        {
+            await SelectVersionCoreAsync(EventId, _formId, versionId, token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            await ShowSelectionErrorAsync(EventId, token);
+        }
+    }
+
+    private async Task SelectVersionCoreAsync(Guid eventId, Guid formId, Guid versionId, CancellationToken cancellationToken)
+    {
+        HalResourceOfRegistrationFormVersionDto version = await Authoring.GetVersionAsync(eventId, formId, versionId, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!IsCurrent(eventId, cancellationToken)) return;
+        _versionId = versionId;
+        _version = version;
+        _preflight = null;
+        CancelEditors();
+    }
+
+    private async Task ShowSelectionErrorAsync(Guid eventId, CancellationToken cancellationToken)
+    {
+        if (!IsCurrent(eventId, cancellationToken)) return;
+        _error = T("selection_failed", "The selected registration form could not be loaded. Refresh and try again.");
+        await Announcer.AnnounceAssertiveAsync(_error);
+    }
+
+    private HalLink? WorkflowLink(string relation) => TryLink(_workflow?._links, relation);
+    private HalLink? FormLink(string relation) => TryLink(_form?._links, relation);
+    private HalLink? VersionLink(string relation) => TryLink(_version?._links, relation);
+    private static HalLink? TryLink(IDictionary<string, HalLink>? links, string relation) =>
+        links?.TryGetValue(relation, out HalLink? link) == true ? link : null;
+    private static HalLink? SectionLink(RegistrationFormSectionDto section, string relation) => RegistrationFormHal.Link(section.AdditionalProperties, relation);
+    private static HalLink? FieldLink(RegistrationFormFieldDto field, string relation) => RegistrationFormHal.Link(field.AdditionalProperties, relation);
+    private static HalLink? OptionLink(RegistrationFormFieldOptionDto option, string relation) => RegistrationFormHal.Link(option.AdditionalProperties, relation);
+    private static HalLink? RuleLink(RegistrationFormRuleDto rule, string relation) => RegistrationFormHal.Link(rule.AdditionalProperties, relation);
+    private IEnumerable<RegistrationFormSectionDto> OrderedSections() => _version!.Sections.OrderBy(item => item.Ordinal);
+
+    private Task CreateFormAsync() => MutateAsync(async (eventId, token) =>
+    {
+        Guid id = await Authoring.CreateFormAsync(eventId, _workflow!.Id, _workflow.ConcurrencyStamp,
+            new RegistrationFormInput { Namespace = "event", Key = Slug(_newFormName), Name = _newFormName.Trim(), LanguageTag = "en" }, WorkflowLink("create-form")!, token);
+        _workflow = await Authoring.GetWorkflowAsync(eventId, token);
+        await SelectFormCoreAsync(eventId, id, token);
+        _newFormName = string.Empty;
+    }, T("status.form_created", "Registration form created."));
+
+    private Task CloneVersionAsync() => MutateAsync(async (eventId, token) =>
+    {
+        Guid formId = _form!.Id;
+        Guid id = await Authoring.CreateVersionAsync(eventId, formId, _form.ConcurrencyStamp,
+            new RegistrationFormVersionInput { CloneFromVersionId = _version!.Id, LanguageTag = _version.LanguageTag }, FormLink("create-version")!, token);
+        await SelectFormCoreAsync(eventId, formId, token);
+        await SelectVersionCoreAsync(eventId, formId, id, token);
+    }, T("status.version_created", "New draft version created."));
+
+    private Task AddSectionAsync() => MutateAsync(async (eventId, token) =>
+    {
+        await Authoring.AddSectionAsync(eventId, _form!.Id, _version!.Id, _version.ConcurrencyStamp,
+            new RegistrationFormSectionInput { Ordinal = _version.Sections.Count + 1, Title = _newSectionTitle.Trim() }, VersionLink("add-section")!, token);
+        _newSectionTitle = string.Empty;
+        await ReloadVersionAsync(eventId, token);
+    }, T("status.section_added", "Section added."));
+
+    private void StartSectionEdit(RegistrationFormSectionDto section)
+    {
+        _editingSectionId = section.Id;
+        _editingSectionTitle = section.Title;
+    }
+
+    private void CancelSectionEdit()
+    {
+        _editingSectionId = null;
+        _editingSectionTitle = string.Empty;
+    }
+
+    private Task SaveSectionAsync(RegistrationFormSectionDto section) => MutateAsync(async (eventId, token) =>
+    {
+        await Authoring.UpdateSectionAsync(eventId, _form!.Id, _version!.Id, section.Id, section.ConcurrencyStamp,
+            new RegistrationFormSectionInput { Ordinal = section.Ordinal, Title = _editingSectionTitle.Trim() }, SectionLink(section, "edit")!, token);
+        CancelSectionEdit();
+        await ReloadVersionAsync(eventId, token);
+    }, T("status.section_updated", "Section updated."));
+
+    private async Task DeleteSectionAsync(RegistrationFormSectionDto section)
+    {
+        if (!await ConfirmAsync(T("dialog.delete_section.title", "Delete section"),
+                F("dialog.delete_section.message", "Delete {0} and its fields?", section.Title), T("common.delete", "Delete"))) return;
+        await MutateAsync(async (eventId, token) =>
+        {
+            await Authoring.DeleteSectionAsync(eventId, _form!.Id, _version!.Id, section.Id, section.ConcurrencyStamp,
+                SectionLink(section, "delete")!, token);
+            await ReloadVersionAsync(eventId, token);
+        }, T("status.section_deleted", "Section deleted."));
+    }
+
+    private void StartFieldAdd(RegistrationFormSectionDto section)
+    {
+        _fieldSectionId = section.Id;
+        _fieldEditor = RegistrationFormFieldEditModel.Create(section.Fields.Count + 1);
+    }
+
+    private void StartFieldEdit(RegistrationFormSectionDto section, RegistrationFormFieldDto field)
+    {
+        _fieldSectionId = section.Id;
+        _fieldEditor = RegistrationFormFieldEditModel.From(field);
+    }
+
+    private void CancelFieldEdit()
+    {
+        _fieldSectionId = null;
+        _fieldEditor = null;
+    }
+
+    private Task SaveFieldAsync(RegistrationFormFieldEditModel model)
+    {
+        RegistrationFormSectionDto section = _version!.Sections.Single(item => item.Id == _fieldSectionId);
+        return MutateAsync(async (eventId, token) =>
+        {
+            if (model.Source is null)
+            {
+                Guid fieldId = await Authoring.AddFieldAsync(eventId, _form!.Id, _version!.Id, section.Id, section.ConcurrencyStamp,
+                    model.ToCreateInput(), SectionLink(section, "add-field")!, token);
+                await ReloadVersionAsync(eventId, token);
+                RegistrationFormFieldDto created = _version!.Sections.SelectMany(item => item.Fields).Single(item => item.Id == fieldId);
+                await Authoring.UpdateFieldAsync(eventId, _form!.Id, _version.Id, section.Id, created,
+                    model.ToUpdateInput(), FieldLink(created, "edit")!, token);
+            }
+            else
+            {
+                await Authoring.UpdateFieldAsync(eventId, _form!.Id, _version!.Id, section.Id, model.Source,
+                    model.ToUpdateInput(), FieldLink(model.Source, "edit")!, token);
+            }
+            CancelFieldEdit();
+            await ReloadVersionAsync(eventId, token);
+        }, model.Source is null ? T("status.field_added", "Field added.") : T("status.field_updated", "Field updated."));
+    }
+
+    private async Task DeleteFieldAsync(RegistrationFormSectionDto section, RegistrationFormFieldDto field)
+    {
+        if (!await ConfirmAsync(T("dialog.delete_field.title", "Delete field"),
+                F("dialog.delete_field.message", "Delete {0}?", field.Label), T("common.delete", "Delete"))) return;
+        await MutateAsync(async (eventId, token) =>
+        {
+            await Authoring.DeleteFieldAsync(eventId, _form!.Id, _version!.Id, section.Id, field, FieldLink(field, "delete")!, token);
+            await ReloadVersionAsync(eventId, token);
+        }, T("status.field_deleted", "Field deleted."));
+    }
+
+    private void StartOptionAdd(RegistrationFormSectionDto section, RegistrationFormFieldDto field) =>
+        _optionEditor = OptionEditorState.Create(section, field);
+
+    private void StartOptionEdit(RegistrationFormSectionDto section, RegistrationFormFieldDto field, RegistrationFormFieldOptionDto option) =>
+        _optionEditor = OptionEditorState.From(section, field, option);
+
+    private void CancelOptionEdit() => _optionEditor = null;
+
+    private Task SaveOptionAsync()
+    {
+        OptionEditorState editor = _optionEditor!;
+        return MutateAsync(async (eventId, token) =>
+        {
+            var input = new RegistrationFormOptionInput { Ordinal = editor.Ordinal, Key = editor.Key.Trim(), Label = editor.Label.Trim() };
+            if (editor.Option is null)
+            {
+                await Authoring.AddOptionAsync(eventId, _form!.Id, _version!.Id, editor.Section.Id, editor.Field,
+                    input, FieldLink(editor.Field, "add-option")!, token);
+            }
+            else
+            {
+                await Authoring.UpdateOptionAsync(eventId, _form!.Id, _version!.Id, editor.Section.Id, editor.Field.Id,
+                    editor.Option, input, OptionLink(editor.Option, "edit")!, token);
+            }
+            CancelOptionEdit();
+            await ReloadVersionAsync(eventId, token);
+        }, editor.Option is null ? T("status.option_added", "Option added.") : T("status.option_updated", "Option updated."));
+    }
+
+    private async Task RetireOptionAsync(RegistrationFormSectionDto section, RegistrationFormFieldDto field, RegistrationFormFieldOptionDto option)
+    {
+        if (!await ConfirmAsync(T("dialog.retire_option.title", "Retire option"),
+                F("dialog.retire_option.message", "Retire {0}? Existing answers remain intact.", option.Label), T("option.retire", "Retire"))) return;
+        await MutateAsync(async (eventId, token) =>
+        {
+            await Authoring.RetireOptionAsync(eventId, _form!.Id, _version!.Id, section.Id, field.Id, option,
+                OptionLink(option, "retire")!, token);
+            await ReloadVersionAsync(eventId, token);
+        }, T("status.option_retired", "Option retired."));
+    }
+
+    private void StartRuleAdd() => _ruleEditor = RegistrationFormRuleEditModel.Create(_version!.Rules.Count + 1);
+    private void StartRuleEdit(RegistrationFormRuleDto rule) => _ruleEditor = RegistrationFormRuleEditModel.From(rule);
+    private void CancelRuleEdit() => _ruleEditor = null;
+
+    private Task SaveRuleAsync(RegistrationFormRuleEditModel model) => MutateAsync(async (eventId, token) =>
+    {
+        if (model.Source is null)
+        {
+            await Authoring.AddRuleAsync(eventId, _form!.Id, _version!.Id, _version.ConcurrencyStamp,
+                model.ToInput(), VersionLink("add-rule")!, token);
+        }
+        else
+        {
+            await Authoring.UpdateRuleAsync(eventId, _form!.Id, _version!.Id, model.Source,
+                model.ToInput(), RuleLink(model.Source, "edit")!, token);
+        }
+        CancelRuleEdit();
+        await ReloadVersionAsync(eventId, token);
+    }, model.Source is null ? T("status.rule_added", "Rule added.") : T("status.rule_updated", "Rule updated."));
+
+    private async Task DeleteRuleAsync(RegistrationFormRuleDto rule)
+    {
+        if (!await ConfirmAsync(T("dialog.delete_rule.title", "Delete rule"),
+                T("dialog.delete_rule.message", "Delete this conditional rule?"), T("common.delete", "Delete"))) return;
+        await MutateAsync(async (eventId, token) =>
+        {
+            await Authoring.DeleteRuleAsync(eventId, _form!.Id, _version!.Id, rule, RuleLink(rule, "delete")!, token);
+            await ReloadVersionAsync(eventId, token);
+        }, T("status.rule_deleted", "Rule deleted."));
+    }
+
+    private Task MoveSectionAsync(int index, int delta) => MutateAsync(async (eventId, token) =>
+    {
+        RegistrationFormSectionDto moved = OrderedSections().ElementAt(index);
+        List<Guid> orderedIds = OrderedSections().Select(item => item.Id).ToList();
+        (orderedIds[index], orderedIds[index + delta]) = (orderedIds[index + delta], orderedIds[index]);
+        _version = await Authoring.ReorderSectionsAsync(eventId, _form!.Id, _version!.Id,
+            _version.ConcurrencyStamp, orderedIds, VersionLink("reorder-sections")!, token);
+        await InvokeAsync(StateHasChanged);
+        await FocusService.FocusByIdAsync(SectionMoveId(moved.Id, delta), true);
+    }, delta < 0 ? T("status.section_moved_up", "Section moved up.") : T("status.section_moved_down", "Section moved down."));
+
+    private Task MoveFieldAsync(RegistrationFormSectionDto section, int index, int delta) => MutateAsync(async (eventId, token) =>
+    {
+        RegistrationFormFieldDto moved = section.Fields.OrderBy(item => item.Ordinal).ElementAt(index);
+        List<Guid> orderedIds = section.Fields.OrderBy(item => item.Ordinal).Select(item => item.Id).ToList();
+        (orderedIds[index], orderedIds[index + delta]) = (orderedIds[index + delta], orderedIds[index]);
+        _version = await Authoring.ReorderFieldsAsync(eventId, _form!.Id, _version!.Id, section.Id,
+            _version.ConcurrencyStamp, orderedIds, SectionLink(section, "reorder-fields")!, token);
+        await InvokeAsync(StateHasChanged);
+        await FocusService.FocusByIdAsync(FieldMoveId(moved.Id, delta), true);
+    }, delta < 0 ? T("status.field_moved_up", "Field moved up.") : T("status.field_moved_down", "Field moved down."));
+
+    private void StartSectionDrag(Guid sectionId)
+    {
+        if (!_mutating && VersionLink("reorder-sections") is not null)
+        {
+            _draggedSectionId = sectionId;
+            _draggedField = null;
+        }
+    }
+
+    private Task DropSectionAsync(Guid targetId)
+    {
+        Guid? sourceId = _draggedSectionId;
+        ClearDragState();
+        if (sourceId is null || sourceId == targetId || _mutating || VersionLink("reorder-sections") is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        List<RegistrationFormSectionDto> sections = OrderedSections().ToList();
+        int sourceIndex = sections.FindIndex(item => item.Id == sourceId);
+        int targetIndex = sections.FindIndex(item => item.Id == targetId);
+        if (sourceIndex < 0 || targetIndex < 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        RegistrationFormSectionDto moved = sections[sourceIndex];
+        sections.RemoveAt(sourceIndex);
+        sections.Insert(targetIndex, moved);
+        return MutateAsync(async (eventId, token) =>
+        {
+            _version = await Authoring.ReorderSectionsAsync(eventId, _form!.Id, _version!.Id,
+                _version.ConcurrencyStamp, sections.Select(item => item.Id).ToArray(), VersionLink("reorder-sections")!, token);
+        }, F("status.section_moved_position", "Section moved to position {0}.", targetIndex + 1));
+    }
+
+    private void StartFieldDrag(Guid sectionId, Guid fieldId)
+    {
+        RegistrationFormSectionDto? section = _version?.Sections.FirstOrDefault(item => item.Id == sectionId);
+        if (!_mutating && section is not null && SectionLink(section, "reorder-fields") is not null)
+        {
+            _draggedField = (sectionId, fieldId);
+            _draggedSectionId = null;
+        }
+    }
+
+    private Task DropFieldAsync(RegistrationFormSectionDto section, Guid targetId)
+    {
+        (Guid SectionId, Guid FieldId)? source = _draggedField;
+        ClearDragState();
+        if (source is null || source.Value.SectionId != section.Id || source.Value.FieldId == targetId || _mutating ||
+            SectionLink(section, "reorder-fields") is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        List<RegistrationFormFieldDto> fields = section.Fields.OrderBy(item => item.Ordinal).ToList();
+        int sourceIndex = fields.FindIndex(item => item.Id == source.Value.FieldId);
+        int targetIndex = fields.FindIndex(item => item.Id == targetId);
+        if (sourceIndex < 0 || targetIndex < 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        RegistrationFormFieldDto moved = fields[sourceIndex];
+        fields.RemoveAt(sourceIndex);
+        fields.Insert(targetIndex, moved);
+        return MutateAsync(async (eventId, token) =>
+        {
+            _version = await Authoring.ReorderFieldsAsync(eventId, _form!.Id, _version!.Id, section.Id,
+                _version.ConcurrencyStamp, fields.Select(item => item.Id).ToArray(), SectionLink(section, "reorder-fields")!, token);
+        }, F("status.field_moved_position", "Field moved to position {0}.", targetIndex + 1));
+    }
+
+    private void ClearDragState()
+    {
+        _draggedSectionId = null;
+        _draggedField = null;
+    }
+
+    private Task PreflightAsync() => MutateAsync(async (eventId, token) =>
+    {
+        _preflight = await Authoring.PreflightAsync(eventId, _form!.Id, _version!.Id, VersionLink("preflight")!, token);
+    }, T("status.preflight_checked", "Publication readiness checked."));
+
+    private async Task PublishAsync()
+    {
+        if (!await ConfirmAsync(T("dialog.publish.title", "Publish registration form"),
+                T("dialog.publish.message", "Publish this version for attendee use? Published content becomes read-only."), T("version.publish", "Publish"))) return;
+        await MutateAsync(async (eventId, token) =>
+        {
+            Guid formId = _form!.Id;
+            await Authoring.PublishAsync(eventId, formId, _version!.Id, _version.ConcurrencyStamp, VersionLink("publish")!, token);
+            await SelectFormCoreAsync(eventId, formId, token);
+        }, T("status.published", "Registration form published."));
+    }
+
+    private async Task ReloadVersionAsync(Guid eventId, CancellationToken cancellationToken) =>
+        await SelectVersionCoreAsync(eventId, _form!.Id, _version!.Id, cancellationToken);
+
+    private async Task MutateAsync(Func<Guid, CancellationToken, Task> mutation, string success)
+    {
+        Guid eventId = EventId;
+        CancellationToken token = CurrentToken;
+        if (!IsCurrent(eventId, token)) return;
+        _mutating = true;
+        _error = null;
+        _status = null;
+        try
+        {
+            await mutation(eventId, token);
+            token.ThrowIfCancellationRequested();
+            if (!IsCurrent(eventId, token)) return;
+            _status = success;
+            await Announcer.AnnouncePoliteAsync(success);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            if (!IsCurrent(eventId, token)) return;
+            _error = T("mutation_failed", "The form changed or the action is no longer available. Reload and try again.");
+            await Announcer.AnnounceAssertiveAsync(_error);
+        }
+        finally
+        {
+            if (IsCurrent(eventId, token)) _mutating = false;
+        }
+    }
+
+    private async Task<bool> ConfirmAsync(string title, string message, string yesText)
+    {
+        await FocusService.SaveFocusAsync();
+        try
+        {
+            bool? confirmed = await DialogService.ShowMessageBoxAsync(title, message, yesText: yesText,
+                cancelText: T("common.cancel", "Cancel"), options: DialogOptionsFactory.Confirmation());
+            return confirmed == true;
+        }
+        finally
+        {
+            await FocusService.RestoreFocusAsync();
+        }
+    }
+
+    private CancellationToken CurrentToken => _requestCancellation?.Token ?? default;
+    private bool IsCurrent(Guid eventId, CancellationToken token) =>
+        !_disposed && !token.IsCancellationRequested && eventId == EventId && eventId == _loadedEventId;
+
+    private void ResetState()
+    {
+        _workflow = null;
+        _form = null;
+        _version = null;
+        _preflight = null;
+        _formId = Guid.Empty;
+        _versionId = Guid.Empty;
+        _error = null;
+        _status = null;
+        _mutating = false;
+        ClearDragState();
+        CancelEditors();
+    }
+
+    private void CancelEditors()
+    {
+        CancelSectionEdit();
+        CancelFieldEdit();
+        CancelOptionEdit();
+        CancelRuleEdit();
+    }
+
+    private void CancelPendingRequests()
+    {
+        CancellationTokenSource? cancellation = _requestCancellation;
+        _requestCancellation = null;
+        cancellation?.Cancel();
+        cancellation?.Dispose();
+    }
+
+    private static string SectionMoveId(Guid id, int delta) => $"section-{id:N}-move-{(delta < 0 ? "up" : "down")}";
+    private static string FieldMoveId(Guid id, int delta) => $"field-{id:N}-move-{(delta < 0 ? "up" : "down")}";
+    private static string Slug(string value) => string.Join('-', value.Trim().ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+    private string T(string key, string fallback) => Translation.T($"studio.registration_forms.{key}", fallback);
+    private string F(string key, string fallback, params object?[] values) =>
+        string.Format(CultureInfo.CurrentCulture, T(key, fallback), values);
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        CancelPendingRequests();
+        GC.SuppressFinalize(this);
+    }
+
+    private sealed class OptionEditorState
+    {
+        public required RegistrationFormSectionDto Section { get; init; }
+        public required RegistrationFormFieldDto Field { get; init; }
+        public RegistrationFormFieldOptionDto? Option { get; init; }
+        public int Ordinal { get; set; }
+        public string Key { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+        public bool IsValid => Ordinal > 0 && !string.IsNullOrWhiteSpace(Key) && !string.IsNullOrWhiteSpace(Label);
+
+        public static OptionEditorState Create(RegistrationFormSectionDto section, RegistrationFormFieldDto field) => new()
+        {
+            Section = section, Field = field, Ordinal = field.Options.Count + 1
+        };
+
+        public static OptionEditorState From(RegistrationFormSectionDto section, RegistrationFormFieldDto field, RegistrationFormFieldOptionDto option) => new()
+        {
+            Section = section, Field = field, Option = option, Ordinal = option.Ordinal, Key = option.Key, Label = option.Label
+        };
+    }
+}

@@ -1,0 +1,115 @@
+/* ABOUTME: Scoped Studio registration-form builder layout and interaction states. */
+/* ABOUTME: Uses project tokens, logical properties, RTL-safe flow, and container adaptation. */
+
+.registration-form-builder {
+    display: grid;
+    gap: var(--isl-space-5);
+    container-type: inline-size;
+}
+
+.registration-form-builder__state,
+.registration-form-builder__message,
+.registration-form-builder__empty,
+.registration-form-builder__version,
+.registration-form-builder__section,
+.registration-form-builder__preflight,
+.registration-form-builder__option-editor {
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+    padding: var(--isl-space-4);
+}
+
+.registration-form-builder__selector {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--isl-space-4);
+}
+
+.registration-form-builder__version,
+.registration-form-builder__section,
+.registration-form-builder__field-summary,
+.registration-form-builder__option-editor {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.registration-form-builder__version-header,
+.registration-form-builder__section-heading,
+.registration-form-builder__item-header,
+.registration-form-builder__field,
+.registration-form-builder__rule {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-4);
+}
+
+.registration-form-builder__actions,
+.registration-form-builder__reorder,
+.registration-form-builder__inline-editor {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2);
+}
+
+.registration-form-builder__badge {
+    display: inline-block;
+    margin-inline-end: var(--isl-space-2);
+    padding: var(--isl-space-1) var(--isl-space-2);
+    border-radius: var(--isl-radius-full);
+    color: var(--isl-color-text);
+    background: var(--isl-state-hover);
+}
+
+.registration-form-builder__list,
+.registration-form-builder__fields,
+.registration-form-builder__options,
+.registration-form-builder__rules {
+    display: grid;
+    gap: var(--isl-space-3);
+    padding-inline-start: var(--isl-space-6);
+}
+
+.registration-form-builder__field {
+    min-block-size: var(--isl-target-min);
+    border-block-start: var(--isl-card-border);
+    padding-block: var(--isl-space-2);
+}
+
+.registration-form-builder__section[draggable="true"],
+.registration-form-builder__field[draggable="true"] {
+    cursor: grab;
+}
+
+.registration-form-builder__section[draggable="true"]:active,
+.registration-form-builder__field[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.registration-form-builder__options li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+}
+
+.registration-form-builder__option-editor {
+    min-inline-size: 0;
+    margin: 0;
+}
+
+@container (max-width: 42rem) {
+    .registration-form-builder__selector {
+        grid-template-columns: 1fr;
+    }
+
+    .registration-form-builder__version-header,
+    .registration-form-builder__section-heading,
+    .registration-form-builder__item-header,
+    .registration-form-builder__field,
+    .registration-form-builder__rule,
+    .registration-form-builder__options li {
+        flex-direction: column;
+    }
+}

@@ -1,0 +1,52 @@
+/* ABOUTME: Tokenized field-editor grids and semantic groups for Studio authoring. */
+/* ABOUTME: Uses logical sizing and container adaptation for RTL-safe narrow layouts. */
+
+.registration-form-field-editor {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.registration-form-field-editor__group {
+    display: grid;
+    gap: var(--isl-space-3);
+    min-inline-size: 0;
+    margin: 0;
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+    padding: var(--isl-space-4);
+}
+
+.registration-form-field-editor__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--isl-space-3);
+}
+
+.registration-form-field-editor__checks,
+.registration-form-field-editor__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--isl-space-2);
+}
+
+.registration-form-field-editor__native-control {
+    display: grid;
+    gap: var(--isl-space-2);
+    color: var(--isl-color-text);
+}
+
+.registration-form-field-editor__native-control input {
+    min-block-size: var(--isl-target-min);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-input);
+    padding: var(--isl-space-3);
+    color: var(--isl-color-text);
+    background: var(--isl-color-surface);
+}
+
+@container (max-width: 42rem) {
+    .registration-form-field-editor__grid {
+        grid-template-columns: 1fr;
+    }
+}

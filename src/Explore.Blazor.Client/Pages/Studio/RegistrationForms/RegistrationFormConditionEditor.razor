@@ -1,0 +1,117 @@
+@* ABOUTME: Renders the closed registration-condition AST as recursive typed controls. *@
+@* ABOUTME: Limits references to prior fields and never accepts executable expression text. *@
+@using System.Globalization
+@inject ITranslationService Translation
+
+<fieldset class="registration-form-condition" data-testid="registration-form-condition-editor">
+    <legend>@F("condition.clause", "Condition clause {0}", Depth + 1)</legend>
+    <div class="registration-form-condition__grid">
+        <MudSelect T="string" Label="@T("condition.operator", "Operator")" Value="Model.Operator" ValueChanged="Model.SetOperator" Variant="Variant.Outlined" Disabled="IsSaving">
+            <MudSelectItem T="string" Value="@("equals")">@T("condition.operator.equals", "Equals")</MudSelectItem>
+            <MudSelectItem T="string" Value="@("notEquals")">@T("condition.operator.not_equals", "Does not equal")</MudSelectItem>
+            <MudSelectItem T="string" Value="@("in")">@T("condition.operator.in", "Is one of")</MudSelectItem>
+            <MudSelectItem T="string" Value="@("contains")">@T("condition.operator.contains", "Contains")</MudSelectItem>
+            <MudSelectItem T="string" Value="@("exists")">@T("condition.operator.exists", "Exists")</MudSelectItem>
+            <MudSelectItem T="string" Value="@("compare")">@T("condition.operator.compare", "Compare")</MudSelectItem>
+            <MudSelectItem T="string" Value="@("all")">@T("condition.operator.all", "All clauses")</MudSelectItem>
+            <MudSelectItem T="string" Value="@("any")">@T("condition.operator.any", "Any clause")</MudSelectItem>
+            <MudSelectItem T="string" Value="@("not")">@T("condition.operator.not", "Not")</MudSelectItem>
+        </MudSelect>
+
+        @if (Model.Operator is not ("all" or "any" or "not"))
+        {
+            <MudSelect T="string" Label="@T("condition.prior_field", "Prior field")" @bind-Value="Model.FieldReference" Variant="Variant.Outlined" Disabled="IsSaving">
+                @foreach (RegistrationFormFieldDto field in PriorFields)
+                {
+                    <MudSelectItem T="string" Value="@($"{field.Namespace}:{field.Key}")">@field.Label</MudSelectItem>
+                }
+            </MudSelect>
+        }
+
+        @if (Model.Operator == "compare")
+        {
+            <MudSelect T="string" Label="@T("condition.comparison", "Comparison")" @bind-Value="Model.Comparison" Variant="Variant.Outlined" Disabled="IsSaving">
+                <MudSelectItem T="string" Value="@("lessThan")">@T("condition.comparison.less_than", "Less than")</MudSelectItem>
+                <MudSelectItem T="string" Value="@("lessThanOrEqual")">@T("condition.comparison.less_than_or_equal", "Less than or equal")</MudSelectItem>
+                <MudSelectItem T="string" Value="@("greaterThan")">@T("condition.comparison.greater_than", "Greater than")</MudSelectItem>
+                <MudSelectItem T="string" Value="@("greaterThanOrEqual")">@T("condition.comparison.greater_than_or_equal", "Greater than or equal")</MudSelectItem>
+                <MudSelectItem T="string" Value="@("equal")">@T("condition.comparison.equal", "Equal")</MudSelectItem>
+                <MudSelectItem T="string" Value="@("notEqual")">@T("condition.comparison.not_equal", "Not equal")</MudSelectItem>
+            </MudSelect>
+        }
+    </div>
+
+    @if (Model.Operator is "equals" or "notEquals" or "contains" or "compare")
+    {
+        @ScalarEditor(Model.Value, T("condition.comparison_value", "Comparison value"), Model.Operator == "compare")
+    }
+    else if (Model.Operator == "in")
+    {
+        <div class="registration-form-condition__clauses">
+            @foreach ((RegistrationFormScalarEditModel value, int index) in Model.Values.Select((item, index) => (item, index)))
+            {
+                <div class="registration-form-condition__value">
+                    @ScalarEditor(value, F("condition.allowed_value", "Allowed value {0}", index + 1), false)
+                    <AppButton Variant="Variant.Text" Color="Color.Error" OnClick="@(() => Model.Values.Remove(value))" Disabled="IsSaving">@T("condition.remove_value", "Remove value")</AppButton>
+                </div>
+            }
+            <AppButton Variant="Variant.Text" OnClick="@(() => Model.Values.Add(new RegistrationFormScalarEditModel()))" Disabled="IsSaving">@T("condition.add_value", "Add value")</AppButton>
+        </div>
+    }
+    else if (Model.Operator is "all" or "any")
+    {
+        <div class="registration-form-condition__clauses">
+            @foreach (RegistrationFormConditionEditModel child in Model.Conditions.ToArray())
+            {
+                <div class="registration-form-condition__nested">
+                    <RegistrationFormConditionEditor Model="child" PriorFields="PriorFields" IsSaving="IsSaving" Depth="@(Depth + 1)" />
+                    <AppButton Variant="Variant.Text" Color="Color.Error" OnClick="@(() => Model.Conditions.Remove(child))" Disabled="IsSaving">@T("condition.remove_clause", "Remove clause")</AppButton>
+                </div>
+            }
+            <AppButton Variant="Variant.Text" OnClick="@(() => Model.Conditions.Add(new RegistrationFormConditionEditModel()))" Disabled="IsSaving">@T("condition.add_clause", "Add clause")</AppButton>
+        </div>
+    }
+    else if (Model.Operator == "not" && Model.Condition is not null)
+    {
+        <RegistrationFormConditionEditor Model="Model.Condition" PriorFields="PriorFields" IsSaving="IsSaving" Depth="@(Depth + 1)" />
+    }
+</fieldset>
+
+@code {
+    [Parameter, EditorRequired] public RegistrationFormConditionEditModel Model { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<RegistrationFormFieldDto> PriorFields { get; set; } = [];
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public int Depth { get; set; }
+
+    private RenderFragment ScalarEditor(RegistrationFormScalarEditModel value, string label, bool comparableOnly) => @<div class="registration-form-condition__scalar">
+        <MudSelect T="string" Label="@T("condition.value_type", "Value type")" @bind-Value="value.Type" Variant="Variant.Outlined" Disabled="IsSaving">
+            @if (!comparableOnly)
+            {
+                <MudSelectItem T="string" Value="@("text")">@T("condition.value_type.text", "Text")</MudSelectItem>
+                <MudSelectItem T="string" Value="@("boolean")">@T("condition.value_type.boolean", "Boolean")</MudSelectItem>
+            }
+            <MudSelectItem T="string" Value="@("number")">@T("condition.value_type.number", "Number")</MudSelectItem>
+            <MudSelectItem T="string" Value="@("date")">@T("condition.value_type.date", "Date")</MudSelectItem>
+        </MudSelect>
+        @if (value.Type == "boolean")
+        {
+            <MudCheckBox T="bool" Label="@label" @bind-Value="value.BooleanValue" Disabled="IsSaving" />
+        }
+        else if (value.Type == "number")
+        {
+            <MudNumericField T="double?" Label="@label" @bind-Value="value.NumberValue" Variant="Variant.Outlined" Disabled="IsSaving" />
+        }
+        else if (value.Type == "date")
+        {
+            <label class="registration-form-condition__native-control"><span>@label</span><input type="date" @bind="value.DateValue" disabled="@IsSaving" /></label>
+        }
+        else
+        {
+            <AppTextField T="string" Label="@label" @bind-Value="value.TextValue" Disabled="IsSaving" />
+        }
+    </div>;
+
+    private string T(string key, string fallback) => Translation.T($"studio.registration_forms.{key}", fallback);
+    private string F(string key, string fallback, params object?[] values) =>
+        string.Format(CultureInfo.CurrentCulture, T(key, fallback), values);
+}

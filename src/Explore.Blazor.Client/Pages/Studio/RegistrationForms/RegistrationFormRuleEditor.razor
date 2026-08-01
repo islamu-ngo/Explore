@@ -1,0 +1,62 @@
+@* ABOUTME: Edits one registration rule using bounded target, effect, and condition controls. *@
+@* ABOUTME: Limits condition references to fields preceding the selected target. *@
+@inject ITranslationService Translation
+
+<section class="registration-form-rule-editor" data-testid="registration-form-rule-editor">
+    <fieldset class="registration-form-rule-editor__definition">
+        <legend>@T("rule.definition", "Rule definition")</legend>
+        <div class="registration-form-rule-editor__grid">
+            <MudNumericField T="int" Label="@T("rule.position", "Position")" @bind-Value="Model.Ordinal" Min="1" Variant="Variant.Outlined" Disabled="IsSaving" />
+            <MudSelect T="string" Label="@T("rule.target_field", "Target field")" Value="Model.TargetReference" ValueChanged="SetTarget" Variant="Variant.Outlined" Disabled="IsSaving">
+                @foreach (RegistrationFormFieldDto field in Fields)
+                {
+                    <MudSelectItem T="string" Value="@($"{field.Namespace}:{field.Key}")">@field.Label</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="int" Label="@T("rule.effect", "Effect")" @bind-Value="Model.Effect" Variant="Variant.Outlined" Disabled="IsSaving">
+                <MudSelectItem T="int" Value="1">@T("rule.effect.show", "Show")</MudSelectItem>
+                <MudSelectItem T="int" Value="2">@T("rule.effect.hide", "Hide")</MudSelectItem>
+                <MudSelectItem T="int" Value="3">@T("rule.effect.require", "Require")</MudSelectItem>
+                <MudSelectItem T="int" Value="4">@T("rule.effect.optional", "Make optional")</MudSelectItem>
+            </MudSelect>
+        </div>
+    </fieldset>
+
+    <RegistrationFormConditionEditor Model="Model.Condition" PriorFields="PriorFields" IsSaving="IsSaving" />
+
+    <div class="registration-form-rule-editor__actions">
+        <AppButton OnClick="SaveAsync" Disabled="@(IsSaving || !Model.IsValid || PriorFields.Count == 0)" data-testid="save-registration-form-rule">@T("rule.save", "Save rule")</AppButton>
+        <AppButton OnClick="CancelAsync" Disabled="IsSaving" Variant="Variant.Text">@T("common.cancel", "Cancel")</AppButton>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public RegistrationFormRuleEditModel Model { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<RegistrationFormFieldDto> Fields { get; set; } = [];
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public EventCallback<RegistrationFormRuleEditModel> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private string T(string key, string fallback) => Translation.T($"studio.registration_forms.{key}", fallback);
+
+    private IReadOnlyList<RegistrationFormFieldDto> PriorFields
+    {
+        get
+        {
+            int targetIndex = Fields.ToList().FindIndex(item => $"{item.Namespace}:{item.Key}" == Model.TargetReference);
+            return targetIndex <= 0 ? [] : Fields.Take(targetIndex).ToArray();
+        }
+    }
+
+    private void SetTarget(string value)
+    {
+        Model.TargetReference = value;
+        if (Model.Condition.FieldReference is null && PriorFields.LastOrDefault() is { } field)
+        {
+            Model.Condition.FieldReference = $"{field.Namespace}:{field.Key}";
+        }
+    }
+
+    private Task SaveAsync() => OnSave.InvokeAsync(Model);
+    private Task CancelAsync() => OnCancel.InvokeAsync();
+}
