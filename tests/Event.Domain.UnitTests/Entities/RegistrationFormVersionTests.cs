@@ -1,0 +1,181 @@
+// ABOUTME: Specifies the immutable registration-form aggregate and its draft-clone behavior.
+// ABOUTME: Covers graph freezing, stable identities, provenance, ordinals, governance, and language tags.
+
+using Explore.Domain;
+using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
+
+namespace Event.Domain.UnitTests.Entities;
+
+public sealed class RegistrationFormVersionTests
+{
+    private static readonly DateTime Now = new(2026, 8, 1, 10, 0, 0, DateTimeKind.Utc);
+    private static readonly Guid TenantId = Id(1);
+    private static readonly Guid EventId = Id(2);
+
+    [Test]
+    public async Task PublishedVersion_RejectsEveryGraphMutation_AndCanRetire()
+    {
+        RegistrationFormVersion version = DraftWithGraph();
+        RegistrationFormSection section = version.Sections.Single();
+        RegistrationFormField field = section.Fields.Single();
+        version.Publish("schema-hash", Now.AddHours(1));
+
+        await Assert.That(() => version.AddSection(RegistrationFormSection.Create(Id(40), version, 2, "Other", Now)))
+            .Throws<InvalidOperationException>();
+        await Assert.That(() => version.RenameSection(section, "Changed"))
+            .Throws<InvalidOperationException>();
+        await Assert.That(() => version.AddField(section, Field(version, section, Id(41), 2, "phone")))
+            .Throws<InvalidOperationException>();
+        await Assert.That(() => version.UpdateFieldGovernance(
+            field, 2, RegistrationOrganizerVisibilityEnum.Hidden, false, false))
+            .Throws<InvalidOperationException>();
+        await Assert.That(() => version.AddOption(
+            field, RegistrationFormFieldOption.Create(Id(42), field, 2, "other", "Other", Now)))
+            .Throws<InvalidOperationException>();
+        await Assert.That(() => version.RetireOption(field, field.Options.Single(), Now.AddHours(2)))
+            .Throws<InvalidOperationException>();
+
+        version.Retire(Now.AddHours(3));
+        await Assert.That(version.StatusId).IsEqualTo((int)RegistrationFormStatusEnum.Retired);
+        await Assert.That(version.RetiredAt).IsEqualTo(Now.AddHours(3));
+    }
+
+    [Test]
+    public async Task CloneToDraft_CopiesContentWithNewGraphIds_AndPreservesStableIdentityProvenanceAndLanguage()
+    {
+        RegistrationFormVersion published = DraftWithGraph();
+        RegistrationFormSection sourceSection = published.Sections.Single();
+        RegistrationFormField sourceField = sourceSection.Fields.Single();
+        RegistrationFormFieldOption sourceOption = sourceField.Options.Single();
+        published.Publish("schema-hash", Now.AddHours(1));
+
+        RegistrationFormVersion clone = published.CloneToDraft(2, Now.AddHours(2));
+        RegistrationFormSection clonedSection = clone.Sections.Single();
+        RegistrationFormField clonedField = clonedSection.Fields.Single();
+        RegistrationFormFieldOption clonedOption = clonedField.Options.Single();
+
+        await Assert.That(clone.Id).IsNotEqualTo(published.Id);
+        await Assert.That(clonedSection.Id).IsNotEqualTo(sourceSection.Id);
+        await Assert.That(clonedField.Id).IsNotEqualTo(sourceField.Id);
+        await Assert.That(clonedOption.Id).IsNotEqualTo(sourceOption.Id);
+        await Assert.That((clonedField.Namespace, clonedField.Key)).IsEqualTo((sourceField.Namespace, sourceField.Key));
+        await Assert.That(clonedOption.Key).IsEqualTo(sourceOption.Key);
+        await Assert.That(clone.SourceTemplateFormId).IsEqualTo(published.SourceTemplateFormId);
+        await Assert.That(clone.SourceTemplateVersionId).IsEqualTo(published.SourceTemplateVersionId);
+        await Assert.That(clone.LanguageTag).IsEqualTo("ar-SA");
+        await Assert.That(clone.StatusId).IsEqualTo((int)RegistrationFormStatusEnum.Draft);
+
+        clone.RenameSection(clonedSection, "Clone only");
+        await Assert.That(sourceSection.Title).IsEqualTo("Details");
+        await Assert.That(clonedSection.Title).IsEqualTo("Clone only");
+    }
+
+    [Test]
+    public async Task Ordinals_MustBePositiveAndUniqueWithinEachOwner()
+    {
+        RegistrationFormVersion version = Version();
+        RegistrationFormSection section = RegistrationFormSection.Create(Id(10), version, 1, "Details", Now);
+        version.AddSection(section);
+        RegistrationFormField field = Field(version, section, Id(20), 1, "email");
+        version.AddField(section, field);
+        version.AddOption(field, RegistrationFormFieldOption.Create(Id(30), field, 1, "yes", "Yes", Now));
+
+        await Assert.That(() => RegistrationFormSection.Create(Id(11), version, 0, "Invalid", Now))
+            .Throws<ArgumentOutOfRangeException>();
+        await Assert.That(() => version.AddSection(RegistrationFormSection.Create(Id(12), version, 1, "Duplicate", Now)))
+            .Throws<ArgumentException>();
+        await Assert.That(() => Field(version, section, Id(21), 0, "invalid"))
+            .Throws<ArgumentOutOfRangeException>();
+        await Assert.That(() => version.AddField(section, Field(version, section, Id(22), 1, "phone")))
+            .Throws<ArgumentException>();
+        await Assert.That(() => RegistrationFormFieldOption.Create(Id(31), field, 0, "no", "No", Now))
+            .Throws<ArgumentOutOfRangeException>();
+        await Assert.That(() => version.AddOption(
+            field, RegistrationFormFieldOption.Create(Id(32), field, 1, "maybe", "Maybe", Now)))
+            .Throws<ArgumentException>();
+    }
+
+    [Test]
+    public async Task Governance_RejectsInvalidConsentAndRetentionCombinations()
+    {
+        RegistrationFormVersion version = Version();
+        RegistrationFormSection section = RegistrationFormSection.Create(Id(10), version, 1, "Details", Now);
+
+        await Assert.That(() => RegistrationFormField.Create(
+            Id(20), section, 1, "platform.registration", "email", "Email",
+            RegistrationFieldTypeEnum.Email, 0, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
+            false, true, Now)).Throws<ArgumentOutOfRangeException>();
+        await Assert.That(() => RegistrationFormField.Create(
+            Id(21), section, 1, "platform.registration", "consent", "Consent",
+            RegistrationFieldTypeEnum.Consent, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
+            false, true, Now)).Throws<ArgumentException>();
+        await Assert.That(() => RegistrationFormField.Create(
+            Id(22), section, 1, "platform.registration", "restricted", "Restricted",
+            RegistrationFieldTypeEnum.ShortText, 1, RegistrationOrganizerVisibilityEnum.Hidden,
+            true, true, Now)).Throws<ArgumentException>();
+
+        RegistrationFormField valid = RegistrationFormField.Create(
+            Id(23), section, 1, "platform.registration", "consent", "Consent",
+            RegistrationFieldTypeEnum.Consent, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
+            true, false, Now);
+        await Assert.That(valid.RequiresExplicitConsent).IsTrue();
+        await Assert.That(valid.IsProviderTransferAllowed).IsFalse();
+    }
+
+    [Test]
+    public async Task IdentityAndLanguage_RejectMalformedValues_AndProviderQuestionIdentityIsAbsent()
+    {
+        RegistrationFormVersion version = Version();
+        RegistrationFormSection section = RegistrationFormSection.Create(Id(10), version, 1, "Details", Now);
+
+        await Assert.That(() => FormVersionRules.NormalizeLanguageTag(" ")).Throws<ArgumentException>();
+        await Assert.That(() => FormVersionRules.NormalizeLanguageTag("not_a_tag")).Throws<ArgumentException>();
+        await Assert.That(() => FormVersionRules.NormalizeLanguageTag("de")).Throws<ArgumentException>();
+        await Assert.That(FormVersionRules.NormalizeLanguageTag(" ar-sa ")).IsEqualTo("ar-SA");
+        await Assert.That(() => Field(version, section, Id(20), 1, " ")).Throws<ArgumentException>();
+        await Assert.That(() => RegistrationFormField.Create(
+            Id(21), section, 1, " ", "email", "Email", RegistrationFieldTypeEnum.Email, 1,
+            RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, false, true, Now)).Throws<ArgumentException>();
+
+        string[] canonicalMembers =
+        [
+            .. typeof(RegistrationForm).GetMembers().Select(member => member.Name),
+            .. typeof(RegistrationFormVersion).GetMembers().Select(member => member.Name),
+            .. typeof(RegistrationFormSection).GetMembers().Select(member => member.Name),
+            .. typeof(RegistrationFormField).GetMembers().Select(member => member.Name),
+            .. typeof(RegistrationFormFieldOption).GetMembers().Select(member => member.Name),
+            .. typeof(RegistrationFormField).GetMethods().SelectMany(method => method.GetParameters()).Select(parameter => parameter.Name ?? string.Empty)
+        ];
+        await Assert.That(canonicalMembers.Any(name => name.Contains("ProviderQuestion", StringComparison.OrdinalIgnoreCase))).IsFalse();
+    }
+
+    private static RegistrationFormVersion DraftWithGraph()
+    {
+        RegistrationFormVersion version = RegistrationFormVersion.Create(
+            Id(4), Form(), 1, "ar-SA", Id(90), Id(91), Now);
+        RegistrationFormSection section = RegistrationFormSection.Create(Id(10), version, 1, "Details", Now);
+        version.AddSection(section);
+        RegistrationFormField field = Field(version, section, Id(20), 1, "email");
+        version.AddField(section, field);
+        version.AddOption(field, RegistrationFormFieldOption.Create(Id(30), field, 1, "primary", "Primary", Now));
+        return version;
+    }
+
+    private static RegistrationFormVersion Version() => RegistrationFormVersion.Create(
+        Id(4), Form(), 1, "en", null, null, Now);
+
+    private static RegistrationForm Form() => RegistrationForm.Create(
+        Id(3), TenantId, EventId, "platform.registration", "attendee", "Attendee form", Now);
+
+    private static RegistrationFormField Field(
+        RegistrationFormVersion version,
+        RegistrationFormSection section,
+        Guid id,
+        int ordinal,
+        string key) => RegistrationFormField.Create(
+            id, section, ordinal, "platform.registration", key, "Question", RegistrationFieldTypeEnum.Email,
+            1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, false, true, Now);
+
+    private static Guid Id(int value) => Guid.Parse($"0198a2b0-0000-7000-8000-{value:000000000000}");
+}
