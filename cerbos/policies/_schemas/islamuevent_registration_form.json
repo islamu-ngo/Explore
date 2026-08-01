@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for registration-form authoring under a verified event organizer.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier."
+    },
+    "eventId": {
+      "type": "string",
+      "description": "Owning event identifier used by event-role assignments."
+    },
+    "workflowId": {
+      "type": "string",
+      "description": "Registration workflow identifier when the operation targets workflow requirements."
+    },
+    "formId": {
+      "type": "string",
+      "description": "Registration form identifier when one already exists."
+    },
+    "versionId": {
+      "type": "string",
+      "description": "Registration form version identifier for version-scoped operations."
+    },
+    "status": {
+      "type": "string",
+      "description": "Current form-version status when lifecycle state affects the operation."
+    },
+    "isMachine": {
+      "type": "boolean",
+      "description": "Server-derived machine-caller marker; machine authoring always fails closed."
+    },
+    "organizerActorId": {
+      "type": "string",
+      "description": "Verified organizer actor identifier supplied by server-side event loading."
+    },
+    "organizerUserId": {
+      "type": "string",
+      "description": "Verified organizer user identifier supplied by server-side event loading."
+    },
+    "organizerOrganizationId": {
+      "type": "string",
+      "description": "Verified organizer organization identifier supplied by server-side event loading."
+    },
+    "organizerGroupId": {
+      "type": "string",
+      "description": "Verified organizer group identifier supplied by server-side event loading."
+    },
+    "submittedByUserId": {
+      "type": "string",
+      "description": "Original listing submitter; never grants form-authoring authority."
+    }
+  },
+  "required": ["tenantId", "eventId", "isMachine"]
+}

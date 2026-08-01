@@ -9,6 +9,7 @@ principals:
     id: "user-event-owner"
     roles: ["islamuevent_authenticated_user"]
     attr:
+      userId: "user-event-owner"
       isInstanceAdmin: false
       tenantMemberships: {}
       orgMemberships: {}
@@ -197,6 +198,16 @@ resources:
       eventSessionId: "session-1"
       organizationId: "org-1"
 
+  registration_form_1:
+    kind: "islamuevent_registration_form"
+    id: "form-1"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      isMachine: false
+      organizerActorId: "actor-event-owner"
+      organizerUserId: "user-event-owner"
+
 tests:
   - name: "Event owner can manage event-owner-only event actions"
     input:
@@ -215,7 +226,7 @@ tests:
           manage-owner: EFFECT_ALLOW
           transfer-ownership: EFFECT_ALLOW
           manage-finance: EFFECT_ALLOW
-          manage-registrations: EFFECT_ALLOW
+          manage-registrations: EFFECT_DENY
           manage-tickets: EFFECT_ALLOW
 
   - name: "Event manager can update and publish but cannot manage ownership or finance"
@@ -235,7 +246,7 @@ tests:
           manage-owner: EFFECT_DENY
           transfer-ownership: EFFECT_DENY
           manage-finance: EFFECT_DENY
-          manage-registrations: EFFECT_ALLOW
+          manage-registrations: EFFECT_DENY
           manage-tickets: EFFECT_ALLOW
 
   - name: "Event update alone does not grant ticket management"
@@ -337,7 +348,7 @@ tests:
   - name: "Registration manager can manage registrations but not event or program resources"
     input:
       principals: ["registration_manager"]
-      resources: ["event_1", "event_session_1", "event_registration_1"]
+      resources: ["event_1", "event_session_1", "registration_form_1"]
       actions: ["view", "update", "delete", "manage-registrations", "manage-tickets"]
     expected:
       - principal: "registration_manager"
@@ -356,21 +367,21 @@ tests:
           delete: EFFECT_DENY
           manage-registrations: EFFECT_DENY
       - principal: "registration_manager"
-        resource: "event_registration_1"
+        resource: "registration_form_1"
         actions:
           view: EFFECT_ALLOW
           update: EFFECT_ALLOW
-          delete: EFFECT_DENY
+          delete: EFFECT_ALLOW
           manage-registrations: EFFECT_DENY
 
   - name: "Event owner can manage registrations for their event"
     input:
       principals: ["event_owner"]
-      resources: ["event_registration_1"]
+      resources: ["registration_form_1"]
       actions: ["view", "update", "delete", "manage-registrations"]
     expected:
       - principal: "event_owner"
-        resource: "event_registration_1"
+        resource: "registration_form_1"
         actions:
           view: EFFECT_ALLOW
           update: EFFECT_ALLOW
@@ -380,7 +391,7 @@ tests:
   - name: "Regular user without event assignments can only view public event resources"
     input:
       principals: ["regular_user"]
-      resources: ["event_1", "event_session_1", "event_registration_1"]
+      resources: ["event_1", "event_session_1", "registration_form_1"]
       actions: ["view", "create", "update", "delete", "manage-registrations", "manage-tickets"]
     expected:
       - principal: "regular_user"
@@ -401,10 +412,10 @@ tests:
           delete: EFFECT_DENY
           manage-registrations: EFFECT_DENY
       - principal: "regular_user"
-        resource: "event_registration_1"
+        resource: "registration_form_1"
         actions:
-          view: EFFECT_ALLOW
-          create: EFFECT_ALLOW
+          view: EFFECT_DENY
+          create: EFFECT_DENY
           update: EFFECT_DENY
           delete: EFFECT_DENY
           manage-registrations: EFFECT_DENY
@@ -469,7 +480,7 @@ tests:
   - name: "Revoked expired pending or otherwise ineffective assignments are absent from the payload"
     input:
       principals: ["no_effective_event_assignment"]
-      resources: ["event_1", "event_registration_1"]
+      resources: ["event_1", "registration_form_1"]
       actions: ["update", "delete", "manage-team"]
     expected:
       - principal: "no_effective_event_assignment"
@@ -479,7 +490,7 @@ tests:
           delete: EFFECT_DENY
           manage-team: EFFECT_DENY
       - principal: "no_effective_event_assignment"
-        resource: "event_registration_1"
+        resource: "registration_form_1"
         actions:
           update: EFFECT_DENY
           delete: EFFECT_DENY
@@ -488,7 +499,7 @@ tests:
   - name: "Check-in staff does not receive event-management or registration-management grants"
     input:
       principals: ["check_in_staff"]
-      resources: ["event_1", "event_registration_1"]
+      resources: ["event_1", "registration_form_1"]
       actions: ["view", "update", "delete", "manage-registrations"]
     expected:
       - principal: "check_in_staff"
@@ -499,9 +510,9 @@ tests:
           delete: EFFECT_DENY
           manage-registrations: EFFECT_DENY
       - principal: "check_in_staff"
-        resource: "event_registration_1"
+        resource: "registration_form_1"
         actions:
-          view: EFFECT_ALLOW
+          view: EFFECT_DENY
           update: EFFECT_DENY
           delete: EFFECT_DENY
           manage-registrations: EFFECT_DENY

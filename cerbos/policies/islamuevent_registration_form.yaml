@@ -1,0 +1,49 @@
+# ABOUTME: Cerbos policy for tenant/event-bound registration-form authoring.
+# ABOUTME: Restricts every authoring action to verified organizer controllers or explicitly assigned registration managers.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "islamuevent_registration_form"
+  version: "default"
+  importDerivedRoles:
+    - islamuevent_explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///islamuevent_principal.json
+    resourceSchema:
+      ref: cerbos:///islamuevent_registration_form.json
+  rules:
+    - actions: ["view", "create", "update", "delete", "preflight", "publish", "manage-requirements", "attach", "detach"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_registration_manager
+      condition:
+        match:
+          expr: >
+            request.principal.attr.isInstanceAdmin != true &&
+            request.resource.attr.isMachine != true &&
+            !(request.resource.attr.tenantId in request.principal.attr.tenantMemberships) &&
+            (!has(request.principal.attr.is_machine) ||
+             request.principal.attr.is_machine != true)
+
+    - actions: ["view", "create", "update", "delete", "preflight", "publish", "manage-requirements", "attach", "detach"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user
+      condition:
+        match:
+          expr: >
+            request.principal.attr.isInstanceAdmin != true &&
+            request.resource.attr.isMachine != true &&
+            !(request.resource.attr.tenantId in request.principal.attr.tenantMemberships) &&
+            (!has(request.principal.attr.is_machine) ||
+             request.principal.attr.is_machine != true) &&
+            ((has(request.resource.attr.organizerUserId) &&
+              has(request.principal.attr.userId) &&
+              request.resource.attr.organizerUserId == request.principal.attr.userId) ||
+             (has(request.resource.attr.organizerOrganizationId) &&
+              has(request.principal.attr.eventCreateOrganizations) &&
+              request.resource.attr.organizerOrganizationId in request.principal.attr.eventCreateOrganizations) ||
+             (has(request.resource.attr.organizerGroupId) &&
+              has(request.principal.attr.eventCreateGroups) &&
+              request.resource.attr.organizerGroupId in request.principal.attr.eventCreateGroups))

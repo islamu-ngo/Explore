@@ -1,0 +1,295 @@
+# ABOUTME: Cerbos policy tests for registration-form authoring across verified and explicit event authority.
+# ABOUTME: Proves listing contributors, curators, machines, ambiguous actors, and unrelated assignments remain denied.
+
+name: RegistrationFormPolicyTests
+description: "Validates verified-organizer-only registration-form authoring"
+
+principals:
+  verified_user_organizer:
+    id: "verified-user-organizer"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "user-organizer"
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  verified_organization_controller:
+    id: "verified-organization-controller"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "organization-controller"
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventCreateOrganizations: ["organization-organizer"]
+
+  verified_group_controller:
+    id: "verified-group-controller"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "group-controller"
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventCreateGroups: ["group-organizer"]
+
+  explicit_registration_manager:
+    id: "explicit-registration-manager"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventAssignments:
+        "event-1":
+          tenantId: "tenant-1"
+          roles: ["event.registration_manager"]
+          permissions: ["event_registration:manage"]
+
+  listing_submitter:
+    id: "listing-submitter"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "listing-submitter"
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  tenant_curator:
+    id: "tenant-curator"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  instance_admin:
+    id: "instance-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  machine_organizer:
+    id: "machine-organizer"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "user-organizer"
+      isInstanceAdmin: false
+      is_machine: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  unrelated_tenant_manager:
+    id: "unrelated-tenant-manager"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventAssignments:
+        "event-1":
+          tenantId: "tenant-other"
+          roles: ["event.registration_manager"]
+          permissions: ["event_registration:manage"]
+
+  unrelated_event_manager:
+    id: "unrelated-event-manager"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventAssignments:
+        "event-other":
+          tenantId: "tenant-1"
+          roles: ["event.registration_manager"]
+          permissions: ["event_registration:manage"]
+
+resources:
+  user_organized_form:
+    kind: "islamuevent_registration_form"
+    id: "form-user"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      workflowId: "workflow-1"
+      formId: "form-user"
+      versionId: "version-1"
+      status: "DRAFT"
+      isMachine: false
+      organizerActorId: "actor-user-organizer"
+      organizerUserId: "user-organizer"
+
+  organization_organized_form:
+    kind: "islamuevent_registration_form"
+    id: "form-organization"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      isMachine: false
+      organizerActorId: "actor-organization-organizer"
+      organizerOrganizationId: "organization-organizer"
+
+  group_organized_form:
+    kind: "islamuevent_registration_form"
+    id: "form-group"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      isMachine: false
+      organizerActorId: "actor-group-organizer"
+      organizerGroupId: "group-organizer"
+
+  contributor_submitted_form:
+    kind: "islamuevent_registration_form"
+    id: "form-contributor"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      isMachine: false
+      submittedByUserId: "listing-submitter"
+
+  ambiguous_organizer_form:
+    kind: "islamuevent_registration_form"
+    id: "form-ambiguous"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      isMachine: false
+      organizerActorId: "actor-without-controller"
+
+  machine_marked_form:
+    kind: "islamuevent_registration_form"
+    id: "form-machine-marked"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      isMachine: true
+      organizerActorId: "actor-user-organizer"
+      organizerUserId: "user-organizer"
+
+  registration_workflow_event:
+    kind: "islamuevent_event"
+    id: "event-1"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      organizerActorId: "actor-user-organizer"
+      organizerUserId: "user-organizer"
+
+tests:
+  - name: "Verified organizer controllers may perform every authoring action"
+    input:
+      principals: ["verified_user_organizer", "verified_organization_controller", "verified_group_controller"]
+      resources: ["user_organized_form", "organization_organized_form", "group_organized_form"]
+      actions: ["view", "create", "update", "delete", "preflight", "publish", "manage-requirements", "attach", "detach"]
+    expected:
+      - principal: "verified_user_organizer"
+        resource: "user_organized_form"
+        actions: &all_allowed
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+          preflight: EFFECT_ALLOW
+          publish: EFFECT_ALLOW
+          manage-requirements: EFFECT_ALLOW
+          attach: EFFECT_ALLOW
+          detach: EFFECT_ALLOW
+      - principal: "verified_organization_controller"
+        resource: "organization_organized_form"
+        actions: *all_allowed
+      - principal: "verified_group_controller"
+        resource: "group_organized_form"
+        actions: *all_allowed
+
+  - name: "Explicit matching registration manager may perform every authoring action"
+    input:
+      principals: ["explicit_registration_manager"]
+      resources: ["ambiguous_organizer_form"]
+      actions: ["view", "create", "update", "delete", "preflight", "publish", "manage-requirements", "attach", "detach"]
+    expected:
+      - principal: "explicit_registration_manager"
+        resource: "ambiguous_organizer_form"
+        actions: *all_allowed
+
+  - name: "Contributor, curator, platform admin, and machine receive no implicit authoring authority"
+    input:
+      principals: ["listing_submitter", "tenant_curator", "instance_admin", "machine_organizer"]
+      resources: ["contributor_submitted_form", "user_organized_form"]
+      actions: ["view", "create", "update", "delete", "preflight", "publish", "manage-requirements", "attach", "detach"]
+    expected:
+      - principal: "listing_submitter"
+        resource: "contributor_submitted_form"
+        actions: &all_denied
+          view: EFFECT_DENY
+          create: EFFECT_DENY
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+          preflight: EFFECT_DENY
+          publish: EFFECT_DENY
+          manage-requirements: EFFECT_DENY
+          attach: EFFECT_DENY
+          detach: EFFECT_DENY
+      - principal: "tenant_curator"
+        resource: "user_organized_form"
+        actions: *all_denied
+      - principal: "instance_admin"
+        resource: "user_organized_form"
+        actions: *all_denied
+      - principal: "machine_organizer"
+        resource: "user_organized_form"
+        actions: *all_denied
+
+  - name: "Missing controller identity and unrelated assignments fail closed"
+    input:
+      principals: ["verified_user_organizer", "unrelated_tenant_manager", "unrelated_event_manager"]
+      resources: ["ambiguous_organizer_form"]
+      actions: ["view", "create", "update", "delete", "preflight", "publish", "manage-requirements", "attach", "detach"]
+    expected:
+      - principal: "verified_user_organizer"
+        resource: "ambiguous_organizer_form"
+        actions: *all_denied
+      - principal: "unrelated_tenant_manager"
+        resource: "ambiguous_organizer_form"
+        actions: *all_denied
+      - principal: "unrelated_event_manager"
+        resource: "ambiguous_organizer_form"
+        actions: *all_denied
+
+  - name: "Resource-level machine marker fails closed for a verified human controller"
+    input:
+      principals: ["verified_user_organizer"]
+      resources: ["machine_marked_form"]
+      actions: ["view", "create", "update", "delete", "preflight", "publish", "manage-requirements", "attach", "detach"]
+    expected:
+      - principal: "verified_user_organizer"
+        resource: "machine_marked_form"
+        actions: *all_denied
+
+  - name: "Event workflow entry uses the same registration-management boundary"
+    input:
+      principals: ["verified_user_organizer", "explicit_registration_manager", "tenant_curator", "machine_organizer"]
+      resources: ["registration_workflow_event"]
+      actions: ["manage-registration-workflow"]
+    expected:
+      - principal: "verified_user_organizer"
+        resource: "registration_workflow_event"
+        actions:
+          manage-registration-workflow: EFFECT_ALLOW
+      - principal: "explicit_registration_manager"
+        resource: "registration_workflow_event"
+        actions:
+          manage-registration-workflow: EFFECT_ALLOW
+      - principal: "tenant_curator"
+        resource: "registration_workflow_event"
+        actions:
+          manage-registration-workflow: EFFECT_DENY
+      - principal: "machine_organizer"
+        resource: "registration_workflow_event"
+        actions:
+          manage-registration-workflow: EFFECT_DENY

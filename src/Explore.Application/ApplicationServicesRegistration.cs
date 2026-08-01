@@ -146,6 +146,10 @@ public static class ApplicationServicesRegistration
         services.AddScoped<ILocationPrivacyGovernanceMutationService, LocationPrivacyGovernanceMutationService>();
         services.AddScoped<EventLocationAttachmentService>();
         services.AddSingleton<IEventLocationRegistrationAccessService, EventLocationRegistrationAccessService>();
+        services.AddSingleton<IFormSchemaArtifactGenerator, FormSchemaArtifactGenerator>();
+        services.AddSingleton<FormSchemaArtifactPublicationService>();
+        services.AddSingleton<RegistrationFormPublishPreflightService>();
+        services.AddScoped<RegistrationFormAuthoringCommandService>();
         services.AddScoped<IEventLocationExactReadAuditService, EventLocationExactReadAuditService>();
         services.AddScoped<IEventLocationManagementAuthorizationService, EventLocationManagementAuthorizationService>();
         services.AddScoped<IEventLocationDisclosureService, EventLocationDisclosureService>();

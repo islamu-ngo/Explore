@@ -1,0 +1,42 @@
+// ABOUTME: Defines explicit authorized attach and detach commands for participation requirements.
+// ABOUTME: Carries event context and strong participation-configuration concurrency stamps.
+
+using Explore.Application.Authorization;
+using Explore.Application.Responses;
+using MediatR;
+
+namespace Explore.Application.Features.RegistrationForms.Requests.Commands;
+
+[AuthorizeResource(ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Attach)]
+public sealed record AttachRegistrationRequirementCommand(
+    Guid EventId,
+    Guid WorkflowId,
+    Guid RequirementId,
+    bool StandaloneQuestionnaire,
+    Guid? RegistrationFormId,
+    Guid? RegistrationFormVersionId,
+    Guid ExpectedConcurrencyStamp) : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+{
+    string? ISecureRequest.ResourceId => RequirementId == Guid.Empty ? null : RequirementId.ToString();
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["eventId"] = EventId.ToString(),
+        ["requirementId"] = RequirementId.ToString()
+    };
+}
+
+[AuthorizeResource(ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Detach)]
+public sealed record DetachRegistrationRequirementCommand(
+    Guid EventId,
+    Guid RequirementId,
+    Guid ExpectedConcurrencyStamp) : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+{
+    string? ISecureRequest.ResourceId => RequirementId == Guid.Empty ? null : RequirementId.ToString();
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["eventId"] = EventId.ToString(),
+        ["requirementId"] = RequirementId.ToString()
+    };
+}
