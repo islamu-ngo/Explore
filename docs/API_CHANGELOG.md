@@ -3,6 +3,11 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## 2026-08-01
+
+- Additive registration-form authoring contract for API version `0.1`: verified event organizers and explicitly assigned registration managers can manage workflows, requirements, forms, immutable draft versions, sections, fields, options, bounded rules, publication preflight, and publication under `/api/events/{eventId}/registration-workflows`. Every write requires a strong quoted `If-Match`; stale writes return `409`, failed preflight returns stable RFC 7807 validation details, and publication pins the generator-produced data, UI, logic, and mapping artifacts plus their SHA-256 schema hash. Event and authoring resources expose only server-authorized HAL affordances, including `manage-registration-workflow`; contributors, listing submitters, tenant-only curators, machines, ambiguous organizers, and unrelated tenants receive no management relation.
+- Additive participation-requirement attachment contract for API version `0.1`: verified organizers and explicit registration managers attach or idempotently detach event-owned requirements at `/api/events/{eventId}/participation/requirements/{requirementId}` with strong `If-Match` concurrency. Workflow requirement resources expose persisted `isAttached` state and advertise exactly one permission-checked `attach` or `detach` HAL relation. Walk-in events may expose one published standalone form descriptor at the anonymous `/api/events/{eventId}/participation/optional-questionnaire` route, advertised only through the `optional-questionnaire` HAL relation; invalid or absent descriptors return non-leaking `404`, and attachment changes create no registration-order or participant state.
+
 ## 2026-07-31
 
 - Additive registration-participant contract for API version `0.1`: current-account and capability-header guest order surfaces now expose private/no-store participant reads plus idempotent participant, assignment, and deferral writes. Organizer discovery uses permission-gated `view-participants` HAL relations only for platform-managed events; guest capability values remain header-only and never enter JSON or links.

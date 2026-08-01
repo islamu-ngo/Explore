@@ -3,14 +3,41 @@
 
 # Registration Data Collection & Participation Platform — Task Checklist
 
-Last Updated: 2026-08-01 Europe/Brussels
+Last Updated: 2026-08-02 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Phases 5 and 6 remain confirmed. Task 7.1 is complete; Phase 7 remains in progress with Tasks 7.2–7.8 and Phase 7 verification unchecked
-- **Checkbox count:** 35/88 implementation-task boxes are checked. This is not workstream completion
-- **Current priority:** Task 7.2 form/version/section/field/option model with immutability
-- **Next recommended slice:** Implement Task 7.2 while preserving Task 7.1's provider-neutral persistence and generated-artifact boundaries
-- **Latest focused evidence:** Task 7.1 Domain 11/11, characterization 1/1, architecture 6/6, naming 11/11, six-predicate harness, Persistence 4/4, rootless Podman/PostgreSQL 1/1, scoped Release builds 0 errors, EF no pending model changes for generated `20260801000023_init`, seven protected hashes unchanged, code review PASS with no findings, and adversarial QA `confirmed`. Only pre-existing `happy_curie` remains after cleanup; the full solution remains blocked by two unrelated Blazor test compile errors assigning `int`/`int?` to `GuestRecoveryPolicyEnum?`
+- **Overall status:** Phases 5 and 6 remain confirmed. Tasks 7.1–7.8 and Phase 7 verification are checked; Phase 7 is complete
+- **Checkbox count:** 42/88 implementation-task boxes are checked. This is not workstream completion
+- **Current priority:** Phase 8.1 — begin the next work slice after Phase 7 closeout
+- **Next recommended slice:** Phase 8
+- **Latest focused evidence:** Task 7.6 closeout is confirmed with 14/14 builder tests, 7/7 service tests, scoped Blazor client Release build, canonical Release build, and Domain 683/683; Phase 7 verification is confirmed with build/test exit 0 and no browser/Docker/Aspire/PostgreSQL runtime use
+
+## Handoff — 2026-08-01 Europe/Brussels: Task 7.5 Confirmed / Tasks 7.6–7.7 Current
+
+- Task 7.5 is checked and the implementation-task count is **40/88**. Phase 7 remains in progress; Tasks 7.6 and 7.7 are current.
+- Confirmed contract: complete workflow/form/version graph; consent purpose code and text version are normalized, persisted, exposed for authoring, and included in the canonical artifact/hash; publish preflight is exactly `POST /api/events/{eventId}/registration-forms/{formId}/versions/{versionId}/preflight`; the real PostgreSQL TestServer exercises handlers, repository, preflight, publication, generator, concurrency, and fallback authorization.
+- HAL/request authorization reloads trusted persisted Event organizer context in one bounded batch, strips caller-supplied authority attributes, rebuilds trusted context, and fails closed for missing/cross-tenant/missing-ID/over-bound inputs. Cerbos and fallback remain parity paths.
+- Generated migration `20260801144215_init`, OpenAPI, NSwag client, and API inventory are deterministic/generated artifacts; no Task 7.6 or 7.7 product work is included in this closeout.
+- Retained evidence: original `needs-fix` `.omo/start-work/artifacts/registration-data-collection-phase7/task-7.5-adversarial-verify.md`, repair claim `.omo/start-work/artifacts/registration-data-collection-phase7/task-7.5-repair-done-claim.md`, and independent `confirmed` verifier `.omo/start-work/artifacts/registration-data-collection-phase7/task-7.5-repair-adversarial-verify.md`.
+
+## Handoff — 2026-08-01 Europe/Brussels: Task 7.4 Confirmed / Task 7.5 Current
+
+- Task 7.4 is checked and the implementation-task count is **39/88**. Phase 7 remains in progress; Task 7.5 authoring Application/API/Cerbos is current.
+- Durable design: exactly four deterministic artifacts (data schema, UI layout, closed condition/rule logic, and empty provider mapping reserved for Task 9.3), JSON Schema 2020-12, System.Text.Json canonical UTF-8 bytes, lowercase SHA-256, Application-owned generation/publication from the live relational aggregate, internal atomic Domain pinning, persisted all-or-none columns, and generated migration `20260801132046_init`.
+- The initial adversarial `needs-fix` found public caller-authored `Publish(string ...)`; the repair removed that authority path and the independent repair verifier confirmed the Application facade/internal Domain seam at `0.99`.
+- Task 7.3 uses nine syntax tokens — `equals`, `notEquals`, `in`, `contains`, `exists`, `compare`, `all`, `any`, and `not` — to implement ten semantic operations because numeric and date comparison are distinct typed cases of `compare`. No tenth token is introduced.
+- Exact Task 7.4 evidence: Application generator/publication `32/32` twice, Domain atomicity `8/8`, Task 7.3 compatibility `11/11`, Persistence mapping `3/3`, PostgreSQL `1/1`, scoped Release builds `0` errors, EF no pending model changes, and facade-only manual harness exit `0` with all four artifact equality predicates true.
+- Receipts: `.omo/start-work/artifacts/registration-data-collection-phase7/task-7.4-done-claim.md`, `.omo/start-work/artifacts/registration-data-collection-phase7/task-7.4-adversarial-verify.md`, `.omo/start-work/artifacts/registration-data-collection-phase7/task-7.4-publish-authority-repair-done-claim.md`, `.omo/start-work/artifacts/registration-data-collection-phase7/task-7.4-publish-authority-repair-adversarial-verify.md`, and `.omo/evidence/task-7.4-publish-authority-repair-verify/`.
+- The Task 7.4 `needs-fix` and repair are both retained as audit history; only the confirmed repair is completion authority. This closeout changes documentation, ledger, and the durable Domain artifact description only.
+
+## Handoff — 2026-08-01 Europe/Brussels: Task 7.8 Confirmed / Task 7.3 Current
+
+## Handoff — 2026-08-01 Europe/Brussels: Task 7.2 Confirmed
+
+- Task 7.2 is checked at **36/88**; Phase 7 remains in progress and Task 7.3 bounded condition language is next. The five persisted entities are `RegistrationForm`, `RegistrationFormVersion`, `RegistrationFormSection`, `RegistrationFormField`, and `RegistrationFormFieldOption`; `FormVersionRules` is pure and `RegistrationFormRule` remains Task 7.3 scope.
+- Published form versions are immutable, retirement is explicit, and deep cloning creates fresh graph IDs while preserving provenance, normalized dual `Namespace/Key` identity, governance flags, and required per-version `LanguageTag`. Translation tables and `MULTILINGUAL` remain deferred to Task 7.8.
+- The original independent `needs-fix` on cross-section canonical identity was repaired in `RegistrationFormVersion.AddField`; final adversarial QA is `confirmed`. Exact receipts: `.omo/start-work/artifacts/registration-data-collection-phase7/task-7.2-done-claim.md`, `.omo/start-work/artifacts/registration-data-collection-phase7/task-7.2-adversarial-verify.md`, `.omo/start-work/artifacts/registration-data-collection-phase7/task-7.2-repair-adversarial-verify.md`, and referenced `6/6`, `3/3`, `1/1`, `8/8`, build, EF, and cleanup artifacts.
+- Generated migration `20260801114559_init` is the current pending init; no migration artifact was hand-edited. Only pre-existing containers remain after cleanup. Broader Clean Architecture `14/15`, generated-init `5/6`, and repository-wide build/whitespace findings remain unrelated; no Phase 7 or full clean-architecture completion is claimed.
 
 ## Implementation Maintenance Rules
 - Read the full workstream once at initial implementation start; on resume, read context/tasks first and only relevant plan sections.
@@ -196,21 +223,27 @@ Last Updated: 2026-08-01 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet`
 - [x] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 7: Registration Form Authoring Core 🟡 IN PROGRESS
+## Phase 7: Registration Form Authoring Core ✅ COMPLETE
 - [x] **7.1 Workflow + requirement + channel skeleton** — 3 entities + criticality/effect/sync/subject lookups (new) — **Acceptance:** requirement evaluation rules incl. skip recording — **Effort:** L — **Dependencies:** Phase 5
   - **Evidence:** Domain 11/11, characterization 1/1, architecture 6/6, naming 11/11, six-predicate harness; Persistence 4/4; rootless Podman/PostgreSQL 1/1; scoped Release builds 0 errors; EF no pending model changes for generated `20260801000023_init`; seven protected migration hashes unchanged; code review PASS with no findings; adversarial QA `confirmed`.
   - **Boundary:** `SkippedByRegistrant` is a pure evaluation outcome; Task 8.5 owns durable subject fulfillment/skip persistence. Provider-neutral C#/EF rules remain authoritative; PostgreSQL is one runtime proof only.
-- [ ] **7.2 Form/version/section/field/option model with immutability** — 6 entities + `FormVersionRules.cs`; dual field identity; governance flags — **Acceptance:** immutability/provenance tests; provider IDs unrepresentable as canonical identity — **Effort:** XL — **Dependencies:** 7.1
-- [ ] **7.3 Bounded condition language** — `RegistrationFormRule.cs`, `FormConditionEvaluator.cs` (pure) — **Acceptance:** ten operators only; purity asserted — **Effort:** M — **Dependencies:** 7.2
-- [ ] **7.4 JSON Schema 2020-12 artifact generation** — generator service + `SchemaHash` — **Acceptance:** golden-hash determinism; hash sensitive to any mutation — **Effort:** M — **Dependencies:** 7.2, 7.3
-- [ ] **7.5 Authoring Application + API + Cerbos** — `Features/RegistrationForms/**`, controllers, `manage-registration-workflow`, `islamuevent_registration_form.yaml` (new); contract regen — **Acceptance:** publish preflight (conditions, consent purposes) — **Effort:** L — **Dependencies:** 7.4
-- [ ] **7.6 Studio form builder** — `/studio/events/{eventId}/forms`, `Pages/Studio/RegistrationForms/**`, `StudioEventNavigation.razor` — **Acceptance:** section absent without `manage-registration-workflow`; shared `StudioEventContextState`; published read-only; new-version flow; keyboard ordering; no second management shell — **Effort:** XL — **Dependencies:** 7.5
-- [ ] **7.7 Requirement attachment + walk-in standalone questionnaires** — attach/detach; participation-mode validation — **Acceptance:** walk-in `optional-questionnaire` without order creation — **Effort:** M — **Dependencies:** 7.5, Phase 2
-- [ ] **7.8 Form localization strategy** — investigate + minimal model; decision recorded — **Acceptance:** `MULTILINGUAL` honestly absent until built; RTL unaffected — **Effort:** M — **Dependencies:** 7.2
+- [x] **7.2 Form/version/section/field/option model with immutability** — 5 Task 7.2 entities + `FormVersionRules.cs` (`RegistrationFormRule` is the sixth Phase 7 form entity and belongs to 7.3); dual field identity; governance flags; required per-version `LanguageTag` — **Acceptance:** immutability/provenance tests; provider IDs unrepresentable as canonical identity — **Effort:** XL — **Dependencies:** 7.1
+  - **Evidence:** Domain 6/6, Persistence 3/3, rootless Podman/PostgreSQL 1/1, naming 11/11, manual harness 8/8, scoped Release builds 0 errors, EF no pending model changes for generated `20260801114559_init`, and repair adversarial QA `confirmed`.
+- [x] **7.3 Bounded condition language** — `RegistrationFormRule.cs`, `FormConditionEvaluator.cs` (pure) — **Acceptance:** nine syntax tokens representing ten semantic operations (typed numeric/date `compare` cases); purity asserted — **Effort:** M — **Dependencies:** 7.2
+  - **Evidence:** closed nine-token syntax representing ten semantic operations (typed numeric/date `compare` cases); generated-property Domain tests 11/11; manual harness 15/15; real PostgreSQL 1/1; scoped Release builds 0 errors; EF no pending model changes for generated `20260801123546_init`; final adversarial QA `confirmed` at 0.99 confidence.
+- [x] **7.4 JSON Schema 2020-12 artifact generation** — exactly four deterministic artifacts + `SchemaHash`; Application-owned generate-and-publish facade from the live relational aggregate; internal atomic Domain pinning; all-or-none persisted columns — **Acceptance:** golden-hash determinism; hash sensitive to any mutation — **Effort:** M — **Dependencies:** 7.2, 7.3
+  - **Evidence:** Application publication `32/32` twice, Domain atomicity `8/8`, Persistence mapping `3/3`, PostgreSQL `1/1`, scoped Domain/Application/Persistence/API Release builds `0` errors, EF no pending model changes, generated `20260801132046_init`, and facade-only harness with all four artifact equality predicates true. Initial public caller-authored publication authority was `needs-fix`; repaired facade/internal seam is independently `confirmed` at `0.99`.
+- [x] **7.5 Authoring Application + API + Cerbos** — `Features/RegistrationForms/**`, controllers, `manage-registration-workflow`, `islamuevent_registration_form.yaml` (new); contract regen — **Acceptance:** publish preflight (conditions, consent purposes) — **Effort:** L — **Dependencies:** 7.4
+  - **Evidence:** repair verifier `confirmed`/`APPROVE` at 0.99; consent metadata is hash-sensitive; workflow forms/version summaries are bounded and entity-backed; exact `/preflight` is generated into OpenAPI/NSwag/inventory; real PostgreSQL TestServer covers publication, stale concurrency, immutability, and fallback authorization; persisted-Event HAL enrichment strips caller authority attributes; generated migration `20260801144215_init`; no Task 7.6/7.7 product work.
+- [x] **7.6 Studio form builder** — `/studio/events/{eventId}/forms`, `Pages/Studio/RegistrationForms/**`, `StudioEventNavigation.razor` — **Acceptance:** section absent without `manage-registration-workflow`; shared `StudioEventContextState`; published read-only; new-version flow; keyboard ordering; no second management shell — **Effort:** XL — **Dependencies:** 7.5
+  - **Evidence:** independent adversarial gate `confirmed`/`APPROVE`; builder 14/14, typed service 7/7, scoped Blazor client Release build 0 errors, canonical Release build 0 errors, and Domain 683/683. Cleanup confirmed no task-owned runtime, browser tab, container, or volume remains.
+- [x] **7.7 Requirement attachment + walk-in standalone questionnaires** — attach/detach; participation-mode validation — **Acceptance:** walk-in `optional-questionnaire` without order creation — **Effort:** M — **Dependencies:** 7.5, Phase 2
+- [x] **7.8 Form localization strategy** — required immutable per-version BCP-47 `LanguageTag`; no translation table; whole-version fallback only — **Acceptance:** `MULTILINGUAL` honestly absent until built; RTL remains driven by UI culture — **Effort:** M — **Dependencies:** 7.2
+  - **Evidence:** RegistrationFormVersion 6/6, CultureRegistry 17/17, rendered localization/RTL 41/41, public harness PASS, and adversarial QA `confirmed`.
 
-### Phase 7 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
+### Phase 7 Verification — COMPLETE
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 8: Native Collection Runtime ⏳ NOT STARTED
 - [ ] **8.1 Attempt + submission + status machines** — attempt/submission/revision entities + lookups; dedup uniqueness; token single-use — **Acceptance:** duplicate → no-op; supersession rules; answer-identity uniqueness constrained at DB level (Hi.Events §4.7 gap) — **Effort:** L — **Dependencies:** Phase 7

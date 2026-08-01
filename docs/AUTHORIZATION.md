@@ -84,6 +84,10 @@ The API uses a Hypermedia as the Engine of Application State (HATEOAS) model. HA
     -   **Fallback (Local)**: Resolves the user's **Authority Profile** (admin status, tenant membership) **exactly once** per batch to eliminate redundant database/async overhead during individual link evaluation.
 -   **Collection Support**: For "Get All" endpoints, all link definitions for all items in the paginated result are flattened into a single massive batch, ensuring high-scale efficiency.
 
+Registration-form authoring uses the scoped `islamuevent_registration_form` resource with `view`, `create`, `update`, `delete`, `preflight`, `publish`, and `manage-requirements` actions. Its trusted resource context is enriched from the persisted parent Event; request bodies cannot author tenant or organizer identity. The event-level `manage-registration-workflow` entry relation and all form-level actions share the same authority: a verified organizer controller or exact tenant/event `event.registration_manager` assignment carrying `event_registration:manage`. Contributors, listing submitters, tenant-only curators, instance administrators, machine principals, missing/ambiguous organizer state, and unrelated tenant/event assignments fail closed in both Cerbos and fallback authorization.
+
+`HateoasAuthorizationEvaluator` performs that enrichment through one bounded persisted-Event lookup per batch, applies the ambient tenant filter, removes caller-supplied authority attributes, rebuilds trusted actor/organizer context, and denies before Cerbos or fallback evaluation for missing, cross-tenant, missing-ID, or over-bound inputs. The resulting HAL relation set—not local claims or role checks—is the client action boundary.
+
 ## 4. Authorization Providers
 
 ### 4.1. Cerbos
@@ -228,6 +232,8 @@ Authorization is triggered in the MediatR pipeline based on one of three pattern
     -   **Implementation**: A combination of the attribute and the interface. The behavior prefers the dynamic values from `ISecureRequest` at runtime.
 
 Notification preference organization and group queries/commands use this pattern with `ResourceKinds.Organization` or `ResourceKinds.Group` and `AuthorizationActions.View`/`AuthorizationActions.Update`. Current-user preference endpoints are authenticated user-self endpoints; organization/group preference endpoints still pass through the resource authorization pipeline before handlers run.
+
+Participation requirement writes use `[AuthorizeResource(ResourceKinds.RegistrationForm, Attach|Detach)]` with `ISecureRequest` event and requirement attributes. Persisted Event enrichment determines verified organizer control and explicit `event.registration_manager` authority before handlers load the attachment graph. Cerbos and local fallback use the same action catalog; tenant-only administration, listing contribution, machines, and unrelated assignments do not authorize these writes.
 
 ### 6.2. Claim-Based Authorization
 

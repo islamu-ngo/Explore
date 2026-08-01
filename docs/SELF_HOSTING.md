@@ -1,615 +1,785 @@
 ABOUTME: Production self-hosting guide covering Docker Compose stack, configuration, and operations.
-ABOUTME: Covers infrastructure services, setup secret, migrations, health checks, backups, and upgrades.
+ABOUTME: Covers minimum viable stack, optional services, setup, migrations, health checks, backups, and upgrades.
 
-# Self-Hosting
+# Self-Hosting Guide
 
-> **Audience:** Operators
-> **Status:** Implemented
-> **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-24
-> **Source Anchors:** `docker-compose.yml`, `Explore.AppHost/AppHost.cs`, `Event.MigrationService/`, `Explore.API/Program.cs`, `Explore.API/Controllers/InstanceSettingsController.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakBootstrapService.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`
+> **Audience:** Operators and DevOps engineers  
+> **Status:** Implemented  
+> **Owner:** Platform/Ops  
+> **Last Verified:** 2026-08-01  
+> **Source Anchors:** `docker-compose.yml`, `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`
 
-This guide covers running ISLAMU Event outside the Aspire developer loop. The repository `docker-compose.yml` is the current self-hosting source of truth.
+---
 
-## Runtime Topology
+## Overview
 
-| Service | Required | Compose Name | Purpose | Public Port |
-|---|---:|---|---|---|
-| PostgreSQL | Yes | `postgres` | Application database | internal |
-| Redis | Yes | `redis` | Distributed cache when configured | internal |
-| Mailpit | Local default | `mailpit` | Local SMTP capture and web UI for email testing | `1025:1025`, `8025:8025` |
-| Keycloak DB | Yes | `keycloak-db` | Keycloak PostgreSQL database | internal |
-| Keycloak | Yes | `keycloak` | OIDC identity provider and realm import | `8080:8080` |
-| Keycloak Init | Yes | `keycloak-init` | One-shot client-secret synchronization after realm import | internal |
-| API | Yes | `islamu-event-api` | REST API, migrations, health, metrics, local storage volume | `7039:8080` |
-| Blazor BFF | Yes | `islamu-event-ui` | Server host, embedded admin-host shell, and YARP proxy to API | `7002:8080` |
-| Event.MigrationService | Optional | `event-migrationservice` | Applies privacy-erasure authority migrations when external topology is enabled | internal |
-| Privacy Erasure DB | Optional | `privacy-erasure-db` | External authority database for external database topology | internal |
-| MinIO | Optional | `minio`, `minio-init` | S3-compatible storage profile when an instance selects optional S3 mode | `9005:9000`, `9006:9001` |
-| Cerbos | Optional | `cerbos` | External authorization PDP profile | `3592:3592`, `3593:3593` |
-| Svix | Optional | `svix-db`, `svix` | Outgoing webhook provider profile | `8071:8071` |
-| Coop | Optional | `coop-db`, `coop` | Moderation review queue profile | `8082:8080` |
-| Osprey coordinator | Optional | `osprey` | Roost Osprey coordinator profile | `19950:19950`, `19951:19951` |
-| AI provider | Optional | external/self-hosted | Official, compatible, or fake AI assistant provider selected by `AiProvider:*` plus tenant governance settings | deployment-specific |
+ISLAMU Event is designed for easy self-hosting. At its core, the platform requires only **three services** to run a fully functional instance:
 
-Profiles:
-
-- `storage` starts MinIO and creates the configured bucket for optional S3-compatible mode. It is not required for local-first storage.
-- `authz` starts Cerbos for deployments that select Cerbos authorization. It mounts `cerbos/config/.cerbos.yaml`, `cerbos/init/cerbos-schema.sql`, and `cerbos/policies/` from this repository so local infrastructure always uses the checked-in policy package. The Cerbos PostgreSQL profile uses the Postgres 18 parent data mount (`/var/lib/postgresql`) so local upgrades do not fail on the legacy `/var/lib/postgresql/data` mount boundary.
-- `privacy-erasure-external` starts `privacy-erasure-db` and `event-migrationservice` for ExternalDatabase privacy-erasure topology. It applies external authority schema work before API startup and requires both migrator and runtime authority credentials.
-- `webhooks` starts local Svix and its PostgreSQL database for outgoing webhook-provider testing.
-- `moderation` starts local Coop for moderation review-queue testing with an isolated PostgreSQL database. `COOP_UI_URL` defaults to `http://localhost:8082`, matching the local Coop port; the local profile also supplies Coop's `DATABASE_*`, `SESSION_SECRET`, `OTEL_SERVICE_NAME`, placeholder Scylla client settings, and no-op warehouse/analytics adapter defaults so the provider image can boot without ClickHouse or production secrets. Keep `REPORTING_MODE=LocalOnly` unless provider endpoints are intentionally enabled.
-- `osprey` starts `ghcr.io/roostorg/osprey/osprey-coordinator:latest` by default. It exposes coordinator ports, not the app's HTTP-compatible `Reporting:Osprey` facade. Keep `REPORTING_OSPREY_ENABLED=false` unless you provide a compatible HTTP facade or adapter endpoint.
-
-### Planned PostGIS Proximity Profile
-
-Exact proximity discovery is **planned, not implemented**. The current required database uses plain `postgres:18-alpine`; no PostGIS extension, spatial migration, spatial health check, or proximity endpoint ships today. Current deployments need no PostGIS action and must retain area-only wording and behavior.
-
-[ADR-013](adr/ADR-013-postgis-proximity-discovery.md) defines the separately approved future package. Before selecting its planned `postgis` mode, operators would need a pinned PostGIS-capable PostgreSQL image/service, a database backup, the canonical extension/schema migration, verified GiST and tenant indexes, and a successful bounded spatial readiness query. Deployment manifests and restore tests must preserve the extension and governed discovery-point data.
-
-Failure or rollback returns the product to `area_only`; it must not start a browser-side or in-memory distance fallback. Future readiness and troubleshooting output must use bounded status categories and never expose origins, coordinates, addresses, location or tenant identifiers, query text, connection strings, or raw database errors.
-
-Email dispatch modes:
-
-- **Basic Dispatch Mode is implemented and requires no extra Compose profile.** API + PostgreSQL + configured SMTP are sufficient for registration confirmation email. By default, API-hosted TickerQ schedules `email-dispatch-drain`, which claims `EmailDispatchOutbox` rows from PostgreSQL through the shared drain service and sends through the SMTP abstraction. `EmailDispatchProcessor:Mode=HostedService` is a fallback trigger, not a separate business workflow.
-- Configure `EmailDispatchProcessor:MaxConcurrentDispatches`, `MaxConcurrentDispatchesPerTenant`, `GlobalSmtpRateLimitPerMinute`, and `TenantSmtpRateLimitPerMinute` for provider capacity. These are shared PostgreSQL limits, not per-replica multipliers; the defaults are `8`, `2`, `120`, and `30`. Rate deferral preserves SMTP retry budget.
-- The Compose default SMTP target is local Mailpit: API containers use SMTP host `mailpit`, port `1025`, encryption `None`, and from-address `noreply@localhost`. Open the capture UI at `http://localhost:8025`. Replace `MAIL_SMTP_*` values before using a real external SMTP provider.
-- **RabbitMQ Dispatch Mode is optional transport infrastructure.** The repository now has a local Aspire RabbitMQ resource plus API-side pointer publishing, topology declaration, health checks, manual-ack consumption, and DLQ replay/parking for pointer-only dispatch messages. The production Compose stack still does not require or start RabbitMQ by default. Enabling RabbitMQ outside Aspire requires an operator-provided broker connection string and an explicit `EmailDispatchRabbitMq:Enabled=true` opt-in. RabbitMQ shares the same PostgreSQL `EmailDispatchOutbox` state machine; it is transport only.
-
-## Start The Stack
-
-1. Create an environment file with secrets required by `docker-compose.yml`.
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   `.env` is ignored by git and is used by Docker Compose for interpolation. `.env.example` contains disposable local defaults that should run a first local stack; replace them before using any shared, staged, or production environment. Before starting containers, inspect the resolved Compose model:
-
-   ```bash
-   docker compose config
-   ```
-
-2. Start the required stack:
-
-   ```bash
-   docker compose up -d postgres redis mailpit keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
-   ```
-
-3. Add optional MinIO only when S3-compatible storage is selected or tested:
-
-   ```bash
-   docker compose --profile storage up -d
-   ```
-
-4. Add optional Cerbos when using the Cerbos provider:
-
-   ```bash
-   AUTHORIZATION_PROVIDER=cerbos docker compose --profile authz up -d
-   ```
-
-   Set `AUTHORIZATION_PROVIDER=local` to make Local RBAC deployment-owned and skip authorization-provider onboarding without starting Cerbos. Leave it blank to choose during onboarding; endpoint or credential presence alone never selects Cerbos.
-
-5. Add optional Svix when using the outgoing webhook provider:
-
-   ```bash
-   docker compose --profile webhooks up -d
-   ```
-
-6. Add optional Coop for moderation integration testing:
-
-   ```bash
-   docker compose --profile moderation up -d
-   ```
-
-7. Add optional Osprey-compatible signal provider only after configuring an accessible image:
-
-   ```bash
-   docker compose --profile osprey up -d
-   ```
-
-8. For external privacy-erasure topology, set authority topology + migrator/runtime secrets first, then run:
-
-   ```bash
-   PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase \
-   docker compose --profile privacy-erasure-external up -d privacy-erasure-db event-migrationservice
-   ```
-
-9. Open Blazor at `http://localhost:7002` and API at `http://localhost:7039`.
-
-## Deployment Scenarios (From Minimal To Advanced)
-
-Use this section to match infra to operator intent before copying `.env.example`.
-
-Infrastructure floor rules for minimal operators:
-
-- Core launch requires API + Blazor + PostgreSQL and working identity bootstrap.
-- `event-migrationservice` is only mandatory for `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase`; in that case keep `privacy-erasure-db` and profile `privacy-erasure-external`.
-- For `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=CoLocated` (default), the authority ledger and application mirror run in the main PostgreSQL database with zero extra DevOps overhead. For detailed guidance on choosing between `CoLocated` and `ExternalDatabase` modes, see [Privacy Erasure Authority & Storage Topologies](PRIVACY_ERASURE.md).
-
-### 1) Minimal self-hosted instance (small org, fast start)
-
-Goal: lowest maintenance footprint for one operator/environment.
-
-- **Deployment mode:** single-tenant (`DEPLOYMENT_MODE` unset).
-- **Services required by this document’s compose baseline:** `postgres`, `redis` (optional in one-node mode), `mailpit`, `keycloak`, `keycloak-init`, `islamu-event-api`, `islamu-event-ui`.
-- **Migrations:** API startup performs `ExploreDbContext` and data-protection migrations.
-- **Auth path:** Local-first or local RBAC (`AUTHORIZATION_PROVIDER` unset).
-- **Optional services to add only if needed:** `storage`, `authz`, `webhooks`, `localization`, `moderation`, `osprey`.
-
-Environment posture:
-- Keep Redis optional unless you need shared HybridCache L2/state or sessions across replicas. Redis does not distribute ASP.NET Core output-cache entries or tag eviction: immediate invalidation is guaranteed only on the handling replica, while other replicas may serve stale output until the policy TTL expires. Cross-replica output-cache invalidation is deferred without a dedicated dependency.
-- Keep `reporting` in local fallback posture (`REPORTING_MODE` should stay `LocalOnly` for this profile).
-- Keep MCP mapped by default; override only if the operator intentionally does not want `/mcp`.
-
-### 2) Small SaaS/community platform (single infrastructure, multi-tenant)
-
-Goal: launch one SaaS/community platform with tenant boundaries and stronger admin controls.
-
-- **Deployment mode:** `DEPLOYMENT_MODE=multi_tenant`.
-- **Core stack:** same as baseline plus tenant-aware routing posture via Blazor admin hosts and tenant resolution.
-- **Auth path:** choose `AUTHORIZATION_PROVIDER=cerbos` (recommended) with `AUTHORIZATION_PROVIDER=cerbos docker compose --profile authz up -d`; set `AUTHORIZATION_PROVIDER=local` if you want pure deployment-owned Local RBAC.
-- **Ops posture:** keep Redis, mail, and cache-backed health checks healthy; run migration tasks through API startup or a separate orchestrator.
-
-Recommended `Blazor/API` posture:
-- `Bff:AdminHosts` points to the dedicated control-plane host.
-- `AUTHORIZATION_PROVIDER` controls the setup choice page and onboarding failover behavior.
-- Consider optional tenant admin override controls (`governance.lock_tenant_*`) only after initial rollout.
-
-### 3) Discovery-centric event platform (open discovery + federation enabled)
-
-Goal: social/community discovery where attendees discover and sync public event/RSVP activity.
-
-- Keep scenario 2 multi-tenant posture.
-- Enable federation switches and ATProto worker stack:
-  - `federation.atproto_events_enabled=true`
-  - `federation.atproto_event_validation_profile` as required
-  - `Atproto:Jetstream` and `Atproto:PdsSync` worker settings tuned for your workload
-  - `ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS`, `ATPROTO_SESSION_ENCRYPTION_KEYRING`, `ATPROTO_SESSION_JWT_PRIVATE_JWKS` present for bounded OAuth/session security
-- Keep strict outbound and discovery egress posture and verify `atproto-authentication` readiness before release.
-- This profile generally needs stronger observability and stronger rate/cleanup budgets than scenario 1.
-
-### 4) Organization-centric event platform (closed/curated experience)
-
-Goal: private events with administrative curation over discovery.
-
-- Start from single-tenant (or controlled multi-tenant) mode.
-- Keep `federation.atproto_events_enabled=false` unless your product decision requires discovery.
-- Keep `federation.atproto_publish_my_events` user consent off by default.
-- Favor strict onboarding controls, invitation/review flows, and manual tenant/content moderation over global discovery input.
-
-### 5) Managed-provider onboarding path
-
-Goal: delegated platform onboarding through trusted managed-provider automation.
-
-- Set together:
-  - `PROVISIONING_TRUSTED=true`
-  - `PROVISIONING_MODE` in `managed-provider`, `managed_provider`, `managed-hosting`, or `managed`
-  - `MANAGED_CLIENT_EXTERNAL_PROVIDER` (stable partner ID)
-  - `PHYSICAL_TENANCY_MODE` (deployment posture marker)
-- With those keys present, `SETUP_SECRET_REQUIRED=false` is allowed, but setup endpoints still require setup-token authority (they do not become anonymous).
-
-### 6) Advanced isolation and optional isolation-by-service stack
-
-Goal: higher scale/compliance.
-
-- Keep scenario 2 or 4 as base posture.
-- Add `authz`, `webhooks`, and `storage` profiles explicitly and keep all provider endpoints behind explicit readiness gates.
-- Add tenant-scale Redis, RabbitMQ, and separate identity/policy/storage databases only when required by capacity and risk profile.
-
-## Required Environment Keys
-
-Use the key names consumed by the Compose file and source code. Do not invent generic aliases.
-
-### Application Database Bootstrap
-
-`Explore.Secrets/Bootstrap/BootstrapSecretLoader.cs` expects discrete PostgreSQL values. Do not provide only a URL-form database secret.
-
-| Key | Purpose |
+| Service | What It Does |
 |---|---|
-| `POSTGRESQL_HOST` | Application DB host, normally `postgres`. |
-| `POSTGRESQL_PORT` | Application DB port, normally `5432`. |
-| `POSTGRESQL_DATABASE` | Application DB name. |
-| `POSTGRESQL_USERNAME` | Application DB username. |
-| `POSTGRESQL_PASSWORD` | Application DB password. |
+| **PostgreSQL** | Single application database — stores all data |
+| **API** (`islamu-event-api`) | REST API, runs EF Core migrations on startup, health checks, metrics |
+| **Blazor BFF** (`islamu-event-ui`) | Web UI, embedded admin shell, and YARP reverse proxy to the API |
 
-Compose derives the local `postgres` container bootstrap values from `POSTGRESQL_DATABASE`, `POSTGRESQL_USERNAME`, and `POSTGRESQL_PASSWORD` so the container and application use the same credentials.
+> [!IMPORTANT]
+> **Database migrations are built into the API container.** The API runs EF Core migrations automatically on startup (outside `Testing` environment). You do **not** need a separate migration service for standard deployments.
 
-### Keycloak
+Everything else — Redis, Keycloak, Cerbos, MinIO, Svix, Coop, AI, federation — is **optional** and can be added when your deployment needs it.
 
-The API and browser BFF use the same deployment client identity. `KEYCLOAK_BLAZOR_CLIENT_SECRET` remains server-only: Compose and Aspire pass it to trusted server processes, while onboarding exposes only configured/ownership state plus sanitized authority and client-ID metadata. A detected provider remains reachable from the authentication-provider configuration page so an authorized operator can create, repair, or reconcile the realm after credentials are supplied.
+---
 
-| Key | Purpose |
+## Table of Contents
+
+1. [Quick Start (5 Minutes)](#quick-start-5-minutes)
+2. [Architecture Overview](#architecture-overview)
+3. [Service Reference](#service-reference)
+4. [Deployment Tiers](#deployment-tiers)
+5. [Environment Configuration](#environment-configuration)
+6. [First-Run Setup](#first-run-setup)
+7. [Identity Provider (Keycloak)](#identity-provider-keycloak)
+8. [Optional Services](#optional-services)
+9. [Reverse Proxy & TLS](#reverse-proxy--tls)
+10. [Multi-Tenant Deployment](#multi-tenant-deployment)
+11. [Email Configuration](#email-configuration)
+12. [Health Checks & Monitoring](#health-checks--monitoring)
+13. [Backup & Upgrade](#backup--upgrade)
+14. [Troubleshooting](#troubleshooting)
+15. [Related Documentation](#related-documentation)
+
+---
+
+## Quick Start (5 Minutes)
+
+### Prerequisites
+
+- Docker and Docker Compose v2
+- A machine with at least 2 GB RAM
+
+### Steps
+
+**1. Clone and create your environment file:**
+
+```bash
+git clone <repository-url>
+cd Event
+cp .env.example .env
+```
+
+**2. Generate a Keycloak client secret (required):**
+
+```bash
+# Generate and paste into .env as KEYCLOAK_BLAZOR_CLIENT_SECRET
+openssl rand -hex 32
+```
+
+**3. Set your setup secret in `.env`:**
+
+```bash
+# Add to .env — you'll use this to complete onboarding at /setup
+SETUP_SECRET=my-secure-setup-secret
+```
+
+**4. Verify the resolved configuration:**
+
+```bash
+docker compose config
+```
+
+**5. Start the core stack:**
+
+```bash
+docker compose up -d
+```
+
+This starts all default services: PostgreSQL, Keycloak, Mailpit (local email capture), the API, and the Blazor UI.
+
+**6. Open the application:**
+
+| Service | URL |
 |---|---|
-| `KEYCLOAK_DB_DATABASE`, `KEYCLOAK_DB_USERNAME`, `KEYCLOAK_DB_PASSWORD` | Local Keycloak database bootstrap values. |
-| `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | Initial Keycloak admin account. |
-| `KEYCLOAK_ENDPOINT` | Base Keycloak endpoint used to derive API/Blazor authority values. |
-| `KEYCLOAK_REALM` | Realm name. |
-| `KEYCLOAK_BLAZOR_CLIENT_ID` | Browser/BFF OIDC client ID shared with the API onboarding producer. Defaults to `islamu-event-blazor`. |
-| `KEYCLOAK_BLAZOR_CLIENT_SECRET` | Required Blazor confidential client secret. `keycloak-init` writes this into the `islamu-event-blazor` Keycloak client after realm import. |
-| `KEYCLOAK_API_CLIENT_SECRET` | Optional legacy/future API resource-server client secret. Current bearer-token validation does not require it, and the checked-in realm export does not include a static API client secret. Set it only if a deployment intentionally makes the API client confidential. |
-| `KEYCLOAK_BLAZOR_REDIRECT_URIS` | Optional JSON array of exact BFF login callbacks. Blank uses exact Compose defaults or Aspire's allocated local Blazor ports. |
-| `KEYCLOAK_BLAZOR_WEB_ORIGINS` | Optional JSON array of exact BFF origins. Blank uses exact Compose defaults or Aspire's allocated local Blazor ports. |
-| `KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS` | Optional Keycloak `##`-separated list of exact BFF logout callbacks. Blank uses exact Compose defaults or Aspire's allocated local Blazor ports. |
+| **Web UI** | `http://localhost:7002` |
+| **API** | `http://localhost:7039` |
+| **Mailpit** (email viewer) | `http://localhost:8025` |
+| **Keycloak Admin** | `http://localhost:8080` |
 
-### Cerbos
+**7. Complete first-run setup** at `http://localhost:7002/setup` using your `SETUP_SECRET`.
 
-Local Compose Cerbos uses repository-owned files:
+> [!TIP]
+> For the absolute minimal deployment (no Keycloak, no Redis, no Mailpit), see [Deployment Tiers → Tier 1: Bare Minimum](#tier-1-bare-minimum).
 
-- `cerbos/config/.cerbos.yaml` for Cerbos server configuration;
-- `cerbos/init/cerbos-schema.sql` for local Cerbos PostgreSQL initialization;
-- `cerbos/policies/` for derived roles, resource policies, and `_schemas/`.
+---
 
-For Coolify-managed external Cerbos, use [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) instead of copying Compose commands manually.
+## Architecture Overview
 
-| Key | Purpose |
-|---|---|
-| `AUTHORIZATION_PROVIDER` | Blank for manual Local-first onboarding, `local` for deployment-owned Local RBAC, or `cerbos` for deployment-owned background PDP verification and policy sync. Invalid explicit values fail startup. |
-| `CERBOS_GRPC_ENDPOINT` | API PDP endpoint. Local profile default is `http://cerbos:3593`. |
-| `CERBOS_HTTP_ENDPOINT` | API/Admin endpoint. Local profile default is `http://cerbos:3592`. |
-| `CERBOS_USE_TLS` / `CERBOS_PLAINTEXT_MODE` | TLS posture for runtime API connections. Keep local defaults for Compose; use TLS in production. |
-| `CERBOS_ADMIN_USERNAME` | Cerbos Admin API username. |
-| `CERBOS_ADMIN_PASSWORD_HASH` | Base64 bcrypt hash consumed by the Cerbos server. Generate it with the process in [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md#admin-password-hash). |
-| `CERBOS_ADMIN_PASSWORD` | Plaintext Admin API password used only by `cerbosctl` policy sync/API package publishing. Keep blank unless sync is enabled. It must correspond to `CERBOS_ADMIN_PASSWORD_HASH`. |
+```
+                    ┌──────────────────────────────────────────────────┐
+                    │              Browser / Clients                   │
+                    └──────────────────┬───────────────────────────────┘
+                                       │
+                              ┌────────▼─────────┐
+                              │   Reverse Proxy   │  ← TLS termination
+                              │  (Nginx/Caddy/…)  │     (production)
+                              └────────┬──────────┘
+                                       │
+                    ┌──────────────────▼───────────────────────────┐
+                    │          Blazor BFF (islamu-event-ui)         │
+                    │  • Server-side Blazor rendering               │
+                    │  • OIDC cookie auth with identity provider    │
+                    │  • YARP reverse proxy → API                   │
+                    │  • Admin shell for control-plane hosts        │
+                    └──────────────────┬───────────────────────────┘
+                                       │ (internal HTTP)
+                    ┌──────────────────▼───────────────────────────┐
+                    │            API (islamu-event-api)             │
+                    │  • REST API (MediatR/CQRS)                   │
+                    │  • EF Core migrations on startup             │
+                    │  • Background workers & outbox processing    │
+                    │  • Health checks, metrics, MCP adapter       │
+                    └──────┬──────────────────────┬────────────────┘
+                           │                      │
+                  ┌────────▼────────┐    ┌────────▼────────────────┐
+                  │   PostgreSQL    │    │   Optional Services     │
+                  │  (single DB)    │    │  Redis, Keycloak,       │
+                  │                 │    │  Cerbos, MinIO, Svix…   │
+                  └─────────────────┘    └─────────────────────────┘
+```
 
-### Storage
+**Key design principles:**
 
-Local-first storage is available in the required API service without MinIO. Compose mounts the API path `/app/storage-data/local` to the durable named volume `local_storage_data`.
+- **Browsers talk only to the Blazor BFF.** The BFF proxies API calls via YARP; clients should not need direct API access.
+- **The API is the single composition root** for Domain, Application, Persistence, and Infrastructure layers.
+- **PostgreSQL is the only required datastore.** All application data, outbox state, privacy-erasure authority (colocated mode), and data-protection keys live in one database.
 
-| Compose/API Key | Canonical .NET Key | Purpose |
-|---|---|---|
-| `LOCAL_STORAGE_ROOT_PATH` | `Storage:Local:RootPath` | Optional override for the API local storage root. The Compose default is `/app/storage-data/local`. |
-| `LOCAL_STORAGE_CREATE_ROOT_IF_MISSING` | `Storage:Local:CreateRootIfMissing` | Optional override for allowing the API to create the root. The Compose default is `true`. |
+---
 
-Optional S3-compatible settings use the Infisical-compatible `STORAGE_S3_*` family. Compose maps those raw values into `S3Settings:*` for the API.
+## Service Reference
 
-| Compose/API Key | Canonical .NET Key |
-|---|---|
-| `STORAGE_S3_ENDPOINT` | `S3Settings:Endpoint` |
-| `STORAGE_S3_PUBLIC_ENDPOINT` | `S3Settings:PublicEndpoint` |
-| `STORAGE_S3_REGION` | `S3Settings:Region` |
-| `STORAGE_S3_BUCKET_NAME` | `S3Settings:BucketName` |
-| `STORAGE_S3_ACCESS_KEY_ID` | `S3Settings:AccessKeyId` |
-| `STORAGE_S3_SECRET_ACCESS_KEY` | `S3Settings:SecretAccessKey` |
+### Required Services
 
-Infisical/domain secret definitions use the `STORAGE_S3_*` family under storage paths. Keep optional S3 docs and secret-provider values aligned with those names; do not use stale generic S3 aliases such as `Storage__Endpoint`.
+These three services are the minimum to run ISLAMU Event:
 
-### Storage Reconciliation
-
-The API starts storage reconciliation in enabled dry-run mode by default. Compose exposes the safety-critical flags through environment variables:
-
-| Compose/API Key | Canonical .NET Key | Default |
-|---|---|---:|
-| `STORAGE_RECONCILIATION_ENABLED` | `StorageReconciliation:Enabled` | `true` |
-| `STORAGE_RECONCILIATION_DRY_RUN` | `StorageReconciliation:DryRun` | `true` |
-| `STORAGE_RECONCILIATION_QUARANTINE_MISSING_OBJECTS` | `StorageReconciliation:QuarantineMissingObjects` | `false` |
-| `STORAGE_RECONCILIATION_QUARANTINE_ORPHAN_LOCAL_FILES` | `StorageReconciliation:QuarantineOrphanLocalFiles` | `false` |
-| `STORAGE_RECONCILIATION_DELETE_QUARANTINED_OBJECTS` | `StorageReconciliation:DeleteQuarantinedObjects` | `false` |
-
-Enable destructive cleanup only after reviewing dry-run output, confirming backups include the local storage volume or selected S3 bucket, and intentionally setting `StorageReconciliation:DryRun=false` plus the specific mutation flag.
-
-### API And Blazor
-
-| Key | Host | Purpose |
-|---|---|---|
-| `DEPLOYMENT_MODE` | API | Optional first-run mode; omit for single-tenant, set `multi_tenant` before first launch for multi-tenant. |
-| `SETUP_SECRET` | API | Env-only setup secret for interactive first-run onboarding. If absent, the API uses an internal random fallback that is never printed; set this value and restart before using `/setup`. |
-| `SETUP_SECRET_REQUIRED` | API | Optional. Defaults to `true`; `false` only takes effect with trusted managed-provider provisioning keys and never makes setup endpoints anonymous. |
-| `CONTROL_PLANE_PUBLIC_ORIGIN` | API/UI/Blazor | Control-plane admin host (e.g., `http://admin.localhost:7002`) used for BFF admin-host registration and governance URL generation. |
-| `CONTROL_PLANE_MANAGED_MODE` | API | Maps to `ManagedControlPlane:Enabled`; set together with control-plane keys only when managed control-plane onboarding is explicitly enabled. |
-| `CONTROL_PLANE_URL` | API | Maps to `ManagedControlPlane:ControlPlaneUrl`; operator-owned control-plane endpoint for managed hosting workflows. |
-| `CONTROL_PLANE_INSTANCE_ID` | API | Maps to `ManagedControlPlane:ManagedInstanceId`; bind to the managed tenant/operator record identifier. |
-| `CONTROL_PLANE_REGISTRATION_TOKEN` | API | Maps to `ManagedControlPlane:RegistrationToken`; rotate with control-plane ownership lifecycle. |
-| `CONTROL_PLANE_MAXIMUM_TENANT_COUNT` | API | Maps to `ManagedControlPlane:MaximumTenantCount`; controls managed-mode tenant hard ceiling at bootstrap. |
-| `CONTROL_PLANE_TENANT_ADMINISTRATOR_SIGN_IN_URL` | API | Maps to `ManagedControlPlane:TenantAdministratorSignInUrl`; optional operator-managed tenant sign-in landing URL. |
-| `PROVISIONING_TRUSTED` | API | Required for managed-provider shortcut mode; must be `true` with validated provisioning mode and tenant model declarations before `SETUP_SECRET_REQUIRED=false` becomes effective. |
-| `PROVISIONING_MODE` | API | Required for managed-provider shortcut mode. Accepted case-insensitive values include `managed-provider`, `managed_provider`, `managed-hosting`, and `managed`. |
-| `MANAGED_CLIENT_EXTERNAL_PROVIDER` | API | External operator provider identifier required for trusted managed bootstrap. |
-| `PHYSICAL_TENANCY_MODE` | API | Required for trusted managed bootstrap when using `SETUP_SECRET_REQUIRED=false`. |
-| `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY` | API | `CoLocated` (default) or `ExternalDatabase`; when external, migration service topology must be provisioned separately. |
-| `PRIVACY_ERASURE_AUTHORITY_RUNTIME_CONNECTION_STRING` | API | Runtime-only authority connection for API use in external topology; keep migrations credentials out of API runtime service env. |
-| `PRIVACY_ERASURE_AUTHORITY_MIGRATOR_CONNECTION_STRING` | API | Migrator connection for `event-migrationservice` when external authority topology is enabled. |
-| `PRIVACY_ERASURE_AUTHORITY_DB_*` (`_USERNAME`, `_PASSWORD`, `_DATABASE`) | API/Compose | Required for external authority DB bootstrap in Compose profile; values remain blank in optional local defaults until explicitly provisioned. |
-| `USE_COMMERCIAL_LUCKYPENNY`, `LUCKYPENNY_LICENSE_KEY`, `AUTOMAPPER_COMMERCIAL_VERSION`, `MEDIATR_COMMERCIAL_VERSION` | API | Optional commercial package/license controls. Keep disabled unless intentionally using commercial AutoMapper/MediatR builds. |
-| `API_ENDPOINT` | Blazor | API base URL fallback for BFF proxying outside Aspire. |
-
-`docker-compose.yml` sets Blazor `API_ENDPOINT` with a default of `http://islamu-event-api:8080/`, matching the Compose API service name. Operators only need to override `API_ENDPOINT` when routing the BFF to a different API host.
-
-### AT Protocol OAuth And Constrained Egress
-
-AT Protocol sign-in and PDS access use a confidential OAuth client in the Blazor BFF and Infrastructure. Configure the same canonical values on both hosts:
-
-| Canonical key | Requirement |
-|---|---|
-| `Atproto:PublicUrl` | Browser-facing origin only, normally `https://events.example.org/`. It must have no path, credentials, query, fragment, Unicode host spelling, or trailing-dot alias. |
-| `Atproto:CallbackPath` | Canonical root-relative callback such as `/signin-atproto`; only ASCII unreserved path characters are accepted. |
-| `Atproto:AllowDevelopmentLoopback` | Keep `false` outside Development. When explicitly enabled in Development, only exact `localhost` or loopback IP hosts are allowed. |
-| `Atproto:UseSingleNodeMemoryStore` | Keep `false` in production and every multi-replica deployment. It is an explicit single-node Development fallback only. |
-| `ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS` | Instance-scoped private P-256/ES256 signing ring. Store it in the configured secret provider under `/atproto`; never place it in browser configuration or logs. |
-| `ATPROTO_SESSION_ENCRYPTION_KEYRING` | Instance-scoped AES-256 key ring for complete persisted CarpaNet session envelopes. |
-| `ATPROTO_SESSION_JWT_PRIVATE_JWKS` | Instance-scoped P-256/ES256 ring for first-party API session JWTs. |
-| `Atproto:Jwt:SessionLifetime` | API token lifetime, default `00:15:00`; startup accepts one through sixty minutes. |
-
-The signing ring is a bounded JSON object with `keys`. Every key has `kty=EC`, `crv=P-256`, `use=sig`, `alg=ES256`, canonical 32-byte base64url `x`, `y`, and `d`, a unique bounded `kid`, and `status` equal to `active` or `retired`. Exactly one key must be active. For rotation, deploy the new active key while retaining the previous key as retired. New sessions pin the active `kid`; restored, refreshed, and revoked sessions continue using their persisted retired `kid`. Remove a retired key only after every session pinned to it has expired or been revoked.
-
-Production egress must allow DNS and outbound TLS to user PDS hosts and their discovered authorization-server endpoints. The application disables redirects, cookies, and decompression; resolves DNS for every connection; rejects loopback, private, link-local, unspecified, multicast, documentation, benchmark, and mixed public/private answers; and connects only to a validated resolved address. Do not work around a rejection with a private-network allowlist or an open redirect. Correct public DNS and authorization-server metadata instead.
-
-Authorization-server endpoint trust expires after five minutes and is repopulated only by strict metadata discovery. PAR, code exchange, refresh, and revocation require exact form shapes, the configured client ID and callback, a fresh issuer-bound `private_key_jwt`, one DPoP proof, and exactly one bounded `DPoP-Nonce` header on each successful mapped response. Expired or unknown endpoint mappings fail closed; they never fall back to unauthenticated public-client behavior.
-
-CarpaNet diagnostic logging remains disabled because the library can log OAuth inputs, DPoP material, form bodies, and provider error bodies. PDS XRPC, including `com.atproto.server.getSession`, is created through the Infrastructure hardened core-client factory with an injected HTTP client. Do not use CarpaNet's returned OAuth client for PDS calls because that type creates its own unconstrained HTTP client.
-
-AT Protocol readiness stays false until the public identity and BFF OAuth signing ring are valid and the OAuth state/session adapter services are registered. This is a passive configuration probe, not a Redis, database, Infrastructure encryption-ring, API session-JWT-ring, DNS, PDS, or authorization-server connectivity test. Keep the distributed cache and other platform dependency health checks green, and never use the in-memory fallback in production.
-
-Roll out each key purpose with overlap: add the new active key and retain the previous key as retired. `/health` validates the BFF OAuth signing ring only; use a controlled sign-in and session refresh to exercise the session-encryption and session-JWT rings before removing retired keys. Remove a retired key only after no persisted OAuth session or unexpired first-party JWT depends on it. A Redis/cache loss invalidates in-flight OAuth state and cross-host handoffs, so restore the cache and ask users with an in-flight login to restart; it does not justify enabling the single-node memory store in production. A PDS outage makes new login, refresh, or remote revocation unavailable, but sign-out must still clear the local BFF cookie and local session removal remains authoritative. Restore PDS reachability and start a new login when the durable session is invalid or expired.
-
-### AT Protocol Event Federation
-
-Event federation is disabled by default through `federation.atproto_events_enabled`. Enabling that effective setting activates both tenant-visible Jetstream discovery and new eligible outbound event/RSVP publication; it does not grant a user's `federation.atproto_publish_my_events` consent. Instance administrators own defaults and locks, while tenant administrators may override only when the server reports the setting editable.
-
-Before enabling the capability:
-
-1. Choose the required direction: inbound public discovery does not require ATProto OAuth; outbound event/RSVP publication does, and must pass the BFF `atproto-authentication` health check.
-2. Leave `Atproto:Jetstream:AllowedDids` empty to discover all public publishers of the exact community event/RSVP collections, or configure up to 10,000 curated DIDs to restrict ingress.
-3. Verify PostgreSQL migrations include the hardened `AtprotoRecord`, ownership/presentation, event projection, cursor/quarantine, and `PdsSyncOutbox` schema.
-4. Keep `Atproto:PdsSync` and `Atproto:Jetstream` worker settings within the validated bounds documented in [CONFIGURATION.md](CONFIGURATION.md#at-protocol-events-governance-and-workers).
-5. Select `platform` validation unless the operator intentionally wants the community lexicon's minimum business requirements. `community_lexicon` never relaxes authorization, tenant isolation, consent, privacy, storage, reference integrity, concurrency, or validation of supplied optional values.
-
-The API database is authoritative. Event lifecycle transactions commit the local event and immutable outbox intent together, and only then may the worker call CarpaNet. Do not place a PDS call in an API request transaction and do not recover by creating a remote record for a missing local event. All public snapshot values without a native community lexicon property—including every session, EAV value, aspect, and resolved lookup—must fit in the one readable description; coverage or size failure means no PDS enqueue, never truncation.
-
-Scale horizontally without starting per-tenant sockets: one leased Jetstream consumer maintains the global canonical record/cursor state, and tenant presentation joins filter discovery. PDS delivery uses expiring fenced claims and stable record keys so crashed workers are reclaimable and a retry after remote success reconciles rather than duplicates.
-
-### Multi-Tenant Hostnames And Reverse Proxy
-
-Multi-tenant deployments use three host classes in front of the Blazor BFF:
-
-| Host | Example | Proxy target | Notes |
+| Service | Compose Name | Purpose | Default Port |
 |---|---|---|---|
-| Public platform host | `events.example.org` | `islamu-event-ui:8080` | Configure as the public `PublicBaseUrl` / canonical URL. |
-| Wildcard tenant host | `*.events.example.org` | `islamu-event-ui:8080` | Used for tenant subdomain resolution. Keep it on the same Blazor BFF entry point. |
-| Dedicated admin host | `admin.example.org` | `islamu-event-ui:8080` | Configure the exact host or origin in `Bff:AdminHosts`; optional `Bff:AdminHostAllowedIpRanges` can restrict source networks. |
+| PostgreSQL | `postgres` | Application database | internal `5432` |
+| API | `islamu-event-api` | REST API, migrations, workers, health, metrics | `7039:8080` |
+| Blazor BFF | `islamu-event-ui` | Web UI, admin shell, YARP proxy to API | `7002:8080` |
 
-The reverse proxy must preserve the original host and scheme with trusted forwarded headers:
+### Default Services (started without profiles)
+
+These are included in the default `docker compose up` and are recommended for a functional deployment but not strictly required for the application to boot:
+
+| Service | Compose Name | Purpose | Default Port | Notes |
+|---|---|---|---|---|
+| Redis | `redis` | Distributed cache (HybridCache L2), sessions | internal | Optional for single-node; recommended for multi-replica |
+| Keycloak DB | `keycloak-db` | Identity provider database | internal | Only needed with local Keycloak |
+| Keycloak | `keycloak` | OIDC identity provider, realm import | `8080:8080` | Can use an external Keycloak instead |
+| Keycloak Init | `keycloak-init` | One-shot client-secret sync after realm import | — | Runs once at startup |
+| Mailpit | `mailpit` | Local SMTP capture for email testing | `1025`, `8025` | Replace with real SMTP in production |
+
+### Optional Services (via Compose profiles)
+
+Enable these only when needed. Each has its own Compose profile:
+
+| Profile | Services Started | Purpose |
+|---|---|---|
+| `storage` | `minio`, `minio-init` | S3-compatible object storage (default is local filesystem) |
+| `authz` | `cerbos-db`, `cerbos`, `cerbos-policy-sync` | External authorization PDP for fine-grained policies |
+| `webhooks` | `svix-db`, `svix` | Outgoing webhook provider |
+| `moderation` | `coop-db`, `coop-migrations`, `coop`, `coop-client` | Content moderation review queue |
+| `osprey` | `osprey` | Roost Osprey coordinator for signal evaluation |
+| `privacy-erasure-external` | `privacy-erasure-db`, `event-migrationservice` | External DB topology for privacy-erasure authority |
+
+```bash
+# Example: add S3 storage
+docker compose --profile storage up -d
+
+# Example: add Cerbos authorization
+AUTHORIZATION_PROVIDER=cerbos docker compose --profile authz up -d
+
+# Example: add webhooks
+docker compose --profile webhooks up -d
+```
+
+---
+
+## Deployment Tiers
+
+Choose the tier that matches your needs. The same application runs at every tier — only infrastructure and configuration change.
+
+### Tier 1: Bare Minimum
+
+**Target:** Small community, single operator, minimal maintenance.
+
+| Component | Required? |
+|---|---|
+| PostgreSQL | ✅ Yes |
+| API | ✅ Yes |
+| Blazor BFF | ✅ Yes |
+| Keycloak | Recommended (or use external OIDC provider) |
+| Redis | Optional (not needed for single-node) |
+| SMTP / Mailpit | Optional (needed only for email features) |
+| Everything else | Not needed |
+
+```bash
+# Minimal start — just the core + Keycloak for auth
+docker compose up -d postgres keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
+```
+
+- **Deployment mode:** Single-tenant (default, `DEPLOYMENT_MODE` unset).
+- **Authorization:** Local RBAC (`AUTHORIZATION_PROVIDER` unset or `local`).
+- **Storage:** Local filesystem (no MinIO needed).
+- **Email:** Disabled or use Mailpit for testing.
+
+### Tier 2: Community Platform
+
+**Target:** Production multi-tenant platform with tenant boundaries and policy controls.
+
+- Everything from Tier 1, **plus:**
+- `DEPLOYMENT_MODE=multi_tenant` set before first launch
+- Redis for distributed cache and sessions across replicas
+- Cerbos PDP for fine-grained authorization (`--profile authz`)
+- Real SMTP provider (replace Mailpit)
+- Reverse proxy with TLS
+
+### Tier 3: Ummah-Scale
+
+**Target:** High availability, strict isolation, compliance.
+
+- Everything from Tier 2, **plus:**
+- Cerbos HA cluster behind a dedicated load balancer
+- Separated database clusters for application data, identity (Keycloak), and policy storage
+- Centralized observability stack (Prometheus, Loki)
+- Multi-replica API and Blazor with shared Redis
+
+> [!NOTE]
+> No feature rewrite is required to move between tiers. Scale by adding infrastructure and updating configuration.
+
+---
+
+## Environment Configuration
+
+### Creating Your `.env` File
+
+```bash
+cp .env.example .env
+```
+
+The `.env` file is used by Docker Compose for variable interpolation. It is `.gitignore`d. The `.env.example` file contains safe local defaults.
+
+> [!WARNING]
+> Replace all default credentials before deploying to any shared, staged, or production environment.
+
+### Required Variables
+
+These must be set for the application to start:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `POSTGRESQL_HOST` | `postgres` | Database host |
+| `POSTGRESQL_PORT` | `5432` | Database port |
+| `POSTGRESQL_DATABASE` | `islamu_event_db` | Database name |
+| `POSTGRESQL_USERNAME` | `explore` | Database username |
+| `POSTGRESQL_PASSWORD` | `explore` | Database password |
+| `KEYCLOAK_BLAZOR_CLIENT_SECRET` | *(none — must generate)* | OIDC confidential client secret |
+| `KEYCLOAK_ENDPOINT` | `http://keycloak.localhost:8080` | Keycloak base URL |
+| `KEYCLOAK_REALM` | `ISLAMU` | Keycloak realm name |
+
+> [!IMPORTANT]
+> `KEYCLOAK_BLAZOR_CLIENT_SECRET` has no default. Generate it with `openssl rand -hex 32` and add it to your `.env` before starting.
+
+The API reads PostgreSQL credentials as discrete variables via `BootstrapSecretLoader`. Do **not** pre-construct a single `ConnectionStrings:DefaultConnection` URL-form string.
+
+### Recommended Variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `SETUP_SECRET` | *(internal random fallback)* | Operator secret for first-run onboarding at `/setup` |
+| `DEPLOYMENT_MODE` | *(blank = single-tenant)* | Set `multi_tenant` before first launch for multi-tenant |
+| `CONTROL_PLANE_PUBLIC_ORIGIN` | — | Control-plane admin host for BFF admin-host registration |
+
+### Optional Variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `AUTHORIZATION_PROVIDER` | *(blank = Local-first)* | `local` for Local RBAC, `cerbos` for Cerbos PDP |
+| `AI_PROVIDER` | `none` | AI assistant provider: `none`, `fake`, `openai`, `anthropic`, `azure-openai`, or `-compatible` variants |
+| `MCP_ENABLED` | `true` | Enable/disable the MCP adapter at `/mcp` |
+| `WEBHOOKS_PROVIDER` | `Local` | `Local`, `Svix`, or `Composite` |
+| `REPORTING_MODE` | `LocalOnly` | Reporting mode |
+| `SECRET_PROVIDER` | `None` | Set `Infisical` to enable Infisical secret loading |
+
+For the complete variable reference, see [CONFIGURATION.md](CONFIGURATION.md).
+
+---
+
+## First-Run Setup
+
+After starting the stack for the first time:
+
+### 1. Set Your Setup Secret
+
+Configure `SETUP_SECRET` in your `.env` before starting the API. If absent, the API uses an internal random fallback that is never printed — you must set `SETUP_SECRET` and restart to use the `/setup` flow.
+
+### 2. Open the Setup Wizard
+
+Navigate to `http://localhost:7002/setup`.
+
+### 3. Complete Onboarding
+
+The setup wizard guides you through:
+
+1. **Submit the setup secret** — entered through the BFF-mediated gateway (the browser never sends it directly to the API).
+2. **Configure authentication** — verify Keycloak realm/clients or set up an external provider.
+3. **Resolve preflight checks** — warnings don't block launch; serious issues require acknowledgement.
+4. **Launch the instance** — this is a one-time action that locks the setup gate.
+
+> [!NOTE]
+> **Setup session expires after 30 minutes** of inactivity. Successful setup actions extend the session. If it expires, re-enter your `SETUP_SECRET`; restarting the API is unnecessary unless the value itself changed.
+
+### Rate Limiting
+
+The setup-secret validation endpoint (`POST /api/InstanceOnboarding/validate-secret`) has rate limiting. Repeated failures should be treated as credential errors, not retried blindly.
+
+### Managed Provider Mode
+
+For automated/managed deployments, `SETUP_SECRET_REQUIRED=false` is allowed **only** when all of these are set:
+
+- `PROVISIONING_TRUSTED=true`
+- `PROVISIONING_MODE` = `managed-provider`, `managed_provider`, `managed-hosting`, or `managed`
+- `MANAGED_CLIENT_EXTERNAL_PROVIDER` (stable partner ID)
+- `PHYSICAL_TENANCY_MODE` (deployment posture marker)
+
+Setup endpoints still require setup-token authority — they never become anonymous.
+
+---
+
+## Identity Provider (Keycloak)
+
+### Local Keycloak (Default Compose Stack)
+
+The default stack includes a local Keycloak instance with automatic realm setup:
+
+1. **`keycloak`** — starts with the checked-in `docker/keycloak/realm-export.json`.
+2. **`keycloak-init`** — one-shot job that syncs `KEYCLOAK_BLAZOR_CLIENT_SECRET` into the `islamu-event-blazor` client.
+
+The realm export contains only `islamu-event-blazor` (BFF client) and `islamu-event-api` (bearer-only audience). No confidential client secrets are checked in.
+
+> [!WARNING]
+> Keycloak startup import is **not** a migration system. If a realm with the same name already exists, the import is skipped. For disposable local stacks, remove the Keycloak database volume to reapply changes from the realm export.
+
+**After rotating secrets or changing callback overrides:**
+
+```bash
+docker compose run --rm keycloak-init
+```
+
+**Keycloak environment variables:**
+
+| Variable | Purpose |
+|---|---|
+| `KEYCLOAK_DB_DATABASE`, `KEYCLOAK_DB_USERNAME`, `KEYCLOAK_DB_PASSWORD` | Local Keycloak database bootstrap |
+| `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | Initial admin account |
+| `KEYCLOAK_ENDPOINT` | Base Keycloak URL for API/Blazor authority |
+| `KEYCLOAK_REALM` | Realm name (default: `ISLAMU`) |
+| `KEYCLOAK_BLAZOR_CLIENT_ID` | BFF OIDC client ID (default: `islamu-event-blazor`) |
+| `KEYCLOAK_BLAZOR_CLIENT_SECRET` | **Required** — BFF confidential client secret |
+| `KEYCLOAK_BLAZOR_REDIRECT_URIS` | Optional JSON array of exact BFF login callbacks |
+| `KEYCLOAK_BLAZOR_WEB_ORIGINS` | Optional JSON array of exact BFF origins |
+| `KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS` | Optional `##`-separated list of logout callbacks |
+
+### Production Keycloak Checklist
+
+Before going to production, verify:
+
+- Realm name matches `KEYCLOAK_REALM`
+- Blazor client ID matches configured client
+- Login callbacks are exact `<public-origin>/signin-oidc` URIs
+- Logout callbacks are exact `<public-origin>/signout-callback-oidc` URIs
+- Web origins are exact public origins (no `+` or wildcard entries)
+- API audience and metadata address match the Keycloak endpoint exposed to API
+- Keycloak SMTP is configured before exposing self-registration
+- Password policy enforces 12+ characters with username/email/history checks
+
+### Using an External Keycloak
+
+Instead of the Compose-managed Keycloak, you can use an existing deployment:
+
+1. Create a temporary admin or service account scoped to the target realm.
+2. During setup, choose **"Let ISLAMU configure Keycloak clients now"**.
+3. Enter the Keycloak URL, realm, client IDs/secrets, and temporary credentials.
+4. Submit once. On success, the UI clears the bootstrap credentials.
+5. Disable or rotate the temporary credentials after setup.
+
+Alternatively, choose **"Use an already configured Keycloak realm"** if you've already created clients, redirect URIs, and secrets in Keycloak manually.
+
+### Post-Onboarding Maintenance
+
+After onboarding, instance administrators can use the admin auth-provider settings panel:
+
+- **Realm Doctor** — read-only verification of OIDC discovery and realm health
+- **Sync Preview/Apply** — additive-only drift repair for ISLAMU-owned clients
+- **Client Secret Rotation** — rotates the Blazor confidential client secret
+
+> [!CAUTION]
+> Temporary Keycloak admin credentials are used only for the active operation. They must never be saved to environment files, logs, screenshots, or browser storage.
+
+---
+
+## Optional Services
+
+### Storage (MinIO / S3)
+
+**Default behavior:** Local filesystem storage at `/app/storage-data/local` (mounted as Docker volume `local_storage_data`). No MinIO or S3 required.
+
+**To enable S3-compatible storage:**
+
+```bash
+docker compose --profile storage up -d
+```
+
+| Variable | Purpose |
+|---|---|
+| `STORAGE_S3_ENDPOINT` | S3-compatible endpoint URL |
+| `STORAGE_S3_PUBLIC_ENDPOINT` | Public-facing endpoint for file URLs |
+| `STORAGE_S3_REGION` | S3 region |
+| `STORAGE_S3_BUCKET_NAME` | Bucket name |
+| `STORAGE_S3_ACCESS_KEY_ID` | Access key |
+| `STORAGE_S3_SECRET_ACCESS_KEY` | Secret key |
+
+**Storage reconciliation** runs in dry-run mode by default. Enable destructive cleanup only after reviewing dry-run output and confirming backups:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `STORAGE_RECONCILIATION_ENABLED` | `true` | Enable reconciliation worker |
+| `STORAGE_RECONCILIATION_DRY_RUN` | `true` | Safe mode — logs only, no changes |
+| `STORAGE_RECONCILIATION_QUARANTINE_MISSING_OBJECTS` | `false` | Quarantine DB records with missing files |
+| `STORAGE_RECONCILIATION_QUARANTINE_ORPHAN_LOCAL_FILES` | `false` | Quarantine files without DB records |
+| `STORAGE_RECONCILIATION_DELETE_QUARANTINED_OBJECTS` | `false` | Delete quarantined items |
+
+### Authorization (Cerbos)
+
+**Default behavior:** Local RBAC — no external authorization service needed.
+
+**To enable Cerbos PDP:**
+
+```bash
+AUTHORIZATION_PROVIDER=cerbos docker compose --profile authz up -d
+```
+
+| Variable | Purpose |
+|---|---|
+| `AUTHORIZATION_PROVIDER` | `local` or `cerbos` |
+| `CERBOS_GRPC_ENDPOINT` | PDP gRPC endpoint (default: `http://cerbos:3593`) |
+| `CERBOS_HTTP_ENDPOINT` | PDP HTTP endpoint (default: `http://cerbos:3592`) |
+| `CERBOS_ADMIN_USERNAME` | Cerbos Admin API username |
+| `CERBOS_ADMIN_PASSWORD_HASH` | Base64 bcrypt hash for Cerbos server |
+| `CERBOS_ADMIN_PASSWORD` | Plaintext password for `cerbosctl` policy sync |
+
+> [!WARNING]
+> When `AUTHORIZATION_PROVIDER=cerbos`, Cerbos PDP outages **fail closed** (deny all requests). The system does **not** automatically fall back to local RBAC. Set `AUTHORIZATION_PROVIDER=local` explicitly if you need to bypass Cerbos.
+
+For Coolify-managed Cerbos, see [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md).
+
+### AI Assistant
+
+**Default behavior:** Disabled. The application runs without AI features.
+
+| Variable | Purpose |
+|---|---|
+| `AiProvider:Enabled` | Enable AI provider readiness evaluation |
+| `AiProvider:Provider` | `none`, `fake`, `openai`, `openai-compatible`, `anthropic`, `anthropic-compatible`, `azure-openai` |
+| `AiProvider:EndpointUrl` | Provider base URL (official providers have built-in defaults) |
+| `AiProvider:ApiKey` | Provider API key (never expose in logs or health data) |
+| `AiProvider:ModelId` | Default model identifier |
+
+Compose accepts Infisical-compatible keys: `AI_PROVIDER`, `AI_ENDPOINT`, `AI_MODEL_ID`, `AI_API_KEY`.
+
+### MCP Adapter
+
+The API-hosted Streamable HTTP MCP adapter is **mapped by default** at `/mcp`. Disable with `Mcp:Enabled=false` or the runtime setting `mcp.enabled=false`.
+
+MCP uses API-key authentication for external clients. Configure `ISLAMU_EVENT_API_KEY` for scoped calls with `mcp:read` and/or `mcp:propose` grants.
+
+For MCP debugging, see [MCP_DEBUGGING.md](MCP_DEBUGGING.md).
+
+### Webhooks (Svix)
+
+```bash
+docker compose --profile webhooks up -d
+```
+
+Set `WEBHOOKS_PROVIDER=Svix` to route outgoing webhooks through Svix instead of the built-in local provider.
+
+### Moderation (Coop)
+
+```bash
+docker compose --profile moderation up -d
+```
+
+Keep `REPORTING_MODE=LocalOnly` unless Coop provider endpoints are intentionally enabled.
+
+### AT Protocol Federation
+
+Federation is **disabled by default** (`federation.atproto_events_enabled=false`). Enabling it activates Jetstream discovery and outbound event/RSVP publication. This is an advanced feature requiring:
+
+- AT Protocol OAuth keys (`ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS`, `ATPROTO_SESSION_ENCRYPTION_KEYRING`, `ATPROTO_SESSION_JWT_PRIVATE_JWKS`)
+- Public HTTPS origin (`Atproto:PublicUrl`)
+- PostgreSQL schema migrations for ATProto records
+
+For full details, see [FEDERATION.md](FEDERATION.md) and [CONFIGURATION.md](CONFIGURATION.md#at-protocol-events-governance-and-workers).
+
+### Privacy Erasure External Topology
+
+**Default behavior:** Colocated mode — the privacy-erasure authority ledger runs in the main PostgreSQL database with zero extra infrastructure.
+
+For external database topology:
+
+```bash
+PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase \
+docker compose --profile privacy-erasure-external up -d
+```
+
+This starts a separate authority PostgreSQL and the `event-migrationservice`. Supply separate runtime and migrator connection strings. See [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) for guidance.
+
+---
+
+## Reverse Proxy & TLS
+
+For production, place a TLS-terminating reverse proxy (Nginx, Caddy, Traefik, etc.) in front of the Blazor BFF.
+
+### Minimum Requirements
+
+| Requirement | Details |
+|---|---|
+| Route target | `islamu-event-ui:8080` |
+| Preserve `Host` header | Required for tenant resolution |
+| Forward headers | `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host` |
+| Keycloak redirect URIs | Must match the public origin seen by browsers |
 
 ```text
+# Required forwarded headers
 X-Forwarded-Host: <browser-facing-host>
 X-Forwarded-Proto: https
 X-Forwarded-For: <client-ip>
 ```
 
-Do not route `admin.example.org` through tenant wildcard DNS. The Blazor BFF classifies configured admin hosts after forwarded-header processing and skips tenant subdomain/custom-domain lookup for those hosts. If `Bff:AdminHostAllowedIpRanges` is configured, admin-host requests outside the allowed exact IP/CIDR ranges fail closed with `403`.
+> [!IMPORTANT]
+> Browsers should talk **only** to the Blazor BFF. The BFF proxies API calls internally. Direct browser-to-API access is not required.
 
-Tenant custom domains are operator/tenant-owned CNAMEs to the public edge target. Publish the CNAME target you expect tenants to use, but keep custom-domain validation separate from the dedicated admin host.
+---
 
-### Local SMTP Capture
+## Multi-Tenant Deployment
 
-The default Compose stack starts Mailpit without a profile so first-run registration and SMTP tests can capture messages locally instead of delivering real email.
+Set `DEPLOYMENT_MODE=multi_tenant` **before first-run onboarding**. This cannot be changed from the admin UI after setup.
 
-| Key | Purpose |
-|---|---|
-| `MAILPIT_SMTP_PORT`, `MAILPIT_UI_PORT` | Host port bindings for Mailpit SMTP and the web UI. Defaults: `1025`, `8025`. |
-| `MAILPIT_TAG` | Mailpit image tag. Defaults to `latest` for disposable local development. Pin a version for shared environments. |
-| `MAILPIT_MAX_MESSAGES` | Maximum retained messages before pruning. Default: `5000`. |
-| `MAIL_SMTP_HOST`, `MAIL_SMTP_PORT` | API SMTP bootstrap/source values. Local Compose defaults: `mailpit`, `1025`. |
-| `MAIL_SMTP_ENCRYPTION` | SMTP security mode. Local Mailpit default: `None`. |
-| `MAIL_SMTP_USERNAME`, `MAIL_SMTP_PASSWORD` | Optional credentials. Leave blank for local Mailpit. |
-| `MAIL_SMTP_FROM_ADDRESS`, `MAIL_SMTP_FROM_NAME` | Default sender metadata for local SMTP testing. |
+### DNS and Host Configuration
 
-The `/smtp` Infisical folder and `.env` file use the same `MAIL_SMTP_*` names. The older `SMTP_*` environment aliases are still supplied by Compose for local compatibility, but new secret bindings should prefer `MAIL_SMTP_*`.
+Multi-tenant deployments use three host classes:
 
-Before testing external SMTP, use Mailpit first: send one product dispatch, confirm the PostgreSQL outbox/attempt/receipt graph settles, then inspect the captured message at `http://localhost:8025`. For a shared test SMTP account, use a non-production recipient/domain and the same `MAIL_SMTP_*` inputs; never copy provider credentials, recipient addresses, or bodies into tickets. Instance administrators can pause all admission and apply a temporary bounded global rate override through `/api/admin/email-dispatch/control`; clear the override after the incident so static configuration becomes authoritative again.
-
-### AI Assistant
-
-The AI assistant is optional. Self-hosted deployments can run with AI disabled, with the deterministic fake provider for smoke tests, with the first-class OpenAI Responses API provider, with the first-class Anthropic Messages API provider, with explicitly configured compatible endpoints, or with Azure OpenAI.
-
-Compose accepts the Infisical-compatible `/ai` keys `AI_PROVIDER`, `AI_ENDPOINT`, `AI_MODEL_ID`, `AI_API_KEY`, and `AI_TOOL_PROPOSALS_ENABLED`; the API maps them to `AiProvider:*` during startup.
-
-| Canonical .NET Key | Purpose |
-|---|---|
-| `AiProvider:Enabled` | Enables provider readiness evaluation. Disabled mode is health-safe and performs no provider call. |
-| `AiProvider:Provider` | Supported values include `none`, `fake`, `openai`, `openai-compatible`, `anthropic`, `anthropic-compatible`, and `azure-openai`. Keep compatible providers for generic/self-hosted endpoints. |
-| `AiProvider:EndpointUrl` | Provider base URL for OpenAI-compatible, Anthropic-compatible, or Azure OpenAI mode. The first-class `openai` and `anthropic` providers default to their official API base URLs when unset. Do not include credentials, query strings, or fragments. Azure OpenAI endpoints must use HTTPS. |
-| `AiProvider:ApiKey` | Sensitive provider credential. Never expose through logs, health data, metrics, browser payloads, issue templates, or screenshots. |
-| `AiProvider:ModelId` | Default model identifier for provider calls. For Azure OpenAI this is the deployment name. Health data reports only configured/not-configured flags, not the raw value. |
-| `AiProvider:AzureCredentialMode` | Azure OpenAI credential mode: `api-key` or `default-azure-credential`. Prefer `default-azure-credential` for Azure-hosted deployments with managed identity. |
-| `AiProvider:AzureTenantId` | Optional tenant ID for `DefaultAzureCredential`. |
-| `AiProvider:AllowLocalProviderEndpoints` | Explicit opt-in for loopback/private provider URLs in local-model deployments. Keep disabled for public SaaS providers. |
-| `AiRetentionCleanup:*` | Static scheduler settings for tenant-scoped AI conversation retention cleanup. The per-tenant retention window remains `ai_assistant.retention_days`. |
-| `Mcp:*` | Optional API-hosted Model Context Protocol adapter posture. Mapped by default through startup at `/mcp`; set `Mcp:Enabled=false` to unmap. |
-
-Operational notes:
-
-- `/health` includes `ai-provider` and `ai-retention-cleanup`. Disabled AI provider mode is healthy; disabled retention cleanup is intentionally degraded.
-- AI run progress uses authenticated polling through the API run-status route. Streaming is reserved and disabled until a future hardening slice implements transport, timeout, cancellation, logging, authentication, and fallback behavior.
-- The Blazor UI gates assistant reference/proposal actions by API HAL links. Do not recreate role/claim checks in the browser.
-- `AiRetentionCleanup:DryRun=true` is recommended before first enabling destructive AI history redaction in a new environment.
-- MCP is optional but mapped by default. Keep startup `Mcp:Enabled=true` or unset for the API-hosted stateless Streamable HTTP MCP endpoint at `/mcp`; set `Mcp:Enabled=false` only when the deployment intentionally unmaps MCP. Instance runtime setting `mcp.enabled` can still disable the adapter without changing route shape. The adapter exposes safe registry discovery, first-class registry-projected proposal tools, conversation metadata resources, and proposal-first tool mutation; mutating MCP tools remain registry-backed and require the normal product/API confirmation path before side effects occur.
-- For MCP, expose only the API endpoint configured by startup `Mcp:EndpointPath`, verify the `mcp-adapter` readiness check, and keep `Mcp:Stateless=true`. `Mcp:EnableLegacySse=true` is the default startup ceiling, but current runtime legacy SSE remains unavailable. MCP is API-key-first for external clients: configure a non-empty `X-API-Key`/`ISLAMU_EVENT_API_KEY` for scoped calls, grant `mcp:read` for generic read resources, grant `mcp:read` plus event read-equivalent scope authority for private event-management reads, grant `mcp:propose` for proposal tools/prompts, never send bearer and non-empty API-key credentials together, and expect no-key, blank-key, invalid-key, or revoked-key requests to see only anonymous-safe registry discovery. Instance administrators can lock tenant overrides with `governance.lock_tenant_mcp` and `governance.lock_tenant_mcp_legacy_sse`; tenant administrators can override only unlocked MCP runtime values. Self-hosters can disable MCP quickly by setting runtime `mcp.enabled=false`; set startup `Mcp:Enabled=false` and restart only when the endpoint must be unmapped.
-- Do not run `stdio` or legacy SSE as product MCP transports from this stack. `stdio` remains deferred by [ADR-011](adr/ADR-011-local-mcp-stdio-diagnostic-host.md) unless a future local-only diagnostic host is separately approved, and legacy SSE remains unavailable even if `Mcp:EnableLegacySse=true` and `mcp.enable_legacy_sse=true` because stateful sessions and session affinity require a future ADR/test gate. Native AOT publication for the API host is also unverified until a dedicated publish profile proves the explicit SDK registrations and registry-projected tools survive trimming/AOT.
-- Do not enable stateful sessions, sampling, elicitation, roots, completions, progress notifications, resource subscriptions, list-changed notifications, or client-specific compatibility shims for a self-hosted MCP client without a new ADR and release note. The default compatibility answer is to keep the current stateless proposal-first surface unchanged or explicitly disable MCP for that deployment.
-- MCP support requests must not include prompts, tool payloads, provider responses, tenant IDs, endpoint URLs, API keys, model secrets, or raw MCP request/response bodies. Use [MCP_DEBUGGING.md](MCP_DEBUGGING.md) for redacted local debugging and client-smoke steps.
-
-## First-Run Setup Secret
-
-Configure `SETUP_SECRET` before starting the API for interactive first-run onboarding. The API accepts the configured value until onboarding completes and locks setup mode; it never writes the value to logs or terminal output. If the variable is absent, setup validation stays fail-closed behind an internal random fallback; set `SETUP_SECRET` and restart before continuing:
-
-1. Open `/setup` and submit the operator setup secret through the BFF-mediated gateway. The browser must not store it or send a privileged header directly to the API.
-2. Complete authentication-provider verification and administrator authentication. After authentication, the UI renders one task overview derived from the server onboarding status, provider, and preflight endpoints. Authorization is conditional: explicit deployment intent skips its choice page, while blank intent opens a Local-first single-column page with advanced Cerbos configuration.
-3. Resolve every blocking preflight check. Ordinary warnings and remediation guidance do not block launch; a warning classified as serious can require explicit operator acknowledgement.
-4. Launch once. Single-tenant setup provisions the configured default-tenant state and hands off to the events/instance-settings experience. Multi-tenant platform setup does not require a tenant and hands off to `/admin/instance`; creating and onboarding the first tenant remains optional and separately tenant-scoped.
-
-The validation endpoint is `POST /api/InstanceOnboarding/validate-secret`. The setup-secret rate-limit policy allows only a small number of attempts per minute; repeated failures should be treated as operator or credential errors, not retried blindly.
-
-The BFF setup session expires after 30 minutes without setup activity. Successful setup-secret status and synchronization calls extend the session by another 30 minutes. When it expires, re-enter the configured `SETUP_SECRET`; restarting `islamu-event-api` is unnecessary unless the deployment value itself changed.
-
-Refresh and retry actions always re-fetch authoritative server state; do not resume from a stale browser step. When setup-session re-authentication is required, the UI returns to the requested onboarding route after validation and reloads persisted server state. Completion is idempotent and server-guarded, so a retry after a lost response must return the completed state rather than repeat destructive provisioning. Once launch completes, the pre-authentication setup gate locks and further setup-secret attempts are rejected. Use authenticated instance/tenant administration for later changes.
-
-Authorization onboarding follows deployment intent. With `AUTHORIZATION_PROVIDER=local`, the server marks Local RBAC ready and the authenticated journey goes directly to instance setup without contacting Cerbos. With `AUTHORIZATION_PROVIDER=cerbos`, start the `authz` profile or provide an external Cerbos deployment; the API tests the instance PDP gRPC health service in the background and publishes the bundled policies to the instance Admin API through server-held credentials. FullLocal Aspire waits for Cerbos health before starting the API; Compose is also protected by bounded API retries when service startup ordering is slower. The journey skips the provider-choice page while reconciliation is pending or ready, but readiness remains blocked and runtime authorization remains fail-closed until both operations succeed. A final failure appears as a locked authorization task where the operator can fix deployment values and retry. When the selector is blank, the one-column page defaults to Local RBAC and reveals Cerbos only through **Advanced: use Cerbos PDP**.
-
-Managed hosting operators that provision through the authorized managed-provider endpoint can set `SETUP_SECRET_REQUIRED=false` only together with `PROVISIONING_TRUSTED=true`, a managed `PROVISIONING_MODE`, `MANAGED_CLIENT_EXTERNAL_PROVIDER`, and `PHYSICAL_TENANCY_MODE`. In that mode the interactive setup-secret lane is not public: setup-secret-protected endpoints still reject missing or invalid secrets, and provider automation must authenticate as the platform/operator path.
-
-## Keycloak Realm
-
-The Compose file imports `./docker/keycloak/realm-export.json` into Keycloak, then runs the one-shot `keycloak-init` service. Aspire `local-full` imports the same checked-in realm export. The init job authenticates with the local Keycloak admin account, locates clients by `clientId`, and synchronizes the confidential Blazor BFF client secret from `KEYCLOAK_BLAZOR_CLIENT_SECRET`. The export contains no confidential client secret. Compose requires the operator-provided value; local Aspire generates a persisted secret parameter when no deployment value exists and shares it only with the trusted server resources. Operators should not manually edit the Keycloak UI to match it. The API client is a bearer-only audience target and has no static client secret by default.
-
-The core realm export intentionally contains only `islamu-event-blazor` and `islamu-event-api`. The optional commercial Event Control Plane is deployed from its private repository and applies its own additive realm extension; do not add its clients, scopes, roles, or secrets to this export.
-
-Keycloak startup import is not a migration system. When a realm with the same name already exists in the persistent Keycloak database, startup import is skipped to avoid overwriting existing data. For disposable local stacks, remove the Keycloak database volume before expecting changes in `docker/keycloak/realm-export.json` to reapply.
-
-For production, verify:
-
-- realm name matches `KEYCLOAK_REALM`;
-- Blazor client ID matches the configured client (`islamu-event-blazor` in Compose);
-- login callbacks are exact `<public-origin>/signin-oidc` URIs;
-- logout callbacks are exact `<public-origin>/signout-callback-oidc` URIs;
-- web origins are exact public origins, with no `+` or wildcard entries;
-- API audience and metadata address match the Keycloak endpoint exposed to the API.
-
-The realm contract requires TLS for external addresses, verified email for self-registration, a 12-character password minimum with username/email/history checks, a 30-minute ordinary idle session, a 10-hour ordinary maximum session, 30/90-day remember-me bounds, and 30/90-day offline-session bounds with the absolute maximum enabled. `keycloak-init` reapplies those managed-realm policies because startup import does not update an existing realm. Configure Keycloak SMTP before exposing registration; local Aspire and the example Compose environment route identity mail to Mailpit.
-
-`KEYCLOAK_BLAZOR_CLIENT_SECRET` is fail-closed for Compose startup: `keycloak-init` exits non-zero when it is missing. Generate a development value with `openssl rand -hex 32`; there is no checked-in default or fallback flag. Rerun `docker compose run --rm keycloak-init` after rotating the secret or changing callback/origin overrides. If a deployment intentionally sets `KEYCLOAK_API_CLIENT_SECRET` for a non-bearer-only API client, rerun the init job after rotating that value too.
-
-### External Keycloak Bootstrap
-
-When using an existing Keycloak deployment instead of the Compose-managed realm, first-run onboarding can configure the ISLAMU clients through the auth-provider setup page. Choose **Let ISLAMU configure Keycloak clients now** only when the operator has a temporary Keycloak admin or service account credential with enough permission to read the target realm, create the realm when using create mode, create or locate OIDC clients, and set client secrets.
-
-The setup bootstrap path is protected by the setup secret before launch. The browser sends the one-time Keycloak bootstrap credential only to the Blazor BFF; the BFF strips any browser-controlled setup-secret header and forwards the trusted setup secret to the API. The API passes the credential to the Infrastructure Keycloak Admin API adapter for that request only. ISLAMU stores the resulting runtime OIDC configuration and Blazor client secret, but it does **not** store the Keycloak admin username/password, Keycloak access token, or raw Keycloak Admin API response body.
-
-Recommended external-Keycloak operator flow:
-
-1. Create a temporary Keycloak admin or service account scoped to the target realm-management operations.
-2. From the authenticated setup task overview, open authentication-provider setup and select **Let ISLAMU configure Keycloak clients now**.
-3. Enter the Keycloak base URL, target realm, Blazor BFF client ID/secret, optional API client ID, an API client secret only when that client is intentionally confidential, and the temporary bootstrap credential.
-4. Submit once. On success, the UI clears the one-time bootstrap credential fields and continues setup.
-5. Disable or rotate the temporary Keycloak bootstrap credential after setup succeeds.
-
-Use **Use an already configured Keycloak realm** when the operator has already created clients, redirect URIs, web origins, protocol mappers, and client secrets in Keycloak. In that mode ISLAMU only stores the runtime OIDC authority/client settings and does not call the Keycloak Admin API.
-
-Configured authentication credentials do not remove provider management from instance onboarding. Before launch, the configured task continues to link to `/onboarding/auth-provider`; after launch, the HAL-authorized action opens `/settings/instance?section=auth-providers`, where an instance administrator can diagnose the realm, preview synchronization, apply additive repairs, and rotate the managed client secret. If the authoritative provider/task status is missing or returns an error, treat the task as unavailable and repair the backing service before retrying; do not infer readiness from the presence of credentials alone.
-
-External bootstrap is idempotent for client lookup/update: rerunning setup against the same realm locates existing clients by `clientId` and updates their secrets. It does not delete existing realms, users, roles, or unrelated clients. Keep a Keycloak database backup before using create mode in shared environments.
-
-### Post-Onboarding Keycloak Maintenance
-
-After onboarding, instance administrators can use the admin auth-provider settings panel to diagnose and repair Keycloak drift without storing permanent Keycloak admin credentials.
-
-Available operations:
-
-- **Realm doctor** is read-only in basic mode and verifies saved runtime configuration plus OIDC discovery. With temporary admin credentials, it also checks realm/client availability, authorization-code settings, refresh-token settings, `offline_access` role/scope mappings, and the optional API audience target.
-- **Sync preview** builds an additive `RealmSyncPlan`. Without temporary admin credentials it shows desired state only; with temporary credentials it compares the current realm and returns safe drift operations.
-- **Sync apply** requires instance-admin authorization, temporary admin credentials, and explicit Keycloak backup confirmation. It only adds or updates ISLAMU-owned clients, scopes, protocol mappers, redirect URIs, web origins, and `offline_access` mappings. It does not delete realms, users, groups, unrelated clients, redirect origins, or operator-managed customizations.
-- **Client-secret rotation** targets the configured Blazor confidential client. Application-managed rotation writes the new secret to Keycloak first and persists the ISLAMU runtime secret only after Keycloak accepts it. Deployment-managed secrets return operator instructions instead of being silently overwritten.
-
-Temporary Keycloak admin usernames/passwords are used only for the active doctor, preview, apply, or rotation request. They must not be saved to appsettings, environment variables, Infisical, database settings, logs, screenshots, support bundles, or browser storage. Before applying a sync plan, back up the Keycloak PostgreSQL database and keep the backup until login and admin access have been verified after the repair.
-
-## Migrations
-
-There are two migration paths:
-
-| Path | Applies To | Behavior |
+| Host Type | Example | Configuration |
 |---|---|---|
-| `Event.MigrationService` | Aspire/local-dev orchestration | Applies `ExploreDbContext` and data-protection migrations, seeds, then exits before API/Blazor start. |
-| `Explore.API` startup | Docker Compose and direct API hosting | Runs EF migrations and database seeding on startup outside `Testing`. |
+| Public platform host | `events.example.org` | Set as `PublicBaseUrl` |
+| Wildcard tenant host | `*.events.example.org` | Used for subdomain-based tenant resolution |
+| Dedicated admin host | `admin.example.org` | Set in `Bff:AdminHosts` |
 
-The optional Compose profile `privacy-erasure-external` starts a distinct
-authority PostgreSQL service and one-shot `Event.MigrationService`. The
-migration service waits for both databases, applies application and external
-authority migrations with the migrator connection, and must complete before
-API startup. API receives only the runtime authority connection. Blazor
-receives neither authority connection. Supply separate runtime and migrator
-roles before enabling this profile; the blank `.env.example` placeholders are
-intentionally not runnable credentials.
+All three route to the same Blazor BFF entry point (`islamu-event-ui:8080`).
 
-### Creating Initial Migrations From Scratch
+> [!WARNING]
+> Do **not** route the admin host through tenant wildcard DNS. The BFF classifies admin hosts separately and skips tenant subdomain/custom-domain lookup for those hosts.
 
-When bootstrapping EF Core migrations from a clean repository state, run the commands from the repository root in this order:
+Optional: Use `Bff:AdminHostAllowedIpRanges` to restrict admin-host access to specific IP/CIDR ranges. Requests outside the allowed ranges get `403`.
 
-1. Create the data-protection migration first so the dedicated key-store context keeps its own migration history and output folder:
+### Tenant Custom Domains
 
-   ```bash
-   dotnet ef migrations add init --context DataProtectionKeyContext --project Explore.Persistence --startup-project Explore.API --output-dir Migrations/DataProtection
-   ```
+Tenant custom domains are operator/tenant-owned CNAMEs pointing to the public edge target. Keep custom-domain validation separate from the dedicated admin host.
 
-2. Create the primary application schema migration for `ExploreDbContext`:
+---
 
-   ```bash
-   dotnet ef migrations add init --context ExploreDbContext --project Explore.Persistence --startup-project Explore.API
-   ```
+## Email Configuration
 
-Do not reverse this order when starting from scratch; both contexts are part of the supported schema bootstrap path.
+### Local Development (Mailpit)
 
-## Reverse Proxy
+The default stack includes Mailpit for local email capture:
 
-Place TLS termination in front of `islamu-event-ui` and route browser traffic to port `8080` inside the container. The Blazor BFF proxies API calls; browsers should not need direct API access.
+| Variable | Default | Purpose |
+|---|---|---|
+| `MAIL_SMTP_HOST` | `mailpit` | SMTP host |
+| `MAIL_SMTP_PORT` | `1025` | SMTP port |
+| `MAIL_SMTP_ENCRYPTION` | `None` | SMTP security mode |
+| `MAIL_SMTP_FROM_ADDRESS` | `noreply@localhost` | Sender address |
 
-Minimum proxy requirements:
+View captured emails at `http://localhost:8025`.
 
-- preserve `Host`;
-- forward `X-Forwarded-For` and `X-Forwarded-Proto`;
-- configure `ForwardedHeadersTrust` in the API before relying on forwarded host/IP values;
-- use the same public origin in Keycloak redirect URIs and web origins.
+### Production SMTP
 
-## Support Access Operations
+Replace the Mailpit values with your SMTP provider credentials:
 
-Admin support access is off by default and governed by instance settings under `support_access.*`. Keep `support_access.enabled=false` until operational approval, audit retention, and tenant trust communication are ready.
+| Variable | Purpose |
+|---|---|
+| `MAIL_SMTP_HOST` | SMTP server hostname |
+| `MAIL_SMTP_PORT` | SMTP port (typically `587` for STARTTLS) |
+| `MAIL_SMTP_ENCRYPTION` | `None`, `StartTls`, or `SslOnConnect` |
+| `MAIL_SMTP_USERNAME` | SMTP username |
+| `MAIL_SMTP_PASSWORD` | SMTP password |
+| `MAIL_SMTP_FROM_ADDRESS` | Sender email address |
+| `MAIL_SMTP_FROM_NAME` | Sender display name |
 
-Operational controls:
+### Email Dispatch Configuration
 
-- Use `support_access.enabled=false` as the global kill switch. It denies new sessions and runtime validation of forwarded support context.
-- Keep `support_access.allow_write_mode=false` unless the deployment has an explicit break-glass approval process and alerting for write-capable sessions.
-- Keep Redis or another distributed cache available for Blazor BFF instances so `IBffSupportAccessSessionStore` can bind the active session reference to the authenticated user and OIDC `sid`.
-- Use the instance-admin support-access console to inspect session history, review audit evidence, and force-stop an active session during incident response.
-- Tenant admins can review their tenant's support-access evidence from Tenant Administration -> Support Evidence. That tenant view is read-only and shows audit drill-in only when the API/HAL response grants the `audit-events` affordance.
-- Backups must preserve `SupportAccessSession` and `SupportAccessAuditEvent` data with the application PostgreSQL database. Do not treat support-access audit evidence as disposable cache data.
+The API uses a PostgreSQL-based outbox pattern for email dispatch. Configure these for capacity:
 
-## Health Checks
+| Variable | Default | Purpose |
+|---|---|---|
+| `EmailDispatchProcessor:MaxConcurrentDispatches` | `8` | Global concurrent dispatch limit |
+| `EmailDispatchProcessor:MaxConcurrentDispatchesPerTenant` | `2` | Per-tenant concurrent limit |
+| `EmailDispatchProcessor:GlobalSmtpRateLimitPerMinute` | `120` | Global SMTP rate limit |
+| `EmailDispatchProcessor:TenantSmtpRateLimitPerMinute` | `30` | Per-tenant SMTP rate limit |
 
-The Blazor BFF `/health` response includes `atproto-authentication`. Disabled AT Protocol login is healthy dormant state with `enabled=false`. When login is enabled, invalid public identity, an unavailable BFF OAuth signing ring, or an unregistered state/session adapter makes this check unhealthy with a bounded `failureCode`. Adapter registration is not a live cache/database test. The probe never parses the other two ATProto key rings, resolves a handle, contacts a user PDS, performs OAuth discovery, or returns configuration values; rely on the remaining `/health` dependency checks and bounded operation failures for those conditions.
+> [!TIP]
+> Before testing external SMTP, use Mailpit first: send one product dispatch, confirm the outbox settles, then inspect the captured message at `http://localhost:8025`.
+
+**RabbitMQ dispatch** is optional transport infrastructure. The default PostgreSQL-only dispatch mode requires no message broker. Enable RabbitMQ only if you have an operator-provided broker and set `EmailDispatchRabbitMq:Enabled=true`.
+
+---
+
+## Health Checks & Monitoring
 
 | Endpoint | Host | Purpose |
 |---|---|---|
-| `/alive` | API, Blazor | Liveness probe. |
-| `/health` | API, Blazor | Readiness probe for dependencies and shutdown state. |
-| `/metrics` | API | Prometheus metrics endpoint. |
+| `/alive` | API, Blazor | Liveness probe — is the process running? |
+| `/health` | API, Blazor | Readiness probe — are dependencies healthy? |
+| `/metrics` | API | Prometheus metrics |
 
-Treat `Unhealthy` as non-deployable. Treat `Degraded` as acceptable only when the response identifies an optional dependency that is intentionally disabled.
+**Interpreting health status:**
 
-For explicit `AUTHORIZATION_PROVIDER=cerbos`, PDP reachability alone is not onboarding readiness. The authorization status is ready only after the background reconciliation also publishes the bundled policy package. A failed verification or publish remains fail-closed and must be repaired from the deployment-owned authorization task before launch.
+| Status | Meaning | Action |
+|---|---|---|
+| `Healthy` | All dependencies ready | Good to serve traffic |
+| `Degraded` | Optional dependency intentionally disabled | Acceptable when expected |
+| `Unhealthy` | Critical dependency unavailable | **Do not serve traffic** |
 
-Basic Email Dispatch readiness is reported by the API `email-dispatch` health check. `Degraded` means dispatch is intentionally disabled, globally paused, or has a bounded warning condition. `Unhealthy` means the selected trigger is unusable, for example TickerQ mode with its scheduler disabled. The payload exposes only booleans for global pause/rate override, never operator reason or actor. RabbitMQ is not part of Basic Dispatch Mode readiness.
+**Notable health checks:**
 
-The approved lifecycle-email expansion remains self-hostable with PostgreSQL plus SMTP; Mailpit remains the local capture service and RabbitMQ remains optional. Before enabling new lifecycle triggers, operators must configure bounded concurrency/rates/backpressure, retention/redaction cleanup, alert thresholds, and tenant/global pause controls, then prove a PostgreSQL -> attempt/receipt -> SMTP -> Mailpit run. Required cancellation/moderation work must not be starved by one tenant or optional reminders.
+| Check | Notes |
+|---|---|
+| `ai-provider` | Disabled AI is healthy (dormant state) |
+| `ai-retention-cleanup` | Disabled cleanup is intentionally degraded |
+| `email-dispatch` | Degraded if dispatch is paused or disabled |
+| `storage` | Verifies selected provider can write to data root |
+| `storage-reconciliation` | Healthy in dry-run mode; degraded if disabled |
+| `atproto-authentication` | Disabled AT Protocol login is healthy dormant state |
+| `idempotency-cleanup` | Healthy in delete or dry-run mode |
 
-Coop decision execution uses retained signed callbacks plus a specialized fenced effect pointer. Before enabling Coop reporter-outcome convergence, verify `/health/webhooks/coop-effects`, duplicate/conflict quarantine, replay-window cleanup ordering, command-success receipt/pointer settlement, and authenticated HAL redrive in the target deployment. Set `Webhooks:IncomingProcessing:Enabled=false` and restart API replicas to pause effect draining during an incident without disabling durable callback intake.
+### Support Access
 
-Optional RabbitMQ dispatch readiness is reported separately by `email-dispatch-rabbitmq`. With `EmailDispatchRabbitMq:Enabled=false` the check is healthy without requiring a broker. If an operator explicitly enables RabbitMQ mode, broker or topology failures make readiness unhealthy because the selected transport cannot safely publish pointer events.
+Admin support access is off by default (`support_access.enabled=false`). Enable it only after operational approval, audit retention, and tenant trust communication are ready. Keep `support_access.allow_write_mode=false` unless you have an explicit break-glass approval process.
 
-Expired write-retry replay-cache cleanup is reported by `idempotency-cleanup`. `Healthy` means cleanup is enabled in delete or dry-run mode. `Degraded` means cleanup is intentionally disabled; expired keys remain ineligible for replay, but physical cleanup is paused.
+---
 
-Storage readiness is reported by `storage`. Local-first deployments do not need MinIO/S3 for this check; the API verifies the selected local provider can write to the API-owned data root. S3-compatible readiness is probed only when the instance selects that provider.
+## Backup & Upgrade
 
-Storage reconciliation posture is reported by `storage-reconciliation`. `Healthy` means the worker is enabled in dry-run or mutation mode. `Degraded` means reconciliation is intentionally disabled. Invalid reconciliation settings fail startup through options validation.
-
-## Backup And Upgrade
+### Pre-Upgrade Checklist
 
 Before every upgrade:
 
-1. Back up application PostgreSQL data.
-2. Back up Keycloak PostgreSQL data.
-3. Back up object storage. For local-first Compose, include the `local_storage_data` volume. If the optional `storage` profile or external S3-compatible provider is selected, include `minio_data` or the provider bucket as well.
-4. Record image tags, commit SHA, enabled Compose profiles, and secret-provider key names.
-5. Read release notes for migrations, config changes, rollback constraints, and docs impact.
+1. ✅ Back up application PostgreSQL data
+2. ✅ Back up Keycloak PostgreSQL data (if using local Keycloak)
+3. ✅ Back up object storage — `local_storage_data` volume, `minio_data`, or S3 bucket
+4. ✅ Record image tags, commit SHA, enabled Compose profiles, and secret-provider key names
+5. ✅ Read release notes for migrations, config changes, and rollback constraints
 
-Before first-run provider synchronization or a repair rerun in a shared environment, take the same provider/database backup that would be required for an upgrade. Setup and maintenance repair existing ISLAMU-owned resources additively. Destructive realm/client/policy deletion, reset, or reimport is outside the recovery flow and requires explicit operator approval plus a verified backup. After a partial failure, refresh the server-derived task overview, repair the failed dependency, and retry the idempotent operation; do not delete successful resources to force a clean start.
+### Migrations
 
-Use [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) for the full runbook and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before tagging or deploying a release.
+| Path | When Used | Behavior |
+|---|---|---|
+| API startup | Docker Compose / direct hosting | Runs EF Core migrations and seeding automatically on startup |
+| `Event.MigrationService` | Aspire / local dev orchestration | Applies migrations and seeds, then exits before API/Blazor start |
 
-## Related
+> [!NOTE]
+> The API handles migrations automatically. You do **not** need `Event.MigrationService` for standard Docker Compose deployments. It is only needed for the `privacy-erasure-external` Compose profile.
 
-- [CONFIGURATION.md](CONFIGURATION.md) — runtime configuration sources and key mappings.
-- [SECRETS.md](SECRETS.md) — secret provider behavior and key mapping.
-- [OPERATIONS.md](OPERATIONS.md) — health, startup, shutdown, and runtime safeguards.
-- [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) — Coolify-specific Cerbos PDP deployment runbook.
-- [SECURITY.md](SECURITY.md) — authentication and authorization architecture.
-- [DEPLOYMENT_MODES.md](DEPLOYMENT_MODES.md) — launch authority and mode-specific handoffs.
-- [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) — backup, restore, upgrade, rollback.
+### Creating Migrations from Scratch
+
+If bootstrapping from a clean repository:
+
+```bash
+# 1. Data-protection migration first
+dotnet ef migrations add init \
+  --context DataProtectionKeyContext \
+  --project Explore.Persistence \
+  --startup-project Explore.API \
+  --output-dir Migrations/DataProtection
+
+# 2. Primary application schema
+dotnet ef migrations add init \
+  --context ExploreDbContext \
+  --project Explore.Persistence \
+  --startup-project Explore.API
+```
+
+For the full backup and restore runbook, see [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).  
+For the release checklist, see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+| Problem | Cause | Fix |
+|---|---|---|
+| `unauthorized_client` from Keycloak | `KEYCLOAK_BLAZOR_CLIENT_SECRET` mismatch | Rerun `docker compose run --rm keycloak-init` |
+| OIDC redirect URI errors behind proxy | Missing `X-Forwarded-Proto`/`X-Forwarded-Host` | Configure reverse proxy to forward these headers |
+| Setup secret not working | Empty `SETUP_SECRET` or session expired | Set `SETUP_SECRET` in `.env` and restart API; re-enter if session expired |
+| Cerbos denying all requests | PDP is down or unreachable | Cerbos fails closed. Check `CERBOS_GRPC_ENDPOINT` or switch to `AUTHORIZATION_PROVIDER=local` |
+| Realm export changes not applied | Keycloak skips import when realm exists | Remove the `keycloak_data` volume and restart |
+| `429` responses | Rate limiting or OpenGraph image saturation | Review rate-limit configuration and dispatch capacity |
+| Storage health unhealthy | Selected provider can't write to data root | Check volume mounts and file permissions |
+
+### Diagnostic Tool
+
+Run the built-in diagnostic CLI:
+
+```bash
+dotnet run --project Explore.Diagnostic/Explore.Diagnostic.csproj -- --root .
+```
+
+### Triage Order
+
+1. Check health endpoints: `GET /health`, `GET /alive`
+2. Review startup logs for migration or seeding errors
+3. Verify deployment mode: is the correct `DEPLOYMENT_MODE` set?
+4. Check BFF auth status: `GET /auth/status`
+5. Review Keycloak client configuration and secrets
+
+For comprehensive troubleshooting, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+---
+
+## Planned Features
+
+### PostGIS Proximity Discovery
+
+Exact proximity discovery is **planned, not implemented**. The current database uses plain `postgres:18-alpine` — no PostGIS extension or spatial endpoints ship today. No operator action is needed.
+
+[ADR-013](adr/ADR-013-postgis-proximity-discovery.md) defines the future package. Failure or rollback returns the product to `area_only` mode — it never starts a browser-side or in-memory distance fallback.
+
+---
+
+## Related Documentation
+
+| Document | Purpose |
+|---|---|
+| [CONFIGURATION.md](CONFIGURATION.md) | Full runtime configuration reference and key mappings |
+| [SECRETS.md](SECRETS.md) | Secret provider behavior and key mapping |
+| [OPERATIONS.md](OPERATIONS.md) | Health, startup, shutdown, and runtime safeguards |
+| [DEPLOYMENT_MODES.md](DEPLOYMENT_MODES.md) | Single-tenant vs multi-tenant mode details |
+| [DEPLOYMENT_TIERS.md](DEPLOYMENT_TIERS.md) | Infrastructure maturity tiers |
+| [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) | Full backup, restore, and upgrade runbook |
+| [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | Pre-release validation checklist |
+| [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) | Coolify-specific Cerbos deployment |
+| [FEDERATION.md](FEDERATION.md) | AT Protocol federation configuration |
+| [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) | Privacy-erasure authority topologies |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Comprehensive troubleshooting guide |
+| [MCP_DEBUGGING.md](MCP_DEBUGGING.md) | MCP adapter debugging |
+| [SECURITY-MODEL.md](SECURITY-MODEL.md) | Authentication and authorization architecture |

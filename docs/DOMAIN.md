@@ -146,6 +146,28 @@ Evaluation is pure. The workflow applies **ALL** semantics across applicable req
 
 All three entities are tenant-scoped, audited, soft-deletable, and concurrency-aware. EF named Tenant and SoftDelete filters provide default isolation, while composite tenant/event/workflow foreign keys prevent cross-tenant lineage and generated constraints enforce ownership and ordinal uniqueness.
 
+### Registration Form Authoring
+
+The form authoring aggregate is exactly five persisted entities: `RegistrationForm`, `RegistrationFormVersion`, `RegistrationFormSection`, `RegistrationFormField`, and `RegistrationFormFieldOption`. `FormVersionRules` is a pure domain rules service; `RegistrationFormRule` adds the bounded-condition rules described below. A form owns versioned authoring graphs, and a version is either draft, published, or explicitly retired. Published versions reject graph mutation; edits deep-clone into fresh version/section/field/option IDs while retaining source-template provenance and stable field identity.
+
+Fields have dual identity: immutable graph IDs identify a specific versioned row, while normalized `Namespace/Key` is the stable machine identity for the field across versions. Provider question IDs and provider labels are mapping metadata only and cannot become canonical identity. `Namespace/Key` is unique across all active fields in a version, including fields in different sections; the aggregate rejects duplicates and persistence retains a version-wide active-row unique index as defense in depth. Sections, fields, and options use explicit positive owner-scoped ordinals.
+
+Field governance is explicit and provider-neutral: organizer visibility, explicit-consent requirement, provider-transfer allowance, and positive retention-policy identity are validated by the domain. The model stores no provider-owned question entity and does not reuse custom-property tables. Every form version requires a normalized BCP-47 `LanguageTag`; translation tables and `MULTILINGUAL` content support are intentionally absent until the localization decision in Task 7.8. Form content localization must not be inferred from UI/TMS localization.
+
+#### Bounded Condition Language
+
+`RegistrationFormRule` stores one ordered, immutable-version-owned rule with a typed `FormCondition` and one bounded effect: `Show`, `Hide`, `Require`, or `MakeOptional`. The closed JSON syntax has nine tokens — `equals`, `notEquals`, `in`, `contains`, `exists`, `compare`, `all`, `any`, and `not` — representing ten semantic operations because numeric and `DateOnly` comparison are distinct typed cases of `compare`. No tenth syntax token or arbitrary expression language is supported.
+
+Conditions reference only normalized fields earlier in the same form version. Scalar values are limited to null, text, boolean, decimal number, and `DateOnly`; list answers are supported for membership checks. Evaluation is a pure, deterministic function over an answer snapshot: it performs no I/O, reflection, delegates, ambient time, culture-dependent conversion, authorization, capacity, payment, or registration-state mutation.
+
+#### Deterministic Schema Artifacts And Publication Authority
+
+Each immutable form version pins exactly four deterministic artifacts: the JSON Schema 2020-12 data schema, UI layout, closed condition/rule logic, and the empty provider-mapping shape reserved for Task 9.3. `FormSchemaArtifactGenerator` owns canonical non-indented `System.Text.Json` serialization to UTF-8 bytes and computes lowercase SHA-256 over the complete bundle, including normalized consent purpose code and text version whenever a field requires explicit consent. `FormSchemaArtifactPublicationService` is the Application-owned generate-and-publish facade: it generates from the live relational aggregate and passes the result to the Domain's internal atomic pinning seam. Callers cannot supply artifact JSON or a hash.
+
+Persistence stores all four artifact values and the 64-character hash together. Draft versions require all artifact columns to be null; published and retired versions require all of them to be non-null. The generated `20260801192258_init` migration and model snapshot carry this constraint; generated migration artifacts are not hand-edited. The initial adversarial review found the former caller-authored `Publish(string ...)` authority defect; the repair moved authority to the Application facade/internal Domain seam and was independently confirmed at 0.99.
+
+`EventParticipationConfiguration` owns `ParticipationRequirementAttachment` children. Attach validates exact tenant/event/workflow lineage, active requirement and native/external channel compatibility, rotates the parent concurrency stamp, and stores form-version identity only for a walk-in standalone questionnaire backed by a published pinned schema. Active database uniqueness permits one attachment per requirement and at most one standalone questionnaire per participation configuration. Detach soft-deletes only the attachment, is idempotent, and never mutates its requirement, form, registration orders, or participants.
+
 ### Ticketing And Instance Monetization
 
 `EventTicketCatalogVersion` owns immutable published catalog revisions. Drafts contain `EventTicketType` rows with one of five normalized pricing modes, optional shared `EventCapacityPool` references, and `TicketTypeEntitlement` rows targeting the Event, a day, or a session. Published edits clone to a new draft. Ticket and capacity rows are tenant-scoped, concurrency-protected, and soft-deletable where their lifecycle permits it.

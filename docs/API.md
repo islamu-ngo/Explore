@@ -245,6 +245,18 @@ Authenticated event-scoped ticket catalog versions, draft authoring, ticket type
 
 Ticketing money fields use integer minor units in `long ...Minor` properties. Percentages use integer basis points, where `10_000 = 100%`. Catalog, ticket-type, and capacity-pool mutations must follow the exact relation on the returned HAL resource, including `create-draft`, `clone-draft`, `create-type`, `create-pool`, `publish`, `edit`, and `delete`.
 
+### Registration Form Authoring Endpoints
+
+Authenticated registration-form authoring is rooted at `/api/events/{eventId:guid}/registration-workflows`. The event `manage-registration-workflow` relation is emitted only after server-side authorization confirms a verified organizer controller or an explicit event registration-manager assignment. Community contributors, listing submitters, tenant-only curators, machine principals, ambiguous organizers, and unrelated tenants receive neither the relation nor authoring data.
+
+The surface provides event-purpose workflow read/create/update; requirement create/update/delete; form create/read; version create-or-clone/read; draft section, field, option, and bounded-rule mutations; publication preflight; and publication. Reads are authenticated and `private, no-store`. Writes use the `WritePolicy`, require a strong quoted `If-Match` containing the observed parent/root concurrency stamp, and return `409 Conflict` for stale observations. Preflight rejects empty forms, incomplete choice options, unresolved or forward condition references, and explicit-consent fields without both a purpose code and text version. Publication always invokes the Application publication facade and atomically pins the exact generated data, UI, logic, and mapping artifacts plus their lowercase SHA-256 hash; callers never supply schema JSON or hashes.
+
+The canonical preflight operation is `POST /api/events/{eventId:guid}/registration-forms/{formId:guid}/versions/{versionId:guid}/preflight` (`GetRegistrationFormPublishPreflight`); the former `publish:preflight` spelling is not part of the contract. The generated OpenAPI document, NSwag client, and `API_CONTRACT_INVENTORY.md` are regenerated from this route and checked for byte-level determinism.
+
+Draft authoring resources expose only state-valid, permission-checked HAL relations such as `edit`, `add-section`, `add-field`, `add-option`, `add-rule`, `preflight`, and `publish`. Published versions expose read, preflight, and new-version navigation only; child mutation relations are omitted. DTOs expose normalized lookup IDs/codes/names, lifecycle status, provenance, schema hash, and concurrency stamps, with no provider question IDs, claims, roles, or local capability booleans.
+
+Participation requirements attach through authenticated `POST /api/events/{eventId}/participation/requirements/{requirementId}` and detach idempotently through `DELETE` on the same route. Both operations require the current participation-configuration stamp in a strong quoted `If-Match` header and are authorized as registration-form `attach`/`detach` actions. The workflow management projection exposes persisted `isAttached` state, while each requirement resource emits exactly one matching, permission-checked `attach` or `detach` HAL relation as the action authority. A valid walk-in standalone questionnaire is discovered anonymously at `GET /api/events/{eventId}/participation/optional-questionnaire`; the HAL `optional-questionnaire` relation is the only client affordance and the endpoint returns non-leaking `404` when the active published descriptor is unavailable.
+
 ### Instance Platform Monetization Endpoints
 
 Platform fees and optional instance contributions are a separate versioned settings resource:

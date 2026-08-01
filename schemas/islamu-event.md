@@ -4711,6 +4711,34 @@ Table "registration_requirements" {
   Note: 'Workflow-owned requirement with ALL-at-workflow evaluation and typed applicability.'
 }
 
+Table "participation_requirement_attachments" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "participation_configuration_id" uuid [not null]
+  "registration_workflow_id" uuid [not null]
+  "registration_requirement_id" uuid [not null]
+  "registration_form_id" uuid
+  "registration_form_version_id" uuid
+  "is_standalone_questionnaire" boolean [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (participation_configuration_id, registration_requirement_id) [unique, note: 'filter: is_deleted = false']
+    (participation_configuration_id, is_standalone_questionnaire) [unique, note: 'filter: is_deleted = false AND is_standalone_questionnaire = true']
+    (tenant_id, event_id)
+  }
+
+  Note: 'Participation-owned attachment. CHECK event_id = participation_configuration_id; standalone rows require one published form version while non-standalone rows carry no form identity.'
+}
+
 Table "registration_channels" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "tenant_id" uuid [not null]
@@ -4736,6 +4764,220 @@ Table "registration_channels" {
   }
 
   Note: 'Requirement-owned alternative channel; native channels have no provider binding.'
+}
+
+Table "registration_form_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique]
+  }
+}
+
+Table "registration_field_types" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique]
+  }
+}
+
+Table "registration_organizer_visibilities" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique]
+  }
+}
+
+Table "registration_forms" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
+  "name" varchar(200) [not null]
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, event_id, id) [unique]
+    (tenant_id, event_id, namespace, key) [unique, note: 'filter: is_deleted = false']
+  }
+}
+
+Table "registration_form_versions" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_form_id" uuid [not null]
+  "version" int [not null]
+  "status_id" int [not null]
+  "language_tag" varchar(35) [not null]
+  "schema_hash" varchar(64) [note: 'lowercase SHA-256 of the complete canonical schema bundle']
+  "data_schema_artifact" text
+  "ui_schema_artifact" text
+  "logic_schema_artifact" text
+  "mapping_artifact" text
+  "published_at" timestamptz
+  "retired_at" timestamptz
+  "source_template_form_id" uuid
+  "source_template_version_id" uuid
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, event_id, registration_form_id, id) [unique]
+    (tenant_id, event_id, registration_form_id, version) [unique, note: 'filter: is_deleted = false']
+    (tenant_id, event_id, registration_form_id, status_id, language_tag)
+  }
+
+  Note: 'ck_registration_form_versions_schema_artifacts: drafts have no pinned artifacts/hash; published and retired versions require all four artifacts and hash'
+}
+
+Table "registration_form_sections" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_form_id" uuid [not null]
+  "registration_form_version_id" uuid [not null]
+  "ordinal" int [not null]
+  "title" varchar(200) [not null]
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, event_id, registration_form_id, registration_form_version_id, id) [unique]
+    (tenant_id, event_id, registration_form_version_id, ordinal) [unique, note: 'filter: is_deleted = false']
+  }
+}
+
+Table "registration_form_fields" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_form_id" uuid [not null]
+  "registration_form_version_id" uuid [not null]
+  "registration_form_section_id" uuid [not null]
+  "ordinal" int [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
+  "label" varchar(500) [not null]
+  "field_type_id" int [not null]
+  "retention_policy_id" int [not null]
+  "organizer_visibility_id" int [not null]
+  "requires_explicit_consent" boolean [not null]
+  "consent_purpose_code" character varying(100)
+  "consent_text_version" character varying(100)
+  "is_provider_transfer_allowed" boolean [not null]
+  "is_required" boolean [not null]
+  "is_multi" boolean [not null]
+  "min_length" int
+  "max_length" int
+  "regex_pattern" varchar(1000)
+  "min_number" numeric
+  "max_number" numeric
+  "min_date_time" timestamptz
+  "max_date_time" timestamptz
+  "allowed_url_schemes" varchar(200)
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  Note: 'ck_registration_form_fields_consent_metadata: explicit-consent fields require nonblank purpose code and text version; other fields require both values null'
+
+  indexes {
+    (tenant_id, event_id, registration_form_id, registration_form_version_id, registration_form_section_id, id) [unique]
+    (tenant_id, event_id, registration_form_version_id, registration_form_section_id, ordinal) [unique, note: 'filter: is_deleted = false']
+    (tenant_id, event_id, registration_form_version_id, namespace, key) [unique, note: 'filter: is_deleted = false']
+  }
+}
+
+Table "registration_form_field_options" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_form_id" uuid [not null]
+  "registration_form_version_id" uuid [not null]
+  "registration_form_section_id" uuid [not null]
+  "registration_form_field_id" uuid [not null]
+  "ordinal" int [not null]
+  "key" varchar(100) [not null]
+  "label" varchar(500) [not null]
+  "retired_at" timestamptz
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, event_id, registration_form_id, registration_form_version_id, registration_form_section_id, registration_form_field_id, id) [unique]
+    (tenant_id, event_id, registration_form_version_id, registration_form_field_id, ordinal) [unique, note: 'filter: is_deleted = false']
+    (tenant_id, event_id, registration_form_version_id, registration_form_field_id, key) [unique, note: 'filter: is_deleted = false']
+  }
+}
+
+Table "registration_form_rules" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_form_id" uuid [not null]
+  "registration_form_version_id" uuid [not null]
+  "ordinal" int [not null, note: 'CHECK ordinal > 0']
+  "target_namespace" varchar(100) [not null]
+  "target_key" varchar(100) [not null]
+  "effect" int [not null, note: 'CHECK 1..4: show, hide, require, make optional']
+  "condition" text [not null, note: 'closed typed nine-operator condition AST serialized by an EF converter']
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, event_id, registration_form_id, registration_form_version_id, id) [unique]
+    (tenant_id, event_id, registration_form_version_id, ordinal) [unique, note: 'filter: is_deleted = false']
+    (tenant_id, event_id, registration_form_version_id, target_namespace, target_key)
+  }
 }
 
 Table "registration_participants" {
@@ -5890,9 +6132,28 @@ Ref: "registration_requirements"."criticality_id" > "registration_requirement_cr
 Ref: "registration_requirements"."completion_effect_id" > "registration_requirement_completion_effects"."id" [delete: restrict]
 Ref: "registration_requirements"."answer_sync_mode_id" > "registration_answer_sync_modes"."id" [delete: restrict]
 Ref: "registration_requirements"."applies_to_subject_type_id" > "registration_requirement_subject_types"."id" [delete: restrict]
+Ref: "participation_requirement_attachments".("tenant_id", "participation_configuration_id") > "event_participation_configurations".("tenant_id", "id") [delete: cascade]
+Ref: "participation_requirement_attachments".("tenant_id", "event_id", "registration_workflow_id") > "registration_workflows".("tenant_id", "event_id", "id") [delete: restrict]
+Ref: "participation_requirement_attachments".("tenant_id", "event_id", "registration_workflow_id", "registration_requirement_id") > "registration_requirements".("tenant_id", "event_id", "registration_workflow_id", "id") [delete: restrict]
+Ref: "participation_requirement_attachments".("tenant_id", "event_id", "registration_form_id", "registration_form_version_id") > "registration_form_versions".("tenant_id", "event_id", "registration_form_id", "id") [delete: restrict]
 Ref: "registration_channels"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "registration_channels".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
 Ref: "registration_channels".("tenant_id", "event_id", "registration_workflow_id", "registration_requirement_id") > "registration_requirements".("tenant_id", "event_id", "registration_workflow_id", "id") [delete: cascade]
+Ref: "registration_forms"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_forms".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "registration_form_versions"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_form_versions".("tenant_id", "event_id", "registration_form_id") > "registration_forms".("tenant_id", "event_id", "id") [delete: restrict]
+Ref: "registration_form_versions"."status_id" > "registration_form_statuses"."id" [delete: restrict]
+Ref: "registration_form_sections"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_form_sections".("tenant_id", "event_id", "registration_form_id", "registration_form_version_id") > "registration_form_versions".("tenant_id", "event_id", "registration_form_id", "id") [delete: restrict]
+Ref: "registration_form_fields"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_form_fields".("tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "registration_form_section_id") > "registration_form_sections".("tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "id") [delete: restrict]
+Ref: "registration_form_fields"."field_type_id" > "registration_field_types"."id" [delete: restrict]
+Ref: "registration_form_fields"."organizer_visibility_id" > "registration_organizer_visibilities"."id" [delete: restrict]
+Ref: "registration_form_field_options"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_form_field_options".("tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "registration_form_section_id", "registration_form_field_id") > "registration_form_fields".("tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "registration_form_section_id", "id") [delete: restrict]
+Ref: "registration_form_rules"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_form_rules".("tenant_id", "event_id", "registration_form_id", "registration_form_version_id") > "registration_form_versions".("tenant_id", "event_id", "registration_form_id", "id") [delete: restrict]
 Ref: "registration_order_pii".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
 Ref: "registration_order_platform_contributions".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
 Ref: "platform_fee_fixed_charges"."platform_fee_policy_id" > "platform_fee_policies"."id" [delete: restrict]

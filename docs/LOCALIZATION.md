@@ -7,6 +7,30 @@ ABOUTME: Covers TMS provider abstraction (Tolgee/Weblate), offline bundles, key 
 
 All translations are managed through a **Translation Management System (TMS)** — either live (connected to Tolgee or Weblate) or offline (pre-exported `.json` bundles shipped with the app). There is **no translations table** in the database; the TMS is the single source of truth.
 
+## Registration form content language (Phase 7)
+
+Form content is separate from platform UI localization. Every
+`RegistrationFormVersion` stores one required, normalized registry-supported
+BCP-47 `LanguageTag` (for example `en`, `fr`, `ar`, or `ar-SA`). The domain
+normalizes and validates the tag when the version is created; the tag covers
+the immutable version's labels, descriptions, option text, and validation
+messages. Publishing freezes that language, and changing it requires a new
+version.
+
+There is no form translation table and no runtime per-field translation. When a
+workflow requests a language, it may select a matching published version only
+when that workflow exposes one; otherwise it uses the workflow's default
+published version. The fallback is whole-version selection: fields are never
+merged across versions and there is no per-field mixed-language fallback.
+`MULTILINGUAL` is not advertised until real version selection or translation
+storage exists with conformance tests.
+
+Form content language does not control layout direction. RTL remains derived
+from the active UI culture through `CultureRegistry`, `LanguageProvider`, and
+`MudRTLProvider`; logical CSS remains the direction-safe styling boundary. A
+form's `LanguageTag` therefore does not modify the UI language, direction
+cookie, `LanguageContext`, or shell RTL provider.
+
 ## Self-Hoster Tiers
 
 | Tier | TMS Connected? | How Translations Work |
