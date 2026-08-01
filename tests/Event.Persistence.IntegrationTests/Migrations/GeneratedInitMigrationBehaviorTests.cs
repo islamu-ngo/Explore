@@ -1,11 +1,12 @@
-// ABOUTME: Verifies the three generated init migrations against their live PostgreSQL catalogs.
-// ABOUTME: Pins lookup ordering, privacy guards, exact moderation linkage, rollback safety, and authority ACLs.
+// ABOUTME: Verifies generated application/data-protection init artifacts and the retained authority chain.
+// ABOUTME: Pins runtime lookup/schema application, exact moderation linkage, rollback safety, and authority ACLs.
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Persistence;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Schema;
+using Explore.Persistence.Seed;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -24,7 +25,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
     RecipientDeliveryMigrationContainerFixture fixture)
 {
     [Test]
-    public async Task GeneratedCatalogs_ContainOneInitAndDataProtectionOnlyItsThreeColumns()
+    public async Task GeneratedCatalogs_ContainOneApplicationInitOneDataProtectionInitAndRetainedAuthorityChain()
     {
         await using ExploreDbContext explore = CreateExploreContext();
         await using DataProtectionKeyContext dataProtection = CreateDataProtectionContext();
@@ -32,10 +33,11 @@ public sealed class GeneratedInitMigrationBehaviorTests(
 
         await Assert.That(MigrationIds(explore)).HasSingleItem();
         await Assert.That(MigrationIds(dataProtection)).HasSingleItem();
-        await Assert.That(MigrationIds(authority)).HasSingleItem();
+        await Assert.That(MigrationIds(authority).Length).IsEqualTo(2);
         await Assert.That(MigrationIds(explore)[0]).EndsWith("_init");
         await Assert.That(MigrationIds(dataProtection)[0]).EndsWith("_init");
         await Assert.That(MigrationIds(authority)[0]).EndsWith("_init");
+        await Assert.That(MigrationIds(authority)[1]).EndsWith("_AddFiniteAuthorityRetention");
 
         Migration dataProtectionInit = InitMigration(dataProtection);
         CreateTableOperation table = dataProtectionInit.UpOperations
@@ -48,7 +50,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
     }
 
     [Test]
-    public async Task ExploreInit_CarriesLookupAndGuardCatalog_AndProtectsEvidenceRollback()
+    public async Task ExploreInit_WithRuntimeCatalogAndSchemaApplication_IsReversibleFromEmpty()
     {
         await ResetDatabaseAsync();
         try
@@ -59,6 +61,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
 
             await migrator.MigrateAsync(migrationId);
             await PostgresModelConstraintApplier.ApplyAsync(context);
+            await LookupTableSeeder.SeedAsync(context);
 
             await Assert.That(await ScalarIntAsync(
                 """
@@ -83,13 +86,13 @@ public sealed class GeneratedInitMigrationBehaviorTests(
                   ON schema_entry.oid = function_entry.pronamespace
                 WHERE schema_entry.nspname = 'public'
                   AND function_entry.proname LIKE 'elp_%'
-                """)).IsEqualTo(7);
+                """)).IsEqualTo(0);
             await Assert.That(await ScalarIntAsync(
                 """
                 SELECT count(*)::integer
                 FROM pg_catalog.pg_trigger
                 WHERE NOT tgisinternal AND tgname LIKE 'tr_elp_%'
-                """)).IsEqualTo(13);
+                """)).IsEqualTo(0);
             await Assert.That(await ScalarIntAsync(
                 """
                 SELECT count(*)::integer
@@ -117,29 +120,8 @@ public sealed class GeneratedInitMigrationBehaviorTests(
 
             await migrator.MigrateAsync(Migration.InitialDatabase);
             await migrator.MigrateAsync(migrationId);
-
-            await ExecuteAsync(
-                """
-                INSERT INTO privacy_erasure_authority.authority_counter (singleton, last_sequence)
-                VALUES (TRUE, 1)
-                ON CONFLICT (singleton) DO UPDATE SET last_sequence = 1;
-
-                INSERT INTO privacy_erasure_authority.erasure_intents
-                    (authority_sequence, intent_id, subject_kind, subject_id, reason_code,
-                     policy_version, requested_at_utc, recorded_at_utc, retention_expires_at_utc)
-                VALUES
-                    (1, uuidv7(), 1, uuidv7(), 1, 1,
-                     statement_timestamp(), clock_timestamp(), 'infinity'::timestamptz);
-                """);
-
-            Exception rollback = (await Assert.ThrowsAsync<Exception>(
-                () => migrator.MigrateAsync(Migration.InitialDatabase)))!;
-            PostgresException postgres = FindPostgresException(rollback)
-                ?? throw new InvalidOperationException("Expected a PostgreSQL rollback guard.", rollback);
-            await Assert.That(postgres.SqlState).IsEqualTo(PostgresErrorCodes.ObjectNotInPrerequisiteState);
-            await Assert.That(await ScalarIntAsync(
-                "SELECT count(*)::integer FROM privacy_erasure_authority.erasure_intents"))
-                .IsEqualTo(1);
+            await PostgresModelConstraintApplier.ApplyAsync(context);
+            await LookupTableSeeder.SeedAsync(context);
             await Assert.That(await ScalarIntAsync(
                 "SELECT count(*)::integer FROM \"__EFMigrationsHistory\" WHERE migration_id = @id",
                 new NpgsqlParameter("id", migrationId)))
@@ -152,7 +134,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
     }
 
     [Test]
-    public async Task ExploreInit_RejectsLookupCollisionBeforeGuardMutation()
+    public async Task ExploreInit_LeavesLookupOwnershipToTheRuntimeSeeder()
     {
         await ResetDatabaseAsync();
         try
@@ -161,31 +143,11 @@ public sealed class GeneratedInitMigrationBehaviorTests(
             IMigrator migrator = context.GetService<IMigrator>();
             await migrator.MigrateAsync(MigrationIds(context).Single());
 
-            await ExecuteAsync(
-                "UPDATE location_kinds SET master_code = 'BROKEN' WHERE id = 1");
-
-            string carryForwardSql = InitMigration(context).UpOperations
-                .OfType<SqlOperation>()
-                .Single()
-                .Sql;
-            Exception collision = (await Assert.ThrowsAsync<Exception>(
-                () => ExecuteAsync(carryForwardSql)))!;
-            PostgresException postgres = FindPostgresException(collision)
-                ?? throw new InvalidOperationException("Expected a PostgreSQL lookup collision.", collision);
-
-            await Assert.That(postgres.SqlState).IsEqualTo(PostgresErrorCodes.UniqueViolation);
             await Assert.That(await ScalarIntAsync(
-                "SELECT count(*)::integer FROM location_kinds WHERE id = 1 AND master_code = 'BROKEN'"))
-                .IsEqualTo(1);
+                "SELECT count(*)::integer FROM location_kinds")).IsEqualTo(0);
+            await LookupTableSeeder.SeedAsync(context);
             await Assert.That(await ScalarIntAsync(
-                """
-                SELECT count(*)::integer
-                FROM pg_catalog.pg_proc AS function_entry
-                JOIN pg_catalog.pg_namespace AS schema_entry
-                  ON schema_entry.oid = function_entry.pronamespace
-                WHERE schema_entry.nspname = 'public'
-                  AND function_entry.proname LIKE 'elp_%'
-                """)).IsEqualTo(7);
+                "SELECT count(*)::integer FROM location_kinds")).IsGreaterThanOrEqualTo(5);
         }
         finally
         {
@@ -201,7 +163,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
         {
             await using PrivacyErasureAuthorityDbContext context = CreateAuthorityContext();
             IMigrator migrator = context.GetService<IMigrator>();
-            string migrationId = MigrationIds(context).Single();
+            string migrationId = MigrationIds(context).First();
 
             await migrator.MigrateAsync(migrationId);
             await migrator.MigrateAsync(migrationId);
@@ -283,7 +245,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
             cancellation.Cancel();
 
             await Assert.ThrowsAsync<OperationCanceledException>(() =>
-                migrator.MigrateAsync(MigrationIds(context).Single(), cancellation.Token));
+                migrator.MigrateAsync(MigrationIds(context).Last(), cancellation.Token));
 
             await Assert.That(await ScalarIntAsync(
                 "SELECT count(*)::integer FROM pg_catalog.pg_namespace WHERE nspname = 'privacy_erasure_authority'"))
@@ -384,7 +346,8 @@ public sealed class GeneratedInitMigrationBehaviorTests(
     private static Migration InitMigration(DbContext context)
     {
         IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
-        KeyValuePair<string, System.Reflection.TypeInfo> item = assembly.Migrations.Single();
+        KeyValuePair<string, System.Reflection.TypeInfo> item = assembly.Migrations
+            .Single(entry => entry.Key.EndsWith("_init", StringComparison.Ordinal));
         return assembly.CreateMigration(item.Value, context.Database.ProviderName!);
     }
 

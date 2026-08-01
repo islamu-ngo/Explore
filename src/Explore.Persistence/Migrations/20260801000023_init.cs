@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -72,6 +72,20 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_actor_types", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "advance_registration_obligations",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_advance_registration_obligations", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -226,6 +240,20 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "assignment_statuses",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    description = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_assignment_statuses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "atproto_jetstream_consumer_states",
                 columns: table => new
                 {
@@ -324,6 +352,48 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "booking_party_types",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_booking_party_types", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "capacity_hold_policies",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_capacity_hold_policies", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "capacity_oversell_policies",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_capacity_oversell_policies", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "category_types",
                 columns: table => new
                 {
@@ -377,6 +447,34 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "entitlement_scope_types",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_entitlement_scope_types", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "entitlement_selection_rules",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_entitlement_selection_rules", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "erasure_intents",
                 schema: "privacy_erasure_authority",
                 columns: table => new
@@ -418,6 +516,62 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_event_formats", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_organizer_claim_statuses",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_organizer_claim_statuses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_provenance_types",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_provenance_types", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_public_action_health_states",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_public_action_health_states", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_public_action_kinds",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_public_action_kinds", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -474,6 +628,27 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_event_statuses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "external_actor_subjects",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    first_observed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    last_observed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_external_actor_subjects", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -562,6 +737,27 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "groups",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    full_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    description = table.Column<string>(type: "character varying(5000)", maxLength: 5000, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_groups", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "idempotency_records",
                 columns: table => new
                 {
@@ -583,6 +779,20 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_idempotency_records", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "identity_access_modes",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_identity_access_modes", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -639,23 +849,6 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_incoming_webhook_settlement_sources", x => x.id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "indexed_dids",
-                columns: table => new
-                {
-                    did = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    handle = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
-                    pds_host = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    signing_key = table.Column<string>(type: "text", nullable: true),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false),
-                    last_indexed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    last_seen_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_indexed_dids", x => x.did);
                 });
 
             migrationBuilder.CreateTable(
@@ -1147,6 +1340,26 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "organizations",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    website_url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_organizations", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "outbox_messages",
                 columns: table => new
                 {
@@ -1182,6 +1395,87 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_owner_types", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "participant_data_collection_modes",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_participant_data_collection_modes", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "participant_types",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    description = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_participant_types", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "participation_handling_modes",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_participation_handling_modes", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "platform_contribution_settings",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    version_number = table.Column<int>(type: "integer", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    is_enabled = table.Column<bool>(type: "boolean", nullable: false),
+                    heading = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    body = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_platform_contribution_settings", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "platform_fee_policies",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    version_number = table.Column<int>(type: "integer", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    is_enabled = table.Column<bool>(type: "boolean", nullable: false),
+                    fee_basis_points = table.Column<int>(type: "integer", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_platform_fee_policies", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -1234,6 +1528,34 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "registration_answer_sync_modes",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_answer_sync_modes", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_inventory_hold_statuses",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_inventory_hold_statuses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "registration_modes",
                 columns: table => new
                 {
@@ -1245,6 +1567,62 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_registration_modes", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_order_statuses",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_order_statuses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_requirement_completion_effects",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_requirement_completion_effects", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_requirement_criticalities",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_requirement_criticalities", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_requirement_subject_types",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_requirement_subject_types", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -1315,6 +1693,27 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_secret_validation_statuses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "service_principals",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    code = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_service_principals", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -1590,6 +1989,34 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ticket_catalog_statuses",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ticket_catalog_statuses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ticket_pricing_modes",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ticket_pricing_modes", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "user_appearance_profiles",
                 columns: table => new
                 {
@@ -1651,6 +2078,29 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_user_appearance_profiles", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "users",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    auth_provider = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    auth_provider_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    email_verified = table.Column<bool>(type: "boolean", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    last_active_tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_users", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -2060,10 +2510,16 @@ namespace Explore.Persistence.Migrations
                     subject_id = table.Column<Guid>(type: "uuid", nullable: false),
                     policy_version = table.Column<int>(type: "integer", nullable: false),
                     fence_token = table.Column<long>(type: "bigint", nullable: false),
-                    receipt_hash = table.Column<byte[]>(type: "bytea", fixedLength: true, maxLength: 32, nullable: false),
+                    receipt_hash = table.Column<byte[]>(type: "bytea", fixedLength: true, maxLength: 32, nullable: true),
                     receipt_expires_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     fenced_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    concurrency_token = table.Column<Guid>(type: "uuid", nullable: false)
+                    concurrency_token = table.Column<Guid>(type: "uuid", nullable: false),
+                    status = table.Column<short>(type: "smallint", nullable: false),
+                    provider_work_count = table.Column<int>(type: "integer", nullable: false),
+                    completed_provider_work_count = table.Column<int>(type: "integer", nullable: false),
+                    local_settled_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    completed_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -2071,8 +2527,10 @@ namespace Explore.Persistence.Migrations
                     table.CheckConstraint("ck_privacy_erasure_sagas_concurrency_uuid_v7", "substring(concurrency_token::text, 15, 1) = '7' AND substring(concurrency_token::text, 20, 1) IN ('8', '9', 'a', 'b')");
                     table.CheckConstraint("ck_privacy_erasure_sagas_fence", "fence_token > 0");
                     table.CheckConstraint("ck_privacy_erasure_sagas_policy_version", "policy_version > 0");
-                    table.CheckConstraint("ck_privacy_erasure_sagas_receipt_hash", "octet_length(receipt_hash) = 32");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_provider_counts", "provider_work_count >= 0 AND completed_provider_work_count >= 0 AND completed_provider_work_count <= provider_work_count");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_receipt_hash", "receipt_hash IS NULL OR octet_length(receipt_hash) = 32");
                     table.CheckConstraint("ck_privacy_erasure_sagas_receipt_window", "receipt_expires_at_utc > fenced_at_utc");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_status", "status IN (1, 2, 3)");
                     table.CheckConstraint("ck_privacy_erasure_sagas_subject_kind", "subject_kind = 1");
                     table.CheckConstraint("ck_privacy_erasure_sagas_subject_nonempty", "subject_id <> '00000000-0000-0000-0000-000000000000'::uuid");
                     table.ForeignKey(
@@ -2081,6 +2539,70 @@ namespace Explore.Persistence.Migrations
                         principalSchema: "privacy_erasure_authority",
                         principalTable: "erasure_intents",
                         principalColumn: "intent_id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "organization_pii",
+                columns: table => new
+                {
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    full_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
+                    country = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    city = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    address = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    postcode = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_organization_pii", x => x.organization_id);
+                    table.ForeignKey(
+                        name: "fk_organization_pii_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "platform_contribution_options",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    contribution_basis_points = table.Column<int>(type: "integer", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    is_default = table.Column<bool>(type: "boolean", nullable: false),
+                    platform_contribution_setting_id = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_platform_contribution_options", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_platform_contribution_options_platform_contribution_setting",
+                        column: x => x.platform_contribution_setting_id,
+                        principalTable: "platform_contribution_settings",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "platform_fee_fixed_charges",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    currency_code = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
+                    amount_minor = table.Column<long>(type: "bigint", nullable: false),
+                    platform_fee_policy_id = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_platform_fee_fixed_charges", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_platform_fee_fixed_charges_platform_fee_policies_platform_f",
+                        column: x => x.platform_fee_policy_id,
+                        principalTable: "platform_fee_policies",
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -2145,7 +2667,7 @@ namespace Explore.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
                     timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     setting_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
                     old_value = table.Column<string>(type: "text", nullable: true),
@@ -2331,6 +2853,173 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "actors",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    actor_type_id = table.Column<int>(type: "integer", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    group_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    external_actor_subject_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    service_principal_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_suspended = table.Column<bool>(type: "boolean", nullable: false),
+                    suspended_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    suspended_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    moderation_reason_code = table.Column<string>(type: "text", nullable: true),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    profile_picture_cid = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    background_color = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    background_effect = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    banner_color = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_actors", x => x.id);
+                    table.CheckConstraint("ck_actors_exactly_one_owner", "num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 1 OR (is_deleted AND num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 0)");
+                    table.CheckConstraint("ck_actors_external_type_matches_owner", "(external_actor_subject_id IS NULL AND actor_type_id <> 6) OR (external_actor_subject_id IS NOT NULL AND actor_type_id = 6)");
+                    table.ForeignKey(
+                        name: "fk_actors_actor_types_actor_type_id",
+                        column: x => x.actor_type_id,
+                        principalTable: "actor_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actors_external_actor_subjects_external_actor_subject_id",
+                        column: x => x.external_actor_subject_id,
+                        principalTable: "external_actor_subjects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actors_groups_group_id",
+                        column: x => x.group_id,
+                        principalTable: "groups",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actors_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actors_service_principals_service_principal_id",
+                        column: x => x.service_principal_id,
+                        principalTable: "service_principals",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actors_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "user_pii",
+                columns: table => new
+                {
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
+                    first_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    last_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_user_pii", x => x.user_id);
+                    table.ForeignKey(
+                        name: "fk_user_pii_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "privacy_erasure_provider_work",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    intent_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    subject_kind = table.Column<short>(type: "smallint", nullable: false),
+                    subject_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    provider_kind = table.Column<short>(type: "smallint", nullable: false),
+                    action = table.Column<short>(type: "smallint", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    target_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    locator_kind = table.Column<short>(type: "smallint", nullable: false),
+                    protected_locator = table.Column<string>(type: "character varying(8192)", maxLength: 8192, nullable: true),
+                    locator_protection_version = table.Column<int>(type: "integer", nullable: false),
+                    locator_expires_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    status = table.Column<short>(type: "smallint", nullable: false),
+                    attempt_count = table.Column<int>(type: "integer", nullable: false),
+                    next_attempt_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    lease_owner = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    lease_token = table.Column<Guid>(type: "uuid", nullable: true),
+                    lease_fence = table.Column<long>(type: "bigint", nullable: false),
+                    lease_expires_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    last_failure_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    unknown_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    completed_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    dead_lettered_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_privacy_erasure_provider_work", x => x.id);
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_attempt_count", "attempt_count >= 0");
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_lease_fence", "lease_fence >= 0");
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_locator_expiry", "locator_expires_at_utc > created_at_utc");
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_locator_kind", "locator_kind BETWEEN 1 AND 7");
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_locator_lifecycle", "(status = 5 AND protected_locator IS NULL) OR status = 6 OR (status NOT IN (5, 6) AND protected_locator IS NOT NULL)");
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_locator_version", "locator_protection_version >= 1");
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_subject_kind", "subject_kind = 1");
+                    table.ForeignKey(
+                        name: "fk_privacy_erasure_provider_work_privacy_erasure_sagas_intent_",
+                        column: x => x.intent_id,
+                        principalTable: "privacy_erasure_sagas",
+                        principalColumn: "intent_id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "platform_user_roles",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    role_id = table.Column<int>(type: "integer", nullable: false),
+                    granted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    granted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_platform_user_roles", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_platform_user_roles_roles_role_id",
+                        column: x => x.role_id,
+                        principalTable: "roles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_platform_user_roles_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "role_permissions",
                 columns: table => new
                 {
@@ -2447,6 +3136,47 @@ namespace Explore.Persistence.Migrations
                         principalTable: "tenant_plan_versions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_consent_grants",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    subject_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    entity_name = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
+                    field_name = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
+                    provider_trust_tier_id = table.Column<int>(type: "integer", nullable: false),
+                    status_id = table.Column<int>(type: "integer", nullable: false),
+                    purpose = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
+                    granted_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    revoked_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    expires_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_consent_grants", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_ai_consent_grants_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ai_consent_grants_users_subject_user_id",
+                        column: x => x.subject_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -2727,6 +3457,187 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "locations",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    full_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    country = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    city = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    timezone = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    location_kind_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    location_privacy_state_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    owner_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    pii_erased_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    pii_erasure_reason = table.Column<int>(type: "integer", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_locations", x => x.id);
+                    table.UniqueConstraint("ak_locations_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_locations_erasure_state", "(location_privacy_state_id = 3 AND owner_user_id IS NULL AND pii_erased_at_utc IS NOT NULL AND pii_erasure_reason IS NOT NULL) OR (location_privacy_state_id <> 3 AND pii_erased_at_utc IS NULL AND pii_erasure_reason IS NULL)");
+                    table.CheckConstraint("ck_locations_owner_private_home", "owner_user_id IS NULL OR location_kind_id = 5");
+                    table.ForeignKey(
+                        name: "fk_locations_location_kinds_location_kind_id",
+                        column: x => x.location_kind_id,
+                        principalTable: "location_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_locations_location_privacy_states_location_privacy_state_id",
+                        column: x => x.location_privacy_state_id,
+                        principalTable: "location_privacy_states",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_locations_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_locations_users_owner_user_id",
+                        column: x => x.owner_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "notification_channel_preferences",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    scope_id = table.Column<int>(type: "integer", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    group_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    category_id = table.Column<int>(type: "integer", nullable: false),
+                    channel_id = table.Column<int>(type: "integer", nullable: false),
+                    is_enabled = table.Column<bool>(type: "boolean", nullable: false),
+                    is_locked = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_notification_channel_preferences", x => x.id);
+                    table.CheckConstraint("ck_notification_channel_preferences_scope_target", "(scope_id IN (0, 1, 2) AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL) OR (scope_id = 3 AND organization_id IS NOT NULL AND user_id IS NULL AND group_id IS NULL) OR (scope_id = 4 AND group_id IS NOT NULL AND user_id IS NULL AND organization_id IS NULL) OR (scope_id = 5 AND user_id IS NOT NULL AND organization_id IS NULL AND group_id IS NULL)");
+                    table.ForeignKey(
+                        name: "fk_notification_channel_preferences_groups_group_id",
+                        column: x => x.group_id,
+                        principalTable: "groups",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_channel_preferences_notification_preference_ca",
+                        column: x => x.category_id,
+                        principalTable: "notification_preference_categories",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_channel_preferences_notification_preference_ch",
+                        column: x => x.channel_id,
+                        principalTable: "notification_preference_channels",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_channel_preferences_organizations_organization",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_channel_preferences_setting_scopes_scope_id",
+                        column: x => x.scope_id,
+                        principalTable: "setting_scopes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_channel_preferences_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_channel_preferences_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "notification_preference_profiles",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    scope_id = table.Column<int>(type: "integer", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    group_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_muted = table.Column<bool>(type: "boolean", nullable: false),
+                    is_locked = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_notification_preference_profiles", x => x.id);
+                    table.CheckConstraint("ck_notification_preference_profiles_scope_target", "(scope_id IN (0, 1, 2) AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL) OR (scope_id = 3 AND organization_id IS NOT NULL AND user_id IS NULL AND group_id IS NULL) OR (scope_id = 4 AND group_id IS NOT NULL AND user_id IS NULL AND organization_id IS NULL) OR (scope_id = 5 AND user_id IS NOT NULL AND organization_id IS NULL AND group_id IS NULL)");
+                    table.ForeignKey(
+                        name: "fk_notification_preference_profiles_groups_group_id",
+                        column: x => x.group_id,
+                        principalTable: "groups",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_preference_profiles_organizations_organization",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_preference_profiles_setting_scopes_scope_id",
+                        column: x => x.scope_id,
+                        principalTable: "setting_scopes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_preference_profiles_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_preference_profiles_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "storage_usage_counters",
                 columns: table => new
                 {
@@ -2852,7 +3763,7 @@ namespace Explore.Persistence.Migrations
                     is_accepted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     accepted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     accepted_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    invited_by_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    invited_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
                     allowed_domain = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
@@ -2884,7 +3795,7 @@ namespace Explore.Persistence.Migrations
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     old_status_id = table.Column<int>(type: "integer", nullable: true),
                     new_status_id = table.Column<int>(type: "integer", nullable: false),
-                    transitioned_by_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    transitioned_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
                     reason = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     transitioned_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
@@ -2980,7 +3891,7 @@ namespace Explore.Persistence.Migrations
                     tenant_plan_id = table.Column<Guid>(type: "uuid", nullable: false),
                     tenant_plan_version_id = table.Column<Guid>(type: "uuid", nullable: false),
                     tenant_plan_assignment_status_id = table.Column<int>(type: "integer", nullable: false),
-                    assigned_by_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    assigned_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
                     assigned_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     ended_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -3211,6 +4122,110 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "user_authentication_tokens",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    provider = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    subject_did = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: false),
+                    session_ciphertext = table.Column<byte[]>(type: "bytea", nullable: false),
+                    encryption_key_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    o_auth_client_key_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    envelope_version = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    pds_host = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
+                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_user_authentication_tokens", x => x.id);
+                    table.CheckConstraint("ck_user_authentication_tokens_ciphertext_not_empty", "octet_length(session_ciphertext) >= 29");
+                    table.CheckConstraint("ck_user_authentication_tokens_envelope_version", "envelope_version = 1");
+                    table.CheckConstraint("ck_user_authentication_tokens_required_text", "length(btrim(provider)) > 0 AND length(btrim(subject_did)) > 0 AND length(btrim(encryption_key_id)) > 0 AND length(btrim(o_auth_client_key_id)) > 0");
+                    table.ForeignKey(
+                        name: "fk_user_authentication_tokens_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_user_authentication_tokens_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "user_external_logins",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    provider = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    provider_key = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
+                    provider_display_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_user_external_logins", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_user_external_logins_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_user_external_logins_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "user_notification_preferences",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    category = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    is_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true, defaultValueSql: "NOW()"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_user_notification_preferences", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_user_notification_preferences_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_user_notification_preferences_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "user_preferences",
                 columns: table => new
                 {
@@ -3233,6 +4248,49 @@ namespace Explore.Persistence.Migrations
                         principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "web_push_subscriptions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    device_identifier = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    endpoint = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    p256dh = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    auth_secret = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    expiration_time = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    last_seen_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    unsubscribed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deactivated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deactivation_reason = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true, defaultValueSql: "NOW()"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_web_push_subscriptions", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_web_push_subscriptions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_web_push_subscriptions_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -3341,6 +4399,317 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "actor_key_stores",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    key_purpose = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    private_key_encrypted = table.Column<string>(type: "text", nullable: false),
+                    public_key = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: true),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_actor_key_stores", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_actor_key_stores_actors_actor_id",
+                        column: x => x.actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_actor_key_stores_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "actor_merges",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    source_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    canonical_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    proof_kind = table.Column<int>(type: "integer", nullable: false),
+                    evidence_reference = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: false),
+                    merged_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    merged_by = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_actor_merges", x => x.id);
+                    table.CheckConstraint("ck_actor_merges_distinct_actors", "source_actor_id <> canonical_actor_id");
+                    table.ForeignKey(
+                        name: "fk_actor_merges_actors_canonical_actor_id",
+                        column: x => x.canonical_actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actor_merges_actors_source_actor_id",
+                        column: x => x.source_actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "actor_moderation_records",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    action = table.Column<int>(type: "integer", nullable: false),
+                    reason_code = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_actor_moderation_records", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_actor_moderation_records_actors_actor_id",
+                        column: x => x.actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "actor_pii",
+                columns: table => new
+                {
+                    actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    display_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    profile_picture_uri = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_actor_pii", x => x.actor_id);
+                    table.ForeignKey(
+                        name: "fk_actor_pii_actors_actor_id",
+                        column: x => x.actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_conversations",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    actor_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    provider = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    model_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    blocked_reason = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    last_message_sequence = table.Column<long>(type: "bigint", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_conversations", x => x.id);
+                    table.CheckConstraint("ck_ai_conversations_last_message_sequence_nonnegative", "last_message_sequence >= 0");
+                    table.ForeignKey(
+                        name: "fk_ai_conversations_actors_actor_id",
+                        column: x => x.actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_ai_conversations_ai_conversation_statuses_status_id",
+                        column: x => x.status_id,
+                        principalTable: "ai_conversation_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ai_conversations_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ai_conversations_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "atproto_identities",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    did = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: false, collation: "C"),
+                    actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    did_custody_type_id = table.Column<int>(type: "integer", nullable: true),
+                    handle = table.Column<string>(type: "character varying(253)", maxLength: 253, nullable: true),
+                    pds_host = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: false),
+                    signing_key = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    is_suspended = table.Column<bool>(type: "boolean", nullable: false),
+                    suspended_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    suspended_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    moderation_reason_code = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    last_resolved_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    last_seen_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_atproto_identities", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_atproto_identities_actors_actor_id",
+                        column: x => x.actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_atproto_identities_did_custody_types_did_custody_type_id",
+                        column: x => x.did_custody_type_id,
+                        principalTable: "did_custody_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "storage_objects",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    file_type_id = table.Column<int>(type: "integer", nullable: false),
+                    uri = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    object_key = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
+                    provider = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    safe_display_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    extension = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    content_type = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    sha256_checksum = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    size = table.Column<long>(type: "bigint", nullable: false),
+                    visibility = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    purpose = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    lifecycle_state = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    owning_resource_kind = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    owning_resource_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    quarantined_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    quarantined_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    quarantine_reason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    actor_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_storage_objects", x => x.id);
+                    table.UniqueConstraint("ak_storage_objects_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_storage_objects_lifecycle_state", "lifecycle_state IN ('pending', 'active', 'quarantined', 'delete_requested', 'deleted')");
+                    table.CheckConstraint("ck_storage_objects_provider", "provider IN ('local', 's3_compatible', 'legacy_external')");
+                    table.CheckConstraint("ck_storage_objects_purpose", "purpose IN ('legacy_image', 'profile_image', 'event_image', 'attachment', 'document', 'system_asset')");
+                    table.CheckConstraint("ck_storage_objects_size_nonnegative", "size >= 0");
+                    table.CheckConstraint("ck_storage_objects_visibility", "visibility IN ('public_image', 'authenticated_tenant', 'private_owner')");
+                    table.ForeignKey(
+                        name: "fk_storage_objects_actors_actor_id",
+                        column: x => x.actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_storage_objects_file_types_file_type_id",
+                        column: x => x.file_type_id,
+                        principalTable: "file_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_storage_objects_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "tenant_users",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    actor_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    joined_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    suspended_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    suspended_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    ban_expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    removed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    removed_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    moderation_note = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_tenant_users", x => x.id);
+                    table.UniqueConstraint("ak_tenant_users_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.UniqueConstraint("ak_tenant_users_tenant_id_user_id", x => new { x.tenant_id, x.user_id });
+                    table.CheckConstraint("ck_tenant_users_status", "status_id IN (1, 2, 3, 4)");
+                    table.ForeignKey(
+                        name: "fk_tenant_users_actors_actor_id",
+                        column: x => x.actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_tenant_users_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_tenant_users_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "category_type_categories",
                 columns: table => new
                 {
@@ -3441,6 +4810,74 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "location_pii",
+                columns: table => new
+                {
+                    location_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    address = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    postcode = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    latitude = table.Column<double>(type: "double precision", nullable: true),
+                    longitude = table.Column<double>(type: "double precision", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_location_pii", x => x.location_id);
+                    table.ForeignKey(
+                        name: "fk_location_pii_locations_location_id",
+                        column: x => x.location_id,
+                        principalTable: "locations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "location_rooms",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    location_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    slug = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    capacity = table.Column<int>(type: "integer", nullable: true),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_location_rooms", x => x.id);
+                    table.UniqueConstraint("ak_location_rooms_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.UniqueConstraint("ak_location_rooms_tenant_id_location_id_id", x => new { x.tenant_id, x.location_id, x.id });
+                    table.CheckConstraint("CK_LocationRoom_NonNegativeCapacity", "capacity IS NULL OR capacity >= 0");
+                    table.ForeignKey(
+                        name: "fk_location_rooms_locations_location_id",
+                        column: x => x.location_id,
+                        principalTable: "locations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_location_rooms_locations_tenant_id_location_id",
+                        columns: x => new { x.tenant_id, x.location_id },
+                        principalTable: "locations",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_location_rooms_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "tag_type_tags",
                 columns: table => new
                 {
@@ -3509,7 +4946,7 @@ namespace Explore.Persistence.Migrations
                     tenant_plan_version_id = table.Column<Guid>(type: "uuid", nullable: false),
                     tenant_plan_assignment_id = table.Column<Guid>(type: "uuid", nullable: true),
                     tenant_plan_application_status_id = table.Column<int>(type: "integer", nullable: false),
-                    applied_by_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    applied_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
                     applied_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     previous_tenant_plan_version_id = table.Column<Guid>(type: "uuid", nullable: true),
                     changed_setting_keys_json = table.Column<string>(type: "jsonb", nullable: false),
@@ -3562,1379 +4999,62 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "event_session_templates",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_template_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    session_template_key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    version = table.Column<int>(type: "integer", nullable: false),
-                    is_published = table.Column<bool>(type: "boolean", nullable: false),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false),
-                    sort_order = table.Column<int>(type: "integer", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_session_templates", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_event_session_templates_event_templates_event_template_id",
-                        column: x => x.event_template_id,
-                        principalTable: "event_templates",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_session_templates_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "actor_key_stores",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    actor_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    key_purpose = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    private_key_encrypted = table.Column<string>(type: "text", nullable: false),
-                    public_key = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    is_active = table.Column<bool>(type: "boolean", nullable: true),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_actor_key_stores", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_actor_key_stores_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "actor_pii",
-                columns: table => new
-                {
-                    actor_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    display_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    did = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    handle = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    profile_picture_uri = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_actor_pii", x => x.actor_id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "actor_subscriptions",
+                name: "web_push_dispatch_outbox",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    subscriber_tenant_user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    subscriber_user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    target_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    target_actor_type_id = table.Column<int>(type: "integer", nullable: false),
-                    status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
-                    notification_level_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 2),
-                    subscribed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    unsubscribed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_actor_subscriptions", x => x.id);
-                    table.CheckConstraint("ck_actor_subscriptions_notification_level", "notification_level_id IN (1, 2, 3)");
-                    table.CheckConstraint("ck_actor_subscriptions_status", "status_id IN (1, 2, 3)");
-                    table.CheckConstraint("ck_actor_subscriptions_target_actor_type", "target_actor_type_id IN (2, 4)");
-                    table.CheckConstraint("ck_actor_subscriptions_unsubscribed_at", "(status_id = 2 AND unsubscribed_at IS NOT NULL) OR (status_id <> 2)");
-                    table.ForeignKey(
-                        name: "fk_actor_subscriptions_actor_subscription_notification_levels_",
-                        column: x => x.notification_level_id,
-                        principalTable: "actor_subscription_notification_levels",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_actor_subscriptions_actor_subscription_statuses_status_id",
-                        column: x => x.status_id,
-                        principalTable: "actor_subscription_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_actor_subscriptions_actor_types_target_actor_type_id",
-                        column: x => x.target_actor_type_id,
-                        principalTable: "actor_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_actor_subscriptions_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "actors",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    actor_type_id = table.Column<int>(type: "integer", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    group_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    profile_picture_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    banner_picture_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    background_color = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    background_effect = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    banner_color = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    background_image_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    did_custody_type_id = table.Column<int>(type: "integer", nullable: true),
-                    pds_host = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    indexed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    profile_picture_cid = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_actors", x => x.id);
-                    table.UniqueConstraint("ak_actors_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("CK_Actor_UserOrOrganization", "(user_id IS NOT NULL AND organization_id IS NULL AND group_id IS NULL) OR (user_id IS NULL AND organization_id IS NOT NULL AND group_id IS NULL) OR (user_id IS NULL AND organization_id IS NULL AND group_id IS NOT NULL) OR (user_id IS NULL AND organization_id IS NULL AND group_id IS NULL)");
-                    table.ForeignKey(
-                        name: "fk_actors_actor_types_actor_type_id",
-                        column: x => x.actor_type_id,
-                        principalTable: "actor_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_actors_did_custody_types_did_custody_type_id",
-                        column: x => x.did_custody_type_id,
-                        principalTable: "did_custody_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_actors_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "organizations",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    website_url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
-                    approval_status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    actor_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    approved_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    approved_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    approval_notes = table.Column<string>(type: "text", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_organizations", x => x.id);
-                    table.UniqueConstraint("ak_organizations_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.ForeignKey(
-                        name: "fk_organizations_actors_actor_id",
-                        column: x => x.actor_id,
-                        principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_organizations_approval_statuses_approval_status_id",
-                        column: x => x.approval_status_id,
-                        principalTable: "approval_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_organizations_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "storage_objects",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    file_type_id = table.Column<int>(type: "integer", nullable: false),
-                    uri = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
-                    object_key = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
-                    provider = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    full_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    safe_display_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    extension = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    content_type = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
-                    sha256_checksum = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
-                    size = table.Column<long>(type: "bigint", nullable: false),
-                    visibility = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    purpose = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    lifecycle_state = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    owning_resource_kind = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    owning_resource_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    quarantined_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    quarantined_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    quarantine_reason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    actor_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_storage_objects", x => x.id);
-                    table.UniqueConstraint("ak_storage_objects_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_storage_objects_lifecycle_state", "lifecycle_state IN ('pending', 'active', 'quarantined', 'delete_requested', 'deleted')");
-                    table.CheckConstraint("ck_storage_objects_provider", "provider IN ('local', 's3_compatible', 'legacy_external')");
-                    table.CheckConstraint("ck_storage_objects_purpose", "purpose IN ('legacy_image', 'profile_image', 'event_image', 'attachment', 'document', 'system_asset')");
-                    table.CheckConstraint("ck_storage_objects_size_nonnegative", "size >= 0");
-                    table.CheckConstraint("ck_storage_objects_visibility", "visibility IN ('public_image', 'authenticated_tenant', 'private_owner')");
-                    table.ForeignKey(
-                        name: "fk_storage_objects_actors_actor_id",
-                        column: x => x.actor_id,
-                        principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_storage_objects_file_types_file_type_id",
-                        column: x => x.file_type_id,
-                        principalTable: "file_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_storage_objects_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "users",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    actor_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    auth_provider = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    auth_provider_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    default_actor_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    email_verified = table.Column<bool>(type: "boolean", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
-                    last_active_tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_users", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_users_actors_actor_id",
-                        column: x => x.actor_id,
-                        principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "organization_pii",
-                columns: table => new
-                {
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    full_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
-                    country = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    city = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    address = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    postcode = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_organization_pii", x => x.organization_id);
-                    table.ForeignKey(
-                        name: "fk_organization_pii_organizations_organization_id",
-                        column: x => x.organization_id,
-                        principalTable: "organizations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "organization_setting_overrides",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    setting_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
-                    value = table.Column<string>(type: "text", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_organization_setting_overrides", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_organization_setting_overrides_organizations_organization_id",
-                        column: x => x.organization_id,
-                        principalTable: "organizations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_organization_setting_overrides_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_series",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    slug = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    featured_image_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    actor_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    is_published = table.Column<bool>(type: "boolean", nullable: false),
-                    total_views = table.Column<int>(type: "integer", nullable: false),
-                    visibility_type_id = table.Column<int>(type: "integer", nullable: false),
-                    start_date_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    end_date_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_series", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_event_series_actors_actor_id",
-                        column: x => x.actor_id,
-                        principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_series_storage_objects_featured_image_id",
-                        column: x => x.featured_image_id,
-                        principalTable: "storage_objects",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "fk_event_series_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_series_visibility_types_visibility_type_id",
-                        column: x => x.visibility_type_id,
-                        principalTable: "visibility_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "groups",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    full_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    description = table.Column<string>(type: "character varying(5000)", maxLength: 5000, nullable: true),
-                    profile_picture_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    approval_status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    actor_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    parent_organization_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    parent_group_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_groups", x => x.id);
-                    table.UniqueConstraint("ak_groups_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_groups_no_self_parent", "parent_group_id IS NULL OR parent_group_id <> id");
-                    table.CheckConstraint("ck_groups_parent_exclusive", "parent_organization_id IS NULL OR parent_group_id IS NULL");
-                    table.ForeignKey(
-                        name: "fk_groups_actors_actor_id",
-                        column: x => x.actor_id,
-                        principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_groups_approval_statuses_approval_status_id",
-                        column: x => x.approval_status_id,
-                        principalTable: "approval_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_groups_groups_tenant_id_parent_group_id",
-                        columns: x => new { x.tenant_id, x.parent_group_id },
-                        principalTable: "groups",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_groups_organizations_tenant_id_parent_organization_id",
-                        columns: x => new { x.tenant_id, x.parent_organization_id },
-                        principalTable: "organizations",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_groups_storage_objects_profile_picture_id",
-                        column: x => x.profile_picture_id,
-                        principalTable: "storage_objects",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_groups_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ai_consent_grants",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    subject_user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    entity_name = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
-                    field_name = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
-                    provider_trust_tier_id = table.Column<int>(type: "integer", nullable: false),
-                    status_id = table.Column<int>(type: "integer", nullable: false),
-                    purpose = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
-                    granted_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    revoked_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    expires_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_ai_consent_grants", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_ai_consent_grants_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_ai_consent_grants_users_subject_user_id",
-                        column: x => x.subject_user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ai_conversations",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    actor_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
-                    title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    provider = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    model_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    blocked_reason = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    last_message_sequence = table.Column<long>(type: "bigint", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_ai_conversations", x => x.id);
-                    table.CheckConstraint("ck_ai_conversations_last_message_sequence_nonnegative", "last_message_sequence >= 0");
-                    table.ForeignKey(
-                        name: "fk_ai_conversations_actors_actor_id",
-                        column: x => x.actor_id,
-                        principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_ai_conversations_ai_conversation_statuses_status_id",
-                        column: x => x.status_id,
-                        principalTable: "ai_conversation_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_ai_conversations_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_ai_conversations_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "locations",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    full_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    country = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    city = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    timezone = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    location_kind_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
-                    location_privacy_state_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
-                    owner_user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    pii_erased_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    pii_erasure_reason = table.Column<int>(type: "integer", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_locations", x => x.id);
-                    table.UniqueConstraint("ak_locations_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_locations_erasure_state", "(location_privacy_state_id = 3 AND owner_user_id IS NULL AND pii_erased_at_utc IS NOT NULL AND pii_erasure_reason IS NOT NULL) OR (location_privacy_state_id <> 3 AND pii_erased_at_utc IS NULL AND pii_erasure_reason IS NULL)");
-                    table.CheckConstraint("ck_locations_owner_private_home", "owner_user_id IS NULL OR location_kind_id = 5");
-                    table.ForeignKey(
-                        name: "fk_locations_location_kinds_location_kind_id",
-                        column: x => x.location_kind_id,
-                        principalTable: "location_kinds",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_locations_location_privacy_states_location_privacy_state_id",
-                        column: x => x.location_privacy_state_id,
-                        principalTable: "location_privacy_states",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_locations_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_locations_users_owner_user_id",
-                        column: x => x.owner_user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "organization_members",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    role_id = table.Column<int>(type: "integer", nullable: false),
-                    organization_position_id = table.Column<int>(type: "integer", nullable: true),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_organization_members", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_organization_members_organization_positions_organization_po",
-                        column: x => x.organization_position_id,
-                        principalTable: "organization_positions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_organization_members_organizations_organization_id",
-                        column: x => x.organization_id,
-                        principalTable: "organizations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_organization_members_roles_role_id",
-                        column: x => x.role_id,
-                        principalTable: "roles",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_organization_members_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_organization_members_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "platform_user_roles",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    role_id = table.Column<int>(type: "integer", nullable: false),
-                    granted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    granted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_platform_user_roles", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_platform_user_roles_roles_role_id",
-                        column: x => x.role_id,
-                        principalTable: "roles",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_platform_user_roles_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "storage_upload_sessions",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    provider = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    route_key = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    policy_max_upload_bytes = table.Column<long>(type: "bigint", nullable: false),
-                    policy_version = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
-                    expected_size_bytes = table.Column<long>(type: "bigint", nullable: false),
-                    reserved_bytes = table.Column<long>(type: "bigint", nullable: false),
-                    content_type = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    original_file_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    safe_display_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    extension = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    purpose = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    visibility = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    object_key = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
-                    sha256_checksum = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
-                    storage_object_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    idempotency_key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
-                    failure_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    failure_message = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    upload_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    finalized_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    canceled_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    failed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_storage_upload_sessions", x => x.id);
-                    table.CheckConstraint("ck_storage_upload_sessions_expected_size_nonnegative", "expected_size_bytes >= 0");
-                    table.CheckConstraint("ck_storage_upload_sessions_policy_max_upload_bytes_nonnegative", "policy_max_upload_bytes >= 0");
-                    table.CheckConstraint("ck_storage_upload_sessions_provider", "provider IN ('local', 's3_compatible', 'legacy_external')");
-                    table.CheckConstraint("ck_storage_upload_sessions_purpose", "purpose IN ('legacy_image', 'profile_image', 'event_image', 'attachment', 'document', 'system_asset')");
-                    table.CheckConstraint("ck_storage_upload_sessions_reserved_bytes_nonnegative", "reserved_bytes >= 0");
-                    table.CheckConstraint("ck_storage_upload_sessions_route_key", "route_key IN ('images', 'documents', 'general')");
-                    table.CheckConstraint("ck_storage_upload_sessions_status", "status IN ('reserved', 'uploading', 'finalized', 'canceled', 'failed', 'expired')");
-                    table.CheckConstraint("ck_storage_upload_sessions_visibility", "visibility IN ('public_image', 'authenticated_tenant', 'private_owner')");
-                    table.ForeignKey(
-                        name: "fk_storage_upload_sessions_storage_objects_storage_object_id",
-                        column: x => x.storage_object_id,
-                        principalTable: "storage_objects",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_storage_upload_sessions_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_storage_upload_sessions_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "tenant_users",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    actor_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
-                    joined_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    suspended_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    suspended_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    ban_expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    removed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    removed_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    moderation_note = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_tenant_users", x => x.id);
-                    table.UniqueConstraint("ak_tenant_users_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.UniqueConstraint("ak_tenant_users_tenant_id_user_id", x => new { x.tenant_id, x.user_id });
-                    table.CheckConstraint("ck_tenant_users_status", "status_id IN (1, 2, 3, 4)");
-                    table.ForeignKey(
-                        name: "fk_tenant_users_actors_actor_id",
-                        column: x => x.actor_id,
-                        principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_tenant_users_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_tenant_users_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "user_authentication_tokens",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    provider = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    subject_did = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: false),
-                    session_ciphertext = table.Column<byte[]>(type: "bytea", nullable: false),
-                    encryption_key_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
-                    o_auth_client_key_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
-                    envelope_version = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
-                    pds_host = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
-                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_user_authentication_tokens", x => x.id);
-                    table.CheckConstraint("ck_user_authentication_tokens_ciphertext_not_empty", "octet_length(session_ciphertext) >= 29");
-                    table.CheckConstraint("ck_user_authentication_tokens_envelope_version", "envelope_version = 1");
-                    table.CheckConstraint("ck_user_authentication_tokens_required_text", "length(btrim(provider)) > 0 AND length(btrim(subject_did)) > 0 AND length(btrim(encryption_key_id)) > 0 AND length(btrim(o_auth_client_key_id)) > 0");
-                    table.ForeignKey(
-                        name: "fk_user_authentication_tokens_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_user_authentication_tokens_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "user_external_logins",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    provider = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
-                    provider_key = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    provider_display_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_user_external_logins", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_user_external_logins_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_user_external_logins_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "user_notification_preferences",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    category = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
-                    is_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true, defaultValueSql: "NOW()"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_user_notification_preferences", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_user_notification_preferences_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_user_notification_preferences_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "user_pii",
-                columns: table => new
-                {
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
-                    first_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    last_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_user_pii", x => x.user_id);
-                    table.ForeignKey(
-                        name: "fk_user_pii_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "web_push_subscriptions",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    device_identifier = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    endpoint = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
-                    p256dh = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    auth_secret = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    expiration_time = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false),
-                    last_seen_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    unsubscribed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deactivated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deactivation_reason = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true, defaultValueSql: "NOW()"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_web_push_subscriptions", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_web_push_subscriptions_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_web_push_subscriptions_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "events",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_type_id = table.Column<int>(type: "integer", nullable: true),
-                    title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    subtitle = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    description = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: true),
-                    content = table.Column<string>(type: "character varying(5000)", maxLength: 5000, nullable: true),
-                    audience_gender_id = table.Column<int>(type: "integer", nullable: true),
-                    audience_age_id = table.Column<int>(type: "integer", nullable: true),
-                    actor_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    price = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
-                    currency_code = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: true),
-                    featured_image_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    total_views = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    is_registration_required = table.Column<bool>(type: "boolean", nullable: false),
-                    is_user_reported = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    event_url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
-                    madhab_id = table.Column<int>(type: "integer", nullable: true),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    slug = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    public_code = table.Column<string>(type: "character varying(12)", maxLength: 12, nullable: false),
-                    visibility_type_id = table.Column<int>(type: "integer", nullable: false),
-                    session_count = table.Column<int>(type: "integer", nullable: true),
-                    event_status_id = table.Column<int>(type: "integer", nullable: false),
-                    external_registration_url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
-                    first_session_date = table.Column<DateOnly>(type: "date", nullable: true),
-                    last_session_date = table.Column<DateOnly>(type: "date", nullable: true),
-                    timezone = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    source_template_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    source_template_key = table.Column<string>(type: "text", nullable: true),
-                    source_template_version = table.Column<int>(type: "integer", nullable: true),
-                    instantiated_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    last_synced_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    first_session_start_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    last_session_start_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    last_session_end_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    event_time_zone_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    provenance_source = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    provenance_external_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    event_series_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    series_order = table.Column<int>(type: "integer", nullable: true),
-                    event_format_id = table.Column<int>(type: "integer", nullable: false),
-                    registration_policy_id = table.Column<int>(type: "integer", nullable: true),
-                    atproto_record_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
-                    background_color = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    background_effect = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    background_image_id = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_events", x => x.id);
-                    table.UniqueConstraint("ak_events_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("CK_Event_NonNegativePrice", "price IS NULL OR price >= 0");
-                    table.CheckConstraint("CK_Event_SessionDateRange", "first_session_date IS NULL OR last_session_date IS NULL OR first_session_date <= last_session_date");
-                    table.CheckConstraint("CK_Event_SessionStartUtcRange", "first_session_start_utc IS NULL OR last_session_start_utc IS NULL OR first_session_start_utc <= last_session_start_utc");
-                    table.CheckConstraint("CK_Event_TimeZoneIdNotBlank", "event_time_zone_id IS NULL OR length(btrim(event_time_zone_id)) > 0");
-                    table.ForeignKey(
-                        name: "fk_events_actors_tenant_id_actor_id",
-                        columns: x => new { x.tenant_id, x.actor_id },
-                        principalTable: "actors",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_events_atproto_records_atproto_record_id",
-                        column: x => x.atproto_record_id,
-                        principalTable: "atproto_records",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_events_audience_ages_audience_age_id",
-                        column: x => x.audience_age_id,
-                        principalTable: "audience_ages",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_events_audience_genders_audience_gender_id",
-                        column: x => x.audience_gender_id,
-                        principalTable: "audience_genders",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_events_event_formats_event_format_id",
-                        column: x => x.event_format_id,
-                        principalTable: "event_formats",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_events_event_registration_policies_registration_policy_id",
-                        column: x => x.registration_policy_id,
-                        principalTable: "event_registration_policies",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_events_event_series_event_series_id",
-                        column: x => x.event_series_id,
-                        principalTable: "event_series",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "fk_events_event_statuses_event_status_id",
-                        column: x => x.event_status_id,
-                        principalTable: "event_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_events_event_types_event_type_id",
-                        column: x => x.event_type_id,
-                        principalTable: "event_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_events_madhabs_madhab_id",
-                        column: x => x.madhab_id,
-                        principalTable: "madhabs",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_events_storage_objects_background_image_id",
-                        column: x => x.background_image_id,
-                        principalTable: "storage_objects",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_events_storage_objects_featured_image_id",
-                        column: x => x.featured_image_id,
-                        principalTable: "storage_objects",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_events_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_events_visibility_types_visibility_type_id",
-                        column: x => x.visibility_type_id,
-                        principalTable: "visibility_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "group_members",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    group_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    role_id = table.Column<int>(type: "integer", nullable: false),
-                    group_position_id = table.Column<int>(type: "integer", nullable: true),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_group_members", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_group_members_group_positions_group_position_id",
-                        column: x => x.group_position_id,
-                        principalTable: "group_positions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_group_members_groups_group_id",
-                        column: x => x.group_id,
-                        principalTable: "groups",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_group_members_roles_role_id",
-                        column: x => x.role_id,
-                        principalTable: "roles",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_group_members_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_group_members_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "group_setting_overrides",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    group_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    setting_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
-                    value = table.Column<string>(type: "text", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_group_setting_overrides", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_group_setting_overrides_groups_group_id",
-                        column: x => x.group_id,
-                        principalTable: "groups",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_group_setting_overrides_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "notification_channel_preferences",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    scope_id = table.Column<int>(type: "integer", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    group_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    notification_id = table.Column<Guid>(type: "uuid", nullable: false),
                     category_id = table.Column<int>(type: "integer", nullable: false),
-                    channel_id = table.Column<int>(type: "integer", nullable: false),
-                    is_enabled = table.Column<bool>(type: "boolean", nullable: false),
-                    is_locked = table.Column<bool>(type: "boolean", nullable: false),
+                    subscription_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    payload_json = table.Column<string>(type: "jsonb", nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    attempt_count = table.Column<int>(type: "integer", nullable: false),
+                    max_attempts = table.Column<int>(type: "integer", nullable: false, defaultValue: 5),
+                    next_attempt_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    processing_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    processing_lease_token = table.Column<Guid>(type: "uuid", nullable: true),
+                    delivered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    dead_lettered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    skipped_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    permanent_failed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    last_failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    last_error = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    last_failure_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true, defaultValueSql: "NOW()"),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_notification_channel_preferences", x => x.id);
-                    table.CheckConstraint("ck_notification_channel_preferences_scope_target", "(scope_id IN (0, 1, 2) AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL) OR (scope_id = 3 AND organization_id IS NOT NULL AND user_id IS NULL AND group_id IS NULL) OR (scope_id = 4 AND group_id IS NOT NULL AND user_id IS NULL AND organization_id IS NULL) OR (scope_id = 5 AND user_id IS NOT NULL AND organization_id IS NULL AND group_id IS NULL)");
+                    table.PrimaryKey("pk_web_push_dispatch_outbox", x => x.id);
                     table.ForeignKey(
-                        name: "fk_notification_channel_preferences_groups_group_id",
-                        column: x => x.group_id,
-                        principalTable: "groups",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_channel_preferences_notification_preference_ca",
+                        name: "fk_web_push_dispatch_outbox_notification_preference_categories",
                         column: x => x.category_id,
                         principalTable: "notification_preference_categories",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_notification_channel_preferences_notification_preference_ch",
-                        column: x => x.channel_id,
-                        principalTable: "notification_preference_channels",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_channel_preferences_organizations_organization",
-                        column: x => x.organization_id,
-                        principalTable: "organizations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_channel_preferences_setting_scopes_scope_id",
-                        column: x => x.scope_id,
-                        principalTable: "setting_scopes",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_channel_preferences_tenants_tenant_id",
+                        name: "fk_web_push_dispatch_outbox_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_notification_channel_preferences_users_user_id",
+                        name: "fk_web_push_dispatch_outbox_users_user_id",
                         column: x => x.user_id,
                         principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "notification_preference_profiles",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    scope_id = table.Column<int>(type: "integer", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    group_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_muted = table.Column<bool>(type: "boolean", nullable: false),
-                    is_locked = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_notification_preference_profiles", x => x.id);
-                    table.CheckConstraint("ck_notification_preference_profiles_scope_target", "(scope_id IN (0, 1, 2) AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL) OR (scope_id = 3 AND organization_id IS NOT NULL AND user_id IS NULL AND group_id IS NULL) OR (scope_id = 4 AND group_id IS NOT NULL AND user_id IS NULL AND organization_id IS NULL) OR (scope_id = 5 AND user_id IS NOT NULL AND organization_id IS NULL AND group_id IS NULL)");
                     table.ForeignKey(
-                        name: "fk_notification_preference_profiles_groups_group_id",
-                        column: x => x.group_id,
-                        principalTable: "groups",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_preference_profiles_organizations_organization",
-                        column: x => x.organization_id,
-                        principalTable: "organizations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_preference_profiles_setting_scopes_scope_id",
-                        column: x => x.scope_id,
-                        principalTable: "setting_scopes",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_preference_profiles_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_preference_profiles_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
+                        name: "fk_web_push_dispatch_outbox_web_push_subscriptions_subscriptio",
+                        column: x => x.subscription_id,
+                        principalTable: "web_push_subscriptions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -5036,37 +5156,42 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "location_pii",
-                columns: table => new
-                {
-                    location_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    address = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    postcode = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    latitude = table.Column<double>(type: "double precision", nullable: true),
-                    longitude = table.Column<double>(type: "double precision", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_location_pii", x => x.location_id);
-                    table.ForeignKey(
-                        name: "fk_location_pii_locations_location_id",
-                        column: x => x.location_id,
-                        principalTable: "locations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "location_rooms",
+                name: "atproto_identity_moderation_records",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
-                    location_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    atproto_identity_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    action = table.Column<int>(type: "integer", nullable: false),
+                    reason_code = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_atproto_identity_moderation_records", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_atproto_identity_moderation_records_atproto_identities_atpr",
+                        column: x => x.atproto_identity_id,
+                        principalTable: "atproto_identities",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_series",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     slug = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
                     description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    capacity = table.Column<int>(type: "integer", nullable: true),
-                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    featured_image_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    is_published = table.Column<bool>(type: "boolean", nullable: false),
+                    total_views = table.Column<int>(type: "integer", nullable: false),
+                    visibility_type_id = table.Column<int>(type: "integer", nullable: false),
+                    start_date_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    end_date_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
@@ -5079,26 +5204,250 @@ namespace Explore.Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_location_rooms", x => x.id);
-                    table.UniqueConstraint("ak_location_rooms_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.UniqueConstraint("ak_location_rooms_tenant_id_location_id_id", x => new { x.tenant_id, x.location_id, x.id });
-                    table.CheckConstraint("CK_LocationRoom_NonNegativeCapacity", "capacity IS NULL OR capacity >= 0");
+                    table.PrimaryKey("pk_event_series", x => x.id);
                     table.ForeignKey(
-                        name: "fk_location_rooms_locations_location_id",
-                        column: x => x.location_id,
-                        principalTable: "locations",
+                        name: "fk_event_series_actors_actor_id",
+                        column: x => x.actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_series_storage_objects_featured_image_id",
+                        column: x => x.featured_image_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "fk_event_series_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "fk_location_rooms_locations_tenant_id_location_id",
-                        columns: x => new { x.tenant_id, x.location_id },
-                        principalTable: "locations",
-                        principalColumns: new[] { "tenant_id", "id" },
+                        name: "fk_event_series_visibility_types_visibility_type_id",
+                        column: x => x.visibility_type_id,
+                        principalTable: "visibility_types",
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "organization_tenants",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    approval_status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    is_visible = table.Column<bool>(type: "boolean", nullable: false),
+                    is_organizer_eligible = table.Column<bool>(type: "boolean", nullable: false),
+                    is_suspended = table.Column<bool>(type: "boolean", nullable: false),
+                    suspended_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    suspended_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    moderation_note = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    display_name_override = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    description_override = table.Column<string>(type: "character varying(5000)", maxLength: 5000, nullable: true),
+                    website_url_override = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
+                    contact_email_override = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    profile_picture_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    banner_picture_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    background_image_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    background_color = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    background_effect = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    banner_color = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    approved_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    approved_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    approval_notes = table.Column<string>(type: "text", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_organization_tenants", x => x.id);
+                    table.UniqueConstraint("ak_organization_tenants_tenant_id_id", x => new { x.tenant_id, x.id });
                     table.ForeignKey(
-                        name: "fk_location_rooms_tenants_tenant_id",
+                        name: "fk_organization_tenants_approval_statuses_approval_status_id",
+                        column: x => x.approval_status_id,
+                        principalTable: "approval_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_organization_tenants_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_organization_tenants_storage_objects_background_image_id",
+                        column: x => x.background_image_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_organization_tenants_storage_objects_banner_picture_id",
+                        column: x => x.banner_picture_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_organization_tenants_storage_objects_profile_picture_id",
+                        column: x => x.profile_picture_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_organization_tenants_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "storage_upload_sessions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    provider = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    route_key = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    policy_max_upload_bytes = table.Column<long>(type: "bigint", nullable: false),
+                    policy_version = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    expected_size_bytes = table.Column<long>(type: "bigint", nullable: false),
+                    reserved_bytes = table.Column<long>(type: "bigint", nullable: false),
+                    content_type = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    original_file_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    safe_display_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    extension = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    purpose = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    visibility = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    owning_resource_kind = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    owning_resource_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    object_key = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
+                    sha256_checksum = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    storage_object_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    idempotency_key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    failure_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    failure_message = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    upload_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    finalized_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    canceled_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    failed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_storage_upload_sessions", x => x.id);
+                    table.CheckConstraint("ck_storage_upload_sessions_expected_size_nonnegative", "expected_size_bytes >= 0");
+                    table.CheckConstraint("ck_storage_upload_sessions_policy_max_upload_bytes_nonnegative", "policy_max_upload_bytes >= 0");
+                    table.CheckConstraint("ck_storage_upload_sessions_provider", "provider IN ('local', 's3_compatible', 'legacy_external')");
+                    table.CheckConstraint("ck_storage_upload_sessions_purpose", "purpose IN ('legacy_image', 'profile_image', 'event_image', 'attachment', 'document', 'system_asset')");
+                    table.CheckConstraint("ck_storage_upload_sessions_reserved_bytes_nonnegative", "reserved_bytes >= 0");
+                    table.CheckConstraint("ck_storage_upload_sessions_route_key", "route_key IN ('images', 'documents', 'general')");
+                    table.CheckConstraint("ck_storage_upload_sessions_status", "status IN ('reserved', 'uploading', 'finalized', 'canceled', 'failed', 'expired')");
+                    table.CheckConstraint("ck_storage_upload_sessions_visibility", "visibility IN ('public_image', 'authenticated_tenant', 'private_owner')");
+                    table.ForeignKey(
+                        name: "fk_storage_upload_sessions_storage_objects_storage_object_id",
+                        column: x => x.storage_object_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_storage_upload_sessions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_storage_upload_sessions_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "actor_subscriptions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    subscriber_tenant_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    subscriber_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    target_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    target_actor_type_id = table.Column<int>(type: "integer", nullable: false),
+                    status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    notification_level_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 2),
+                    subscribed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    unsubscribed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_actor_subscriptions", x => x.id);
+                    table.CheckConstraint("ck_actor_subscriptions_notification_level", "notification_level_id IN (1, 2, 3)");
+                    table.CheckConstraint("ck_actor_subscriptions_status", "status_id IN (1, 2, 3)");
+                    table.CheckConstraint("ck_actor_subscriptions_target_actor_type", "target_actor_type_id IN (2, 4)");
+                    table.CheckConstraint("ck_actor_subscriptions_unsubscribed_at", "(status_id = 2 AND unsubscribed_at IS NOT NULL) OR (status_id <> 2)");
+                    table.ForeignKey(
+                        name: "fk_actor_subscriptions_actor_subscription_notification_levels_",
+                        column: x => x.notification_level_id,
+                        principalTable: "actor_subscription_notification_levels",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actor_subscriptions_actor_subscription_statuses_status_id",
+                        column: x => x.status_id,
+                        principalTable: "actor_subscription_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actor_subscriptions_actor_types_target_actor_type_id",
+                        column: x => x.target_actor_type_id,
+                        principalTable: "actor_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actor_subscriptions_actors_target_actor_id",
+                        column: x => x.target_actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actor_subscriptions_tenant_users_tenant_id_subscriber_tenan",
+                        columns: x => new { x.tenant_id, x.subscriber_tenant_user_id },
+                        principalTable: "tenant_users",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actor_subscriptions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actor_subscriptions_users_subscriber_user_id",
+                        column: x => x.subscriber_user_id,
+                        principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -5239,7 +5588,7 @@ namespace Explore.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
-                    actor_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    actor_user_id = table.Column<Guid>(type: "uuid", nullable: true),
                     target_tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     target_tenant_user_id = table.Column<Guid>(type: "uuid", nullable: true),
                     status_id = table.Column<int>(type: "integer", nullable: false),
@@ -5418,10 +5767,10 @@ namespace Explore.Persistence.Migrations
                     table.CheckConstraint("ck_webhook_consumers_configuration_version", "configuration_version > 0");
                     table.CheckConstraint("ck_webhook_consumers_typed_owner", "(consumer_kind_id = 1 AND tenant_id IS NOT NULL AND instance_id IS NULL AND organization_id IS NULL AND group_id IS NULL AND owner_user_id IS NULL) OR (consumer_kind_id = 2 AND tenant_id IS NOT NULL AND instance_id IS NULL AND organization_id IS NOT NULL AND group_id IS NULL AND owner_user_id IS NULL) OR (consumer_kind_id = 3 AND tenant_id IS NOT NULL AND instance_id IS NULL AND organization_id IS NULL AND group_id IS NOT NULL AND owner_user_id IS NULL) OR (consumer_kind_id = 4 AND tenant_id IS NOT NULL AND instance_id IS NULL AND organization_id IS NULL AND group_id IS NULL AND owner_user_id IS NOT NULL) OR (consumer_kind_id = 5 AND tenant_id IS NULL AND instance_id IS NOT NULL AND organization_id IS NULL AND group_id IS NULL AND owner_user_id IS NULL)");
                     table.ForeignKey(
-                        name: "fk_webhook_consumers_groups_tenant_id_group_id",
-                        columns: x => new { x.tenant_id, x.group_id },
+                        name: "fk_webhook_consumers_groups_group_id",
+                        column: x => x.group_id,
                         principalTable: "groups",
-                        principalColumns: new[] { "tenant_id", "id" },
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_webhook_consumers_instance_bootstrap_states_instance_id",
@@ -5430,10 +5779,10 @@ namespace Explore.Persistence.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_webhook_consumers_organizations_tenant_id_organization_id",
-                        columns: x => new { x.tenant_id, x.organization_id },
+                        name: "fk_webhook_consumers_organizations_organization_id",
+                        column: x => x.organization_id,
                         principalTable: "organizations",
-                        principalColumns: new[] { "tenant_id", "id" },
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_webhook_consumers_tenant_users_tenant_id_owner_user_id",
@@ -5468,529 +5817,43 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "web_push_dispatch_outbox",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    notification_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    category_id = table.Column<int>(type: "integer", nullable: false),
-                    subscription_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    payload_json = table.Column<string>(type: "jsonb", nullable: false),
-                    status = table.Column<int>(type: "integer", nullable: false),
-                    attempt_count = table.Column<int>(type: "integer", nullable: false),
-                    max_attempts = table.Column<int>(type: "integer", nullable: false, defaultValue: 5),
-                    next_attempt_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    processing_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    processing_lease_token = table.Column<Guid>(type: "uuid", nullable: true),
-                    delivered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    dead_lettered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    skipped_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    permanent_failed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    last_failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    last_error = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    last_failure_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true, defaultValueSql: "NOW()"),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_web_push_dispatch_outbox", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_web_push_dispatch_outbox_notification_preference_categories",
-                        column: x => x.category_id,
-                        principalTable: "notification_preference_categories",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_web_push_dispatch_outbox_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_web_push_dispatch_outbox_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_web_push_dispatch_outbox_web_push_subscriptions_subscriptio",
-                        column: x => x.subscription_id,
-                        principalTable: "web_push_subscriptions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_categories",
+                name: "event_session_templates",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    category_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_template_id = table.Column<Guid>(type: "uuid", nullable: false),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_categories", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_event_categories_categories_tenant_id_category_id",
-                        columns: x => new { x.tenant_id, x.category_id },
-                        principalTable: "categories",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_categories_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_categories_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_contact_share_exports",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    recipient_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    exported_by_user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    format = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    row_count = table.Column<int>(type: "integer", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_contact_share_exports", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_event_contact_share_exports_actors_tenant_id_recipient_acto",
-                        columns: x => new { x.tenant_id, x.recipient_actor_id },
-                        principalTable: "actors",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_contact_share_exports_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_contact_share_exports_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_contact_share_exports_users_exported_by_user_id",
-                        column: x => x.exported_by_user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_days",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    local_date = table.Column<DateOnly>(type: "date", nullable: false),
-                    label = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    description = table.Column<string>(type: "character varying(5000)", maxLength: 5000, nullable: true),
-                    banner_text = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    banner_image_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    session_template_key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    version = table.Column<int>(type: "integer", nullable: false),
                     is_published = table.Column<bool>(type: "boolean", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
                     sort_order = table.Column<int>(type: "integer", nullable: false),
-                    allows_day_scope_registration = table.Column<bool>(type: "boolean", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_days", x => x.id);
-                    table.UniqueConstraint("ak_event_days_tenant_id_event_id_id", x => new { x.tenant_id, x.event_id, x.id });
-                    table.UniqueConstraint("ak_event_days_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.ForeignKey(
-                        name: "fk_event_days_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_days_storage_objects_banner_image_id",
-                        column: x => x.banner_image_id,
-                        principalTable: "storage_objects",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_event_days_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_islamic_aspects",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    madhab_id = table.Column<int>(type: "integer", nullable: true),
-                    reference_prayer = table.Column<int>(type: "integer", nullable: true),
-                    prayer_time_offset = table.Column<int>(type: "integer", nullable: true),
-                    gender_mode = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    includes_quran_recitation = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    primary_language_id = table.Column<int>(type: "integer", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_islamic_aspects", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_event_islamic_aspects_events_id",
-                        column: x => x.id,
-                        principalTable: "events",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_islamic_aspects_languages_primary_language_id",
-                        column: x => x.primary_language_id,
-                        principalTable: "languages",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_event_islamic_aspects_madhabs_madhab_id",
-                        column: x => x.madhab_id,
-                        principalTable: "madhabs",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_locations",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    location_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    show_venue_name = table.Column<bool>(type: "boolean", nullable: false),
-                    show_city = table.Column<bool>(type: "boolean", nullable: false),
-                    show_country = table.Column<bool>(type: "boolean", nullable: false),
-                    show_room_name = table.Column<bool>(type: "boolean", nullable: false),
-                    show_street_address = table.Column<bool>(type: "boolean", nullable: false),
-                    show_postcode = table.Column<bool>(type: "boolean", nullable: false),
-                    show_coordinates = table.Column<bool>(type: "boolean", nullable: false),
-                    full_details_audience_id = table.Column<int>(type: "integer", nullable: false),
-                    reveal_full_details_from_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    needs_privacy_review = table.Column<bool>(type: "boolean", nullable: false),
-                    is_to_be_announced = table.Column<bool>(type: "boolean", nullable: false),
-                    policy_version = table.Column<int>(type: "integer", nullable: false),
-                    last_policy_actor_user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    last_policy_changed_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_locations", x => x.id);
-                    table.UniqueConstraint("ak_event_locations_tenant_id_event_id_id", x => new { x.tenant_id, x.event_id, x.id });
-                    table.UniqueConstraint("ak_event_locations_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_event_locations_physical_or_tba", "(location_id IS NOT NULL AND is_to_be_announced = false) OR (location_id IS NULL AND is_to_be_announced = true)");
-                    table.CheckConstraint("ck_event_locations_policy_version", "policy_version > 0");
-                    table.CheckConstraint("ck_event_locations_tba_suppresses_fields", "is_to_be_announced = false OR (show_venue_name = false AND show_city = false AND show_country = false AND show_room_name = false AND show_street_address = false AND show_postcode = false AND show_coordinates = false)");
-                    table.CheckConstraint("ck_event_locations_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b')");
-                    table.ForeignKey(
-                        name: "fk_event_locations_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_locations_location_disclosure_audiences_full_details_",
-                        column: x => x.full_details_audience_id,
-                        principalTable: "location_disclosure_audiences",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_locations_locations_tenant_id_location_id",
-                        columns: x => new { x.tenant_id, x.location_id },
-                        principalTable: "locations",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_locations_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_reports",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    reporter_user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    reporter_actor_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    reporter_kind = table.Column<int>(type: "integer", nullable: false),
-                    source_kind = table.Column<int>(type: "integer", nullable: false),
-                    reason_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    subcategory_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    status = table.Column<int>(type: "integer", nullable: false),
-                    priority = table.Column<int>(type: "integer", nullable: false),
-                    severity_hint = table.Column<int>(type: "integer", nullable: true),
-                    duplicate_group_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    report_case_updates_consent = table.Column<bool>(type: "boolean", nullable: false),
-                    report_follow_up_contact_consent = table.Column<bool>(type: "boolean", nullable: false),
-                    reporter_locale = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: true),
-                    reporter_ip_hash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
-                    reporter_user_agent_hash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
-                    closed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_reports", x => x.id);
-                    table.UniqueConstraint("ak_event_reports_tenant_id_event_id_id", x => new { x.tenant_id, x.event_id, x.id });
-                    table.UniqueConstraint("ak_event_reports_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_event_reports_closed_at_terminal_status", "(closed_at IS NULL AND status NOT IN (4, 5, 6, 8)) OR (closed_at IS NOT NULL AND status IN (4, 5, 6, 8))");
-                    table.CheckConstraint("ck_event_reports_priority", "priority BETWEEN 1 AND 4");
-                    table.CheckConstraint("ck_event_reports_reason_code_not_blank", "length(btrim(reason_code)) > 0");
-                    table.CheckConstraint("ck_event_reports_reporter_ip_hash_not_blank", "reporter_ip_hash IS NULL OR length(btrim(reporter_ip_hash)) > 0");
-                    table.CheckConstraint("ck_event_reports_reporter_kind", "reporter_kind BETWEEN 1 AND 4");
-                    table.CheckConstraint("ck_event_reports_reporter_locale_not_blank", "reporter_locale IS NULL OR length(btrim(reporter_locale)) > 0");
-                    table.CheckConstraint("ck_event_reports_reporter_user_agent_hash_not_blank", "reporter_user_agent_hash IS NULL OR length(btrim(reporter_user_agent_hash)) > 0");
-                    table.CheckConstraint("ck_event_reports_severity_hint", "severity_hint IS NULL OR severity_hint BETWEEN 1 AND 4");
-                    table.CheckConstraint("ck_event_reports_source_kind", "source_kind BETWEEN 1 AND 5");
-                    table.CheckConstraint("ck_event_reports_status", "status BETWEEN 1 AND 8");
-                    table.CheckConstraint("ck_event_reports_subcategory_code_not_blank", "subcategory_code IS NULL OR length(btrim(subcategory_code)) > 0");
-                    table.ForeignKey(
-                        name: "fk_event_reports_actors_tenant_id_reporter_actor_id",
-                        columns: x => new { x.tenant_id, x.reporter_actor_id },
-                        principalTable: "actors",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_reports_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_reports_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_reports_users_reporter_user_id",
-                        column: x => x.reporter_user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_role_assignments",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    role_id = table.Column<int>(type: "integer", nullable: false),
-                    status = table.Column<int>(type: "integer", nullable: false),
-                    starts_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    expires_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    revoked_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    revoked_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    version = table.Column<long>(type: "bigint", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_role_assignments", x => x.id);
-                    table.CheckConstraint("ck_event_role_assignments_validity_window", "expires_at_utc IS NULL OR expires_at_utc > starts_at_utc");
-                    table.ForeignKey(
-                        name: "fk_event_role_assignments_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_role_assignments_roles_role_id",
-                        column: x => x.role_id,
-                        principalTable: "roles",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_role_assignments_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_role_assignments_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_tags",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tag_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_tags", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_event_tags_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_tags_tags_tenant_id_tag_id",
-                        columns: x => new { x.tenant_id, x.tag_id },
-                        principalTable: "tags",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_tags_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_tech_aspects",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    github_repo_url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
-                    hackathon_track = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    skill_level = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    tech_stack_tags = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    requires_laptop = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    is_coding_competition = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    max_team_size = table.Column<int>(type: "integer", nullable: true),
-                    prize_pool = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
-                    prize_currency_code = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_tech_aspects", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_event_tech_aspects_events_id",
-                        column: x => x.id,
-                        principalTable: "events",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "organization_reviews",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    reviewer_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    rating = table.Column<int>(type: "integer", nullable: false),
-                    comment = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_organization_reviews", x => x.id);
+                    table.PrimaryKey("pk_event_session_templates", x => x.id);
                     table.ForeignKey(
-                        name: "fk_organization_reviews_events_event_id",
-                        column: x => x.event_id,
-                        principalTable: "events",
+                        name: "fk_event_session_templates_event_templates_event_template_id",
+                        column: x => x.event_template_id,
+                        principalTable: "event_templates",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "fk_organization_reviews_organizations_organization_id",
-                        column: x => x.organization_id,
-                        principalTable: "organizations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_organization_reviews_tenants_tenant_id",
+                        name: "fk_event_session_templates_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_organization_reviews_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -6052,6 +5915,403 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "events",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_type_id = table.Column<int>(type: "integer", nullable: true),
+                    title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    subtitle = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    description = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: true),
+                    content = table.Column<string>(type: "character varying(5000)", maxLength: 5000, nullable: true),
+                    audience_gender_id = table.Column<int>(type: "integer", nullable: true),
+                    audience_age_id = table.Column<int>(type: "integer", nullable: true),
+                    actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_provenance_type_id = table.Column<int>(type: "integer", nullable: false),
+                    submitted_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    organizer_actor_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_publisher_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    featured_image_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    total_views = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    madhab_id = table.Column<int>(type: "integer", nullable: true),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    slug = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    public_code = table.Column<string>(type: "character varying(12)", maxLength: 12, nullable: false),
+                    visibility_type_id = table.Column<int>(type: "integer", nullable: false),
+                    session_count = table.Column<int>(type: "integer", nullable: true),
+                    event_status_id = table.Column<int>(type: "integer", nullable: false),
+                    first_session_date = table.Column<DateOnly>(type: "date", nullable: true),
+                    last_session_date = table.Column<DateOnly>(type: "date", nullable: true),
+                    timezone = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    source_template_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_template_key = table.Column<string>(type: "text", nullable: true),
+                    source_template_version = table.Column<int>(type: "integer", nullable: true),
+                    instantiated_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    last_synced_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    first_session_start_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    last_session_start_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    last_session_end_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    event_time_zone_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    provenance_source = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    provenance_external_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    event_series_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    series_order = table.Column<int>(type: "integer", nullable: true),
+                    event_format_id = table.Column<int>(type: "integer", nullable: false),
+                    registration_policy_id = table.Column<int>(type: "integer", nullable: true),
+                    atproto_record_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    background_color = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    background_effect = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    background_image_id = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_events", x => x.id);
+                    table.UniqueConstraint("ak_events_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("CK_Event_SessionDateRange", "first_session_date IS NULL OR last_session_date IS NULL OR first_session_date <= last_session_date");
+                    table.CheckConstraint("CK_Event_SessionStartUtcRange", "first_session_start_utc IS NULL OR last_session_start_utc IS NULL OR first_session_start_utc <= last_session_start_utc");
+                    table.CheckConstraint("CK_Event_TimeZoneIdNotBlank", "event_time_zone_id IS NULL OR length(btrim(event_time_zone_id)) > 0");
+                    table.ForeignKey(
+                        name: "fk_events_actors_actor_id",
+                        column: x => x.actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_actors_organizer_actor_id",
+                        column: x => x.organizer_actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_atproto_records_atproto_record_id",
+                        column: x => x.atproto_record_id,
+                        principalTable: "atproto_records",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_events_audience_ages_audience_age_id",
+                        column: x => x.audience_age_id,
+                        principalTable: "audience_ages",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_audience_genders_audience_gender_id",
+                        column: x => x.audience_gender_id,
+                        principalTable: "audience_genders",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_event_formats_event_format_id",
+                        column: x => x.event_format_id,
+                        principalTable: "event_formats",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_event_provenance_types_event_provenance_type_id",
+                        column: x => x.event_provenance_type_id,
+                        principalTable: "event_provenance_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_event_registration_policies_registration_policy_id",
+                        column: x => x.registration_policy_id,
+                        principalTable: "event_registration_policies",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_event_series_event_series_id",
+                        column: x => x.event_series_id,
+                        principalTable: "event_series",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "fk_events_event_statuses_event_status_id",
+                        column: x => x.event_status_id,
+                        principalTable: "event_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_event_types_event_type_id",
+                        column: x => x.event_type_id,
+                        principalTable: "event_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_madhabs_madhab_id",
+                        column: x => x.madhab_id,
+                        principalTable: "madhabs",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_storage_objects_background_image_id",
+                        column: x => x.background_image_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_events_storage_objects_featured_image_id",
+                        column: x => x.featured_image_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_users_submitted_by_user_id",
+                        column: x => x.submitted_by_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_visibility_types_visibility_type_id",
+                        column: x => x.visibility_type_id,
+                        principalTable: "visibility_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "group_tenants",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    group_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    approval_status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    is_visible = table.Column<bool>(type: "boolean", nullable: false),
+                    is_organizer_eligible = table.Column<bool>(type: "boolean", nullable: false),
+                    is_suspended = table.Column<bool>(type: "boolean", nullable: false),
+                    suspended_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    suspended_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    moderation_note = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    display_name_override = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    description_override = table.Column<string>(type: "character varying(5000)", maxLength: 5000, nullable: true),
+                    profile_picture_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    banner_picture_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    background_image_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    background_color = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    background_effect = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    banner_color = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    parent_organization_tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    parent_group_tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    approved_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    approved_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    approval_notes = table.Column<string>(type: "text", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_group_tenants", x => x.id);
+                    table.UniqueConstraint("ak_group_tenants_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_group_tenants_no_self_parent", "parent_group_tenant_id IS NULL OR parent_group_tenant_id <> id");
+                    table.CheckConstraint("ck_group_tenants_parent_exclusive", "parent_organization_tenant_id IS NULL OR parent_group_tenant_id IS NULL");
+                    table.ForeignKey(
+                        name: "fk_group_tenants_approval_statuses_approval_status_id",
+                        column: x => x.approval_status_id,
+                        principalTable: "approval_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_group_tenants_group_tenants_tenant_id_parent_group_tenant_id",
+                        columns: x => new { x.tenant_id, x.parent_group_tenant_id },
+                        principalTable: "group_tenants",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_group_tenants_groups_group_id",
+                        column: x => x.group_id,
+                        principalTable: "groups",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_group_tenants_organization_tenants_tenant_id_parent_organiz",
+                        columns: x => new { x.tenant_id, x.parent_organization_tenant_id },
+                        principalTable: "organization_tenants",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_group_tenants_storage_objects_background_image_id",
+                        column: x => x.background_image_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_group_tenants_storage_objects_banner_picture_id",
+                        column: x => x.banner_picture_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_group_tenants_storage_objects_profile_picture_id",
+                        column: x => x.profile_picture_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_group_tenants_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "organization_members",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    organization_tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    role_id = table.Column<int>(type: "integer", nullable: false),
+                    organization_position_id = table.Column<int>(type: "integer", nullable: true),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_organization_members", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_organization_members_organization_positions_organization_po",
+                        column: x => x.organization_position_id,
+                        principalTable: "organization_positions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_organization_members_organization_tenants_tenant_id_organiz",
+                        columns: x => new { x.tenant_id, x.organization_tenant_id },
+                        principalTable: "organization_tenants",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_organization_members_roles_role_id",
+                        column: x => x.role_id,
+                        principalTable: "roles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_organization_members_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_organization_members_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "organization_setting_overrides",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    organization_tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    setting_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    value = table.Column<string>(type: "text", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_organization_setting_overrides", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_organization_setting_overrides_organization_tenants_tenant_",
+                        columns: x => new { x.tenant_id, x.organization_tenant_id },
+                        principalTable: "organization_tenants",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_organization_setting_overrides_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "organization_tenant_evidence",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    organization_tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    document_storage_object_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    review_status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    reviewed_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    review_notes = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    reviewed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_organization_tenant_evidence", x => x.id);
+                    table.UniqueConstraint("ak_organization_tenant_evidence_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_organization_tenant_evidence_approval_statuses_review_statu",
+                        column: x => x.review_status_id,
+                        principalTable: "approval_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_organization_tenant_evidence_organization_tenants_tenant_id",
+                        columns: x => new { x.tenant_id, x.organization_tenant_id },
+                        principalTable: "organization_tenants",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_organization_tenant_evidence_storage_objects_tenant_id_docu",
+                        columns: x => new { x.tenant_id, x.document_storage_object_id },
+                        principalTable: "storage_objects",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_organization_tenant_evidence_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_organization_tenant_evidence_users_reviewed_by_user_id",
+                        column: x => x.reviewed_by_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "support_access_audit_events",
                 columns: table => new
                 {
@@ -6059,7 +6319,7 @@ namespace Explore.Persistence.Migrations
                     support_access_session_id = table.Column<Guid>(type: "uuid", nullable: false),
                     occurred_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     event_type_id = table.Column<int>(type: "integer", nullable: false),
-                    actor_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    actor_user_id = table.Column<Guid>(type: "uuid", nullable: true),
                     target_tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     target_tenant_user_id = table.Column<Guid>(type: "uuid", nullable: true),
                     route_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
@@ -6299,573 +6559,6 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "event_registration_intents",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    registration_scope_id = table.Column<int>(type: "integer", nullable: false),
-                    selected_event_day_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    registration_policy_snapshot_id = table.Column<int>(type: "integer", nullable: true),
-                    approval_status_id = table.Column<int>(type: "integer", nullable: true),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_registration_intents", x => x.id);
-                    table.UniqueConstraint("ak_event_registration_intents_tenant_id_event_id_id", x => new { x.tenant_id, x.event_id, x.id });
-                    table.UniqueConstraint("ak_event_registration_intents_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.ForeignKey(
-                        name: "fk_event_registration_intents_approval_statuses_approval_statu",
-                        column: x => x.approval_status_id,
-                        principalTable: "approval_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_registration_intents_event_days_tenant_id_event_id_se",
-                        columns: x => new { x.tenant_id, x.event_id, x.selected_event_day_id },
-                        principalTable: "event_days",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_registration_intents_event_registration_policies_regi",
-                        column: x => x.registration_policy_snapshot_id,
-                        principalTable: "event_registration_policies",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_registration_intents_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_registration_intents_registration_scopes_registration",
-                        column: x => x.registration_scope_id,
-                        principalTable: "registration_scopes",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_registration_intents_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_registration_intents_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_agenda_items",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_day_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    start_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    end_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    local_start_date = table.Column<DateOnly>(type: "date", nullable: false),
-                    local_end_date = table.Column<DateOnly>(type: "date", nullable: false),
-                    local_start_time = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
-                    local_end_time = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
-                    local_start_minute_of_day = table.Column<int>(type: "integer", nullable: false),
-                    local_end_minute_of_day = table.Column<int>(type: "integer", nullable: false),
-                    event_location_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    location_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    room_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    kind_id = table.Column<int>(type: "integer", nullable: true),
-                    sort_order = table.Column<int>(type: "integer", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_agenda_items", x => x.id);
-                    table.CheckConstraint("CK_EventAgendaItem_EndAfterStart", "end_time > start_time");
-                    table.CheckConstraint("CK_EventAgendaItem_LocalEndMinuteMatchesTime", "local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
-                    table.CheckConstraint("CK_EventAgendaItem_LocalEndMinuteRange", "local_end_minute_of_day BETWEEN 0 AND 1439");
-                    table.CheckConstraint("CK_EventAgendaItem_LocalStartMinuteMatchesTime", "local_start_minute_of_day = ((EXTRACT(HOUR FROM local_start_time)::int * 60) + EXTRACT(MINUTE FROM local_start_time)::int)");
-                    table.CheckConstraint("CK_EventAgendaItem_LocalStartMinuteRange", "local_start_minute_of_day BETWEEN 0 AND 1439");
-                    table.CheckConstraint("CK_EventAgendaItem_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
-                    table.ForeignKey(
-                        name: "fk_event_agenda_items_event_days_tenant_id_event_id_event_day_",
-                        columns: x => new { x.tenant_id, x.event_id, x.event_day_id },
-                        principalTable: "event_days",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_agenda_items_event_locations_tenant_id_event_id_event",
-                        columns: x => new { x.tenant_id, x.event_id, x.event_location_id },
-                        principalTable: "event_locations",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_agenda_items_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_agenda_items_location_rooms_tenant_id_location_id_roo",
-                        columns: x => new { x.tenant_id, x.location_id, x.room_id },
-                        principalTable: "location_rooms",
-                        principalColumns: new[] { "tenant_id", "location_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_agenda_items_locations_tenant_id_location_id",
-                        columns: x => new { x.tenant_id, x.location_id },
-                        principalTable: "locations",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_agenda_items_schedule_item_kinds_kind_id",
-                        column: x => x.kind_id,
-                        principalTable: "schedule_item_kinds",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_agenda_items_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_location_disclosure_audits",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_location_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    actor_user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    previous_fields = table.Column<int>(type: "integer", nullable: false),
-                    new_fields = table.Column<int>(type: "integer", nullable: false),
-                    previous_audience_id = table.Column<int>(type: "integer", nullable: false),
-                    new_audience_id = table.Column<int>(type: "integer", nullable: false),
-                    previous_reveal_full_details_from_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    new_reveal_full_details_from_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    previous_policy_version = table.Column<int>(type: "integer", nullable: false),
-                    new_policy_version = table.Column<int>(type: "integer", nullable: false),
-                    reason = table.Column<int>(type: "integer", nullable: false),
-                    occurred_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_location_disclosure_audits", x => x.id);
-                    table.CheckConstraint("ck_event_location_disclosure_audits_field_flags", "previous_fields BETWEEN 0 AND 127 AND new_fields BETWEEN 0 AND 127");
-                    table.CheckConstraint("ck_event_location_disclosure_audits_policy_step", "previous_policy_version >= 0 AND new_policy_version = previous_policy_version + 1");
-                    table.CheckConstraint("ck_event_location_disclosure_audits_reason", "reason BETWEEN 1 AND 5");
-                    table.CheckConstraint("ck_event_location_disclosure_audits_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b')");
-                    table.ForeignKey(
-                        name: "fk_event_location_disclosure_audits_event_locations_tenant_id_",
-                        columns: x => new { x.tenant_id, x.event_location_id },
-                        principalTable: "event_locations",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_location_disclosure_audits_location_disclosure_audien",
-                        column: x => x.new_audience_id,
-                        principalTable: "location_disclosure_audiences",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_location_disclosure_audits_location_disclosure_audien1",
-                        column: x => x.previous_audience_id,
-                        principalTable: "location_disclosure_audiences",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_location_disclosure_audits_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_location_exact_read_audits",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_location_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    requester_user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    purpose = table.Column<int>(type: "integer", nullable: false),
-                    was_authorized = table.Column<bool>(type: "boolean", nullable: false),
-                    occurred_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    correlation_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    trace_id = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_location_exact_read_audits", x => x.id);
-                    table.CheckConstraint("ck_event_location_exact_read_audits_purpose", "purpose BETWEEN 1 AND 4");
-                    table.CheckConstraint("ck_event_location_exact_read_audits_trace", "correlation_id IS NOT NULL OR trace_id IS NOT NULL");
-                    table.CheckConstraint("ck_event_location_exact_read_audits_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b')");
-                    table.ForeignKey(
-                        name: "fk_event_location_exact_read_audits_event_locations_tenant_id_",
-                        columns: x => new { x.tenant_id, x.event_location_id },
-                        principalTable: "event_locations",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_location_exact_read_audits_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_session_groups",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    slug = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    event_location_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    location_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    room_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    color = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: true),
-                    sort_order = table.Column<int>(type: "integer", nullable: false),
-                    is_published = table.Column<bool>(type: "boolean", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_session_groups", x => x.id);
-                    table.UniqueConstraint("ak_event_session_groups_tenant_id_event_id_id", x => new { x.tenant_id, x.event_id, x.id });
-                    table.UniqueConstraint("ak_event_session_groups_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("CK_EventSessionGroup_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
-                    table.ForeignKey(
-                        name: "fk_event_session_groups_event_locations_tenant_id_event_id_eve",
-                        columns: x => new { x.tenant_id, x.event_id, x.event_location_id },
-                        principalTable: "event_locations",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_session_groups_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_session_groups_location_rooms_tenant_id_location_id_r",
-                        columns: x => new { x.tenant_id, x.location_id, x.room_id },
-                        principalTable: "location_rooms",
-                        principalColumns: new[] { "tenant_id", "location_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_session_groups_locations_tenant_id_location_id",
-                        columns: x => new { x.tenant_id, x.location_id },
-                        principalTable: "locations",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_session_groups_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_sessions",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_day_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    start_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    end_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    end_time_type = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    local_start_date = table.Column<DateOnly>(type: "date", nullable: true),
-                    local_end_date = table.Column<DateOnly>(type: "date", nullable: true),
-                    local_start_time = table.Column<TimeOnly>(type: "time without time zone", nullable: true),
-                    local_end_time = table.Column<TimeOnly>(type: "time without time zone", nullable: true),
-                    local_start_minute_of_day = table.Column<int>(type: "integer", nullable: true),
-                    local_end_minute_of_day = table.Column<int>(type: "integer", nullable: true),
-                    sort_order = table.Column<int>(type: "integer", nullable: false),
-                    event_location_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    location_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    room_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    event_session_kind_id = table.Column<int>(type: "integer", nullable: true),
-                    event_session_status_id = table.Column<int>(type: "integer", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    slug = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    max_audience_attendees = table.Column<int>(type: "integer", nullable: true),
-                    current_audience_attendees = table.Column<int>(type: "integer", nullable: true),
-                    registration_mode_id = table.Column<int>(type: "integer", nullable: true),
-                    featured_image_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    price = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
-                    currency_code = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: true),
-                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    source_template_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    source_template_key = table.Column<string>(type: "text", nullable: true),
-                    source_template_version = table.Column<int>(type: "integer", nullable: true),
-                    instantiated_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    last_synced_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_sessions", x => x.id);
-                    table.UniqueConstraint("ak_event_sessions_tenant_id_event_id_id", x => new { x.tenant_id, x.event_id, x.id });
-                    table.UniqueConstraint("ak_event_sessions_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("CK_EventSession_EndAfterStart", "end_time IS NULL OR start_time IS NULL OR end_time > start_time");
-                    table.CheckConstraint("CK_EventSession_EndTimeTypeState", "start_time IS NULL OR ((end_time_type = 0 AND end_time IS NOT NULL) OR (end_time_type = 1 AND end_time IS NULL) OR (end_time_type = 2))");
-                    table.CheckConstraint("CK_EventSession_LocalEndMinuteMatchesTime", "local_end_minute_of_day IS NULL OR local_end_time IS NULL OR local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
-                    table.CheckConstraint("CK_EventSession_LocalEndMinuteRange", "local_end_minute_of_day IS NULL OR local_end_minute_of_day BETWEEN 0 AND 1439");
-                    table.CheckConstraint("CK_EventSession_LocalStartMinuteMatchesTime", "local_start_minute_of_day IS NULL OR local_start_time IS NULL OR local_start_minute_of_day = ((EXTRACT(HOUR FROM local_start_time)::int * 60) + EXTRACT(MINUTE FROM local_start_time)::int)");
-                    table.CheckConstraint("CK_EventSession_LocalStartMinuteRange", "local_start_minute_of_day IS NULL OR local_start_minute_of_day BETWEEN 0 AND 1439");
-                    table.CheckConstraint("CK_EventSession_NonNegativePrice", "price IS NULL OR price >= 0");
-                    table.CheckConstraint("CK_EventSession_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
-                    table.ForeignKey(
-                        name: "fk_event_sessions_event_days_tenant_id_event_id_event_day_id",
-                        columns: x => new { x.tenant_id, x.event_id, x.event_day_id },
-                        principalTable: "event_days",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_sessions_event_locations_tenant_id_event_id_event_loc",
-                        columns: x => new { x.tenant_id, x.event_id, x.event_location_id },
-                        principalTable: "event_locations",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_sessions_event_session_kinds_event_session_kind_id",
-                        column: x => x.event_session_kind_id,
-                        principalTable: "event_session_kinds",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_event_sessions_event_session_statuses_event_session_status_",
-                        column: x => x.event_session_status_id,
-                        principalTable: "event_session_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_sessions_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_sessions_location_rooms_tenant_id_location_id_room_id",
-                        columns: x => new { x.tenant_id, x.location_id, x.room_id },
-                        principalTable: "location_rooms",
-                        principalColumns: new[] { "tenant_id", "location_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_sessions_locations_tenant_id_location_id",
-                        columns: x => new { x.tenant_id, x.location_id },
-                        principalTable: "locations",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_sessions_registration_modes_registration_mode_id",
-                        column: x => x.registration_mode_id,
-                        principalTable: "registration_modes",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "fk_event_sessions_storage_objects_featured_image_id",
-                        column: x => x.featured_image_id,
-                        principalTable: "storage_objects",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "fk_event_sessions_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_report_evidence",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    report_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    evidence_kind = table.Column<int>(type: "integer", nullable: false),
-                    text_body_encrypted = table.Column<string>(type: "text", nullable: true),
-                    storage_object_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    content_hash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
-                    classification = table.Column<int>(type: "integer", nullable: false),
-                    retention_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_report_evidence", x => x.id);
-                    table.CheckConstraint("ck_event_report_evidence_classification", "classification BETWEEN 1 AND 3");
-                    table.CheckConstraint("ck_event_report_evidence_content_hash_not_blank", "content_hash IS NULL OR length(btrim(content_hash)) > 0");
-                    table.CheckConstraint("ck_event_report_evidence_kind", "evidence_kind BETWEEN 1 AND 5");
-                    table.CheckConstraint("ck_event_report_evidence_reporter_text_required", "evidence_kind <> 1 OR (text_body_encrypted IS NOT NULL AND length(btrim(text_body_encrypted)) > 0)");
-                    table.ForeignKey(
-                        name: "fk_event_report_evidence_event_reports_tenant_id_report_id",
-                        columns: x => new { x.tenant_id, x.report_id },
-                        principalTable: "event_reports",
-                        principalColumns: new[] { "tenant_id", "id" });
-                    table.ForeignKey(
-                        name: "fk_event_report_evidence_storage_objects_tenant_id_storage_obj",
-                        columns: x => new { x.tenant_id, x.storage_object_id },
-                        principalTable: "storage_objects",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_report_evidence_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_report_evidence_users_created_by_user_id",
-                        column: x => x.created_by_user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_report_signals",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    report_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    provider = table.Column<int>(type: "integer", nullable: false),
-                    provider_target_scope = table.Column<int>(type: "integer", nullable: false),
-                    provider_target_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    signal_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    policy_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    score = table.Column<decimal>(type: "numeric(5,4)", precision: 5, scale: 4, nullable: true),
-                    verdict = table.Column<int>(type: "integer", nullable: false),
-                    recommended_action = table.Column<int>(type: "integer", nullable: true),
-                    safe_summary = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    external_signal_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    correlation_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_report_signals", x => x.id);
-                    table.CheckConstraint("ck_event_report_signals_correlation_id_not_blank", "length(btrim(correlation_id)) > 0");
-                    table.CheckConstraint("ck_event_report_signals_external_signal_id_not_blank", "external_signal_id IS NULL OR length(btrim(external_signal_id)) > 0");
-                    table.CheckConstraint("ck_event_report_signals_policy_code_not_blank", "length(btrim(policy_code)) > 0");
-                    table.CheckConstraint("ck_event_report_signals_provider", "provider BETWEEN 1 AND 5");
-                    table.CheckConstraint("ck_event_report_signals_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
-                    table.CheckConstraint("ck_event_report_signals_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
-                    table.CheckConstraint("ck_event_report_signals_recommended_action", "recommended_action IS NULL OR recommended_action BETWEEN 0 AND 4");
-                    table.CheckConstraint("ck_event_report_signals_safe_summary_not_blank", "safe_summary IS NULL OR length(btrim(safe_summary)) > 0");
-                    table.CheckConstraint("ck_event_report_signals_score_range", "score IS NULL OR (score >= 0 AND score <= 1)");
-                    table.CheckConstraint("ck_event_report_signals_signal_type_not_blank", "length(btrim(signal_type)) > 0");
-                    table.CheckConstraint("ck_event_report_signals_verdict", "verdict BETWEEN 1 AND 5");
-                    table.ForeignKey(
-                        name: "fk_event_report_signals_event_reports_tenant_id_event_id_repor",
-                        columns: x => new { x.tenant_id, x.event_id, x.report_id },
-                        principalTable: "event_reports",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" });
-                    table.ForeignKey(
-                        name: "fk_event_report_signals_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_report_signals_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_report_targets",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    report_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    target_kind = table.Column<int>(type: "integer", nullable: false),
-                    target_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    field_path = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    storage_object_id = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_report_targets", x => x.id);
-                    table.CheckConstraint("ck_event_report_targets_field_path_not_blank", "field_path IS NULL OR length(btrim(field_path)) > 0");
-                    table.CheckConstraint("ck_event_report_targets_target_kind", "target_kind BETWEEN 1 AND 6");
-                    table.ForeignKey(
-                        name: "fk_event_report_targets_event_reports_tenant_id_report_id",
-                        columns: x => new { x.tenant_id, x.report_id },
-                        principalTable: "event_reports",
-                        principalColumns: new[] { "tenant_id", "id" });
-                    table.ForeignKey(
-                        name: "fk_event_report_targets_storage_objects_tenant_id_storage_obje",
-                        columns: x => new { x.tenant_id, x.storage_object_id },
-                        principalTable: "storage_objects",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_report_targets_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "ai_tool_executions",
                 columns: table => new
                 {
@@ -6886,6 +6579,851 @@ namespace Explore.Persistence.Migrations
                         name: "fk_ai_tool_executions_ai_proposed_actions_proposed_action_id",
                         column: x => x.proposed_action_id,
                         principalTable: "ai_proposed_actions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_capacity_pools",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    maximum_quantity = table.Column<int>(type: "integer", nullable: true),
+                    hold_duration_seconds = table.Column<int>(type: "integer", nullable: false),
+                    capacity_hold_policy_id = table.Column<int>(type: "integer", nullable: false),
+                    capacity_oversell_policy_id = table.Column<int>(type: "integer", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_capacity_pools", x => x.id);
+                    table.UniqueConstraint("ak_event_capacity_pools_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_event_capacity_pools_capacity_hold_policies_capacity_hold_p",
+                        column: x => x.capacity_hold_policy_id,
+                        principalTable: "capacity_hold_policies",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_capacity_pools_capacity_oversell_policies_capacity_ov",
+                        column: x => x.capacity_oversell_policy_id,
+                        principalTable: "capacity_oversell_policies",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_capacity_pools_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_capacity_pools_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_categories",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    category_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_categories", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_categories_categories_tenant_id_category_id",
+                        columns: x => new { x.tenant_id, x.category_id },
+                        principalTable: "categories",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_categories_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_categories_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_contact_share_exports",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    recipient_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    exported_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    format = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    row_count = table.Column<int>(type: "integer", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_contact_share_exports", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_exports_actors_recipient_actor_id",
+                        column: x => x.recipient_actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_exports_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_exports_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_exports_users_exported_by_user_id",
+                        column: x => x.exported_by_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_days",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    local_date = table.Column<DateOnly>(type: "date", nullable: false),
+                    label = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    description = table.Column<string>(type: "character varying(5000)", maxLength: 5000, nullable: true),
+                    banner_text = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    banner_image_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_published = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    allows_day_scope_registration = table.Column<bool>(type: "boolean", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_days", x => x.id);
+                    table.UniqueConstraint("ak_event_days_tenant_id_event_id_id", x => new { x.tenant_id, x.event_id, x.id });
+                    table.UniqueConstraint("ak_event_days_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_event_days_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_days_storage_objects_banner_image_id",
+                        column: x => x.banner_image_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_days_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_islamic_aspects",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    madhab_id = table.Column<int>(type: "integer", nullable: true),
+                    reference_prayer = table.Column<int>(type: "integer", nullable: true),
+                    prayer_time_offset = table.Column<int>(type: "integer", nullable: true),
+                    gender_mode = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    includes_quran_recitation = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    primary_language_id = table.Column<int>(type: "integer", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_islamic_aspects", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_islamic_aspects_events_id",
+                        column: x => x.id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_islamic_aspects_languages_primary_language_id",
+                        column: x => x.primary_language_id,
+                        principalTable: "languages",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_islamic_aspects_madhabs_madhab_id",
+                        column: x => x.madhab_id,
+                        principalTable: "madhabs",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_locations",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    location_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    show_venue_name = table.Column<bool>(type: "boolean", nullable: false),
+                    show_city = table.Column<bool>(type: "boolean", nullable: false),
+                    show_country = table.Column<bool>(type: "boolean", nullable: false),
+                    show_room_name = table.Column<bool>(type: "boolean", nullable: false),
+                    show_street_address = table.Column<bool>(type: "boolean", nullable: false),
+                    show_postcode = table.Column<bool>(type: "boolean", nullable: false),
+                    show_coordinates = table.Column<bool>(type: "boolean", nullable: false),
+                    full_details_audience_id = table.Column<int>(type: "integer", nullable: false),
+                    reveal_full_details_from_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    needs_privacy_review = table.Column<bool>(type: "boolean", nullable: false),
+                    is_to_be_announced = table.Column<bool>(type: "boolean", nullable: false),
+                    policy_version = table.Column<int>(type: "integer", nullable: false),
+                    last_policy_actor_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    last_policy_changed_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_locations", x => x.id);
+                    table.UniqueConstraint("ak_event_locations_tenant_id_event_id_id", x => new { x.tenant_id, x.event_id, x.id });
+                    table.UniqueConstraint("ak_event_locations_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_event_locations_physical_or_tba", "(location_id IS NOT NULL AND is_to_be_announced = false) OR (location_id IS NULL AND is_to_be_announced = true)");
+                    table.CheckConstraint("ck_event_locations_policy_version", "policy_version > 0");
+                    table.CheckConstraint("ck_event_locations_tba_suppresses_fields", "is_to_be_announced = false OR (show_venue_name = false AND show_city = false AND show_country = false AND show_room_name = false AND show_street_address = false AND show_postcode = false AND show_coordinates = false)");
+                    table.CheckConstraint("ck_event_locations_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b')");
+                    table.ForeignKey(
+                        name: "fk_event_locations_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_locations_location_disclosure_audiences_full_details_",
+                        column: x => x.full_details_audience_id,
+                        principalTable: "location_disclosure_audiences",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_locations_locations_tenant_id_location_id",
+                        columns: x => new { x.tenant_id, x.location_id },
+                        principalTable: "locations",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_locations_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_organizer_claims",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    claimant_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    status_id = table.Column<int>(type: "integer", nullable: false),
+                    evidence_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    evidence_reference = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: false),
+                    reviewer_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    decision_reason_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    decided_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_organizer_claims", x => x.id);
+                    table.UniqueConstraint("ak_event_organizer_claims_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_event_organizer_claims_actors_claimant_actor_id",
+                        column: x => x.claimant_actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_organizer_claims_event_organizer_claim_statuses_statu",
+                        column: x => x.status_id,
+                        principalTable: "event_organizer_claim_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_organizer_claims_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_organizer_claims_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_organizer_claims_users_reviewer_user_id",
+                        column: x => x.reviewer_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_participation_configurations",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    participation_handling_mode_id = table.Column<int>(type: "integer", nullable: false),
+                    advance_registration_obligation_id = table.Column<int>(type: "integer", nullable: false),
+                    identity_access_mode_id = table.Column<int>(type: "integer", nullable: true),
+                    guest_recovery_policy = table.Column<int>(type: "integer", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_participation_configurations", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_participation_configurations_advance_registration_obl",
+                        column: x => x.advance_registration_obligation_id,
+                        principalTable: "advance_registration_obligations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_participation_configurations_events_tenant_id_id",
+                        columns: x => new { x.tenant_id, x.id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_participation_configurations_identity_access_modes_id",
+                        column: x => x.identity_access_mode_id,
+                        principalTable: "identity_access_modes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_participation_configurations_participation_handling_m",
+                        column: x => x.participation_handling_mode_id,
+                        principalTable: "participation_handling_modes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_participation_configurations_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_public_actions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_public_action_kind_id = table.Column<int>(type: "integer", nullable: false),
+                    health_state_id = table.Column<int>(type: "integer", nullable: false),
+                    url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: false),
+                    destination_domain = table.Column<string>(type: "character varying(253)", maxLength: 253, nullable: false),
+                    label = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    is_primary = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_public_actions", x => x.id);
+                    table.UniqueConstraint("ak_event_public_actions_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_event_public_actions_event_public_action_health_states_heal",
+                        column: x => x.health_state_id,
+                        principalTable: "event_public_action_health_states",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_public_actions_event_public_action_kinds_event_public",
+                        column: x => x.event_public_action_kind_id,
+                        principalTable: "event_public_action_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_public_actions_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_public_actions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_reports",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    reporter_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    reporter_actor_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    reporter_kind = table.Column<int>(type: "integer", nullable: false),
+                    source_kind = table.Column<int>(type: "integer", nullable: false),
+                    reason_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    subcategory_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    priority = table.Column<int>(type: "integer", nullable: false),
+                    severity_hint = table.Column<int>(type: "integer", nullable: true),
+                    duplicate_group_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    report_case_updates_consent = table.Column<bool>(type: "boolean", nullable: false),
+                    report_follow_up_contact_consent = table.Column<bool>(type: "boolean", nullable: false),
+                    reporter_locale = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: true),
+                    reporter_ip_hash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    reporter_user_agent_hash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    closed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_reports", x => x.id);
+                    table.UniqueConstraint("ak_event_reports_tenant_id_event_id_id", x => new { x.tenant_id, x.event_id, x.id });
+                    table.UniqueConstraint("ak_event_reports_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_event_reports_closed_at_terminal_status", "(closed_at IS NULL AND status NOT IN (4, 5, 6, 8)) OR (closed_at IS NOT NULL AND status IN (4, 5, 6, 8))");
+                    table.CheckConstraint("ck_event_reports_priority", "priority BETWEEN 1 AND 4");
+                    table.CheckConstraint("ck_event_reports_reason_code_not_blank", "length(btrim(reason_code)) > 0");
+                    table.CheckConstraint("ck_event_reports_reporter_ip_hash_not_blank", "reporter_ip_hash IS NULL OR length(btrim(reporter_ip_hash)) > 0");
+                    table.CheckConstraint("ck_event_reports_reporter_kind", "reporter_kind BETWEEN 1 AND 4");
+                    table.CheckConstraint("ck_event_reports_reporter_locale_not_blank", "reporter_locale IS NULL OR length(btrim(reporter_locale)) > 0");
+                    table.CheckConstraint("ck_event_reports_reporter_user_agent_hash_not_blank", "reporter_user_agent_hash IS NULL OR length(btrim(reporter_user_agent_hash)) > 0");
+                    table.CheckConstraint("ck_event_reports_severity_hint", "severity_hint IS NULL OR severity_hint BETWEEN 1 AND 4");
+                    table.CheckConstraint("ck_event_reports_source_kind", "source_kind BETWEEN 1 AND 5");
+                    table.CheckConstraint("ck_event_reports_status", "status BETWEEN 1 AND 8");
+                    table.CheckConstraint("ck_event_reports_subcategory_code_not_blank", "subcategory_code IS NULL OR length(btrim(subcategory_code)) > 0");
+                    table.ForeignKey(
+                        name: "fk_event_reports_actors_reporter_actor_id",
+                        column: x => x.reporter_actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_reports_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_reports_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_reports_users_reporter_user_id",
+                        column: x => x.reporter_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_role_assignments",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    role_id = table.Column<int>(type: "integer", nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    starts_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    expires_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    revoked_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    revoked_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    version = table.Column<long>(type: "bigint", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_role_assignments", x => x.id);
+                    table.CheckConstraint("ck_event_role_assignments_validity_window", "expires_at_utc IS NULL OR expires_at_utc > starts_at_utc");
+                    table.ForeignKey(
+                        name: "fk_event_role_assignments_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_role_assignments_roles_role_id",
+                        column: x => x.role_id,
+                        principalTable: "roles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_role_assignments_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_role_assignments_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_tags",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tag_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_tags", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_tags_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_tags_tags_tenant_id_tag_id",
+                        columns: x => new { x.tenant_id, x.tag_id },
+                        principalTable: "tags",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_tags_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_tech_aspects",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    github_repo_url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
+                    hackathon_track = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    skill_level = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    tech_stack_tags = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    requires_laptop = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    is_coding_competition = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    max_team_size = table.Column<int>(type: "integer", nullable: true),
+                    prize_pool = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    prize_currency_code = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_tech_aspects", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_tech_aspects_events_id",
+                        column: x => x.id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_ticket_catalog_versions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    currency_code = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
+                    version_number = table.Column<int>(type: "integer", nullable: false),
+                    ticket_catalog_status_id = table.Column<int>(type: "integer", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_ticket_catalog_versions", x => x.id);
+                    table.UniqueConstraint("ak_event_ticket_catalog_versions_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_event_ticket_catalog_versions_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_ticket_catalog_versions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_ticket_catalog_versions_ticket_catalog_statuses_ticke",
+                        column: x => x.ticket_catalog_status_id,
+                        principalTable: "ticket_catalog_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "organization_reviews",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    reviewer_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    rating = table.Column<int>(type: "integer", nullable: false),
+                    comment = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_organization_reviews", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_organization_reviews_events_event_id",
+                        column: x => x.event_id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_organization_reviews_organizations_organization_id",
+                        column: x => x.organization_id,
+                        principalTable: "organizations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_organization_reviews_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_organization_reviews_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_workflows",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    purpose = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_workflows", x => x.id);
+                    table.UniqueConstraint("ak_registration_workflows_tenant_id_event_id_id", x => new { x.tenant_id, x.event_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_registration_workflows_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_workflows_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "group_members",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    group_tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    role_id = table.Column<int>(type: "integer", nullable: false),
+                    group_position_id = table.Column<int>(type: "integer", nullable: true),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_group_members", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_group_members_group_positions_group_position_id",
+                        column: x => x.group_position_id,
+                        principalTable: "group_positions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_group_members_group_tenants_tenant_id_group_tenant_id",
+                        columns: x => new { x.tenant_id, x.group_tenant_id },
+                        principalTable: "group_tenants",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_group_members_roles_role_id",
+                        column: x => x.role_id,
+                        principalTable: "roles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_group_members_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_group_members_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "group_setting_overrides",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    group_tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    setting_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    value = table.Column<string>(type: "text", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_group_setting_overrides", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_group_setting_overrides_group_tenants_tenant_id_group_tenan",
+                        columns: x => new { x.tenant_id, x.group_tenant_id },
+                        principalTable: "group_tenants",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_group_setting_overrides_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -7125,23 +7663,369 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "event_contact_share_consents",
+                name: "event_agenda_items",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_day_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    start_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    end_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    local_start_date = table.Column<DateOnly>(type: "date", nullable: false),
+                    local_end_date = table.Column<DateOnly>(type: "date", nullable: false),
+                    local_start_time = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
+                    local_end_time = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
+                    local_start_minute_of_day = table.Column<int>(type: "integer", nullable: false),
+                    local_end_minute_of_day = table.Column<int>(type: "integer", nullable: false),
+                    event_location_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    location_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    room_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    kind_id = table.Column<int>(type: "integer", nullable: true),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_agenda_items", x => x.id);
+                    table.CheckConstraint("CK_EventAgendaItem_EndAfterStart", "end_time > start_time");
+                    table.CheckConstraint("CK_EventAgendaItem_LocalEndMinuteMatchesTime", "local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
+                    table.CheckConstraint("CK_EventAgendaItem_LocalEndMinuteRange", "local_end_minute_of_day BETWEEN 0 AND 1439");
+                    table.CheckConstraint("CK_EventAgendaItem_LocalStartMinuteMatchesTime", "local_start_minute_of_day = ((EXTRACT(HOUR FROM local_start_time)::int * 60) + EXTRACT(MINUTE FROM local_start_time)::int)");
+                    table.CheckConstraint("CK_EventAgendaItem_LocalStartMinuteRange", "local_start_minute_of_day BETWEEN 0 AND 1439");
+                    table.CheckConstraint("CK_EventAgendaItem_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
+                    table.ForeignKey(
+                        name: "fk_event_agenda_items_event_days_tenant_id_event_id_event_day_",
+                        columns: x => new { x.tenant_id, x.event_id, x.event_day_id },
+                        principalTable: "event_days",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_agenda_items_event_locations_tenant_id_event_id_event",
+                        columns: x => new { x.tenant_id, x.event_id, x.event_location_id },
+                        principalTable: "event_locations",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_agenda_items_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_agenda_items_location_rooms_tenant_id_location_id_roo",
+                        columns: x => new { x.tenant_id, x.location_id, x.room_id },
+                        principalTable: "location_rooms",
+                        principalColumns: new[] { "tenant_id", "location_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_agenda_items_locations_tenant_id_location_id",
+                        columns: x => new { x.tenant_id, x.location_id },
+                        principalTable: "locations",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_agenda_items_schedule_item_kinds_kind_id",
+                        column: x => x.kind_id,
+                        principalTable: "schedule_item_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_agenda_items_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_location_disclosure_audits",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_location_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    actor_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    previous_fields = table.Column<int>(type: "integer", nullable: false),
+                    new_fields = table.Column<int>(type: "integer", nullable: false),
+                    previous_audience_id = table.Column<int>(type: "integer", nullable: false),
+                    new_audience_id = table.Column<int>(type: "integer", nullable: false),
+                    previous_reveal_full_details_from_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    new_reveal_full_details_from_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    previous_policy_version = table.Column<int>(type: "integer", nullable: false),
+                    new_policy_version = table.Column<int>(type: "integer", nullable: false),
+                    reason = table.Column<int>(type: "integer", nullable: false),
+                    occurred_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_location_disclosure_audits", x => x.id);
+                    table.CheckConstraint("ck_event_location_disclosure_audits_field_flags", "previous_fields BETWEEN 0 AND 127 AND new_fields BETWEEN 0 AND 127");
+                    table.CheckConstraint("ck_event_location_disclosure_audits_policy_step", "previous_policy_version >= 0 AND new_policy_version = previous_policy_version + 1");
+                    table.CheckConstraint("ck_event_location_disclosure_audits_reason", "reason BETWEEN 1 AND 5");
+                    table.CheckConstraint("ck_event_location_disclosure_audits_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b')");
+                    table.ForeignKey(
+                        name: "fk_event_location_disclosure_audits_event_locations_tenant_id_",
+                        columns: x => new { x.tenant_id, x.event_location_id },
+                        principalTable: "event_locations",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_location_disclosure_audits_location_disclosure_audien",
+                        column: x => x.new_audience_id,
+                        principalTable: "location_disclosure_audiences",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_location_disclosure_audits_location_disclosure_audien1",
+                        column: x => x.previous_audience_id,
+                        principalTable: "location_disclosure_audiences",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_location_disclosure_audits_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_location_exact_read_audits",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_location_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    requester_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    purpose = table.Column<int>(type: "integer", nullable: false),
+                    was_authorized = table.Column<bool>(type: "boolean", nullable: false),
+                    occurred_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    correlation_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    trace_id = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_location_exact_read_audits", x => x.id);
+                    table.CheckConstraint("ck_event_location_exact_read_audits_purpose", "purpose BETWEEN 1 AND 4");
+                    table.CheckConstraint("ck_event_location_exact_read_audits_trace", "correlation_id IS NOT NULL OR trace_id IS NOT NULL");
+                    table.CheckConstraint("ck_event_location_exact_read_audits_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b')");
+                    table.ForeignKey(
+                        name: "fk_event_location_exact_read_audits_event_locations_tenant_id_",
+                        columns: x => new { x.tenant_id, x.event_location_id },
+                        principalTable: "event_locations",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_location_exact_read_audits_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_session_groups",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    slug = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    event_location_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    location_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    room_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    color = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: true),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    is_published = table.Column<bool>(type: "boolean", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_session_groups", x => x.id);
+                    table.UniqueConstraint("ak_event_session_groups_tenant_id_event_id_id", x => new { x.tenant_id, x.event_id, x.id });
+                    table.UniqueConstraint("ak_event_session_groups_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("CK_EventSessionGroup_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
+                    table.ForeignKey(
+                        name: "fk_event_session_groups_event_locations_tenant_id_event_id_eve",
+                        columns: x => new { x.tenant_id, x.event_id, x.event_location_id },
+                        principalTable: "event_locations",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_session_groups_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_session_groups_location_rooms_tenant_id_location_id_r",
+                        columns: x => new { x.tenant_id, x.location_id, x.room_id },
+                        principalTable: "location_rooms",
+                        principalColumns: new[] { "tenant_id", "location_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_session_groups_locations_tenant_id_location_id",
+                        columns: x => new { x.tenant_id, x.location_id },
+                        principalTable: "locations",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_session_groups_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_sessions",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_day_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    start_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    end_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    end_time_type = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    local_start_date = table.Column<DateOnly>(type: "date", nullable: true),
+                    local_end_date = table.Column<DateOnly>(type: "date", nullable: true),
+                    local_start_time = table.Column<TimeOnly>(type: "time without time zone", nullable: true),
+                    local_end_time = table.Column<TimeOnly>(type: "time without time zone", nullable: true),
+                    local_start_minute_of_day = table.Column<int>(type: "integer", nullable: true),
+                    local_end_minute_of_day = table.Column<int>(type: "integer", nullable: true),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    event_location_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    location_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    room_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    event_session_kind_id = table.Column<int>(type: "integer", nullable: true),
+                    event_session_status_id = table.Column<int>(type: "integer", nullable: false),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    source_event_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    recipient_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    source_event_registration_intent_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    purpose_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    status = table.Column<int>(type: "integer", nullable: false),
-                    email_snapshot = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
-                    email_normalized_snapshot = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
-                    consent_text_snapshot = table.Column<string>(type: "text", nullable: false),
-                    consent_ui_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    granted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    withdrawn_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    slug = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    max_audience_attendees = table.Column<int>(type: "integer", nullable: true),
+                    current_audience_attendees = table.Column<int>(type: "integer", nullable: true),
+                    registration_mode_id = table.Column<int>(type: "integer", nullable: true),
+                    featured_image_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    source_template_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_template_key = table.Column<string>(type: "text", nullable: true),
+                    source_template_version = table.Column<int>(type: "integer", nullable: true),
+                    instantiated_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    last_synced_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_sessions", x => x.id);
+                    table.UniqueConstraint("ak_event_sessions_tenant_id_event_id_id", x => new { x.tenant_id, x.event_id, x.id });
+                    table.UniqueConstraint("ak_event_sessions_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("CK_EventSession_EndAfterStart", "end_time IS NULL OR start_time IS NULL OR end_time > start_time");
+                    table.CheckConstraint("CK_EventSession_EndTimeTypeState", "start_time IS NULL OR ((end_time_type = 0 AND end_time IS NOT NULL) OR (end_time_type = 1 AND end_time IS NULL) OR (end_time_type = 2))");
+                    table.CheckConstraint("CK_EventSession_LocalEndMinuteMatchesTime", "local_end_minute_of_day IS NULL OR local_end_time IS NULL OR local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
+                    table.CheckConstraint("CK_EventSession_LocalEndMinuteRange", "local_end_minute_of_day IS NULL OR local_end_minute_of_day BETWEEN 0 AND 1439");
+                    table.CheckConstraint("CK_EventSession_LocalStartMinuteMatchesTime", "local_start_minute_of_day IS NULL OR local_start_time IS NULL OR local_start_minute_of_day = ((EXTRACT(HOUR FROM local_start_time)::int * 60) + EXTRACT(MINUTE FROM local_start_time)::int)");
+                    table.CheckConstraint("CK_EventSession_LocalStartMinuteRange", "local_start_minute_of_day IS NULL OR local_start_minute_of_day BETWEEN 0 AND 1439");
+                    table.CheckConstraint("CK_EventSession_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
+                    table.ForeignKey(
+                        name: "fk_event_sessions_event_days_tenant_id_event_id_event_day_id",
+                        columns: x => new { x.tenant_id, x.event_id, x.event_day_id },
+                        principalTable: "event_days",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_sessions_event_locations_tenant_id_event_id_event_loc",
+                        columns: x => new { x.tenant_id, x.event_id, x.event_location_id },
+                        principalTable: "event_locations",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_sessions_event_session_kinds_event_session_kind_id",
+                        column: x => x.event_session_kind_id,
+                        principalTable: "event_session_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_sessions_event_session_statuses_event_session_status_",
+                        column: x => x.event_session_status_id,
+                        principalTable: "event_session_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_sessions_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_sessions_location_rooms_tenant_id_location_id_room_id",
+                        columns: x => new { x.tenant_id, x.location_id, x.room_id },
+                        principalTable: "location_rooms",
+                        principalColumns: new[] { "tenant_id", "location_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_sessions_locations_tenant_id_location_id",
+                        columns: x => new { x.tenant_id, x.location_id },
+                        principalTable: "locations",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_sessions_registration_modes_registration_mode_id",
+                        column: x => x.registration_mode_id,
+                        principalTable: "registration_modes",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "fk_event_sessions_storage_objects_featured_image_id",
+                        column: x => x.featured_image_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "fk_event_sessions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_report_evidence",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    report_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    evidence_kind = table.Column<int>(type: "integer", nullable: false),
+                    text_body_encrypted = table.Column<string>(type: "text", nullable: true),
+                    storage_object_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    content_hash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    classification = table.Column<int>(type: "integer", nullable: false),
+                    retention_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -7149,169 +8033,511 @@ namespace Explore.Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_event_contact_share_consents", x => x.id);
+                    table.PrimaryKey("pk_event_report_evidence", x => x.id);
+                    table.CheckConstraint("ck_event_report_evidence_classification", "classification BETWEEN 1 AND 3");
+                    table.CheckConstraint("ck_event_report_evidence_content_hash_not_blank", "content_hash IS NULL OR length(btrim(content_hash)) > 0");
+                    table.CheckConstraint("ck_event_report_evidence_kind", "evidence_kind BETWEEN 1 AND 5");
+                    table.CheckConstraint("ck_event_report_evidence_reporter_text_required", "evidence_kind <> 1 OR (text_body_encrypted IS NOT NULL AND length(btrim(text_body_encrypted)) > 0)");
                     table.ForeignKey(
-                        name: "fk_event_contact_share_consents_actors_tenant_id_recipient_act",
-                        columns: x => new { x.tenant_id, x.recipient_actor_id },
-                        principalTable: "actors",
+                        name: "fk_event_report_evidence_event_reports_tenant_id_report_id",
+                        columns: x => new { x.tenant_id, x.report_id },
+                        principalTable: "event_reports",
+                        principalColumns: new[] { "tenant_id", "id" });
+                    table.ForeignKey(
+                        name: "fk_event_report_evidence_storage_objects_tenant_id_storage_obj",
+                        columns: x => new { x.tenant_id, x.storage_object_id },
+                        principalTable: "storage_objects",
                         principalColumns: new[] { "tenant_id", "id" },
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_event_contact_share_consents_event_registration_intents_ten",
-                        columns: x => new { x.tenant_id, x.source_event_registration_intent_id },
-                        principalTable: "event_registration_intents",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_contact_share_consents_events_tenant_id_source_event_",
-                        columns: x => new { x.tenant_id, x.source_event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_contact_share_consents_tenants_tenant_id",
+                        name: "fk_event_report_evidence_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_event_contact_share_consents_users_user_id",
-                        column: x => x.user_id,
+                        name: "fk_event_report_evidence_users_created_by_user_id",
+                        column: x => x.created_by_user_id,
                         principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
-                name: "integration_sync_outbox",
+                name: "event_report_signals",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    kind = table.Column<int>(type: "integer", nullable: false),
-                    source_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    source_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    registration_intent_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    subscriber_email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
-                    subscriber_name = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
-                    subscriber_payload_json = table.Column<string>(type: "jsonb", nullable: false),
-                    listmonk_list_id = table.Column<int>(type: "integer", nullable: false),
-                    preconfirm_subscriptions = table.Column<bool>(type: "boolean", nullable: false),
-                    status = table.Column<int>(type: "integer", nullable: false),
-                    attempt_count = table.Column<int>(type: "integer", nullable: false),
-                    max_attempts = table.Column<int>(type: "integer", nullable: false, defaultValue: 5),
-                    next_attempt_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    processing_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    processing_lease_token = table.Column<Guid>(type: "uuid", nullable: true),
-                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    dead_lettered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    last_failure_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    last_error = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    correlation_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_integration_sync_outbox", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_integration_sync_outbox_event_registration_intents_registra",
-                        column: x => x.registration_intent_id,
-                        principalTable: "event_registration_intents",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_integration_sync_outbox_events_event_id",
-                        column: x => x.event_id,
-                        principalTable: "events",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_integration_sync_outbox_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_integration_sync_outbox_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_registrations",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    report_id = table.Column<Guid>(type: "uuid", nullable: true),
                     event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_session_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    coverage_established_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    event_registration_intent_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    approval_status_id = table.Column<int>(type: "integer", nullable: true),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    atproto_record_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    provider = table.Column<int>(type: "integer", nullable: false),
+                    provider_target_scope = table.Column<int>(type: "integer", nullable: false),
+                    provider_target_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    signal_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    policy_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    score = table.Column<decimal>(type: "numeric(5,4)", precision: 5, scale: 4, nullable: true),
+                    verdict = table.Column<int>(type: "integer", nullable: false),
+                    recommended_action = table.Column<int>(type: "integer", nullable: true),
+                    safe_summary = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    external_signal_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    correlation_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_event_registrations", x => x.id);
+                    table.PrimaryKey("pk_event_report_signals", x => x.id);
+                    table.CheckConstraint("ck_event_report_signals_correlation_id_not_blank", "length(btrim(correlation_id)) > 0");
+                    table.CheckConstraint("ck_event_report_signals_external_signal_id_not_blank", "external_signal_id IS NULL OR length(btrim(external_signal_id)) > 0");
+                    table.CheckConstraint("ck_event_report_signals_policy_code_not_blank", "length(btrim(policy_code)) > 0");
+                    table.CheckConstraint("ck_event_report_signals_provider", "provider BETWEEN 1 AND 5");
+                    table.CheckConstraint("ck_event_report_signals_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
+                    table.CheckConstraint("ck_event_report_signals_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
+                    table.CheckConstraint("ck_event_report_signals_recommended_action", "recommended_action IS NULL OR recommended_action BETWEEN 0 AND 4");
+                    table.CheckConstraint("ck_event_report_signals_safe_summary_not_blank", "safe_summary IS NULL OR length(btrim(safe_summary)) > 0");
+                    table.CheckConstraint("ck_event_report_signals_score_range", "score IS NULL OR (score >= 0 AND score <= 1)");
+                    table.CheckConstraint("ck_event_report_signals_signal_type_not_blank", "length(btrim(signal_type)) > 0");
+                    table.CheckConstraint("ck_event_report_signals_verdict", "verdict BETWEEN 1 AND 5");
                     table.ForeignKey(
-                        name: "fk_event_registrations_approval_statuses_approval_status_id",
-                        column: x => x.approval_status_id,
-                        principalTable: "approval_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
+                        name: "fk_event_report_signals_event_reports_tenant_id_event_id_repor",
+                        columns: x => new { x.tenant_id, x.event_id, x.report_id },
+                        principalTable: "event_reports",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" });
                     table.ForeignKey(
-                        name: "fk_event_registrations_atproto_records_atproto_record_id",
-                        column: x => x.atproto_record_id,
-                        principalTable: "atproto_records",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_event_registrations_event_registration_intents_tenant_id_ev",
-                        columns: x => new { x.tenant_id, x.event_id, x.event_registration_intent_id },
-                        principalTable: "event_registration_intents",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_registrations_event_sessions_tenant_id_event_id_event",
-                        columns: x => new { x.tenant_id, x.event_id, x.event_session_id },
-                        principalTable: "event_sessions",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_registrations_events_tenant_id_event_id",
+                        name: "fk_event_report_signals_events_tenant_id_event_id",
                         columns: x => new { x.tenant_id, x.event_id },
                         principalTable: "events",
                         principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_report_signals_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_report_targets",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    report_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    target_kind = table.Column<int>(type: "integer", nullable: false),
+                    target_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    field_path = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    storage_object_id = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_report_targets", x => x.id);
+                    table.CheckConstraint("ck_event_report_targets_field_path_not_blank", "field_path IS NULL OR length(btrim(field_path)) > 0");
+                    table.CheckConstraint("ck_event_report_targets_target_kind", "target_kind BETWEEN 1 AND 6");
+                    table.ForeignKey(
+                        name: "fk_event_report_targets_event_reports_tenant_id_report_id",
+                        columns: x => new { x.tenant_id, x.report_id },
+                        principalTable: "event_reports",
+                        principalColumns: new[] { "tenant_id", "id" });
+                    table.ForeignKey(
+                        name: "fk_event_report_targets_storage_objects_tenant_id_storage_obje",
+                        columns: x => new { x.tenant_id, x.storage_object_id },
+                        principalTable: "storage_objects",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_report_targets_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_ticket_types",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    catalog_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    currency_code = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
+                    ticket_pricing_mode_id = table.Column<int>(type: "integer", nullable: false),
+                    fixed_price_minor = table.Column<long>(type: "bigint", nullable: true),
+                    minimum_price_minor = table.Column<long>(type: "bigint", nullable: true),
+                    suggested_price_minor = table.Column<long>(type: "bigint", nullable: true),
+                    participant_data_collection_mode_id = table.Column<int>(type: "integer", nullable: false),
+                    capacity_pool_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    minimum_age = table.Column<int>(type: "integer", nullable: true),
+                    maximum_age = table.Column<int>(type: "integer", nullable: true),
+                    requires_guardian = table.Column<bool>(type: "boolean", nullable: false),
+                    requires_approval = table.Column<bool>(type: "boolean", nullable: false),
+                    per_order_limit = table.Column<int>(type: "integer", nullable: true),
+                    per_account_limit = table.Column<int>(type: "integer", nullable: true),
+                    per_verified_contact_limit = table.Column<int>(type: "integer", nullable: true),
+                    per_booking_party_limit = table.Column<int>(type: "integer", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_ticket_types", x => x.id);
+                    table.UniqueConstraint("ak_event_ticket_types_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_event_ticket_types_event_capacity_pools_tenant_id_capacity_",
+                        columns: x => new { x.tenant_id, x.capacity_pool_id },
+                        principalTable: "event_capacity_pools",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_ticket_types_event_ticket_catalog_versions_tenant_id_",
+                        columns: x => new { x.tenant_id, x.catalog_id },
+                        principalTable: "event_ticket_catalog_versions",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_ticket_types_participant_data_collection_modes_partic",
+                        column: x => x.participant_data_collection_mode_id,
+                        principalTable: "participant_data_collection_modes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_ticket_types_ticket_pricing_modes_ticket_pricing_mode",
+                        column: x => x.ticket_pricing_mode_id,
+                        principalTable: "ticket_pricing_modes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_orders",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    account_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    purchaser_actor_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    booking_party_type_id = table.Column<int>(type: "integer", nullable: false),
+                    registration_order_status_id = table.Column<int>(type: "integer", nullable: false),
+                    ticket_catalog_version_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    participation_configuration_version_snapshot = table.Column<Guid>(type: "uuid", nullable: false),
+                    participation_handling_mode_id_snapshot = table.Column<int>(type: "integer", nullable: false),
+                    advance_registration_obligation_id_snapshot = table.Column<int>(type: "integer", nullable: false),
+                    identity_access_mode_id_snapshot = table.Column<int>(type: "integer", nullable: true),
+                    guest_recovery_policy_snapshot = table.Column<int>(type: "integer", nullable: true),
+                    registration_order_participation_configuration_version_snapshot = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_workflow_version_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    guest_access_token_hash = table.Column<string>(type: "character varying(44)", maxLength: 44, nullable: true),
+                    currency_code = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
+                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    submitted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    confirmed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    rejected_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    cancelled_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    organizer_directed_total_minor_snapshot = table.Column<long>(type: "bigint", nullable: false),
+                    platform_fee_total_minor_snapshot = table.Column<long>(type: "bigint", nullable: false),
+                    organizer_earnings_total_minor_snapshot = table.Column<long>(type: "bigint", nullable: false),
+                    platform_contribution_total_minor_snapshot = table.Column<long>(type: "bigint", nullable: false),
+                    total_due_minor_snapshot = table.Column<long>(type: "bigint", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_orders", x => x.id);
+                    table.UniqueConstraint("ak_registration_orders_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_registration_orders_booking_party_types_booking_party_type_",
+                        column: x => x.booking_party_type_id,
+                        principalTable: "booking_party_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_orders_event_ticket_catalog_versions_tenant_id",
+                        columns: x => new { x.tenant_id, x.ticket_catalog_version_id },
+                        principalTable: "event_ticket_catalog_versions",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_orders_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_orders_registration_order_statuses_registratio",
+                        column: x => x.registration_order_status_id,
+                        principalTable: "registration_order_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_orders_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_requirements",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_workflow_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ordinal = table.Column<int>(type: "integer", nullable: false),
+                    criticality_id = table.Column<int>(type: "integer", nullable: false),
+                    completion_effect_id = table.Column<int>(type: "integer", nullable: false),
+                    answer_sync_mode_id = table.Column<int>(type: "integer", nullable: false),
+                    applies_to_subject_type_id = table.Column<int>(type: "integer", nullable: false),
+                    applies_to_subject_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    can_skip = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_requirements", x => x.id);
+                    table.UniqueConstraint("ak_registration_requirements_tenant_id_event_id_registration_w", x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_registration_requirements_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_requirements_registration_answer_sync_modes_an",
+                        column: x => x.answer_sync_mode_id,
+                        principalTable: "registration_answer_sync_modes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_requirements_registration_requirement_completi",
+                        column: x => x.completion_effect_id,
+                        principalTable: "registration_requirement_completion_effects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_requirements_registration_requirement_critical",
+                        column: x => x.criticality_id,
+                        principalTable: "registration_requirement_criticalities",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_requirements_registration_requirement_subject_",
+                        column: x => x.applies_to_subject_type_id,
+                        principalTable: "registration_requirement_subject_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_requirements_registration_workflows_tenant_id_",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id },
+                        principalTable: "registration_workflows",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "fk_event_registrations_tenants_tenant_id",
+                        name: "fk_registration_requirements_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "webhook_local_target_snapshots",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    webhook_message_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    delivery_plan_snapshot_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    webhook_endpoint_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    endpoint_configuration_version = table.Column<int>(type: "integer", nullable: false),
+                    destination_url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: false),
+                    credential_reference = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    credential_version = table.Column<int>(type: "integer", nullable: false),
+                    credential_valid_from_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    credential_valid_until_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    max_attempts = table.Column<int>(type: "integer", nullable: false),
+                    timeout_seconds = table.Column<int>(type: "integer", nullable: false),
+                    rate_limit_per_minute = table.Column<int>(type: "integer", nullable: true),
+                    captured_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    delivery_status_id = table.Column<int>(type: "integer", nullable: false),
+                    next_action_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    processing_lease_owner = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    processing_lease_token = table.Column<Guid>(type: "uuid", nullable: true),
+                    processing_lease_expires_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    delivery_fence = table.Column<long>(type: "bigint", nullable: false),
+                    concurrency_version = table.Column<long>(type: "bigint", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_webhook_local_target_snapshots", x => x.id);
+                    table.UniqueConstraint("ak_webhook_local_target_snapshots_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_webhook_local_targets_concurrency_version", "concurrency_version > 0");
+                    table.CheckConstraint("ck_webhook_local_targets_credential_version", "credential_version > 0");
+                    table.CheckConstraint("ck_webhook_local_targets_delivery_fence", "delivery_fence >= 0");
+                    table.CheckConstraint("ck_webhook_local_targets_endpoint_version", "endpoint_configuration_version > 0");
+                    table.CheckConstraint("ck_webhook_local_targets_max_attempts", "max_attempts > 0");
+                    table.CheckConstraint("ck_webhook_local_targets_timeout", "timeout_seconds > 0");
+                    table.ForeignKey(
+                        name: "fk_webhook_local_target_snapshots_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_event_registrations_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
+                        name: "fk_webhook_local_target_snapshots_webhook_delivery_plan_snapsh",
+                        columns: x => new { x.tenant_id, x.delivery_plan_snapshot_id },
+                        principalTable: "webhook_delivery_plan_snapshots",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_webhook_local_target_snapshots_webhook_endpoints_webhook_en",
+                        column: x => x.webhook_endpoint_id,
+                        principalTable: "webhook_endpoints",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_webhook_local_target_snapshots_webhook_local_delivery_statu",
+                        column: x => x.delivery_status_id,
+                        principalTable: "webhook_local_delivery_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_webhook_local_target_snapshots_webhook_messages_tenant_id_w",
+                        columns: x => new { x.tenant_id, x.webhook_message_id },
+                        principalTable: "webhook_messages",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "webhook_provider_publications",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    webhook_message_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    webhook_delivery_plan_snapshot_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    provider_kind_id = table.Column<int>(type: "integer", nullable: false),
+                    provider_binding_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    provider_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    provider_event_id = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    idempotency_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    request_hash = table.Column<string>(type: "character varying(71)", maxLength: 71, nullable: false),
+                    application_uid = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    provider_application_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    provider_environment = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    credential_reference = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    credential_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    mode_snapshot_id = table.Column<int>(type: "integer", nullable: false),
+                    provider_configuration_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    event_contract_version = table.Column<int>(type: "integer", nullable: false),
+                    retention_policy_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    payload_retention_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    publication_retention_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    idempotency_valid_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    status_id = table.Column<int>(type: "integer", nullable: false),
+                    external_provider_message_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    automatic_publication_attempt_count = table.Column<int>(type: "integer", nullable: false),
+                    automatic_reconciliation_attempt_count = table.Column<int>(type: "integer", nullable: false),
+                    last_automatic_reconciliation_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    next_action_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    safe_detail = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
+                    processing_lease_owner = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    processing_lease_token = table.Column<Guid>(type: "uuid", nullable: true),
+                    processing_lease_expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    processing_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    publication_fence = table.Column<long>(type: "bigint", nullable: false),
+                    concurrency_version = table.Column<long>(type: "bigint", nullable: false),
+                    prepared_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    publishing_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    provider_queued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    publication_unknown_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    dead_lettered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    manual_reconciliation_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    abandoned_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_webhook_provider_publications", x => x.id);
+                    table.UniqueConstraint("ak_webhook_provider_publications_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_webhook_provider_publications_concurrency_version", "concurrency_version > 0");
+                    table.CheckConstraint("ck_webhook_provider_publications_fence", "publication_fence >= 0");
+                    table.CheckConstraint("ck_webhook_provider_publications_request_hash", "request_hash ~ '^sha256:[0-9a-f]{64}$'");
+                    table.ForeignKey(
+                        name: "fk_webhook_provider_publications_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_webhook_provider_publications_webhook_consumer_provider_bin",
+                        column: x => x.provider_binding_id,
+                        principalTable: "webhook_consumer_provider_bindings",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_webhook_provider_publications_webhook_delivery_plan_snapsho",
+                        columns: x => new { x.tenant_id, x.webhook_delivery_plan_snapshot_id },
+                        principalTable: "webhook_delivery_plan_snapshots",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_webhook_provider_publications_webhook_messages_tenant_id_we",
+                        columns: x => new { x.tenant_id, x.webhook_message_id },
+                        principalTable: "webhook_messages",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_webhook_provider_publications_webhook_provider_kinds_provid",
+                        column: x => x.provider_kind_id,
+                        principalTable: "webhook_provider_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_webhook_provider_publications_webhook_provider_modes_mode_s",
+                        column: x => x.mode_snapshot_id,
+                        principalTable: "webhook_provider_modes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_webhook_provider_publications_webhook_provider_publication_",
+                        column: x => x.status_id,
+                        principalTable: "webhook_provider_publication_statuses",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -7521,10 +8747,10 @@ namespace Explore.Persistence.Migrations
                 {
                     table.PrimaryKey("pk_event_session_speakers", x => x.id);
                     table.ForeignKey(
-                        name: "fk_event_session_speakers_actors_tenant_id_actor_id",
-                        columns: x => new { x.tenant_id, x.actor_id },
+                        name: "fk_event_session_speakers_actors_actor_id",
+                        column: x => x.actor_id,
                         principalTable: "actors",
-                        principalColumns: new[] { "tenant_id", "id" },
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "fk_event_session_speakers_event_sessions_tenant_id_event_sessi",
@@ -7645,31 +8871,79 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "webhook_local_target_snapshots",
+                name: "ticket_type_entitlements",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ticket_type_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    target_event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    entitlement_scope_type_id = table.Column<int>(type: "integer", nullable: false),
+                    event_day_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    event_session_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    included_quantity = table.Column<int>(type: "integer", nullable: false),
+                    entitlement_selection_rule_id = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ticket_type_entitlements", x => x.id);
+                    table.UniqueConstraint("ak_ticket_type_entitlements_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_ticket_type_entitlements_entitlement_scope_types_entitlemen",
+                        column: x => x.entitlement_scope_type_id,
+                        principalTable: "entitlement_scope_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ticket_type_entitlements_entitlement_selection_rules_entitl",
+                        column: x => x.entitlement_selection_rule_id,
+                        principalTable: "entitlement_selection_rules",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ticket_type_entitlements_event_days_tenant_id_target_event_",
+                        columns: x => new { x.tenant_id, x.target_event_id, x.event_day_id },
+                        principalTable: "event_days",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ticket_type_entitlements_event_sessions_tenant_id_target_ev",
+                        columns: x => new { x.tenant_id, x.target_event_id, x.event_session_id },
+                        principalTable: "event_sessions",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ticket_type_entitlements_event_ticket_types_tenant_id_ticke",
+                        columns: x => new { x.tenant_id, x.ticket_type_id },
+                        principalTable: "event_ticket_types",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ticket_type_entitlements_events_tenant_id_target_event_id",
+                        columns: x => new { x.tenant_id, x.target_event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_contact_share_consents",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    webhook_message_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    delivery_plan_snapshot_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    webhook_endpoint_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    endpoint_configuration_version = table.Column<int>(type: "integer", nullable: false),
-                    destination_url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: false),
-                    credential_reference = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    credential_version = table.Column<int>(type: "integer", nullable: false),
-                    credential_valid_from_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    credential_valid_until_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    max_attempts = table.Column<int>(type: "integer", nullable: false),
-                    timeout_seconds = table.Column<int>(type: "integer", nullable: false),
-                    rate_limit_per_minute = table.Column<int>(type: "integer", nullable: true),
-                    captured_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    delivery_status_id = table.Column<int>(type: "integer", nullable: false),
-                    next_action_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    processing_lease_owner = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    processing_lease_token = table.Column<Guid>(type: "uuid", nullable: true),
-                    processing_lease_expires_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    delivery_fence = table.Column<long>(type: "bigint", nullable: false),
-                    concurrency_version = table.Column<long>(type: "bigint", nullable: false),
+                    source_event_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    recipient_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    source_registration_order_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    purpose_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    email_snapshot = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
+                    email_normalized_snapshot = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
+                    consent_text_snapshot = table.Column<string>(type: "text", nullable: false),
+                    consent_ui_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    granted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    withdrawn_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -7677,93 +8951,385 @@ namespace Explore.Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_webhook_local_target_snapshots", x => x.id);
-                    table.UniqueConstraint("ak_webhook_local_target_snapshots_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_webhook_local_targets_concurrency_version", "concurrency_version > 0");
-                    table.CheckConstraint("ck_webhook_local_targets_credential_version", "credential_version > 0");
-                    table.CheckConstraint("ck_webhook_local_targets_delivery_fence", "delivery_fence >= 0");
-                    table.CheckConstraint("ck_webhook_local_targets_endpoint_version", "endpoint_configuration_version > 0");
-                    table.CheckConstraint("ck_webhook_local_targets_max_attempts", "max_attempts > 0");
-                    table.CheckConstraint("ck_webhook_local_targets_timeout", "timeout_seconds > 0");
+                    table.PrimaryKey("pk_event_contact_share_consents", x => x.id);
                     table.ForeignKey(
-                        name: "fk_webhook_local_target_snapshots_tenants_tenant_id",
+                        name: "fk_event_contact_share_consents_actors_recipient_actor_id",
+                        column: x => x.recipient_actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_consents_events_tenant_id_source_event_",
+                        columns: x => new { x.tenant_id, x.source_event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_consents_registration_orders_tenant_id_",
+                        columns: x => new { x.tenant_id, x.source_registration_order_id },
+                        principalTable: "registration_orders",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_consents_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_webhook_local_target_snapshots_webhook_delivery_plan_snapsh",
-                        columns: x => new { x.tenant_id, x.delivery_plan_snapshot_id },
-                        principalTable: "webhook_delivery_plan_snapshots",
+                        name: "fk_event_contact_share_consents_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "integration_sync_outbox",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    kind = table.Column<int>(type: "integer", nullable: false),
+                    source_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    source_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    registration_order_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    subscriber_email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
+                    subscriber_name = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
+                    subscriber_payload_json = table.Column<string>(type: "jsonb", nullable: false),
+                    listmonk_list_id = table.Column<int>(type: "integer", nullable: false),
+                    preconfirm_subscriptions = table.Column<bool>(type: "boolean", nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    attempt_count = table.Column<int>(type: "integer", nullable: false),
+                    max_attempts = table.Column<int>(type: "integer", nullable: false, defaultValue: 5),
+                    next_attempt_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    processing_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    processing_lease_token = table.Column<Guid>(type: "uuid", nullable: true),
+                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    dead_lettered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    last_failure_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    last_error = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    correlation_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_integration_sync_outbox", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_integration_sync_outbox_events_event_id",
+                        column: x => x.event_id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_integration_sync_outbox_registration_orders_tenant_id_regis",
+                        columns: x => new { x.tenant_id, x.registration_order_id },
+                        principalTable: "registration_orders",
                         principalColumns: new[] { "tenant_id", "id" },
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_webhook_local_target_snapshots_webhook_endpoints_webhook_en",
-                        column: x => x.webhook_endpoint_id,
-                        principalTable: "webhook_endpoints",
+                        name: "fk_integration_sync_outbox_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_webhook_local_target_snapshots_webhook_local_delivery_statu",
-                        column: x => x.delivery_status_id,
-                        principalTable: "webhook_local_delivery_statuses",
+                        name: "fk_integration_sync_outbox_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_inventory_holds",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_order_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    capacity_pool_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ticket_type_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    quantity = table.Column<int>(type: "integer", nullable: false),
+                    registration_inventory_hold_status_id = table.Column<int>(type: "integer", nullable: false),
+                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    consumed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    released_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_inventory_holds", x => x.id);
+                    table.UniqueConstraint("ak_registration_inventory_holds_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_registration_inventory_holds_event_capacity_pools_tenant_id",
+                        columns: x => new { x.tenant_id, x.capacity_pool_id },
+                        principalTable: "event_capacity_pools",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_inventory_holds_event_ticket_types_tenant_id_t",
+                        columns: x => new { x.tenant_id, x.ticket_type_id },
+                        principalTable: "event_ticket_types",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_inventory_holds_registration_inventory_hold_st",
+                        column: x => x.registration_inventory_hold_status_id,
+                        principalTable: "registration_inventory_hold_statuses",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_webhook_local_target_snapshots_webhook_messages_tenant_id_w",
-                        columns: x => new { x.tenant_id, x.webhook_message_id },
-                        principalTable: "webhook_messages",
+                        name: "fk_registration_inventory_holds_registration_orders_tenant_id_",
+                        columns: x => new { x.tenant_id, x.registration_order_id },
+                        principalTable: "registration_orders",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_inventory_holds_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_order_lines",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_order_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ticket_type_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    quantity = table.Column<int>(type: "integer", nullable: false),
+                    unit_price_amount_snapshot = table.Column<long>(type: "bigint", nullable: false),
+                    chosen_unit_price_amount_snapshot = table.Column<long>(type: "bigint", nullable: true),
+                    currency_code_snapshot = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
+                    line_subtotal_snapshot = table.Column<long>(type: "bigint", nullable: false),
+                    ticket_type_name_snapshot = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    ticket_pricing_mode_snapshot = table.Column<int>(type: "integer", nullable: false),
+                    minimum_price_amount_snapshot = table.Column<long>(type: "bigint", nullable: true),
+                    suggested_price_amount_snapshot = table.Column<long>(type: "bigint", nullable: true),
+                    ticket_catalog_version_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    platform_fee_policy_version_snapshot = table.Column<int>(type: "integer", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_order_lines", x => x.id);
+                    table.UniqueConstraint("ak_registration_order_lines_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.UniqueConstraint("ak_registration_order_lines_tenant_id_registration_order_id_id", x => new { x.tenant_id, x.registration_order_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_registration_order_lines_event_ticket_catalog_versions_tena",
+                        columns: x => new { x.tenant_id, x.ticket_catalog_version_id },
+                        principalTable: "event_ticket_catalog_versions",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_order_lines_event_ticket_types_tenant_id_ticke",
+                        columns: x => new { x.tenant_id, x.ticket_type_id },
+                        principalTable: "event_ticket_types",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_order_lines_registration_orders_tenant_id_regi",
+                        columns: x => new { x.tenant_id, x.registration_order_id },
+                        principalTable: "registration_orders",
                         principalColumns: new[] { "tenant_id", "id" },
                         onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
-                name: "webhook_provider_publications",
+                name: "registration_order_pii",
+                columns: table => new
+                {
+                    registration_order_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    contact_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
+                    normalized_email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
+                    phone = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    organization_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_order_pii", x => x.registration_order_id);
+                    table.UniqueConstraint("ak_registration_order_pii_tenant_id_registration_order_id", x => new { x.tenant_id, x.registration_order_id });
+                    table.ForeignKey(
+                        name: "fk_registration_order_pii_registration_orders_tenant_id_regist",
+                        columns: x => new { x.tenant_id, x.registration_order_id },
+                        principalTable: "registration_orders",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_order_platform_contributions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_order_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    platform_contribution_setting_id_snapshot = table.Column<Guid>(type: "uuid", nullable: false),
+                    platform_contribution_setting_version_snapshot = table.Column<int>(type: "integer", nullable: false),
+                    contribution_basis_points_snapshot = table.Column<int>(type: "integer", nullable: false),
+                    amount_minor = table.Column<long>(type: "bigint", nullable: false),
+                    currency_code = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_order_platform_contributions", x => x.id);
+                    table.UniqueConstraint("ak_registration_order_platform_contributions_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_registration_order_platform_contributions_registration_orde",
+                        columns: x => new { x.tenant_id, x.registration_order_id },
+                        principalTable: "registration_orders",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_participants",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_order_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    linked_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    participant_type_id = table.Column<int>(type: "integer", nullable: false),
+                    guardian_participant_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_participants", x => x.id);
+                    table.UniqueConstraint("ak_registration_participants_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.UniqueConstraint("ak_registration_participants_tenant_id_registration_order_id_id", x => new { x.tenant_id, x.registration_order_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_registration_participants_participant_types_participant_typ",
+                        column: x => x.participant_type_id,
+                        principalTable: "participant_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_participants_registration_orders_tenant_id_reg",
+                        columns: x => new { x.tenant_id, x.registration_order_id },
+                        principalTable: "registration_orders",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_participants_registration_participants_tenant_",
+                        columns: x => new { x.tenant_id, x.registration_order_id, x.guardian_participant_id },
+                        principalTable: "registration_participants",
+                        principalColumns: new[] { "tenant_id", "registration_order_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_participants_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_participants_users_linked_user_id",
+                        column: x => x.linked_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_channels",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_workflow_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_requirement_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ordinal = table.Column<int>(type: "integer", nullable: false),
+                    registration_provider_binding_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_native = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_channels", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_registration_channels_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_channels_registration_requirements_tenant_id_e",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id },
+                        principalTable: "registration_requirements",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_registration_channels_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "webhook_provider_publication_attempts",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    webhook_message_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    webhook_delivery_plan_snapshot_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    provider_kind_id = table.Column<int>(type: "integer", nullable: false),
-                    provider_binding_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    provider_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    provider_event_id = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
-                    idempotency_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
-                    request_hash = table.Column<string>(type: "character varying(71)", maxLength: 71, nullable: false),
-                    application_uid = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
-                    provider_application_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    provider_environment = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
-                    credential_reference = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
-                    credential_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    mode_snapshot_id = table.Column<int>(type: "integer", nullable: false),
-                    provider_configuration_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    event_contract_version = table.Column<int>(type: "integer", nullable: false),
-                    retention_policy_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    payload_retention_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    publication_retention_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    idempotency_valid_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    status_id = table.Column<int>(type: "integer", nullable: false),
+                    webhook_provider_publication_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    attempt_number = table.Column<int>(type: "integer", nullable: false),
+                    publication_fence = table.Column<long>(type: "bigint", nullable: false),
+                    outcome_id = table.Column<int>(type: "integer", nullable: false),
+                    started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    recorded_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     external_provider_message_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    automatic_publication_attempt_count = table.Column<int>(type: "integer", nullable: false),
-                    automatic_reconciliation_attempt_count = table.Column<int>(type: "integer", nullable: false),
-                    last_automatic_reconciliation_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    next_action_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     safe_detail = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
-                    processing_lease_owner = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    processing_lease_token = table.Column<Guid>(type: "uuid", nullable: true),
-                    processing_lease_expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    processing_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    publication_fence = table.Column<long>(type: "bigint", nullable: false),
-                    concurrency_version = table.Column<long>(type: "bigint", nullable: false),
-                    prepared_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    publishing_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    provider_queued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    publication_unknown_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    dead_lettered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    manual_reconciliation_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    abandoned_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -7771,78 +9337,26 @@ namespace Explore.Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_webhook_provider_publications", x => x.id);
-                    table.UniqueConstraint("ak_webhook_provider_publications_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_webhook_provider_publications_concurrency_version", "concurrency_version > 0");
-                    table.CheckConstraint("ck_webhook_provider_publications_fence", "publication_fence >= 0");
-                    table.CheckConstraint("ck_webhook_provider_publications_request_hash", "request_hash ~ '^sha256:[0-9a-f]{64}$'");
+                    table.PrimaryKey("pk_webhook_provider_publication_attempts", x => x.id);
+                    table.UniqueConstraint("ak_webhook_provider_publication_attempts_tenant_id_id", x => new { x.tenant_id, x.id });
                     table.ForeignKey(
-                        name: "fk_webhook_provider_publications_tenants_tenant_id",
+                        name: "fk_webhook_provider_publication_attempts_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_webhook_provider_publications_webhook_consumer_provider_bin",
-                        column: x => x.provider_binding_id,
-                        principalTable: "webhook_consumer_provider_bindings",
+                        name: "fk_webhook_provider_publication_attempts_webhook_provider_publ",
+                        column: x => x.outcome_id,
+                        principalTable: "webhook_provider_publication_attempt_outcomes",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_webhook_provider_publications_webhook_delivery_plan_snapsho",
-                        columns: x => new { x.tenant_id, x.webhook_delivery_plan_snapshot_id },
-                        principalTable: "webhook_delivery_plan_snapshots",
+                        name: "fk_webhook_provider_publication_attempts_webhook_provider_publ1",
+                        columns: x => new { x.tenant_id, x.webhook_provider_publication_id },
+                        principalTable: "webhook_provider_publications",
                         principalColumns: new[] { "tenant_id", "id" },
                         onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_webhook_provider_publications_webhook_messages_tenant_id_we",
-                        columns: x => new { x.tenant_id, x.webhook_message_id },
-                        principalTable: "webhook_messages",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_webhook_provider_publications_webhook_provider_kinds_provid",
-                        column: x => x.provider_kind_id,
-                        principalTable: "webhook_provider_kinds",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_webhook_provider_publications_webhook_provider_modes_mode_s",
-                        column: x => x.mode_snapshot_id,
-                        principalTable: "webhook_provider_modes",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_webhook_provider_publications_webhook_provider_publication_",
-                        column: x => x.status_id,
-                        principalTable: "webhook_provider_publication_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_contact_share_export_items",
-                columns: table => new
-                {
-                    export_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    consent_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    email_snapshot = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_contact_share_export_items", x => new { x.export_id, x.consent_id });
-                    table.ForeignKey(
-                        name: "fk_event_contact_share_export_items_event_contact_share_consen",
-                        column: x => x.consent_id,
-                        principalTable: "event_contact_share_consents",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_contact_share_export_items_event_contact_share_export",
-                        column: x => x.export_id,
-                        principalTable: "event_contact_share_exports",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -7894,10 +9408,10 @@ namespace Explore.Persistence.Migrations
                         principalColumns: new[] { "tenant_id", "id" },
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_notification_fanout_runs_actors_tenant_id_source_actor_id",
-                        columns: x => new { x.tenant_id, x.source_actor_id },
+                        name: "fk_notification_fanout_runs_actors_source_actor_id",
+                        column: x => x.source_actor_id,
                         principalTable: "actors",
-                        principalColumns: new[] { "tenant_id", "id" },
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_notification_fanout_runs_notification_entity_types_notifica",
@@ -7914,20 +9428,131 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "webhook_provider_publication_attempts",
+                name: "event_contact_share_export_items",
+                columns: table => new
+                {
+                    export_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    consent_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    email_snapshot = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_contact_share_export_items", x => new { x.export_id, x.consent_id });
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_export_items_event_contact_share_consen",
+                        column: x => x.consent_id,
+                        principalTable: "event_contact_share_consents",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_export_items_event_contact_share_export",
+                        column: x => x.export_id,
+                        principalTable: "event_contact_share_exports",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_registrations",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    linked_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    event_session_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    coverage_established_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    registration_order_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    registration_order_line_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    ticket_type_entitlement_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    registration_participant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    entitlement_ordinal = table.Column<int>(type: "integer", nullable: true),
+                    approval_status_id = table.Column<int>(type: "integer", nullable: true),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    webhook_provider_publication_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    attempt_number = table.Column<int>(type: "integer", nullable: false),
-                    publication_fence = table.Column<long>(type: "bigint", nullable: false),
-                    outcome_id = table.Column<int>(type: "integer", nullable: false),
-                    started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    recorded_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    external_provider_message_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    safe_detail = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
+                    atproto_record_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_registrations", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_registrations_approval_statuses_approval_status_id",
+                        column: x => x.approval_status_id,
+                        principalTable: "approval_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_registrations_atproto_records_atproto_record_id",
+                        column: x => x.atproto_record_id,
+                        principalTable: "atproto_records",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_registrations_event_sessions_tenant_id_event_id_event",
+                        columns: x => new { x.tenant_id, x.event_id, x.event_session_id },
+                        principalTable: "event_sessions",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_registrations_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_registrations_registration_order_lines_tenant_id_regi",
+                        columns: x => new { x.tenant_id, x.registration_order_line_id },
+                        principalTable: "registration_order_lines",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_registrations_registration_orders_tenant_id_registrat",
+                        columns: x => new { x.tenant_id, x.registration_order_id },
+                        principalTable: "registration_orders",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_registrations_registration_participants_tenant_id_reg",
+                        columns: x => new { x.tenant_id, x.registration_order_id, x.registration_participant_id },
+                        principalTable: "registration_participants",
+                        principalColumns: new[] { "tenant_id", "registration_order_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_registrations_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_registrations_ticket_type_entitlements_tenant_id_tick",
+                        columns: x => new { x.tenant_id, x.ticket_type_entitlement_id },
+                        principalTable: "ticket_type_entitlements",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_registrations_users_linked_user_id",
+                        column: x => x.linked_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_participant_pii",
+                columns: table => new
+                {
+                    registration_participant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
+                    normalized_email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
+                    phone = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -7935,25 +9560,74 @@ namespace Explore.Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_webhook_provider_publication_attempts", x => x.id);
-                    table.UniqueConstraint("ak_webhook_provider_publication_attempts_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.PrimaryKey("pk_registration_participant_pii", x => x.registration_participant_id);
+                    table.UniqueConstraint("ak_registration_participant_pii_tenant_id_registration_partici", x => new { x.tenant_id, x.registration_participant_id });
                     table.ForeignKey(
-                        name: "fk_webhook_provider_publication_attempts_tenants_tenant_id",
+                        name: "fk_registration_participant_pii_registration_participants_tena",
+                        columns: x => new { x.tenant_id, x.registration_participant_id },
+                        principalTable: "registration_participants",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_participant_pii_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_ticket_assignments",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_order_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_order_line_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    participant_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    ordinal = table.Column<int>(type: "integer", nullable: false),
+                    assignment_status_id = table.Column<int>(type: "integer", nullable: false),
+                    assignment_deadline = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_ticket_assignments", x => x.id);
+                    table.UniqueConstraint("ak_registration_ticket_assignments_tenant_id_id", x => new { x.tenant_id, x.id });
                     table.ForeignKey(
-                        name: "fk_webhook_provider_publication_attempts_webhook_provider_publ",
-                        column: x => x.outcome_id,
-                        principalTable: "webhook_provider_publication_attempt_outcomes",
+                        name: "fk_registration_ticket_assignments_assignment_statuses_assignm",
+                        column: x => x.assignment_status_id,
+                        principalTable: "assignment_statuses",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_webhook_provider_publication_attempts_webhook_provider_publ1",
-                        columns: x => new { x.tenant_id, x.webhook_provider_publication_id },
-                        principalTable: "webhook_provider_publications",
+                        name: "fk_registration_ticket_assignments_registration_order_lines_te",
+                        columns: x => new { x.tenant_id, x.registration_order_id, x.registration_order_line_id },
+                        principalTable: "registration_order_lines",
+                        principalColumns: new[] { "tenant_id", "registration_order_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_ticket_assignments_registration_orders_tenant_",
+                        columns: x => new { x.tenant_id, x.registration_order_id },
+                        principalTable: "registration_orders",
                         principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_ticket_assignments_registration_participants_t",
+                        columns: x => new { x.tenant_id, x.registration_order_id, x.participant_id },
+                        principalTable: "registration_participants",
+                        principalColumns: new[] { "tenant_id", "registration_order_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_ticket_assignments_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -8147,7 +9821,7 @@ namespace Explore.Persistence.Migrations
                     source_id = table.Column<Guid>(type: "uuid", nullable: false),
                     notification_intent_id = table.Column<Guid>(type: "uuid", nullable: false),
                     event_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    registration_intent_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    registration_order_id = table.Column<Guid>(type: "uuid", nullable: true),
                     recipient_user_id = table.Column<Guid>(type: "uuid", nullable: false),
                     recipient_address_source = table.Column<int>(type: "integer", nullable: false),
                     managed_tenant_provisioning_operation_id = table.Column<Guid>(type: "uuid", nullable: true),
@@ -8196,12 +9870,6 @@ namespace Explore.Persistence.Migrations
                     table.CheckConstraint("ck_email_dispatch_outbox_redaction_fence", "content_redacted_at IS NULL OR (recipient_email = '' AND subject = '' AND plain_text_body IS NULL AND html_body IS NULL AND reply_to IS NULL AND last_error IS NULL AND provider_message_id IS NULL AND correlation_id IS NULL AND next_attempt_at IS NULL AND processing_started_at IS NULL AND processing_lease_token IS NULL)");
                     table.CheckConstraint("ck_email_dispatch_outbox_unknown_terminal", "status <> 7 OR (unknown_at IS NOT NULL AND next_attempt_at IS NULL AND processing_started_at IS NULL AND processing_lease_token IS NULL)");
                     table.ForeignKey(
-                        name: "fk_email_dispatch_outbox_event_registration_intents_registrati",
-                        column: x => x.registration_intent_id,
-                        principalTable: "event_registration_intents",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
                         name: "fk_email_dispatch_outbox_events_event_id",
                         column: x => x.event_id,
                         principalTable: "events",
@@ -8212,6 +9880,12 @@ namespace Explore.Persistence.Migrations
                         column: x => x.managed_tenant_provisioning_operation_id,
                         principalTable: "managed_tenant_provisioning_operations",
                         principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_email_dispatch_outbox_registration_orders_tenant_id_registr",
+                        columns: x => new { x.tenant_id, x.registration_order_id },
+                        principalTable: "registration_orders",
+                        principalColumns: new[] { "tenant_id", "id" },
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_email_dispatch_outbox_tenant_users_tenant_id_recipient_user",
@@ -9837,14 +11511,20 @@ namespace Explore.Persistence.Migrations
                 column: "tenant_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_actor_pii_did",
-                table: "actor_pii",
-                column: "did");
+                name: "ix_actor_merges_canonical_actor_id",
+                table: "actor_merges",
+                column: "canonical_actor_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_actor_pii_handle",
-                table: "actor_pii",
-                column: "handle");
+                name: "ix_actor_merges_source_actor_id",
+                table: "actor_merges",
+                column: "source_actor_id",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_actor_moderation_records_actor_id",
+                table: "actor_moderation_records",
+                column: "actor_id");
 
             migrationBuilder.CreateIndex(
                 name: "ux_actor_subscription_notification_levels_master_code",
@@ -9884,6 +11564,11 @@ namespace Explore.Persistence.Migrations
                 column: "subscriber_user_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_actor_subscriptions_target_actor_id",
+                table: "actor_subscriptions",
+                column: "target_actor_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_actor_subscriptions_target_actor_type_id",
                 table: "actor_subscriptions",
                 column: "target_actor_type_id");
@@ -9901,19 +11586,11 @@ namespace Explore.Persistence.Migrations
                 column: "actor_type_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_actors_background_image_id",
+                name: "ix_actors_external_actor_subject_id",
                 table: "actors",
-                column: "background_image_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_actors_banner_picture_id",
-                table: "actors",
-                column: "banner_picture_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_actors_did_custody_type_id",
-                table: "actors",
-                column: "did_custody_type_id");
+                column: "external_actor_subject_id",
+                unique: true,
+                filter: "external_actor_subject_id IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "ix_actors_group_id",
@@ -9930,16 +11607,24 @@ namespace Explore.Persistence.Migrations
                 filter: "organization_id IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "ix_actors_profile_picture_id",
+                name: "ix_actors_service_principal_id",
                 table: "actors",
-                column: "profile_picture_id");
+                column: "service_principal_id",
+                unique: true,
+                filter: "service_principal_id IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "ix_actors_user_id_tenant_id",
+                name: "ix_actors_user_id",
                 table: "actors",
-                columns: new[] { "user_id", "tenant_id" },
+                column: "user_id",
                 unique: true,
                 filter: "user_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_advance_registration_obligations_master_code",
+                table: "advance_registration_obligations",
+                column: "master_code",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_AiConsentGrants_Subject_Entity_Field_Tier",
@@ -10151,6 +11836,12 @@ namespace Explore.Persistence.Migrations
                 column: "key_version");
 
             migrationBuilder.CreateIndex(
+                name: "ix_assignment_statuses_master_code",
+                table: "assignment_statuses",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_atproto_event_projections_created_at",
                 table: "atproto_event_projections",
                 columns: new[] { "created_at", "atproto_record_id" });
@@ -10164,6 +11855,27 @@ namespace Explore.Persistence.Migrations
                 name: "ix_atproto_event_projections_starts_at",
                 table: "atproto_event_projections",
                 columns: new[] { "starts_at", "atproto_record_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_atproto_identities_actor_id",
+                table: "atproto_identities",
+                column: "actor_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_atproto_identities_did",
+                table: "atproto_identities",
+                column: "did",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_atproto_identities_did_custody_type_id",
+                table: "atproto_identities",
+                column: "did_custody_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_atproto_identity_moderation_records_atproto_identity_id",
+                table: "atproto_identity_moderation_records",
+                column: "atproto_identity_id");
 
             migrationBuilder.CreateIndex(
                 name: "ux_atproto_jetstream_consumer_service",
@@ -10245,6 +11957,24 @@ namespace Explore.Persistence.Migrations
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
+                name: "ix_booking_party_types_master_code",
+                table: "booking_party_types",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_capacity_hold_policies_master_code",
+                table: "capacity_hold_policies",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_capacity_oversell_policies_master_code",
+                table: "capacity_oversell_policies",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_categories_tenant_id_parent_id",
                 table: "categories",
                 columns: new[] { "tenant_id", "parent_id" });
@@ -10266,9 +11996,10 @@ namespace Explore.Persistence.Migrations
                 column: "category_type_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_category_type_categories_tenant_id",
+                name: "ix_category_type_categories_tenant_id_category_id_category_typ",
                 table: "category_type_categories",
-                column: "tenant_id");
+                columns: new[] { "tenant_id", "category_id", "category_type_id" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_configuration_change_logs_setting_key",
@@ -10402,11 +12133,6 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "status", "next_attempt_at", "rabbit_mq_last_publish_attempt_at", "created_at" });
 
             migrationBuilder.CreateIndex(
-                name: "ix_email_dispatch_outbox_registration_intent_id",
-                table: "email_dispatch_outbox",
-                column: "registration_intent_id");
-
-            migrationBuilder.CreateIndex(
                 name: "ix_email_dispatch_outbox_retention",
                 table: "email_dispatch_outbox",
                 columns: new[] { "tenant_id", "content_redacted_at", "status", "sent_at", "last_failure_at", "created_at" });
@@ -10420,6 +12146,11 @@ namespace Explore.Persistence.Migrations
                 name: "ix_email_dispatch_outbox_tenant_id_recipient_user_id",
                 table: "email_dispatch_outbox",
                 columns: new[] { "tenant_id", "recipient_user_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_email_dispatch_outbox_tenant_id_registration_order_id",
+                table: "email_dispatch_outbox",
+                columns: new[] { "tenant_id", "registration_order_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_email_dispatch_outbox_tenant_status",
@@ -10483,6 +12214,18 @@ namespace Explore.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_entitlement_scope_types_master_code",
+                table: "entitlement_scope_types",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_entitlement_selection_rules_master_code",
+                table: "entitlement_selection_rules",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_erasure_intents_intent_id_subject_kind_policy_version",
                 schema: "privacy_erasure_authority",
                 table: "erasure_intents",
@@ -10520,6 +12263,23 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "tenant_id", "location_id", "room_id" });
 
             migrationBuilder.CreateIndex(
+                name: "ix_event_capacity_pools_capacity_hold_policy_id",
+                table: "event_capacity_pools",
+                column: "capacity_hold_policy_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_capacity_pools_capacity_oversell_policy_id",
+                table: "event_capacity_pools",
+                column: "capacity_oversell_policy_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_capacity_pools_tenant_id_event_id_name",
+                table: "event_capacity_pools",
+                columns: new[] { "tenant_id", "event_id", "name" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_event_categories_tenant_event_category",
                 table: "event_categories",
                 columns: new[] { "tenant_id", "event_id", "category_id" },
@@ -10531,14 +12291,19 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "tenant_id", "category_id" });
 
             migrationBuilder.CreateIndex(
+                name: "ix_event_contact_share_consents_recipient_actor_id",
+                table: "event_contact_share_consents",
+                column: "recipient_actor_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_event_contact_share_consents_tenant_id_source_event_id",
                 table: "event_contact_share_consents",
                 columns: new[] { "tenant_id", "source_event_id" });
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_contact_share_consents_tenant_id_source_event_registr",
+                name: "ix_event_contact_share_consents_tenant_id_source_registration_",
                 table: "event_contact_share_consents",
-                columns: new[] { "tenant_id", "source_event_registration_intent_id" });
+                columns: new[] { "tenant_id", "source_registration_order_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_contact_share_consents_user_id",
@@ -10570,6 +12335,11 @@ namespace Explore.Persistence.Migrations
                 name: "ix_event_contact_share_exports_exported_by_user_id",
                 table: "event_contact_share_exports",
                 column: "exported_by_user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_contact_share_exports_recipient_actor_id",
+                table: "event_contact_share_exports",
+                column: "recipient_actor_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_contact_share_exports_tenant_id_event_id",
@@ -10816,60 +12586,84 @@ namespace Explore.Persistence.Migrations
                 filter: "source_report_id IS NOT NULL AND source_report_decision_id IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_registration_intents_approval_status_id",
-                table: "event_registration_intents",
-                column: "approval_status_id");
+                name: "ix_event_organizer_claim_statuses_master_code",
+                table: "event_organizer_claim_statuses",
+                column: "master_code",
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_registration_intents_registration_policy_snapshot_id",
-                table: "event_registration_intents",
-                column: "registration_policy_snapshot_id");
+                name: "ix_event_organizer_claims_claimant_actor_id",
+                table: "event_organizer_claims",
+                column: "claimant_actor_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_registration_intents_registration_scope_id",
-                table: "event_registration_intents",
-                column: "registration_scope_id");
+                name: "ix_event_organizer_claims_reviewer_user_id",
+                table: "event_organizer_claims",
+                column: "reviewer_user_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_registration_intents_tenant_event_day",
-                table: "event_registration_intents",
-                columns: new[] { "tenant_id", "event_id", "selected_event_day_id" });
+                name: "ix_event_organizer_claims_status_id",
+                table: "event_organizer_claims",
+                column: "status_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_registration_intents_tenant_event_user_scope",
-                table: "event_registration_intents",
-                columns: new[] { "tenant_id", "event_id", "user_id", "registration_scope_id" });
+                name: "ix_event_organizer_claims_tenant_id_event_id",
+                table: "event_organizer_claims",
+                columns: new[] { "tenant_id", "event_id" });
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_registration_intents_tenant_user",
-                table: "event_registration_intents",
-                columns: new[] { "tenant_id", "user_id" });
+                name: "ix_event_participation_configurations_advance_registration_obl",
+                table: "event_participation_configurations",
+                column: "advance_registration_obligation_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_registration_intents_unique_day_scope",
-                table: "event_registration_intents",
-                columns: new[] { "tenant_id", "event_id", "user_id", "selected_event_day_id" },
-                unique: true,
-                filter: "registration_scope_id = 2 AND is_deleted = false");
+                name: "ix_event_participation_configurations_identity_access_mode_id",
+                table: "event_participation_configurations",
+                column: "identity_access_mode_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_registration_intents_unique_event_scope",
-                table: "event_registration_intents",
-                columns: new[] { "tenant_id", "event_id", "user_id" },
-                unique: true,
-                filter: "registration_scope_id = 1 AND is_deleted = false");
+                name: "ix_event_participation_configurations_participation_handling_m",
+                table: "event_participation_configurations",
+                column: "participation_handling_mode_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_registration_intents_unique_session_selection_scope",
-                table: "event_registration_intents",
-                columns: new[] { "tenant_id", "event_id", "user_id" },
-                unique: true,
-                filter: "registration_scope_id = 3 AND is_deleted = false");
+                name: "ix_event_participation_configurations_tenant_id_id",
+                table: "event_participation_configurations",
+                columns: new[] { "tenant_id", "id" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_registration_intents_user_id",
-                table: "event_registration_intents",
-                column: "user_id");
+                name: "ix_event_provenance_types_master_code",
+                table: "event_provenance_types",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_public_action_health_states_master_code",
+                table: "event_public_action_health_states",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_public_action_kinds_master_code",
+                table: "event_public_action_kinds",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_public_actions_event_public_action_kind_id",
+                table: "event_public_actions",
+                column: "event_public_action_kind_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_public_actions_health_state_id",
+                table: "event_public_actions",
+                column: "health_state_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_public_actions_tenant_event",
+                table: "event_public_actions",
+                columns: new[] { "tenant_id", "event_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_registration_policies_master_code",
@@ -10888,21 +12682,39 @@ namespace Explore.Persistence.Migrations
                 column: "atproto_record_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_eventregistrations_intent",
+                name: "ix_event_registrations_tenant_id_registration_order_id_registr",
                 table: "event_registrations",
-                columns: new[] { "tenant_id", "event_id", "event_registration_intent_id" });
+                columns: new[] { "tenant_id", "registration_order_id", "registration_participant_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_registrations_tenant_id_ticket_type_entitlement_id",
+                table: "event_registrations",
+                columns: new[] { "tenant_id", "ticket_type_entitlement_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_eventregistrations_order_admission",
+                table: "event_registrations",
+                columns: new[] { "tenant_id", "registration_order_line_id", "ticket_type_entitlement_id", "event_session_id", "entitlement_ordinal" },
+                unique: true,
+                filter: "registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_eventregistrations_session_participant",
+                table: "event_registrations",
+                columns: new[] { "tenant_id", "event_session_id", "registration_participant_id" },
+                unique: true,
+                filter: "is_deleted = false");
 
             migrationBuilder.CreateIndex(
                 name: "ix_eventregistrations_session_user",
                 table: "event_registrations",
-                columns: new[] { "tenant_id", "event_id", "event_session_id", "user_id" },
-                unique: true,
+                columns: new[] { "tenant_id", "event_id", "event_session_id", "linked_user_id" },
                 filter: "is_deleted = false");
 
             migrationBuilder.CreateIndex(
                 name: "ix_eventregistrations_user",
                 table: "event_registrations",
-                column: "user_id");
+                column: "linked_user_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_report_cases_assigned_moderator_user_id",
@@ -11086,6 +12898,11 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "tenant_id", "target_kind", "target_id" });
 
             migrationBuilder.CreateIndex(
+                name: "ix_event_reports_reporter_actor_id",
+                table: "event_reports",
+                column: "reporter_actor_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_event_reports_reporter_user_id",
                 table: "event_reports",
                 column: "reporter_user_id");
@@ -11101,11 +12918,6 @@ namespace Explore.Persistence.Migrations
                 table: "event_reports",
                 columns: new[] { "tenant_id", "event_id", "status", "created_at" },
                 descending: new[] { false, false, false, true });
-
-            migrationBuilder.CreateIndex(
-                name: "ix_event_reports_tenant_id_reporter_actor_id",
-                table: "event_reports",
-                columns: new[] { "tenant_id", "reporter_actor_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_reports_tenant_priority_status_created",
@@ -11362,9 +13174,9 @@ namespace Explore.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_session_speakers_tenant_id_actor_id",
+                name: "ix_event_session_speakers_actor_id",
                 table: "event_session_speakers",
-                columns: new[] { "tenant_id", "actor_id" });
+                column: "actor_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_session_speakers_tenant_session_actor",
@@ -11531,6 +13343,45 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "tenant_id", "is_published", "is_active" });
 
             migrationBuilder.CreateIndex(
+                name: "ix_event_ticket_catalog_versions_tenant_id_event_id",
+                table: "event_ticket_catalog_versions",
+                columns: new[] { "tenant_id", "event_id" },
+                unique: true,
+                filter: "ticket_catalog_status_id = 2 AND is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_ticket_catalog_versions_tenant_id_event_id_version_nu",
+                table: "event_ticket_catalog_versions",
+                columns: new[] { "tenant_id", "event_id", "version_number" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_ticket_catalog_versions_ticket_catalog_status_id",
+                table: "event_ticket_catalog_versions",
+                column: "ticket_catalog_status_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_ticket_types_participant_data_collection_mode_id",
+                table: "event_ticket_types",
+                column: "participant_data_collection_mode_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_ticket_types_tenant_id_capacity_pool_id",
+                table: "event_ticket_types",
+                columns: new[] { "tenant_id", "capacity_pool_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_ticket_types_tenant_id_catalog_id",
+                table: "event_ticket_types",
+                columns: new[] { "tenant_id", "catalog_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_ticket_types_ticket_pricing_mode_id",
+                table: "event_ticket_types",
+                column: "ticket_pricing_mode_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_event_types_global_master_code",
                 table: "event_types",
                 column: "master_code",
@@ -11543,6 +13394,11 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "tenant_id", "master_code" },
                 unique: true,
                 filter: "tenant_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_events_actor_id",
+                table: "events",
+                column: "actor_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_events_atproto_record_id",
@@ -11570,6 +13426,11 @@ namespace Explore.Persistence.Migrations
                 column: "event_format_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_events_event_provenance_type_id",
+                table: "events",
+                column: "event_provenance_type_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_events_event_series_id",
                 table: "events",
                 column: "event_series_id");
@@ -11595,9 +13456,19 @@ namespace Explore.Persistence.Migrations
                 column: "madhab_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_events_organizer_actor_id",
+                table: "events",
+                column: "organizer_actor_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_events_registration_policy_id",
                 table: "events",
                 column: "registration_policy_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_events_submitted_by_user_id",
+                table: "events",
+                column: "submitted_by_user_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_events_tenant_active_status",
@@ -11726,13 +13597,18 @@ namespace Explore.Persistence.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_group_members_group_user",
                 table: "group_members",
-                columns: new[] { "group_id", "user_id" },
+                columns: new[] { "group_tenant_id", "user_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_group_members_role_id",
                 table: "group_members",
                 column: "role_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_group_members_tenant_id_group_tenant_id",
+                table: "group_members",
+                columns: new[] { "tenant_id", "group_tenant_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_group_members_tenant_user",
@@ -11745,50 +13621,62 @@ namespace Explore.Persistence.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_group_setting_overrides_group_id_setting_key",
+                name: "ix_group_setting_overrides_group_tenant_id_setting_key",
                 table: "group_setting_overrides",
-                columns: new[] { "group_id", "setting_key" },
+                columns: new[] { "group_tenant_id", "setting_key" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "ix_group_setting_overrides_tenant_id",
+                name: "ix_group_setting_overrides_tenant_id_group_tenant_id",
                 table: "group_setting_overrides",
-                column: "tenant_id");
+                columns: new[] { "tenant_id", "group_tenant_id" });
 
             migrationBuilder.CreateIndex(
-                name: "ix_groups_actor_id",
-                table: "groups",
-                column: "actor_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_groups_approval_status_id",
-                table: "groups",
+                name: "ix_group_tenants_approval_status_id",
+                table: "group_tenants",
                 column: "approval_status_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_groups_profile_picture_id",
-                table: "groups",
+                name: "ix_group_tenants_background_image_id",
+                table: "group_tenants",
+                column: "background_image_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_group_tenants_banner_picture_id",
+                table: "group_tenants",
+                column: "banner_picture_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_group_tenants_group_id",
+                table: "group_tenants",
+                column: "group_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_group_tenants_profile_picture_id",
+                table: "group_tenants",
                 column: "profile_picture_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_groups_tenant_active_status",
-                table: "groups",
+                name: "ix_group_tenants_tenant_id_group_id",
+                table: "group_tenants",
+                columns: new[] { "tenant_id", "group_id" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_group_tenants_tenant_id_is_deleted_approval_status_id",
+                table: "group_tenants",
                 columns: new[] { "tenant_id", "is_deleted", "approval_status_id" });
 
             migrationBuilder.CreateIndex(
-                name: "ix_groups_tenant_name",
-                table: "groups",
-                columns: new[] { "tenant_id", "full_name" });
+                name: "ix_group_tenants_tenant_id_parent_group_tenant_id",
+                table: "group_tenants",
+                columns: new[] { "tenant_id", "parent_group_tenant_id" });
 
             migrationBuilder.CreateIndex(
-                name: "ix_groups_tenant_parent_group",
-                table: "groups",
-                columns: new[] { "tenant_id", "parent_group_id" });
-
-            migrationBuilder.CreateIndex(
-                name: "ix_groups_tenant_parent_organization",
-                table: "groups",
-                columns: new[] { "tenant_id", "parent_organization_id" });
+                name: "ix_group_tenants_tenant_id_parent_organization_tenant_id",
+                table: "group_tenants",
+                columns: new[] { "tenant_id", "parent_organization_tenant_id" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_IdempotencyRecords_ExpiresAt",
@@ -11799,6 +13687,12 @@ namespace Explore.Persistence.Migrations
                 name: "IX_IdempotencyRecords_Key_TenantId",
                 table: "idempotency_records",
                 columns: new[] { "key", "tenant_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_identity_access_modes_master_code",
+                table: "identity_access_modes",
+                column: "master_code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -11962,9 +13856,9 @@ namespace Explore.Persistence.Migrations
                 column: "event_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_integration_sync_outbox_registration_intent_id",
+                name: "ix_integration_sync_outbox_tenant_id_registration_order_id",
                 table: "integration_sync_outbox",
-                column: "registration_intent_id");
+                columns: new[] { "tenant_id", "registration_order_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_integration_sync_outbox_tenant_status",
@@ -12351,9 +14245,9 @@ namespace Explore.Persistence.Migrations
                 column: "notification_entity_type_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_notification_fanout_runs_tenant_id_source_actor_id",
+                name: "ix_notification_fanout_runs_source_actor_id",
                 table: "notification_fanout_runs",
-                columns: new[] { "tenant_id", "source_actor_id" });
+                column: "source_actor_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_notification_fanout_runs_worker_poll",
@@ -12619,14 +14513,14 @@ namespace Explore.Persistence.Migrations
                 column: "role_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_organization_members_tenant_id",
+                name: "ix_organization_members_tenant_id_organization_tenant_id",
                 table: "organization_members",
-                column: "tenant_id");
+                columns: new[] { "tenant_id", "organization_tenant_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_orgmembers_org_user",
                 table: "organization_members",
-                columns: new[] { "organization_id", "user_id" },
+                columns: new[] { "organization_tenant_id", "user_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -12666,35 +14560,78 @@ namespace Explore.Persistence.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_organization_setting_overrides_organization_id_setting_key",
+                name: "ix_organization_setting_overrides_organization_tenant_id_setti",
                 table: "organization_setting_overrides",
-                columns: new[] { "organization_id", "setting_key" },
+                columns: new[] { "organization_tenant_id", "setting_key" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "ix_organization_setting_overrides_tenant_id",
+                name: "ix_organization_setting_overrides_tenant_id_organization_tenan",
                 table: "organization_setting_overrides",
-                column: "tenant_id");
+                columns: new[] { "tenant_id", "organization_tenant_id" });
 
             migrationBuilder.CreateIndex(
-                name: "ix_organizations_actor_id",
-                table: "organizations",
-                column: "actor_id");
+                name: "ix_organization_tenant_evidence_review_status_id",
+                table: "organization_tenant_evidence",
+                column: "review_status_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_organizations_approval_status_id",
-                table: "organizations",
+                name: "ix_organization_tenant_evidence_reviewed_by_user_id",
+                table: "organization_tenant_evidence",
+                column: "reviewed_by_user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_organization_tenant_evidence_tenant_id_document_storage_obj",
+                table: "organization_tenant_evidence",
+                columns: new[] { "tenant_id", "document_storage_object_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_organization_tenant_evidence_tenant_id_organization_tenant_",
+                table: "organization_tenant_evidence",
+                columns: new[] { "tenant_id", "organization_tenant_id", "document_storage_object_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_organization_tenant_evidence_tenant_id_organization_tenant_1",
+                table: "organization_tenant_evidence",
+                columns: new[] { "tenant_id", "organization_tenant_id", "review_status_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_organization_tenants_approval_status_id",
+                table: "organization_tenants",
                 column: "approval_status_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_organizations_tenant",
-                table: "organizations",
-                column: "tenant_id");
+                name: "ix_organization_tenants_background_image_id",
+                table: "organization_tenants",
+                column: "background_image_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_organizations_tenant_active_status",
-                table: "organizations",
+                name: "ix_organization_tenants_banner_picture_id",
+                table: "organization_tenants",
+                column: "banner_picture_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_organization_tenants_organization_id",
+                table: "organization_tenants",
+                column: "organization_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_organization_tenants_profile_picture_id",
+                table: "organization_tenants",
+                column: "profile_picture_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_organization_tenants_tenant_id_is_deleted_approval_status_id",
+                table: "organization_tenants",
                 columns: new[] { "tenant_id", "is_deleted", "approval_status_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_organization_tenants_tenant_id_organization_id",
+                table: "organization_tenants",
+                columns: new[] { "tenant_id", "organization_id" },
+                unique: true,
+                filter: "is_deleted = false");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OutboxMessages_Aggregate",
@@ -12710,6 +14647,24 @@ namespace Explore.Persistence.Migrations
                 name: "IX_OutboxMessages_WorkerPoll",
                 table: "outbox_messages",
                 columns: new[] { "status", "next_retry_at", "created_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_participant_data_collection_modes_master_code",
+                table: "participant_data_collection_modes",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_participant_types_master_code",
+                table: "participant_types",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_participation_handling_modes_master_code",
+                table: "participation_handling_modes",
+                column: "master_code",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_pds_sync_outbox_atproto_record_id",
@@ -12777,6 +14732,50 @@ namespace Explore.Persistence.Migrations
                 column: "role_scope_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_platform_contribution_options_platform_contribution_setting",
+                table: "platform_contribution_options",
+                columns: new[] { "platform_contribution_setting_id", "contribution_basis_points" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_platform_contribution_options_platform_contribution_setting1",
+                table: "platform_contribution_options",
+                columns: new[] { "platform_contribution_setting_id", "sort_order" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_platform_contribution_settings_is_active",
+                table: "platform_contribution_settings",
+                column: "is_active",
+                unique: true,
+                filter: "is_active = true");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_platform_contribution_settings_version_number",
+                table: "platform_contribution_settings",
+                column: "version_number",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_platform_fee_fixed_charges_platform_fee_policy_id_currency_",
+                table: "platform_fee_fixed_charges",
+                columns: new[] { "platform_fee_policy_id", "currency_code" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_platform_fee_policies_is_active",
+                table: "platform_fee_policies",
+                column: "is_active",
+                unique: true,
+                filter: "is_active = true");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_platform_fee_policies_version_number",
+                table: "platform_fee_policies",
+                column: "version_number",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_platform_user_roles_role_id",
                 table: "platform_user_roles",
                 column: "role_id");
@@ -12796,6 +14795,17 @@ namespace Explore.Persistence.Migrations
                 name: "ix_policy_change_outbox_status_retry",
                 table: "policy_change_outbox",
                 columns: new[] { "status", "next_retry_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_privacy_erasure_provider_work_intent_id_provider_kind_actio",
+                table: "privacy_erasure_provider_work",
+                columns: new[] { "intent_id", "provider_kind", "action", "tenant_id", "target_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_privacy_erasure_provider_work_status_next_attempt_at_utc_le",
+                table: "privacy_erasure_provider_work",
+                columns: new[] { "status", "next_attempt_at_utc", "lease_expires_at_utc" });
 
             migrationBuilder.CreateIndex(
                 name: "ux_privacy_erasure_checkpoints_intent",
@@ -12828,9 +14838,252 @@ namespace Explore.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_privacy_erasure_sagas_subject_kind_subject_id",
+                table: "privacy_erasure_sagas",
+                columns: new[] { "subject_kind", "subject_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_answer_sync_modes_master_code",
+                table: "registration_answer_sync_modes",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_channels_registration_provider_binding_id",
+                table: "registration_channels",
+                column: "registration_provider_binding_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_channels_registration_requirement_id_ordinal",
+                table: "registration_channels",
+                columns: new[] { "registration_requirement_id", "ordinal" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_channels_tenant_id_event_id",
+                table: "registration_channels",
+                columns: new[] { "tenant_id", "event_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_channels_tenant_id_event_id_registration_workf",
+                table: "registration_channels",
+                columns: new[] { "tenant_id", "event_id", "registration_workflow_id", "registration_requirement_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_inventory_hold_statuses_master_code",
+                table: "registration_inventory_hold_statuses",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_inventory_holds_registration_inventory_hold_st",
+                table: "registration_inventory_holds",
+                column: "registration_inventory_hold_status_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_inventory_holds_tenant_id_capacity_pool_id_reg",
+                table: "registration_inventory_holds",
+                columns: new[] { "tenant_id", "capacity_pool_id", "registration_inventory_hold_status_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_inventory_holds_tenant_id_registration_invento",
+                table: "registration_inventory_holds",
+                columns: new[] { "tenant_id", "registration_inventory_hold_status_id", "expires_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_inventory_holds_tenant_id_registration_order_id",
+                table: "registration_inventory_holds",
+                columns: new[] { "tenant_id", "registration_order_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_inventory_holds_tenant_id_ticket_type_id",
+                table: "registration_inventory_holds",
+                columns: new[] { "tenant_id", "ticket_type_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_order_lines_tenant_id_registration_order_id_ti",
+                table: "registration_order_lines",
+                columns: new[] { "tenant_id", "registration_order_id", "ticket_type_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_order_lines_tenant_id_ticket_catalog_version_id",
+                table: "registration_order_lines",
+                columns: new[] { "tenant_id", "ticket_catalog_version_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_order_lines_tenant_id_ticket_type_id",
+                table: "registration_order_lines",
+                columns: new[] { "tenant_id", "ticket_type_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_order_pii_tenant_id_normalized_email",
+                table: "registration_order_pii",
+                columns: new[] { "tenant_id", "normalized_email" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_order_platform_contributions_tenant_id_registr",
+                table: "registration_order_platform_contributions",
+                columns: new[] { "tenant_id", "registration_order_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_order_statuses_master_code",
+                table: "registration_order_statuses",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_orders_booking_party_type_id",
+                table: "registration_orders",
+                column: "booking_party_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_orders_registration_order_status_id",
+                table: "registration_orders",
+                column: "registration_order_status_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_orders_tenant_id_event_id_registration_order_s",
+                table: "registration_orders",
+                columns: new[] { "tenant_id", "event_id", "registration_order_status_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_orders_tenant_id_expires_at",
+                table: "registration_orders",
+                columns: new[] { "tenant_id", "expires_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_orders_tenant_id_ticket_catalog_version_id",
+                table: "registration_orders",
+                columns: new[] { "tenant_id", "ticket_catalog_version_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_participant_pii_tenant_id_normalized_email",
+                table: "registration_participant_pii",
+                columns: new[] { "tenant_id", "normalized_email" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_participants_linked_user_id",
+                table: "registration_participants",
+                column: "linked_user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_participants_participant_type_id",
+                table: "registration_participants",
+                column: "participant_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_participants_tenant_id_guardian_participant_id",
+                table: "registration_participants",
+                columns: new[] { "tenant_id", "guardian_participant_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_participants_tenant_id_linked_user_id",
+                table: "registration_participants",
+                columns: new[] { "tenant_id", "linked_user_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_participants_tenant_id_registration_order_id",
+                table: "registration_participants",
+                columns: new[] { "tenant_id", "registration_order_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_participants_tenant_id_registration_order_id_g",
+                table: "registration_participants",
+                columns: new[] { "tenant_id", "registration_order_id", "guardian_participant_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_requirement_completion_effects_master_code",
+                table: "registration_requirement_completion_effects",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_requirement_criticalities_master_code",
+                table: "registration_requirement_criticalities",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_requirement_subject_types_master_code",
+                table: "registration_requirement_subject_types",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_requirements_answer_sync_mode_id",
+                table: "registration_requirements",
+                column: "answer_sync_mode_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_requirements_applies_to_subject_type_id",
+                table: "registration_requirements",
+                column: "applies_to_subject_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_requirements_completion_effect_id",
+                table: "registration_requirements",
+                column: "completion_effect_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_requirements_criticality_id",
+                table: "registration_requirements",
+                column: "criticality_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_requirements_registration_workflow_id_ordinal",
+                table: "registration_requirements",
+                columns: new[] { "registration_workflow_id", "ordinal" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_requirements_tenant_id_event_id",
+                table: "registration_requirements",
+                columns: new[] { "tenant_id", "event_id" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_registration_scopes_master_code",
                 table: "registration_scopes",
                 column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_ticket_assignments_assignment_status_id",
+                table: "registration_ticket_assignments",
+                column: "assignment_status_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_ticket_assignments_tenant_id_participant_id",
+                table: "registration_ticket_assignments",
+                columns: new[] { "tenant_id", "participant_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_ticket_assignments_tenant_id_registration_orde",
+                table: "registration_ticket_assignments",
+                columns: new[] { "tenant_id", "registration_order_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_ticket_assignments_tenant_id_registration_orde1",
+                table: "registration_ticket_assignments",
+                columns: new[] { "tenant_id", "registration_order_id", "participant_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_ticket_assignments_tenant_id_registration_orde2",
+                table: "registration_ticket_assignments",
+                columns: new[] { "tenant_id", "registration_order_id", "registration_order_line_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_ticket_assignments_tenant_id_registration_orde3",
+                table: "registration_ticket_assignments",
+                columns: new[] { "tenant_id", "registration_order_line_id", "ordinal" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_workflows_tenant_id_event_id_purpose",
+                table: "registration_workflows",
+                columns: new[] { "tenant_id", "event_id", "purpose" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -12908,6 +15161,12 @@ namespace Explore.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_service_principals_code",
+                table: "service_principals",
+                column: "code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_setting_scopes_master_code",
                 table: "setting_scopes",
                 column: "master_code",
@@ -12962,6 +15221,12 @@ namespace Explore.Persistence.Migrations
                 name: "ix_storage_upload_sessions_storage_object_id",
                 table: "storage_upload_sessions",
                 column: "storage_object_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_storage_upload_sessions_tenant_owner",
+                table: "storage_upload_sessions",
+                columns: new[] { "tenant_id", "owning_resource_kind", "owning_resource_id" },
+                filter: "owning_resource_kind IS NOT NULL AND owning_resource_id IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "ix_storage_upload_sessions_tenant_status_expires_at",
@@ -13115,9 +15380,10 @@ namespace Explore.Persistence.Migrations
                 column: "tag_type_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_tag_type_tags_tenant_id",
+                name: "ix_tag_type_tags_tenant_id_tag_id_tag_type_id",
                 table: "tag_type_tags",
-                column: "tenant_id");
+                columns: new[] { "tenant_id", "tag_id", "tag_type_id" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_tags_tenant_master_code",
@@ -13389,6 +15655,43 @@ namespace Explore.Persistence.Migrations
                 column: "tenant_status_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_ticket_catalog_statuses_master_code",
+                table: "ticket_catalog_statuses",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ticket_pricing_modes_master_code",
+                table: "ticket_pricing_modes",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ticket_type_entitlements_entitlement_scope_type_id",
+                table: "ticket_type_entitlements",
+                column: "entitlement_scope_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ticket_type_entitlements_entitlement_selection_rule_id",
+                table: "ticket_type_entitlements",
+                column: "entitlement_selection_rule_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ticket_type_entitlements_tenant_id_target_event_id_event_da",
+                table: "ticket_type_entitlements",
+                columns: new[] { "tenant_id", "target_event_id", "event_day_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ticket_type_entitlements_tenant_id_target_event_id_event_se",
+                table: "ticket_type_entitlements",
+                columns: new[] { "tenant_id", "target_event_id", "event_session_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ticket_type_entitlements_tenant_id_ticket_type_id",
+                table: "ticket_type_entitlements",
+                columns: new[] { "tenant_id", "ticket_type_id" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_ui_theme_presets_tenant_id_is_active",
                 table: "ui_theme_presets",
                 columns: new[] { "tenant_id", "is_active" });
@@ -13480,6 +15783,13 @@ namespace Explore.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_user_external_logins_provider_provider_key",
+                table: "user_external_logins",
+                columns: new[] { "provider", "provider_key" },
+                unique: true,
+                filter: "provider IS NOT NULL AND provider_key IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_user_external_logins_tenant_id",
                 table: "user_external_logins",
                 column: "tenant_id");
@@ -13511,11 +15821,6 @@ namespace Explore.Persistence.Migrations
                 table: "user_preferences",
                 columns: new[] { "tenant_id", "user_id", "setting_key" },
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ix_users_actor_id",
-                table: "users",
-                column: "actor_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_web_push_dispatch_outbox_category_id",
@@ -13747,10 +16052,20 @@ namespace Explore.Persistence.Migrations
                 column: "consumer_kind_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_webhook_consumers_group_id",
+                table: "webhook_consumers",
+                column: "group_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_webhook_consumers_instance_status_provider",
                 table: "webhook_consumers",
                 columns: new[] { "instance_id", "status_id", "provider_mode_id" },
                 filter: "instance_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_webhook_consumers_organization_id",
+                table: "webhook_consumers",
+                column: "organization_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_webhook_consumers_provider_mode_id",
@@ -14176,94 +16491,6 @@ namespace Explore.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.AddForeignKey(
-                name: "fk_actor_key_stores_actors_actor_id",
-                table: "actor_key_stores",
-                column: "actor_id",
-                principalTable: "actors",
-                principalColumn: "id",
-                onDelete: ReferentialAction.Cascade);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_actor_pii_actors_actor_id",
-                table: "actor_pii",
-                column: "actor_id",
-                principalTable: "actors",
-                principalColumn: "id",
-                onDelete: ReferentialAction.Cascade);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_actor_subscriptions_actors_tenant_id_target_actor_id",
-                table: "actor_subscriptions",
-                columns: new[] { "tenant_id", "target_actor_id" },
-                principalTable: "actors",
-                principalColumns: new[] { "tenant_id", "id" },
-                onDelete: ReferentialAction.Restrict);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_actor_subscriptions_tenant_users_tenant_id_subscriber_tenan",
-                table: "actor_subscriptions",
-                columns: new[] { "tenant_id", "subscriber_tenant_user_id" },
-                principalTable: "tenant_users",
-                principalColumns: new[] { "tenant_id", "id" },
-                onDelete: ReferentialAction.Restrict);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_actor_subscriptions_users_subscriber_user_id",
-                table: "actor_subscriptions",
-                column: "subscriber_user_id",
-                principalTable: "users",
-                principalColumn: "id",
-                onDelete: ReferentialAction.Restrict);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_actors_groups_group_id",
-                table: "actors",
-                column: "group_id",
-                principalTable: "groups",
-                principalColumn: "id",
-                onDelete: ReferentialAction.Cascade);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_actors_organizations_organization_id",
-                table: "actors",
-                column: "organization_id",
-                principalTable: "organizations",
-                principalColumn: "id",
-                onDelete: ReferentialAction.Cascade);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_actors_storage_objects_background_image_id",
-                table: "actors",
-                column: "background_image_id",
-                principalTable: "storage_objects",
-                principalColumn: "id",
-                onDelete: ReferentialAction.SetNull);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_actors_storage_objects_banner_picture_id",
-                table: "actors",
-                column: "banner_picture_id",
-                principalTable: "storage_objects",
-                principalColumn: "id",
-                onDelete: ReferentialAction.SetNull);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_actors_storage_objects_profile_picture_id",
-                table: "actors",
-                column: "profile_picture_id",
-                principalTable: "storage_objects",
-                principalColumn: "id",
-                onDelete: ReferentialAction.SetNull);
-
-            migrationBuilder.AddForeignKey(
-                name: "fk_actors_users_user_id",
-                table: "actors",
-                column: "user_id",
-                principalTable: "users",
-                principalColumn: "id",
-                onDelete: ReferentialAction.Cascade);
-
-            migrationBuilder.AddForeignKey(
                 name: "fk_custom_property_definitions_custom_property_options_default",
                 table: "custom_property_definitions",
                 column: "default_option_id",
@@ -14350,374 +16577,13 @@ namespace Explore.Persistence.Migrations
                 principalTable: "incoming_webhook_messages",
                 principalColumns: new[] { "tenant_id", "id" },
                 onDelete: ReferentialAction.Restrict);
-
-            migrationBuilder.Sql(
-                """
-                DO $lookups$
-                BEGIN
-                    IF EXISTS (
-                        SELECT 1
-                        FROM (VALUES
-                            (1, 'UNCLASSIFIED'), (2, 'COMMERCIAL_VENUE'),
-                            (3, 'PUBLIC_SPACE'), (4, 'COMMUNITY_VENUE'),
-                            (5, 'PRIVATE_HOME')) AS expected(id, master_code)
-                        JOIN location_kinds AS existing
-                          ON existing.id = expected.id OR existing.master_code = expected.master_code
-                        WHERE existing.id <> expected.id
-                           OR existing.master_code <> expected.master_code) THEN
-                        RAISE EXCEPTION 'location kind lookup collision'
-                            USING ERRCODE = '23505';
-                    END IF;
-
-                    IF EXISTS (
-                        SELECT 1
-                        FROM (VALUES
-                            (1, 'NOT_PROVIDED'), (2, 'ACTIVE'), (3, 'ERASED'))
-                            AS expected(id, master_code)
-                        JOIN location_privacy_states AS existing
-                          ON existing.id = expected.id OR existing.master_code = expected.master_code
-                        WHERE existing.id <> expected.id
-                           OR existing.master_code <> expected.master_code) THEN
-                        RAISE EXCEPTION 'location privacy state lookup collision'
-                            USING ERRCODE = '23505';
-                    END IF;
-
-                    IF EXISTS (
-                        SELECT 1
-                        FROM (VALUES
-                            (1, 'NEVER'), (2, 'ANY_CURRENT_REGISTRANT'),
-                            (3, 'CONFIRMED_PARTICIPANT')) AS expected(id, master_code)
-                        JOIN location_disclosure_audiences AS existing
-                          ON existing.id = expected.id OR existing.master_code = expected.master_code
-                        WHERE existing.id <> expected.id
-                           OR existing.master_code <> expected.master_code) THEN
-                        RAISE EXCEPTION 'location disclosure audience lookup collision'
-                            USING ERRCODE = '23505';
-                    END IF;
-                END
-                $lookups$;
-
-                INSERT INTO location_kinds (id, master_code, full_name, description)
-                VALUES
-                    (1, 'UNCLASSIFIED', 'Unclassified', 'Physical location kind has not been reviewed'),
-                    (2, 'COMMERCIAL_VENUE', 'Commercial venue', 'Commercially operated event venue'),
-                    (3, 'PUBLIC_SPACE', 'Public space', 'Publicly accessible physical space'),
-                    (4, 'COMMUNITY_VENUE', 'Community venue', 'Community-operated physical venue'),
-                    (5, 'PRIVATE_HOME', 'Private home', 'Private residential location')
-                ON CONFLICT (id) DO UPDATE
-                SET full_name = EXCLUDED.full_name,
-                    description = EXCLUDED.description
-                WHERE location_kinds.master_code = EXCLUDED.master_code;
-
-                INSERT INTO location_privacy_states (id, master_code, full_name, description)
-                VALUES
-                    (1, 'NOT_PROVIDED', 'Not provided', 'No physical location PII has been provided'),
-                    (2, 'ACTIVE', 'Active', 'Physical location PII is active'),
-                    (3, 'ERASED', 'Erased', 'Physical location PII was irreversibly erased')
-                ON CONFLICT (id) DO UPDATE
-                SET full_name = EXCLUDED.full_name,
-                    description = EXCLUDED.description
-                WHERE location_privacy_states.master_code = EXCLUDED.master_code;
-
-                INSERT INTO location_disclosure_audiences (id, master_code, full_name, description)
-                VALUES
-                    (1, 'NEVER', 'Never', 'Physical location details are never disclosed'),
-                    (2, 'ANY_CURRENT_REGISTRANT', 'Any current registrant', 'Eligible current registrations may receive disclosed details'),
-                    (3, 'CONFIRMED_PARTICIPANT', 'Confirmed participant', 'Only confirmed eligible participants may receive disclosed details')
-                ON CONFLICT (id) DO UPDATE
-                SET full_name = EXCLUDED.full_name,
-                    description = EXCLUDED.description
-                WHERE location_disclosure_audiences.master_code = EXCLUDED.master_code;
-
-                ALTER TABLE event_report_decision_executions
-                    ADD CONSTRAINT fk_event_report_decision_executions_exact_moderation_receipt
-                    FOREIGN KEY (tenant_id, report_id, decision_id, moderation_record_id)
-                    REFERENCES event_moderation_records
-                        (tenant_id, source_report_id, source_report_decision_id, id)
-                    ON DELETE RESTRICT;
-
-                CREATE OR REPLACE FUNCTION elp_reject_append_only_mutation()
-                RETURNS trigger
-                LANGUAGE plpgsql
-                SET search_path = pg_catalog, public
-                AS $function$
-                BEGIN
-                    RAISE EXCEPTION 'event location privacy evidence is append-only'
-                        USING ERRCODE = '55000';
-                END
-                $function$;
-
-                CREATE TRIGGER tr_elp_disclosure_audits_append_only
-                BEFORE UPDATE OR DELETE ON event_location_disclosure_audits
-                FOR EACH ROW EXECUTE FUNCTION elp_reject_append_only_mutation();
-
-                CREATE TRIGGER tr_elp_exact_read_audits_append_only
-                BEFORE UPDATE OR DELETE ON event_location_exact_read_audits
-                FOR EACH ROW EXECUTE FUNCTION elp_reject_append_only_mutation();
-
-                CREATE TRIGGER tr_elp_replay_checkpoints_append_only
-                BEFORE UPDATE OR DELETE ON privacy_erasure_replay_checkpoints
-                FOR EACH ROW EXECUTE FUNCTION elp_reject_append_only_mutation();
-
-                CREATE OR REPLACE FUNCTION elp_validate_event_location_carrier()
-                RETURNS trigger
-                LANGUAGE plpgsql
-                SET search_path = pg_catalog, public
-                AS $function$
-                DECLARE
-                    expected_event_id uuid;
-                    authority_location_id uuid;
-                    authority_is_tba boolean;
-                    physical_privacy_state integer;
-                BEGIN
-                    IF NEW.event_location_id IS NULL THEN
-                        RETURN NEW;
-                    END IF;
-
-                    IF TG_TABLE_NAME = 'event_session_agenda_items' THEN
-                        SELECT session.event_id
-                        INTO expected_event_id
-                        FROM event_sessions AS session
-                        WHERE session.tenant_id = NEW.tenant_id
-                          AND session.id = NEW.event_session_id;
-                    ELSE
-                        expected_event_id := NEW.event_id;
-                    END IF;
-
-                    SELECT authority.location_id,
-                           authority.is_to_be_announced,
-                           location.location_privacy_state_id
-                    INTO authority_location_id,
-                         authority_is_tba,
-                         physical_privacy_state
-                    FROM event_locations AS authority
-                    LEFT JOIN locations AS location
-                      ON location.tenant_id = authority.tenant_id
-                     AND location.id = authority.location_id
-                    WHERE authority.tenant_id = NEW.tenant_id
-                      AND authority.event_id = expected_event_id
-                      AND authority.id = NEW.event_location_id
-                      AND authority.is_deleted = false;
-
-                    IF NOT FOUND
-                       OR NEW.location_id IS DISTINCT FROM authority_location_id
-                       OR (authority_is_tba = false AND physical_privacy_state <> 2) THEN
-                        RAISE EXCEPTION 'event location carrier does not match active authority'
-                            USING ERRCODE = '23514';
-                    END IF;
-
-                    RETURN NEW;
-                END
-                $function$;
-
-                CREATE CONSTRAINT TRIGGER tr_elp_event_agenda_items_consistency
-                AFTER INSERT OR UPDATE OF tenant_id, event_id, event_location_id, location_id
-                ON event_agenda_items
-                DEFERRABLE INITIALLY IMMEDIATE
-                FOR EACH ROW EXECUTE FUNCTION elp_validate_event_location_carrier();
-
-                CREATE CONSTRAINT TRIGGER tr_elp_event_sessions_consistency
-                AFTER INSERT OR UPDATE OF tenant_id, event_id, event_location_id, location_id
-                ON event_sessions
-                DEFERRABLE INITIALLY IMMEDIATE
-                FOR EACH ROW EXECUTE FUNCTION elp_validate_event_location_carrier();
-
-                CREATE CONSTRAINT TRIGGER tr_elp_event_session_groups_consistency
-                AFTER INSERT OR UPDATE OF tenant_id, event_id, event_location_id, location_id
-                ON event_session_groups
-                DEFERRABLE INITIALLY IMMEDIATE
-                FOR EACH ROW EXECUTE FUNCTION elp_validate_event_location_carrier();
-
-                CREATE CONSTRAINT TRIGGER tr_elp_event_session_agenda_items_consistency
-                AFTER INSERT OR UPDATE OF tenant_id, event_session_id, event_location_id, location_id
-                ON event_session_agenda_items
-                DEFERRABLE INITIALLY IMMEDIATE
-                FOR EACH ROW EXECUTE FUNCTION elp_validate_event_location_carrier();
-
-                CREATE OR REPLACE FUNCTION elp_guard_referenced_event_location_identity()
-                RETURNS trigger
-                LANGUAGE plpgsql
-                SET search_path = pg_catalog, public
-                AS $function$
-                BEGIN
-                    IF (NEW.tenant_id, NEW.event_id, NEW.location_id, NEW.is_to_be_announced, NEW.is_deleted)
-                       IS NOT DISTINCT FROM
-                       (OLD.tenant_id, OLD.event_id, OLD.location_id, OLD.is_to_be_announced, OLD.is_deleted) THEN
-                        RETURN NEW;
-                    END IF;
-
-                    IF EXISTS (
-                        SELECT 1 FROM event_agenda_items
-                        WHERE tenant_id = OLD.tenant_id AND event_location_id = OLD.id
-                        UNION ALL
-                        SELECT 1 FROM event_sessions
-                        WHERE tenant_id = OLD.tenant_id AND event_location_id = OLD.id
-                        UNION ALL
-                        SELECT 1 FROM event_session_groups
-                        WHERE tenant_id = OLD.tenant_id AND event_location_id = OLD.id
-                        UNION ALL
-                        SELECT 1 FROM event_session_agenda_items
-                        WHERE tenant_id = OLD.tenant_id AND event_location_id = OLD.id) THEN
-                        RAISE EXCEPTION 'referenced event location identity is immutable'
-                            USING ERRCODE = '55000';
-                    END IF;
-
-                    RETURN NEW;
-                END
-                $function$;
-
-                CREATE CONSTRAINT TRIGGER tr_elp_event_locations_referenced_identity
-                AFTER UPDATE OF tenant_id, event_id, location_id, is_to_be_announced, is_deleted
-                ON event_locations
-                DEFERRABLE INITIALLY IMMEDIATE
-                FOR EACH ROW EXECUTE FUNCTION elp_guard_referenced_event_location_identity();
-
-                CREATE OR REPLACE FUNCTION elp_guard_erased_location_irreversibility()
-                RETURNS trigger
-                LANGUAGE plpgsql
-                SET search_path = pg_catalog, public
-                AS $function$
-                BEGIN
-                    IF OLD.location_privacy_state_id = 3 THEN
-                        RAISE EXCEPTION 'erased location is immutable'
-                            USING ERRCODE = '55000';
-                    END IF;
-                    RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
-                END
-                $function$;
-
-                CREATE OR REPLACE FUNCTION elp_reject_erased_location_pii()
-                RETURNS trigger
-                LANGUAGE plpgsql
-                SET search_path = pg_catalog, public
-                AS $function$
-                BEGIN
-                    IF EXISTS (
-                        SELECT 1 FROM locations
-                        WHERE id = NEW.location_id
-                          AND location_privacy_state_id = 3) THEN
-                        RAISE EXCEPTION 'PII cannot be attached to an erased location'
-                            USING ERRCODE = '55000';
-                    END IF;
-                    RETURN NEW;
-                END
-                $function$;
-
-                CREATE OR REPLACE FUNCTION elp_validate_location_erasure_tombstone()
-                RETURNS trigger
-                LANGUAGE plpgsql
-                SET search_path = pg_catalog, public
-                AS $function$
-                BEGIN
-                    IF NEW.location_privacy_state_id = 3
-                       AND (NEW.owner_user_id IS NOT NULL
-                            OR NEW.pii_erased_at_utc IS NULL
-                            OR NEW.pii_erasure_reason IS NULL
-                            OR NEW.full_name <> 'Private venue'
-                            OR NEW.city <> ''
-                            OR EXISTS (
-                                SELECT 1 FROM location_pii
-                                WHERE location_id = NEW.id)) THEN
-                        RAISE EXCEPTION 'erased location tombstone is invalid'
-                            USING ERRCODE = '23514';
-                    END IF;
-                    RETURN NEW;
-                END
-                $function$;
-
-                CREATE OR REPLACE FUNCTION elp_guard_erased_room_tombstone()
-                RETURNS trigger
-                LANGUAGE plpgsql
-                SET search_path = pg_catalog, public
-                AS $function$
-                DECLARE
-                    row_value location_rooms%ROWTYPE;
-                BEGIN
-                    row_value := CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
-
-                    IF row_value.name LIKE 'privacy-erased-%' AND TG_OP = 'DELETE' THEN
-                        RAISE EXCEPTION 'privacy-erased room tombstone cannot be deleted'
-                            USING ERRCODE = '55000';
-                    END IF;
-
-                    IF EXISTS (
-                        SELECT 1 FROM locations
-                        WHERE tenant_id = row_value.tenant_id
-                          AND id = row_value.location_id
-                          AND location_privacy_state_id = 3)
-                       AND (row_value.name <> 'privacy-erased-' || replace(row_value.id::text, '-', '')
-                            OR row_value.slug IS NOT NULL
-                            OR row_value.description IS NOT NULL
-                            OR row_value.is_deleted = false
-                            OR row_value.deleted_at IS NULL) THEN
-                        RAISE EXCEPTION 'erased room tombstone is invalid'
-                            USING ERRCODE = '23514';
-                    END IF;
-
-                    RETURN row_value;
-                END
-                $function$;
-
-                CREATE TRIGGER tr_elp_locations_irreversible
-                BEFORE UPDATE OR DELETE ON locations
-                FOR EACH ROW EXECUTE FUNCTION elp_guard_erased_location_irreversibility();
-
-                CREATE TRIGGER tr_elp_location_piis_no_reattachment
-                BEFORE INSERT OR UPDATE ON location_pii
-                FOR EACH ROW EXECUTE FUNCTION elp_reject_erased_location_pii();
-
-                CREATE TRIGGER tr_elp_locations_tombstone_shape
-                BEFORE INSERT OR UPDATE ON locations
-                FOR EACH ROW EXECUTE FUNCTION elp_validate_location_erasure_tombstone();
-
-                CREATE TRIGGER tr_elp_location_rooms_tombstone_shape
-                BEFORE INSERT OR UPDATE ON location_rooms
-                FOR EACH ROW EXECUTE FUNCTION elp_guard_erased_room_tombstone();
-
-                CREATE TRIGGER tr_elp_location_rooms_no_tombstone_delete
-                BEFORE DELETE ON location_rooms
-                FOR EACH ROW EXECUTE FUNCTION elp_guard_erased_room_tombstone();
-                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql(
-                """
-                DO $rollback$
-                BEGIN
-                    IF EXISTS (
-                        SELECT 1 FROM privacy_erasure_authority.erasure_intents
-                        UNION ALL
-                        SELECT 1 FROM privacy_erasure_authority.authority_counter
-                        WHERE last_sequence <> 0
-                        UNION ALL
-                        SELECT 1 FROM event_location_disclosure_audits
-                        UNION ALL
-                        SELECT 1 FROM event_location_exact_read_audits
-                        UNION ALL
-                        SELECT 1 FROM privacy_erasure_replay_checkpoints
-                        UNION ALL
-                        SELECT 1 FROM locations
-                        WHERE location_privacy_state_id = 3) THEN
-                        RAISE EXCEPTION 'privacy evidence prevents baseline rollback'
-                            USING ERRCODE = '55000';
-                    END IF;
-                END
-                $rollback$;
-
-                DROP FUNCTION IF EXISTS elp_guard_erased_room_tombstone() CASCADE;
-                DROP FUNCTION IF EXISTS elp_validate_location_erasure_tombstone() CASCADE;
-                DROP FUNCTION IF EXISTS elp_reject_erased_location_pii() CASCADE;
-                DROP FUNCTION IF EXISTS elp_guard_erased_location_irreversibility() CASCADE;
-                DROP FUNCTION IF EXISTS elp_guard_referenced_event_location_identity() CASCADE;
-                DROP FUNCTION IF EXISTS elp_validate_event_location_carrier() CASCADE;
-                DROP FUNCTION IF EXISTS elp_reject_append_only_mutation() CASCADE;
-                """);
-
             migrationBuilder.DropForeignKey(
-                name: "fk_event_reports_actors_tenant_id_reporter_actor_id",
+                name: "fk_event_reports_actors_reporter_actor_id",
                 table: "event_reports");
 
             migrationBuilder.DropForeignKey(
@@ -14725,16 +16591,12 @@ namespace Explore.Persistence.Migrations
                 table: "event_series");
 
             migrationBuilder.DropForeignKey(
-                name: "fk_events_actors_tenant_id_actor_id",
+                name: "fk_events_actors_actor_id",
                 table: "events");
 
             migrationBuilder.DropForeignKey(
-                name: "fk_groups_actors_actor_id",
-                table: "groups");
-
-            migrationBuilder.DropForeignKey(
-                name: "fk_organizations_actors_actor_id",
-                table: "organizations");
+                name: "fk_events_actors_organizer_actor_id",
+                table: "events");
 
             migrationBuilder.DropForeignKey(
                 name: "fk_storage_objects_actors_actor_id",
@@ -14743,10 +16605,6 @@ namespace Explore.Persistence.Migrations
             migrationBuilder.DropForeignKey(
                 name: "fk_tenant_users_actors_actor_id",
                 table: "tenant_users");
-
-            migrationBuilder.DropForeignKey(
-                name: "fk_users_actors_actor_id",
-                table: "users");
 
             migrationBuilder.DropForeignKey(
                 name: "fk_custom_property_definitions_tenants_tenant_id",
@@ -14813,10 +16671,6 @@ namespace Explore.Persistence.Migrations
                 table: "events");
 
             migrationBuilder.DropForeignKey(
-                name: "fk_groups_tenants_tenant_id",
-                table: "groups");
-
-            migrationBuilder.DropForeignKey(
                 name: "fk_incoming_webhook_effect_receipts_tenants_tenant_id",
                 table: "incoming_webhook_effect_receipts");
 
@@ -14831,10 +16685,6 @@ namespace Explore.Persistence.Migrations
             migrationBuilder.DropForeignKey(
                 name: "fk_locations_tenants_tenant_id",
                 table: "locations");
-
-            migrationBuilder.DropForeignKey(
-                name: "fk_organizations_tenants_tenant_id",
-                table: "organizations");
 
             migrationBuilder.DropForeignKey(
                 name: "fk_storage_objects_tenants_tenant_id",
@@ -14869,36 +16719,20 @@ namespace Explore.Persistence.Migrations
                 table: "event_reports");
 
             migrationBuilder.DropForeignKey(
+                name: "fk_events_users_submitted_by_user_id",
+                table: "events");
+
+            migrationBuilder.DropForeignKey(
                 name: "fk_locations_users_owner_user_id",
                 table: "locations");
 
             migrationBuilder.DropForeignKey(
-                name: "fk_webhook_consumers_groups_tenant_id_group_id",
+                name: "fk_webhook_consumers_groups_group_id",
                 table: "webhook_consumers");
 
             migrationBuilder.DropForeignKey(
-                name: "fk_webhook_consumers_organizations_tenant_id_organization_id",
+                name: "fk_webhook_consumers_organizations_organization_id",
                 table: "webhook_consumers");
-
-            migrationBuilder.DropForeignKey(
-                name: "fk_event_days_storage_objects_banner_image_id",
-                table: "event_days");
-
-            migrationBuilder.DropForeignKey(
-                name: "fk_event_series_storage_objects_featured_image_id",
-                table: "event_series");
-
-            migrationBuilder.DropForeignKey(
-                name: "fk_event_sessions_storage_objects_featured_image_id",
-                table: "event_sessions");
-
-            migrationBuilder.DropForeignKey(
-                name: "fk_events_storage_objects_background_image_id",
-                table: "events");
-
-            migrationBuilder.DropForeignKey(
-                name: "fk_events_storage_objects_featured_image_id",
-                table: "events");
 
             migrationBuilder.DropForeignKey(
                 name: "fk_events_atproto_records_atproto_record_id",
@@ -14957,6 +16791,10 @@ namespace Explore.Persistence.Migrations
                 table: "event_template_custom_property_definitions");
 
             migrationBuilder.DropForeignKey(
+                name: "fk_event_sessions_storage_objects_featured_image_id",
+                table: "event_sessions");
+
+            migrationBuilder.DropForeignKey(
                 name: "fk_event_report_cases_event_report_decisions_tenant_id_report_",
                 table: "event_report_cases");
 
@@ -14988,6 +16826,12 @@ namespace Explore.Persistence.Migrations
                 name: "actor_key_stores");
 
             migrationBuilder.DropTable(
+                name: "actor_merges");
+
+            migrationBuilder.DropTable(
+                name: "actor_moderation_records");
+
+            migrationBuilder.DropTable(
                 name: "actor_pii");
 
             migrationBuilder.DropTable(
@@ -15016,6 +16860,9 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "atproto_event_projections");
+
+            migrationBuilder.DropTable(
+                name: "atproto_identity_moderation_records");
 
             migrationBuilder.DropTable(
                 name: "atproto_jetstream_quarantines");
@@ -15080,6 +16927,15 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "event_location_exact_read_audits");
+
+            migrationBuilder.DropTable(
+                name: "event_organizer_claims");
+
+            migrationBuilder.DropTable(
+                name: "event_participation_configurations");
+
+            migrationBuilder.DropTable(
+                name: "event_public_actions");
 
             migrationBuilder.DropTable(
                 name: "event_registrations");
@@ -15157,9 +17013,6 @@ namespace Explore.Persistence.Migrations
                 name: "incoming_webhook_redrive_records");
 
             migrationBuilder.DropTable(
-                name: "indexed_dids");
-
-            migrationBuilder.DropTable(
                 name: "instance_policy_sets");
 
             migrationBuilder.DropTable(
@@ -15205,6 +17058,9 @@ namespace Explore.Persistence.Migrations
                 name: "organization_setting_overrides");
 
             migrationBuilder.DropTable(
+                name: "organization_tenant_evidence");
+
+            migrationBuilder.DropTable(
                 name: "outbox_messages");
 
             migrationBuilder.DropTable(
@@ -15212,6 +17068,12 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "pds_sync_outbox");
+
+            migrationBuilder.DropTable(
+                name: "platform_contribution_options");
+
+            migrationBuilder.DropTable(
+                name: "platform_fee_fixed_charges");
 
             migrationBuilder.DropTable(
                 name: "platform_user_roles");
@@ -15223,10 +17085,31 @@ namespace Explore.Persistence.Migrations
                 name: "privacy_erasure_policy_coverage");
 
             migrationBuilder.DropTable(
+                name: "privacy_erasure_provider_work");
+
+            migrationBuilder.DropTable(
                 name: "privacy_erasure_replay_checkpoints");
 
             migrationBuilder.DropTable(
-                name: "privacy_erasure_sagas");
+                name: "registration_channels");
+
+            migrationBuilder.DropTable(
+                name: "registration_inventory_holds");
+
+            migrationBuilder.DropTable(
+                name: "registration_order_pii");
+
+            migrationBuilder.DropTable(
+                name: "registration_order_platform_contributions");
+
+            migrationBuilder.DropTable(
+                name: "registration_participant_pii");
+
+            migrationBuilder.DropTable(
+                name: "registration_scopes");
+
+            migrationBuilder.DropTable(
+                name: "registration_ticket_assignments");
 
             migrationBuilder.DropTable(
                 name: "role_permissions");
@@ -15361,6 +17244,9 @@ namespace Explore.Persistence.Migrations
                 name: "ai_proposed_actions");
 
             migrationBuilder.DropTable(
+                name: "atproto_identities");
+
+            migrationBuilder.DropTable(
                 name: "atproto_jetstream_consumer_states");
 
             migrationBuilder.DropTable(
@@ -15377,6 +17263,27 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "event_custom_property_values");
+
+            migrationBuilder.DropTable(
+                name: "event_organizer_claim_statuses");
+
+            migrationBuilder.DropTable(
+                name: "advance_registration_obligations");
+
+            migrationBuilder.DropTable(
+                name: "identity_access_modes");
+
+            migrationBuilder.DropTable(
+                name: "participation_handling_modes");
+
+            migrationBuilder.DropTable(
+                name: "event_public_action_health_states");
+
+            migrationBuilder.DropTable(
+                name: "event_public_action_kinds");
+
+            migrationBuilder.DropTable(
+                name: "ticket_type_entitlements");
 
             migrationBuilder.DropTable(
                 name: "event_moderation_records");
@@ -15398,6 +17305,9 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "group_positions");
+
+            migrationBuilder.DropTable(
+                name: "group_tenants");
 
             migrationBuilder.DropTable(
                 name: "incoming_webhook_processing_attempt_outcomes");
@@ -15433,8 +17343,28 @@ namespace Explore.Persistence.Migrations
                 name: "organization_positions");
 
             migrationBuilder.DropTable(
-                name: "erasure_intents",
-                schema: "privacy_erasure_authority");
+                name: "platform_contribution_settings");
+
+            migrationBuilder.DropTable(
+                name: "platform_fee_policies");
+
+            migrationBuilder.DropTable(
+                name: "privacy_erasure_sagas");
+
+            migrationBuilder.DropTable(
+                name: "registration_requirements");
+
+            migrationBuilder.DropTable(
+                name: "registration_inventory_hold_statuses");
+
+            migrationBuilder.DropTable(
+                name: "assignment_statuses");
+
+            migrationBuilder.DropTable(
+                name: "registration_order_lines");
+
+            migrationBuilder.DropTable(
+                name: "registration_participants");
 
             migrationBuilder.DropTable(
                 name: "permissions");
@@ -15527,6 +17457,15 @@ namespace Explore.Persistence.Migrations
                 name: "ai_proposed_action_statuses");
 
             migrationBuilder.DropTable(
+                name: "did_custody_types");
+
+            migrationBuilder.DropTable(
+                name: "entitlement_scope_types");
+
+            migrationBuilder.DropTable(
+                name: "entitlement_selection_rules");
+
+            migrationBuilder.DropTable(
                 name: "external_api_key_credit_periods");
 
             migrationBuilder.DropTable(
@@ -15536,6 +17475,9 @@ namespace Explore.Persistence.Migrations
                 name: "external_api_key_statuses");
 
             migrationBuilder.DropTable(
+                name: "organization_tenants");
+
+            migrationBuilder.DropTable(
                 name: "secret_source_types");
 
             migrationBuilder.DropTable(
@@ -15543,9 +17485,6 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "setting_scopes");
-
-            migrationBuilder.DropTable(
-                name: "event_registration_intents");
 
             migrationBuilder.DropTable(
                 name: "managed_tenant_provisioning_operations");
@@ -15564,6 +17503,34 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "notification_intents");
+
+            migrationBuilder.DropTable(
+                name: "erasure_intents",
+                schema: "privacy_erasure_authority");
+
+            migrationBuilder.DropTable(
+                name: "registration_answer_sync_modes");
+
+            migrationBuilder.DropTable(
+                name: "registration_requirement_completion_effects");
+
+            migrationBuilder.DropTable(
+                name: "registration_requirement_criticalities");
+
+            migrationBuilder.DropTable(
+                name: "registration_requirement_subject_types");
+
+            migrationBuilder.DropTable(
+                name: "registration_workflows");
+
+            migrationBuilder.DropTable(
+                name: "event_ticket_types");
+
+            migrationBuilder.DropTable(
+                name: "participant_types");
+
+            migrationBuilder.DropTable(
+                name: "registration_orders");
 
             migrationBuilder.DropTable(
                 name: "support_access_end_reasons");
@@ -15599,7 +17566,7 @@ namespace Explore.Persistence.Migrations
                 name: "ai_message_roles");
 
             migrationBuilder.DropTable(
-                name: "registration_scopes");
+                name: "approval_statuses");
 
             migrationBuilder.DropTable(
                 name: "notification_fanout_occurrences");
@@ -15617,6 +17584,24 @@ namespace Explore.Persistence.Migrations
                 name: "notification_recipient_kinds");
 
             migrationBuilder.DropTable(
+                name: "event_capacity_pools");
+
+            migrationBuilder.DropTable(
+                name: "participant_data_collection_modes");
+
+            migrationBuilder.DropTable(
+                name: "ticket_pricing_modes");
+
+            migrationBuilder.DropTable(
+                name: "booking_party_types");
+
+            migrationBuilder.DropTable(
+                name: "event_ticket_catalog_versions");
+
+            migrationBuilder.DropTable(
+                name: "registration_order_statuses");
+
+            migrationBuilder.DropTable(
                 name: "tenant_plan_statuses");
 
             migrationBuilder.DropTable(
@@ -15632,13 +17617,25 @@ namespace Explore.Persistence.Migrations
                 name: "notification_delivery_policies");
 
             migrationBuilder.DropTable(
+                name: "capacity_hold_policies");
+
+            migrationBuilder.DropTable(
+                name: "capacity_oversell_policies");
+
+            migrationBuilder.DropTable(
+                name: "ticket_catalog_statuses");
+
+            migrationBuilder.DropTable(
                 name: "actors");
 
             migrationBuilder.DropTable(
                 name: "actor_types");
 
             migrationBuilder.DropTable(
-                name: "did_custody_types");
+                name: "external_actor_subjects");
+
+            migrationBuilder.DropTable(
+                name: "service_principals");
 
             migrationBuilder.DropTable(
                 name: "tenants");
@@ -15657,15 +17654,6 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "organizations");
-
-            migrationBuilder.DropTable(
-                name: "approval_statuses");
-
-            migrationBuilder.DropTable(
-                name: "storage_objects");
-
-            migrationBuilder.DropTable(
-                name: "file_types");
 
             migrationBuilder.DropTable(
                 name: "atproto_records");
@@ -15687,6 +17675,9 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "event_formats");
+
+            migrationBuilder.DropTable(
+                name: "event_provenance_types");
 
             migrationBuilder.DropTable(
                 name: "event_registration_policies");
@@ -15735,6 +17726,12 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "event_types");
+
+            migrationBuilder.DropTable(
+                name: "storage_objects");
+
+            migrationBuilder.DropTable(
+                name: "file_types");
 
             migrationBuilder.DropTable(
                 name: "event_report_decisions");
