@@ -63,5 +63,13 @@ public sealed class RegistrationParticipantPii : ITenantEntity, IAuditableEntity
         return new RegistrationParticipantPii(registrationParticipantId, tenantId, displayName, email, phone);
     }
 
+    public void Update(string? displayName, string? email, string? phone)
+    {
+        DisplayName = Normalize(displayName);
+        Email = Normalize(email);
+        NormalizedEmail = Email?.ToUpperInvariant();
+        Phone = Normalize(phone);
+    }
+
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

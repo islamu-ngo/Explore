@@ -91,13 +91,13 @@ public sealed class RegistrationParticipantRulesTests
         await Assert.That(() => RegistrationParticipant.Create(
             adult.TenantId, adult.RegistrationOrderId, null, ParticipantTypeEnum.Child, otherOrderAdult)).Throws<ArgumentException>();
         await Assert.That(() => RegistrationTicketAssignment.Create(
-            adult.TenantId, Guid.Empty, 1, null, AssignmentStatusEnum.Unassigned, null, Now)).Throws<ArgumentException>();
+            adult.TenantId, adult.RegistrationOrderId, Guid.Empty, 1, null, AssignmentStatusEnum.Unassigned, null, Now)).Throws<ArgumentException>();
         await Assert.That(() => RegistrationTicketAssignment.Create(
-            adult.TenantId, Guid.CreateVersion7(), 0, null, AssignmentStatusEnum.Unassigned, null, Now)).Throws<ArgumentOutOfRangeException>();
+            adult.TenantId, adult.RegistrationOrderId, Guid.CreateVersion7(), 0, null, AssignmentStatusEnum.Unassigned, null, Now)).Throws<ArgumentOutOfRangeException>();
         await Assert.That(() => RegistrationTicketAssignment.Create(
-            adult.TenantId, Guid.CreateVersion7(), 1, null, AssignmentStatusEnum.Assigned, null, Now)).Throws<ArgumentException>();
+            adult.TenantId, adult.RegistrationOrderId, Guid.CreateVersion7(), 1, null, AssignmentStatusEnum.Assigned, null, Now)).Throws<ArgumentException>();
         await Assert.That(() => RegistrationTicketAssignment.Create(
-            adult.TenantId, Guid.CreateVersion7(), 1, null, AssignmentStatusEnum.Deferred, Now, Now)).Throws<ArgumentException>();
+            adult.TenantId, adult.RegistrationOrderId, Guid.CreateVersion7(), 1, null, AssignmentStatusEnum.Deferred, Now, Now)).Throws<ArgumentException>();
         await Assert.That(() => RegistrationOrderRules.CanConfirmParticipantAssignments(
             ParticipantDataCollectionModeEnum.PerTicketOptional, 2, [Assigned(3)], null, Now)).Throws<ArgumentException>();
     }
@@ -116,6 +116,32 @@ public sealed class RegistrationParticipantRulesTests
         await Assert.That(pii.NormalizedEmail).IsEqualTo("PERSON@EXAMPLE.TEST");
         await Assert.That(() => participant.SetPii(RegistrationParticipantPii.Create(
             participant.Id, Guid.CreateVersion7(), null, null, null))).Throws<ArgumentException>();
+    }
+
+    [Test]
+    public async Task ParticipantAndAssignmentMutations_PreserveOrderIdentityAndNormalizeState()
+    {
+        RegistrationParticipant adult = Participant(ParticipantTypeEnum.Adult);
+        RegistrationParticipant child = Participant(ParticipantTypeEnum.Child, adult);
+        RegistrationParticipantPii pii = RegistrationParticipantPii.Create(child.Id, child.TenantId, " Initial ", null, null);
+        child.SetPii(pii);
+        RegistrationTicketAssignment assignment = RegistrationTicketAssignment.Create(
+            child.TenantId, child.RegistrationOrderId, Guid.CreateVersion7(), 1, null,
+            AssignmentStatusEnum.Deferred, Now.AddDays(1), Now);
+        Guid assignmentStamp = Guid.CreateVersion7();
+
+        pii.Update(" Updated ", " person@example.test ", null);
+        assignment.Assign(child, assignmentStamp);
+
+        await Assert.That(pii.DisplayName).IsEqualTo("Updated");
+        await Assert.That(pii.NormalizedEmail).IsEqualTo("PERSON@EXAMPLE.TEST");
+        await Assert.That(assignment.ParticipantId).IsEqualTo(child.Id);
+        await Assert.That(assignment.AssignmentStatusId).IsEqualTo((int)AssignmentStatusEnum.Assigned);
+        await Assert.That(assignment.AssignmentDeadline).IsNull();
+        await Assert.That(assignment.ConcurrencyStamp).IsEqualTo(assignmentStamp);
+        await Assert.That(() => assignment.Assign(
+            RegistrationParticipant.Create(child.TenantId, Guid.CreateVersion7(), null, ParticipantTypeEnum.Adult, null),
+            Guid.CreateVersion7())).Throws<ArgumentException>();
     }
 
     [Test]
@@ -142,8 +168,8 @@ public sealed class RegistrationParticipantRulesTests
         guardian);
 
     private static RegistrationTicketAssignment Assigned(int ordinal) => RegistrationTicketAssignment.Create(
-        Guid.CreateVersion7(), Guid.CreateVersion7(), ordinal, Guid.CreateVersion7(), AssignmentStatusEnum.Assigned, null, Now);
+        Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), ordinal, Guid.CreateVersion7(), AssignmentStatusEnum.Assigned, null, Now);
 
     private static RegistrationTicketAssignment Deferred(int ordinal, DateTime deadline) => RegistrationTicketAssignment.Create(
-        Guid.CreateVersion7(), Guid.CreateVersion7(), ordinal, null, AssignmentStatusEnum.Deferred, deadline, Now);
+        Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), ordinal, null, AssignmentStatusEnum.Deferred, deadline, Now);
 }

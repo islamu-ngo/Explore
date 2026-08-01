@@ -71,7 +71,9 @@ public static class LookupTableSeeder
         await SeedEventAuthorityLookupsAsync(context, cancellationToken);
         await SeedEventParticipationLookupsAsync(context, cancellationToken);
         await SeedTicketingLookupsAsync(context, cancellationToken);
+        await SeedParticipantLookupsAsync(context, cancellationToken);
         await SeedRegistrationOrderLookupsAsync(context, cancellationToken);
+        await SeedRegistrationWorkflowLookupsAsync(context, cancellationToken);
         await SeedPlatformMonetizationDefaultsAsync(context, cancellationToken);
         await SeedEventStatusesAsync(context, cancellationToken);
         await SeedEventSessionStatusesAsync(context, cancellationToken);
@@ -1565,6 +1567,62 @@ public static class LookupTableSeeder
         [
             new CapacityOversellPolicy { Id = (int)CapacityOversellPolicyEnum.Disallow, MasterCode = "DISALLOW", FullName = "Disallow" },
             new CapacityOversellPolicy { Id = (int)CapacityOversellPolicyEnum.Allow, MasterCode = "ALLOW", FullName = "Allow" }
+        ], row => row.Id, ct);
+    }
+
+    internal static async Task SeedParticipantLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new ParticipantType { Id = (int)ParticipantTypeEnum.Adult, MasterCode = "ADULT", FullName = "Adult" },
+            new ParticipantType { Id = (int)ParticipantTypeEnum.Child, MasterCode = "CHILD", FullName = "Child" },
+            new ParticipantType { Id = (int)ParticipantTypeEnum.Dependent, MasterCode = "DEPENDENT", FullName = "Dependent" },
+            new ParticipantType { Id = (int)ParticipantTypeEnum.Employee, MasterCode = "EMPLOYEE", FullName = "Employee" },
+            new ParticipantType { Id = (int)ParticipantTypeEnum.Guest, MasterCode = "GUEST", FullName = "Guest" },
+            new ParticipantType { Id = (int)ParticipantTypeEnum.Unnamed, MasterCode = "UNNAMED", FullName = "Unnamed" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new AssignmentStatus { Id = (int)AssignmentStatusEnum.Unassigned, MasterCode = "UNASSIGNED", FullName = "Unassigned" },
+            new AssignmentStatus { Id = (int)AssignmentStatusEnum.Assigned, MasterCode = "ASSIGNED", FullName = "Assigned" },
+            new AssignmentStatus { Id = (int)AssignmentStatusEnum.Deferred, MasterCode = "DEFERRED", FullName = "Deferred" }
+        ], row => row.Id, ct);
+    }
+
+    internal static async Task SeedRegistrationWorkflowLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationRequirementCriticality { Id = (int)RegistrationRequirementCriticalityEnum.Required, MasterCode = "REQUIRED", FullName = "Required" },
+            new RegistrationRequirementCriticality { Id = (int)RegistrationRequirementCriticalityEnum.Optional, MasterCode = "OPTIONAL", FullName = "Optional" },
+            new RegistrationRequirementCriticality { Id = (int)RegistrationRequirementCriticalityEnum.Informational, MasterCode = "INFORMATIONAL", FullName = "Informational" },
+            new RegistrationRequirementCriticality { Id = (int)RegistrationRequirementCriticalityEnum.PostRegistration, MasterCode = "POST_REGISTRATION", FullName = "Post-registration" }
+        ], row => row.Id, ct);
+
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationRequirementCompletionEffect { Id = (int)RegistrationRequirementCompletionEffectEnum.BlocksRegistration, MasterCode = "BLOCKS_REGISTRATION", FullName = "Blocks registration" },
+            new RegistrationRequirementCompletionEffect { Id = (int)RegistrationRequirementCompletionEffectEnum.EnrichesRegistration, MasterCode = "ENRICHES_REGISTRATION", FullName = "Enriches registration" },
+            new RegistrationRequirementCompletionEffect { Id = (int)RegistrationRequirementCompletionEffectEnum.NoRegistrationEffect, MasterCode = "NO_REGISTRATION_EFFECT", FullName = "No registration effect" }
+        ], row => row.Id, ct);
+
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationAnswerSyncMode { Id = (int)RegistrationAnswerSyncModeEnum.NONE, MasterCode = "NONE", FullName = "None" },
+            new RegistrationAnswerSyncMode { Id = (int)RegistrationAnswerSyncModeEnum.COMPLETION_ONLY, MasterCode = "COMPLETION_ONLY", FullName = "Completion only" },
+            new RegistrationAnswerSyncMode { Id = (int)RegistrationAnswerSyncModeEnum.SELECTED_FIELDS, MasterCode = "SELECTED_FIELDS", FullName = "Selected fields" },
+            new RegistrationAnswerSyncMode { Id = (int)RegistrationAnswerSyncModeEnum.FULL_CANONICAL, MasterCode = "FULL_CANONICAL", FullName = "Full canonical" },
+            new RegistrationAnswerSyncMode { Id = (int)RegistrationAnswerSyncModeEnum.MIRROR_ONLY, MasterCode = "MIRROR_ONLY", FullName = "Mirror only" }
+        ], row => row.Id, ct);
+
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationRequirementSubjectType { Id = (int)RegistrationRequirementSubjectTypeEnum.AllOrders, MasterCode = "ALL_ORDERS", FullName = "All orders" },
+            new RegistrationRequirementSubjectType { Id = (int)RegistrationRequirementSubjectTypeEnum.SpecificTicketType, MasterCode = "SPECIFIC_TICKET_TYPE", FullName = "Specific ticket type" },
+            new RegistrationRequirementSubjectType { Id = (int)RegistrationRequirementSubjectTypeEnum.EveryParticipant, MasterCode = "EVERY_PARTICIPANT", FullName = "Every participant" },
+            new RegistrationRequirementSubjectType { Id = (int)RegistrationRequirementSubjectTypeEnum.LeadBookerOnly, MasterCode = "LEAD_BOOKER_ONLY", FullName = "Lead booker only" },
+            new RegistrationRequirementSubjectType { Id = (int)RegistrationRequirementSubjectTypeEnum.ChildParticipants, MasterCode = "CHILD_PARTICIPANTS", FullName = "Child participants" },
+            new RegistrationRequirementSubjectType { Id = (int)RegistrationRequirementSubjectTypeEnum.SpecificSessionSelection, MasterCode = "SPECIFIC_SESSION_SELECTION", FullName = "Specific session selection" }
         ], row => row.Id, ct);
     }
 

@@ -124,6 +124,16 @@ public sealed class EventCapacityPool : ITenantEntity, IAuditableEntity, ISoftDe
         IsActive = isActive;
     }
 
+    public void RegisterTicketAssignment()
+    {
+        if (IsDeleted)
+        {
+            throw new InvalidOperationException("Deleted capacity pools cannot accept ticket assignments.");
+        }
+
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
     public void Delete(DateTime deletedAtUtc, Guid deletedBy)
     {
         if (deletedAtUtc == default)

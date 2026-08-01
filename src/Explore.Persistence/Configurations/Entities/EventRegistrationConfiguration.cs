@@ -1,5 +1,5 @@
 // ABOUTME: EF configuration for concrete session admissions from registration orders.
-// ABOUTME: Preserves tenant-safe lineage and makes interim participant linkage nullable.
+// ABOUTME: Preserves tenant-safe order, participant, and session lineage for admissions.
 
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -25,9 +25,9 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(e => e.User)
+        builder.HasOne(e => e.LinkedUser)
             .WithMany()
-            .HasForeignKey(e => e.UserId)
+            .HasForeignKey(e => e.LinkedUserId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
@@ -55,6 +55,12 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
             .HasPrincipalKey(entitlement => new { entitlement.TenantId, entitlement.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(e => e.RegistrationParticipant)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.RegistrationOrderId, e.RegistrationParticipantId })
+            .HasPrincipalKey(participant => new { participant.TenantId, participant.RegistrationOrderId, participant.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(e => e.ApprovalStatus)
             .WithMany()
             .HasForeignKey(e => e.ApprovalStatusId)
@@ -72,13 +78,18 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
 
         // ===== Performance Indexes =====
 
-        builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventSessionId, e.UserId })
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventSessionId, e.LinkedUserId })
             .HasFilter("is_deleted = false")
             .HasDatabaseName("ix_eventregistrations_session_user");
 
         // Registrations by user (my registrations)
-        builder.HasIndex(e => e.UserId)
+        builder.HasIndex(e => e.LinkedUserId)
             .HasDatabaseName("ix_eventregistrations_user");
+
+        builder.HasIndex(e => new { e.TenantId, e.EventSessionId, e.RegistrationParticipantId })
+            .IsUnique()
+            .HasFilter("is_deleted = false")
+            .HasDatabaseName("ix_eventregistrations_session_participant");
 
         builder.HasIndex(e => new
             {

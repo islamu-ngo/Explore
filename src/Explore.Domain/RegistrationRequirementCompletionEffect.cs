@@ -1,0 +1,12 @@
+// ABOUTME: Normalized lookup row for registration-requirement completion effects.
+// ABOUTME: Keeps stable completion-effect IDs separate from their enum convenience mirror.
+
+namespace Explore.Domain;
+
+public sealed class RegistrationRequirementCompletionEffect
+{
+    public int Id { get; set; }
+    public string MasterCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+}

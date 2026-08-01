@@ -161,6 +161,12 @@ public partial class ExploreDbContext
     public DbSet<RegistrationOrderPii> RegistrationOrderPii { get; set; }
     public DbSet<RegistrationOrderPlatformContribution> RegistrationOrderPlatformContributions { get; set; }
     public DbSet<RegistrationInventoryHold> RegistrationInventoryHolds { get; set; }
+    public DbSet<RegistrationParticipant> RegistrationParticipants { get; set; }
+    public DbSet<RegistrationParticipantPii> RegistrationParticipantPii { get; set; }
+    public DbSet<RegistrationTicketAssignment> RegistrationTicketAssignments { get; set; }
+    public DbSet<RegistrationWorkflow> RegistrationWorkflows { get; set; }
+    public DbSet<RegistrationRequirement> RegistrationRequirements { get; set; }
+    public DbSet<RegistrationChannel> RegistrationChannels { get; set; }
 
     // ===== Event Lookup Tables =====
     public DbSet<EventType> EventTypes { get; set; }
@@ -188,8 +194,14 @@ public partial class ExploreDbContext
     public DbSet<CapacityHoldPolicy> CapacityHoldPolicies { get; set; }
     public DbSet<CapacityOversellPolicy> CapacityOversellPolicies { get; set; }
     public DbSet<BookingPartyType> BookingPartyTypes { get; set; }
+    public DbSet<ParticipantType> ParticipantTypes { get; set; }
+    public DbSet<AssignmentStatus> AssignmentStatuses { get; set; }
     public DbSet<RegistrationOrderStatus> RegistrationOrderStatuses { get; set; }
     public DbSet<RegistrationInventoryHoldStatus> RegistrationInventoryHoldStatuses { get; set; }
+    public DbSet<RegistrationRequirementCriticality> RegistrationRequirementCriticalities { get; set; }
+    public DbSet<RegistrationRequirementCompletionEffect> RegistrationRequirementCompletionEffects { get; set; }
+    public DbSet<RegistrationAnswerSyncMode> RegistrationAnswerSyncModes { get; set; }
+    public DbSet<RegistrationRequirementSubjectType> RegistrationRequirementSubjectTypes { get; set; }
 
     // ===== Instance Monetization =====
     public DbSet<PlatformFeePolicy> PlatformFeePolicies { get; set; }

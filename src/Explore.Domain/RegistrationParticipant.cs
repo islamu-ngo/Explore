@@ -39,6 +39,8 @@ public sealed class RegistrationParticipant : ITenantEntity, IAuditableEntity, I
 
     public Guid? LinkedUserId { get; private set; }
 
+    public User? LinkedUser { get; private set; }
+
     public int ParticipantTypeId { get; private set; }
 
     public ParticipantType? ParticipantType { get; private set; }
@@ -112,5 +114,26 @@ public sealed class RegistrationParticipant : ITenantEntity, IAuditableEntity, I
         }
 
         Pii = pii;
+    }
+
+    public void Update(ParticipantTypeEnum participantType, RegistrationParticipant? guardian, Guid concurrencyStamp)
+    {
+        if (!Enum.IsDefined(participantType) || concurrencyStamp == Guid.Empty)
+        {
+            throw new ArgumentException("Participant type and concurrency stamp are required.");
+        }
+
+        bool requiresGuardian = participantType is ParticipantTypeEnum.Child or ParticipantTypeEnum.Dependent;
+        if (requiresGuardian != (guardian is not null) || guardian is not null &&
+            (guardian.Id == Id || guardian.TenantId != TenantId || guardian.RegistrationOrderId != RegistrationOrderId ||
+             guardian.ParticipantTypeId != (int)ParticipantTypeEnum.Adult))
+        {
+            throw new ArgumentException("Child and dependent participants require a different adult guardian from the same order.", nameof(guardian));
+        }
+
+        ParticipantTypeId = (int)participantType;
+        GuardianParticipantId = guardian?.Id;
+        GuardianParticipant = guardian;
+        ConcurrencyStamp = concurrencyStamp;
     }
 }

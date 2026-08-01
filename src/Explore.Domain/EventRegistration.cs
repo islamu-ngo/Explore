@@ -1,5 +1,5 @@
 // ABOUTME: Concrete per-session admission row derived from a registration order.
-// ABOUTME: Keeps participant and linked-user references nullable until participant assignment is introduced.
+// ABOUTME: Requires participant lineage while retaining an optional denormalized linked-user identity.
 
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -9,6 +9,20 @@ namespace Explore.Domain;
 
 public class EventRegistration : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
+    public void ReassignParticipant(RegistrationParticipant participant, Guid concurrencyStamp)
+    {
+        ArgumentNullException.ThrowIfNull(participant);
+        if (RegistrationOrderId != participant.RegistrationOrderId || TenantId != participant.TenantId || concurrencyStamp == Guid.Empty)
+        {
+            throw new ArgumentException("Admission participant must belong to the same order.", nameof(participant));
+        }
+
+        RegistrationParticipantId = participant.Id;
+        RegistrationParticipant = participant;
+        LinkedUserId = participant.LinkedUserId;
+        ConcurrencyStamp = concurrencyStamp;
+    }
+
     public Guid Id { get; set; }
     public Guid ConcurrencyStamp { get; set; }
 
@@ -16,9 +30,9 @@ public class EventRegistration : ITenantEntity, IAuditableEntity, ISoftDeletable
     public Guid EventId { get; set; }
     public required Event Event { get; set; }
 
-    [ForeignKey("User")]
-    public Guid? UserId { get; set; }
-    public User? User { get; set; }
+    [ForeignKey("LinkedUser")]
+    public Guid? LinkedUserId { get; set; }
+    public User? LinkedUser { get; set; }
 
     [ForeignKey("EventSession")]
     public Guid EventSessionId { get; set; }
@@ -38,7 +52,9 @@ public class EventRegistration : ITenantEntity, IAuditableEntity, ISoftDeletable
     public Guid? TicketTypeEntitlementId { get; set; }
     public TicketTypeEntitlement? TicketTypeEntitlement { get; set; }
 
-    public Guid? RegistrationParticipantId { get; set; }
+    [ForeignKey("RegistrationParticipant")]
+    public Guid RegistrationParticipantId { get; set; }
+    public RegistrationParticipant RegistrationParticipant { get; set; } = null!;
 
     public int? EntitlementOrdinal { get; set; }
 

@@ -318,6 +318,16 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
         return true;
     }
 
+    public void BumpConcurrency(Guid concurrencyStamp)
+    {
+        if (concurrencyStamp == Guid.Empty)
+        {
+            throw new ArgumentException("Order concurrency stamp is required.", nameof(concurrencyStamp));
+        }
+
+        ConcurrencyStamp = concurrencyStamp;
+    }
+
     private void EnsureCommercialFactsMutable()
     {
         if (RegistrationOrderRules.IsTerminalForCurrentWorkstream((RegistrationOrderStatusEnum)RegistrationOrderStatusId))

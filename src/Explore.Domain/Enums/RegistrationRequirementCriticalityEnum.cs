@@ -1,0 +1,12 @@
+// ABOUTME: Enum mirror for stable registration-requirement criticality lookup identities.
+// ABOUTME: Distinguishes blocking, optional, informational, and post-registration requirements.
+
+namespace Explore.Domain.Enums;
+
+public enum RegistrationRequirementCriticalityEnum
+{
+    Required = 1,
+    Optional = 2,
+    Informational = 3,
+    PostRegistration = 4
+}
