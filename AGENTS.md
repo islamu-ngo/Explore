@@ -67,6 +67,7 @@ Every change must answer these eight questions **before editing any file**:
 4. GET = `[AllowAnonymous]`, write = `[Authorize]`.
 5. Every file must start with a two-line `ABOUTME:` comment summary.
 6. **HAL links are the single source of truth for UI**: Clients must gate action affordances (Edit/Delete) by checking `_links` presence, never local role/claim inspection.
+7. **EF Core migrations are generated artifacts**: Never hand-edit migration or model-snapshot files. Fix entities/configurations or the migration generator, then delete and regenerate an unapplied development migration with `dotnet ef migrations`.
 
 **Full list:** [`docs/QUICK_REFERENCE.md`](docs/QUICK_REFERENCE.md)
 

@@ -31,14 +31,14 @@ Use this skill when changing repositories, `ExploreDbContext`, EF configurations
 1. Repositories return entities rather than DTOs, and read-only paths should prefer `AsNoTracking()`.
 2. Named `SoftDelete` and `Tenant` query filters belong in `OnModelCreating`, and deleted-row inclusion should prefer `IgnoreQueryFilters([QueryFilterNames.SoftDelete])` so tenant isolation stays active.
 3. The pooled DbContext factory sets scoped services such as `TenantContext` and `CurrentUserService` through property injection, and both can be `null` during migrations or seeding.
-4. Applied migrations are never edited or removed, and corrective migrations should stay small, focused, and PascalCase verb-noun named.
+4. Migration and model-snapshot files are never hand-edited. Fix the EF model/configuration or migration-generation extension, then regenerate an unapplied development migration; applied migrations remain immutable and require a generated corrective migration.
 5. Lookup enum IDs and stable codes stay in parity with idempotent `LookupTableSeeder` missing-row repair, and any migration-dependent lookup row is inserted locally before its backfill; model `HasData()` stays forbidden while EF Core #36682 applies.
 
 ## Top 5 Anti-Patterns
 1. A repository returns a DTO or `IQueryable`, which leaks mapping or EF internals beyond Persistence and weakens Application ownership.
 2. Domain entities carry default values for persistence behavior, which hides business intent that belongs in handlers or EF configuration.
 3. Runtime request paths disable the `Tenant` filter, which introduces tenant-isolation bugs that are hard to detect.
-4. A large unfocused migration mixes unrelated schema changes, which makes review, rollback, and diagnosis harder.
+4. Hand-editing generated migration or snapshot output hides an incorrect EF model and can produce an unreproducible production schema.
 5. Model `HasData()` seeds lookup rows while EF Core #36682 applies, which can break migration generation and leaves dependent backfills ordered after unavailable runtime seed data.
 
 ## Minimal Examples
@@ -55,14 +55,13 @@ public sealed class EventStatusConfiguration : IEntityTypeConfiguration<EventSta
 }
 ```
 
-```csharp
-migrationBuilder.InsertData(
-    table: "event_statuses",
-    columns: ["id", "master_code", "full_name"],
-    values: new object[,] { { 1, "DRAFT", "Draft" } });
+Generate migrations only after the entity/configuration model is correct:
 
-migrationBuilder.Sql("UPDATE events SET event_status_id = 1 WHERE event_status_id IS NULL;");
+```bash
+dotnet ef migrations add AddEventStatus --context ExploreDbContext --project Explore.Persistence --startup-project Explore.API
 ```
+
+If the generated output is wrong, fix its model/configuration source, remove the unapplied migration with `dotnet ef migrations remove`, and generate it again. Never patch the generated migration or snapshot.
 
 ```csharp
 public sealed class EventRepository(ExploreDbContext dbContext) : IEventRepository

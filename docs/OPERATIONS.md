@@ -199,6 +199,8 @@ operations. Do not copy the in-memory fallback into production cleanup jobs.
 
 When creating EF Core migrations from scratch in the repository, run the commands from the repo root in this order:
 
+Migration files and model snapshots are generated artifacts. Never patch them manually. If generated output is incorrect, fix the entity/configuration, `DbContext`, lookup seeding, or migration-generation extension; remove the unapplied development migration and run `dotnet ef migrations add` again. Applied or merged migrations remain immutable and require a newly generated corrective migration.
+
 ```bash
 dotnet ef migrations add init --context DataProtectionKeyContext --project Explore.Persistence --startup-project Explore.API --output-dir Migrations/DataProtection
 dotnet ef migrations add init --context ExploreDbContext --project Explore.Persistence --startup-project Explore.API

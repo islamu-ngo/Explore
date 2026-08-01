@@ -130,7 +130,7 @@ intents:
       - quality-verifier-agent
 
   - id: add-ef-migration
-    title: "Add or modify an Entity Framework Core migration"
+    title: "Generate an Entity Framework Core migration from model changes"
     category: persistence
     triggers:
       - "add an EF migration"
@@ -151,9 +151,12 @@ intents:
     docs_to_update:
       - schemas/islamu-event.md
     unique_acceptance:
+      - "Migration and model snapshot are produced by dotnet ef; no generated file is hand-edited"
+      - "Incorrect generated output is fixed in entities, configurations, DbContext setup, lookup seeding, or the migration-generation extension before regeneration"
       - "Migration is idempotent and reversible"
       - "Stable enum IDs and codes stay synchronized with idempotent LookupTableSeeder repair and migration-local InsertData before dependent backfills"
     forbidden_without_approval:
+      - "Manual edits to generated migration or model-snapshot files"
       - "Destructive Down() that silently loses data"
     related_agents:
       - backend-engineer-agent
