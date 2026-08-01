@@ -1221,7 +1221,7 @@ public class AuthorizationBehaviorTests
             ClaimId = claimId,
             Review = new ReviewEventOrganizerClaimDto
             {
-                Decision = EventOrganizerClaimReviewDecision.Reject,
+                Decision = EventOrganizerClaimReviewDecisionDto.Reject,
                 ReasonCode = "NOT_VERIFIED",
                 ExpectedConcurrencyStamp = Guid.NewGuid()
             }
@@ -1358,10 +1358,10 @@ public class AuthorizationBehaviorTests
             TenantId = tenantId,
             EventId = eventId,
             EventSessionId = eventSessionId,
-            UserId = userId,
+            LinkedUserId = userId,
             Event = null!,
             EventSession = null!,
-            User = null!,
+            LinkedUser = null!,
             Tenant = null!
         };
 

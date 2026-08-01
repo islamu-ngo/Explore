@@ -359,7 +359,7 @@ public sealed class UserPiiInventoryArchitectureTests
             [
                 "UserPii.Email",
                 "TenantInvitation.Email",
-                "EventRegistration.UserId",
+                "EventRegistration.LinkedUserId",
                 "EventContactShareExportItem.EmailSnapshot",
                 "Notification.UserId",
                 "EmailDispatchOutbox.RecipientEmail",

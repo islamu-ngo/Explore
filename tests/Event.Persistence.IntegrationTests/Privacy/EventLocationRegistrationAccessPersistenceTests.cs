@@ -238,11 +238,21 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
             RegistrationOrderStatusEnum.Confirmed);
         context.EventTicketCatalogVersions.Add(catalog);
         context.RegistrationOrders.AddRange(eventOrder, selectedOrder, dayOrder, sessionOrder);
+        RegistrationParticipant eventParticipant = RegistrationParticipant.Create(
+            tenant.Id, eventOrder.Id, eventUser.Id, ParticipantTypeEnum.Adult, null);
+        RegistrationParticipant selectedParticipant = RegistrationParticipant.Create(
+            tenant.Id, selectedOrder.Id, eventUser.Id, ParticipantTypeEnum.Adult, null);
+        RegistrationParticipant dayParticipant = RegistrationParticipant.Create(
+            tenant.Id, dayOrder.Id, dayUser.Id, ParticipantTypeEnum.Adult, null);
+        RegistrationParticipant sessionParticipant = RegistrationParticipant.Create(
+            tenant.Id, sessionOrder.Id, sessionUser.Id, ParticipantTypeEnum.Adult, null);
+        context.RegistrationParticipants.AddRange(
+            eventParticipant, selectedParticipant, dayParticipant, sessionParticipant);
         context.EventRegistrations.AddRange(
-            CreateRegistration(tenant.Id, @event.Id, eventUser.Id, registered.Id, eventOrder.Id, ApprovalStatusEnum.Pending),
-            CreateRegistration(tenant.Id, @event.Id, eventUser.Id, selectedOverlap.Id, selectedOrder.Id, ApprovalStatusEnum.Approved),
-            CreateRegistration(tenant.Id, @event.Id, dayUser.Id, registered.Id, dayOrder.Id, ApprovalStatusEnum.Approved),
-            CreateRegistration(tenant.Id, @event.Id, sessionUser.Id, registered.Id, sessionOrder.Id, ApprovalStatusEnum.Approved));
+            CreateRegistration(tenant.Id, @event.Id, eventUser.Id, registered.Id, eventOrder.Id, eventParticipant.Id, ApprovalStatusEnum.Pending),
+            CreateRegistration(tenant.Id, @event.Id, eventUser.Id, selectedOverlap.Id, selectedOrder.Id, selectedParticipant.Id, ApprovalStatusEnum.Approved),
+            CreateRegistration(tenant.Id, @event.Id, dayUser.Id, registered.Id, dayOrder.Id, dayParticipant.Id, ApprovalStatusEnum.Approved),
+            CreateRegistration(tenant.Id, @event.Id, sessionUser.Id, registered.Id, sessionOrder.Id, sessionParticipant.Id, ApprovalStatusEnum.Approved));
         await context.SaveChangesAsync();
 
         return new(
@@ -367,6 +377,7 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
         Guid userId,
         Guid sessionId,
         Guid orderId,
+        Guid participantId,
         ApprovalStatusEnum status) => new()
         {
             Id = Guid.CreateVersion7(),
@@ -374,11 +385,13 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
             Tenant = null!,
             EventId = eventId,
             Event = null!,
-            UserId = userId,
-            User = null!,
+            LinkedUserId = userId,
+            LinkedUser = null!,
             EventSessionId = sessionId,
             EventSession = null!,
             RegistrationOrderId = orderId,
+            RegistrationParticipantId = participantId,
+            RegistrationParticipant = null!,
             ApprovalStatusId = (int)status
         };
 

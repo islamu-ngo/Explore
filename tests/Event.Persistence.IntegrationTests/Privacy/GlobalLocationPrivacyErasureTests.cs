@@ -165,6 +165,37 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
         var subject = CreateUser("audit-erasure-subject");
         var unrelated = CreateUser("audit-erasure-unrelated");
         seedContext.AddRange(tenantA, tenantB, subject, unrelated);
+        var subjectActor = new Actor
+        {
+            Id = Guid.CreateVersion7(),
+            UserId = subject.Id,
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = null!,
+            Pii = new ActorPii { DisplayName = "Subject reviewer" },
+            ConcurrencyStamp = Guid.CreateVersion7(),
+        };
+        var unrelatedActor = new Actor
+        {
+            Id = Guid.CreateVersion7(),
+            UserId = unrelated.Id,
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = null!,
+            Pii = new ActorPii { DisplayName = "Unrelated reviewer" },
+            ConcurrencyStamp = Guid.CreateVersion7(),
+        };
+        Explore.Domain.Event subjectEvent = CreateEvent(tenantA.Id, subjectActor.Id, "Subject claim event");
+        Explore.Domain.Event unrelatedEvent = CreateEvent(tenantB.Id, unrelatedActor.Id, "Unrelated claim event");
+        subjectEvent.SubmittedByUserId = subject.Id;
+        subjectEvent.SourcePublisherName = "Subject event publisher";
+        unrelatedEvent.SubmittedByUserId = unrelated.Id;
+        unrelatedEvent.SourcePublisherName = "Unrelated event publisher";
+        EventOrganizerClaim subjectClaim = EventOrganizerClaim.CreatePending(
+            tenantA.Id, subjectEvent.Id, subjectActor.Id, "test", "subject", DateTime.UtcNow);
+        EventOrganizerClaim unrelatedClaim = EventOrganizerClaim.CreatePending(
+            tenantB.Id, unrelatedEvent.Id, unrelatedActor.Id, "test", "unrelated", DateTime.UtcNow);
+        subjectClaim.Reject(subject.Id, "reviewed", DateTime.UtcNow);
+        unrelatedClaim.Reject(unrelated.Id, "reviewed", DateTime.UtcNow);
+        seedContext.AddRange(subjectActor, unrelatedActor, subjectEvent, unrelatedEvent, subjectClaim, unrelatedClaim);
         AuditLog subjectA = CreateAudit(tenantA, subject.Id, "subject-a");
         AuditLog subjectB = CreateAudit(tenantB, subject.Id, "subject-b");
         AuditLog unrelatedA = CreateAudit(tenantA, unrelated.Id, "unrelated");
@@ -188,6 +219,24 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
         await Assert.That(unrelatedRow.ActorId).IsEqualTo(unrelated.Id);
         await Assert.That(unrelatedRow.OldValues).IsNotNull();
         await Assert.That(unrelatedRow.NewValues).IsNotNull();
+        EventOrganizerClaim subjectClaimRow = await erasureContext.EventOrganizerClaims
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(value => value.Id == subjectClaim.Id);
+        EventOrganizerClaim unrelatedClaimRow = await erasureContext.EventOrganizerClaims
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(value => value.Id == unrelatedClaim.Id);
+        await Assert.That(subjectClaimRow.ReviewerUserId).IsNull();
+        await Assert.That(unrelatedClaimRow.ReviewerUserId).IsEqualTo(unrelated.Id);
+        Explore.Domain.Event subjectEventRow = await erasureContext.Events
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(value => value.Id == subjectEvent.Id);
+        Explore.Domain.Event unrelatedEventRow = await erasureContext.Events
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(value => value.Id == unrelatedEvent.Id);
+        await Assert.That(subjectEventRow.SubmittedByUserId).IsNull();
+        await Assert.That(subjectEventRow.SourcePublisherName).IsEqualTo("Subject event publisher");
+        await Assert.That(unrelatedEventRow.SubmittedByUserId).IsEqualTo(unrelated.Id);
+        await Assert.That(unrelatedEventRow.SourcePublisherName).IsEqualTo("Unrelated event publisher");
     }
 
     [Test]

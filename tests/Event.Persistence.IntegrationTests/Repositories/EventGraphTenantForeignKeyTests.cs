@@ -3,6 +3,7 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using TUnit.Core;
@@ -128,15 +129,38 @@ public sealed class EventGraphTenantForeignKeyTests(PostgreSqlContainerFixture f
         var eventA = await SeedEventAsync(context, scope, "Registration Event");
         var eventB = await SeedEventAsync(context, scope, "Other Session Event");
         var foreignSession = await SeedEventSessionAsync(context, eventB, "Other Event Session");
+        DateTime now = DateTime.UtcNow;
+        EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(
+            scope.TenantId, eventA.EventId, "USD", 1);
+        RegistrationOrder order = RegistrationOrder.Create(
+            scope.TenantId,
+            eventA.EventId,
+            scope.UserId,
+            scope.ActorId,
+            BookingPartyTypeEnum.Individual,
+            catalog.Id,
+            RegistrationParticipationSnapshot.Create(Guid.CreateVersion7(), 1, 1, 1, null),
+            null,
+            null,
+            "USD",
+            now,
+            null);
+        RegistrationParticipant participant = RegistrationParticipant.Create(
+            scope.TenantId, order.Id, scope.UserId, ParticipantTypeEnum.Adult, null);
+        context.AddRange(catalog, order, participant);
+        await context.SaveChangesAsync();
         context.EventRegistrations.Add(new EventRegistration
         {
             Id = Guid.NewGuid(),
             EventId = eventA.EventId,
             Event = null!,
-            UserId = scope.UserId,
-            User = null!,
+            LinkedUserId = scope.UserId,
+            LinkedUser = null!,
             EventSessionId = foreignSession.Id,
             EventSession = null!,
+            RegistrationOrderId = order.Id,
+            RegistrationParticipantId = participant.Id,
+            RegistrationParticipant = participant,
             ApprovalStatusId = 1,
             ApprovalStatus = null,
             TenantId = scope.TenantId,

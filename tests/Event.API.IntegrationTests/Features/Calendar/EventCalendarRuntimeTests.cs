@@ -215,6 +215,8 @@ public sealed class EventCalendarRuntimeTests(CalendarRouteRuntimeFixture fixtur
             tenant.UserId,
             catalog.Id,
             now);
+        RegistrationParticipant participant = RegistrationParticipant.Create(
+            tenant.TenantId, order.Id, tenant.UserId, ParticipantTypeEnum.Adult, guardian: null);
         var registration = new EventRegistration
         {
             Id = Guid.CreateVersion7(),
@@ -222,8 +224,9 @@ public sealed class EventCalendarRuntimeTests(CalendarRouteRuntimeFixture fixtur
             Tenant = null!,
             EventId = @event.Id,
             Event = @event,
-            UserId = tenant.UserId,
-            User = null!,
+            LinkedUserId = tenant.UserId,
+            RegistrationParticipantId = participant.Id,
+            RegistrationParticipant = participant,
             EventSessionId = session.Id,
             EventSession = session,
             RegistrationOrderId = order.Id,
@@ -238,6 +241,7 @@ public sealed class EventCalendarRuntimeTests(CalendarRouteRuntimeFixture fixtur
         context.Events.Add(@event);
         context.EventTicketCatalogVersions.Add(catalog);
         context.RegistrationOrders.Add(order);
+        context.RegistrationParticipants.Add(participant);
         context.EventLocations.Add(placement);
         context.EventLocationDisclosureAudits.AddRange(initialAudit, policyAudit);
         context.EventRegistrations.Add(registration);
