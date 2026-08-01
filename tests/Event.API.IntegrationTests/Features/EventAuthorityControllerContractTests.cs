@@ -15,8 +15,12 @@ public sealed class EventAuthorityControllerContractTests
     [Test]
     public async Task PublicActionRedirect_UsesStoredIdentifiersOnly()
     {
-        var action = typeof(EventPublicActionController)
-            .GetMethod(nameof(EventPublicActionController.RedirectToAction))!;
+        var action = typeof(EventPublicActionController).GetMethod(
+            nameof(EventPublicActionController.RedirectToAction),
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly,
+            binder: null,
+            [typeof(Guid), typeof(Guid), typeof(string), typeof(CancellationToken)],
+            modifiers: null)!;
         var route = action.GetCustomAttribute<HttpGetAttribute>()!;
         var parameters = action.GetParameters();
 

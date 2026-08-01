@@ -18,6 +18,7 @@ public sealed class StudioContextLinkPolicyTests
 
         var withoutCandidate = new StudioContextLinkPolicy().GetLinks(dto, null).ToList();
         dto.AllowedLinkRelations.Add(LinkRelations.ViewRegistrationOrders);
+        dto.AllowedLinkRelations.Add(LinkRelations.ViewParticipants);
         var withCandidate = new StudioContextLinkPolicy().GetLinks(dto, null).ToList();
 
         await Assert.That(withoutCandidate.Select(link => link.Rel)).IsEquivalentTo([LinkRelations.Self]);
@@ -26,5 +27,6 @@ public sealed class StudioContextLinkPolicyTests
         await Assert.That(new Microsoft.AspNetCore.Routing.RouteValueDictionary(orderLink.RouteValues)["actorId"])
             .IsEqualTo(actorId);
         await Assert.That(orderLink.RequiresAuth).IsTrue();
+        await Assert.That(withCandidate.Select(link => link.Rel)).Contains(LinkRelations.ViewParticipants);
     }
 }

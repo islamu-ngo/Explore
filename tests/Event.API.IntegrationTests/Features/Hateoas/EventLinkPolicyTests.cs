@@ -641,6 +641,9 @@ public sealed class EventLinkPolicyTests
         await Assert.That(new RouteValueDictionary(orders.RouteValues)["eventId"]).IsEqualTo(dto.Id);
         await Assert.That(orders.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManageRegistrations);
         await Assert.That(orders.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
+        var participants = platformLinks.Single(link => link.Rel == LinkRelations.ViewParticipants);
+        await Assert.That(participants.RouteName).IsEqualTo(RouteNames.GetEventRegistrationOrders);
+        await Assert.That(participants.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManageRegistrations);
     }
 
     [Test]

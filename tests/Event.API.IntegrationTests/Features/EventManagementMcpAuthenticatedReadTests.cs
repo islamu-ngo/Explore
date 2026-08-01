@@ -681,7 +681,28 @@ public sealed class EventManagementMcpAuthenticatedReadTests
             .WithFirstName("MCP Management")
             .WithLastName("Attendee")
             .Build();
+        DateTime registrationTime = DateTime.UtcNow;
+        EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(tenantId, eventId, "USD", 1);
+        RegistrationOrder order = RegistrationOrder.Create(
+            tenantId,
+            eventId,
+            attendee.Id,
+            purchaserActorId: null,
+            BookingPartyTypeEnum.Individual,
+            catalog.Id,
+            RegistrationParticipationSnapshot.Create(
+                Guid.CreateVersion7(), 4, 3, 2, GuestRecoveryPolicyEnum.VerifiedEmailRequired),
+            registrationWorkflowVersionId: null,
+            guestAccessTokenHash: null,
+            "USD",
+            registrationTime,
+            expiresAt: null);
+        RegistrationParticipant participant = RegistrationParticipant.Create(
+            tenantId, order.Id, attendee.Id, ParticipantTypeEnum.Adult, guardian: null);
         context.Users.Add(attendee);
+        context.EventTicketCatalogVersions.Add(catalog);
+        context.RegistrationOrders.Add(order);
+        context.RegistrationParticipants.Add(participant);
         context.EventRegistrations.Add(new EventRegistration
         {
             Id = Guid.NewGuid(),
@@ -689,8 +710,12 @@ public sealed class EventManagementMcpAuthenticatedReadTests
             Event = null!,
             EventSessionId = session.Id,
             EventSession = session,
-            UserId = attendee.Id,
-            User = attendee,
+            LinkedUserId = attendee.Id,
+            LinkedUser = attendee,
+            RegistrationOrderId = order.Id,
+            RegistrationOrder = order,
+            RegistrationParticipantId = participant.Id,
+            RegistrationParticipant = participant,
             ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
             TenantId = tenantId,
             Tenant = null!
