@@ -79,6 +79,74 @@ public sealed class RegistrationOrderService(
     public Task<HalResourceOfRegistrationOrderDto?> CancelCurrentAsync(Guid eventId, Guid orderId, CancellationToken cancellationToken = default) =>
         ExecuteAsync(() => apiClient.CancelAuthenticatedRegistrationOrderAsync(eventId, orderId, cancellationToken: cancellationToken));
 
+    public Task<HalResourceOfRegistrationOrderParticipantsDto?> GetCurrentParticipantsAsync(
+        Guid eventId,
+        Guid orderId,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(() => apiClient.GetAuthenticatedRegistrationOrderParticipantsAsync(
+            eventId, orderId, cancellationToken: cancellationToken));
+
+    public async Task<HalResourceOfRegistrationOrderParticipantsDto?> SaveCurrentParticipantAsync(
+        Guid eventId,
+        Guid orderId,
+        Guid? participantId,
+        Guid lineId,
+        int ordinal,
+        RegistrationParticipantRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        BaseCommandResponseOfGuid? response = participantId is { } existingId
+            ? await ExecuteAsync(() => apiClient.UpdateAuthenticatedRegistrationOrderParticipantAsync(
+                eventId, orderId, existingId, request, cancellationToken: cancellationToken))
+            : await ExecuteAsync(() => apiClient.AddAuthenticatedRegistrationOrderParticipantAsync(
+                eventId, orderId, request, cancellationToken: cancellationToken));
+        Guid? savedId = participantId ?? response?.Id;
+        if (response?.Success != true || savedId is null)
+        {
+            return null;
+        }
+
+        if (participantId is null)
+        {
+            var assignmentRequest = new RegistrationTicketAssignmentsRequest
+            {
+                Assignments = [new TicketParticipantAssignmentInputDto
+                {
+                    RegistrationOrderLineId = lineId,
+                    Ordinal = ordinal,
+                    ParticipantId = savedId.Value
+                }]
+            };
+            BaseCommandResponseOfGuid? assignment = await ExecuteAsync(() =>
+                apiClient.AssignAuthenticatedRegistrationOrderTicketsAsync(
+                    eventId, orderId, assignmentRequest, cancellationToken: cancellationToken));
+            if (assignment?.Success != true)
+            {
+                return null;
+            }
+        }
+
+        return await GetCurrentParticipantsAsync(eventId, orderId, cancellationToken);
+    }
+
+    public async Task<HalResourceOfRegistrationOrderParticipantsDto?> DeferCurrentParticipantsAsync(
+        Guid eventId,
+        Guid orderId,
+        IReadOnlyCollection<TicketDeferralInputDto> assignments,
+        DateTimeOffset deadline,
+        CancellationToken cancellationToken = default)
+    {
+        BaseCommandResponseOfGuid? response = await ExecuteAsync(() =>
+            apiClient.DeferAuthenticatedRegistrationOrderTicketsAsync(
+                eventId,
+                orderId,
+                new RegistrationTicketDeferralsRequest { Assignments = assignments.ToArray(), AssignmentDeadline = deadline },
+                cancellationToken: cancellationToken));
+        return response?.Success == true
+            ? await GetCurrentParticipantsAsync(eventId, orderId, cancellationToken)
+            : null;
+    }
+
     public Task<HalResourceOfRegistrationOrderDto?> ContinueCurrentAsync(
         Guid eventId,
         Guid orderId,
@@ -101,6 +169,81 @@ public sealed class RegistrationOrderService(
 
     public Task<HalResourceOfGuestRegistrationOrderDto?> GetGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default) =>
         ExecuteAsync(() => apiClient.GetGuestRegistrationOrderAsync(eventId, orderId, capability.Value, cancellationToken: cancellationToken));
+
+    public Task<HalResourceOfRegistrationOrderParticipantsDto?> GetGuestParticipantsAsync(
+        Guid eventId,
+        Guid orderId,
+        GuestRegistrationOrderCapability capability,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(() => apiClient.GetGuestRegistrationOrderParticipantsAsync(
+            eventId, orderId, capability.Value, cancellationToken: cancellationToken));
+
+    public async Task<HalResourceOfRegistrationOrderParticipantsDto?> SaveGuestParticipantAsync(
+        Guid eventId,
+        Guid orderId,
+        GuestRegistrationOrderCapability capability,
+        Guid? participantId,
+        Guid lineId,
+        int ordinal,
+        RegistrationParticipantRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        BaseCommandResponseOfGuid? response = participantId is { } existingId
+            ? await ExecuteAsync(() => apiClient.UpdateGuestRegistrationOrderParticipantAsync(
+                eventId, orderId, existingId, request, capability.Value, cancellationToken: cancellationToken))
+            : await ExecuteAsync(() => apiClient.AddGuestRegistrationOrderParticipantAsync(
+                eventId, orderId, request, capability.Value, cancellationToken: cancellationToken));
+        Guid? savedId = participantId ?? response?.Id;
+        if (response?.Success != true || savedId is null)
+        {
+            return null;
+        }
+
+        if (participantId is null)
+        {
+            BaseCommandResponseOfGuid? assignment = await ExecuteAsync(() =>
+                apiClient.AssignGuestRegistrationOrderTicketsAsync(
+                    eventId,
+                    orderId,
+                    new RegistrationTicketAssignmentsRequest
+                    {
+                        Assignments = [new TicketParticipantAssignmentInputDto
+                        {
+                            RegistrationOrderLineId = lineId,
+                            Ordinal = ordinal,
+                            ParticipantId = savedId.Value
+                        }]
+                    },
+                    capability.Value,
+                    cancellationToken: cancellationToken));
+            if (assignment?.Success != true)
+            {
+                return null;
+            }
+        }
+
+        return await GetGuestParticipantsAsync(eventId, orderId, capability, cancellationToken);
+    }
+
+    public async Task<HalResourceOfRegistrationOrderParticipantsDto?> DeferGuestParticipantsAsync(
+        Guid eventId,
+        Guid orderId,
+        GuestRegistrationOrderCapability capability,
+        IReadOnlyCollection<TicketDeferralInputDto> assignments,
+        DateTimeOffset deadline,
+        CancellationToken cancellationToken = default)
+    {
+        BaseCommandResponseOfGuid? response = await ExecuteAsync(() =>
+            apiClient.DeferGuestRegistrationOrderTicketsAsync(
+                eventId,
+                orderId,
+                new RegistrationTicketDeferralsRequest { Assignments = assignments.ToArray(), AssignmentDeadline = deadline },
+                capability.Value,
+                cancellationToken: cancellationToken));
+        return response?.Success == true
+            ? await GetGuestParticipantsAsync(eventId, orderId, capability, cancellationToken)
+            : null;
+    }
 
     public Task<GuestRegistrationOrderLifecycleResponseDto?> CancelGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default) =>
         ExecuteAsync(() => apiClient.CancelGuestRegistrationOrderAsync(eventId, orderId, capability.Value, cancellationToken: cancellationToken));

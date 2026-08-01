@@ -16,7 +16,13 @@ public interface IRegistrationOrderService
     Task<HalResourceOfRegistrationOrderDto?> ContinueCurrentAsync(Guid eventId, Guid orderId, int? contributionBasisPoints, CancellationToken cancellationToken = default);
     Task<HalResourceOfRegistrationOrderDto?> FinalizeCurrentAsync(Guid eventId, Guid orderId, CancellationToken cancellationToken = default);
     Task<HalResourceOfRegistrationOrderDto?> CancelCurrentAsync(Guid eventId, Guid orderId, CancellationToken cancellationToken = default);
+    Task<HalResourceOfRegistrationOrderParticipantsDto?> GetCurrentParticipantsAsync(Guid eventId, Guid orderId, CancellationToken cancellationToken = default);
+    Task<HalResourceOfRegistrationOrderParticipantsDto?> SaveCurrentParticipantAsync(Guid eventId, Guid orderId, Guid? participantId, Guid lineId, int ordinal, RegistrationParticipantRequest request, CancellationToken cancellationToken = default);
+    Task<HalResourceOfRegistrationOrderParticipantsDto?> DeferCurrentParticipantsAsync(Guid eventId, Guid orderId, IReadOnlyCollection<TicketDeferralInputDto> assignments, DateTimeOffset deadline, CancellationToken cancellationToken = default);
     Task<HalResourceOfGuestRegistrationOrderDto?> GetGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default);
+    Task<HalResourceOfRegistrationOrderParticipantsDto?> GetGuestParticipantsAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default);
+    Task<HalResourceOfRegistrationOrderParticipantsDto?> SaveGuestParticipantAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, Guid? participantId, Guid lineId, int ordinal, RegistrationParticipantRequest request, CancellationToken cancellationToken = default);
+    Task<HalResourceOfRegistrationOrderParticipantsDto?> DeferGuestParticipantsAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, IReadOnlyCollection<TicketDeferralInputDto> assignments, DateTimeOffset deadline, CancellationToken cancellationToken = default);
     Task<GuestRegistrationOrderLifecycleResponseDto?> CancelGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default);
     Task<GuestRegistrationOrderLifecycleResponseDto?> ContinueGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, int? contributionBasisPoints, CancellationToken cancellationToken = default);
     Task<GuestRegistrationOrderLifecycleResponseDto?> FinalizeGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default);

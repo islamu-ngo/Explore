@@ -1,0 +1,31 @@
+/* ABOUTME: Token-driven layout for repeatable registration participant field groups. */
+/* ABOUTME: Keeps buyer-copy and deferred-assignment controls readable at narrow widths. */
+
+.registration-participant-editor {
+    display: grid;
+    gap: var(--isl-space-5);
+    margin-block: var(--isl-space-6);
+}
+
+.registration-participant-editor__buyer,
+.registration-participant-editor__participant,
+.registration-participant-editor__line {
+    display: grid;
+    gap: var(--isl-space-3);
+    padding: var(--isl-space-4);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.registration-participant-editor__copy-actions,
+.registration-participant-editor__defer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--isl-space-3);
+}
+
+.registration-participant-editor__state,
+.registration-participant-editor__guardian-note {
+    color: var(--isl-color-text-secondary);
+}

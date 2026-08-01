@@ -1,0 +1,18 @@
+/* ABOUTME: Actor-level Studio attendee page spacing using established design tokens. */
+/* ABOUTME: Keeps event attendee sections readable without new global styles. */
+
+.studio-attendees,
+.studio-attendees__header,
+.studio-attendees__event {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.studio-attendees__event {
+    margin-block-start: var(--isl-space-4);
+}
+
+.studio-attendees__state {
+    padding-block: var(--isl-space-6);
+    color: var(--isl-color-text-secondary);
+}

@@ -29,4 +29,18 @@ public sealed class StudioContextService(IEventApiClient apiClient) : IStudioCon
         var resource = await apiClient.GetEventRegistrationOrdersAsync(eventId, cancellationToken: cancellationToken);
         return resource._embedded?.Items?.ToArray() ?? [];
     }
+
+    public async Task<IReadOnlyList<StudioAttendeeOrder>> GetEventAttendeesAsync(
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<HalResourceOfRegistrationOrderDto> orders = await GetEventOrdersAsync(eventId, cancellationToken);
+        HalResourceOfRegistrationOrderDto[] visibleOrders = orders
+            .Where(order => order.Id is not null && order._links?.ContainsKey("view-participants") == true)
+            .ToArray();
+        HalResourceOfRegistrationOrderParticipantsDto[] participants = await Task.WhenAll(
+            visibleOrders.Select(order => apiClient.GetAuthenticatedRegistrationOrderParticipantsAsync(
+                eventId, order.Id!.Value, cancellationToken: cancellationToken)));
+        return visibleOrders.Zip(participants, static (order, collection) => new StudioAttendeeOrder(order, collection)).ToArray();
+    }
 }

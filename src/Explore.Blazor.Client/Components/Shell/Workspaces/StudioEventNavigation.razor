@@ -56,6 +56,12 @@
                     Orders
                 </MudNavLink>
             }
+            @if (Resource.HasHalLink("view-participants"))
+            {
+                <MudNavLink Href="@($"{StudioRoute}/attendees")" Icon="@Icons.Material.Outlined.Groups" Match="NavLinkMatch.All" data-event-section="attendees">
+                    Attendees
+                </MudNavLink>
+            }
             @if (Resource.HasHalLink("publish-readiness"))
             {
                 <MudNavLink Href="@($"{StudioRoute}/publication")" Icon="@Icons.Material.Outlined.Publish" Match="NavLinkMatch.All" data-event-section="publication">

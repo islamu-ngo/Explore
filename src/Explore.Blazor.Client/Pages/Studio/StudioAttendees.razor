@@ -1,0 +1,86 @@
+@* ABOUTME: Actor-level Studio attendee surface gated by the private Studio view-participants relation. *@
+@* ABOUTME: Includes only managed events that independently expose participant viewing. *@
+@page "/studio/attendees"
+@using Explore.Blazor.Client.Services.Shell
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IStudioContextService StudioContextService
+@inject IEventService EventService
+@inject UiShellState ShellState
+
+<PageTitle>Studio Attendees</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="studio-attendees">
+    <header class="studio-attendees__header">
+        <MudText Typo="Typo.h4" HtmlTag="h1">Attendees</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary">Participants for events managed by the active Studio actor.</MudText>
+    </header>
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+        Hard per-person limits require an account or a verified contact method.
+    </MudAlert>
+
+    @if (_isLoading)
+    {
+        <div class="studio-attendees__state" role="status">Loading attendees…</div>
+    }
+    else if (_error is not null)
+    {
+        <div class="studio-attendees__state" role="alert">@_error</div>
+    }
+    else if (!_authorized)
+    {
+        <div class="studio-attendees__state" role="alert" data-testid="studio-attendees-unavailable">Attendees are not available for this actor.</div>
+    }
+    else if (_eventIds.Count == 0)
+    {
+        <div class="studio-attendees__state" data-testid="studio-attendees-no-events">No managed attendee sections are available.</div>
+    }
+    else
+    {
+        @foreach (Guid eventId in _eventIds)
+        {
+            <section class="studio-attendees__event" aria-labelledby="@($"attendees-{eventId:N}")">
+                <MudText Id="@($"attendees-{eventId:N}")" Typo="Typo.h5" HtmlTag="h2">Event attendees</MudText>
+                <StudioAttendeeList EventId="eventId" />
+            </section>
+        }
+    }
+</MudContainer>
+
+@code {
+    private readonly List<Guid> _eventIds = [];
+    private bool _authorized;
+    private bool _isLoading;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            Guid? actorId = ShellState.ActiveActorId;
+            HalResourceOfStudioContextDto? context = await StudioContextService.GetContextAsync(actorId);
+            _authorized = context?._links?.ContainsKey("view-participants") == true;
+            if (_authorized)
+            {
+                var events = actorId is { } managedActorId
+                    ? await EventService.GetManagedEventsByActorAsync(managedActorId)
+                    : await EventService.GetMyEventsPagedAsync(1, 100);
+                _eventIds.AddRange(events.Items
+                    .Where(item => item.Id.HasValue && item.HasHalLink("view-participants"))
+                    .Select(item => item.Id!.Value));
+            }
+        }
+        catch (Exception)
+        {
+            _eventIds.Clear();
+            _error = "Attendees are currently unavailable.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

@@ -1,0 +1,82 @@
+@* ABOUTME: Renders event attendee rows only from orders carrying view-participants HAL affordances. *@
+@* ABOUTME: Keeps organizer actions behind order resource links and displays outstanding assignment deadlines. *@
+@inject IStudioContextService StudioContextService
+
+@if (_isLoading)
+{
+    <div class="studio-attendee-list__state" role="status">Loading attendees…</div>
+}
+else if (_error is not null)
+{
+    <div class="studio-attendee-list__state" role="alert">@_error</div>
+}
+else if (_orders.Count == 0)
+{
+    <div class="studio-attendee-list__state" data-testid="studio-attendees-empty">No attendees are available.</div>
+}
+else
+{
+    <div class="studio-attendee-list" data-testid="studio-attendee-list">
+        @foreach (StudioAttendeeOrder item in _orders)
+        {
+            <section class="studio-attendee-list__order" aria-labelledby="@OrderHeadingId(item.Order)">
+                <div class="studio-attendee-list__header">
+                    <MudText Id="@OrderHeadingId(item.Order)" Typo="Typo.h6" HtmlTag="@OrderHeadingTag">Order @ShortId(item.Order.Id)</MudText>
+                    @if (item.Order._links?.ContainsKey("self") == true)
+                    {
+                        <AppButton Href="@($"/registration/events/{EventId}/orders/{item.Order.Id}")" Variant="Variant.Outlined">View order</AppButton>
+                    }
+                </div>
+                @if (item.Participants.Participants is { Count: > 0 })
+                {
+                    <ul class="studio-attendee-list__rows" aria-label="Attendees">
+                        @foreach (var participant in item.Participants.Participants)
+                        {
+                            <li data-testid="studio-attendee-row">
+                                <span>@(participant.DisplayName ?? "Unnamed attendee")</span>
+                                <span>@(participant.Email ?? participant.Phone ?? "No contact details")</span>
+                            </li>
+                        }
+                    </ul>
+                }
+                @foreach (var assignment in item.Participants.Assignments?.Where(row => row.ParticipantId is null && row.AssignmentDeadline is not null) ?? [])
+                {
+                    <div class="studio-attendee-list__deadline" role="status">
+                        Unnamed ticket assignment due @assignment.AssignmentDeadline!.Value.ToString("d").
+                    </div>
+                }
+            </section>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public Guid EventId { get; set; }
+    [Parameter] public string OrderHeadingTag { get; set; } = "h3";
+
+    private IReadOnlyList<StudioAttendeeOrder> _orders = [];
+    private bool _isLoading;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            _orders = await StudioContextService.GetEventAttendeesAsync(EventId);
+        }
+        catch (Exception)
+        {
+            _orders = [];
+            _error = "Attendees are currently unavailable.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string OrderHeadingId(HalResourceOfRegistrationOrderDto order) => $"attendee-order-{order.Id:N}";
+    private static string ShortId(Guid? id) => id?.ToString("N")[..8] ?? "unknown";
+}

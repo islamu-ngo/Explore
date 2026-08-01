@@ -53,6 +53,11 @@
             </MudSelect>
         }
 
+        @if (_order._links?.ContainsKey("view-participants") == true)
+        {
+            <RegistrationParticipantEditor EventId="EventId" OrderId="OrderId" />
+        }
+
         <div class="registration-order-recovery__actions">
             @if (_order._links?.ContainsKey("continue") == true)
             {

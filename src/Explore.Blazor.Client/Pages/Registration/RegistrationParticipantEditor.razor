@@ -1,0 +1,288 @@
+@* ABOUTME: Renders order participant fields from server-authored ticket-line collection metadata. *@
+@* ABOUTME: Supports editable buyer-detail copying, concrete ticket assignment, and shared deferred deadlines. *@
+@inject IRegistrationOrderService RegistrationOrderService
+
+<section class="registration-participant-editor" aria-labelledby="participant-details-heading">
+    <MudText Id="participant-details-heading" Typo="Typo.h5" HtmlTag="h2">Participant details</MudText>
+
+    @if (_isLoading)
+    {
+        <div class="registration-participant-editor__state" role="status">Loading participant details…</div>
+    }
+    else if (_resource is null)
+    {
+        <div class="registration-participant-editor__state" role="alert">Participant details are currently unavailable.</div>
+    }
+    else
+    {
+        @if (_editors.Count > 0 && CanCreate)
+        {
+            <fieldset class="registration-participant-editor__buyer">
+                <legend>Buyer details for copying</legend>
+                <AppTextField T="string" Label="Buyer name" @bind-Value="_buyer.DisplayName" data-testid="buyer-name" />
+                <AppTextField T="string" Label="Buyer email" InputType="InputType.Email" @bind-Value="_buyer.Email" data-testid="buyer-email" />
+                <AppTextField T="string" Label="Buyer phone" InputType="InputType.Telephone" @bind-Value="_buyer.Phone" data-testid="buyer-phone" />
+                <div class="registration-participant-editor__copy-actions">
+                    <AppButton Variant="Variant.Outlined" OnClick="CopyBuyerToFirst" data-testid="copy-buyer-first">Copy to first participant</AppButton>
+                    <AppButton Variant="Variant.Outlined" OnClick="CopyBuyerToAll" data-testid="copy-buyer-all">Copy to all participants</AppButton>
+                </div>
+            </fieldset>
+        }
+
+        @foreach (var line in _lines)
+        {
+            <section class="registration-participant-editor__line" aria-labelledby="@LineHeadingId(line)">
+                <MudText Id="@LineHeadingId(line)" Typo="Typo.h6" HtmlTag="h3">@line.TicketTypeName</MudText>
+                @if (line.ParticipantDataCollectionModeCode is "NONE")
+                {
+                    <MudText Typo="Typo.body2">No participant details are collected for these tickets.</MudText>
+                }
+                else if (line.ParticipantDataCollectionModeCode is "LEAD_BOOKER_ONLY")
+                {
+                    <MudText Typo="Typo.body2">These tickets use the lead booker details; no per-ticket fields are needed.</MudText>
+                }
+                else if (line.ParticipantDataCollectionModeCode is "DEFERRED_ASSIGNMENT")
+                {
+                    @foreach (var editor in EditorsFor(line.Id))
+                    {
+                        @ParticipantFields(editor)
+                    }
+                    <div class="registration-participant-editor__defer">
+                        @foreach (var editor in EditorsFor(line.Id).Where(item => item.AssignmentDeadline is not null && item.ParticipantId is null))
+                        {
+                            <div role="status" data-testid="participant-deadline">
+                                Assignment outstanding. Deadline: @editor.AssignmentDeadline!.Value.ToString("d"). A reminder will remain visible until assigned.
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    @foreach (var editor in EditorsFor(line.Id))
+                    {
+                        @ParticipantFields(editor)
+                    }
+                }
+            </section>
+        }
+
+        @if (CanDefer && HasOutstandingDeferredAssignments)
+        {
+            <div class="registration-participant-editor__defer">
+                <label for="participant-shared-deadline">Shared assignment deadline</label>
+                <input id="participant-shared-deadline" type="date" @bind="_deadline" />
+                <AppButton Variant="Variant.Outlined" OnClick="DeferOutstandingAsync">Assign later</AppButton>
+            </div>
+        }
+
+        @if (_message is not null)
+        {
+            <div class="registration-participant-editor__state" role="@(_hasError ? "alert" : "status")">@_message</div>
+        }
+    }
+</section>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+    [Parameter] public Guid OrderId { get; set; }
+    [Parameter] public GuestRegistrationOrderCapability? GuestCapability { get; set; }
+
+    private readonly BuyerDetailsModel _buyer = new();
+    private readonly List<ParticipantEditorModel> _editors = [];
+    private IReadOnlyList<Lines3> _lines = [];
+    private HalResourceOfRegistrationOrderParticipantsDto? _resource;
+    private DateTime? _deadline = DateTime.UtcNow.AddDays(7).Date;
+    private bool _isLoading;
+    private bool _hasError;
+    private string? _message;
+
+    private bool CanCreate => _resource?._links?.ContainsKey("add-participant") == true
+        && _resource?._links?.ContainsKey("assign-tickets") == true;
+    private bool CanUpdate => _resource?._links?.ContainsKey("update-participant") == true;
+    private bool CanDefer => _resource?._links?.ContainsKey("defer-tickets") == true;
+    private bool HasOutstandingDeferredAssignments => _lines
+        .Where(line => line.ParticipantDataCollectionModeCode == "DEFERRED_ASSIGNMENT")
+        .SelectMany(line => EditorsFor(line.Id))
+        .Any(editor => editor.ParticipantId is null);
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _resource = GuestCapability is { } capability
+            ? await RegistrationOrderService.GetGuestParticipantsAsync(EventId, OrderId, capability)
+            : await RegistrationOrderService.GetCurrentParticipantsAsync(EventId, OrderId);
+        BuildEditors();
+        _isLoading = false;
+    }
+
+    private void BuildEditors()
+    {
+        _editors.Clear();
+        _lines = _resource?.Lines?.ToArray() ?? [];
+        var participants = _resource?.Participants?.ToDictionary(item => item.Id) ?? [];
+        foreach (Lines3 line in _lines)
+        {
+            if (line.ParticipantDataCollectionModeCode is "NONE" or "LEAD_BOOKER_ONLY")
+            {
+                continue;
+            }
+
+            for (var ordinal = 1; ordinal <= line.Quantity; ordinal++)
+            {
+                Assignments? assignment = _resource?.Assignments?.SingleOrDefault(item =>
+                    item.RegistrationOrderLineId == line.Id && item.Ordinal == ordinal);
+                Participants? participant = assignment?.ParticipantId is { } participantId
+                    && participants.TryGetValue(participantId, out Participants? existing)
+                        ? existing
+                        : null;
+                _editors.Add(new ParticipantEditorModel
+                {
+                    LineId = line.Id,
+                    TicketTypeName = line.TicketTypeName ?? "Ticket",
+                    Ordinal = ordinal,
+                    ParticipantId = participant?.Id,
+                    ParticipantTypeId = participant?.ParticipantTypeId ?? (line.RequiresGuardian == true ? 2 : 1),
+                    GuardianParticipantId = participant?.GuardianParticipantId,
+                    DisplayName = participant?.DisplayName,
+                    Email = participant?.Email,
+                    Phone = participant?.Phone,
+                    Required = line.ParticipantDataCollectionModeCode == "PER_TICKET_REQUIRED" || line.RequiresGuardian == true,
+                    RequiresGuardian = line.RequiresGuardian == true,
+                    AssignmentDeadline = assignment?.AssignmentDeadline
+                });
+            }
+        }
+    }
+
+    private RenderFragment ParticipantFields(ParticipantEditorModel editor) => @<fieldset class="registration-participant-editor__participant" data-testid="participant-field-group">
+            <legend>@editor.TicketTypeName ticket @editor.Ordinal</legend>
+            @if (editor.RequiresGuardian)
+            {
+                <div class="registration-participant-editor__guardian-note">Guardian required</div>
+                <MudSelect T="Guid?" Label="Guardian" Required="true" @bind-Value="editor.GuardianParticipantId">
+                    @foreach (var guardian in _resource?.Participants?.Where(item => item.ParticipantTypeId == 1) ?? [])
+                    {
+                        <MudSelectItem T="Guid?" Value="guardian.Id">@(guardian.DisplayName ?? "Adult participant")</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            <AppTextField T="string" Label="Name" Required="editor.Required" @bind-Value="editor.DisplayName" data-testid="@FieldTestId(editor, "name")" />
+            <AppTextField T="string" Label="Email" InputType="InputType.Email" Required="editor.Required" @bind-Value="editor.Email" data-testid="@FieldTestId(editor, "email")" />
+            <AppTextField T="string" Label="Phone" InputType="InputType.Telephone" Required="editor.Required" @bind-Value="editor.Phone" data-testid="@FieldTestId(editor, "phone")" />
+            @if (editor.ParticipantId is null ? CanCreate : CanUpdate)
+            {
+                <AppButton OnClick="@(() => SaveAsync(editor))">Save participant</AppButton>
+            }
+        </fieldset>;
+
+    private async Task SaveAsync(ParticipantEditorModel editor)
+    {
+        if (editor.Required && new[] { editor.DisplayName, editor.Email, editor.Phone }.Any(string.IsNullOrWhiteSpace)
+            || editor.RequiresGuardian && editor.GuardianParticipantId is null)
+        {
+            _hasError = true;
+            _message = "Complete the required participant and guardian details before saving.";
+            return;
+        }
+
+        var request = new RegistrationParticipantRequest
+        {
+            ParticipantTypeId = editor.ParticipantTypeId,
+            GuardianParticipantId = editor.GuardianParticipantId,
+            Details = new ParticipantDetailsDto { DisplayName = editor.DisplayName, Email = editor.Email, Phone = editor.Phone }
+        };
+        HalResourceOfRegistrationOrderParticipantsDto? updated = GuestCapability is { } capability
+            ? await RegistrationOrderService.SaveGuestParticipantAsync(EventId, OrderId, capability, editor.ParticipantId, editor.LineId, editor.Ordinal, request)
+            : await RegistrationOrderService.SaveCurrentParticipantAsync(EventId, OrderId, editor.ParticipantId, editor.LineId, editor.Ordinal, request);
+        _hasError = updated is null;
+        _message = _hasError ? "Participant details could not be saved." : "Participant details saved.";
+        if (updated is not null)
+        {
+            _resource = updated;
+            BuildEditors();
+        }
+    }
+
+    private async Task DeferOutstandingAsync()
+    {
+        if (_deadline is null)
+        {
+            return;
+        }
+
+        HashSet<Guid> deferredLineIds = _lines
+            .Where(line => line.ParticipantDataCollectionModeCode == "DEFERRED_ASSIGNMENT")
+            .Select(line => line.Id)
+            .ToHashSet();
+        TicketDeferralInputDto[] assignments = _editors
+            .Where(item => item.ParticipantId is null && deferredLineIds.Contains(item.LineId))
+            .Select(item => new TicketDeferralInputDto { RegistrationOrderLineId = item.LineId, Ordinal = item.Ordinal })
+            .ToArray();
+        DateTimeOffset deadline = new(DateTime.SpecifyKind(_deadline.Value, DateTimeKind.Utc));
+        HalResourceOfRegistrationOrderParticipantsDto? updated = GuestCapability is { } capability
+            ? await RegistrationOrderService.DeferGuestParticipantsAsync(EventId, OrderId, capability, assignments, deadline)
+            : await RegistrationOrderService.DeferCurrentParticipantsAsync(EventId, OrderId, assignments, deadline);
+        _hasError = updated is null;
+        _message = _hasError ? "The assignment deadline could not be saved." : "Assignment deadline saved.";
+        if (updated is not null)
+        {
+            _resource = updated;
+            BuildEditors();
+        }
+    }
+
+    private void CopyBuyerToFirst()
+    {
+        if (_editors.FirstOrDefault() is { } first)
+        {
+            CopyBuyer(first);
+        }
+    }
+
+    private void CopyBuyerToAll()
+    {
+        foreach (ParticipantEditorModel editor in _editors)
+        {
+            CopyBuyer(editor);
+        }
+    }
+
+    private void CopyBuyer(ParticipantEditorModel editor)
+    {
+        editor.DisplayName = _buyer.DisplayName;
+        editor.Email = _buyer.Email;
+        editor.Phone = _buyer.Phone;
+    }
+
+    private IEnumerable<ParticipantEditorModel> EditorsFor(Guid? lineId) =>
+        _editors.Where(item => item.LineId == lineId);
+
+    private static string LineHeadingId(Lines3 line) => $"participant-line-{line.Id:N}";
+    private static string FieldTestId(ParticipantEditorModel editor, string field) =>
+        $"participant-{editor.TicketTypeName}-{editor.Ordinal}-{field}";
+
+    private sealed class BuyerDetailsModel
+    {
+        public string? DisplayName { get; set; }
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+    }
+
+    private sealed class ParticipantEditorModel
+    {
+        public Guid LineId { get; init; }
+        public string TicketTypeName { get; init; } = string.Empty;
+        public int Ordinal { get; init; }
+        public Guid? ParticipantId { get; init; }
+        public int ParticipantTypeId { get; init; }
+        public Guid? GuardianParticipantId { get; set; }
+        public string? DisplayName { get; set; }
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+        public bool Required { get; init; }
+        public bool RequiresGuardian { get; init; }
+        public DateTimeOffset? AssignmentDeadline { get; init; }
+    }
+}

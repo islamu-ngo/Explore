@@ -28,6 +28,7 @@ public sealed class StudioEventNavigationTests : IDisposable
     [Arguments("sessions", "Schedule")]
     [Arguments("configure-participation", "Registration")]
     [Arguments("view-registration-orders", "Orders")]
+    [Arguments("view-participants", "Attendees")]
     [Arguments("team", "Team")]
     [Arguments("delete", "Danger zone")]
     public async Task Render_ShowsSectionOnlyWhenMappedHalRelationExists(string relation, string expectedLabel)

@@ -1,0 +1,56 @@
+@* ABOUTME: Event-level Studio attendee route gated by the event view-participants HAL relation. *@
+@* ABOUTME: Reuses the shared attendee list and event context without local authorization inference. *@
+@page "/studio/events/{EventId:guid}/attendees"
+@using Blazouter.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject RouterStateService RouterState
+@inject StudioEventContextState EventContext
+
+<PageTitle>@(Resource?.Title is { } title ? $"{title} attendees" : "Event attendees")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="studio-event-attendees">
+    <header class="studio-event-attendees__header">
+        <MudText Typo="Typo.h4" HtmlTag="h1">Event attendees</MudText>
+        @if (Resource is not null)
+        {
+            <MudText Typo="Typo.body1" Color="Color.Secondary">@Resource.Title</MudText>
+        }
+    </header>
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+        Hard per-person limits require an account or a verified contact method.
+    </MudAlert>
+
+    @if (EventContext.IsLoading && Resource is null)
+    {
+        <div class="studio-event-attendees__state" role="status">Loading attendees…</div>
+    }
+    else if (Resource?.HasHalLink("view-participants") != true)
+    {
+        <div class="studio-event-attendees__state" role="alert" data-testid="event-attendees-unavailable">Attendees are not available for this event.</div>
+    }
+    else
+    {
+        <StudioAttendeeList EventId="EventId" OrderHeadingTag="h2" />
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+
+    private EventDto? Resource => EventContext.EventId == EventId ? EventContext.Event : null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (EventId == Guid.Empty && Guid.TryParse(RouterState.GetParam("eventId"), out Guid routeEventId))
+        {
+            EventId = routeEventId;
+        }
+
+        if (EventId != Guid.Empty)
+        {
+            await EventContext.LoadAsync(EventId);
+        }
+    }
+}

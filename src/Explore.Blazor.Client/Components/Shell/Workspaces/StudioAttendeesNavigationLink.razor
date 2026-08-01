@@ -1,0 +1,50 @@
+@* ABOUTME: Actor-level Studio attendee link sourced exclusively from the private Studio HAL context. *@
+@* ABOUTME: Reloads for active-actor changes and disappears when view-participants is absent. *@
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Services.Shell
+@implements IDisposable
+@inject IStudioContextService StudioContextService
+@inject UiShellState ShellState
+
+@if (_canViewParticipants)
+{
+    <MudNavLink Href="/studio/attendees"
+                Icon="@Icons.Material.Outlined.Groups"
+                Match="NavLinkMatch.Prefix"
+                data-testid="studio-attendees-navigation-link">
+        Attendees
+    </MudNavLink>
+}
+
+@code {
+    private bool _canViewParticipants;
+    private long _loadVersion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ShellState.Changed += OnShellStateChanged;
+        await LoadAsync();
+    }
+
+    private void OnShellStateChanged() => _ = InvokeAsync(LoadAsync);
+
+    private async Task LoadAsync()
+    {
+        var version = Interlocked.Increment(ref _loadVersion);
+        HalResourceOfStudioContextDto? context = await StudioContextService.GetContextAsync(ShellState.ActiveActorId);
+        if (version != _loadVersion)
+        {
+            return;
+        }
+
+        _canViewParticipants = context?._links?.ContainsKey("view-participants") == true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ShellState.Changed -= OnShellStateChanged;
+        Interlocked.Increment(ref _loadVersion);
+        GC.SuppressFinalize(this);
+    }
+}

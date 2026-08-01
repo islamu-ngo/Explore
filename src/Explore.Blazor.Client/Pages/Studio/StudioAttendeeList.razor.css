@@ -1,0 +1,39 @@
+/* ABOUTME: Quiet Studio attendee rows and outstanding-assignment notices. */
+/* ABOUTME: Uses the shared token scale and logical layout properties. */
+
+.studio-attendee-list,
+.studio-attendee-list__order,
+.studio-attendee-list__rows {
+    display: grid;
+    gap: var(--isl-space-3);
+}
+
+.studio-attendee-list__order {
+    padding: var(--isl-space-4);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.studio-attendee-list__header,
+.studio-attendee-list__rows li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+}
+
+.studio-attendee-list__rows span {
+    overflow-wrap: anywhere;
+}
+
+.studio-attendee-list__rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.studio-attendee-list__deadline,
+.studio-attendee-list__state {
+    color: var(--isl-color-text-secondary);
+}
