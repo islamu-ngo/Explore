@@ -2,6 +2,7 @@
 // ABOUTME: Keeps caller identity and opaque bearer capability inputs separate from persistence commands.
 
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Application.Responses;
 using Explore.Domain.Enums;
 using MediatR;
@@ -74,3 +75,60 @@ public sealed record MutateAuthenticatedRegistrationParticipantsCommand(
     Guid OrderId,
     IRegistrationParticipantMutation Mutation)
     : IRequest<BaseCommandResponse<Guid>>, IAuthenticatedRegistrationOrderAccessCommand;
+
+public sealed record LaunchGuestNativeRegistrationAttemptCommand(
+    Guid EventId,
+    Guid OrderId,
+    string? CapabilityToken,
+    Guid RequirementId,
+    Guid ChannelId,
+    Guid FormId,
+    Guid FormVersionId)
+    : IRequest<NativeRegistrationAttemptResult>, IGuestRegistrationOrderAccessCommand;
+
+public sealed record LaunchAuthenticatedNativeRegistrationAttemptCommand(
+    Guid EventId,
+    Guid OrderId,
+    Guid RequirementId,
+    Guid ChannelId,
+    Guid FormId,
+    Guid FormVersionId)
+    : IRequest<NativeRegistrationAttemptResult>, IAuthenticatedRegistrationOrderAccessCommand;
+
+public sealed record SubmitGuestNativeRegistrationAttemptCommand(
+    Guid EventId,
+    Guid OrderId,
+    string? CapabilityToken,
+    Guid RequirementId,
+    Guid AttemptId,
+    string? AttemptCapabilityToken,
+    string? IdempotencyKey,
+    IReadOnlyList<RegistrationSubmissionAnswerInput> Answers)
+    : IRequest<NativeRegistrationSubmissionResult>, IGuestRegistrationOrderAccessCommand;
+
+public sealed record SubmitAuthenticatedNativeRegistrationAttemptCommand(
+    Guid EventId,
+    Guid OrderId,
+    Guid RequirementId,
+    Guid AttemptId,
+    string? AttemptCapabilityToken,
+    string? IdempotencyKey,
+    IReadOnlyList<RegistrationSubmissionAnswerInput> Answers)
+    : IRequest<NativeRegistrationSubmissionResult>, IAuthenticatedRegistrationOrderAccessCommand;
+
+public sealed record SkipGuestNativeRegistrationRequirementCommand(
+    Guid EventId,
+    Guid OrderId,
+    string? CapabilityToken,
+    Guid RequirementId,
+    Guid AttemptId,
+    string? AttemptCapabilityToken)
+    : IRequest<NativeRegistrationSkipResult>, IGuestRegistrationOrderAccessCommand;
+
+public sealed record SkipAuthenticatedNativeRegistrationRequirementCommand(
+    Guid EventId,
+    Guid OrderId,
+    Guid RequirementId,
+    Guid AttemptId,
+    string? AttemptCapabilityToken)
+    : IRequest<NativeRegistrationSkipResult>, IAuthenticatedRegistrationOrderAccessCommand;

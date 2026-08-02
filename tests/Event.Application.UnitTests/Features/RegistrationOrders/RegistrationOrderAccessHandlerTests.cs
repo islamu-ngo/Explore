@@ -13,6 +13,7 @@ using Explore.Application.Features.RegistrationOrders.Handlers.Commands;
 using Explore.Application.Features.RegistrationOrders.Handlers.Queries;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using Explore.Application.Features.RegistrationOrders.Requests.Queries;
+using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
@@ -165,6 +166,42 @@ public sealed class RegistrationOrderAccessHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         _ = _lifecycle.Received(1).SubmitAsync(_orderId, _tenantId, 500, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task GuestNativeAttemptLaunchDispatchesOnlyAfterExistingOrderCapabilityMatches()
+    {
+        RegistrationOrder order = CreateGuestOrder();
+        var sender = Substitute.For<ISender>();
+        Guid requirementId = Guid.CreateVersion7();
+        Guid channelId = Guid.CreateVersion7();
+        Guid formId = Guid.CreateVersion7();
+        Guid formVersionId = Guid.CreateVersion7();
+        var expected = new NativeRegistrationAttemptResult(
+            true, Guid.CreateVersion7(), requirementId, channelId, formId, formVersionId,
+            UtcNow.AddMinutes(5), null, [], null, false, "attempt-token");
+        _inventory.GetOrderWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
+        _capabilities.Matches("guest-token", order.GuestAccessTokenHash!).Returns(true);
+        sender.Send(Arg.Any<LaunchNativeRegistrationAttemptCommand>(), Arg.Any<CancellationToken>()).Returns(expected);
+        var handler = new LaunchGuestNativeRegistrationAttemptCommandHandler(
+            _inventory, _capabilities, _tenant, new FixedTimeProvider(UtcNow), sender);
+
+        NativeRegistrationAttemptResult missing = await handler.Handle(
+            new LaunchGuestNativeRegistrationAttemptCommand(
+                _eventId, _orderId, null, requirementId, channelId, formId, formVersionId),
+            CancellationToken.None);
+        NativeRegistrationAttemptResult valid = await handler.Handle(
+            new LaunchGuestNativeRegistrationAttemptCommand(
+                _eventId, _orderId, "guest-token", requirementId, channelId, formId, formVersionId),
+            CancellationToken.None);
+
+        await Assert.That(missing.Success).IsFalse();
+        await Assert.That(missing.FailureCode).IsEqualTo("registration_order_not_found");
+        await Assert.That(valid).IsEqualTo(expected);
+        _ = sender.Received(1).Send(
+            Arg.Is<LaunchNativeRegistrationAttemptCommand>(command =>
+                command.TenantId == _tenantId && command.EventId == _eventId && command.OrderId == _orderId),
+            CancellationToken.None);
     }
 
     [Test]

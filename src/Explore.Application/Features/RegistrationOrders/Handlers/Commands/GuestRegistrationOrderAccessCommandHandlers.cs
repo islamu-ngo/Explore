@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Features.RegistrationOrders.Handlers;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
+using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Application.Responses;
 using MediatR;
 
@@ -97,4 +98,84 @@ public sealed class CancelGuestRegistrationOrderCommandHandler(
         CancellationToken cancellationToken) => GuestRegistrationOrderLifecycleResponseDto.From(
         await RegistrationOrderAccessGuard.ExecuteGuestAsync(
             request, inventory, capabilities, tenant, timeProvider, lifecycle.CancelAsync, cancellationToken));
+}
+
+public sealed class LaunchGuestNativeRegistrationAttemptCommandHandler(
+    IRegistrationInventoryRepository inventory,
+    IGuestCapabilityTokenService capabilities,
+    ITenantContext tenant,
+    TimeProvider timeProvider,
+    ISender sender)
+    : IRequestHandler<LaunchGuestNativeRegistrationAttemptCommand, NativeRegistrationAttemptResult>
+{
+    public async Task<NativeRegistrationAttemptResult> Handle(
+        LaunchGuestNativeRegistrationAttemptCommand request,
+        CancellationToken cancellationToken)
+    {
+        if (await RegistrationOrderAccessGuard.GetGuestOrderAsync(
+                inventory, capabilities, tenant.TenantId, request.EventId, request.OrderId,
+                request.CapabilityToken, timeProvider, cancellationToken) is null)
+        {
+            return new(false, Guid.Empty, request.RequirementId, request.ChannelId, request.FormId, request.FormVersionId,
+                default, null, [], null, false, null, "registration_order_not_found");
+        }
+
+        return await sender.Send(new LaunchNativeRegistrationAttemptCommand(
+            tenant.TenantId, request.EventId, request.OrderId, request.RequirementId,
+            request.ChannelId, request.FormId, request.FormVersionId), cancellationToken);
+    }
+}
+
+public sealed class SubmitGuestNativeRegistrationAttemptCommandHandler(
+    IRegistrationInventoryRepository inventory,
+    IGuestCapabilityTokenService capabilities,
+    ITenantContext tenant,
+    TimeProvider timeProvider,
+    ISender sender)
+    : IRequestHandler<SubmitGuestNativeRegistrationAttemptCommand, NativeRegistrationSubmissionResult>
+{
+    public async Task<NativeRegistrationSubmissionResult> Handle(
+        SubmitGuestNativeRegistrationAttemptCommand request,
+        CancellationToken cancellationToken)
+    {
+        if (await RegistrationOrderAccessGuard.GetGuestOrderAsync(
+                inventory, capabilities, tenant.TenantId, request.EventId, request.OrderId,
+                request.CapabilityToken, timeProvider, cancellationToken) is null)
+        {
+            return new(false, Guid.Empty, [], "registration_order_not_found");
+        }
+
+        return await sender.Send(new SubmitNativeRegistrationAttemptCommand(
+            tenant.TenantId, request.EventId, request.OrderId, request.RequirementId, request.AttemptId,
+            request.AttemptCapabilityToken, request.IdempotencyKey, request.Answers), cancellationToken);
+    }
+}
+
+public sealed class SkipGuestNativeRegistrationRequirementCommandHandler(
+    IRegistrationInventoryRepository inventory,
+    IGuestCapabilityTokenService capabilities,
+    ITenantContext tenant,
+    TimeProvider timeProvider,
+    ISender sender)
+    : IRequestHandler<SkipGuestNativeRegistrationRequirementCommand, NativeRegistrationSkipResult>
+{
+    public async Task<NativeRegistrationSkipResult> Handle(
+        SkipGuestNativeRegistrationRequirementCommand request,
+        CancellationToken cancellationToken)
+    {
+        if (await RegistrationOrderAccessGuard.GetGuestOrderAsync(
+                inventory, capabilities, tenant.TenantId, request.EventId, request.OrderId,
+                request.CapabilityToken, timeProvider, cancellationToken) is null)
+        {
+            return new(false, null, "registration_order_not_found");
+        }
+
+        return await sender.Send(new SkipNativeRegistrationRequirementCommand(
+            tenant.TenantId,
+            request.EventId,
+            request.OrderId,
+            request.RequirementId,
+            request.AttemptId,
+            request.AttemptCapabilityToken), cancellationToken);
+    }
 }

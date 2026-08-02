@@ -18,6 +18,7 @@ public sealed class RegistrationOrderLifecycleService(
     IEventSessionRepository eventSessions,
     IOutboxRepository outbox,
     IUnitOfWork unitOfWork,
+    IRegistrationFinalizationRepository finalization,
     TimeProvider timeProvider) : IRegistrationOrderLifecycleService
 {
     public Task<RegistrationOrderLifecycleResponseDto> SubmitAsync(
@@ -121,6 +122,12 @@ public sealed class RegistrationOrderLifecycleService(
             return Success(initialOrder, initialStatus, "Registration order is already routed for checkout.");
         }
 
+        if (initialOrder.RegistrationWorkflowVersionId.HasValue &&
+            !await finalization.AreMandatoryRequirementsFulfilledAsync(tenantId, orderId, cancellationToken))
+        {
+            return Failure(orderId, initialOrder, "Registration order still has mandatory requirements.");
+        }
+
         CapacityReservationPlan plan = await PrepareCapacityReservationPlanAsync(initialOrder, cancellationToken);
         bool requiresApproval = await RequiresApprovalAsync(initialOrder, plan.TicketTypes, cancellationToken);
         try
@@ -137,6 +144,12 @@ public sealed class RegistrationOrderLifecycleService(
                 if (status != RegistrationOrderStatusEnum.AwaitingRequirements)
                 {
                     return Success(order, status, "Registration order is already routed for checkout.");
+                }
+
+                if (order.RegistrationWorkflowVersionId.HasValue &&
+                    !await finalization.AreMandatoryRequirementsFulfilledAsync(tenantId, orderId, token))
+                {
+                    return Failure(orderId, order, "Registration order still has mandatory requirements.");
                 }
 
                 if (requiresApproval)

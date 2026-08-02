@@ -24,6 +24,27 @@ public sealed class RegistrationOrderLifecycleServiceTests
     private readonly IPlatformContributionSettingRepository _contributionSettings = Substitute.For<IPlatformContributionSettingRepository>();
     private readonly IEventSessionRepository _sessions = Substitute.For<IEventSessionRepository>();
     private readonly IOutboxRepository _outbox = Substitute.For<IOutboxRepository>();
+    private readonly IRegistrationFinalizationRepository _finalization = Substitute.For<IRegistrationFinalizationRepository>();
+
+    [Test]
+    public async Task ReadyForCheckoutRequiresEveryMandatoryRequirementFulfillment()
+    {
+        Guid workflowId = Guid.CreateVersion7();
+        (RegistrationOrder order, _, _) = CreateOrder(registrationWorkflowId: workflowId);
+        MoveTo(order, RegistrationOrderStatusEnum.AwaitingRequirements);
+        ConfigureOrder(order, []);
+        _finalization.AreMandatoryRequirementsFulfilledAsync(_tenantId, order.Id, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService()
+            .ReadyForCheckoutAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.AwaitingRequirements);
+        await _inventory.DidNotReceive().TryTransitionOrderAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<RegistrationOrderStatusEnum>(),
+            Arg.Any<RegistrationOrderStatusEnum>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
+    }
 
     [Test]
     public async Task SubmitAsyncWithContributionPersistsServerComputedSnapshotBeforeAdvancing()
@@ -1086,6 +1107,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         _sessions,
         _outbox,
         unitOfWork ?? new InlineUnitOfWork(),
+        _finalization,
         new FixedTimeProvider(UtcNow));
 
     private void ConfigureOrder(RegistrationOrder order, IReadOnlyList<RegistrationInventoryHold> holds)
@@ -1147,7 +1169,8 @@ public sealed class RegistrationOrderLifecycleServiceTests
         int quantity = 1,
         ParticipantDataCollectionModeEnum participantMode = ParticipantDataCollectionModeEnum.None,
         Guid? purchaserActorId = null,
-        int? perBookingPartyLimit = null)
+        int? perBookingPartyLimit = null,
+        Guid? registrationWorkflowId = null)
     {
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(_tenantId, _eventId, "USD", 1);
         EventCapacityPool? pool = capacityBacked
@@ -1172,7 +1195,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         RegistrationOrder order = RegistrationOrder.Create(
             _tenantId, _eventId, Guid.CreateVersion7(), purchaserActorId, BookingPartyTypeEnum.Individual, catalog.Id,
             RegistrationParticipationSnapshot.Create(Guid.CreateVersion7(), 4, 3, 2, GuestRecoveryPolicyEnum.VerifiedEmailRequired),
-            null, null, "USD", UtcNow, UtcNow.AddMinutes(15));
+            registrationWorkflowId, null, "USD", UtcNow, UtcNow.AddMinutes(15));
         if (addLine)
         {
             order.AddLine(RegistrationOrderLine.Create(catalog, ticket, order.Id, quantity, null, null));
