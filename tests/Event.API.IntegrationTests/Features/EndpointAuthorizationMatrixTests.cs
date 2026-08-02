@@ -271,27 +271,29 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Matrix_Auth_EventRegistrations_ListAnonymousDenied()
+    public async Task Matrix_Auth_RegistrationOrders_ListAnonymousDenied()
     {
-        await AssertAnonymousUnauthorized("/api/eventregistration");
+        await AssertAnonymousUnauthorized("/api/events/00000000-0000-0000-0000-000000000001/registration-orders");
     }
 
     [Test]
-    public async Task Matrix_Auth_EventRegistrations_DetailAnonymousDenied()
+    public async Task Matrix_Auth_RegistrationOrders_DetailAnonymousDenied()
     {
-        await AssertAnonymousUnauthorized("/api/eventregistration/00000000-0000-0000-0000-000000000001");
+        await AssertAnonymousUnauthorized("/api/events/00000000-0000-0000-0000-000000000001/registration-orders/00000000-0000-0000-0000-000000000002");
     }
 
     [Test]
-    public async Task Matrix_Auth_EventRegistrations_BySessionAnonymousDenied()
+    public async Task Matrix_Auth_RegistrationOrderParticipants_AnonymousDenied()
     {
-        await AssertAnonymousUnauthorized("/api/eventregistration/by-session/00000000-0000-0000-0000-000000000001");
+        await AssertAnonymousUnauthorized("/api/events/00000000-0000-0000-0000-000000000001/registration-orders/00000000-0000-0000-0000-000000000002/participants");
     }
 
     [Test]
-    public async Task Matrix_Auth_EventRegistrations_ByUserAnonymousDenied()
+    public async Task Matrix_Auth_RegistrationOrderDelete_AnonymousDenied()
     {
-        await AssertAnonymousUnauthorized("/api/eventregistration/by-user/00000000-0000-0000-0000-000000000001");
+        await AssertAnonymousUnauthorized(
+            "/api/events/00000000-0000-0000-0000-000000000001/registration-orders/00000000-0000-0000-0000-000000000002",
+            HttpMethod.Delete);
     }
 
     [Test]
@@ -859,16 +861,19 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Matrix_SelfService_EventRegistrationCreate_RegularUserOK()
+    public async Task Matrix_SelfService_RegistrationOrderCreate_RegularUserOK()
     {
         var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/eventregistration", token);
+        using var request = Auth(
+            HttpMethod.Post,
+            "/api/events/00000000-0000-0000-0000-000000000001/registration-orders",
+            token);
 
         var response = await _regularUserClient.SendAsync(request);
 
         response.StatusCode.Should().BeOneOf(
             new[] { HttpStatusCode.OK, HttpStatusCode.Created, HttpStatusCode.BadRequest },
-            "event registration create should be available to all authenticated users " +
+            "registration order creation should be available to all authenticated users " +
             "(actual status depends on request body validation)");
     }
 

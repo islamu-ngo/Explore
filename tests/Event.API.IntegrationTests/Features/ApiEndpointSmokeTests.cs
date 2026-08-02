@@ -339,6 +339,21 @@ public class ApiEndpointSmokeTests
 
     private static string GetSamplePayload(Type type)
     {
+        if (type.Name == "RegistrationParticipantRequest")
+        {
+            return "{\"participantTypeId\":1,\"details\":{}}";
+        }
+
+        if (type.Name == "RegistrationTicketAssignmentsRequest")
+        {
+            return "{\"assignments\":[]}";
+        }
+
+        if (type.Name == "RegistrationTicketDeferralsRequest")
+        {
+            return $"{{\"assignments\":[],\"assignmentDeadline\":\"{DateTime.UtcNow.AddDays(1):O}\"}}";
+        }
+
         if (type == typeof(string))
         {
             return "\"test\"";

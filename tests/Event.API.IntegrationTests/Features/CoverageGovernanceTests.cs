@@ -326,9 +326,9 @@ public class CoverageGovernanceTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Governance_Lookup_EventRegistrationCreate_DeniesAnonymous()
+    public async Task Governance_RegistrationOrderCreate_DeniesAnonymous()
     {
-        await AssertAnonymous401(HttpMethod.Post, "/api/eventregistration");
+        await AssertAnonymous401(HttpMethod.Post, $"/api/events/{Guid.NewGuid()}/registration-orders");
     }
 
     [Test]

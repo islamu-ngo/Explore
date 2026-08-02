@@ -311,37 +311,37 @@ public class LinkTableControllerTests
 
     #endregion
 
-    #region EventRegistration Controller
+    #region RegistrationOrder Controller
 
     [Test]
-    public async Task EventRegistration_GetAll_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task RegistrationOrder_GetAll_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.GetAsync("/api/eventregistration");
+        var response = await _fixture.Client.GetAsync($"/api/events/{Guid.NewGuid()}/registration-orders");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
-    public async Task EventRegistration_GetById_WithRandomId_ShouldNotReturnServerError()
+    public async Task RegistrationOrder_GetById_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.GetAsync($"/api/eventregistration/{Guid.NewGuid()}");
-        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
-    }
-
-    [Test]
-    public async Task EventRegistration_Create_WithoutAuth_ShouldReturnUnauthorized()
-    {
-        var response = await _fixture.Client.PostAsJsonAsync("/api/eventregistration", new
-        {
-            EventSessionId = Guid.NewGuid(),
-            UserId = Guid.NewGuid()
-        });
+        var response = await _fixture.Client.GetAsync(
+            $"/api/events/{Guid.NewGuid()}/registration-orders/{Guid.NewGuid()}");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
-    public async Task EventRegistration_Delete_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task RegistrationOrder_Create_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.DeleteAsync($"/api/eventregistration/{Guid.NewGuid()}");
+        var response = await _fixture.Client.PostAsJsonAsync(
+            $"/api/events/{Guid.NewGuid()}/registration-orders",
+            new { });
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task RegistrationOrder_Delete_WithoutAuth_ShouldReturnUnauthorized()
+    {
+        var response = await _fixture.Client.DeleteAsync(
+            $"/api/events/{Guid.NewGuid()}/registration-orders/{Guid.NewGuid()}");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
