@@ -1,7 +1,9 @@
 // ABOUTME: Design-time factory for DataProtectionKeyContext migrations and schema updates.
-// ABOUTME: Reuses the same discrete Postgres bootstrap flow as the primary ExploreDbContext factory.
+// ABOUTME: Reuses the same structured migrator resolution as the primary ExploreDbContext factory.
 
+using Explore.Persistence.Database;
 using Explore.Secrets.Bootstrap;
+using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
@@ -12,29 +14,29 @@ public sealed class DataProtectionKeyContextFactory : IDesignTimeDbContextFactor
 {
     public DataProtectionKeyContext CreateDbContext(string[] args)
     {
-        var configuration = new ConfigurationBuilder()
+        var configurationBuilder = new ConfigurationBuilder()
             .AddUserSecrets<DataProtectionKeyContextFactory>(optional: true)
-            .AddEnvironmentVariables()
-            .Build();
+            .AddEnvironmentVariables();
 
-        BootstrapPostgresCredentials credentials;
-        try
-        {
-            credentials = BootstrapSecretLoader.LoadPostgresConnectionString(configuration, logger: null);
-        }
-        catch (InvalidOperationException ex)
-        {
-            throw new InvalidOperationException(
-                "Design-time DataProtectionKeyContext creation failed: no Postgres credentials could be resolved. Configure Infisical bootstrap user secrets or POSTGRESQL_* environment variables.",
-                ex);
-        }
+        return CreateDbContext(configurationBuilder);
+    }
 
-        Console.WriteLine($"[DesignTime] Data Protection Postgres bootstrap source: {credentials.Source}");
+    public DataProtectionKeyContext CreateDbContext(IConfigurationBuilder configurationBuilder)
+    {
+        ArgumentNullException.ThrowIfNull(configurationBuilder);
+        BootstrapSecretLoader.ProjectPostgresConfiguration(
+            configurationBuilder,
+            PrimaryDatabaseRole.Migrator);
+        var configuration = configurationBuilder.Build();
+
+        var databaseOptions = PrimaryDatabaseConfiguration.BindMigrator(configuration);
 
         var optionsBuilder = new DbContextOptionsBuilder<DataProtectionKeyContext>();
-        optionsBuilder
-            .UseNpgsql(credentials.ConnectionString, b => b.MigrationsAssembly("Explore.Persistence"))
-            .UseSnakeCaseNamingConvention();
+        var database = PrimaryDatabaseProviderComposition.ConfigureDataProtection(
+            optionsBuilder,
+            databaseOptions);
+
+        Console.WriteLine($"[DesignTime] Data Protection database bootstrap source: {database.SafeSummary}");
 
         return new DataProtectionKeyContext(optionsBuilder.Options);
     }

@@ -1,8 +1,10 @@
-// ABOUTME: Wires ASP.NET Core Data Protection to persist the Blazor BFF key ring in Postgres.
+// ABOUTME: Wires ASP.NET Core Data Protection to persist the Blazor BFF key ring in the primary database.
 // ABOUTME: Uses a dedicated key context so auth cookies and anti-forgery tokens do not couple to ExploreDbContext.
 
+using Explore.Persistence.Database;
+using Explore.Secrets.Database;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Explore.Persistence.Extensions;
@@ -34,7 +36,7 @@ public static class DataProtectionServiceCollectionExtensions
     public const string DefaultApplicationName = "islamu-event";
 
     /// <summary>
-    /// Registers ASP.NET Core Data Protection with keys persisted in the primary Postgres database
+    /// Registers ASP.NET Core Data Protection with keys persisted in the provider-selected primary database
     /// via <see cref="DataProtectionKeyContext"/>. Sets a stable application name so Blazor BFF
     /// instances share the same key ring.
     /// </summary>
@@ -46,23 +48,14 @@ public static class DataProtectionServiceCollectionExtensions
     /// <returns>The <see cref="IServiceCollection"/> for chaining.</returns>
     public static IServiceCollection AddExploreDataProtection(
         this IServiceCollection services,
-        string connectionString,
+        IConfiguration configuration,
         string? applicationName = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+        ArgumentNullException.ThrowIfNull(configuration);
+        var databaseOptions = PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
         services.AddDbContext<DataProtectionKeyContext>(options =>
-        {
-            options.UseNpgsql(connectionString, npgsqlOptions =>
-                {
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 3,
-                        maxRetryDelay: TimeSpan.FromSeconds(5),
-                        errorCodesToAdd: null);
-                    npgsqlOptions.CommandTimeout(30);
-                })
-                .UseSnakeCaseNamingConvention();
-        });
+            PrimaryDatabaseProviderComposition.ConfigureDataProtection(options, databaseOptions));
 
         services
             .AddDataProtection()
