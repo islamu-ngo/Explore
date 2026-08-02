@@ -29,7 +29,7 @@ jobs:
       run-analysis: ${{ steps.changes.outputs.run-analysis }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -148,7 +148,7 @@ jobs:
 
       - name: Checkout repository
         if: ${{ needs.detect-codeql-changes.outputs.run-analysis == 'true' }}
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -162,7 +162,7 @@ jobs:
 
       - name: Initialize CodeQL
         if: ${{ needs.detect-codeql-changes.outputs.run-analysis == 'true' }}
-        uses: github/codeql-action/init@7188fc363630916deb702c7fdcf4e481b751f97a # v4
+        uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -177,6 +177,6 @@ jobs:
 
       - name: Perform CodeQL Analysis
         if: ${{ needs.detect-codeql-changes.outputs.run-analysis == 'true' }}
-        uses: github/codeql-action/analyze@7188fc363630916deb702c7fdcf4e481b751f97a # v4
+        uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
         with:
           category: "/language:${{matrix.language}}"
