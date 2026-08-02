@@ -1,0 +1,17 @@
+<!-- ABOUTME: Defines the optional .NET 10 single-process API and Blazor composition root. -->
+<!-- ABOUTME: References both owning web hosts without adding persistence providers or copied assets. -->
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>event-shared-secrets</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Explore.API\Explore.API.csproj" />
+    <ProjectReference Include="..\Explore.Blazor\Explore.Blazor.csproj" />
+  </ItemGroup>
+
+</Project>

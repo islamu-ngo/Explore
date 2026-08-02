@@ -1,0 +1,219 @@
+// ABOUTME: Exercises the combined-host browser-to-API credential bridge in an in-memory HTTP pipeline.
+// ABOUTME: Proves fail-closed cookie handling, external-client independence, sanitization, and principal isolation.
+
+using System.Net;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using Event.Standalone.Middleware;
+using Event.Web.BffHosting.Abstractions;
+using Event.Web.BffHosting.Security;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Event.Standalone.IntegrationTests;
+
+public sealed class CombinedApiBridgeMiddlewareTests
+{
+    [Test]
+    public async Task ValidCookieWithoutToken_SanitizesAndFailsClosed()
+    {
+        await using var app = await CreateApplicationAsync(cookieToken: null);
+        using var client = app.GetTestClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        request.Headers.Add("X-Test-Cookie", "valid");
+        request.Headers.Add("Authorization", "Bearer attacker");
+        request.Headers.Add(EventBffHeaderNames.ApiKey, "attacker-key");
+        request.Headers.Add(EventBffHeaderNames.TenantSlug, "attacker-tenant");
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(response.Headers.Contains("X-Next-Reached")).IsFalse();
+    }
+
+    [Test]
+    public async Task NoCookie_LeavesExternalBearerRequestUnchanged()
+    {
+        await using var app = await CreateApplicationAsync(cookieToken: "server-token");
+        using var client = app.GetTestClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        request.Headers.Add("Authorization", "Bearer external-token");
+        request.Headers.Add(EventBffHeaderNames.ApiKey, "external-key");
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Headers.GetValues("X-Seen-Authorization").Single())
+            .IsEqualTo("Bearer external-token");
+        await Assert.That(response.Headers.GetValues("X-Seen-Api-Key").Single())
+            .IsEqualTo("external-key");
+    }
+
+    [Test]
+    public async Task ValidCookie_ReconstructsTrustedHeadersAndApiPrincipalOnly()
+    {
+        await using var app = await CreateApplicationAsync(cookieToken: "server-token");
+        using var client = app.GetTestClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        request.Headers.Add("X-Test-Cookie", "valid");
+        request.Headers.Add("Authorization", "Bearer attacker");
+        request.Headers.Add(EventBffHeaderNames.ApiKey, "attacker-key");
+        request.Headers.Add(EventBffHeaderNames.TenantSlug, "attacker-tenant");
+        request.Headers.Add(EventBffHeaderNames.SupportAccessMode, "Write");
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Headers.GetValues("X-Seen-Authorization").Single())
+            .IsEqualTo("Bearer server-token");
+        await Assert.That(response.Headers.GetValues("X-Seen-Tenant").Single())
+            .IsEqualTo("trusted-tenant");
+        await Assert.That(response.Headers.GetValues("X-Seen-Support").Single())
+            .IsEqualTo("11111111-1111-1111-1111-111111111111");
+        await Assert.That(response.Headers.GetValues("X-Seen-Auth-Type").Single())
+            .IsEqualTo(TestAuthenticationHandler.ApiScheme);
+        await Assert.That(response.Headers.Contains("X-Seen-Api-Key")).IsFalse();
+    }
+
+    [Test]
+    public async Task NonApiPath_DoesNotClassifyOrMutateRequest()
+    {
+        await using var app = await CreateApplicationAsync(cookieToken: null);
+        using var client = app.GetTestClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/health");
+        request.Headers.Add("X-Test-Cookie", "valid");
+        request.Headers.Add("Authorization", "Bearer external-token");
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Headers.GetValues("X-Seen-Authorization").Single())
+            .IsEqualTo("Bearer external-token");
+    }
+
+    private static async Task<WebApplication> CreateApplicationAsync(string? cookieToken)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = "Testing"
+        });
+        builder.WebHost.UseTestServer();
+        builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = TestAuthenticationHandler.ApiScheme;
+                options.DefaultChallengeScheme = TestAuthenticationHandler.ApiScheme;
+            })
+            .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
+                TestAuthenticationHandler.CookieScheme,
+                _ => { })
+            .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
+                TestAuthenticationHandler.ApiScheme,
+                _ => { });
+        builder.Services.AddSingleton(new TestTokenState(cookieToken));
+        builder.Services.AddSingleton<IEventBffAccessTokenProvider, NullAccessTokenProvider>();
+        builder.Services.AddSingleton<IEventBffTenantHintProvider, TrustedTenantProvider>();
+        builder.Services.AddSingleton<IEventBffSetupSecretProvider, NullSetupSecretProvider>();
+        builder.Services.AddSingleton<IEventBffSupportAccessProvider, TrustedSupportAccessProvider>();
+        builder.Services.AddCombinedApiBridge();
+
+        var app = builder.Build();
+        app.UseCombinedApiBridge();
+        app.UseAuthentication();
+        app.Run(context =>
+        {
+            context.Response.Headers["X-Next-Reached"] = "true";
+            CopyHeader(context, "Authorization", "X-Seen-Authorization");
+            CopyHeader(context, EventBffHeaderNames.ApiKey, "X-Seen-Api-Key");
+            CopyHeader(context, EventBffHeaderNames.TenantSlug, "X-Seen-Tenant");
+            CopyHeader(context, EventBffHeaderNames.SupportAccessSessionId, "X-Seen-Support");
+            if (!string.IsNullOrEmpty(context.User.Identity?.AuthenticationType))
+            {
+                context.Response.Headers["X-Seen-Auth-Type"] = context.User.Identity.AuthenticationType;
+            }
+
+            return Task.CompletedTask;
+        });
+        await app.StartAsync();
+        return app;
+    }
+
+    private static void CopyHeader(HttpContext context, string source, string destination)
+    {
+        if (context.Request.Headers.TryGetValue(source, out var value))
+        {
+            context.Response.Headers[destination] = value;
+        }
+    }
+
+    private sealed record TestTokenState(string? Token);
+
+    private sealed class TestAuthenticationHandler(
+        IOptionsMonitor<AuthenticationSchemeOptions> options,
+        ILoggerFactory logger,
+        UrlEncoder encoder,
+        TestTokenState tokenState)
+        : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+    {
+        public const string CookieScheme = "Cookies";
+        public const string ApiScheme = "ApiBearer";
+
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        {
+            if (Scheme.Name == CookieScheme)
+            {
+                if (!Request.Headers.ContainsKey("X-Test-Cookie"))
+                {
+                    return Task.FromResult(AuthenticateResult.NoResult());
+                }
+
+                var properties = new AuthenticationProperties();
+                if (tokenState.Token is not null)
+                {
+                    properties.StoreTokens([new AuthenticationToken { Name = "access_token", Value = tokenState.Token }]);
+                }
+
+                return Task.FromResult(Success("cookie-user", properties));
+            }
+
+            return Task.FromResult(Request.Headers.Authorization.ToString() == "Bearer server-token"
+                ? Success("api-user", new AuthenticationProperties())
+                : AuthenticateResult.NoResult());
+        }
+
+        private AuthenticateResult Success(string name, AuthenticationProperties properties)
+        {
+            var identity = new ClaimsIdentity([new Claim(ClaimTypes.Name, name)], Scheme.Name);
+            return AuthenticateResult.Success(
+                new AuthenticationTicket(new ClaimsPrincipal(identity), properties, Scheme.Name));
+        }
+    }
+
+    private sealed class NullAccessTokenProvider : IEventBffAccessTokenProvider
+    {
+        public ValueTask<string?> ResolveAccessTokenAsync(HttpContext httpContext, CancellationToken cancellationToken) =>
+            ValueTask.FromResult<string?>(null);
+    }
+
+    private sealed class TrustedTenantProvider : IEventBffTenantHintProvider
+    {
+        public string ResolveTenantSlug(HttpContext httpContext) => "trusted-tenant";
+    }
+
+    private sealed class NullSetupSecretProvider : IEventBffSetupSecretProvider
+    {
+        public ValueTask<string?> ResolveSetupSecretAsync(HttpContext httpContext, CancellationToken cancellationToken) =>
+            ValueTask.FromResult<string?>(null);
+    }
+
+    private sealed class TrustedSupportAccessProvider : IEventBffSupportAccessProvider
+    {
+        public ValueTask<string?> ResolveSupportAccessSessionIdAsync(HttpContext httpContext, CancellationToken cancellationToken) =>
+            ValueTask.FromResult<string?>("11111111-1111-1111-1111-111111111111");
+    }
+}
