@@ -26,7 +26,7 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .Where(value => value.UserId == subjectId
                 && value.ProviderKey != null
                 && value.Provider != null
-                && EF.Functions.ILike(value.Provider, "keycloak"))
+                && value.Provider.ToLower() == "keycloak")
             .Select(value => new PrivacyErasureProviderCandidate(
                 PrivacyErasureProviderKind.Keycloak,
                 PrivacyErasureProviderAction.RevokeOrUnlinkExternalIdentity,
@@ -65,6 +65,19 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .Where(value => value.Actor != null
                 && value.Actor.UserId == subjectId
                 && value.ObjectKey != null)
+            .Select(value => new PrivacyErasureProviderCandidate(
+                PrivacyErasureProviderKind.ObjectStorage,
+                PrivacyErasureProviderAction.DeleteOwnedObject,
+                value.TenantId,
+                value.Id,
+                PrivacyErasureProviderLocatorKind.ObjectKey,
+                value.ObjectKey!))
+            .ToArrayAsync(cancellationToken));
+        IQueryable<Guid> registrationFileStorageIds = OwnedRegistrationFileStorageIds(subjectId, reason);
+        candidates.AddRange(await dbContext.StorageObjects
+            .IgnoreAllFilters(reason)
+            .AsNoTracking()
+            .Where(value => registrationFileStorageIds.Contains(value.Id) && value.ObjectKey != null)
             .Select(value => new PrivacyErasureProviderCandidate(
                 PrivacyErasureProviderKind.ObjectStorage,
                 PrivacyErasureProviderAction.DeleteOwnedObject,
@@ -447,6 +460,7 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .Where(value => value.UserId == subjectId)
             .Select(value => value.Id)
             .ToArrayAsync(cancellationToken);
+        await EraseRegistrationAnswerFilesAsync(subjectId, cancellationToken);
 
         await dbContext.NotificationFanoutRuns
             .IgnoreAllFilters(reason)
@@ -500,6 +514,60 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .Where(value => value.UserId == subjectKey)
             .ExecuteDeleteAsync(cancellationToken);
     }
+
+    public async Task EraseRegistrationAnswerFilesAsync(
+        Guid subjectId,
+        CancellationToken cancellationToken)
+    {
+        RequireId(subjectId, nameof(subjectId));
+        string reason = TenantFilterBypassReasons.UserPrivacyErasure;
+        RegistrationAnswerFile[] files = await OwnedRegistrationFiles(subjectId, reason)
+            .ToArrayAsync(cancellationToken);
+        if (files.Length == 0)
+        {
+            return;
+        }
+
+        Guid[] fileIds = files.Select(file => file.Id).ToArray();
+        Guid[] storageIds = files.Select(file => file.StorageObjectId).Distinct().ToArray();
+        StorageObject[] storageObjects = await dbContext.StorageObjects
+            .IgnoreAllFilters(reason)
+            .Where(storage => storageIds.Contains(storage.Id))
+            .ToArrayAsync(cancellationToken);
+        DateTime utcNow = DateTime.UtcNow;
+        foreach (StorageObject storage in storageObjects)
+        {
+            storage.Uri = string.Empty;
+            storage.ObjectKey = null;
+            storage.FullName = string.Empty;
+            storage.SafeDisplayName = string.Empty;
+            storage.ContentType = null;
+            storage.Sha256Checksum = null;
+            storage.MarkDeleted(subjectId, utcNow);
+        }
+
+        RegistrationAnswerFileRelease[] releases = await dbContext.RegistrationAnswerFileReleases
+            .IgnoreAllFilters(reason)
+            .Where(release => fileIds.Contains(release.RegistrationAnswerFileId))
+            .ToArrayAsync(cancellationToken);
+        dbContext.RegistrationAnswerFileReleases.RemoveRange(releases);
+        dbContext.RegistrationAnswerFiles.RemoveRange(files);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private IQueryable<RegistrationAnswerFile> OwnedRegistrationFiles(Guid subjectId, string reason)
+        => from file in dbContext.RegistrationAnswerFiles.IgnoreAllFilters(reason)
+           join submission in dbContext.RegistrationSubmissions.IgnoreAllFilters(reason)
+               on new { file.TenantId, file.EventId, Id = file.RegistrationSubmissionId }
+               equals new { submission.TenantId, submission.EventId, submission.Id }
+           join order in dbContext.RegistrationOrders.IgnoreAllFilters(reason)
+               on new { submission.TenantId, submission.EventId, Id = submission.RegistrationOrderId }
+               equals new { order.TenantId, order.EventId, order.Id }
+           where order.AccountUserId == subjectId
+           select file;
+
+    private IQueryable<Guid> OwnedRegistrationFileStorageIds(Guid subjectId, string reason)
+        => OwnedRegistrationFiles(subjectId, reason).Select(file => file.StorageObjectId);
 
     public async Task EraseMembershipsAndPreferencesAsync(
         Guid subjectId,

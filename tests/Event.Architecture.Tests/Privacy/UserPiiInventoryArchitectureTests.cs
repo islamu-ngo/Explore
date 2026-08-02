@@ -3,6 +3,7 @@
 
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Persistence;
+using Explore.Persistence.Privacy.ErasureAuthority;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using TUnit.Core;
@@ -19,6 +20,7 @@ public sealed class UserPiiInventoryArchitectureTests
 
         await Assert.That(errors).IsEmpty();
         await Assert.That(entries.Select(entry => entry.Disposition).Distinct().Count()).IsEqualTo(4);
+        await Assert.That(entries.Select(entry => entry.StorageBoundary).Distinct().Count()).IsEqualTo(3);
     }
 
     [Test]
@@ -110,12 +112,12 @@ public sealed class UserPiiInventoryArchitectureTests
             .SelectMany(entity => entity.GetProperties()
                 .Select(property => $"{entity.ClrType.Name}.{property.Name}"))
             .ToHashSet(StringComparer.Ordinal);
-        string[] localCopies = UserPiiInventory.Entries
-            .Where(entry => !entry.Copy.StartsWith("provider:", StringComparison.Ordinal))
+        string[] primaryCopies = UserPiiInventory.Entries
+            .Where(entry => entry.StorageBoundary == UserPiiStorageBoundary.PrimaryDatabase)
             .Select(entry => entry.Copy)
             .ToArray();
 
-        string[] missingModelProperties = localCopies
+        string[] missingModelProperties = primaryCopies
             .Where(copy => !modelProperties.Contains(copy))
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -129,17 +131,17 @@ public sealed class UserPiiInventoryArchitectureTests
                 .Select(property => $"{entity.ClrType.Name}.{property.Name}"))
             .Order(StringComparer.Ordinal)
             .ToArray();
-        await Assert.That(discoveredPiiProperties.Except(localCopies, StringComparer.Ordinal)).IsEmpty();
+        await Assert.That(discoveredPiiProperties.Except(primaryCopies, StringComparer.Ordinal)).IsEmpty();
 
         string[] sourceDerivedCopies = DiscoverSourceDerivedLocalCopies(context.Model);
         string[] missingSourceDerivedCopies = sourceDerivedCopies
-            .Except(localCopies, StringComparer.Ordinal)
+            .Except(primaryCopies, StringComparer.Ordinal)
             .ToArray();
         Console.WriteLine(string.Join(Environment.NewLine, missingSourceDerivedCopies.Select(copy => $"missing: {copy}")));
         await Assert.That(missingSourceDerivedCopies).IsEmpty();
 
         string[] catalogProviders = UserPiiInventory.Entries
-            .Where(entry => entry.Copy.StartsWith("provider:", StringComparison.Ordinal))
+            .Where(entry => entry.StorageBoundary == UserPiiStorageBoundary.ExternalProvider)
             .Select(entry => entry.Copy)
             .ToArray();
         Type[] discoveredProviderSurfaces = DiscoverRuntimeProviderSurfaces();
@@ -165,6 +167,66 @@ public sealed class UserPiiInventoryArchitectureTests
                 .ToArray();
         await Assert.That(atprotoPiiSources).IsNotEmpty();
         await Assert.That(catalogProviders).Contains("provider:atproto:pds-account");
+    }
+
+    [Test]
+    public async Task PrivacyErasureSubjectIsRetainedPseudonymousAuthorityData()
+    {
+        UserPiiInventoryEntry entry = UserPiiInventory.Entries
+            .Single(candidate => candidate.Copy == "PrivacyErasureIntent.SubjectId");
+        await using var primary = new ExploreDbContext(
+            new DbContextOptionsBuilder<ExploreDbContext>()
+                .UseNpgsql("Host=invalid;Database=inventory;Username=inventory;Password=redacted")
+                .Options);
+        await using var embeddedAuthority = new EmbeddedPrivacyErasureAuthorityDbContext(
+            new DbContextOptionsBuilder<EmbeddedPrivacyErasureAuthorityDbContext>()
+                .UseSqlite("Data Source=:memory:")
+                .Options);
+        await using var externalAuthority = new PrivacyErasureAuthorityDbContext(
+            new DbContextOptionsBuilder<PrivacyErasureAuthorityDbContext>()
+                .UseNpgsql("Host=invalid;Database=authority;Username=inventory;Password=redacted")
+                .Options);
+
+        await Assert.That(entry.StorageBoundary).IsEqualTo(UserPiiStorageBoundary.PrivacyErasureAuthority);
+        await Assert.That(entry.Disposition).IsEqualTo(UserPiiDisposition.BoundedRetain);
+        await Assert.That(entry.RetentionPurpose)
+            .IsEqualTo("Pseudonymous replay correlation in dedicated authority storage");
+        await Assert.That(HasProperty(primary.Model, entry.Copy)).IsFalse();
+        await Assert.That(HasProperty(embeddedAuthority.Model, entry.Copy)).IsTrue();
+        await Assert.That(HasProperty(externalAuthority.Model, entry.Copy)).IsTrue();
+    }
+
+    [Test]
+    public async Task RegistrationSubmissionProviderSubjectUsesSourceDerivedLocalErasureSemantics()
+    {
+        UserPiiInventoryEntry entry = UserPiiInventory.Entries
+            .Single(candidate => candidate.Copy == "RegistrationSubmission.ProviderSubjectId");
+
+        await Assert.That(entry.OwnershipKey).Contains("RegistrationOrder.AccountUserId");
+        await Assert.That(entry.Disposition).IsEqualTo(UserPiiDisposition.HardDelete);
+        await Assert.That(entry.RetentionPurpose).IsEqualTo("Account privacy erasure");
+        await Assert.That(entry.RetentionHorizon).IsEqualTo("Erase in the first committed local erasure transaction");
+        await Assert.That(entry.ProviderAction).IsEqualTo(UserPiiProviderAction.None);
+    }
+
+    [Test]
+    public async Task InventoryCoversEveryPersistedRegistrationAnswerValue()
+    {
+        string[] expectedCopies =
+        [
+            "RegistrationAnswer.TextValue",
+            "RegistrationAnswer.IntegerValue",
+            "RegistrationAnswer.DecimalValue",
+            "RegistrationAnswer.BooleanValue",
+            "RegistrationAnswer.DateValue",
+            "RegistrationAnswer.TimeValue",
+            "RegistrationAnswer.InstantValue",
+            "RegistrationAnswer.SelectedOptionId",
+            "RegistrationSensitiveAnswerValue.Ciphertext"
+        ];
+
+        string[] actualCopies = UserPiiInventory.Entries.Select(entry => entry.Copy).ToArray();
+        await Assert.That(expectedCopies.Except(actualCopies, StringComparer.Ordinal)).IsEmpty();
     }
 
     [Test]
@@ -198,6 +260,7 @@ public sealed class UserPiiInventoryArchitectureTests
             valid with { Copy = "malformed:ownership", OwnershipKey = "" },
             valid with { Copy = "malformed:producer", Producer = "" },
             valid with { Copy = "malformed:fence-owner", FenceOwner = null! },
+            valid with { Copy = "malformed:storage", StorageBoundary = (UserPiiStorageBoundary)999 },
             valid with { Copy = "malformed:horizon", RetentionHorizon = "" },
             valid with { Copy = "malformed:provider", ProviderAction = (UserPiiProviderAction)999 }
         ];
@@ -208,6 +271,7 @@ public sealed class UserPiiInventoryArchitectureTests
         await Assert.That(malformedErrors).Contains("missing-ownership: malformed:ownership");
         await Assert.That(malformedErrors).Contains("missing-producer: malformed:producer");
         await Assert.That(malformedErrors).Contains("missing-fence-owner: malformed:fence-owner");
+        await Assert.That(malformedErrors).Contains("unknown-storage-boundary: malformed:storage");
         await Assert.That(malformedErrors).Contains("missing-horizon: malformed:horizon");
         await Assert.That(malformedErrors).Contains("unknown-provider-action: malformed:provider");
     }
@@ -325,6 +389,8 @@ public sealed class UserPiiInventoryArchitectureTests
             .Select(entry => $"missing-producer: {entry.Copy}"));
         errors.AddRange(entries.Where(entry => entry.FenceOwner is null)
             .Select(entry => $"missing-fence-owner: {entry.Copy}"));
+        errors.AddRange(entries.Where(entry => !Enum.IsDefined(entry.StorageBoundary))
+            .Select(entry => $"unknown-storage-boundary: {entry.Copy}"));
         errors.AddRange(entries.Where(entry =>
                 entry.FenceOwner is not null && entry.FenceOwner != typeof(Explore.Domain.PrivacyErasureSaga))
             .Select(entry => $"unknown-fence-owner: {entry.Copy}"));
@@ -342,6 +408,14 @@ public sealed class UserPiiInventoryArchitectureTests
                 entry.Disposition != UserPiiDisposition.ExternalAction
                 && entry.ProviderAction != UserPiiProviderAction.None)
             .Select(entry => $"unexpected-provider-action: {entry.Copy}"));
+        errors.AddRange(entries.Where(entry =>
+                entry.Disposition == UserPiiDisposition.ExternalAction
+                && entry.StorageBoundary != UserPiiStorageBoundary.ExternalProvider)
+            .Select(entry => $"unexpected-external-storage-boundary: {entry.Copy}"));
+        errors.AddRange(entries.Where(entry =>
+                entry.Disposition != UserPiiDisposition.ExternalAction
+                && entry.StorageBoundary == UserPiiStorageBoundary.ExternalProvider)
+            .Select(entry => $"unexpected-local-storage-boundary: {entry.Copy}"));
         errors.AddRange(entries.Where(ContainsExecutableInstruction)
             .Select(entry => $"executable-instruction: {entry.Copy}"));
         errors.AddRange(entries.Where(entry => entry.PolicyVersion != UserPiiInventory.CurrentPolicyVersion)
@@ -394,6 +468,15 @@ public sealed class UserPiiInventoryArchitectureTests
         }
 
         return errors.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+    }
+
+    private static bool HasProperty(IModel model, string copy)
+    {
+        string[] segments = copy.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length == 2
+            && model.GetEntityTypes().Any(entity =>
+                entity.ClrType.Name == segments[0]
+                && entity.FindProperty(segments[1]) is not null);
     }
 
     private static bool ContainsExecutableInstruction(UserPiiInventoryEntry entry)

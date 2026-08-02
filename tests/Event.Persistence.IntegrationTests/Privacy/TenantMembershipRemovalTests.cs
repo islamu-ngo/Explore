@@ -177,7 +177,6 @@ public sealed class TenantMembershipRemovalTests(TenantMembershipRemovalPostgreS
         var globalErasureOutboxCount = await context.OutboxMessages.CountAsync(message =>
             message.EventType == LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType
             || message.EventType == LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType);
-        var retainedErasureIntentCount = await context.PrivacyErasureIntents.CountAsync();
 
         await Assert.That(tenantAUser.IsDeleted).IsEqualTo(tenantARemoved);
         await Assert.That(tenantAUser.StatusId).IsEqualTo(tenantARemoved
@@ -200,7 +199,6 @@ public sealed class TenantMembershipRemovalTests(TenantMembershipRemovalPostgreS
         await Assert.That(tenantAHomeHash).IsEqualTo(scenario.TenantAHomeHash);
         await Assert.That(tenantBHomeHash).IsEqualTo(scenario.TenantBHomeHash);
         await Assert.That(globalErasureOutboxCount).IsEqualTo(0);
-        await Assert.That(retainedErasureIntentCount).IsEqualTo(0);
     }
 
     private static Task<string> ReadHomeStateHashAsync(ExploreDbContext context, Guid homeId) =>

@@ -20,12 +20,20 @@ public sealed class PrivacyErasureStartupGateArchitectureTests
     public async Task ApiHost_ReplaysRetainedErasuresBeforeStartingTheHost()
     {
         string program = ReadRepositoryFile("src/Explore.API/Program.cs");
+        string startup = ReadRepositoryFile(
+            "src/Explore.API/Hosting/ApiHostStartupExtensions.cs");
         int build = program.IndexOf("var app = builder.Build();", StringComparison.Ordinal);
-        int replay = program.IndexOf("await PrivacyErasureStartupGate.RunAsync", StringComparison.Ordinal);
+        int startupInvocation = program.IndexOf(
+            "await app.RunApiHostStartupAsync",
+            StringComparison.Ordinal);
+        int replay = startup.IndexOf(
+            "await PrivacyErasureStartupGate.RunAsync",
+            StringComparison.Ordinal);
         int run = program.IndexOf("app.Run();", StringComparison.Ordinal);
 
-        await Assert.That(replay).IsGreaterThan(build);
-        await Assert.That(replay).IsLessThan(run);
+        await Assert.That(startupInvocation).IsGreaterThan(build);
+        await Assert.That(startupInvocation).IsLessThan(run);
+        await Assert.That(replay).IsGreaterThanOrEqualTo(0);
     }
 
     private static string ReadRepositoryFile(string relativePath)

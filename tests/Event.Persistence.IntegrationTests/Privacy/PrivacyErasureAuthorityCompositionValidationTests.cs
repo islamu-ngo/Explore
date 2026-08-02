@@ -1,11 +1,12 @@
 // ABOUTME: Verifies topology-specific privacy-erasure authority composition and connection validation.
-// ABOUTME: Proves CoLocated resolves locally while malformed external provider settings fail closed.
+// ABOUTME: Proves EmbeddedSqlite is the default while malformed external provider settings fail closed.
 
 using Explore.Application.Configuration;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Persistence;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Privacy.ErasureAuthority.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -16,7 +17,7 @@ namespace Event.Persistence.IntegrationTests.Privacy;
 public sealed class PrivacyErasureAuthorityCompositionValidationTests
 {
     [Test]
-    public async Task CoLocatedComposition_RegistersResolvableAuthorityWithoutExternalDatabase()
+    public async Task DefaultComposition_RegistersEmbeddedAuthorityWithoutExternalDatabase()
     {
         var services = new ServiceCollection();
         services.AddSingleton(TimeProvider.System);
@@ -24,10 +25,13 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
         IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
             new Dictionary<string, string?>
             {
-                ["PrivacyErasure:Authority:Topology"] = "CoLocated",
-                ["ConnectionStrings:DefaultConnection"] =
-                    "Host=unused;Database=unused;Username=unused",
-                ["ConnectionStrings:PrivacyErasureAuthority"] = string.Empty
+                ["PrivacyErasureAuthorityEmbedded:Path"] =
+                    Path.Combine(Path.GetTempPath(), $"authority-{Guid.CreateVersion7():N}.db"),
+                ["Database:Provider"] = "PostgreSql",
+                ["Database:Host"] = "unused",
+                ["Database:Database"] = "unused",
+                ["Database:Runtime:Username"] = "unused",
+                ["Database:Runtime:Password"] = "unused"
             }).Build();
 
         services.ConfigurePersistenceServices(
@@ -41,27 +45,26 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
             scope.ServiceProvider.GetRequiredService<IPrivacyErasureAuthority>();
 
         await Assert.That(authority)
-            .IsTypeOf<CoLocatedPrivacyErasureAuthorityRepository>();
+            .IsTypeOf<EmbeddedPrivacyErasureAuthorityRepository>();
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType == typeof(IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>)))
+            .IsTrue();
         await Assert.That(services.Any(descriptor =>
             descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
     }
 
     [Test]
-    [Arguments("Host=localhost;Database=privacy_erasure;Username=runtime;TotallyInvalidNpgsqlKeyword=1")]
-    [Arguments("Host=localhost;Database=privacy_erasure;Username=runtime;SSL Mode=DefinitelyNotAnNpgsqlValue")]
-    public async Task ExternalComposition_ProviderInvalidConnection_FailsBeforeRegistration(
-        string connectionString)
+    [Arguments("Port", "invalid")]
+    [Arguments("TlsMode", "invalid")]
+    public async Task ExternalComposition_InvalidStructuredValue_FailsBeforeRegistration(
+        string field,
+        string value)
     {
-        await Assert.That(() => new NpgsqlConnectionStringBuilder(connectionString))
-            .Throws<ArgumentException>();
-
         var services = new ServiceCollection();
-        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?>
-            {
-                ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase",
-                ["ConnectionStrings:PrivacyErasureAuthority"] = connectionString
-            }).Build();
+        var settings = AuthorityDatabaseSettings("authority", "privacy_erasure", "runtime", "secret");
+        settings["PrivacyErasure:Authority:Topology"] = "ExternalDatabase";
+        settings[$"PrivacyErasureAuthorityDatabase:{field}"] = value;
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
 
         OptionsValidationException? exception = await Assert.That(() =>
                 services.ConfigurePersistenceServices(
@@ -70,7 +73,7 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
                     skipLookupCacheInitializer: true))
             .Throws<OptionsValidationException>();
 
-        await Assert.That(exception!.Message).DoesNotContain(connectionString);
+        await Assert.That(exception!.Message).DoesNotContain("secret");
         await Assert.That(services.Any(descriptor =>
             descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
         await Assert.That(services.Any(descriptor =>
@@ -80,30 +83,34 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
     [Test]
     public async Task ExternalComposition_SamePhysicalApplicationDatabase_FailsBeforeRegistration()
     {
-        const string applicationTarget =
-            "Host=localhost;Database=event;Username=application;Password=application-canary";
-        const string authorityTarget =
-            "Application Name=authority;Username=runtime;Database=event;Port=5432;Host=127.0.0.1;Password=authority-canary";
+        var applicationTarget = new NpgsqlConnectionStringBuilder
+        {
+            Host = "localhost",
+            Database = "event",
+            Username = "application",
+            Password = "application-canary"
+        };
         var services = new ServiceCollection();
-        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?>
-            {
-                ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase",
-                ["ConnectionStrings:DefaultConnection"] = applicationTarget,
-                ["ConnectionStrings:PrivacyErasureAuthority"] = authorityTarget
-            }).Build();
+        var settings = PrimaryDatabaseSettings(applicationTarget);
+        settings["PrivacyErasure:Authority:Topology"] = "ExternalDatabase";
+        foreach (var pair in AuthorityDatabaseSettings(
+                     "127.0.0.1",
+                     "event",
+                     "runtime",
+                     "authority-canary"))
+        {
+            settings[pair.Key] = pair.Value;
+        }
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
 
         OptionsValidationException? exception = await Assert.That(() =>
                 services.ConfigurePersistenceServices(
                     configuration,
-                    skipDbContextRegistration: true,
                     skipLookupCacheInitializer: true))
             .Throws<OptionsValidationException>();
 
         await Assert.That(exception!.Message)
             .Contains("different physical PostgreSQL database", StringComparison.OrdinalIgnoreCase);
-        await Assert.That(exception.Message).DoesNotContain(applicationTarget);
-        await Assert.That(exception.Message).DoesNotContain(authorityTarget);
         await Assert.That(exception.Message).DoesNotContain("application-canary");
         await Assert.That(exception.Message).DoesNotContain("authority-canary");
         await Assert.That(services.Any(descriptor =>
@@ -113,52 +120,90 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
     }
 
     [Test]
-    public async Task PersistenceComposition_RegistersExactlyOneStableMirrorAndOneTopologyAdapter()
+    public async Task PersistenceComposition_RegistersExactlyOneTopologyAdapter()
     {
-        ServiceCollection coLocated = Compose(
-            "CoLocated",
-            "Host=localhost;Database=event;Username=application");
+        ServiceCollection embedded = Compose(
+            "EmbeddedSqlite",
+            "event");
         ServiceCollection external = Compose(
             "ExternalDatabase",
-            "Host=localhost;Database=authority;Username=runtime");
+            "authority");
 
-        await Assert.That(coLocated.Count(descriptor =>
+        await Assert.That(embedded.Count(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsEqualTo(1);
         await Assert.That(external.Count(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsEqualTo(1);
-        await Assert.That(coLocated.Single(descriptor =>
+        await Assert.That(embedded.Single(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority)).ImplementationType)
-            .IsEqualTo(typeof(CoLocatedPrivacyErasureAuthorityRepository));
+            .IsEqualTo(typeof(EmbeddedPrivacyErasureAuthorityRepository));
         await Assert.That(external.Single(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority)).ImplementationType)
             .IsEqualTo(typeof(EfCorePrivacyErasureAuthorityRepository));
-        await Assert.That(coLocated.Count(descriptor =>
-            descriptor.ServiceType == typeof(Explore.Application.Contracts.Persistence.IPrivacyErasureLedgerRepository)))
-            .IsEqualTo(1);
-        await Assert.That(external.Count(descriptor =>
-            descriptor.ServiceType == typeof(Explore.Application.Contracts.Persistence.IPrivacyErasureLedgerRepository)))
-            .IsEqualTo(1);
-        await Assert.That(coLocated.Any(descriptor =>
+        await Assert.That(embedded.Any(descriptor =>
             descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
+        await Assert.That(embedded.Count(descriptor =>
+            descriptor.ServiceType == typeof(IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>)))
+            .IsEqualTo(1);
         await Assert.That(external.Count(descriptor =>
             descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsEqualTo(1);
     }
 
-    private static ServiceCollection Compose(string topology, string authorityConnection)
+    private static ServiceCollection Compose(string topology, string authorityDatabase)
     {
         var services = new ServiceCollection();
-        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?>
-            {
-                ["PrivacyErasure:Authority:Topology"] = topology,
-                ["ConnectionStrings:DefaultConnection"] =
-                    "Host=localhost;Database=event;Username=application",
-                ["ConnectionStrings:PrivacyErasureAuthority"] = authorityConnection
-            }).Build();
+        var settings = PrimaryDatabaseSettings(new NpgsqlConnectionStringBuilder
+        {
+            Host = "localhost",
+            Database = "event",
+            Username = "application",
+            Password = "application-canary"
+        });
+        settings["PrivacyErasure:Authority:Topology"] = topology;
+        settings["PrivacyErasureAuthorityEmbedded:Path"] =
+            Path.Combine(Path.GetTempPath(), $"authority-{Guid.CreateVersion7():N}.db");
+        foreach (var pair in AuthorityDatabaseSettings(
+                     "localhost",
+                     authorityDatabase,
+                     "runtime",
+                     "authority-canary"))
+        {
+            settings[pair.Key] = pair.Value;
+        }
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         services.ConfigurePersistenceServices(
             configuration,
             skipDbContextRegistration: true,
             skipLookupCacheInitializer: true);
         return services;
     }
+
+    private static Dictionary<string, string?> PrimaryDatabaseSettings(NpgsqlConnectionStringBuilder target) => new()
+    {
+        ["Database:Provider"] = "PostgreSql",
+        ["Database:Host"] = target.Host,
+        ["Database:Port"] = target.Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        ["Database:Database"] = target.Database,
+        ["Database:Runtime:Username"] = target.Username,
+        ["Database:Runtime:Password"] = target.Password,
+        ["Database:Migrator:Username"] = target.Username,
+        ["Database:Migrator:Password"] = target.Password
+    };
+
+    private static Dictionary<string, string?> AuthorityDatabaseSettings(
+        string host,
+        string database,
+        string username,
+        string password) => new()
+    {
+        ["PrivacyErasureAuthorityDatabase:Provider"] = "PostgreSql",
+        ["PrivacyErasureAuthorityDatabase:Host"] = host,
+        ["PrivacyErasureAuthorityDatabase:Port"] = "5432",
+        ["PrivacyErasureAuthorityDatabase:Database"] = database,
+        ["PrivacyErasureAuthorityDatabase:TlsMode"] = "Prefer",
+        ["PrivacyErasureAuthorityDatabase:TrustServerCertificate"] = "false",
+        ["PrivacyErasureAuthorityDatabase:Runtime:Username"] = username,
+        ["PrivacyErasureAuthorityDatabase:Runtime:Password"] = password,
+        ["PrivacyErasureAuthorityDatabase:Migrator:Username"] = "migrator",
+        ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = "migrator-canary",
+    };
 }

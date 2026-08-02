@@ -1,9 +1,14 @@
-// ABOUTME: Verifies authority EF tooling ignores ambient durable database targets.
-// ABOUTME: Locks the design-time factory to its fixed inert scaffolding connection.
+// ABOUTME: Verifies authority EF tooling consumes only structured migrator settings.
+// ABOUTME: Locks design-time composition to the shared PostgreSQL contract and distinct history table.
 
 using System.Data;
 using Explore.Persistence.Privacy.ErasureAuthority;
+using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace Event.Persistence.IntegrationTests.Privacy;
@@ -12,143 +17,58 @@ namespace Event.Persistence.IntegrationTests.Privacy;
 public sealed class PrivacyErasureAuthorityDbContextFactoryTests
 {
     [Test]
-    public async Task CreateDbContext_IgnoresAmbientAuthorityConnectionString()
+    public async Task CreateDbContext_UsesStructuredMigratorTargetWithoutOpeningIt()
     {
-        const string key = "ConnectionStrings__PrivacyErasureAuthority";
-        string? previousValue = Environment.GetEnvironmentVariable(key);
-
-        try
-        {
-            Environment.SetEnvironmentVariable(
-                key,
-                "Host=127.0.0.1;Port=2;Database=hostile_ambient;Username=canary;Password=canary;Timeout=1");
-
-            await using PrivacyErasureAuthorityDbContext context =
-                new PrivacyErasureAuthorityDbContextFactory().CreateDbContext([]);
-            var target = new NpgsqlConnectionStringBuilder(context.Database.GetConnectionString());
-
-            await Assert.That(target.Host).IsEqualTo("127.0.0.1");
-            await Assert.That(target.Port).IsEqualTo(1);
-            await Assert.That(target.Database).IsEqualTo("privacy_erasure_authority_design_time");
-            await Assert.That(context.Database.GetDbConnection().State).IsEqualTo(ConnectionState.Closed);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable(key, previousValue);
-        }
-    }
-
-    [Test]
-    public async Task CreateDbContext_WithExplicitConnection_UsesValidatedClosedTarget()
-    {
-        const string connection =
-            "Host=127.0.0.1;Port=3;Database=explicit_authority_canary;Username=operator;Password=secret";
+        IConfiguration configuration = StructuredMigratorConfiguration();
 
         await using PrivacyErasureAuthorityDbContext context =
-            new PrivacyErasureAuthorityDbContextFactory().CreateDbContext(["--connection", connection]);
+            new PrivacyErasureAuthorityDbContextFactory().CreateDbContext(configuration);
         var target = new NpgsqlConnectionStringBuilder(context.Database.GetConnectionString());
 
+        await Assert.That(target.Host).IsEqualTo("127.0.0.1");
+        await Assert.That(target.Port).IsEqualTo(3);
         await Assert.That(target.Database).IsEqualTo("explicit_authority_canary");
+        await Assert.That(target.Username).IsEqualTo("migrator");
         await Assert.That(context.Database.GetDbConnection().State).IsEqualTo(ConnectionState.Closed);
     }
 
     [Test]
-    public async Task CreateDbContext_RejectsMissingOrBlankExplicitConnection()
+    public async Task CreateDbContext_UsesDistinctAuthorityMigrationHistoryTable()
     {
-        string[][] invalidArguments =
-        [
-            ["--connection"],
-            ["--connection", ""],
-            ["--connection", "   "],
-            ["--connection", "--verbose"],
-        ];
-
-        foreach (string[] args in invalidArguments)
-        {
-            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
-                new PrivacyErasureAuthorityDbContextFactory().CreateDbContext(args));
-
-            await Assert.That(exception.Message).Contains("--connection");
-        }
-    }
-
-    [Test]
-    public async Task CreateDbContext_RejectsDuplicateExplicitConnection()
-    {
-        ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+        await using PrivacyErasureAuthorityDbContext context =
             new PrivacyErasureAuthorityDbContextFactory().CreateDbContext(
-            [
-                "--connection",
-                "Host=127.0.0.1;Database=first;Username=operator",
-                "--connection",
-                "Host=127.0.0.1;Database=second;Username=operator",
-            ]));
+                StructuredMigratorConfiguration());
+        string script = context.GetService<IHistoryRepository>().GetCreateIfNotExistsScript();
 
-        await Assert.That(exception.Message).Contains("--connection");
-        await Assert.That(exception.Message).DoesNotContain("first");
-        await Assert.That(exception.Message).DoesNotContain("second");
+        await Assert.That(script).Contains(
+            PrivacyErasureAuthorityDatabaseConfiguration.MigrationsHistoryTable);
+        await Assert.That(script).DoesNotContain("__EFMigrationsHistory\"");
     }
 
     [Test]
-    public async Task CreateDbContext_RejectsMalformedExplicitConnectionWithoutEchoingIt()
+    public async Task CreateDbContext_RawConnectionArgumentDoesNotBypassStructuredContract()
     {
-        const string secretCanary = "do-not-echo-this-secret";
+        const string secret = "raw-connection-secret";
 
-        ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+        OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() =>
             new PrivacyErasureAuthorityDbContextFactory().CreateDbContext(
-                ["--connection", $"Password={secretCanary};UnsupportedKeyword=value"]));
+                ["--connection", $"Host=127.0.0.1;Database=raw;Username=raw;Password={secret}"]));
 
-        await Assert.That(exception.Message).Contains("--connection");
-        await Assert.That(exception.Message).DoesNotContain(secretCanary);
-        await Assert.That(exception.Message).DoesNotContain("UnsupportedKeyword");
+        await Assert.That(exception.Message).DoesNotContain(secret);
+        await Assert.That(exception.OptionsName)
+            .IsEqualTo(PrivacyErasureAuthorityDatabaseConfiguration.SectionName);
     }
 
-    [Test]
-    public async Task CreateDbContext_RejectsExplicitConnectionMissingRequiredIdentity()
-    {
-        string[] invalidConnections =
-        [
-            "Database=authority;Username=operator",
-            "Host=127.0.0.1;Username=operator",
-            "Host=127.0.0.1;Database=authority",
-        ];
-
-        foreach (string connection in invalidConnections)
+    private static IConfiguration StructuredMigratorConfiguration() =>
+        new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
-                new PrivacyErasureAuthorityDbContextFactory().CreateDbContext(
-                    ["--connection", connection]));
-
-            await Assert.That(exception.Message).Contains("--connection");
-            await Assert.That(exception.Message).DoesNotContain("authority");
-            await Assert.That(exception.Message).DoesNotContain("operator");
-        }
-    }
-
-    [Test]
-    public async Task CreateDbContext_IgnoresUnrelatedArgumentsAndAmbientAuthorityConnectionString()
-    {
-        const string key = "ConnectionStrings__PrivacyErasureAuthority";
-        string? previousValue = Environment.GetEnvironmentVariable(key);
-
-        try
-        {
-            Environment.SetEnvironmentVariable(
-                key,
-                "Host=127.0.0.1;Port=2;Database=hostile_ambient;Username=canary;Password=canary");
-
-            await using PrivacyErasureAuthorityDbContext context =
-                new PrivacyErasureAuthorityDbContextFactory().CreateDbContext(
-                    ["--environment", "Production", "--verbose"]);
-            var target = new NpgsqlConnectionStringBuilder(context.Database.GetConnectionString());
-
-            await Assert.That(target.Port).IsEqualTo(1);
-            await Assert.That(target.Database).IsEqualTo("privacy_erasure_authority_design_time");
-            await Assert.That(context.Database.GetDbConnection().State).IsEqualTo(ConnectionState.Closed);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable(key, previousValue);
-        }
-    }
+            ["PrivacyErasureAuthorityDatabase:Provider"] = "PostgreSql",
+            ["PrivacyErasureAuthorityDatabase:Host"] = "127.0.0.1",
+            ["PrivacyErasureAuthorityDatabase:Port"] = "3",
+            ["PrivacyErasureAuthorityDatabase:Database"] = "explicit_authority_canary",
+            ["PrivacyErasureAuthorityDatabase:TlsMode"] = "Prefer",
+            ["PrivacyErasureAuthorityDatabase:TrustServerCertificate"] = "false",
+            ["PrivacyErasureAuthorityDatabase:Migrator:Username"] = "migrator",
+            ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = "migrator-secret",
+        }).Build();
 }

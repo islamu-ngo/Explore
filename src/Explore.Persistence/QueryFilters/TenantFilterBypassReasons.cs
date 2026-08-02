@@ -59,6 +59,9 @@ public static class TenantFilterBypassReasons
     public const string IntegrationSyncWorkerCrossTenantQueue =
         "Integration sync worker polls and updates durable integration outbox rows across tenants using explicit id/status predicates.";
 
+    public const string RegistrationFinalizationWorkerCrossTenantQueue =
+        "Registration finalization worker polls and settles tenant-owned effects across tenants using explicit id/status/fence predicates.";
+
     public const string AtprotoPdsWorkerCrossTenantQueue =
         "AT Protocol PDS worker polls and settles tenant-owned outbox rows across tenants using explicit id/status/fence predicates.";
 

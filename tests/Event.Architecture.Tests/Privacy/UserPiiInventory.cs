@@ -1,5 +1,5 @@
 // ABOUTME: Typed, test-only governance inventory for durable User-linked personal-data copies.
-// ABOUTME: Classifies local model fields and external copies without providing executable erasure instructions.
+// ABOUTME: Classifies primary, dedicated-authority, and external copies without executable erasure instructions.
 
 namespace Event.Architecture.Tests.Privacy;
 
@@ -24,11 +24,19 @@ internal enum UserPiiProviderAction
     CorrectOrDeleteProviderCopy
 }
 
+internal enum UserPiiStorageBoundary
+{
+    PrimaryDatabase,
+    PrivacyErasureAuthority,
+    ExternalProvider
+}
+
 internal sealed record UserPiiInventoryEntry(
     string Copy,
     string OwnershipKey,
     string Producer,
     Type FenceOwner,
+    UserPiiStorageBoundary StorageBoundary,
     UserPiiDisposition Disposition,
     string RetentionPurpose,
     string RetentionHorizon,
@@ -75,6 +83,18 @@ internal static class UserPiiInventory
         Local("RegistrationOrderPii.NormalizedEmail", "RegistrationOrder.AccountUserId -> RegistrationOrderPii.RegistrationOrderId", "Registration order handlers", UserPiiDisposition.HardDelete),
         Local("RegistrationOrderPii.Phone", "RegistrationOrder.AccountUserId -> RegistrationOrderPii.RegistrationOrderId", "Registration order handlers", UserPiiDisposition.HardDelete),
         Local("RegistrationOrderPii.OrganizationName", "RegistrationOrder.AccountUserId -> RegistrationOrderPii.RegistrationOrderId", "Registration order handlers", UserPiiDisposition.HardDelete),
+        Local("RegistrationSubmission.ProviderSubjectId", "RegistrationSubmission.RegistrationAttemptId -> RegistrationAttempt.RegistrationOrderId -> RegistrationOrder.AccountUserId", "RegistrationSubmissionRepository", UserPiiDisposition.HardDelete),
+        Local("RegistrationAnswer.TextValue", "RegistrationAnswer.RegistrationSubmissionId -> RegistrationSubmission.RegistrationOrderId -> RegistrationOrder.AccountUserId", "Registration answer erasure", UserPiiDisposition.HardDelete),
+        Local("RegistrationAnswer.IntegerValue", "RegistrationAnswer.RegistrationSubmissionId -> RegistrationSubmission.RegistrationOrderId -> RegistrationOrder.AccountUserId", "Registration answer erasure", UserPiiDisposition.HardDelete),
+        Local("RegistrationAnswer.DecimalValue", "RegistrationAnswer.RegistrationSubmissionId -> RegistrationSubmission.RegistrationOrderId -> RegistrationOrder.AccountUserId", "Registration answer erasure", UserPiiDisposition.HardDelete),
+        Local("RegistrationAnswer.BooleanValue", "RegistrationAnswer.RegistrationSubmissionId -> RegistrationSubmission.RegistrationOrderId -> RegistrationOrder.AccountUserId", "Registration answer erasure", UserPiiDisposition.HardDelete),
+        Local("RegistrationAnswer.DateValue", "RegistrationAnswer.RegistrationSubmissionId -> RegistrationSubmission.RegistrationOrderId -> RegistrationOrder.AccountUserId", "Registration answer erasure", UserPiiDisposition.HardDelete),
+        Local("RegistrationAnswer.TimeValue", "RegistrationAnswer.RegistrationSubmissionId -> RegistrationSubmission.RegistrationOrderId -> RegistrationOrder.AccountUserId", "Registration answer erasure", UserPiiDisposition.HardDelete),
+        Local("RegistrationAnswer.InstantValue", "RegistrationAnswer.RegistrationSubmissionId -> RegistrationSubmission.RegistrationOrderId -> RegistrationOrder.AccountUserId", "Registration answer erasure", UserPiiDisposition.HardDelete),
+        Local("RegistrationAnswer.SelectedOptionId", "RegistrationAnswer.RegistrationSubmissionId -> RegistrationSubmission.RegistrationOrderId -> RegistrationOrder.AccountUserId", "Registration answer erasure", UserPiiDisposition.HardDelete),
+        Local("RegistrationAnswerFile.ContentType", "RegistrationAnswerFile.RegistrationSubmissionId -> RegistrationSubmission.RegistrationOrderId -> RegistrationOrder.AccountUserId", "Registration answer erasure", UserPiiDisposition.HardDelete),
+        Local("RegistrationAnswerFile.SafeDisplayName", "RegistrationAnswerFile.RegistrationSubmissionId -> RegistrationSubmission.RegistrationOrderId -> RegistrationOrder.AccountUserId", "Registration answer erasure", UserPiiDisposition.HardDelete),
+        Local("RegistrationSensitiveAnswerValue.Ciphertext", "RegistrationAnswer.RegistrationSubmissionId -> RegistrationSubmission.RegistrationOrderId -> RegistrationOrder.AccountUserId", "Registration answer erasure", UserPiiDisposition.HardDelete),
         Local("RegistrationParticipant.LinkedUserId", "RegistrationParticipant.LinkedUserId", "RegistrationParticipantCommandService", UserPiiDisposition.Anonymize,
             "Preserve participant assignment and admission history without account linkage", "Permanent anonymous tombstone"),
         Local("RegistrationParticipantPii.DisplayName", "RegistrationParticipant.LinkedUserId -> RegistrationParticipantPii.RegistrationParticipantId", "RegistrationParticipantCommandService", UserPiiDisposition.HardDelete),
@@ -220,8 +240,8 @@ internal static class UserPiiInventory
             "Platform bootstrap accountability", "Configured audit retention horizon"),
         Local("Location.OwnerUserId", "Location.OwnerUserId", "Location handlers", UserPiiDisposition.HardDelete),
         Local("Location.FullName", "Location.OwnerUserId", "Location handlers", UserPiiDisposition.HardDelete),
-        Local("PrivacyErasureIntent.SubjectId", "PrivacyErasureIntent.SubjectId", "Privacy erasure authority", UserPiiDisposition.BoundedRetain,
-            "Durable erasure replay authority", "Configured authority retention horizon"),
+        Authority("PrivacyErasureIntent.SubjectId", "PrivacyErasureIntent.SubjectId", "Privacy erasure authority writer", UserPiiDisposition.BoundedRetain,
+            "Pseudonymous replay correlation in dedicated authority storage", "Configured authority retention horizon"),
         Local("ManagedTenantProvisioningOperation.TenantAdministratorUserId", "ManagedTenantProvisioningOperation.TenantAdministratorUserId", "Managed tenant provisioning", UserPiiDisposition.Anonymize,
             "Provisioning accountability", "Configured provisioning retention horizon"),
         Local("NotificationChannelPreference.UserId", "NotificationChannelPreference.UserId", "Notification preference handlers", UserPiiDisposition.HardDelete),
@@ -469,8 +489,18 @@ internal static class UserPiiInventory
         UserPiiDisposition disposition,
         string retentionPurpose = "Account privacy erasure",
         string retentionHorizon = "Erase in the first committed local erasure transaction") =>
-        new(copy, ownershipKey, producer, typeof(Explore.Domain.PrivacyErasureSaga), disposition,
+        new(copy, ownershipKey, producer, typeof(Explore.Domain.PrivacyErasureSaga), UserPiiStorageBoundary.PrimaryDatabase, disposition,
             retentionPurpose, retentionHorizon, UserPiiProviderAction.None, CurrentPolicyVersion, []);
+
+    private static UserPiiInventoryEntry Authority(
+        string copy,
+        string ownershipKey,
+        string producer,
+        UserPiiDisposition disposition,
+        string retentionPurpose,
+        string retentionHorizon) =>
+        new(copy, ownershipKey, producer, typeof(Explore.Domain.PrivacyErasureSaga), UserPiiStorageBoundary.PrivacyErasureAuthority,
+            disposition, retentionPurpose, retentionHorizon, UserPiiProviderAction.None, CurrentPolicyVersion, []);
 
     private static UserPiiInventoryEntry External(
         string copy,
@@ -478,7 +508,8 @@ internal static class UserPiiInventory
         string producer,
         UserPiiProviderAction providerAction,
         params Type[] providerSurfaces) =>
-        new(copy, ownershipKey, producer, typeof(Explore.Domain.PrivacyErasureSaga), UserPiiDisposition.ExternalAction,
+        new(copy, ownershipKey, producer, typeof(Explore.Domain.PrivacyErasureSaga), UserPiiStorageBoundary.ExternalProvider,
+            UserPiiDisposition.ExternalAction,
             "Provider-side privacy erasure",
             "Dispatch after local commit and settle under provider retry policy", providerAction, CurrentPolicyVersion, providerSurfaces);
 }

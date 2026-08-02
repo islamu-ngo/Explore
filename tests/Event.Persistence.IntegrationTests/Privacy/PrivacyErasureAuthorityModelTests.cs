@@ -1,7 +1,6 @@
 // ABOUTME: Verifies generalized privacy-erasure EF models, retained composition, and function-only ACL contracts.
-// ABOUTME: Pins User-only fact retention, replay coverage keys, receipt hashing, and design-time isolation.
+// ABOUTME: Pins User-only fact retention, replay coverage keys, receipt hashing, and topology isolation.
 
-using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Domain;
 using Explore.Infrastructure;
@@ -12,8 +11,6 @@ using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
-using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -78,8 +75,8 @@ public sealed class PrivacyErasureAuthorityModelTests
             ]);
         await Assert.That(checkpoint.GetTableName())
             .IsEqualTo("privacy_erasure_replay_checkpoints");
-        await Assert.That(model.FindEntityType(typeof(PrivacyErasureIntent))!.GetSchema())
-            .IsEqualTo("privacy_erasure_authority");
+        await Assert.That(model.FindEntityType(typeof(PrivacyErasureIntent))).IsNull();
+        await Assert.That(model.FindEntityType(typeof(PrivacyErasureCounter))).IsNull();
     }
 
     [Test]
@@ -99,15 +96,15 @@ public sealed class PrivacyErasureAuthorityModelTests
     }
 
     [Test]
-    public async Task CoLocatedPersistenceComposition_RegistersFactoryBackedAuthorityAndLocalMirror()
+    public async Task DefaultPersistenceComposition_RegistersEmbeddedAuthorityOnly()
     {
         var services = new ServiceCollection();
         services.ConfigurePersistenceServices(
             new ConfigurationBuilder().AddInMemoryCollection(
                 new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:PrivacyErasureAuthority"] =
-                        "Host=unused;Database=unused;Username=unused"
+                    ["PrivacyErasureAuthorityEmbedded:Path"] =
+                        Path.Combine(Path.GetTempPath(), $"authority-{Guid.CreateVersion7():N}.db")
                 }).Build(),
             skipDbContextRegistration: true,
             skipLookupCacheInitializer: true);
@@ -116,9 +113,9 @@ public sealed class PrivacyErasureAuthorityModelTests
             item.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
         await Assert.That(services.Any(item =>
             item.ServiceType == typeof(IPrivacyErasureAuthority)
-            && item.ImplementationType == typeof(CoLocatedPrivacyErasureAuthorityRepository))).IsTrue();
+            && item.ImplementationType == typeof(EmbeddedPrivacyErasureAuthorityRepository))).IsTrue();
         await Assert.That(services.Any(item =>
-            item.ServiceType == typeof(IPrivacyErasureLedgerRepository))).IsTrue();
+            item.ServiceType == typeof(IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>))).IsTrue();
     }
 
     [Test]
@@ -139,7 +136,7 @@ public sealed class PrivacyErasureAuthorityModelTests
             item.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
         await Assert.That(services.Any(item =>
             item.ServiceType == typeof(IPrivacyErasureAuthority)
-            && item.ImplementationType == typeof(CoLocatedPrivacyErasureAuthorityRepository))).IsTrue();
+            && item.ImplementationType == typeof(EmbeddedPrivacyErasureAuthorityRepository))).IsTrue();
         await Assert.That(services.Any(item =>
             item.ServiceType.FullName?.Contains(
                 "IPrivacyErasureReplayService",
@@ -155,8 +152,12 @@ public sealed class PrivacyErasureAuthorityModelTests
                 new Dictionary<string, string?>
                 {
                     ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase",
-                    ["ConnectionStrings:PrivacyErasureAuthority"] =
-                        "Host=localhost;Database=privacy_erasure;Username=runtime;Password=unused"
+                    ["PrivacyErasureAuthorityDatabase:Provider"] = "PostgreSql",
+                    ["PrivacyErasureAuthorityDatabase:Host"] = "localhost",
+                    ["PrivacyErasureAuthorityDatabase:Database"] = "privacy_erasure",
+                    ["PrivacyErasureAuthorityDatabase:TlsMode"] = "Prefer",
+                    ["PrivacyErasureAuthorityDatabase:Runtime:Username"] = "runtime",
+                    ["PrivacyErasureAuthorityDatabase:Runtime:Password"] = "unused"
                 }).Build(),
             skipDbContextRegistration: true,
             skipLookupCacheInitializer: true);
@@ -165,33 +166,6 @@ public sealed class PrivacyErasureAuthorityModelTests
             item.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsTrue();
         await Assert.That(services.Any(item =>
             item.ServiceType == typeof(IPrivacyErasureAuthority))).IsTrue();
-    }
-
-    [Test]
-    public async Task DesignTimeFactory_IgnoresAmbientAndHostileArgumentsUnlessExplicitlySelected()
-    {
-        const string key = "ConnectionStrings__PrivacyErasureAuthority";
-        string? previousValue = Environment.GetEnvironmentVariable(key);
-        try
-        {
-            Environment.SetEnvironmentVariable(
-                key,
-                "Host=127.0.0.1;Port=2;Database=hostile_ambient;Username=canary;Password=canary");
-
-            await using PrivacyErasureAuthorityDbContext context =
-                new PrivacyErasureAuthorityDbContextFactory().CreateDbContext(
-                    ["--hostile-connection", "Host=127.0.0.1;Port=3;Database=hostile_argument;Username=canary"]);
-            var target = new NpgsqlConnectionStringBuilder(context.Database.GetConnectionString());
-
-            await Assert.That(target.Host).IsEqualTo("127.0.0.1");
-            await Assert.That(target.Port).IsEqualTo(1);
-            await Assert.That(target.Database)
-                .IsEqualTo("privacy_erasure_authority_design_time");
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable(key, previousValue);
-        }
     }
 
     [Test]
@@ -219,56 +193,29 @@ public sealed class PrivacyErasureAuthorityModelTests
     }
 
     [Test]
-    public async Task MigrationCatalogs_HaveExactNonOverlappingAuthorityOwnership()
+    public async Task AuthorityModels_HaveExactNonOverlappingOwnership()
     {
         await using ExploreDbContext application = CreateExploreContext();
-        await using var authority = new PrivacyErasureAuthorityDbContext(
+        await using var external = new PrivacyErasureAuthorityDbContext(
             new DbContextOptionsBuilder<PrivacyErasureAuthorityDbContext>()
                 .UseNpgsql("Host=localhost;Database=model_only;Username=unused;Password=unused")
                 .UseSnakeCaseNamingConvention()
                 .Options);
+        await using var embedded = new EmbeddedPrivacyErasureAuthorityDbContext(
+            new DbContextOptionsBuilder<EmbeddedPrivacyErasureAuthorityDbContext>()
+                .UseSqlite("Data Source=:memory:")
+                .Options);
 
-        Migration applicationInit = ReadOnlyInitMigration(application);
-        Migration authorityInit = ReadOnlyInitMigration(authority);
-        string[] applicationAuthorityTables = applicationInit.UpOperations
-            .OfType<CreateTableOperation>()
-            .Where(operation => operation.Schema == "privacy_erasure_authority")
-            .Select(operation => operation.Name)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-        string[] dedicatedAuthorityTables = authorityInit.UpOperations
-            .OfType<CreateTableOperation>()
-            .Where(operation => operation.Schema == "privacy_erasure_authority")
-            .Select(operation => operation.Name)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-        string applicationSql = string.Join('\n', applicationInit.UpOperations
-            .OfType<SqlOperation>()
-            .Select(operation => operation.Sql));
-        string authoritySql = string.Join('\n', authorityInit.UpOperations
-            .OfType<SqlOperation>()
-            .Select(operation => operation.Sql));
-
-        await Assert.That(applicationAuthorityTables)
-            .IsEquivalentTo(["authority_counter", "erasure_intents"]);
-        await Assert.That(dedicatedAuthorityTables)
-            .IsEquivalentTo(["authority_counter", "erasure_intents"]);
-        await Assert.That(applicationSql).DoesNotContain("privacy_erasure_authority_runtime");
-        await Assert.That(applicationSql).DoesNotContain("append_erasure_intent");
-        await Assert.That(authoritySql).Contains("privacy_erasure_authority_runtime");
-        await Assert.That(authoritySql).Contains("append_erasure_intent");
-        await Assert.That(string.Join('\n', applicationInit.UpOperations.Select(operation => operation.ToString())))
-            .DoesNotContain("location_privacy_authority");
-        await Assert.That(string.Join('\n', authorityInit.UpOperations.Select(operation => operation.ToString())))
-            .DoesNotContain("location_privacy_authority");
-    }
-
-    private static Migration ReadOnlyInitMigration(DbContext context)
-    {
-        IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
-        KeyValuePair<string, System.Reflection.TypeInfo> migration = assembly.Migrations.Single(item =>
-            item.Key.EndsWith("_init", StringComparison.OrdinalIgnoreCase));
-        return assembly.CreateMigration(migration.Value, context.Database.ProviderName!);
+        await Assert.That(application.Model.FindEntityType(typeof(PrivacyErasureIntent))).IsNull();
+        await Assert.That(application.Model.FindEntityType(typeof(PrivacyErasureCounter))).IsNull();
+        await Assert.That(external.Model.FindEntityType(typeof(PrivacyErasureIntent))!.GetSchema())
+            .IsEqualTo("privacy_erasure_authority");
+        await Assert.That(embedded.Model.FindEntityType(typeof(PrivacyErasureIntent))!.GetTableName())
+            .IsEqualTo("erasure_intents");
+        await Assert.That(embedded.Model.FindEntityType(typeof(PrivacyErasureIntent))!.GetSchema())
+            .IsNull();
+        await Assert.That(EmbeddedPrivacyErasureAuthorityDbContext.MigrationsHistoryTable)
+            .IsNotEqualTo("__EFMigrationsHistory");
     }
 
     private static ExploreDbContext CreateExploreContext()

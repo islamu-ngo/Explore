@@ -26,7 +26,6 @@ public sealed class PrivacyErasureApplierAiConversationTests
     private readonly IPrivacyErasureProviderWorkRepository _providerWorkRepository = Substitute.For<IPrivacyErasureProviderWorkRepository>();
     private readonly IPrivacyErasureProviderLocatorProtector _providerLocatorProtector = Substitute.For<IPrivacyErasureProviderLocatorProtector>();
     private readonly IPrivacyErasureReplayCheckpointRepository _checkpointRepository = Substitute.For<IPrivacyErasureReplayCheckpointRepository>();
-    private readonly IPrivacyErasureLedgerRepository _ledgerRepository = Substitute.For<IPrivacyErasureLedgerRepository>();
     private readonly IPrivacyErasureStateRepository _stateRepository = Substitute.For<IPrivacyErasureStateRepository>();
     private readonly IOutboxRepository _outboxRepository = Substitute.For<IOutboxRepository>();
     private readonly ILogger<PrivacyErasureApplier> _logger = Substitute.For<ILogger<PrivacyErasureApplier>>();
@@ -79,8 +78,6 @@ public sealed class PrivacyErasureApplierAiConversationTests
     public async Task ApplyInCurrentTransactionAsync_DeletesConversationGraphAndDoesNotMaterializeProviderWorkWhenNoneExist()
     {
         var intent = CreateIntent();
-        _ledgerRepository.AppendAsync(intent, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(intent));
         var prepared = CreatePreparedErasure();
 
         var result = await CreateApplier().ApplyInCurrentTransactionAsync(intent, prepared, CancellationToken.None);
@@ -121,7 +118,6 @@ public sealed class PrivacyErasureApplierAiConversationTests
         await _privacyErasureRepository.DidNotReceive().GetProviderCandidatesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _providerWorkRepository.DidNotReceive().AddMissingAsync(Arg.Any<PrivacyErasureProviderWork[]>(), Arg.Any<CancellationToken>());
         _providerLocatorProtector.DidNotReceive().Protect(Arg.Any<string>(), Arg.Any<TimeSpan>());
-        await _ledgerRepository.DidNotReceive().AppendAsync(Arg.Any<PrivacyErasureIntent>(), Arg.Any<CancellationToken>());
     }
 
     private PrivacyErasureApplier CreateApplier()
@@ -135,7 +131,6 @@ public sealed class PrivacyErasureApplierAiConversationTests
             _providerWorkRepository,
             _providerLocatorProtector,
             _checkpointRepository,
-            _ledgerRepository,
             _stateRepository,
             _outboxRepository,
             null!,

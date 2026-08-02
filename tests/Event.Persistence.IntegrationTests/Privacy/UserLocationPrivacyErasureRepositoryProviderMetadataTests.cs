@@ -1080,23 +1080,23 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         int visibilityTypeId,
         int eventProvenanceTypeId,
         string title) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        TenantId = tenant.Id,
-        Tenant = tenant,
-        ActorId = actor.Id,
-        Actor = actor,
-        Title = title,
-        PublicCode = Guid.CreateVersion7().ToString("N")[^12..],
-        VisibilityTypeId = visibilityTypeId,
-        VisibilityType = null!,
-        EventStatusId = eventStatusId,
-        EventStatus = null!,
-        EventFormatId = eventFormatId,
-        EventFormat = null!,
-        EventProvenanceTypeId = eventProvenanceTypeId,
-        EventProvenanceType = null!
-    };
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            ActorId = actor.Id,
+            Actor = actor,
+            Title = title,
+            PublicCode = Guid.CreateVersion7().ToString("N")[^12..],
+            VisibilityTypeId = visibilityTypeId,
+            VisibilityType = null!,
+            EventStatusId = eventStatusId,
+            EventStatus = null!,
+            EventFormatId = eventFormatId,
+            EventFormat = null!,
+            EventProvenanceTypeId = eventProvenanceTypeId,
+            EventProvenanceType = null!
+        };
 
     private static EventReport CreateReport(
         Tenant tenant,
