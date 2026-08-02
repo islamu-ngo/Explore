@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations.MariaDb.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260802223103_InitialMariaDbApplication")]
+    [Migration("20260802224522_InitialMariaDbApplication")]
     partial class InitialMariaDbApplication
     {
         /// <inheritdoc />
@@ -4762,7 +4762,8 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasDatabaseName("ix_ecpp_tenant_exposure");
 
                     b.HasIndex("TenantId", "Namespace", "Key", "NormalizedValue")
-                        .HasDatabaseName("IX_ie_event_custom_property_projections_tenant_id_names_307EB403");
+                        .HasDatabaseName("IX_ie_event_custom_property_projections_tenant_id_names_307EB403")
+                        .HasAnnotation("MySql:IndexPrefixLength", new[] { 0, 0, 0, 512 });
 
                     b.HasIndex("TenantId", "EventId", "Namespace", "Key", "Ordinal")
                         .HasDatabaseName("IX_ie_event_custom_property_projections_tenant_id_event_07B1A334");
@@ -7955,7 +7956,8 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasDatabaseName("IX_ie_event_session_custom_property_projections_tenant__A9713E26");
 
                     b.HasIndex("TenantId", "Namespace", "Key", "NormalizedValue")
-                        .HasDatabaseName("IX_ie_event_session_custom_property_projections_tenant__A07852C2");
+                        .HasDatabaseName("IX_ie_event_session_custom_property_projections_tenant__A07852C2")
+                        .HasAnnotation("MySql:IndexPrefixLength", new[] { 0, 0, 0, 512 });
 
                     b.HasIndex("TenantId", "EventSessionId", "Namespace", "Key", "Ordinal")
                         .HasDatabaseName("IX_ie_event_session_custom_property_projections_tenant__E39CDD21");
@@ -20919,7 +20921,8 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("Provider", "ObjectKey")
                         .HasDatabaseName("ix_storage_upload_sessions_provider_object_key")
-                        .HasFilter("object_key IS NOT NULL");
+                        .HasFilter("object_key IS NOT NULL")
+                        .HasAnnotation("MySql:IndexPrefixLength", new[] { 0, 512 });
 
                     b.HasIndex("TenantId", "IdempotencyKey")
                         .IsUnique()
@@ -25120,7 +25123,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                             t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_verification_fence_positive", "verification_fence > 0");
 
-                            t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_verified_scope", "verification_state_id <> 3 OR (verified_tenant_id IS NOT DISTINCT FROM tenant_id AND verified_webhook_consumer_id = webhook_consumer_id)");
+                            t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_verified_scope", "verification_state_id <> 3 OR (verified_tenant_id <=> tenant_id AND verified_webhook_consumer_id = webhook_consumer_id)");
                         });
                 });
 
@@ -25546,7 +25549,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime(6)")
                         .HasColumnName("secret_activated_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
                     b.Property<string>("SecretRef")
                         .IsRequired()

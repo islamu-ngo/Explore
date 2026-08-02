@@ -9336,7 +9336,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     table.CheckConstraint("ck_webhook_consumer_provider_bindings_configuration_scope", "configuration_scope_id = COALESCE(tenant_id, instance_id)");
                     table.CheckConstraint("ck_webhook_consumer_provider_bindings_governance_capabilities_k~", "governance_allowed_capabilities >= 0 AND governance_allowed_capabilities <= 4095");
                     table.CheckConstraint("ck_webhook_consumer_provider_bindings_verification_fence_positi~", "verification_fence > 0");
-                    table.CheckConstraint("ck_webhook_consumer_provider_bindings_verified_scope", "verification_state_id <> 3 OR (verified_tenant_id IS NOT DISTINCT FROM tenant_id AND verified_webhook_consumer_id = webhook_consumer_id)");
+                    table.CheckConstraint("ck_webhook_consumer_provider_bindings_verified_scope", "verification_state_id <> 3 OR (verified_tenant_id <=> tenant_id AND verified_webhook_consumer_id = webhook_consumer_id)");
                     table.ForeignKey(
                         name: "FK_ie_webhook_consumer_provider_bindings_ie_webhook_con_F83D77A4",
                         columns: x => new { x.configuration_scope_id, x.webhook_consumer_id },
@@ -9381,7 +9381,7 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     secret_ref = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     secret_version = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
-                    secret_activated_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    secret_activated_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP(6)"),
                     previous_secret_ref = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     previous_secret_valid_until = table.Column<DateTime>(type: "datetime(6)", nullable: true),
@@ -15063,7 +15063,8 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ie_event_custom_property_projections_tenant_id_names_307EB403",
                 table: "ie_event_custom_property_projections",
-                columns: new[] { "tenant_id", "namespace", "key", "normalized_value" });
+                columns: new[] { "tenant_id", "namespace", "key", "normalized_value" })
+                .Annotation("MySql:IndexPrefixLength", new[] { 0, 0, 0, 512 });
 
             migrationBuilder.CreateIndex(
                 name: "ix_ecpv_tenant_event",
@@ -15717,7 +15718,8 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ie_event_session_custom_property_projections_tenant__A07852C2",
                 table: "ie_event_session_custom_property_projections",
-                columns: new[] { "tenant_id", "namespace", "key", "normalized_value" });
+                columns: new[] { "tenant_id", "namespace", "key", "normalized_value" })
+                .Annotation("MySql:IndexPrefixLength", new[] { 0, 0, 0, 512 });
 
             migrationBuilder.CreateIndex(
                 name: "IX_ie_event_session_custom_property_projections_tenant__A9713E26",
@@ -18285,7 +18287,8 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                 name: "ix_storage_upload_sessions_provider_object_key",
                 table: "ie_storage_upload_sessions",
                 columns: new[] { "provider", "object_key" },
-                filter: "object_key IS NOT NULL");
+                filter: "object_key IS NOT NULL")
+                .Annotation("MySql:IndexPrefixLength", new[] { 0, 512 });
 
             migrationBuilder.CreateIndex(
                 name: "ix_storage_upload_sessions_tenant_status_expires_at",
