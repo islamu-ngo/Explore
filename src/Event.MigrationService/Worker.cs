@@ -7,12 +7,13 @@ using Explore.Persistence.Database;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
+using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace Event.MigrationService;
 
-public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLifetime lifetime, IHostEnvironment environment, IConfiguration configuration, IOptions<PrivacyErasureDurabilityOptions> erasureOptions, ILogger<Worker> logger) : BackgroundService
+public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLifetime lifetime, IHostEnvironment environment, IConfiguration configuration, IOptions<PrivacyErasureDurabilityOptions> erasureOptions, PrimaryDatabaseConnectionOptions migrationDatabaseOptions, ILogger<Worker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -33,11 +34,23 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
 
         await using var scope = serviceProvider.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        var dataProtectionDb = scope.ServiceProvider.GetRequiredService<DataProtectionKeyContext>();
+
+        var migrationOptions = new DbContextOptionsBuilder<ExploreDbContext>();
+        PrimaryDatabaseProviderComposition.ConfigureApplication(
+            migrationOptions,
+            migrationDatabaseOptions);
+        await using var migrationDb = new ExploreDbContext(migrationOptions.Options);
+
+        var dataProtectionMigrationOptions = new DbContextOptionsBuilder<DataProtectionKeyContext>();
+        PrimaryDatabaseProviderComposition.ConfigureDataProtection(
+            dataProtectionMigrationOptions,
+            migrationDatabaseOptions);
+        await using var dataProtectionMigrationDb = new DataProtectionKeyContext(
+            dataProtectionMigrationOptions.Options);
 
         // Apply migrations
         logger.LogInformation("Applying database migrations...");
-        await ExploreDatabaseMigrator.MigrateAsync(db, configuration, stoppingToken);
+        await ExploreDatabaseMigrator.MigrateAsync(migrationDb, configuration, stoppingToken);
         logger.LogInformation("Database migrations applied successfully.");
 
         await SqliteDatabaseInitializer.InitializeAsync(db, stoppingToken);
@@ -50,7 +63,7 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
         }
 
         logger.LogInformation("Applying Data Protection key-ring migrations...");
-        await dataProtectionDb.Database.MigrateAsync(stoppingToken);
+        await dataProtectionMigrationDb.Database.MigrateAsync(stoppingToken);
         logger.LogInformation("Data Protection key-ring migrations applied successfully.");
 
         if (erasureOptions.Value.Topology == PrivacyErasureAuthorityTopology.ExternalDatabase)

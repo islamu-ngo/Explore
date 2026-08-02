@@ -1010,6 +1010,7 @@ static IResourceBuilder<ProjectResource> WithLocalPrimaryDatabase(
         .WithEnvironment("Database__Host", postgres.PrimaryEndpoint.Property(EndpointProperty.Host))
         .WithEnvironment("Database__Port", postgres.PrimaryEndpoint.Property(EndpointProperty.Port))
         .WithEnvironment("Database__Database", database.Resource.DatabaseName)
+        .WithEnvironment("Database__Schema", PrimaryDatabaseConnectionOptions.DefaultSchema)
         .WithEnvironment("Database__TlsMode", PrimaryDatabaseTlsMode.Prefer.ToString())
         .WithEnvironment("Database__TrustServerCertificate", "false")
         .WithEnvironment($"{credentialPrefix}Username", postgres.UserNameReference)
@@ -1027,6 +1028,7 @@ static IResourceBuilder<ProjectResource> WithExternalPrimaryDatabase(
     project = project
         .WithEnvironment("Database__Provider", database.Provider.ToString())
         .WithEnvironment("Database__Database", database.Database ?? string.Empty)
+        .WithEnvironment("Database__Schema", database.Schema)
         .WithEnvironment("Database__TlsMode", database.TlsMode.ToString())
         .WithEnvironment("Database__TrustServerCertificate", database.TrustServerCertificate.ToString());
 

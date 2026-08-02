@@ -6,6 +6,7 @@
   </Configurations>
   <Folder Name="/API/">
     <Project Path="src/Event.MigrationService/Event.MigrationService.csproj" />
+    <Project Path="src/Event.Standalone/Event.Standalone.csproj" />
     <Project Path="src/Explore.API/Explore.API.csproj" />
   </Folder>
   <Folder Name="/Core/">
@@ -30,6 +31,7 @@
     <Project Path="src/Explore.Persistence.Migrations.SqlServer/Explore.Persistence.Migrations.SqlServer.csproj" />
   </Folder>
   <Folder Name="/Test/">
+    <Project Path="tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj" />
     <Project Path="tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj" />
     <Project Path="tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj" />
     <Project Path="tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj" />

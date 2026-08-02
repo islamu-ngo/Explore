@@ -8,7 +8,6 @@ using Explore.Persistence.Database;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 namespace Event.MigrationService;
@@ -20,26 +19,20 @@ public class Program
         var builder = Host.CreateApplicationBuilder(args);
 
         var databaseOptions = builder.Configuration.AddPrimaryDatabaseBootstrap();
+        var runtimeDatabaseOptions = databaseOptions with { Role = PrimaryDatabaseRole.Runtime };
 
         builder.AddServiceDefaults();
+        builder.Services.AddSingleton(databaseOptions);
         builder.Services.AddHostedService<Worker>();
 
         //builder.Services.AddOpenTelemetry()
         //  .WithTracing(tracing => tracing.AddSource(Worker.ActivitySourceName));
 
         builder.Services.AddDbContext<ExploreDbContext>(options =>
-            {
-                PrimaryDatabaseProviderComposition.ConfigureApplication(options, databaseOptions);
-
-                if (builder.Environment.IsDevelopment())
-                {
-                    options.ConfigureWarnings(warnings =>
-                        warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
-                }
-            });
+            PrimaryDatabaseProviderComposition.ConfigureApplication(options, runtimeDatabaseOptions));
 
         builder.Services.AddDbContext<DataProtectionKeyContext>(options =>
-            PrimaryDatabaseProviderComposition.ConfigureDataProtection(options, databaseOptions));
+            PrimaryDatabaseProviderComposition.ConfigureDataProtection(options, runtimeDatabaseOptions));
 
         PrivacyErasureAuthorityTopology erasureTopology =
             PrivacyErasureDurabilityOptions.GetTopology(builder.Configuration);

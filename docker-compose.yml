@@ -37,6 +37,7 @@ x-database-env: &database-env
   Database__Host: ${DATABASE_HOST-postgres}
   Database__Port: ${DATABASE_PORT-5432}
   Database__Database: ${DATABASE_DATABASE:-islamu_event_db}
+  Database__Schema: ${DATABASE_SCHEMA:-islamu_event}
   Database__TlsMode: ${DATABASE_TLS_MODE:-Prefer}
   Database__TrustServerCertificate: ${DATABASE_TRUST_SERVER_CERTIFICATE:-false}
   Database__ServerFlavor: ${DATABASE_SERVER_FLAVOR:-}
