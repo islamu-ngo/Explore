@@ -18,6 +18,17 @@
     <Project Path="src/Explore.Persistence/Explore.Persistence.csproj" />
     <Project Path="src/Explore.Secrets/Explore.Secrets.csproj" />
   </Folder>
+  <Folder Name="/Infrastructure/Migrations/">
+    <Project Path="src/Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite/Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.csproj" />
+    <Project Path="src/Explore.Persistence.DataProtection.Migrations.MariaDb/Explore.Persistence.DataProtection.Migrations.MariaDb.csproj" />
+    <Project Path="src/Explore.Persistence.DataProtection.Migrations.MySql/Explore.Persistence.DataProtection.Migrations.MySql.csproj" />
+    <Project Path="src/Explore.Persistence.DataProtection.Migrations.Sqlite/Explore.Persistence.DataProtection.Migrations.Sqlite.csproj" />
+    <Project Path="src/Explore.Persistence.DataProtection.Migrations.SqlServer/Explore.Persistence.DataProtection.Migrations.SqlServer.csproj" />
+    <Project Path="src/Explore.Persistence.Migrations.MariaDb/Explore.Persistence.Migrations.MariaDb.csproj" />
+    <Project Path="src/Explore.Persistence.Migrations.MySql/Explore.Persistence.Migrations.MySql.csproj" />
+    <Project Path="src/Explore.Persistence.Migrations.Sqlite/Explore.Persistence.Migrations.Sqlite.csproj" />
+    <Project Path="src/Explore.Persistence.Migrations.SqlServer/Explore.Persistence.Migrations.SqlServer.csproj" />
+  </Folder>
   <Folder Name="/Test/">
     <Project Path="tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj" />
     <Project Path="tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj" />
