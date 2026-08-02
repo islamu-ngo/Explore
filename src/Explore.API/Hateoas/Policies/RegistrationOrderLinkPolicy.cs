@@ -43,6 +43,18 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                 .RequirePermission(AuthorizationActions.RegistrationOrders.Continue, ResourceKinds.RegistrationOrder, dto.Id.ToString("D"), Attributes(dto));
         }
 
+        if (dto.StatusCode == "AWAITING_REQUIREMENTS")
+        {
+            yield return new LinkDefinition(
+                    LinkRelations.RequirementProgress,
+                    RouteNames.GetAuthenticatedNativeRegistrationRequirementProgress,
+                    new { eventId = dto.EventId, orderId = dto.Id },
+                    HttpMethods.Get,
+                    "Continue registration requirements",
+                    RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.RegistrationOrders.Continue, ResourceKinds.RegistrationOrder, dto.Id.ToString("D"), Attributes(dto));
+        }
+
         if (dto.StatusCode == "READY_FOR_CHECKOUT")
         {
             yield return new LinkDefinition(

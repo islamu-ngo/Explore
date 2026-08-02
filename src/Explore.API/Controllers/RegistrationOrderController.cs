@@ -2,6 +2,7 @@
 // ABOUTME: Transports guest capabilities only in headers and delegates all order access decisions to MediatR.
 
 using Asp.Versioning;
+using System.Text.Json;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
@@ -10,8 +11,10 @@ using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.DTOs.RegistrationSubmissions;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using Explore.Application.Features.RegistrationOrders.Requests.Queries;
+using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
@@ -29,6 +32,8 @@ public sealed class RegistrationOrderController(
     IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto> assembler) : ControllerBase
 {
     private const string CapabilityHeader = "X-Registration-Order-Capability";
+    private const string AttemptCapabilityHeader = "X-Registration-Attempt-Capability";
+    private const string IdempotencyKeyHeader = "Idempotency-Key";
 
     private static readonly ApiValidationProblemDescriptor RegistrationOrderValidationProblem = new(
         "registrationOrder",
@@ -101,6 +106,86 @@ public sealed class RegistrationOrderController(
             new { eventId, orderId = response.Id },
             response);
     }
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.PublicTransactional)]
+    [EnableRateLimiting(RateLimitingExtensions.PublicTransactionalPolicy)]
+    [RequireIdempotencyKey]
+    [HttpPost("guest/{orderId:guid}/attempts", Name = RouteNames.LaunchGuestNativeRegistrationAttempt)]
+    [EndpointSummary("Launch guest native registration attempt")]
+    [ProducesResponseType(typeof(HalResource<NativeRegistrationAttemptDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<NativeRegistrationAttemptDto>>> LaunchGuestNativeAttempt(
+        Guid eventId,
+        Guid orderId,
+        [FromHeader(Name = CapabilityHeader)] string? capability,
+        [FromHeader(Name = IdempotencyKeyHeader)] string? idempotencyKey,
+        [FromBody] LaunchNativeRegistrationAttemptRequest request,
+        CancellationToken cancellationToken = default) => await LaunchNativeAttempt(
+        await mediator.Send(new LaunchGuestNativeRegistrationAttemptCommand(
+            eventId, orderId, capability, request.RequirementId, request.ChannelId,
+            request.FormId, request.FormVersionId), cancellationToken),
+        eventId,
+        orderId,
+        guest: true);
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [PrivateNoStore]
+    [HttpGet("guest/{orderId:guid}/requirement-progress", Name = RouteNames.GetGuestNativeRegistrationRequirementProgress)]
+    [EndpointSummary("Get guest native registration requirement progress")]
+    [ProducesResponseType(typeof(HalResource<NativeRegistrationRequirementProgressCollectionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<NativeRegistrationRequirementProgressCollectionDto>>> GetGuestNativeRequirementProgress(
+        Guid eventId,
+        Guid orderId,
+        [FromHeader(Name = CapabilityHeader)] string? capability,
+        CancellationToken cancellationToken = default) => ToNativeProgressResource(
+        await mediator.Send(new GetGuestNativeRegistrationRequirementProgressQuery(
+            eventId, orderId, capability), cancellationToken), eventId, orderId, guest: true);
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.PublicTransactional)]
+    [EnableRateLimiting(RateLimitingExtensions.PublicTransactionalPolicy)]
+    [RequireIdempotencyKey]
+    [HttpPost("guest/{orderId:guid}/attempts/{attemptId:guid}/skip", Name = RouteNames.SkipGuestNativeRegistrationRequirement)]
+    [EndpointSummary("Skip guest optional native registration requirement")]
+    [ProducesResponseType(typeof(NativeRegistrationSkipDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<NativeRegistrationSkipDto>> SkipGuestNativeRequirement(
+        Guid eventId,
+        Guid orderId,
+        Guid attemptId,
+        [FromHeader(Name = CapabilityHeader)] string? capability,
+        [FromHeader(Name = AttemptCapabilityHeader)] string? attemptCapability,
+        [FromHeader(Name = IdempotencyKeyHeader)] string? idempotencyKey,
+        [FromBody] SkipNativeRegistrationRequirementRequest request,
+        CancellationToken cancellationToken = default) => MapNativeSkip(await mediator.Send(
+        new SkipGuestNativeRegistrationRequirementCommand(
+            eventId, orderId, capability, request.RequirementId, attemptId, attemptCapability), cancellationToken));
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.PublicTransactional)]
+    [EnableRateLimiting(RateLimitingExtensions.PublicTransactionalPolicy)]
+    [RequireIdempotencyKey]
+    [HttpPost("guest/{orderId:guid}/attempts/{attemptId:guid}/submissions", Name = RouteNames.SubmitGuestNativeRegistrationAttempt)]
+    [EndpointSummary("Submit guest native registration answers")]
+    [ProducesResponseType(typeof(NativeRegistrationSubmissionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<NativeRegistrationSubmissionDto>> SubmitGuestNativeAttempt(
+        Guid eventId,
+        Guid orderId,
+        Guid attemptId,
+        [FromHeader(Name = CapabilityHeader)] string? capability,
+        [FromHeader(Name = AttemptCapabilityHeader)] string? attemptCapability,
+        [FromHeader(Name = IdempotencyKeyHeader)] string? idempotencyKey,
+        [FromBody] SubmitNativeRegistrationAttemptRequest request,
+        CancellationToken cancellationToken = default) => MapNativeSubmission(await mediator.Send(
+        new SubmitGuestNativeRegistrationAttemptCommand(
+            eventId, orderId, capability, request.RequirementId, attemptId, attemptCapability,
+            idempotencyKey, MapNativeAnswers(request.Answers)), cancellationToken));
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
@@ -337,6 +422,86 @@ public sealed class RegistrationOrderController(
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [HttpPost("{orderId:guid}/attempts", Name = RouteNames.LaunchAuthenticatedNativeRegistrationAttempt)]
+    [EndpointSummary("Launch authenticated native registration attempt")]
+    [ProducesResponseType(typeof(HalResource<NativeRegistrationAttemptDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<NativeRegistrationAttemptDto>>> LaunchAuthenticatedNativeAttempt(
+        Guid eventId,
+        Guid orderId,
+        [FromHeader(Name = IdempotencyKeyHeader)] string? idempotencyKey,
+        [FromBody] LaunchNativeRegistrationAttemptRequest request,
+        CancellationToken cancellationToken = default) => await LaunchNativeAttempt(
+        await mediator.Send(new LaunchAuthenticatedNativeRegistrationAttemptCommand(
+            eventId, orderId, request.RequirementId, request.ChannelId,
+            request.FormId, request.FormVersionId), cancellationToken),
+        eventId,
+        orderId,
+        guest: false);
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [HttpGet("{orderId:guid}/requirement-progress", Name = RouteNames.GetAuthenticatedNativeRegistrationRequirementProgress)]
+    [EndpointSummary("Get authenticated native registration requirement progress")]
+    [ProducesResponseType(typeof(HalResource<NativeRegistrationRequirementProgressCollectionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<NativeRegistrationRequirementProgressCollectionDto>>> GetAuthenticatedNativeRequirementProgress(
+        Guid eventId,
+        Guid orderId,
+        CancellationToken cancellationToken = default) => ToNativeProgressResource(
+        await mediator.Send(new GetAuthenticatedNativeRegistrationRequirementProgressQuery(
+            eventId, orderId), cancellationToken), eventId, orderId, guest: false);
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [HttpPost("{orderId:guid}/attempts/{attemptId:guid}/skip", Name = RouteNames.SkipAuthenticatedNativeRegistrationRequirement)]
+    [EndpointSummary("Skip authenticated optional native registration requirement")]
+    [ProducesResponseType(typeof(NativeRegistrationSkipDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<NativeRegistrationSkipDto>> SkipAuthenticatedNativeRequirement(
+        Guid eventId,
+        Guid orderId,
+        Guid attemptId,
+        [FromHeader(Name = AttemptCapabilityHeader)] string? attemptCapability,
+        [FromHeader(Name = IdempotencyKeyHeader)] string? idempotencyKey,
+        [FromBody] SkipNativeRegistrationRequirementRequest request,
+        CancellationToken cancellationToken = default) => MapNativeSkip(await mediator.Send(
+        new SkipAuthenticatedNativeRegistrationRequirementCommand(
+            eventId, orderId, request.RequirementId, attemptId, attemptCapability), cancellationToken));
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [HttpPost("{orderId:guid}/attempts/{attemptId:guid}/submissions", Name = RouteNames.SubmitAuthenticatedNativeRegistrationAttempt)]
+    [EndpointSummary("Submit authenticated native registration answers")]
+    [ProducesResponseType(typeof(NativeRegistrationSubmissionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<NativeRegistrationSubmissionDto>> SubmitAuthenticatedNativeAttempt(
+        Guid eventId,
+        Guid orderId,
+        Guid attemptId,
+        [FromHeader(Name = AttemptCapabilityHeader)] string? attemptCapability,
+        [FromHeader(Name = IdempotencyKeyHeader)] string? idempotencyKey,
+        [FromBody] SubmitNativeRegistrationAttemptRequest request,
+        CancellationToken cancellationToken = default) => MapNativeSubmission(await mediator.Send(
+        new SubmitAuthenticatedNativeRegistrationAttemptCommand(
+            eventId, orderId, request.RequirementId, attemptId, attemptCapability,
+            idempotencyKey, MapNativeAnswers(request.Answers)), cancellationToken));
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [PrivateNoStore]
     [HttpGet("{orderId:guid}", Name = RouteNames.GetCurrentRegistrationOrder)]
@@ -524,6 +689,111 @@ public sealed class RegistrationOrderController(
             _ => this.ToCommandValidationProblem(response, RegistrationOrderValidationProblem)
         };
 
+    private Task<ActionResult<HalResource<NativeRegistrationAttemptDto>>> LaunchNativeAttempt(
+        NativeRegistrationAttemptResult response,
+        Guid eventId,
+        Guid orderId,
+        bool guest)
+    {
+        if (!response.Success || response.Form is null || string.IsNullOrWhiteSpace(response.AttemptCapabilityToken))
+        {
+            return Task.FromResult<ActionResult<HalResource<NativeRegistrationAttemptDto>>>(
+                this.ToNotFoundProblem(RegistrationOrderNotFoundProblem));
+        }
+
+        Response.Headers[AttemptCapabilityHeader] = response.AttemptCapabilityToken;
+        Response.Headers.CacheControl = "private, no-store";
+        var dto = new NativeRegistrationAttemptDto(
+            response.AttemptId, response.RequirementId, response.ChannelId, response.FormId, response.FormVersionId,
+            response.ExpiresAt, response.AttemptCapabilityToken, response.Form, response.Subjects, response.Progress!);
+        string routeName = guest
+            ? RouteNames.SubmitGuestNativeRegistrationAttempt
+            : RouteNames.SubmitAuthenticatedNativeRegistrationAttempt;
+        string progressRouteName = guest
+            ? RouteNames.GetGuestNativeRegistrationRequirementProgress
+            : RouteNames.GetAuthenticatedNativeRegistrationRequirementProgress;
+        var resource = new HalResource<NativeRegistrationAttemptDto>(dto)
+            .WithLink(LinkRelations.Submit, HalLink.CreateAction(
+                Url.Link(routeName, new { eventId, orderId, attemptId = response.AttemptId })!, HttpMethods.Post))
+            .WithLink(LinkRelations.RequirementProgress, HalLink.Create(
+                Url.Link(progressRouteName, new { eventId, orderId })!));
+        if (response.CanSkip)
+        {
+            string skipRouteName = guest
+                ? RouteNames.SkipGuestNativeRegistrationRequirement
+                : RouteNames.SkipAuthenticatedNativeRegistrationRequirement;
+            resource.WithLink(LinkRelations.Skip, HalLink.CreateAction(
+                Url.Link(skipRouteName, new { eventId, orderId, attemptId = response.AttemptId })!, HttpMethods.Post));
+        }
+
+        return Task.FromResult<ActionResult<HalResource<NativeRegistrationAttemptDto>>>(
+            CreatedAtRoute(routeName, new { eventId, orderId, attemptId = response.AttemptId }, resource));
+    }
+
+    private ActionResult<HalResource<NativeRegistrationRequirementProgressCollectionDto>> ToNativeProgressResource(
+        NativeRegistrationRequirementProgressCollectionDto? progress,
+        Guid eventId,
+        Guid orderId,
+        bool guest)
+    {
+        if (progress is null)
+        {
+            return this.ToNotFoundProblem(RegistrationOrderNotFoundProblem);
+        }
+
+        string selfRouteName = guest
+            ? RouteNames.GetGuestNativeRegistrationRequirementProgress
+            : RouteNames.GetAuthenticatedNativeRegistrationRequirementProgress;
+        string launchRouteName = guest
+            ? RouteNames.LaunchGuestNativeRegistrationAttempt
+            : RouteNames.LaunchAuthenticatedNativeRegistrationAttempt;
+        var routeValues = new { eventId, orderId };
+        return Ok(new HalResource<NativeRegistrationRequirementProgressCollectionDto>(progress)
+            .WithLink(LinkRelations.Self, HalLink.Create(Url.Link(selfRouteName, routeValues)!))
+            .WithLink(LinkRelations.LaunchAttempt, HalLink.CreateAction(
+                Url.Link(launchRouteName, routeValues)!, HttpMethods.Post)));
+    }
+
+    private ActionResult<NativeRegistrationSkipDto> MapNativeSkip(NativeRegistrationSkipResult response) =>
+        response.Success && response.Progress is not null
+            ? Ok(new NativeRegistrationSkipDto(response.Progress))
+            : this.ToNotFoundProblem(RegistrationOrderNotFoundProblem);
+
+    private ActionResult<NativeRegistrationSubmissionDto> MapNativeSubmission(
+        NativeRegistrationSubmissionResult response)
+    {
+        if (response.Success)
+        {
+            return Ok(new NativeRegistrationSubmissionDto(response.SubmissionId, true));
+        }
+
+        if (response.FailureCode != "registration_submission_invalid")
+        {
+            return this.ToNotFoundProblem(RegistrationOrderNotFoundProblem);
+        }
+
+        var errors = response.Issues
+            .GroupBy(issue => issue.FieldKey ?? "$")
+            .ToDictionary(group => group.Key, group => group.Select(issue => issue.Code).Distinct().ToArray());
+        return ValidationProblem(new ValidationProblemDetails(errors)
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Registration submission validation failed",
+            Detail = "The submitted answers did not satisfy the pinned registration form."
+        });
+    }
+
+    private static IReadOnlyList<RegistrationSubmissionAnswerInput> MapNativeAnswers(
+        IReadOnlyList<NativeRegistrationSubmissionAnswerRequest> answers) => answers.Select(answer =>
+        new RegistrationSubmissionAnswerInput(
+            answer.FieldId,
+            answer.SubjectType,
+            answer.SubjectId,
+            answer.TicketAssignmentOrderLineId,
+            answer.Value is JsonElement element
+                ? element
+                : JsonSerializer.SerializeToElement(answer.Value))).ToArray();
+
     private async Task<ActionResult<BaseCommandResponse<Guid>>> MutateGuest(
         Guid eventId, Guid orderId, string? capability, IRegistrationParticipantMutation mutation,
         CancellationToken cancellationToken) => MapParticipantMutation(await mediator.Send(
@@ -596,6 +866,12 @@ public sealed class RegistrationOrderController(
         if (order.StatusCode is "AWAITING_REQUIREMENTS" or "READY_FOR_CHECKOUT")
         {
             resource.WithLink(LinkRelations.Continue, HalLink.CreateAction(Url.Link(RouteNames.ContinueGuestRegistrationOrder, values)!, HttpMethods.Post));
+        }
+
+        if (order.StatusCode == "AWAITING_REQUIREMENTS")
+        {
+            resource.WithLink(LinkRelations.RequirementProgress, HalLink.Create(
+                Url.Link(RouteNames.GetGuestNativeRegistrationRequirementProgress, values)!));
         }
 
         if (order.StatusCode == "READY_FOR_CHECKOUT")

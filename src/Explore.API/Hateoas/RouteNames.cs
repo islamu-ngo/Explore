@@ -80,6 +80,14 @@ public static class RouteNames
     public const string DetachRegistrationRequirement = "DetachRegistrationRequirement";
     public const string GetOptionalQuestionnaire = "GetOptionalQuestionnaire";
     public const string GetRegistrationWorkflow = "GetRegistrationWorkflow";
+    public const string LaunchAuthenticatedNativeRegistrationAttempt = "LaunchAuthenticatedNativeRegistrationAttempt";
+    public const string SubmitAuthenticatedNativeRegistrationAttempt = "SubmitAuthenticatedNativeRegistrationAttempt";
+    public const string SkipAuthenticatedNativeRegistrationRequirement = "SkipAuthenticatedNativeRegistrationRequirement";
+    public const string GetAuthenticatedNativeRegistrationRequirementProgress = "GetAuthenticatedNativeRegistrationRequirementProgress";
+    public const string LaunchGuestNativeRegistrationAttempt = "LaunchGuestNativeRegistrationAttempt";
+    public const string SubmitGuestNativeRegistrationAttempt = "SubmitGuestNativeRegistrationAttempt";
+    public const string SkipGuestNativeRegistrationRequirement = "SkipGuestNativeRegistrationRequirement";
+    public const string GetGuestNativeRegistrationRequirementProgress = "GetGuestNativeRegistrationRequirementProgress";
     public const string CreateRegistrationWorkflow = "CreateRegistrationWorkflow";
     public const string UpdateRegistrationWorkflow = "UpdateRegistrationWorkflow";
     public const string CreateRegistrationRequirement = "CreateRegistrationRequirement";
@@ -105,6 +113,8 @@ public static class RouteNames
     public const string DeleteRegistrationFormRule = "DeleteRegistrationFormRule";
     public const string GetRegistrationFormPublishPreflight = "GetRegistrationFormPublishPreflight";
     public const string PublishRegistrationFormVersion = "PublishRegistrationFormVersion";
+    public const string GetRegistrationAnswerFile = "GetRegistrationAnswerFile";
+    public const string ReleaseRegistrationAnswerFile = "ReleaseRegistrationAnswerFile";
     public const string GetEventTicketCatalogManagement = "GetEventTicketCatalogManagement";
     public const string CreateEventTicketCatalogDraft = "CreateEventTicketCatalogDraft";
     public const string CloneEventTicketCatalogDraft = "CloneEventTicketCatalogDraft";

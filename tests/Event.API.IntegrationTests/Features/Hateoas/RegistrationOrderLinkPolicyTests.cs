@@ -73,6 +73,10 @@ public sealed class RegistrationOrderLinkPolicyTests
         var links = new RegistrationOrderLinkPolicy().GetLinks(order, null).ToList();
 
         await Assert.That(links.Select(link => link.Rel)).IsEquivalentTo(
-            [LinkRelations.Self, LinkRelations.ViewParticipants, LinkRelations.Continue, LinkRelations.Cancel]);
+            [LinkRelations.Self, LinkRelations.ViewParticipants, LinkRelations.Continue, LinkRelations.RequirementProgress, LinkRelations.Cancel]);
+        LinkDefinition progress = links.Single(link => link.Rel == LinkRelations.RequirementProgress);
+        await Assert.That(progress.RouteName)
+            .IsEqualTo(RouteNames.GetAuthenticatedNativeRegistrationRequirementProgress);
+        await Assert.That(progress.Method).IsEqualTo("GET");
     }
 }
