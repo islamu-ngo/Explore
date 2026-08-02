@@ -1,0 +1,21 @@
+@* ABOUTME: Renders a native yes-or-no checkbox without treating an optional unchecked value as an error. *@
+@* ABOUTME: Keeps label activation, Space-key behavior, and announced server issues native. *@
+
+<FormFieldShell @ref="_shell" ControlId="@ControlId" FieldKey="@FieldKey" FieldTypeCode="BOOLEAN"
+                Label="@Label" Required="@Required" Issues="@Issues">
+    <input id="@ControlId" name="@FieldKey" type="checkbox" checked="@(Value is true)" required="@Required"
+           aria-invalid="@(Issues.Count > 0 ? "true" : "false")" aria-describedby="@_shell?.DescribedBy"
+           @onchange="OnChangeAsync" />
+</FormFieldShell>
+
+@code {
+    private FormFieldShell? _shell;
+    [Parameter, EditorRequired] public string ControlId { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string FieldKey { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public object? Value { get; set; }
+    [Parameter] public IReadOnlyList<string> Issues { get; set; } = [];
+    [Parameter] public EventCallback<object?> ValueChanged { get; set; }
+    private Task OnChangeAsync(ChangeEventArgs args) => ValueChanged.InvokeAsync(args.Value is bool value && value);
+}

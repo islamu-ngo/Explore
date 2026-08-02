@@ -1,0 +1,9 @@
+/* ABOUTME: Tokenized native option layout for single-choice and multiple-choice registration fields. */
+/* ABOUTME: Preserves logical spacing, full labels, and browser focus indicators in RTL and high contrast. */
+
+.choice-field { display: grid; gap: var(--isl-space-3); margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+.choice-field legend { color: var(--isl-color-text); font-weight: 600; margin-block-end: var(--isl-space-2); }
+.choice-field legend span { color: var(--isl-color-text-secondary); font-size: var(--mud-typography-caption-size); margin-inline-start: var(--isl-space-2); font-weight: 400; }
+.choice-field__option { display: flex; align-items: center; gap: var(--isl-space-3); min-block-size: var(--isl-target-min); }
+.choice-field__option input { inline-size: var(--isl-target-min); block-size: var(--isl-target-min); }
+.choice-field ul { color: var(--isl-color-error); margin: 0; padding-inline-start: var(--isl-space-5); }

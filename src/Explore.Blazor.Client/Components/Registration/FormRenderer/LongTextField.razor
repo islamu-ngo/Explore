@@ -1,0 +1,23 @@
+@* ABOUTME: Renders a labeled native multiline answer with server-authored length and pattern hints. *@
+@* ABOUTME: Preserves keyboard, zoom, and RTL behavior through the browser textarea control. *@
+
+<FormFieldShell @ref="_shell" ControlId="@ControlId" FieldKey="@FieldKey" FieldTypeCode="LONG_TEXT"
+                Label="@Label" Required="@Required" Issues="@Issues">
+    <textarea id="@ControlId" name="@FieldKey" required="@Required" minlength="@MinLength" maxlength="@MaxLength"
+              rows="5" aria-invalid="@(Issues.Count > 0 ? "true" : "false")" aria-describedby="@_shell?.DescribedBy"
+              @oninput="OnInputAsync">@Value</textarea>
+</FormFieldShell>
+
+@code {
+    private FormFieldShell? _shell;
+    [Parameter, EditorRequired] public string ControlId { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string FieldKey { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public int? MinLength { get; set; }
+    [Parameter] public int? MaxLength { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public IReadOnlyList<string> Issues { get; set; } = [];
+    [Parameter] public EventCallback<object?> ValueChanged { get; set; }
+    private Task OnInputAsync(ChangeEventArgs args) => ValueChanged.InvokeAsync(args.Value);
+}

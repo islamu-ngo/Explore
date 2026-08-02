@@ -1,0 +1,25 @@
+@* ABOUTME: Renders integer and decimal answers with invariant native numeric constraints. *@
+@* ABOUTME: Keeps the two numeric semantics distinct through step and input-mode configuration. *@
+
+<FormFieldShell @ref="_shell" ControlId="@ControlId" FieldKey="@FieldKey" FieldTypeCode="@FieldTypeCode"
+                Label="@Label" Required="@Required" Issues="@Issues">
+    <input id="@ControlId" name="@FieldKey" type="number" value="@Value" min="@Min" max="@Max" step="@Step"
+           inputmode="decimal" required="@Required" aria-invalid="@(Issues.Count > 0 ? "true" : "false")"
+           aria-describedby="@_shell?.DescribedBy" @oninput="OnInputAsync" />
+</FormFieldShell>
+
+@code {
+    private FormFieldShell? _shell;
+    [Parameter, EditorRequired] public string ControlId { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string FieldKey { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string FieldTypeCode { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Step { get; set; } = "any";
+    [Parameter] public double? Min { get; set; }
+    [Parameter] public double? Max { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public object? Value { get; set; }
+    [Parameter] public IReadOnlyList<string> Issues { get; set; } = [];
+    [Parameter] public EventCallback<object?> ValueChanged { get; set; }
+    private Task OnInputAsync(ChangeEventArgs args) => ValueChanged.InvokeAsync(args.Value);
+}

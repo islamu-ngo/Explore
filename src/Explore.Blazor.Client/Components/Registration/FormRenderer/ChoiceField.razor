@@ -1,0 +1,41 @@
+@* ABOUTME: Renders server options as native radios or checkboxes according to single or multiple choice semantics. *@
+@* ABOUTME: Retains option order, retired-option filtering, keyboard activation, and field-level issue relationships. *@
+
+<fieldset class="choice-field" data-field-type="@(Multiple ? "MULTIPLE_CHOICE" : "SINGLE_CHOICE")" aria-describedby="@ErrorId">
+    <legend>@Label @if (!Required) { <span>Optional</span> }</legend>
+    @foreach (RegistrationFieldOptionView option in Options.Where(item => !item.IsRetired).OrderBy(item => item.Ordinal))
+    {
+        string optionId = $"{ControlId}-{option.Id:N}";
+        <label for="@optionId" class="choice-field__option">
+            <input id="@optionId" name="@ControlId" type="@(Multiple ? "checkbox" : "radio")" value="@option.Key"
+                   checked="@Selected(option.Key)" required="@(Required && !Multiple)" @onchange="@(args => ChangeAsync(option.Key, args))" />
+            <span>@option.Label</span>
+        </label>
+    }
+    @if (Issues.Count > 0)
+    {
+        <ul id="@ErrorId" role="alert">
+            @foreach (string issue in Issues) { <li>@issue</li> }
+        </ul>
+    }
+</fieldset>
+
+@code {
+    [Parameter, EditorRequired] public string ControlId { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public bool Multiple { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public object? Value { get; set; }
+    [Parameter] public IReadOnlyList<RegistrationFieldOptionView> Options { get; set; } = [];
+    [Parameter] public IReadOnlyList<string> Issues { get; set; } = [];
+    [Parameter] public EventCallback<object?> ValueChanged { get; set; }
+    private string ErrorId => $"{ControlId}-errors";
+    private bool Selected(string key) => Multiple ? Value is IEnumerable<string> values && values.Contains(key) : Equals(Value, key);
+    private Task ChangeAsync(string key, ChangeEventArgs args)
+    {
+        if (!Multiple) return ValueChanged.InvokeAsync(key);
+        var values = Value is IEnumerable<string> selected ? selected.ToHashSet(StringComparer.Ordinal) : [];
+        if (args.Value is true) values.Add(key); else values.Remove(key);
+        return ValueChanged.InvokeAsync(values.ToArray());
+    }
+}

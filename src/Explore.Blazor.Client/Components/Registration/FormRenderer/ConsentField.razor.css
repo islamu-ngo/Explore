@@ -1,0 +1,13 @@
+/* ABOUTME: Tokenized consent block layout that keeps exact server text prominent and agreement explicit. */
+/* ABOUTME: Uses flat bordered hierarchy and logical spacing for RTL, zoom, and forced-color resilience. */
+
+.consent-field { display: grid; gap: var(--isl-space-3); margin: 0; padding: var(--isl-space-4); border: 1px solid var(--isl-color-border); border-radius: var(--isl-radius-card); min-inline-size: 0; }
+.consent-field legend { color: var(--isl-color-text); font-weight: 600; padding-inline: var(--isl-space-2); }
+.consent-field__text { margin: 0; white-space: pre-wrap; }
+.consent-field__choice { display: flex; align-items: center; gap: var(--isl-space-3); min-block-size: var(--isl-target-min); font-weight: 600; }
+.consent-field__choice input { inline-size: var(--isl-target-min); block-size: var(--isl-target-min); }
+.consent-field ul { color: var(--isl-color-error); margin: 0; padding-inline-start: var(--isl-space-5); }
+
+@media (forced-colors: active) {
+    .consent-field { border-color: CanvasText; }
+}

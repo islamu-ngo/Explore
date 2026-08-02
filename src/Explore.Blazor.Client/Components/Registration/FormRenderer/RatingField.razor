@@ -1,0 +1,26 @@
+@* ABOUTME: Renders a bounded rating as a native select with an explicit unanswered option. *@
+@* ABOUTME: Avoids an inaccessible visual-only star widget while preserving numeric submission semantics. *@
+
+<FormFieldShell @ref="_shell" ControlId="@ControlId" FieldKey="@FieldKey" FieldTypeCode="RATING"
+                Label="@Label" Required="@Required" Issues="@Issues">
+    <select id="@ControlId" name="@FieldKey" required="@Required" value="@Value"
+            aria-invalid="@(Issues.Count > 0 ? "true" : "false")" aria-describedby="@_shell?.DescribedBy"
+            @onchange="OnChangeAsync">
+        <option value="">Select a rating</option>
+        @for (int rating = Minimum; rating <= Maximum; rating++) { <option value="@rating">@rating</option> }
+    </select>
+</FormFieldShell>
+
+@code {
+    private FormFieldShell? _shell;
+    [Parameter, EditorRequired] public string ControlId { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string FieldKey { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public int Minimum { get; set; } = 1;
+    [Parameter] public int Maximum { get; set; } = 5;
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public object? Value { get; set; }
+    [Parameter] public IReadOnlyList<string> Issues { get; set; } = [];
+    [Parameter] public EventCallback<object?> ValueChanged { get; set; }
+    private Task OnChangeAsync(ChangeEventArgs args) => ValueChanged.InvokeAsync(args.Value);
+}

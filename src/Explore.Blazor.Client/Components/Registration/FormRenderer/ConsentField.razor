@@ -1,0 +1,30 @@
+@* ABOUTME: Renders the exact server consent text beside an explicit native agreement control. *@
+@* ABOUTME: Keeps consent distinct from a generic Boolean answer and exposes version evidence as metadata only. *@
+
+<fieldset class="consent-field" data-field-type="CONSENT" data-consent-version="@ConsentTextVersion" aria-describedby="@ErrorId">
+    <legend>@Label</legend>
+    <p class="consent-field__text">@ConsentText</p>
+    <label for="@ControlId" class="consent-field__choice">
+        <input id="@ControlId" name="@FieldKey" type="checkbox" checked="@(Value is true)" required="@Required"
+               aria-invalid="@(Issues.Count > 0 ? "true" : "false")" @onchange="OnChangeAsync" />
+        <span>I agree</span>
+    </label>
+    @if (Issues.Count > 0)
+    {
+        <ul id="@ErrorId" role="alert">@foreach (string issue in Issues) { <li>@issue</li> }</ul>
+    }
+</fieldset>
+
+@code {
+    [Parameter, EditorRequired] public string ControlId { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string FieldKey { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string ConsentText { get; set; } = string.Empty;
+    [Parameter] public string? ConsentTextVersion { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public object? Value { get; set; }
+    [Parameter] public IReadOnlyList<string> Issues { get; set; } = [];
+    [Parameter] public EventCallback<object?> ValueChanged { get; set; }
+    private string ErrorId => $"{ControlId}-errors";
+    private Task OnChangeAsync(ChangeEventArgs args) => ValueChanged.InvokeAsync(args.Value is bool value && value);
+}

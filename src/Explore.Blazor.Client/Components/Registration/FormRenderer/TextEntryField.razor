@@ -1,0 +1,31 @@
+@* ABOUTME: Renders the native single-line family with type-appropriate browser semantics and autocomplete. *@
+@* ABOUTME: Covers short text, email, phone, URL, country code, and language tag without collapsing their input states. *@
+
+<FormFieldShell @ref="_shell" ControlId="@ControlId" FieldKey="@FieldKey" FieldTypeCode="@FieldTypeCode"
+                Label="@Label" Required="@Required" Issues="@Issues">
+    <input id="@ControlId" name="@FieldKey" type="@InputType" value="@Value"
+           required="@Required" minlength="@MinLength" maxlength="@MaxLength" pattern="@Pattern"
+           autocomplete="@Autocomplete" inputmode="@InputMode" lang="@Language"
+           aria-invalid="@(Issues.Count > 0 ? "true" : "false")" aria-describedby="@_shell?.DescribedBy"
+           @oninput="OnInputAsync" />
+</FormFieldShell>
+
+@code {
+    private FormFieldShell? _shell;
+    [Parameter, EditorRequired] public string ControlId { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string FieldKey { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string FieldTypeCode { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public string InputType { get; set; } = "text";
+    [Parameter] public string? Autocomplete { get; set; }
+    [Parameter] public string? InputMode { get; set; }
+    [Parameter] public string? Language { get; set; }
+    [Parameter] public string? Pattern { get; set; }
+    [Parameter] public int? MinLength { get; set; }
+    [Parameter] public int? MaxLength { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public IReadOnlyList<string> Issues { get; set; } = [];
+    [Parameter] public EventCallback<object?> ValueChanged { get; set; }
+    private Task OnInputAsync(ChangeEventArgs args) => ValueChanged.InvokeAsync(args.Value);
+}

@@ -1,0 +1,25 @@
+@* ABOUTME: Renders date, time, and instant answers using their native browser controls. *@
+@* ABOUTME: Applies server-authored temporal bounds while retaining distinct wire-friendly values. *@
+
+<FormFieldShell @ref="_shell" ControlId="@ControlId" FieldKey="@FieldKey" FieldTypeCode="@FieldTypeCode"
+                Label="@Label" Required="@Required" Issues="@Issues">
+    <input id="@ControlId" name="@FieldKey" type="@InputType" value="@Value" min="@Min" max="@Max"
+           required="@Required" aria-invalid="@(Issues.Count > 0 ? "true" : "false")"
+           aria-describedby="@_shell?.DescribedBy" @oninput="OnInputAsync" />
+</FormFieldShell>
+
+@code {
+    private FormFieldShell? _shell;
+    [Parameter, EditorRequired] public string ControlId { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string FieldKey { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string FieldTypeCode { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string InputType { get; set; } = string.Empty;
+    [Parameter] public string? Min { get; set; }
+    [Parameter] public string? Max { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public IReadOnlyList<string> Issues { get; set; } = [];
+    [Parameter] public EventCallback<object?> ValueChanged { get; set; }
+    private Task OnInputAsync(ChangeEventArgs args) => ValueChanged.InvokeAsync(args.Value);
+}
