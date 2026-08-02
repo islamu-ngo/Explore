@@ -128,7 +128,7 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         var title = $"MCP Managed Draft {Guid.NewGuid():N}";
         var seed = await SeedOwnedDraftEventAsync(factory, userId, title);
 
-        using var restRequest = CreateAuthenticatedRequest(HttpMethod.Get, $"/api/event/{seed.EventId}", userId);
+        using var restRequest = CreateAuthenticatedRequest(HttpMethod.Get, $"/api/event/{seed.EventId}/management-detail", userId);
         using var restResponse = await client.SendAsync(restRequest);
         using var restDocument = await JsonDocument.ParseAsync(await restResponse.Content.ReadAsStreamAsync());
         var restLinks = ReadRestLinks(restDocument.RootElement);
@@ -190,7 +190,7 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         var title = $"MCP Readiness Draft {Guid.NewGuid():N}";
         var seed = await SeedOwnedDraftEventAsync(factory, userId, title);
 
-        using var restDetailRequest = CreateAuthenticatedRequest(HttpMethod.Get, $"/api/event/{seed.EventId}", userId);
+        using var restDetailRequest = CreateAuthenticatedRequest(HttpMethod.Get, $"/api/event/{seed.EventId}/management-detail", userId);
         using var restDetailResponse = await client.SendAsync(restDetailRequest);
         using var restDetailDocument = await JsonDocument.ParseAsync(await restDetailResponse.Content.ReadAsStreamAsync());
         var restLinks = ReadRestLinks(restDetailDocument.RootElement);
@@ -253,7 +253,7 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         var seed = await SeedOwnedDraftEventAsync(factory, userId, title);
         await SetEventStatusAsync(factory, seed.EventId, EventStatusEnum.Published);
 
-        using var restDetailRequest = CreateAuthenticatedRequest(HttpMethod.Get, $"/api/event/{seed.EventId}", userId);
+        using var restDetailRequest = CreateAuthenticatedRequest(HttpMethod.Get, $"/api/event/{seed.EventId}/management-detail", userId);
         using var restDetailResponse = await client.SendAsync(restDetailRequest);
         using var restDetailDocument = await JsonDocument.ParseAsync(await restDetailResponse.Content.ReadAsStreamAsync());
         var restLinks = ReadRestLinks(restDetailDocument.RootElement);
@@ -340,8 +340,13 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         registrationsContext.GetProperty("PageSize").GetInt32().Should().Be(100);
         registrationsContext.GetProperty("PageSizeWasClamped").GetBoolean().Should().BeTrue();
         registrationsContext.GetProperty("TotalRegistrationCount").GetInt32().Should().Be(1);
-        registrationsText.Should().Contain("MCP Management Session");
-        registrationsText.Should().Contain("Approved");
+        var registration = registrationsContext.GetProperty("Registrations").EnumerateArray().Single();
+        registration.GetProperty("EventId").GetGuid().Should().Be(seed.EventId);
+        registration.GetProperty("StatusCode").GetString().Should().Be("DRAFT");
+        registration.GetProperty("CurrencyCode").GetString().Should().Be("USD");
+        registration.GetProperty("TotalDueMinor").GetInt64().Should().Be(0);
+        registrationsText.Should().NotContain("MCP Management Session");
+        registrationsText.Should().NotContain("Approved");
         registrationsText.Should().NotContain("MCP Management Attendee");
         registrationsText.Should().NotContain("TenantId");
         registrationsText.Should().NotContain("UserId");
@@ -461,6 +466,9 @@ public sealed class EventManagementMcpAuthenticatedReadTests
             .WithDisplayName("MCP Authenticated Other")
             .Build();
         context.Actors.AddRange(ownerActor, otherActor);
+        context.TenantUsers.AddRange(
+            CreateActiveTenantUser(tenant, owner, ownerActor),
+            CreateActiveTenantUser(tenant, otherUser, otherActor));
         await context.SaveChangesAsync();
 
         context.Events.AddRange(
@@ -523,6 +531,7 @@ public sealed class EventManagementMcpAuthenticatedReadTests
                 .WithDisplayName("MCP Management Owner")
                 .Build();
             context.Actors.Add(ownerActor);
+            context.TenantUsers.Add(CreateActiveTenantUser(tenant, owner, ownerActor));
             await context.SaveChangesAsync();
         }
 
@@ -545,6 +554,20 @@ public sealed class EventManagementMcpAuthenticatedReadTests
 
         return new OwnedDraftEventSeed(@event.Id, @event.ConcurrencyStamp);
     }
+
+    private static TenantUser CreateActiveTenantUser(Tenant tenant, User user, Actor actor) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        TenantId = tenant.Id,
+        Tenant = tenant,
+        UserId = user.Id,
+        User = user,
+        ActorId = actor.Id,
+        Actor = actor,
+        StatusId = (int)TenantUserStatusEnum.Active,
+        JoinedAt = DateTime.UtcNow,
+        CreatedAt = DateTime.UtcNow
+    };
 
     private static async Task SetEventStatusAsync(
         AuthenticatedWebApplicationFactory factory,

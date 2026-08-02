@@ -256,7 +256,7 @@ public sealed class EventLocationPrivacyMcpContractTests
         var eventId = Guid.NewGuid();
         var eventDto = CreatePublishedEvent(eventId);
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<GetEventDetailsRequest>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<GetEventManagementDetailsRequest>(), Arg.Any<CancellationToken>())
             .Returns(eventDto);
         mediator.Send(Arg.Any<GetManagedSessionsByEventRequest>(), Arg.Any<CancellationToken>())
             .Returns(new List<EventSessionListDto>());
@@ -274,7 +274,7 @@ public sealed class EventLocationPrivacyMcpContractTests
                     RoomName = "PRIVATE-MANAGEMENT-ROOM"
                 }
             });
-        mediator.Send(Arg.Any<GetEventDaysByEventRequest>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<GetManagedEventDaysByEventRequest>(), Arg.Any<CancellationToken>())
             .Returns(new List<EventDayListDto>());
         mediator.Send(Arg.Any<GetManagedEventAgendaItemsByEventRequest>(), Arg.Any<CancellationToken>())
             .Returns(new List<EventAgendaItemListDto>());
@@ -283,7 +283,9 @@ public sealed class EventLocationPrivacyMcpContractTests
         assembler.ToResource(eventDto, Arg.Any<HttpContext>())
             .Returns(new HalResource<EventDto>(eventDto, new Dictionary<string, HalLink>
             {
-                [LinkRelations.Edit] = HalLink.CreateAction($"/api/event/{eventId}", HttpMethods.Put)
+                [LinkRelations.Edit] = HalLink.CreateAction(
+                    $"/api/event/{eventId}",
+                    HttpMethods.Put)
             }));
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         httpContextAccessor.HttpContext.Returns(new DefaultHttpContext());

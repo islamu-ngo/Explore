@@ -137,7 +137,7 @@ builder.Services.AddRouting(options =>
 // Add services to the container.
 
 builder.Services.ConfigureApplicationServices(builder.Configuration);
-builder.Services.ConfigureInfrastructureServices(builder.Configuration);
+builder.Services.ConfigureInfrastructureServices(builder.Configuration, builder.Environment);
 builder.Services.Configure<CerbosPolicyBootSyncOptions>(
     builder.Configuration.GetSection(CerbosPolicyBootSyncOptions.SectionName));
 builder.Services.PostConfigure<McpAdapterSettings>(settings =>
@@ -709,8 +709,8 @@ app.UseMiddleware<ApiTenantPostAuthenticationMiddleware>();
 app.UseMiddleware<McpRuntimeGateMiddleware>();
 app.UseRequestLocalization();
 app.UseRateLimiter();
-app.UseMiddleware<IdempotencyMiddleware>();
 app.UseAuthorization();
+app.UseMiddleware<IdempotencyMiddleware>();
 app.UseMiddleware<SupportAccessAuditMiddleware>();
 if (!isOpenApiGeneration &&
     useTickerQEmailDispatch &&

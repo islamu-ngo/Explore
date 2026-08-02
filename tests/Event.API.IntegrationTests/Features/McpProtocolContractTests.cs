@@ -20,6 +20,7 @@ using Explore.Application.Models;
 using Explore.Application.Responses;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
+using Explore.Domain;
 using Explore.Domain.Ai;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
@@ -126,14 +127,19 @@ public sealed class McpProtocolContractTests
         {
             ["conversationId"] = conversationId.ToString(),
             ["toolName"] = "CreateEventDraft",
-            ["payloadJson"] = "{\"title\":\"Generic MCP protocol draft\"}",
+            ["payloadJson"] = "{\"title\":\"Generic MCP protocol draft\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}",
             ["summary"] = "Generic proposal smoke"
         });
         using var projectedProposal = await mcp.CallToolAsync("propose_create_event_draft", new JsonObject
         {
             ["conversationId"] = conversationId.ToString(),
             ["summary"] = "Projected proposal smoke",
-            ["title"] = "Projected MCP protocol draft"
+            ["title"] = "Projected MCP protocol draft",
+            ["participationConfiguration"] = new JsonObject
+            {
+                ["participationHandlingModeId"] = 1,
+                ["advanceRegistrationObligationId"] = 1
+            }
         });
         using var projectedUpdateProposal = await mcp.CallToolAsync("propose_update_event_draft", new JsonObject
         {
@@ -141,7 +147,13 @@ public sealed class McpProtocolContractTests
             ["summary"] = "Projected update proposal smoke",
             ["eventId"] = existingEvent.EventId.ToString(),
             ["expectedConcurrencyStamp"] = existingEvent.ConcurrencyStamp.ToString(),
-            ["title"] = "Projected MCP protocol update"
+            ["expectedParticipationConfigurationConcurrencyStamp"] = existingEvent.ParticipationConfigurationConcurrencyStamp.ToString(),
+            ["title"] = "Projected MCP protocol update",
+            ["participationConfiguration"] = new JsonObject
+            {
+                ["participationHandlingModeId"] = existingEvent.ParticipationHandlingModeId,
+                ["advanceRegistrationObligationId"] = existingEvent.AdvanceRegistrationObligationId
+            }
         });
         using var projectedPublishProposal = await mcp.CallToolAsync("propose_publish_event", new JsonObject
         {
@@ -267,7 +279,7 @@ public sealed class McpProtocolContractTests
         using var detailResponse = await httpClient.SendAsync(detailRequest);
         detailResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         using var detail = await JsonDocument.ParseAsync(await detailResponse.Content.ReadAsStreamAsync());
-        detail.RootElement.GetProperty("proposedActions").GetArrayLength().Should().Be(12);
+        detail.RootElement.GetProperty("proposedActions").GetArrayLength().Should().Be(11);
     }
 
     [Test]
@@ -537,6 +549,27 @@ public sealed class McpProtocolContractTests
             await context.SaveChangesAsync();
         }
 
+        if (!await context.TenantUsers.AnyAsync(candidate =>
+                candidate.TenantId == tenant.Id
+                && candidate.UserId == owner.Id
+                && candidate.ActorId == ownerActor.Id))
+        {
+            context.TenantUsers.Add(new TenantUser
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenant.Id,
+                Tenant = tenant,
+                UserId = owner.Id,
+                User = owner,
+                ActorId = ownerActor.Id,
+                Actor = ownerActor,
+                StatusId = (int)TenantUserStatusEnum.Active,
+                JoinedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+        }
+
         var @event = new EventBuilder()
             .WithTitle(title)
             .WithDescription($"Description for {title}")
@@ -554,7 +587,12 @@ public sealed class McpProtocolContractTests
         @event.CreatedBy = userId;
         await context.SaveChangesAsync();
 
-        return new OwnedDraftEventSeed(@event.Id, @event.ConcurrencyStamp);
+        return new OwnedDraftEventSeed(
+            @event.Id,
+            @event.ConcurrencyStamp,
+            @event.ParticipationConfiguration!.ConcurrencyStamp,
+            @event.ParticipationConfiguration.ParticipationHandlingModeId,
+            @event.ParticipationConfiguration.AdvanceRegistrationObligationId);
     }
 
     private static async Task<EventState> ReadEventStateAsync(
@@ -608,7 +646,8 @@ public sealed class McpProtocolContractTests
     private static void AssertSuccessfulToolResult(JsonDocument document)
     {
         var descriptor = JsonDocument.Parse(GetFirstTextContent(GetResult(document)));
-        descriptor.RootElement.GetProperty("Success").GetBoolean().Should().BeTrue();
+        var message = descriptor.RootElement.GetProperty("Message").GetString();
+        descriptor.RootElement.GetProperty("Success").GetBoolean().Should().BeTrue(message);
         descriptor.RootElement.GetProperty("Message").GetString().Should().Contain("Confirm");
         descriptor.RootElement.GetProperty("Id").GetGuid().Should().NotBeEmpty();
     }
@@ -657,7 +696,12 @@ public sealed class McpProtocolContractTests
             Guid.TryParse(value.ToString(), out var actual) &&
             actual == expected;
 
-    private sealed record OwnedDraftEventSeed(Guid EventId, Guid ConcurrencyStamp);
+    private sealed record OwnedDraftEventSeed(
+        Guid EventId,
+        Guid ConcurrencyStamp,
+        Guid ParticipationConfigurationConcurrencyStamp,
+        int ParticipationHandlingModeId,
+        int AdvanceRegistrationObligationId);
 
     private sealed record EventState(string Title, Guid ConcurrencyStamp, int EventStatusId);
 

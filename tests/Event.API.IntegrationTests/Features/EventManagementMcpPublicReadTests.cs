@@ -350,6 +350,19 @@ public sealed class EventManagementMcpPublicReadTests
                 .WithDisplayName("Default MCP Event Actor")
                 .Build();
             context.Actors.Add(actor);
+            context.TenantUsers.Add(new TenantUser
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenantId,
+                Tenant = tenant,
+                UserId = user.Id,
+                User = user,
+                ActorId = actor.Id,
+                Actor = actor,
+                StatusId = (int)TenantUserStatusEnum.Active,
+                JoinedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            });
             await context.SaveChangesAsync();
 
             return new EventSeedBuilder(context, tenantId, actor.Id);

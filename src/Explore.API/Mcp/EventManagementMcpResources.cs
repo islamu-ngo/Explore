@@ -48,7 +48,7 @@ public sealed class EventManagementMcpResources(
         Guid eventId,
         CancellationToken cancellationToken = default)
     {
-        EventDto? eventDto = await mediator.Send(new GetEventDetailsRequest { Id = eventId }, cancellationToken);
+        EventDto? eventDto = await mediator.Send(new GetEventManagementDetailsRequest { Id = eventId }, cancellationToken);
         if (eventDto is null)
         {
             return Serialize(EventMcpManagementContextResultDescriptor.NotFound(eventId));

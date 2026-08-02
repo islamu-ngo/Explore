@@ -807,7 +807,7 @@ public sealed class EventManagementMcpTools(
         Guid eventId,
         CancellationToken cancellationToken)
     {
-        var eventDto = await mediator.Send(new GetEventDetailsRequest { Id = eventId }, cancellationToken);
+        var eventDto = await mediator.Send(new GetEventManagementDetailsRequest { Id = eventId }, cancellationToken);
         if (eventDto is null)
         {
             return EventMcpPublishReadinessResultDescriptor.NotFound(eventId);
@@ -904,7 +904,7 @@ public sealed class EventManagementMcpTools(
         Guid eventId,
         CancellationToken cancellationToken)
     {
-        var gate = await BuildManagementReadGateAsync(eventId, LinkRelations.ViewRegistrationOrders, cancellationToken);
+        var gate = await BuildManagementReadGateAsync(eventId, LinkRelations.Edit, cancellationToken);
         if (!gate.Found)
         {
             return EventMcpProgramManagementResultDescriptor.NotFound(eventId);
@@ -1331,7 +1331,7 @@ public sealed class EventManagementMcpTools(
         string requiredLinkRelation,
         CancellationToken cancellationToken)
     {
-        var eventDto = await mediator.Send(new GetEventDetailsRequest { Id = eventId }, cancellationToken);
+        var eventDto = await mediator.Send(new GetEventManagementDetailsRequest { Id = eventId }, cancellationToken);
         if (eventDto is null)
         {
             return EventMcpManagementReadGate.NotFound();
