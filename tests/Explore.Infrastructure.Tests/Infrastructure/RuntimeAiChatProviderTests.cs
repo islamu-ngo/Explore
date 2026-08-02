@@ -9,6 +9,7 @@ using Explore.Application.Telemetry;
 using Explore.Domain.Ai;
 using Explore.Infrastructure.Ai;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -230,7 +231,9 @@ public sealed class RuntimeAiChatProviderTests
         var client = new HttpClient(handler);
         var factory = new StaticHttpClientFactory(client);
         var options = Options.Create(settings);
-        var validator = new AiProviderSettingsValidator();
+        var environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns("Testing");
+        var validator = new AiProviderSettingsValidator(environment);
         var meterFactory = Substitute.For<IMeterFactory>();
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
 

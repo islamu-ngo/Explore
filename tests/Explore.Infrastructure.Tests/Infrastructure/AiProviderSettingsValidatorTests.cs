@@ -2,12 +2,14 @@
 // ABOUTME: Protects provider bootstrap from unsupported providers, missing credentials, and unsafe endpoints.
 
 using Explore.Infrastructure.Ai;
+using Microsoft.Extensions.Hosting;
+using NSubstitute;
 
 namespace Explore.Infrastructure.Tests.Infrastructure;
 
 public sealed class AiProviderSettingsValidatorTests
 {
-    private readonly AiProviderSettingsValidator _validator = new();
+    private readonly AiProviderSettingsValidator _validator = CreateValidator();
 
     [Test]
     public async Task Validate_DefaultSettingsReturnsSuccess()
@@ -27,6 +29,13 @@ public sealed class AiProviderSettingsValidatorTests
         });
 
         await Assert.That(result.Succeeded).IsTrue();
+    }
+
+    private static AiProviderSettingsValidator CreateValidator()
+    {
+        var environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns("Testing");
+        return new AiProviderSettingsValidator(environment);
     }
 
     [Test]

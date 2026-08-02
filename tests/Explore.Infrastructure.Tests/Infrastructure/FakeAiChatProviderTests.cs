@@ -2,6 +2,7 @@
 // ABOUTME: Verifies fake chat, model catalog, and proposed-action output without network calls.
 
 using Explore.Application.Contracts.Infrastructure.Ai;
+using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Domain.Ai;
 using Explore.Infrastructure.Ai;
 
@@ -55,8 +56,12 @@ public sealed class FakeAiChatProviderTests
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.Response!.ProposedActions.Count).IsEqualTo(1);
-        await Assert.That(result.Response.ProposedActions[0].Kind).IsEqualTo(AiProposedActionKind.CreateEventDraft);
-        await Assert.That(result.Response.ProposedActions[0].PayloadJson).Contains("Fake AI event draft");
+        var proposal = result.Response.ProposedActions[0];
+        await Assert.That(proposal.Kind).IsEqualTo(AiProposedActionKind.CreateEventDraft);
+        await Assert.That(proposal.PayloadJson).Contains("Fake AI event draft");
+        await Assert.That(AiToolContractRegistry.CreateDefault()
+            .ValidatePayload(proposal.Kind, proposal.PayloadJson)
+            .Succeeded).IsTrue();
     }
 
     [Test]

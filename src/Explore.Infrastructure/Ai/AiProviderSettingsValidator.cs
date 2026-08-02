@@ -2,12 +2,15 @@
 // ABOUTME: Rejects unknown provider IDs, missing model credentials, and unsafe provider endpoints.
 
 using Explore.Application.Contracts.Infrastructure.Ai;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure.Ai;
 
 public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSettings>
 {
+    internal bool FakeProviderAllowed { get; }
+
     private static readonly HashSet<int> SupportedProviders =
     [
         AiProviderSettings.ProviderNone,
@@ -25,6 +28,12 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
         AiProviderSettings.AzureCredentialModeDefaultAzureCredential
     };
 
+    public AiProviderSettingsValidator(IHostEnvironment? environment = null)
+    {
+        FakeProviderAllowed = environment?.IsDevelopment() == true
+            || environment?.IsEnvironment("Testing") == true;
+    }
+
     public ValidateOptionsResult Validate(string? name, AiProviderSettings options)
     {
         List<string> failures = [];
@@ -32,6 +41,11 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
         if (!SupportedProviders.Contains(options.Provider))
         {
             failures.Add("AiProvider:Provider must be a valid provider ID (1-7).");
+        }
+
+        if (options.Provider == AiProviderSettings.ProviderFake && !FakeProviderAllowed)
+        {
+            failures.Add("AiProvider:Provider fake is supported only in Development or Testing environments.");
         }
 
         if (!string.IsNullOrWhiteSpace(options.EndpointUrl))

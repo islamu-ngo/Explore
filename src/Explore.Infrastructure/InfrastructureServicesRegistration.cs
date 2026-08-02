@@ -51,6 +51,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http.Resilience;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Polly;
 
@@ -58,7 +59,10 @@ namespace Explore.Infrastructure;
 
 public static class InfrastructureServicesRegistration
 {
-    public static IServiceCollection ConfigureInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection ConfigureInfrastructureServices(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment? environment = null)
     {
         services.AddOptions<AtprotoInfrastructureOptions>()
             .Bind(configuration.GetSection(AtprotoInfrastructureOptions.SectionName));
@@ -380,10 +384,14 @@ public static class InfrastructureServicesRegistration
         // AI provider foundation. Strategy pattern dispatches to concrete adapters without if/else bloat.
         services.AddOptions<AiProviderSettings>()
             .Bind(configuration.GetSection(AiProviderSettings.SectionName));
-        services.AddSingleton<AiProviderSettingsValidator>();
-        services.AddSingleton<IValidateOptions<AiProviderSettings>>(sp => sp.GetRequiredService<AiProviderSettingsValidator>());
+        var aiProviderSettingsValidator = new AiProviderSettingsValidator(environment);
+        services.AddSingleton(aiProviderSettingsValidator);
+        services.AddSingleton<IValidateOptions<AiProviderSettings>>(aiProviderSettingsValidator);
         services.AddScoped<AiProviderHealthReporter>();
-        services.AddScoped<FakeAiChatProvider>();
+        if (aiProviderSettingsValidator.FakeProviderAllowed)
+        {
+            services.AddScoped<FakeAiChatProvider>();
+        }
         services.AddHttpClient(OpenAiResponsesChatProvider.HttpClientName, client =>
         {
             client.Timeout = Timeout.InfiniteTimeSpan;
@@ -411,7 +419,10 @@ public static class InfrastructureServicesRegistration
             services.AddScoped<MicrosoftExtensionsAiChatProvider>();
         }
 
-        services.AddScoped<IAiProviderStrategy, FakeAiProviderStrategy>();
+        if (aiProviderSettingsValidator.FakeProviderAllowed)
+        {
+            services.AddScoped<IAiProviderStrategy, FakeAiProviderStrategy>();
+        }
         services.AddScoped<IAiProviderStrategy, OpenAiResponsesProviderStrategy>();
         services.AddScoped<IAiProviderStrategy, OpenAiCompatibleProviderStrategy>();
         services.AddScoped<IAiProviderStrategy, AnthropicProviderStrategy>();

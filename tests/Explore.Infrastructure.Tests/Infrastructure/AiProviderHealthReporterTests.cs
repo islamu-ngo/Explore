@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Infrastructure.Ai;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 
@@ -140,7 +141,9 @@ public sealed class AiProviderHealthReporterTests
 
     private static AiProviderHealthReporter CreateReporter()
     {
-        var validator = new AiProviderSettingsValidator();
+        var environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns("Testing");
+        var validator = new AiProviderSettingsValidator(environment);
         var strategies = new IAiProviderStrategy[]
         {
             new FakeAiProviderStrategy(new FakeAiChatProvider()),
