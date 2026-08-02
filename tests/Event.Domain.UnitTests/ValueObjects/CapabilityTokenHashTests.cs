@@ -33,6 +33,18 @@ public sealed class CapabilityTokenHashTests
     }
 
     [Test]
+    public async Task ToString_RedactsThePersistedHashValue()
+    {
+        string value = Convert.ToBase64String(Enumerable.Repeat((byte)7, 32).ToArray());
+
+        CapabilityTokenHash hash = CapabilityTokenHash.Create(value);
+
+        await Assert.That(hash.ToString()).DoesNotContain(value);
+        await Assert.That($"{hash}").DoesNotContain(value);
+        await Assert.That(hash.ToString()).IsEqualTo("CapabilityTokenHash(<redacted>)");
+    }
+
+    [Test]
     public async Task Create_RejectsNonCanonicalOrNonSha256Representations()
     {
         string[] invalidValues =

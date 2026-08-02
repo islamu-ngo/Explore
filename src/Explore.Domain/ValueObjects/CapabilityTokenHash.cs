@@ -37,4 +37,6 @@ public sealed record CapabilityTokenHash
 
         return new CapabilityTokenHash(value);
     }
+
+    public override string ToString() => "CapabilityTokenHash(<redacted>)";
 }
