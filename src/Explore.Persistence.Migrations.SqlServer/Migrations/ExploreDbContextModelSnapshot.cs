@@ -195,8 +195,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("actors", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_actors_exactly_one_owner", "num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 1 OR (is_deleted AND num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 0)");
-
                             t.HasCheckConstraint("ck_actors_external_type_matches_owner", "(external_actor_subject_id IS NULL AND actor_type_id <> 6) OR (external_actor_subject_id IS NOT NULL AND actor_type_id = 6)");
                         });
                 });
@@ -206,8 +204,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("ActorId")
                         .HasColumnType("uniqueidentifier")
@@ -369,8 +366,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("ConcurrencyStamp")
                         .IsConcurrencyToken()
@@ -381,7 +377,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -415,7 +411,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("subscribed_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid>("SubscriberTenantUserId")
                         .HasColumnType("uniqueidentifier")
@@ -473,7 +469,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "SubscriberTenantUserId", "TargetActorId")
                         .IsUnique()
                         .HasDatabaseName("ux_actor_subscriptions_active_row")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.HasIndex("TenantId", "TargetActorId", "StatusId", "NotificationLevelId")
                         .HasDatabaseName("ix_actor_subscriptions_fanout_scan");
@@ -623,8 +619,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid?>("ActorId")
                         .HasColumnType("uniqueidentifier")
@@ -733,8 +728,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("ConversationId")
                         .HasColumnType("uniqueidentifier")
@@ -825,8 +819,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("Content")
                         .IsRequired()
@@ -847,7 +840,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("created_by");
 
                     b.Property<string>("ImageAttachmentsJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("image_attachments_json");
 
                     b.Property<int>("RoleId")
@@ -922,8 +915,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid?>("ActingActorId")
                         .HasColumnType("uniqueidentifier")
@@ -969,7 +961,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<string>("PayloadJson")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("payload_json");
 
                     b.Property<DateTime?>("RejectedAt")
@@ -1023,10 +1015,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "StatusId", "KindId", "CreatedAt")
                         .HasDatabaseName("ix_ai_proposed_actions_tenant_status_kind_created_at");
 
-                    b.ToTable("ai_proposed_actions", "islamu_event", t =>
-                        {
-                            t.HasCheckConstraint("ck_ai_proposed_actions_payload_object", "jsonb_typeof(payload_json) = 'object'");
-                        });
+                    b.ToTable("ai_proposed_actions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiProposedActionKindLookup", b =>
@@ -1166,8 +1155,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime2")
@@ -1273,8 +1261,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime2")
@@ -1469,7 +1456,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -1637,8 +1624,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .IsRequired()
                         .HasMaxLength(2048)
                         .HasColumnType("nvarchar(2048)")
-                        .HasColumnName("did")
-                        .UseCollation("C");
+                        .HasColumnName("did");
 
                     b.Property<int?>("DidCustodyTypeId")
                         .HasColumnType("int")
@@ -1760,8 +1746,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("Cid")
                         .HasMaxLength(255)
@@ -1798,7 +1783,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("record_hash");
 
                     b.Property<string>("RecordJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("record_json");
 
                     b.Property<string>("RecordKey")
@@ -1833,7 +1818,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<string>("Uri")
                         .HasMaxLength(500)
@@ -1861,8 +1846,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                             t.HasCheckConstraint("ck_atproto_records_direction", "direction BETWEEN 1 AND 3");
 
                             t.HasCheckConstraint("ck_atproto_records_provenance", "provenance BETWEEN 1 AND 3");
-
-                            t.HasCheckConstraint("ck_atproto_records_record_hash", "record_hash IS NULL OR record_hash ~ '^[0-9a-f]{64}$'");
 
                             t.HasCheckConstraint("ck_atproto_records_source_version", "source_version >= 0");
                         });
@@ -1933,8 +1916,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("Action")
                         .IsRequired()
@@ -1947,7 +1929,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("actor_id");
 
                     b.Property<string>("AffectedColumns")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("affected_columns");
 
                     b.Property<string>("EntityId")
@@ -1963,11 +1945,11 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("entity_type");
 
                     b.Property<string>("NewValues")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("new_values");
 
                     b.Property<string>("OldValues")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("old_values");
 
                     b.Property<Guid>("TenantId")
@@ -1978,7 +1960,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("timestamp")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.HasKey("Id")
                         .HasName("pk_audit_logs");
@@ -2213,8 +2195,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("ActionType")
                         .IsRequired()
@@ -2226,7 +2207,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -2259,7 +2240,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("timestamp")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2")
@@ -2865,8 +2846,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("AttemptNumber")
                         .HasColumnType("int")
@@ -2963,8 +2943,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("AttemptCount")
                         .HasColumnType("int")
@@ -3219,8 +3198,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int?>("GlobalSmtpRateLimitPerMinuteOverride")
                         .HasColumnType("int")
@@ -3291,8 +3269,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime2")
@@ -3387,8 +3364,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2")
@@ -3828,7 +3804,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                             t.HasCheckConstraint("CK_Event_SessionStartUtcRange", "first_session_start_utc IS NULL OR last_session_start_utc IS NULL OR first_session_start_utc <= last_session_start_utc");
 
-                            t.HasCheckConstraint("CK_Event_TimeZoneIdNotBlank", "event_time_zone_id IS NULL OR length(btrim(event_time_zone_id)) > 0");
+                            t.HasCheckConstraint("CK_Event_TimeZoneIdNotBlank", "event_time_zone_id IS NULL OR trim(event_time_zone_id) <> ''");
                         });
 
                     b.UseTptMappingStrategy();
@@ -3974,11 +3950,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         {
                             t.HasCheckConstraint("CK_EventAgendaItem_EndAfterStart", "end_time > start_time");
 
-                            t.HasCheckConstraint("CK_EventAgendaItem_LocalEndMinuteMatchesTime", "local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
-
                             t.HasCheckConstraint("CK_EventAgendaItem_LocalEndMinuteRange", "local_end_minute_of_day BETWEEN 0 AND 1439");
-
-                            t.HasCheckConstraint("CK_EventAgendaItem_LocalStartMinuteMatchesTime", "local_start_minute_of_day = ((EXTRACT(HOUR FROM local_start_time)::int * 60) + EXTRACT(MINUTE FROM local_start_time)::int)");
 
                             t.HasCheckConstraint("CK_EventAgendaItem_LocalStartMinuteRange", "local_start_minute_of_day BETWEEN 0 AND 1439");
 
@@ -4078,7 +4050,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventId", "Name")
                         .IsUnique()
                         .HasDatabaseName("ix_event_capacity_pools_tenant_id_event_id_name")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.ToTable("event_capacity_pools", "islamu_event");
                 });
@@ -4141,8 +4113,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("ConsentTextSnapshot")
                         .IsRequired()
@@ -4254,8 +4225,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2")
@@ -5205,7 +5175,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventId")
                         .IsUnique()
                         .HasDatabaseName("ux_event_locations_active_tba")
-                        .HasFilter("is_deleted = false AND is_to_be_announced = true");
+                        .HasFilter("is_deleted = 0 AND is_to_be_announced = 1");
 
                     b.HasIndex("TenantId", "LocationId")
                         .HasDatabaseName("ix_event_locations_tenant_id_location_id");
@@ -5216,17 +5186,15 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventId", "LocationId")
                         .IsUnique()
                         .HasDatabaseName("ux_event_locations_active_physical")
-                        .HasFilter("is_deleted = false AND is_to_be_announced = false AND location_id IS NOT NULL");
+                        .HasFilter("is_deleted = 0 AND is_to_be_announced = 0 AND location_id IS NOT NULL");
 
                     b.ToTable("event_locations", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_event_locations_physical_or_tba", "(location_id IS NOT NULL AND is_to_be_announced = false) OR (location_id IS NULL AND is_to_be_announced = true)");
+                            t.HasCheckConstraint("ck_event_locations_physical_or_tba", "(location_id IS NOT NULL AND is_to_be_announced = 0) OR (location_id IS NULL AND is_to_be_announced = 1)");
 
                             t.HasCheckConstraint("ck_event_locations_policy_version", "policy_version > 0");
 
-                            t.HasCheckConstraint("ck_event_locations_tba_suppresses_fields", "is_to_be_announced = false OR (show_venue_name = false AND show_city = false AND show_country = false AND show_room_name = false AND show_street_address = false AND show_postcode = false AND show_coordinates = false)");
-
-                            t.HasCheckConstraint("ck_event_locations_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b')");
+                            t.HasCheckConstraint("ck_event_locations_tba_suppresses_fields", "is_to_be_announced = 0 OR (show_venue_name = 0 AND show_city = 0 AND show_country = 0 AND show_room_name = 0 AND show_street_address = 0 AND show_postcode = 0 AND show_coordinates = 0)");
                         });
                 });
 
@@ -5312,8 +5280,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                             t.HasCheckConstraint("ck_event_location_disclosure_audits_policy_step", "previous_policy_version >= 0 AND new_policy_version = previous_policy_version + 1");
 
                             t.HasCheckConstraint("ck_event_location_disclosure_audits_reason", "reason BETWEEN 1 AND 5");
-
-                            t.HasCheckConstraint("ck_event_location_disclosure_audits_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b')");
                         });
                 });
 
@@ -5370,8 +5336,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                             t.HasCheckConstraint("ck_event_location_exact_read_audits_purpose", "purpose BETWEEN 1 AND 4");
 
                             t.HasCheckConstraint("ck_event_location_exact_read_audits_trace", "correlation_id IS NOT NULL OR trace_id IS NOT NULL");
-
-                            t.HasCheckConstraint("ck_event_location_exact_read_audits_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b')");
                         });
                 });
 
@@ -5479,9 +5443,9 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("event_moderation_records", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_event_moderation_records_correlation_not_blank", "correlation_id IS NULL OR length(btrim(correlation_id)) > 0");
+                            t.HasCheckConstraint("ck_event_moderation_records_correlation_not_blank", "correlation_id IS NULL OR trim(correlation_id) <> ''");
 
-                            t.HasCheckConstraint("ck_event_moderation_records_reason_code_not_blank", "length(btrim(reason_code)) > 0");
+                            t.HasCheckConstraint("ck_event_moderation_records_reason_code_not_blank", "trim(reason_code) <> ''");
 
                             t.HasCheckConstraint("ck_event_moderation_records_source_decision_requires_report", "source_report_decision_id IS NULL OR source_report_id IS NOT NULL");
 
@@ -5910,8 +5874,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int?>("ApprovalStatusId")
                         .HasColumnType("int")
@@ -5930,7 +5893,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("coverage_established_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2")
@@ -6014,19 +5977,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventSessionId", "RegistrationParticipantId")
                         .IsUnique()
                         .HasDatabaseName("ix_eventregistrations_session_participant")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationParticipantId")
                         .HasDatabaseName("ix_event_registrations_tenant_id_registration_order_id_registration_participant_id");
 
                     b.HasIndex("TenantId", "EventId", "EventSessionId", "LinkedUserId")
                         .HasDatabaseName("ix_eventregistrations_session_user")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.HasIndex("TenantId", "RegistrationOrderLineId", "TicketTypeEntitlementId", "EventSessionId", "EntitlementOrdinal")
                         .IsUnique()
                         .HasDatabaseName("ix_eventregistrations_order_admission")
-                        .HasFilter("registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false");
+                        .HasFilter("registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = 0");
 
                     b.ToTable("event_registrations", "islamu_event");
                 });
@@ -6222,15 +6185,15 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                             t.HasCheckConstraint("ck_event_reports_priority", "priority BETWEEN 1 AND 4");
 
-                            t.HasCheckConstraint("ck_event_reports_reason_code_not_blank", "length(btrim(reason_code)) > 0");
+                            t.HasCheckConstraint("ck_event_reports_reason_code_not_blank", "trim(reason_code) <> ''");
 
-                            t.HasCheckConstraint("ck_event_reports_reporter_ip_hash_not_blank", "reporter_ip_hash IS NULL OR length(btrim(reporter_ip_hash)) > 0");
+                            t.HasCheckConstraint("ck_event_reports_reporter_ip_hash_not_blank", "reporter_ip_hash IS NULL OR trim(reporter_ip_hash) <> ''");
 
                             t.HasCheckConstraint("ck_event_reports_reporter_kind", "reporter_kind BETWEEN 1 AND 4");
 
-                            t.HasCheckConstraint("ck_event_reports_reporter_locale_not_blank", "reporter_locale IS NULL OR length(btrim(reporter_locale)) > 0");
+                            t.HasCheckConstraint("ck_event_reports_reporter_locale_not_blank", "reporter_locale IS NULL OR trim(reporter_locale) <> ''");
 
-                            t.HasCheckConstraint("ck_event_reports_reporter_user_agent_hash_not_blank", "reporter_user_agent_hash IS NULL OR length(btrim(reporter_user_agent_hash)) > 0");
+                            t.HasCheckConstraint("ck_event_reports_reporter_user_agent_hash_not_blank", "reporter_user_agent_hash IS NULL OR trim(reporter_user_agent_hash) <> ''");
 
                             t.HasCheckConstraint("ck_event_reports_severity_hint", "severity_hint IS NULL OR severity_hint BETWEEN 1 AND 4");
 
@@ -6238,7 +6201,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                             t.HasCheckConstraint("ck_event_reports_status", "status BETWEEN 1 AND 8");
 
-                            t.HasCheckConstraint("ck_event_reports_subcategory_code_not_blank", "subcategory_code IS NULL OR length(btrim(subcategory_code)) > 0");
+                            t.HasCheckConstraint("ck_event_reports_subcategory_code_not_blank", "subcategory_code IS NULL OR trim(subcategory_code) <> ''");
                         });
                 });
 
@@ -6336,7 +6299,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         {
                             t.HasCheckConstraint("ck_event_report_cases_priority", "priority BETWEEN 1 AND 4");
 
-                            t.HasCheckConstraint("ck_event_report_cases_queue_code_not_blank", "length(btrim(queue_code)) > 0");
+                            t.HasCheckConstraint("ck_event_report_cases_queue_code_not_blank", "trim(queue_code) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_cases_status", "status BETWEEN 1 AND 6");
                         });
@@ -6448,19 +6411,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         {
                             t.HasCheckConstraint("ck_event_report_decisions_duplicate_group_shape", "(decision_kind = 2 AND duplicate_group_id IS NOT NULL) OR (decision_kind <> 2 AND duplicate_group_id IS NULL)");
 
-                            t.HasCheckConstraint("ck_event_report_decisions_external_decision_id_not_blank", "external_decision_id IS NULL OR length(btrim(external_decision_id)) > 0");
+                            t.HasCheckConstraint("ck_event_report_decisions_external_decision_id_not_blank", "external_decision_id IS NULL OR trim(external_decision_id) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_decisions_kind", "decision_kind BETWEEN 1 AND 7");
 
                             t.HasCheckConstraint("ck_event_report_decisions_local_moderator_required", "decision_source <> 1 OR moderator_user_id IS NOT NULL");
 
-                            t.HasCheckConstraint("ck_event_report_decisions_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
+                            t.HasCheckConstraint("ck_event_report_decisions_provider_target_id_not_blank", "trim(provider_target_id) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_decisions_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
 
-                            t.HasCheckConstraint("ck_event_report_decisions_reason_code_not_blank", "length(btrim(reason_code)) > 0");
+                            t.HasCheckConstraint("ck_event_report_decisions_reason_code_not_blank", "trim(reason_code) <> ''");
 
-                            t.HasCheckConstraint("ck_event_report_decisions_safe_note_not_blank", "safe_note IS NULL OR length(btrim(safe_note)) > 0");
+                            t.HasCheckConstraint("ck_event_report_decisions_safe_note_not_blank", "safe_note IS NULL OR trim(safe_note) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_decisions_source", "decision_source BETWEEN 1 AND 4");
                         });
@@ -6565,7 +6528,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("event_report_decision_executions", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_event_report_decision_executions_failure_code_not_blank", "last_failure_code IS NULL OR length(btrim(last_failure_code)) > 0");
+                            t.HasCheckConstraint("ck_event_report_decision_executions_failure_code_not_blank", "last_failure_code IS NULL OR trim(last_failure_code) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_decision_executions_lease_pair", "(processing_lease_token IS NULL) = (processing_lease_expires_at_utc IS NULL)");
 
@@ -6666,11 +6629,11 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         {
                             t.HasCheckConstraint("ck_event_report_evidence_classification", "classification BETWEEN 1 AND 3");
 
-                            t.HasCheckConstraint("ck_event_report_evidence_content_hash_not_blank", "content_hash IS NULL OR length(btrim(content_hash)) > 0");
+                            t.HasCheckConstraint("ck_event_report_evidence_content_hash_not_blank", "content_hash IS NULL OR trim(content_hash) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_evidence_kind", "evidence_kind BETWEEN 1 AND 5");
 
-                            t.HasCheckConstraint("ck_event_report_evidence_reporter_text_required", "evidence_kind <> 1 OR (text_body_encrypted IS NOT NULL AND length(btrim(text_body_encrypted)) > 0)");
+                            t.HasCheckConstraint("ck_event_report_evidence_reporter_text_required", "evidence_kind <> 1 OR (text_body_encrypted IS NOT NULL AND trim(text_body_encrypted) <> '')");
                         });
                 });
 
@@ -6787,21 +6750,21 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("event_report_external_links", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_event_report_external_links_correlation_id_not_blank", "length(btrim(correlation_id)) > 0");
+                            t.HasCheckConstraint("ck_event_report_external_links_correlation_id_not_blank", "trim(correlation_id) <> ''");
 
-                            t.HasCheckConstraint("ck_event_report_external_links_last_error_category_not_blank", "last_error_category IS NULL OR length(btrim(last_error_category)) > 0");
+                            t.HasCheckConstraint("ck_event_report_external_links_last_error_category_not_blank", "last_error_category IS NULL OR trim(last_error_category) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_external_links_provider", "provider BETWEEN 1 AND 2");
 
-                            t.HasCheckConstraint("ck_event_report_external_links_provider_case_id_not_blank", "provider_case_id IS NULL OR length(btrim(provider_case_id)) > 0");
+                            t.HasCheckConstraint("ck_event_report_external_links_provider_case_id_not_blank", "provider_case_id IS NULL OR trim(provider_case_id) <> ''");
 
-                            t.HasCheckConstraint("ck_event_report_external_links_provider_signal_id_not_blank", "provider_signal_id IS NULL OR length(btrim(provider_signal_id)) > 0");
+                            t.HasCheckConstraint("ck_event_report_external_links_provider_signal_id_not_blank", "provider_signal_id IS NULL OR trim(provider_signal_id) <> ''");
 
-                            t.HasCheckConstraint("ck_event_report_external_links_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
+                            t.HasCheckConstraint("ck_event_report_external_links_provider_target_id_not_blank", "trim(provider_target_id) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_external_links_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
 
-                            t.HasCheckConstraint("ck_event_report_external_links_provider_url_not_blank", "provider_url IS NULL OR length(btrim(provider_url)) > 0");
+                            t.HasCheckConstraint("ck_event_report_external_links_provider_url_not_blank", "provider_url IS NULL OR trim(provider_url) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_external_links_retry_count_nonnegative", "retry_count >= 0");
 
@@ -6925,25 +6888,25 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("event_report_signals", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_event_report_signals_correlation_id_not_blank", "length(btrim(correlation_id)) > 0");
+                            t.HasCheckConstraint("ck_event_report_signals_correlation_id_not_blank", "trim(correlation_id) <> ''");
 
-                            t.HasCheckConstraint("ck_event_report_signals_external_signal_id_not_blank", "external_signal_id IS NULL OR length(btrim(external_signal_id)) > 0");
+                            t.HasCheckConstraint("ck_event_report_signals_external_signal_id_not_blank", "external_signal_id IS NULL OR trim(external_signal_id) <> ''");
 
-                            t.HasCheckConstraint("ck_event_report_signals_policy_code_not_blank", "length(btrim(policy_code)) > 0");
+                            t.HasCheckConstraint("ck_event_report_signals_policy_code_not_blank", "trim(policy_code) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_signals_provider", "provider BETWEEN 1 AND 5");
 
-                            t.HasCheckConstraint("ck_event_report_signals_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
+                            t.HasCheckConstraint("ck_event_report_signals_provider_target_id_not_blank", "trim(provider_target_id) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_signals_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
 
                             t.HasCheckConstraint("ck_event_report_signals_recommended_action", "recommended_action IS NULL OR recommended_action BETWEEN 0 AND 4");
 
-                            t.HasCheckConstraint("ck_event_report_signals_safe_summary_not_blank", "safe_summary IS NULL OR length(btrim(safe_summary)) > 0");
+                            t.HasCheckConstraint("ck_event_report_signals_safe_summary_not_blank", "safe_summary IS NULL OR trim(safe_summary) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_signals_score_range", "score IS NULL OR (score >= 0 AND score <= 1)");
 
-                            t.HasCheckConstraint("ck_event_report_signals_signal_type_not_blank", "length(btrim(signal_type)) > 0");
+                            t.HasCheckConstraint("ck_event_report_signals_signal_type_not_blank", "trim(signal_type) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_signals_verdict", "verdict BETWEEN 1 AND 5");
                         });
@@ -6995,7 +6958,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("event_report_targets", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_event_report_targets_field_path_not_blank", "field_path IS NULL OR length(btrim(field_path)) > 0");
+                            t.HasCheckConstraint("ck_event_report_targets_field_path_not_blank", "field_path IS NULL OR trim(field_path) <> ''");
 
                             t.HasCheckConstraint("ck_event_report_targets_target_kind", "target_kind BETWEEN 1 AND 6");
                         });
@@ -7213,8 +7176,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("ConcurrencyStamp")
                         .IsConcurrencyToken()
@@ -7416,11 +7378,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                             t.HasCheckConstraint("CK_EventSession_EndTimeTypeState", "start_time IS NULL OR ((end_time_type = 0 AND end_time IS NOT NULL) OR (end_time_type = 1 AND end_time IS NULL) OR (end_time_type = 2))");
 
-                            t.HasCheckConstraint("CK_EventSession_LocalEndMinuteMatchesTime", "local_end_minute_of_day IS NULL OR local_end_time IS NULL OR local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
-
                             t.HasCheckConstraint("CK_EventSession_LocalEndMinuteRange", "local_end_minute_of_day IS NULL OR local_end_minute_of_day BETWEEN 0 AND 1439");
-
-                            t.HasCheckConstraint("CK_EventSession_LocalStartMinuteMatchesTime", "local_start_minute_of_day IS NULL OR local_start_time IS NULL OR local_start_minute_of_day = ((EXTRACT(HOUR FROM local_start_time)::int * 60) + EXTRACT(MINUTE FROM local_start_time)::int)");
 
                             t.HasCheckConstraint("CK_EventSession_LocalStartMinuteRange", "local_start_minute_of_day IS NULL OR local_start_minute_of_day BETWEEN 0 AND 1439");
 
@@ -7435,8 +7393,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
@@ -8208,7 +8165,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventId", "Slug")
                         .IsUnique()
                         .HasDatabaseName("ix_event_session_groups_tenant_event_slug")
-                        .HasFilter("is_deleted = false AND slug IS NOT NULL");
+                        .HasFilter("is_deleted = 0 AND slug IS NOT NULL");
 
                     b.HasIndex("TenantId", "EventId", "SortOrder")
                         .HasDatabaseName("ix_event_session_groups_tenant_event_sort");
@@ -8297,12 +8254,12 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventId", "EventSessionGroupId", "EventSessionId")
                         .IsUnique()
                         .HasDatabaseName("ix_event_session_group_sessions_tenant_event_group_session")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.HasIndex("TenantId", "EventId", "EventSessionId", "IsPrimary")
                         .IsUnique()
                         .HasDatabaseName("ix_event_session_group_sessions_tenant_event_session_primary")
-                        .HasFilter("is_primary = true AND is_deleted = false");
+                        .HasFilter("is_primary = 1 AND is_deleted = 0");
 
                     b.ToTable("event_session_group_sessions", "islamu_event");
                 });
@@ -8336,7 +8293,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("requires_wudu");
 
                     b.Property<string>("RitualRequirementsJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("ritual_requirements_json");
 
                     b.Property<int>("StartTimeType")
@@ -9559,12 +9516,12 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventId")
                         .IsUnique()
                         .HasDatabaseName("ix_event_ticket_catalog_versions_tenant_id_event_id")
-                        .HasFilter("ticket_catalog_status_id = 2 AND is_deleted = false");
+                        .HasFilter("ticket_catalog_status_id = 2 AND is_deleted = 0");
 
                     b.HasIndex("TenantId", "EventId", "VersionNumber")
                         .IsUnique()
                         .HasDatabaseName("ix_event_ticket_catalog_versions_tenant_id_event_id_version_number")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.ToTable("event_ticket_catalog_versions", "islamu_event");
                 });
@@ -10096,7 +10053,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -10141,7 +10098,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("last_seen_at");
 
                     b.Property<string>("MetadataJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("metadata_json");
 
                     b.Property<string>("ProviderKey")
@@ -10194,7 +10151,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                             t.HasCheckConstraint("ck_external_bindings_status", "external_binding_status_id IN (1, 2, 3)");
 
-                            t.HasCheckConstraint("ck_external_bindings_text_not_blank", "length(btrim(provider_key)) > 0 AND length(btrim(external_system)) > 0 AND length(btrim(external_type)) > 0 AND length(btrim(external_id)) > 0 AND length(btrim(internal_type)) > 0");
+                            t.HasCheckConstraint("ck_external_bindings_text_not_blank", "trim(provider_key) <> '' AND trim(external_system) <> '' AND trim(external_type) <> '' AND trim(external_id) <> '' AND trim(internal_type) <> ''");
                         });
                 });
 
@@ -10317,8 +10274,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<long>("Cursor")
                         .HasColumnType("bigint")
@@ -10369,7 +10325,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                             t.HasCheckConstraint("ck_atproto_jetstream_lease_fence", "lease_fence >= 0");
 
-                            t.HasCheckConstraint("ck_atproto_jetstream_lease_shape", "(lease_owner IS NULL AND lease_token IS NULL AND lease_expires_at IS NULL) OR (lease_owner IS NOT NULL AND btrim(lease_owner) <> '' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL)");
+                            t.HasCheckConstraint("ck_atproto_jetstream_lease_shape", "(lease_owner IS NULL AND lease_token IS NULL AND lease_expires_at IS NULL) OR (lease_owner IS NOT NULL AND trim(lease_owner) <> '' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL)");
                         });
                 });
 
@@ -10378,8 +10334,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("ConsumerStateId")
                         .HasColumnType("uniqueidentifier")
@@ -10427,10 +10382,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.ToTable("atproto_jetstream_quarantines", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_atproto_jetstream_quarantine_cursor", "cursor >= 0");
-
-                            t.HasCheckConstraint("ck_atproto_jetstream_quarantine_envelope_hash", "envelope_hash ~ '^[0-9a-f]{64}$'");
-
-                            t.HasCheckConstraint("ck_atproto_jetstream_quarantine_identity_hash", "record_identity_hash IS NULL OR record_identity_hash ~ '^[0-9a-f]{64}$'");
                         });
                 });
 
@@ -10528,8 +10479,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid?>("AtprotoRecordId")
                         .HasColumnType("uniqueidentifier")
@@ -10613,7 +10563,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("operation");
 
                     b.Property<string>("Payload")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("payload");
 
                     b.Property<string>("PayloadHash")
@@ -10726,11 +10676,9 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                             t.HasCheckConstraint("ck_pds_sync_outbox_lease_fence", "lease_fence >= 0");
 
-                            t.HasCheckConstraint("ck_pds_sync_outbox_lease_shape", "(status = 2 AND lease_owner IS NOT NULL AND btrim(lease_owner) <> '' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL) OR (status <> 2 AND lease_owner IS NULL AND lease_token IS NULL AND lease_expires_at IS NULL)");
+                            t.HasCheckConstraint("ck_pds_sync_outbox_lease_shape", "(status = 2 AND lease_owner IS NOT NULL AND trim(lease_owner) <> '' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL) OR (status <> 2 AND lease_owner IS NULL AND lease_token IS NULL AND lease_expires_at IS NULL)");
 
                             t.HasCheckConstraint("ck_pds_sync_outbox_operation", "operation BETWEEN 1 AND 3");
-
-                            t.HasCheckConstraint("ck_pds_sync_outbox_payload_hash", "payload_hash ~ '^[0-9a-f]{64}$'");
 
                             t.HasCheckConstraint("ck_pds_sync_outbox_payload_shape", "(operation = 3 AND payload IS NULL) OR (operation IN (1, 2) AND payload IS NOT NULL)");
 
@@ -10787,7 +10735,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -10841,7 +10789,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -10952,7 +10900,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -11161,7 +11109,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "GroupId")
                         .IsUnique()
                         .HasDatabaseName("ix_group_tenants_tenant_id_group_id")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.HasIndex("TenantId", "ParentGroupTenantId")
                         .HasDatabaseName("ix_group_tenants_tenant_id_parent_group_tenant_id");
@@ -11185,8 +11133,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("ContentType")
                         .HasMaxLength(256)
@@ -11304,8 +11251,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("AttemptCount")
                         .HasColumnType("int")
@@ -11433,10 +11379,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         {
                             t.HasCheckConstraint("ck_incoming_webhook_effect_outbox_attempt_count", "attempt_count >= 0");
 
-                            t.HasCheckConstraint("ck_incoming_webhook_effect_outbox_failure_category", "failure_category IS NULL OR failure_category ~ '^[a-z0-9_]+$'");
-
-                            t.HasCheckConstraint("ck_incoming_webhook_effect_outbox_payload_sha256", "payload_sha256 ~ '^sha256:[0-9a-f]{64}$'");
-
                             t.HasCheckConstraint("ck_incoming_webhook_effect_outbox_processing_fence", "processing_fence >= 0");
 
                             t.HasCheckConstraint("ck_incoming_webhook_effect_outbox_processing_generation", "processing_generation >= 1");
@@ -11448,8 +11390,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("AppliedAt")
                         .HasColumnType("datetime2")
@@ -11515,8 +11456,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("incoming_webhook_effect_receipts", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_incoming_webhook_effect_receipts_payload_hash", "payload_hash ~ '^sha256:[0-9a-f]{64}$'");
-
                             t.HasCheckConstraint("ck_incoming_webhook_effect_receipts_processing_generation", "processing_generation >= 1");
                         });
                 });
@@ -11526,8 +11465,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("AttemptCount")
                         .HasColumnType("int")
@@ -11557,7 +11495,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("dead_letter_evidence_retention_until")
-                        .HasDefaultValueSql("statement_timestamp() + INTERVAL '90 days'");
+                        .HasDefaultValueSql("DATEADD(day, 90, SYSUTCDATETIME())");
 
                     b.Property<DateTime?>("DeadLetteredAt")
                         .HasColumnType("datetime2")
@@ -11574,7 +11512,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("failure_category");
 
                     b.Property<string>("HeadersJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("headers_json");
 
                     b.Property<string>("IdempotencyKey")
@@ -11594,7 +11532,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("operational_log_retention_until")
-                        .HasDefaultValueSql("statement_timestamp() + INTERVAL '30 days'");
+                        .HasDefaultValueSql("DATEADD(day, 30, SYSUTCDATETIME())");
 
                     b.Property<long>("PayloadByteLength")
                         .HasColumnType("bigint")
@@ -11630,7 +11568,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("processing_attempt_retention_until")
-                        .HasDefaultValueSql("statement_timestamp() + INTERVAL '30 days'");
+                        .HasDefaultValueSql("DATEADD(day, 30, SYSUTCDATETIME())");
 
                     b.Property<long>("ProcessingFence")
                         .IsConcurrencyToken()
@@ -11682,7 +11620,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("replay_window_until")
-                        .HasDefaultValueSql("statement_timestamp() + INTERVAL '14 days'");
+                        .HasDefaultValueSql("DATEADD(day, 14, SYSUTCDATETIME())");
 
                     b.Property<string>("RetentionPolicyVersion")
                         .IsRequired()
@@ -11735,7 +11673,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("webhook_consumer_provider_binding_id");
 
                     b.Property<byte[]>("_payloadBytes")
-                        .HasColumnType("bytea")
+                        .HasColumnType("varbinary(max)")
                         .HasColumnName("payload_bytes");
 
                     b.HasKey("Id")
@@ -11791,8 +11729,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         {
                             t.HasCheckConstraint("ck_incoming_webhook_messages_payload_byte_length", "payload_byte_length > 0");
 
-                            t.HasCheckConstraint("ck_incoming_webhook_messages_payload_hash", "payload_hash ~ '^sha256:[0-9a-f]{64}$'");
-
                             t.HasCheckConstraint("ck_incoming_webhook_messages_processing_fence", "processing_fence >= 0");
 
                             t.HasCheckConstraint("ck_incoming_webhook_messages_processing_generation", "processing_generation >= 1");
@@ -11837,8 +11773,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("AttemptNumber")
                         .HasColumnType("int")
@@ -11962,8 +11897,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("ActorId")
                         .IsRequired()
@@ -12121,7 +12055,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<bool>("IsCompleted")
                         .ValueGeneratedOnAdd()
@@ -12140,7 +12074,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("IsCompleted")
                         .IsUnique()
                         .HasDatabaseName("ix_instance_bootstrap_state_completed_unique")
-                        .HasFilter("\"is_completed\" = true");
+                        .HasFilter("\"is_completed\" = 1");
 
                     b.ToTable("instance_bootstrap_states", "islamu_event");
                 });
@@ -12150,8 +12084,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("AttemptCount")
                         .HasColumnType("int")
@@ -12264,7 +12197,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<string>("SubscriberPayloadJson")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("subscriber_payload_json");
 
                     b.Property<Guid>("TenantId")
@@ -12304,7 +12237,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "SourceType", "SourceId", "Kind")
                         .IsUnique()
                         .HasDatabaseName("ux_integration_sync_outbox_tenant_source_kind")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.ToTable("integration_sync_outbox", "islamu_event");
                 });
@@ -12927,7 +12860,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .IsFixedLength();
 
                     b.Property<string>("RequestJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("request_json");
 
                     b.Property<long>("RowVersion")
@@ -12996,8 +12929,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                             t.HasCheckConstraint("ck_managed_tenant_provisioning_failed", "(status = 'Failed') = (failure_code IS NOT NULL AND failed_at IS NOT NULL)");
 
-                            t.HasCheckConstraint("ck_managed_tenant_provisioning_outbox_pointer", "current_outbox_message_id <> '00000000-0000-0000-0000-000000000000'::uuid");
-
                             t.HasCheckConstraint("ck_managed_tenant_provisioning_request_snapshot", "(status IN ('Pending', 'Processing')) = (request_json IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_managed_tenant_provisioning_terminal_result", "(status = 'Succeeded') = (tenant_id IS NOT NULL AND tenant_administrator_user_id IS NOT NULL AND completed_at IS NOT NULL)");
@@ -13009,8 +12940,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("Category")
                         .HasMaxLength(50)
@@ -13078,11 +13008,10 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("ConfigurationJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("configuration_json");
 
                     b.Property<DateTime>("CreatedAt")
@@ -13139,8 +13068,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime?>("ArchivedAt")
                         .HasColumnType("datetime2")
@@ -13155,7 +13083,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -13277,7 +13205,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "NotificationIntentId")
                         .IsUnique()
                         .HasDatabaseName("ux_notifications_tenant_notification_intent")
-                        .HasFilter("notification_intent_id IS NOT NULL AND is_deleted = false");
+                        .HasFilter("notification_intent_id IS NOT NULL AND is_deleted = 0");
 
                     b.HasIndex("TenantId", "NotificationTypeId")
                         .HasDatabaseName("ix_notifications_tenant_type");
@@ -13293,7 +13221,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "UserId", "CreatedAt")
                         .IsDescending(false, false, true)
                         .HasDatabaseName("ix_notifications_unread_by_user")
-                        .HasFilter("is_read = false AND is_deleted = false");
+                        .HasFilter("is_read = 0 AND is_deleted = 0");
 
                     b.HasIndex("TenantId", "UserId", "DeduplicationKey")
                         .IsUnique()
@@ -13310,10 +13238,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .IsDescending(false, false, false, true)
                         .HasDatabaseName("ix_notifications_tenant_user_unread");
 
-                    b.ToTable("notifications", "islamu_event", t =>
-                        {
-                            t.HasCheckConstraint("ck_notifications_entity_reference_shape", "(notification_entity_type_id IS NULL AND entity_id IS NULL) OR (notification_entity_type_id IS NOT NULL AND entity_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')");
-                        });
+                    b.ToTable("notifications", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationCategory", b =>
@@ -13354,8 +13279,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("CategoryId")
                         .HasColumnType("int")
@@ -13374,7 +13298,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -13420,7 +13344,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -13457,22 +13381,22 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "ScopeId", "CategoryId", "ChannelId")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_channel_preferences_scope_default")
-                        .HasFilter("is_deleted = false AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL");
+                        .HasFilter("is_deleted = 0 AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL");
 
                     b.HasIndex("TenantId", "ScopeId", "GroupId", "CategoryId", "ChannelId")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_channel_preferences_group")
-                        .HasFilter("is_deleted = false AND group_id IS NOT NULL");
+                        .HasFilter("is_deleted = 0 AND group_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "ScopeId", "OrganizationId", "CategoryId", "ChannelId")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_channel_preferences_organization")
-                        .HasFilter("is_deleted = false AND organization_id IS NOT NULL");
+                        .HasFilter("is_deleted = 0 AND organization_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "ScopeId", "UserId", "CategoryId", "ChannelId")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_channel_preferences_user")
-                        .HasFilter("is_deleted = false AND user_id IS NOT NULL");
+                        .HasFilter("is_deleted = 0 AND user_id IS NOT NULL");
 
                     b.ToTable("notification_channel_preferences", "islamu_event", t =>
                         {
@@ -13485,8 +13409,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("ChannelId")
                         .HasColumnType("int")
@@ -13746,8 +13669,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int?>("AccountAuthorityKindId")
                         .HasColumnType("int")
@@ -13921,7 +13843,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<string>("ChangeSetJson")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("change_set_json");
 
                     b.Property<string>("CoalescingKey")
@@ -13960,12 +13882,12 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<string>("SafeAfterSnapshotJson")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("safe_after_snapshot_json");
 
                     b.Property<string>("SafeBeforeSnapshotJson")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("safe_before_snapshot_json");
 
                     b.Property<Guid?>("SessionId")
@@ -14060,8 +13982,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<bool>("OptionalRemindersDeferred")
                         .HasColumnType("bit")
@@ -14092,8 +14013,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime2")
@@ -14108,7 +14028,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -14244,7 +14164,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                             t.HasCheckConstraint("ck_notification_fanout_runs_generation_nonnegative", "processing_generation >= 0 AND processing_fence >= 0");
 
-                            t.HasCheckConstraint("ck_notification_fanout_runs_occurrence_lease", "fanout_occurrence_id IS NULL OR (status = 'processing' AND processing_lease_owner IS NOT NULL AND btrim(processing_lease_owner) <> '' AND processing_lease_token IS NOT NULL AND processing_lease_expires_at IS NOT NULL) OR (status <> 'processing' AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL)");
+                            t.HasCheckConstraint("ck_notification_fanout_runs_occurrence_lease", "fanout_occurrence_id IS NULL OR (status = 'processing' AND processing_lease_owner IS NOT NULL AND trim(processing_lease_owner) <> '' AND processing_lease_token IS NOT NULL AND processing_lease_expires_at IS NOT NULL) OR (status <> 'processing' AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL)");
 
                             t.HasCheckConstraint("ck_notification_fanout_runs_processed_count_nonnegative", "processed_count >= 0");
 
@@ -14257,8 +14177,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("CategoryId")
                         .HasColumnType("int")
@@ -14388,7 +14307,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "DeduplicationKey")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_intents_tenant_deduplication_key")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.HasIndex("TenantId", "RecipientUserId")
                         .HasDatabaseName("ix_notification_intents_tenant_id_recipient_user_id");
@@ -14573,8 +14492,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("ConcurrencyStamp")
                         .IsConcurrencyToken()
@@ -14585,7 +14503,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -14631,7 +14549,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -14659,22 +14577,22 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "ScopeId")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_preference_profiles_scope_default")
-                        .HasFilter("is_deleted = false AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL");
+                        .HasFilter("is_deleted = 0 AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL");
 
                     b.HasIndex("TenantId", "ScopeId", "GroupId")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_preference_profiles_group")
-                        .HasFilter("is_deleted = false AND group_id IS NOT NULL");
+                        .HasFilter("is_deleted = 0 AND group_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "ScopeId", "OrganizationId")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_preference_profiles_organization")
-                        .HasFilter("is_deleted = false AND organization_id IS NOT NULL");
+                        .HasFilter("is_deleted = 0 AND organization_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "ScopeId", "UserId")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_preference_profiles_user")
-                        .HasFilter("is_deleted = false AND user_id IS NOT NULL");
+                        .HasFilter("is_deleted = 0 AND user_id IS NOT NULL");
 
                     b.ToTable("notification_preference_profiles", "islamu_event", t =>
                         {
@@ -14822,7 +14740,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -14864,8 +14782,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2")
@@ -15017,8 +14934,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("Comment")
                         .HasMaxLength(2000)
@@ -15108,7 +15024,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -15319,7 +15235,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "OrganizationId")
                         .IsUnique()
                         .HasDatabaseName("ix_organization_tenants_tenant_id_organization_id")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.HasIndex("TenantId", "IsDeleted", "ApprovalStatusId")
                         .HasDatabaseName("ix_organization_tenants_tenant_id_is_deleted_approval_status_id");
@@ -15416,8 +15332,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("AggregateId")
                         .HasColumnType("uniqueidentifier")
@@ -15459,7 +15374,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("next_retry_at");
 
                     b.Property<string>("Payload")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("payload");
 
                     b.Property<DateTime?>("ProcessedAt")
@@ -15695,12 +15610,12 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("ParticipationConfigurationId", "IsStandaloneQuestionnaire")
                         .IsUnique()
                         .HasDatabaseName("ix_participation_requirement_attachments_participation_configuration_id_is_standalone_questionnaire")
-                        .HasFilter("is_deleted = false AND is_standalone_questionnaire = true");
+                        .HasFilter("is_deleted = 0 AND is_standalone_questionnaire = 1");
 
                     b.HasIndex("ParticipationConfigurationId", "RegistrationRequirementId")
                         .IsUnique()
                         .HasDatabaseName("ix_participation_requirement_attachments_participation_configuration_id_registration_requirement_id")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.HasIndex("TenantId", "EventId")
                         .HasDatabaseName("ix_participation_requirement_attachments_tenant_id_event_id");
@@ -15718,7 +15633,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         {
                             t.HasCheckConstraint("ck_participation_requirement_attachments_configuration_event", "event_id = participation_configuration_id");
 
-                            t.HasCheckConstraint("ck_participation_requirement_attachments_questionnaire_form", "(is_standalone_questionnaire = true AND registration_form_id IS NOT NULL AND registration_form_version_id IS NOT NULL) OR (is_standalone_questionnaire = false AND registration_form_id IS NULL AND registration_form_version_id IS NULL)");
+                            t.HasCheckConstraint("ck_participation_requirement_attachments_questionnaire_form", "(is_standalone_questionnaire = 1 AND registration_form_id IS NOT NULL AND registration_form_version_id IS NOT NULL) OR (is_standalone_questionnaire = 0 AND registration_form_id IS NULL AND registration_form_version_id IS NULL)");
                         });
                 });
 
@@ -15741,7 +15656,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -15917,7 +15832,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("IsActive")
                         .IsUnique()
                         .HasDatabaseName("ix_platform_contribution_settings_is_active")
-                        .HasFilter("is_active = true");
+                        .HasFilter("is_active = 1");
 
                     b.HasIndex("VersionNumber")
                         .IsUnique()
@@ -16001,7 +15916,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("IsActive")
                         .IsUnique()
                         .HasDatabaseName("ix_platform_fee_policies_is_active")
-                        .HasFilter("is_active = true");
+                        .HasFilter("is_active = 1");
 
                     b.HasIndex("VersionNumber")
                         .IsUnique()
@@ -16021,7 +15936,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("granted_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("GrantedBy")
                         .HasColumnType("uniqueidentifier")
@@ -16232,99 +16147,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasDatabaseName("ix_tenant_policy_sets_tenant_id");
 
                     b.ToTable("tenant_policy_sets", "islamu_event");
-                });
-
-            modelBuilder.Entity("Explore.Domain.PrivacyErasureCounter", b =>
-                {
-                    b.Property<bool>("Singleton")
-                        .HasColumnType("bit")
-                        .HasColumnName("singleton");
-
-                    b.Property<long>("LastSequence")
-                        .HasColumnType("bigint")
-                        .HasColumnName("last_sequence");
-
-                    b.HasKey("Singleton")
-                        .HasName("pk_authority_counter");
-
-                    b.ToTable("authority_counter", "privacy_erasure_authority", t =>
-                        {
-                            t.HasCheckConstraint("ck_privacy_erasure_authority_counter_nonnegative", "last_sequence >= 0");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_authority_counter_singleton", "singleton");
-                        });
-                });
-
-            modelBuilder.Entity("Explore.Domain.PrivacyErasureIntent", b =>
-                {
-                    b.Property<long>("AuthoritySequence")
-                        .HasColumnType("bigint")
-                        .HasColumnName("authority_sequence");
-
-                    b.Property<Guid>("IntentId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("intent_id");
-
-                    b.Property<int>("PolicyVersion")
-                        .HasColumnType("int")
-                        .HasColumnName("policy_version");
-
-                    b.Property<short>("ReasonCode")
-                        .HasColumnType("smallint")
-                        .HasColumnName("reason_code");
-
-                    b.Property<DateTime>("RecordedAtUtc")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("recorded_at_utc");
-
-                    b.Property<DateTime>("RequestedAtUtc")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("requested_at_utc");
-
-                    b.Property<DateTime>("RetentionExpiresAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("retention_expires_at_utc")
-                        .HasDefaultValueSql("'infinity'::timestamp with time zone");
-
-                    b.Property<Guid>("SubjectId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("subject_id");
-
-                    b.Property<short>("SubjectKind")
-                        .HasColumnType("smallint")
-                        .HasColumnName("subject_kind");
-
-                    b.HasKey("AuthoritySequence")
-                        .HasName("pk_erasure_intents");
-
-                    b.HasAlternateKey("IntentId")
-                        .HasName("ak_privacy_erasure_intents_intent_id");
-
-                    b.HasIndex("IntentId", "SubjectKind", "PolicyVersion")
-                        .IsUnique()
-                        .HasDatabaseName("ix_erasure_intents_intent_id_subject_kind_policy_version");
-
-                    b.ToTable("erasure_intents", "privacy_erasure_authority", t =>
-                        {
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_intent_rfc4122_variant", "substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_intent_uuid_v7", "substring(intent_id::text, 15, 1) = '7'");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_policy_version", "policy_version > 0");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_reason", "reason_code BETWEEN 1 AND 3");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_retention", "retention_expires_at_utc > recorded_at_utc");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_sequence", "authority_sequence > 0");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_server_time_order", "recorded_at_utc >= requested_at_utc");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_subject_kind", "subject_kind = 1");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_subject_nonempty", "subject_id <> '00000000-0000-0000-0000-000000000000'::uuid");
-                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.PrivacyErasurePolicyCoverage", b =>
@@ -16548,8 +16370,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("privacy_erasure_replay_checkpoints", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_privacy_erasure_checkpoints_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b') AND substring(intent_id::text, 15, 1) = '7' AND substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
-
                             t.HasCheckConstraint("ck_privacy_erasure_replay_checkpoints_chain", "(authority_sequence = 1 AND previous_checkpoint_id IS NULL) OR (authority_sequence > 1 AND previous_checkpoint_id IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_privacy_erasure_replay_checkpoints_sequence", "authority_sequence > 0");
@@ -16559,6 +16379,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
             modelBuilder.Entity("Explore.Domain.PrivacyErasureSaga", b =>
                 {
                     b.Property<Guid>("IntentId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("intent_id");
 
@@ -16639,23 +16460,17 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("privacy_erasure_sagas", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_privacy_erasure_sagas_concurrency_uuid_v7", "substring(concurrency_token::text, 15, 1) = '7' AND substring(concurrency_token::text, 20, 1) IN ('8', '9', 'a', 'b')");
-
                             t.HasCheckConstraint("ck_privacy_erasure_sagas_fence", "fence_token > 0");
 
                             t.HasCheckConstraint("ck_privacy_erasure_sagas_policy_version", "policy_version > 0");
 
                             t.HasCheckConstraint("ck_privacy_erasure_sagas_provider_counts", "provider_work_count >= 0 AND completed_provider_work_count >= 0 AND completed_provider_work_count <= provider_work_count");
 
-                            t.HasCheckConstraint("ck_privacy_erasure_sagas_receipt_hash", "receipt_hash IS NULL OR octet_length(receipt_hash) = 32");
-
                             t.HasCheckConstraint("ck_privacy_erasure_sagas_receipt_window", "receipt_expires_at_utc > fenced_at_utc");
 
                             t.HasCheckConstraint("ck_privacy_erasure_sagas_status", "status IN (1, 2, 3)");
 
                             t.HasCheckConstraint("ck_privacy_erasure_sagas_subject_kind", "subject_kind = 1");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_sagas_subject_nonempty", "subject_id <> '00000000-0000-0000-0000-000000000000'::uuid");
                         });
                 });
 
@@ -16699,7 +16514,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<Guid>("EffectiveSubjectIdentity")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("uniqueidentifier")
                         .HasColumnName("effective_subject_identity")
                         .HasComputedColumnSql("COALESCE(order_subject_id, purchaser_subject_id, participant_subject_id, ticket_assignment_subject_id, session_selection_subject_id)", true);
 
@@ -16712,7 +16527,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("field_type_id");
 
                     b.Property<DateTime?>("InstantValue")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("instant_value");
 
                     b.Property<long?>("IntegerValue")
@@ -16774,7 +16589,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("registration_submission_id");
 
                     b.Property<Guid>("RegistrationWorkflowId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("uniqueidentifier")
                         .HasColumnName("registration_workflow_id");
 
                     b.Property<Guid?>("RequirementSubjectId")
@@ -16783,9 +16598,9 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<Guid>("RequirementSubjectKey")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("uniqueidentifier")
                         .HasColumnName("requirement_subject_key")
-                        .HasComputedColumnSql("COALESCE(requirement_subject_id, '00000000-0000-0000-0000-000000000000'::uuid)", true);
+                        .HasComputedColumnSql("COALESCE(requirement_subject_id, '00000000-0000-0000-0000-000000000000')", true);
 
                     b.Property<int>("RequirementSubjectTypeId")
                         .HasColumnType("int")
@@ -16812,12 +16627,16 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("text_value");
 
+                    b.Property<Guid?>("TicketAssignmentOrderLineId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("ticket_assignment_order_line_id");
+
                     b.Property<Guid?>("TicketAssignmentSubjectId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("ticket_assignment_subject_id");
 
                     b.Property<TimeOnly?>("TimeValue")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("time")
                         .HasColumnName("time_value");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -16845,8 +16664,11 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "RegistrationOrderId", "ParticipantSubjectId")
                         .HasDatabaseName("ix_registration_answers_tenant_id_registration_order_id_participant_subject_id");
 
-                    b.HasIndex("TenantId", "RegistrationOrderId", "TicketAssignmentSubjectId")
-                        .HasDatabaseName("ix_registration_answers_tenant_id_registration_order_id_ticket_assignment_subject_id");
+                    b.HasIndex("TenantId", "RegistrationOrderId", "TicketAssignmentOrderLineId", "RequirementSubjectId")
+                        .HasDatabaseName("ix_registration_answers_tenant_id_registration_order_id_ticket_assignment_order_line_id_requirement_subject_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "TicketAssignmentSubjectId", "TicketAssignmentOrderLineId")
+                        .HasDatabaseName("ix_registration_answers_tenant_id_registration_order_id_ticket_assignment_subject_id_ticket_assignment_order_line_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RequirementSubjectTypeId", "RequirementSubjectKey")
                         .HasDatabaseName("ix_registration_answers_tenant_id_event_id_registration_workflow_id_registration_requirement_id_requirement_subject_type_id_req");
@@ -16866,11 +16688,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("registration_answers", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_registration_answers_exactly_one_value", "num_nonnulls(text_value, integer_value, decimal_value, boolean_value, date_value, time_value, instant_value, selected_option_id, sensitive_answer_value_id) = 1");
-
                             t.HasCheckConstraint("ck_registration_answers_positive_ordinal", "ordinal > 0");
-
-                            t.HasCheckConstraint("ck_registration_answers_subject_shape", "num_nonnulls(order_subject_id, purchaser_subject_id, participant_subject_id, ticket_assignment_subject_id, session_selection_subject_id) = 1 AND ((answer_subject_type_id = 1 AND order_subject_id = registration_order_id AND requirement_subject_type_id = 1) OR (answer_subject_type_id = 2 AND purchaser_subject_id = registration_order_id AND requirement_subject_type_id IN (1, 4)) OR (answer_subject_type_id = 3 AND participant_subject_id IS NOT NULL AND requirement_subject_type_id IN (3, 5)) OR (answer_subject_type_id = 4 AND ticket_assignment_subject_id IS NOT NULL AND requirement_subject_type_id = 2) OR (answer_subject_type_id = 5 AND session_selection_subject_id = requirement_subject_id AND requirement_subject_type_id = 6))");
 
                             t.HasCheckConstraint("ck_registration_answers_value_matches_field_type", "(field_type_id IN (1, 2, 9, 10, 11, 12, 13) AND (text_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id IN (3, 16) AND (integer_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 4 AND (decimal_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 5 AND (boolean_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 6 AND (date_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 7 AND (time_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 8 AND (instant_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id IN (14, 15) AND selected_option_id IS NOT NULL)");
                         });
@@ -17016,16 +16834,16 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<Guid>("RegistrationProviderBindingKey")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("uniqueidentifier")
                         .HasColumnName("registration_provider_binding_key")
-                        .HasComputedColumnSql("COALESCE(registration_provider_binding_id, '00000000-0000-0000-0000-000000000000'::uuid)", true);
+                        .HasComputedColumnSql("COALESCE(registration_provider_binding_id, '00000000-0000-0000-0000-000000000000')", true);
 
                     b.Property<Guid>("RegistrationRequirementId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("registration_requirement_id");
 
                     b.Property<Guid>("RegistrationWorkflowId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("uniqueidentifier")
                         .HasColumnName("registration_workflow_id");
 
                     b.Property<int>("StatusId")
@@ -17193,9 +17011,9 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<Guid>("RegistrationProviderBindingKey")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("uniqueidentifier")
                         .HasColumnName("registration_provider_binding_key")
-                        .HasComputedColumnSql("COALESCE(registration_provider_binding_id, '00000000-0000-0000-0000-000000000000'::uuid)", true);
+                        .HasComputedColumnSql("COALESCE(registration_provider_binding_id, '00000000-0000-0000-0000-000000000000')", true);
 
                     b.Property<Guid>("RegistrationRequirementId")
                         .HasColumnType("uniqueidentifier")
@@ -17238,7 +17056,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("registration_channels", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_registration_channels_provider_shape", "(is_native = true AND registration_provider_binding_id IS NULL AND registration_provider_binding_key = '00000000-0000-0000-0000-000000000000') OR (is_native = false AND registration_provider_binding_id IS NOT NULL AND registration_provider_binding_key = registration_provider_binding_id)");
+                            t.HasCheckConstraint("ck_registration_channels_provider_shape", "(is_native = 1 AND registration_provider_binding_id IS NULL AND registration_provider_binding_key = '00000000-0000-0000-0000-000000000000') OR (is_native = 0 AND registration_provider_binding_id IS NOT NULL AND registration_provider_binding_key = registration_provider_binding_id)");
                         });
                 });
 
@@ -17351,7 +17169,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventId", "Namespace", "Key")
                         .IsUnique()
                         .HasDatabaseName("ix_registration_forms_tenant_id_event_id_namespace_key")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.ToTable("registration_forms", "islamu_event");
                 });
@@ -17529,16 +17347,16 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Namespace", "Key")
                         .IsUnique()
                         .HasDatabaseName("ix_registration_form_fields_tenant_id_event_id_registration_form_version_id_namespace_key")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Ordinal")
                         .IsUnique()
                         .HasDatabaseName("ix_registration_form_fields_tenant_id_event_id_registration_form_version_id_registration_form_section_id_ordinal")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.ToTable("registration_form_fields", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text_version IS NOT NULL AND length(btrim(consent_purpose_code)) > 0 AND length(btrim(consent_text_version)) > 0) OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text_version IS NULL)");
+                            t.HasCheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text_version IS NOT NULL AND trim(consent_purpose_code) <> '' AND trim(consent_text_version) <> '') OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text_version IS NULL)");
                         });
                 });
 
@@ -17636,12 +17454,12 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "RegistrationFormFieldId", "Key")
                         .IsUnique()
                         .HasDatabaseName("ix_registration_form_field_options_tenant_id_event_id_registration_form_version_id_registration_form_field_id_key")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "RegistrationFormFieldId", "Ordinal")
                         .IsUnique()
                         .HasDatabaseName("ix_registration_form_field_options_tenant_id_event_id_registration_form_version_id_registration_form_field_id_ordinal")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.ToTable("registration_form_field_options", "islamu_event");
                 });
@@ -17737,7 +17555,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Ordinal")
                         .IsUnique()
                         .HasDatabaseName("ix_registration_form_rules_tenant_id_event_id_registration_form_version_id_ordinal")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "TargetNamespace", "TargetKey")
                         .HasDatabaseName("ix_registration_form_rules_tenant_id_event_id_registration_form_version_id_target_namespace_target_key");
@@ -17826,7 +17644,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Ordinal")
                         .IsUnique()
                         .HasDatabaseName("ix_registration_form_sections_tenant_id_event_id_registration_form_version_id_ordinal")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.ToTable("registration_form_sections", "islamu_event");
                 });
@@ -17980,7 +17798,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "Version")
                         .IsUnique()
                         .HasDatabaseName("ix_registration_form_versions_tenant_id_event_id_registration_form_id_version")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "StatusId", "LanguageTag")
                         .HasDatabaseName("ix_registration_form_versions_tenant_id_event_id_registration_form_id_status_id_language_tag");
@@ -18256,9 +18074,9 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<Guid>("RegistrationWorkflowVersionKey")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("uniqueidentifier")
                         .HasColumnName("registration_workflow_version_key")
-                        .HasComputedColumnSql("COALESCE(registration_workflow_version_id, '00000000-0000-0000-0000-000000000000'::uuid)", true);
+                        .HasComputedColumnSql("COALESCE(registration_workflow_version_id, '00000000-0000-0000-0000-000000000000')", true);
 
                     b.Property<DateTime?>("RejectedAt")
                         .HasColumnType("datetime2")
@@ -18419,6 +18237,9 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.HasAlternateKey("TenantId", "RegistrationOrderId", "Id")
                         .HasName("ak_registration_order_lines_tenant_id_registration_order_id_id");
+
+                    b.HasAlternateKey("TenantId", "RegistrationOrderId", "Id", "TicketTypeId")
+                        .HasName("ak_registration_order_lines_tenant_id_registration_order_id_id_ticket_type_id");
 
                     b.HasIndex("TenantId", "TicketCatalogVersionId")
                         .HasDatabaseName("ix_registration_order_lines_tenant_id_ticket_catalog_version_id");
@@ -18792,9 +18613,9 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<Guid>("AppliesToSubjectKey")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("uniqueidentifier")
                         .HasColumnName("applies_to_subject_key")
-                        .HasComputedColumnSql("COALESCE(applies_to_subject_id, '00000000-0000-0000-0000-000000000000'::uuid)", true);
+                        .HasComputedColumnSql("COALESCE(applies_to_subject_id, '00000000-0000-0000-0000-000000000000')", true);
 
                     b.Property<int>("AppliesToSubjectTypeId")
                         .HasColumnType("int")
@@ -19087,7 +18908,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("registration_sensitive_answer_values", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_registration_sensitive_answer_values_shape", "key_version > 0 AND length(btrim(ciphertext)) > 0");
+                            t.HasCheckConstraint("ck_registration_sensitive_answer_values_shape", "key_version > 0 AND trim(ciphertext) <> ''");
                         });
                 });
 
@@ -19219,7 +19040,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("registration_requirement_id");
 
                     b.Property<Guid>("RegistrationWorkflowId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("uniqueidentifier")
                         .HasColumnName("registration_workflow_id");
 
                     b.Property<int>("StatusId")
@@ -19274,7 +19095,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("registration_submissions", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_registration_submissions_finalization_shape", "(status_id = 3 AND is_finalizable = false AND attempt_consumption_claim_id IS NULL AND finalized_at IS NULL) OR (status_id = 1 AND is_finalizable = true AND attempt_consumption_claim_id IS NOT NULL AND finalized_at IS NULL) OR (status_id = 2 AND is_finalizable = true AND attempt_consumption_claim_id IS NOT NULL AND finalized_at IS NOT NULL)");
+                            t.HasCheckConstraint("ck_registration_submissions_finalization_shape", "(status_id = 3 AND is_finalizable = 0 AND attempt_consumption_claim_id IS NULL AND finalized_at IS NULL) OR (status_id = 1 AND is_finalizable = 1 AND attempt_consumption_claim_id IS NOT NULL AND finalized_at IS NULL) OR (status_id = 2 AND is_finalizable = 1 AND attempt_consumption_claim_id IS NOT NULL AND finalized_at IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_registration_submissions_provider_tuple", "(registration_provider_binding_id IS NULL AND provider_mapping_revision_hash IS NULL AND provider_submission_id IS NULL AND provider_response_revision IS NULL) OR (registration_provider_binding_id IS NOT NULL AND provider_mapping_revision_hash IS NOT NULL AND provider_submission_id IS NOT NULL AND provider_response_revision IS NOT NULL)");
                         });
@@ -19471,6 +19292,9 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasAlternateKey("TenantId", "RegistrationOrderId", "Id")
                         .HasName("ak_registration_ticket_assignments_tenant_id_registration_order_id_id");
 
+                    b.HasAlternateKey("TenantId", "RegistrationOrderId", "Id", "RegistrationOrderLineId")
+                        .HasName("ak_registration_ticket_assignments_tenant_id_registration_order_id_id_registration_order_line_id");
+
                     b.HasIndex("AssignmentStatusId")
                         .HasDatabaseName("ix_registration_ticket_assignments_assignment_status_id");
 
@@ -19624,7 +19448,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("granted_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("GrantedBy")
                         .HasColumnType("uniqueidentifier")
@@ -19785,7 +19609,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -20044,7 +19868,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -20064,7 +19888,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<string>("PayloadJson")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("payload_json");
 
                     b.Property<int>("SchemaVersion")
@@ -20097,8 +19921,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         {
                             t.HasCheckConstraint("ck_tenant_settings_documents_document_key_not_blank", "length(trim(document_key)) > 0");
 
-                            t.HasCheckConstraint("ck_tenant_settings_documents_payload_object", "jsonb_typeof(payload_json) = 'object'");
-
                             t.HasCheckConstraint("ck_tenant_settings_documents_schema_version_positive", "schema_version > 0");
                         });
                 });
@@ -20108,8 +19930,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid?>("ActorId")
                         .HasColumnType("uniqueidentifier")
@@ -20291,8 +20112,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime?>("CanceledAt")
                         .HasColumnType("datetime2")
@@ -20500,8 +20320,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("ConcurrencyStamp")
                         .IsConcurrencyToken()
@@ -20635,7 +20454,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("route_name");
 
                     b.Property<string>("SanitizedMetadataJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("sanitized_metadata_json");
 
                     b.Property<Guid>("SupportAccessSessionId")
@@ -21000,11 +20819,10 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("AllowedValues")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("allowed_values");
 
                     b.Property<string>("Category")
@@ -21016,7 +20834,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -21379,7 +21197,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -21454,7 +21272,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -21481,7 +21299,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("transitioned_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("TransitionedByUserId")
                         .HasColumnType("uniqueidentifier")
@@ -21615,14 +21433,14 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("completed_by_user_id");
 
                     b.Property<string>("CompletedStepsJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("completed_steps_json");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<int>("CurrentStep")
                         .ValueGeneratedOnAdd()
@@ -21723,12 +21541,12 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<string>("ChangedQuotaKeysJson")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("changed_quota_keys_json");
 
                     b.Property<string>("ChangedSettingKeysJson")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("changed_setting_keys_json");
 
                     b.Property<DateTime>("CreatedAt")
@@ -22123,7 +21941,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<string>("JsonValue")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("json_value");
 
                     b.Property<string>("SettingKey")
@@ -22165,7 +21983,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -22248,8 +22066,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid?>("ActorId")
                         .HasColumnType("uniqueidentifier")
@@ -22263,7 +22080,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -22359,8 +22176,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("AdminNote")
                         .HasMaxLength(2000)
@@ -22368,7 +22184,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("admin_note");
 
                     b.Property<string>("ConsentJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("consent_json");
 
                     b.Property<string>("ContactEmailOverride")
@@ -22380,7 +22196,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -22397,7 +22213,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("locale");
 
                     b.Property<string>("PreferencesJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("preferences_json");
 
                     b.Property<Guid>("TenantId")
@@ -22440,14 +22256,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -22457,7 +22272,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("granted_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("GrantedBy")
                         .HasColumnType("uniqueidentifier")
@@ -22655,14 +22470,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -22727,7 +22541,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("IsDefault")
                         .IsUnique()
                         .HasDatabaseName("ix_ui_themes_is_default")
-                        .HasFilter("tenant_id IS NULL AND is_default = true");
+                        .HasFilter("tenant_id IS NULL AND is_default = 1");
 
                     b.HasIndex("ThemeKey")
                         .IsUnique()
@@ -22737,7 +22551,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "IsDefault")
                         .IsUnique()
                         .HasDatabaseName("ix_ui_themes_tenant_id_is_default")
-                        .HasFilter("tenant_id IS NOT NULL AND is_default = true");
+                        .HasFilter("tenant_id IS NOT NULL AND is_default = 1");
 
                     b.HasIndex("TenantId", "ThemeKey")
                         .IsUnique()
@@ -22752,14 +22566,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -22842,7 +22655,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("ThemeKey")
                         .IsUnique()
                         .HasDatabaseName("ix_ui_theme_presets_theme_key")
-                        .HasFilter("tenant_id IS NULL AND is_deleted = false");
+                        .HasFilter("tenant_id IS NULL AND is_deleted = 0");
 
                     b.HasIndex("TenantId", "IsActive")
                         .HasDatabaseName("ix_ui_theme_presets_tenant_id_is_active");
@@ -22850,7 +22663,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "ThemeKey")
                         .IsUnique()
                         .HasDatabaseName("ix_ui_theme_presets_tenant_id_theme_key")
-                        .HasFilter("tenant_id IS NOT NULL AND is_deleted = false");
+                        .HasFilter("tenant_id IS NOT NULL AND is_deleted = 0");
 
                     b.ToTable("ui_theme_presets", "islamu_event");
                 });
@@ -22924,8 +22737,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("ActiveProfileId")
                         .HasColumnType("uniqueidentifier")
@@ -22982,8 +22794,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTimeOffset?>("ClonedAt")
                         .HasColumnType("datetimeoffset")
@@ -22993,7 +22804,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -23070,7 +22881,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("UserId", "TenantId", "IsDefault")
                         .IsUnique()
                         .HasDatabaseName("ix_user_appearance_profiles_user_id_tenant_id_is_default")
-                        .HasFilter("is_default = true");
+                        .HasFilter("is_default = 1");
 
                     b.HasIndex("UserId", "TenantId", "Name")
                         .HasDatabaseName("ix_user_appearance_profiles_user_id_tenant_id_name");
@@ -23133,7 +22944,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<byte[]>("SessionCiphertext")
                         .IsRequired()
-                        .HasColumnType("bytea")
+                        .HasColumnType("varbinary(max)")
                         .HasColumnName("session_ciphertext");
 
                     b.Property<string>("SubjectDid")
@@ -23170,11 +22981,9 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.ToTable("user_authentication_tokens", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_user_authentication_tokens_ciphertext_not_empty", "octet_length(session_ciphertext) >= 29");
-
                             t.HasCheckConstraint("ck_user_authentication_tokens_envelope_version", "envelope_version = 1");
 
-                            t.HasCheckConstraint("ck_user_authentication_tokens_required_text", "length(btrim(provider)) > 0 AND length(btrim(subject_did)) > 0 AND length(btrim(encryption_key_id)) > 0 AND length(btrim(o_auth_client_key_id)) > 0");
+                            t.HasCheckConstraint("ck_user_authentication_tokens_required_text", "trim(provider) <> '' AND trim(subject_did) <> '' AND trim(encryption_key_id) <> '' AND trim(o_auth_client_key_id) <> ''");
                         });
                 });
 
@@ -23258,7 +23067,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -23278,7 +23087,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -23346,7 +23155,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -23544,8 +23353,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("AttemptCount")
                         .HasColumnType("int")
@@ -23559,7 +23367,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -23615,7 +23423,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<string>("PayloadJson")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("payload_json");
 
                     b.Property<DateTime?>("PermanentFailedAt")
@@ -23650,7 +23458,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -23678,7 +23486,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "NotificationId", "SubscriptionId")
                         .IsUnique()
                         .HasDatabaseName("ux_web_push_dispatch_outbox_notification_subscription")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = 0");
 
                     b.HasIndex("TenantId", "Status", "LastFailureAt")
                         .HasDatabaseName("ix_web_push_dispatch_outbox_tenant_status");
@@ -23691,8 +23499,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("AuthSecret")
                         .IsRequired()
@@ -23709,7 +23516,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -23778,7 +23585,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uniqueidentifier")
@@ -23794,7 +23601,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("Endpoint")
                         .IsUnique()
                         .HasDatabaseName("ux_web_push_subscriptions_active_endpoint")
-                        .HasFilter("is_deleted = false AND is_active = true");
+                        .HasFilter("is_deleted = 0 AND is_active = 1");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_web_push_subscriptions_user_id");
@@ -23802,7 +23609,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "UserId", "DeviceIdentifier")
                         .IsUnique()
                         .HasDatabaseName("ux_web_push_subscriptions_active_user_device")
-                        .HasFilter("is_deleted = false AND is_active = true");
+                        .HasFilter("is_deleted = 0 AND is_active = 1");
 
                     b.HasIndex("TenantId", "UserId", "IsActive")
                         .HasDatabaseName("ix_web_push_subscriptions_tenant_user_active");
@@ -23848,8 +23655,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("ActionId")
                         .HasColumnType("int")
@@ -23877,7 +23683,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("occurred_at")
-                        .HasDefaultValueSql("statement_timestamp()");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<int>("OutcomeId")
                         .HasColumnType("int")
@@ -23911,14 +23717,14 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("retention_until")
-                        .HasDefaultValueSql("statement_timestamp() + INTERVAL '365 days'");
+                        .HasDefaultValueSql("DATEADD(day, 365, SYSUTCDATETIME())");
 
                     b.Property<string>("SafeAfterJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("safe_after_json");
 
                     b.Property<string>("SafeBeforeJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("safe_before_json");
 
                     b.Property<Guid>("TargetId")
@@ -23969,10 +23775,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.ToTable("webhook_audit_events", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_webhook_audit_events_effective_scope", "(effective_scope_kind_id = 2 AND tenant_id IS NULL AND effective_scope_id IS NOT NULL) OR (effective_scope_kind_id IN (1, 3, 4, 5) AND tenant_id IS NOT NULL AND effective_scope_id IS NOT NULL)");
-
-                            t.HasCheckConstraint("ck_webhook_audit_events_safe_after_object", "safe_after_json IS NULL OR jsonb_typeof(safe_after_json) = 'object'");
-
-                            t.HasCheckConstraint("ck_webhook_audit_events_safe_before_object", "safe_before_json IS NULL OR jsonb_typeof(safe_before_json) = 'object'");
 
                             t.HasCheckConstraint("ck_webhook_audit_events_tenant_scope", "effective_scope_kind_id <> 1 OR effective_scope_id = tenant_id");
                         });
@@ -24115,8 +23917,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("CancellationReasonCode")
                         .HasMaxLength(200)
@@ -24297,8 +24098,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                             t.HasCheckConstraint("ck_webhook_bulk_replay_operations_nonnegative_counts", "estimated_eligible_count >= 0 AND estimated_selected_count >= 0 AND excluded_held_count >= 0 AND excluded_payload_unavailable_count >= 0 AND excluded_endpoint_unavailable_count >= 0 AND excluded_ineligible_local_state_count >= 0 AND excluded_provider_conflict_count >= 0 AND excluded_provider_unknown_count >= 0 AND excluded_provider_manual_reconciliation_count >= 0 AND excluded_provider_ineligible_count >= 0 AND scheduled_count >= 0");
 
-                            t.HasCheckConstraint("ck_webhook_bulk_replay_operations_request_hash", "request_hash ~ '^sha256:[0-9a-f]{64}$'");
-
                             t.HasCheckConstraint("ck_webhook_bulk_replay_operations_requested_max", "requested_max_items BETWEEN 1 AND 1000");
 
                             t.HasCheckConstraint("ck_webhook_bulk_replay_operations_selected_bounds", "estimated_selected_count <= requested_max_items AND scheduled_count <= requested_max_items");
@@ -24343,8 +24142,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("ConfigurationScopeId")
                         .ValueGeneratedOnAdd()
@@ -24518,8 +24316,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("ApplicationUid")
                         .IsRequired()
@@ -24730,8 +24527,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("AttemptNumber")
                         .HasColumnType("int")
@@ -24881,14 +24677,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTimeOffset>("AttemptRetentionUntilUtc")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("attempt_retention_until_utc")
-                        .HasDefaultValueSql("statement_timestamp() + INTERVAL '30 days'");
+                        .HasDefaultValueSql("DATEADD(day, 30, SYSUTCDATETIME())");
 
                     b.Property<string>("ConfigurationVersion")
                         .IsRequired()
@@ -24908,7 +24703,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("dead_letter_evidence_retention_until_utc")
-                        .HasDefaultValueSql("statement_timestamp() + INTERVAL '90 days'");
+                        .HasDefaultValueSql("DATEADD(day, 90, SYSUTCDATETIME())");
 
                     b.Property<string>("EventContractVersion")
                         .IsRequired()
@@ -24924,7 +24719,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("operational_log_retention_until_utc")
-                        .HasDefaultValueSql("statement_timestamp() + INTERVAL '30 days'");
+                        .HasDefaultValueSql("DATEADD(day, 30, SYSUTCDATETIME())");
 
                     b.Property<DateTimeOffset>("PayloadRetentionUntilUtc")
                         .HasColumnType("datetimeoffset")
@@ -24938,7 +24733,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("publication_retention_until_utc")
-                        .HasDefaultValueSql("statement_timestamp() + INTERVAL '90 days'");
+                        .HasDefaultValueSql("DATEADD(day, 90, SYSUTCDATETIME())");
 
                     b.Property<string>("RetentionPolicy")
                         .IsRequired()
@@ -25011,8 +24806,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<string>("AutoPauseReason")
                         .HasMaxLength(100)
@@ -25240,8 +25034,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("ConfigurationScopeId")
                         .ValueGeneratedOnAdd()
@@ -25326,8 +25119,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2")
@@ -25371,7 +25163,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.Property<string>("SchemaJson")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("schema_json");
 
                     b.Property<int>("SchemaVersion")
@@ -25437,8 +25229,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTimeOffset>("CapturedAtUtc")
                         .HasColumnType("datetimeoffset")
@@ -25589,8 +25380,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<Guid>("AggregateId")
                         .HasColumnType("uniqueidentifier")
@@ -25681,7 +25471,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("updated_by");
 
                     b.Property<byte[]>("_payloadBytes")
-                        .HasColumnType("bytea")
+                        .HasColumnType("varbinary(max)")
                         .HasColumnName("payload_bytes");
 
                     b.HasKey("Id")
@@ -25713,8 +25503,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.ToTable("webhook_messages", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_webhook_messages_payload_byte_length", "payload_byte_length > 0");
-
-                            t.HasCheckConstraint("ck_webhook_messages_payload_hash", "payload_hash ~ '^sha256:[0-9a-f]{64}$'");
 
                             t.HasCheckConstraint("ck_webhook_messages_payload_provenance", "payload_provenance_id > 0");
                         });
@@ -25923,8 +25711,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime?>("AbandonedAt")
                         .HasColumnType("datetime2")
@@ -26176,8 +25963,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                             t.HasCheckConstraint("ck_webhook_provider_publications_concurrency_version", "concurrency_version > 0");
 
                             t.HasCheckConstraint("ck_webhook_provider_publications_fence", "publication_fence >= 0");
-
-                            t.HasCheckConstraint("ck_webhook_provider_publications_request_hash", "request_hash ~ '^sha256:[0-9a-f]{64}$'");
                         });
                 });
 
@@ -26186,8 +25971,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<int>("AttemptNumber")
                         .HasColumnType("int")
@@ -26341,8 +26125,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2")
@@ -32902,17 +32685,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Explore.Domain.PrivacyErasurePolicyCoverage", b =>
-                {
-                    b.HasOne("Explore.Domain.PrivacyErasureIntent", null)
-                        .WithMany()
-                        .HasForeignKey("IntentId")
-                        .HasPrincipalKey("IntentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_privacy_erasure_policy_coverage_privacy_erasure_intents_intent_id");
-                });
-
             modelBuilder.Entity("Explore.Domain.PrivacyErasureProviderWork", b =>
                 {
                     b.HasOne("Explore.Domain.PrivacyErasureSaga", null)
@@ -32930,17 +32702,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasForeignKey("PreviousCheckpointId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_privacy_erasure_replay_checkpoints_privacy_erasure_replay_checkpoints_previous_checkpoint_id");
-                });
-
-            modelBuilder.Entity("Explore.Domain.PrivacyErasureSaga", b =>
-                {
-                    b.HasOne("Explore.Domain.PrivacyErasureIntent", null)
-                        .WithOne()
-                        .HasForeignKey("Explore.Domain.PrivacyErasureSaga", "IntentId")
-                        .HasPrincipalKey("Explore.Domain.PrivacyErasureIntent", "IntentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_privacy_erasure_sagas_privacy_erasure_intents_intent_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationAnswer", b =>
@@ -32981,12 +32742,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_registration_answers_registration_participants_tenant_id_registration_order_id_participant_subject_id");
 
+                    b.HasOne("Explore.Domain.RegistrationOrderLine", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId", "TicketAssignmentOrderLineId", "RequirementSubjectId")
+                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "TicketTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_registration_answers_registration_order_lines_tenant_id_registration_order_id_ticket_assignment_order_line_id_requirement_su");
+
                     b.HasOne("Explore.Domain.RegistrationTicketAssignment", null)
                         .WithMany()
-                        .HasForeignKey("TenantId", "RegistrationOrderId", "TicketAssignmentSubjectId")
-                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
+                        .HasForeignKey("TenantId", "RegistrationOrderId", "TicketAssignmentSubjectId", "TicketAssignmentOrderLineId")
+                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "RegistrationOrderLineId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_registration_answers_registration_ticket_assignments_tenant_id_registration_order_id_ticket_assignment_subject_id");
+                        .HasConstraintName("fk_registration_answers_registration_ticket_assignments_tenant_id_registration_order_id_ticket_assignment_subject_id_ticket_ass");
 
                     b.HasOne("Explore.Domain.RegistrationRequirement", null)
                         .WithMany()
