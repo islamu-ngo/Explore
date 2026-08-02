@@ -57,6 +57,31 @@ public static class BffProxyHeaderSanitizer
         RemoveUnsafeCorrelationMetadata(proxyRequest, RequestIdHeader);
     }
 
+    public static void RemoveBrowserControlledHeaders(HttpRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        foreach (var headerName in BrowserCredentialHeaderNames)
+        {
+            request.Headers.Remove(headerName);
+        }
+
+        request.Headers.Remove(EventBffHeaderNames.TenantId);
+        request.Headers.Remove(EventBffHeaderNames.TenantSlug);
+
+        var supportHeaderNames = request.Headers.Keys
+            .Where(EventBffHeaderNames.IsSupportAccessHeader)
+            .ToArray();
+
+        foreach (var headerName in supportHeaderNames)
+        {
+            request.Headers.Remove(headerName);
+        }
+
+        RemoveUnsafeCorrelationMetadata(request, CorrelationIdHeader);
+        RemoveUnsafeCorrelationMetadata(request, RequestIdHeader);
+    }
+
     private static void RemoveUnsafeCorrelationMetadata(HttpRequestMessage request, string headerName)
     {
         if (!request.Headers.TryGetValues(headerName, out var values))
@@ -76,5 +101,18 @@ public static class BffProxyHeaderSanitizer
         return !string.IsNullOrWhiteSpace(value)
             && value.Length <= MaxCorrelationHeaderLength
             && value.All(character => character is >= '!' and <= '~');
+    }
+
+    private static void RemoveUnsafeCorrelationMetadata(HttpRequest request, string headerName)
+    {
+        if (!request.Headers.TryGetValue(headerName, out var values))
+        {
+            return;
+        }
+
+        if (values.Count != 1 || !IsSafeCorrelationValue(values[0]!))
+        {
+            request.Headers.Remove(headerName);
+        }
     }
 }

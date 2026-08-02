@@ -44,7 +44,6 @@ public class BlazorBffWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        builder.UseSetting("ConnectionStrings:DefaultConnection", "Host=localhost;Database=test_bff;Username=postgres;Password=postgres");
         builder.UseSetting("ConnectionStrings:cache", "localhost:6379,abortConnect=false,connectTimeout=100");
         builder.UseSetting("Keycloak:Authority", "https://auth.example.com");
         builder.UseSetting("Keycloak:Realm", "explore");
@@ -55,7 +54,6 @@ public class BlazorBffWebApplicationFactory : WebApplicationFactory<Program>
         {
             var inMemoryConfig = new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_bff;Username=postgres;Password=postgres",
                 ["ConnectionStrings:cache"] = "localhost:6379,abortConnect=false,connectTimeout=100",
                 ["Keycloak:Authority"] = "https://auth.example.com",
                 ["Keycloak:Realm"] = "explore",

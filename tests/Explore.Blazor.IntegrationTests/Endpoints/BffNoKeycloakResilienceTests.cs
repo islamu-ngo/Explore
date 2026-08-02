@@ -314,11 +314,6 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
                 ["Keycloak__Realm"] = string.Empty,
                 ["Keycloak__ClientId"] = string.Empty,
                 ["Keycloak__ClientSecret"] = string.Empty,
-                ["POSTGRESQL_HOST"] = "localhost",
-                ["POSTGRESQL_PORT"] = "5432",
-                ["POSTGRESQL_DATABASE"] = "test_bff_no_keycloak",
-                ["POSTGRESQL_USERNAME"] = "postgres",
-                ["POSTGRESQL_PASSWORD"] = "postgres",
                 ["ConnectionStrings__cache"] = "localhost:6379,abortConnect=false,connectTimeout=100"
             };
 
@@ -357,7 +352,6 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
                     ["Keycloak:Realm"] = string.Empty,
                     ["Keycloak:ClientId"] = string.Empty,
                     ["Keycloak:ClientSecret"] = string.Empty,
-                    ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_bff_no_keycloak;Username=postgres;Password=postgres",
                     ["ConnectionStrings:cache"] = "localhost:6379,abortConnect=false,connectTimeout=100",
                     ["Deployment:Mode"] = "SingleTenant",
                     ["Deployment:DefaultTenantId"] = "018e4e5c-7f00-7000-8000-000000000001",

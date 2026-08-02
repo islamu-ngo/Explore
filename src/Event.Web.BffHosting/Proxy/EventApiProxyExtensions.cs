@@ -1,7 +1,6 @@
 // ABOUTME: Registers the shared YARP API proxy and server-owned BFF request transforms.
 // ABOUTME: Strips browser-controlled privileged headers before adding trusted token, tenant, setup, and support context.
 
-using System.Net.Http.Headers;
 using Event.Web.BffHosting.Abstractions;
 using Event.Web.BffHosting.Authentication;
 using Event.Web.BffHosting.Security;
@@ -40,6 +39,7 @@ public static class EventApiProxyExtensions
         services.TryAddScoped<IEventBffTenantHintProvider, NoopEventBffTenantHintProvider>();
         services.TryAddScoped<IEventBffSetupSecretProvider, NoopEventBffSetupSecretProvider>();
         services.TryAddScoped<IEventBffSupportAccessProvider, NoopEventBffSupportAccessProvider>();
+        services.TryAddScoped<EventBffRequestEnricher>();
 
         var apiBaseUrl = EventApiBaseAddressResolver.Resolve(configuration);
 
@@ -86,11 +86,12 @@ public static class EventApiProxyExtensions
             {
                 context.AddRequestTransform(async transformContext =>
                 {
-                    BffProxyHeaderSanitizer.RemoveBrowserControlledHeaders(transformContext.ProxyRequest);
-                    await ForwardBearerTokenAsync(transformContext);
-                    ForwardTenantHeaders(transformContext);
-                    await ForwardSetupSecretAsync(transformContext);
-                    await ForwardSupportAccessAsync(transformContext);
+                    var enricher = transformContext.HttpContext.RequestServices
+                        .GetRequiredService<EventBffRequestEnricher>();
+                    var enrichment = await enricher.ResolveForProxyAsync(
+                        transformContext.HttpContext,
+                        transformContext.HttpContext.RequestAborted);
+                    enrichment.ApplyTo(transformContext.ProxyRequest);
                 });
             });
 
@@ -99,7 +100,7 @@ public static class EventApiProxyExtensions
 
     private static async Task ValidateApiProxyAntiforgeryAsync(HttpContext context, Func<Task> next)
     {
-        if (!RequiresAntiforgeryValidation(context))
+        if (!EventBffRequestPolicy.RequiresAntiforgeryValidation(context.Request))
         {
             await next();
             return;
@@ -120,141 +121,4 @@ public static class EventApiProxyExtensions
         await next();
     }
 
-    private static bool RequiresAntiforgeryValidation(HttpContext context)
-    {
-        var request = context.Request;
-        return request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
-            && IsUnsafeMethod(request.Method)
-            && !RequiresSetupSecret(request.Method, request.Path)
-            && !IsAnonymousOnboardingPath(request.Path);
-    }
-
-    private static bool IsUnsafeMethod(string method)
-    {
-        return HttpMethods.IsPost(method)
-            || HttpMethods.IsPut(method)
-            || HttpMethods.IsPatch(method)
-            || HttpMethods.IsDelete(method);
-    }
-
-    private static async Task ForwardBearerTokenAsync(RequestTransformContext context)
-    {
-        if (IsAnonymousOnboardingPath(context.HttpContext.Request.Path))
-        {
-            context.ProxyRequest.Headers.Authorization = null;
-            return;
-        }
-
-        var provider = context.HttpContext.RequestServices.GetRequiredService<IEventBffAccessTokenProvider>();
-        var token = await provider.ResolveAccessTokenAsync(
-            context.HttpContext,
-            context.HttpContext.RequestAborted);
-
-        if (!string.IsNullOrWhiteSpace(token))
-        {
-            context.ProxyRequest.Headers.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
-        }
-    }
-
-    private static bool IsAnonymousOnboardingPath(PathString path)
-    {
-        if (!path.StartsWithSegments("/api/InstanceOnboarding", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return path.Value is null
-            || !path.Value.EndsWith("/complete", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static void ForwardTenantHeaders(RequestTransformContext context)
-    {
-        context.ProxyRequest.Headers.Remove(EventBffHeaderNames.TenantId);
-        context.ProxyRequest.Headers.Remove(EventBffHeaderNames.TenantSlug);
-
-        var provider = context.HttpContext.RequestServices.GetRequiredService<IEventBffTenantHintProvider>();
-        var tenantSlug = provider.ResolveTenantSlug(context.HttpContext);
-        if (!string.IsNullOrWhiteSpace(tenantSlug))
-        {
-            context.ProxyRequest.Headers.Add(EventBffHeaderNames.TenantSlug, tenantSlug);
-        }
-    }
-
-    private static async Task ForwardSetupSecretAsync(RequestTransformContext context)
-    {
-        var httpContext = context.HttpContext;
-
-        _ = context.ProxyRequest.Headers.Remove(EventBffHeaderNames.SetupSecret);
-
-        if (!RequiresSetupSecret(httpContext.Request.Method, httpContext.Request.Path))
-        {
-            return;
-        }
-
-        var provider = httpContext.RequestServices.GetRequiredService<IEventBffSetupSecretProvider>();
-        var setupSecret = await provider.ResolveSetupSecretAsync(httpContext, httpContext.RequestAborted);
-        if (!string.IsNullOrWhiteSpace(setupSecret))
-        {
-            context.ProxyRequest.Headers.Add(EventBffHeaderNames.SetupSecret, setupSecret);
-        }
-    }
-
-    private static bool RequiresSetupSecret(string method, PathString path)
-    {
-        if (HttpMethods.IsPatch(method)
-            && (string.Equals(
-                    path.Value,
-                    "/api/instance/settings/auth-provider",
-                    StringComparison.OrdinalIgnoreCase)
-                || string.Equals(
-                    path.Value,
-                    "/api/instance/settings/authz-provider",
-                    StringComparison.OrdinalIgnoreCase)))
-        {
-            return true;
-        }
-
-        return path.StartsWithSegments("/api/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWithSegments("/api/InstanceOnboarding/validate-secret", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWithSegments(
-                "/api/InstanceOnboarding/auth-provider-configuration/keycloak-bootstrap",
-                StringComparison.OrdinalIgnoreCase)
-            || path.StartsWithSegments(
-                "/api/InstanceOnboarding/auth-provider-configuration",
-                StringComparison.OrdinalIgnoreCase)
-            || path.StartsWithSegments(
-                "/api/InstanceOnboarding/authz-provider-configuration",
-                StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static async Task ForwardSupportAccessAsync(RequestTransformContext context)
-    {
-        RemoveSupportAccessHeaders(context.ProxyRequest);
-
-        var provider = context.HttpContext.RequestServices.GetRequiredService<IEventBffSupportAccessProvider>();
-        var sessionId = await provider.ResolveSupportAccessSessionIdAsync(
-            context.HttpContext,
-            context.HttpContext.RequestAborted);
-
-        if (!string.IsNullOrWhiteSpace(sessionId))
-        {
-            context.ProxyRequest.Headers.TryAddWithoutValidation(
-                EventBffHeaderNames.SupportAccessSessionId,
-                sessionId);
-        }
-    }
-
-    private static void RemoveSupportAccessHeaders(HttpRequestMessage request)
-    {
-        var headerNames = request.Headers
-            .Select(header => header.Key)
-            .Where(EventBffHeaderNames.IsSupportAccessHeader)
-            .ToArray();
-
-        foreach (var headerName in headerNames)
-        {
-            _ = request.Headers.Remove(headerName);
-        }
-    }
 }

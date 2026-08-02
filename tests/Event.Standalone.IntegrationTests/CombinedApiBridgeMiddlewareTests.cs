@@ -7,6 +7,7 @@ using System.Text.Encodings.Web;
 using Event.Standalone.Middleware;
 using Event.Web.BffHosting.Abstractions;
 using Event.Web.BffHosting.Security;
+using Explore.Application.Constants;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -21,7 +22,7 @@ namespace Event.Standalone.IntegrationTests;
 public sealed class CombinedApiBridgeMiddlewareTests
 {
     [Test]
-    public async Task ValidCookieWithoutToken_SanitizesAndFailsClosed()
+    public async Task ValidCookieWithoutTokenSanitizesAndFailsClosed()
     {
         await using var app = await CreateApplicationAsync(cookieToken: null);
         using var client = app.GetTestClient();
@@ -38,7 +39,7 @@ public sealed class CombinedApiBridgeMiddlewareTests
     }
 
     [Test]
-    public async Task NoCookie_LeavesExternalBearerRequestUnchanged()
+    public async Task NoCookieLeavesExternalBearerRequestUnchanged()
     {
         await using var app = await CreateApplicationAsync(cookieToken: "server-token");
         using var client = app.GetTestClient();
@@ -56,7 +57,7 @@ public sealed class CombinedApiBridgeMiddlewareTests
     }
 
     [Test]
-    public async Task ValidCookie_ReconstructsTrustedHeadersAndApiPrincipalOnly()
+    public async Task ValidCookieReconstructsTrustedHeadersAndApiPrincipalOnly()
     {
         await using var app = await CreateApplicationAsync(cookieToken: "server-token");
         using var client = app.GetTestClient();
@@ -77,12 +78,12 @@ public sealed class CombinedApiBridgeMiddlewareTests
         await Assert.That(response.Headers.GetValues("X-Seen-Support").Single())
             .IsEqualTo("11111111-1111-1111-1111-111111111111");
         await Assert.That(response.Headers.GetValues("X-Seen-Auth-Type").Single())
-            .IsEqualTo(TestAuthenticationHandler.ApiScheme);
+            .IsEqualTo(ApiAuthenticationSchemeNames.MultiAuth);
         await Assert.That(response.Headers.Contains("X-Seen-Api-Key")).IsFalse();
     }
 
     [Test]
-    public async Task NonApiPath_DoesNotClassifyOrMutateRequest()
+    public async Task NonApiPathDoesNotClassifyOrMutateRequest()
     {
         await using var app = await CreateApplicationAsync(cookieToken: null);
         using var client = app.GetTestClient();
@@ -97,6 +98,51 @@ public sealed class CombinedApiBridgeMiddlewareTests
             .IsEqualTo("Bearer external-token");
     }
 
+    [Test]
+    public async Task ValidCookieUnsafeRequestWithoutAntiforgeryFailsBeforeApiAuthentication()
+    {
+        await using var app = await CreateApplicationAsync(cookieToken: "server-token");
+        using var client = app.GetTestClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/events");
+        request.Headers.Add("X-Test-Cookie", "valid");
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(response.Headers.Contains("X-Next-Reached")).IsFalse();
+    }
+
+    [Test]
+    public async Task ValidCookieWithExpiredTokenFailsClosed()
+    {
+        await using var app = await CreateApplicationAsync(
+            cookieToken: "eyJhbGciOiJub25lIn0.eyJleHAiOjF9.");
+        using var client = app.GetTestClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        request.Headers.Add("X-Test-Cookie", "valid");
+        request.Headers.Add("Authorization", "Bearer attacker");
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(response.Headers.Contains("X-Next-Reached")).IsFalse();
+    }
+
+    [Test]
+    public async Task UnrefreshableCookieSessionFailsClosed()
+    {
+        await using var app = await CreateApplicationAsync(cookieToken: "server-token");
+        using var client = app.GetTestClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        request.Headers.Add("X-Test-Cookie", "refresh-rejected");
+        request.Headers.Add(EventBffHeaderNames.ApiKey, "attacker-key");
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(response.Headers.Contains("X-Next-Reached")).IsFalse();
+    }
+
     private static async Task<WebApplication> CreateApplicationAsync(string? cookieToken)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -106,20 +152,21 @@ public sealed class CombinedApiBridgeMiddlewareTests
         builder.WebHost.UseTestServer();
         builder.Services.AddAuthentication(options =>
             {
-                options.DefaultAuthenticateScheme = TestAuthenticationHandler.ApiScheme;
-                options.DefaultChallengeScheme = TestAuthenticationHandler.ApiScheme;
+                options.DefaultAuthenticateScheme = ApiAuthenticationSchemeNames.MultiAuth;
+                options.DefaultChallengeScheme = ApiAuthenticationSchemeNames.MultiAuth;
             })
             .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
                 TestAuthenticationHandler.CookieScheme,
                 _ => { })
             .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
-                TestAuthenticationHandler.ApiScheme,
+                ApiAuthenticationSchemeNames.MultiAuth,
                 _ => { });
         builder.Services.AddSingleton(new TestTokenState(cookieToken));
         builder.Services.AddSingleton<IEventBffAccessTokenProvider, NullAccessTokenProvider>();
         builder.Services.AddSingleton<IEventBffTenantHintProvider, TrustedTenantProvider>();
         builder.Services.AddSingleton<IEventBffSetupSecretProvider, NullSetupSecretProvider>();
         builder.Services.AddSingleton<IEventBffSupportAccessProvider, TrustedSupportAccessProvider>();
+        builder.Services.AddAntiforgery();
         builder.Services.AddCombinedApiBridge();
 
         var app = builder.Build();
@@ -161,15 +208,20 @@ public sealed class CombinedApiBridgeMiddlewareTests
         : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
     {
         public const string CookieScheme = "Cookies";
-        public const string ApiScheme = "ApiBearer";
-
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             if (Scheme.Name == CookieScheme)
             {
-                if (!Request.Headers.ContainsKey("X-Test-Cookie"))
+                if (!Request.Headers.TryGetValue("X-Test-Cookie", out var cookieState))
                 {
                     return Task.FromResult(AuthenticateResult.NoResult());
+                }
+
+                if (cookieState == "refresh-rejected")
+                {
+                    Context.Items[Event.Web.BffHosting.Authentication.EventBffAuthenticationConstants
+                        .TokenRefreshRejectedItemKey] = true;
+                    return Task.FromResult(AuthenticateResult.Fail("refresh rejected"));
                 }
 
                 var properties = new AuthenticationProperties();

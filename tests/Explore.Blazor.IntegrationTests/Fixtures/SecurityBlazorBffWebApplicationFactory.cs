@@ -49,7 +49,6 @@ public class SecurityBlazorBffWebApplicationFactory : WebApplicationFactory<Prog
         {
             var testConfig = new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_bff_security;Username=postgres;Password=postgres",
                 ["ConnectionStrings:cache"] = "localhost:6379,abortConnect=false,connectTimeout=100",
                 ["Keycloak:Authority"] = _keycloakAuthority,
                 ["Keycloak:Realm"] = "ISLAMU",

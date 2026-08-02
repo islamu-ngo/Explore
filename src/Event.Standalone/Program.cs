@@ -4,6 +4,7 @@
 using Explore.API.Hosting;
 using Explore.Blazor.Extensions;
 using Explore.Blazor.Hosting;
+using Event.Standalone.Middleware;
 
 const BlazorHostProfile hostProfile = BlazorHostProfile.Combined;
 var shutdownState = new GracefulShutdownState();
@@ -11,6 +12,7 @@ using var shutdownCts = shutdownState.CancellationTokenSource;
 var builder = WebApplication.CreateBuilder(args);
 var apiHost = builder.AddApiHostServices(() => shutdownState.IsShuttingDown);
 builder.AddBlazorHostServices(hostProfile, shutdownState);
+builder.Services.AddCombinedApiBridge();
 
 var app = builder.Build();
 await app.RunApiHostStartupAsync(

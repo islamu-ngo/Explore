@@ -129,6 +129,7 @@ public class EventBffTokenRefreshCookieEvents(
 
     private async Task RejectAndSignOutAsync(CookieValidatePrincipalContext context, string reason)
     {
+        context.HttpContext.Items[EventBffAuthenticationConstants.TokenRefreshRejectedItemKey] = true;
         await sessionHandler.OnTokenRefreshRejectedAsync(context, reason);
         context.RejectPrincipal();
 
