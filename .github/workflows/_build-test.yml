@@ -178,7 +178,6 @@ jobs:
     env:
       DOTNET_CONFIGURATION: ${{ inputs.configuration }}
       PrivacyErasure__Authority__Topology: EmbeddedSqlite
-      PrivacyErasureAuthorityEmbedded__Path: artifacts/database/integration/privacy-erasure-authority.db
       PrivacyErasureAuthorityEmbedded__WriterReplicaCount: "1"
       PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds: "30"
 
@@ -208,6 +207,13 @@ jobs:
           global-json-file: global.json
           cache: true
           cache-dependency-path: '**/packages.lock.json'
+
+      - name: Configure Embedded Authority File
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/database/integration
+          echo "PrivacyErasureAuthorityEmbedded__Path=${RUNNER_TEMP}/privacy-erasure-authority-integration.db" >> "$GITHUB_ENV"
 
       - name: Restore
         run: dotnet restore --locked-mode

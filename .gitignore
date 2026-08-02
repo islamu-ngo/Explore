@@ -575,3 +575,4 @@ dev/report/visuals/
 .playwright-cli/
 .qa-cookie/
 .debug-journal.md
+evidence/mdb-real-postgres-qa/

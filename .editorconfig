@@ -85,3 +85,10 @@ dotnet_diagnostic.MUD0002.severity = suggestion
 csharp_style_var_for_built_in_types = false:suggestion
 csharp_style_var_when_type_is_apparent = true:suggestion
 csharp_style_var_elsewhere = false:warning
+
+# EF Core migrations are generated artifacts and must never be hand-edited.
+[**/Migrations/*.cs]
+generated_code = true
+
+[**/Migrations/**/*.cs]
+generated_code = true
