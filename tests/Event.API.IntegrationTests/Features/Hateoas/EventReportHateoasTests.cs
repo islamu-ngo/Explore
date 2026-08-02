@@ -101,7 +101,7 @@ public sealed class EventReportHateoasTests
         var updateConsent = links.Single(link => link.Rel == LinkRelations.UpdateCommunicationConsent);
         await Assert.That(updateConsent.RouteName).IsEqualTo(RouteNames.UpdateMyEventReportCommunicationConsent);
         await Assert.That(new RouteValueDictionary(updateConsent.RouteValues)["reportId"]).IsEqualTo(reportId);
-        await Assert.That(updateConsent.Method).IsEqualTo("PUT");
+        await Assert.That(updateConsent.Method).IsEqualTo("PATCH");
         await Assert.That(updateConsent.RequiresAuth).IsTrue();
         await Assert.That(updateConsent.PermissionResourceKind).IsEqualTo(ResourceKinds.User);
         await Assert.That(updateConsent.PermissionAction).IsEqualTo(AuthorizationActions.Users.Update);
@@ -123,7 +123,7 @@ public sealed class EventReportHateoasTests
 
         await Assert.That(updateConsent.RouteName).IsEqualTo(RouteNames.UpdateMyEventReportCommunicationConsent);
         await Assert.That(new RouteValueDictionary(updateConsent.RouteValues)["reportId"]).IsEqualTo(reportId);
-        await Assert.That(updateConsent.Method).IsEqualTo("PUT");
+        await Assert.That(updateConsent.Method).IsEqualTo("PATCH");
         await Assert.That(updateConsent.PermissionResourceKind).IsEqualTo(ResourceKinds.User);
         await Assert.That(updateConsent.PermissionResourceId).IsEqualTo(userId.ToString());
     }

@@ -58,7 +58,7 @@ public sealed class HealthCheckResponseWriterTests
         checkData["provider"]!.GetValue<string>().Should().Be("s3_compatible");
         checkData["status"]!.GetValue<string>().Should().Be("unhealthy");
         checkData["failureCode"]!.GetValue<string>().Should().Be("provider_unreachable");
-        checkData["apiKeyConfigured"]!.GetValue<bool>().Should().BeTrue();
+        checkData["apiKeyConfigured"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
         checkData["durationMs"]!.GetValue<int>().Should().Be(12);
         checkData["endpoint"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
         checkData["bucketName"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);

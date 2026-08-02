@@ -558,7 +558,6 @@ public class ContractInvariantsTests
             "HalResourceOfEventTemplateDto",
             "HalResourceOfEventSessionTemplateDto",
             "HalResourceOfGroupDto",
-            "HalResourceOfIndexedDidDto",
             "HalResourceOfLocationRoomDto",
             "HalResourceOfEventDayDto",
             "HalResourceOfEventAgendaItemDto",
