@@ -5,12 +5,12 @@ using Explore.Persistence;
 
 namespace Event.Persistence.IntegrationTests.UnitOfWork;
 
-public sealed class PostgresSettingMutationLockTests
+public sealed class RelationalSettingMutationLockTests
 {
     [Test]
     public async Task NormalizeCanonicalKeys_ReturnsDistinctOrdinalOrder()
     {
-        string[] normalized = PostgresSettingMutationLock.NormalizeCanonicalKeys(
+        string[] normalized = RelationalSettingMutationLock.NormalizeCanonicalKeys(
             [" Zebra ", "beta", "ALPHA", "alpha"]);
 
         await Assert.That(normalized.SequenceEqual(

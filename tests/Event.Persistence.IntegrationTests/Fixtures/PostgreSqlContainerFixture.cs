@@ -6,7 +6,6 @@ using Explore.Persistence;
 using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql;
 using Respawn;
 using Respawn.Graph;
@@ -56,7 +55,7 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         _respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
         {
             DbAdapter = DbAdapter.Postgres,
-            SchemasToInclude = ["public"],
+            SchemasToInclude = [RelationalModelNamespace.Name],
             TablesToIgnore = LookupTables
         });
     }
@@ -110,10 +109,6 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseNpgsql(_container.GetConnectionString())
             .UseSnakeCaseNamingConvention()
-            // Pending-model-changes drift is tolerated in integration tests because concurrent
-            // developer branches may add model edits ahead of a consolidated migration.
-            // Tests exercise real SQL against the schema that migrations do produce.
-            .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
             .Options;
 
         return new ExploreDbContext(options);
@@ -122,7 +117,11 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
     /// <summary>
     /// Lookup tables seeded by LookupTableSeeder that Respawn must preserve.
     /// </summary>
-    private static readonly Table[] LookupTables =
+    private static Table[] LookupTables => UnqualifiedLookupTables
+        .Select(static table => new Table(table.Name, RelationalModelNamespace.Name))
+        .ToArray();
+
+    private static readonly Table[] UnqualifiedLookupTables =
     [
         new("__EFMigrationsHistory"),
         new("account_authority_kinds"),
@@ -179,9 +178,11 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         new("permissions"),
         new("registration_modes"),
         new("registration_answer_sync_modes"),
+        new("registration_attempt_statuses"),
         new("registration_requirement_completion_effects"),
         new("registration_requirement_criticalities"),
         new("registration_requirement_subject_types"),
+        new("registration_submission_statuses"),
         new("registration_scopes"),
         new("role_scopes"),
         new("roles"),

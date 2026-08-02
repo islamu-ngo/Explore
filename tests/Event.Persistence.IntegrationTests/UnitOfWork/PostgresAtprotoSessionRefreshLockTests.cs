@@ -8,7 +8,7 @@ namespace Event.Persistence.IntegrationTests.UnitOfWork;
 
 [ClassDataSource<PostgreSqlContainerFixture>(Shared = SharedType.PerAssembly)]
 [NotInParallel("PersistenceDb")]
-public sealed class PostgresAtprotoSessionRefreshLockTests(PostgreSqlContainerFixture fixture)
+public sealed class RelationalAtprotoSessionRefreshLockTests(PostgreSqlContainerFixture fixture)
 {
     [Test]
     public async Task SameScopeWaitsUntilTheAuthoritativeLeaseIsReleased()
@@ -17,8 +17,8 @@ public sealed class PostgresAtprotoSessionRefreshLockTests(PostgreSqlContainerFi
         await using var secondContext = fixture.CreateDbContext();
         var tenantId = Guid.CreateVersion7();
         var userId = Guid.CreateVersion7();
-        var firstLock = new PostgresAtprotoSessionRefreshLock(firstContext);
-        var secondLock = new PostgresAtprotoSessionRefreshLock(secondContext);
+        var firstLock = new RelationalAtprotoSessionRefreshLock(firstContext);
+        var secondLock = new RelationalAtprotoSessionRefreshLock(secondContext);
         await using var firstLease = await firstLock.AcquireAsync(
             tenantId, userId, "atproto", "did:plc:refresh-lock", CancellationToken.None);
 
@@ -39,9 +39,9 @@ public sealed class PostgresAtprotoSessionRefreshLockTests(PostgreSqlContainerFi
         await using var retryContext = fixture.CreateDbContext();
         var tenantId = Guid.CreateVersion7();
         var userId = Guid.CreateVersion7();
-        var firstLock = new PostgresAtprotoSessionRefreshLock(firstContext);
-        var cancelledLock = new PostgresAtprotoSessionRefreshLock(cancelledContext);
-        var retryLock = new PostgresAtprotoSessionRefreshLock(retryContext);
+        var firstLock = new RelationalAtprotoSessionRefreshLock(firstContext);
+        var cancelledLock = new RelationalAtprotoSessionRefreshLock(cancelledContext);
+        var retryLock = new RelationalAtprotoSessionRefreshLock(retryContext);
         IAsyncDisposable firstLease = await firstLock.AcquireAsync(
             tenantId, userId, "atproto", "did:plc:refresh-cancel", CancellationToken.None);
         using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
@@ -65,26 +65,25 @@ public sealed class PostgresAtprotoSessionRefreshLockTests(PostgreSqlContainerFi
     }
 
 }
-
-public sealed class PostgresAtprotoSessionRefreshLockKeyTests
+public sealed class RelationalAtprotoSessionRefreshLockKeyTests
 {
     [Test]
     public async Task StableKeyIncludesEverySecurityScopeDimension()
     {
         var tenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
         var userId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000002");
-        long baseline = PostgresAtprotoSessionRefreshLock.ComputeStableLockKey(
+        long baseline = RelationalAtprotoSessionRefreshLock.ComputeStableLockKey(
             tenantId, userId, "atproto", "did:plc:alice");
 
-        await Assert.That(PostgresAtprotoSessionRefreshLock.ComputeStableLockKey(
+        await Assert.That(RelationalAtprotoSessionRefreshLock.ComputeStableLockKey(
             tenantId, userId, "atproto", "did:plc:alice")).IsEqualTo(baseline);
-        await Assert.That(PostgresAtprotoSessionRefreshLock.ComputeStableLockKey(
+        await Assert.That(RelationalAtprotoSessionRefreshLock.ComputeStableLockKey(
             Guid.CreateVersion7(), userId, "atproto", "did:plc:alice")).IsNotEqualTo(baseline);
-        await Assert.That(PostgresAtprotoSessionRefreshLock.ComputeStableLockKey(
+        await Assert.That(RelationalAtprotoSessionRefreshLock.ComputeStableLockKey(
             tenantId, Guid.CreateVersion7(), "atproto", "did:plc:alice")).IsNotEqualTo(baseline);
-        await Assert.That(PostgresAtprotoSessionRefreshLock.ComputeStableLockKey(
+        await Assert.That(RelationalAtprotoSessionRefreshLock.ComputeStableLockKey(
             tenantId, userId, "other", "did:plc:alice")).IsNotEqualTo(baseline);
-        await Assert.That(PostgresAtprotoSessionRefreshLock.ComputeStableLockKey(
+        await Assert.That(RelationalAtprotoSessionRefreshLock.ComputeStableLockKey(
             tenantId, userId, "atproto", "did:plc:bob")).IsNotEqualTo(baseline);
     }
 }

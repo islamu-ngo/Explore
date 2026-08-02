@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Explore.Infrastructure\Explore.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Explore.Persistence\Explore.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\Explore.Persistence.Migrations.Sqlite\Explore.Persistence.Migrations.Sqlite.csproj" />
     <ProjectReference Include="..\..\src\Explore.Domain\Explore.Domain.csproj" />
   </ItemGroup>
 
@@ -12,6 +13,7 @@
     <PackageReference Include="Respawn" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="TUnit" />
+    <PackageReference Include="FluentAssertions" />
   </ItemGroup>
 
   <PropertyGroup>

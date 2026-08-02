@@ -1,11 +1,11 @@
 // ABOUTME: Verifies EF model and runtime-seeder parity for event provenance and authority lookups.
 // ABOUTME: Covers exact IDs/codes, missing-row repair, idempotency, named filters, and model seed prohibition.
 
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Seed;

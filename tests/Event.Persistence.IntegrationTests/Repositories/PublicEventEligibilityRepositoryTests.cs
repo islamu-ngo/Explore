@@ -160,30 +160,59 @@ public sealed class PublicEventEligibilityRepositoryTests
     {
         var session = new EventSession
         {
-            Id = Guid.CreateVersion7(), EventId = @event.Id, Event = @event, TenantId = tenantId, Tenant = null!,
-            Title = "Public session", EventSessionStatusId = (int)EventSessionStatusEnum.Published,
+            Id = Guid.CreateVersion7(),
+            EventId = @event.Id,
+            Event = @event,
+            TenantId = tenantId,
+            Tenant = null!,
+            Title = "Public session",
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             StartTime = new DateTimeOffset(2030, 1, 1, 9, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2030, 1, 1, 10, 0, 0, TimeSpan.Zero)
         };
         var group = new EventSessionGroup
         {
-            Id = Guid.CreateVersion7(), EventId = @event.Id, Event = @event, TenantId = tenantId, Tenant = null!,
-            Name = "Public group", IsPublished = true
+            Id = Guid.CreateVersion7(),
+            EventId = @event.Id,
+            Event = @event,
+            TenantId = tenantId,
+            Tenant = null!,
+            Name = "Public group",
+            IsPublished = true
         };
         var assignment = new EventSessionGroupSession
         {
-            Id = Guid.CreateVersion7(), EventId = @event.Id, Event = @event, EventSessionId = session.Id, EventSession = session,
-            EventSessionGroupId = group.Id, EventSessionGroup = group, TenantId = tenantId, Tenant = null!
+            Id = Guid.CreateVersion7(),
+            EventId = @event.Id,
+            Event = @event,
+            EventSessionId = session.Id,
+            EventSession = session,
+            EventSessionGroupId = group.Id,
+            EventSessionGroup = group,
+            TenantId = tenantId,
+            Tenant = null!
         };
         var agendaItem = new EventAgendaItem
         {
-            Id = Guid.CreateVersion7(), EventId = @event.Id, Event = @event, TenantId = tenantId, Tenant = null!,
-            Title = "Public agenda", StartTime = session.StartTime!.Value, EndTime = session.EndTime!.Value
+            Id = Guid.CreateVersion7(),
+            EventId = @event.Id,
+            Event = @event,
+            TenantId = tenantId,
+            Tenant = null!,
+            Title = "Public agenda",
+            StartTime = session.StartTime!.Value,
+            EndTime = session.EndTime!.Value
         };
         var sessionAgendaItem = new EventSessionAgendaItem
         {
-            Id = Guid.CreateVersion7(), EventSessionId = session.Id, EventSession = session, TenantId = tenantId, Tenant = null!,
-            Title = "Public session agenda", StartTime = session.StartTime!.Value, EndTime = session.EndTime!.Value
+            Id = Guid.CreateVersion7(),
+            EventSessionId = session.Id,
+            EventSession = session,
+            TenantId = tenantId,
+            Tenant = null!,
+            Title = "Public session agenda",
+            StartTime = session.StartTime!.Value,
+            EndTime = session.EndTime!.Value
         };
 
         context.AddRange(session, group, assignment, agendaItem, sessionAgendaItem);
@@ -260,8 +289,14 @@ public sealed class PublicEventEligibilityRepositoryTests
             {
                 _context.TenantUsers.Add(new TenantUser
                 {
-                    Id = Guid.CreateVersion7(), TenantId = _tenantId, Tenant = null!, UserId = user.Id, User = null!,
-                    ActorId = actor.Id, Actor = null!, StatusId = (int)TenantUserStatusEnum.Active
+                    Id = Guid.CreateVersion7(),
+                    TenantId = _tenantId,
+                    Tenant = null!,
+                    UserId = user.Id,
+                    User = null!,
+                    ActorId = actor.Id,
+                    Actor = null!,
+                    StatusId = (int)TenantUserStatusEnum.Active
                 });
             }
 
@@ -269,16 +304,26 @@ public sealed class PublicEventEligibilityRepositoryTests
             {
                 var record = new AtprotoRecord
                 {
-                    Id = Guid.CreateVersion7(), Did = $"did:plc:{name}", Collection = "community.lexicon.calendar.event",
-                    RecordKey = name, Direction = AtprotoRecordDirection.Outbound,
-                    Provenance = AtprotoRecordProvenance.LocalLifecycle, SourceVersion = 1, UpdatedAt = DateTime.UtcNow
+                    Id = Guid.CreateVersion7(),
+                    Did = $"did:plc:{name}",
+                    Collection = "community.lexicon.calendar.event",
+                    RecordKey = name,
+                    Direction = AtprotoRecordDirection.Outbound,
+                    Provenance = AtprotoRecordProvenance.LocalLifecycle,
+                    SourceVersion = 1,
+                    UpdatedAt = DateTime.UtcNow
                 };
                 _context.AtprotoRecords.Add(record);
                 _context.AtprotoOutboundRecordOwnerships.Add(new AtprotoOutboundRecordOwnership
                 {
-                    AtprotoRecordId = record.Id, TenantId = _tenantId, UserId = user.Id,
-                    SourceEntityType = "Event", SourceEntityId = @event.Id, SourceVersion = @event.ConcurrencyStamp,
-                    CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+                    AtprotoRecordId = record.Id,
+                    TenantId = _tenantId,
+                    UserId = user.Id,
+                    SourceEntityType = "Event",
+                    SourceEntityId = @event.Id,
+                    SourceVersion = @event.ConcurrencyStamp,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
                 });
                 @event.AtprotoRecordId = record.Id;
             }
@@ -299,9 +344,15 @@ public sealed class PublicEventEligibilityRepositoryTests
             _context.Actors.Add(actor);
             _context.OrganizationTenants.Add(new OrganizationTenant
             {
-                Id = Guid.CreateVersion7(), TenantId = participationTenantId, Tenant = null!, OrganizationId = organization.Id,
-                Organization = null!, ApprovalStatusId = (int)ApprovalStatusEnum.Approved, ApprovalStatus = null!,
-                IsVisible = true, IsOrganizerEligible = isOrganizerEligible
+                Id = Guid.CreateVersion7(),
+                TenantId = participationTenantId,
+                Tenant = null!,
+                OrganizationId = organization.Id,
+                Organization = null!,
+                ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+                ApprovalStatus = null!,
+                IsVisible = true,
+                IsOrganizerEligible = isOrganizerEligible
             });
             var @event = CreateEvent(name, actor.Id);
             _context.Events.Add(@event);
@@ -316,9 +367,16 @@ public sealed class PublicEventEligibilityRepositoryTests
             _context.Actors.Add(actor);
             _context.GroupTenants.Add(new GroupTenant
             {
-                Id = Guid.CreateVersion7(), TenantId = _tenantId, Tenant = null!, GroupId = group.Id, Group = null!,
-                ApprovalStatusId = (int)ApprovalStatusEnum.Approved, ApprovalStatus = null!, IsVisible = true,
-                IsOrganizerEligible = isOrganizerEligible, IsSuspended = isSuspended
+                Id = Guid.CreateVersion7(),
+                TenantId = _tenantId,
+                Tenant = null!,
+                GroupId = group.Id,
+                Group = null!,
+                ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+                ApprovalStatus = null!,
+                IsVisible = true,
+                IsOrganizerEligible = isOrganizerEligible,
+                IsSuspended = isSuspended
             });
             var @event = CreateEvent(name, actor.Id);
             _context.Events.Add(@event);
@@ -350,23 +408,38 @@ public sealed class PublicEventEligibilityRepositoryTests
             var actor = CreateActor(ActorTypeEnum.ExternalUnclassified, externalActorSubjectId: Guid.CreateVersion7());
             var record = new AtprotoRecord
             {
-                Id = Guid.CreateVersion7(), Did = $"did:plc:{name}", Collection = "community.lexicon.calendar.event",
-                RecordKey = name, Direction = AtprotoRecordDirection.Inbound, Provenance = AtprotoRecordProvenance.Jetstream,
-                SourceVersion = 2, UpdatedAt = DateTime.UtcNow, TombstonedAt = recordTombstoned ? DateTime.UtcNow : null
+                Id = Guid.CreateVersion7(),
+                Did = $"did:plc:{name}",
+                Collection = "community.lexicon.calendar.event",
+                RecordKey = name,
+                Direction = AtprotoRecordDirection.Inbound,
+                Provenance = AtprotoRecordProvenance.Jetstream,
+                SourceVersion = 2,
+                UpdatedAt = DateTime.UtcNow,
+                TombstonedAt = recordTombstoned ? DateTime.UtcNow : null
             };
             _context.ExternalActorSubjects.Add(new ExternalActorSubject { Id = actor.ExternalActorSubjectId!.Value });
             _context.Actors.Add(actor);
             _context.AtprotoRecords.Add(record);
             _context.AtprotoIdentities.Add(new AtprotoIdentity
             {
-                Id = Guid.CreateVersion7(), Did = didMatchesActorIdentity ? record.Did : $"did:plc:other-{name}", ActorId = actor.Id,
-                Actor = null!, PdsHost = "https://pds.example.test", IsActive = identityActive, IsSuspended = identitySuspended,
-                IsDeleted = identityDeleted, LastResolvedAt = DateTime.UtcNow
+                Id = Guid.CreateVersion7(),
+                Did = didMatchesActorIdentity ? record.Did : $"did:plc:other-{name}",
+                ActorId = actor.Id,
+                Actor = null!,
+                PdsHost = "https://pds.example.test",
+                IsActive = identityActive,
+                IsSuspended = identitySuspended,
+                IsDeleted = identityDeleted,
+                LastResolvedAt = DateTime.UtcNow
             });
             _context.AtprotoRecordTenantPresentations.Add(new AtprotoRecordTenantPresentation
             {
-                TenantId = presentationTenantId ?? _tenantId, AtprotoRecordId = record.Id, IsVisible = presentationVisible,
-                SourceVersion = presentationCurrent ? record.SourceVersion : record.SourceVersion - 1, EvaluatedAt = DateTime.UtcNow
+                TenantId = presentationTenantId ?? _tenantId,
+                AtprotoRecordId = record.Id,
+                IsVisible = presentationVisible,
+                SourceVersion = presentationCurrent ? record.SourceVersion : record.SourceVersion - 1,
+                EvaluatedAt = DateTime.UtcNow
             });
             var @event = CreateEvent(name, actor.Id);
             @event.AtprotoRecordId = record.Id;
@@ -380,10 +453,16 @@ public sealed class PublicEventEligibilityRepositoryTests
             Guid? organizationId = null,
             Guid? groupId = null,
             Guid? externalActorSubjectId = null) => new()
-        {
-            Id = Guid.CreateVersion7(), ActorTypeId = (int)type, ActorType = null!, Pii = new ActorPii { DisplayName = type.ToString() },
-            UserId = userId, OrganizationId = organizationId, GroupId = groupId, ExternalActorSubjectId = externalActorSubjectId
-        };
+            {
+                Id = Guid.CreateVersion7(),
+                ActorTypeId = (int)type,
+                ActorType = null!,
+                Pii = new ActorPii { DisplayName = type.ToString() },
+                UserId = userId,
+                OrganizationId = organizationId,
+                GroupId = groupId,
+                ExternalActorSubjectId = externalActorSubjectId
+            };
 
         private DomainEvent CreateEvent(
             string name,
@@ -393,12 +472,25 @@ public sealed class PublicEventEligibilityRepositoryTests
             EventStatusEnum status = EventStatusEnum.Published,
             VisibilityTypeEnum visibility = VisibilityTypeEnum.Public,
             bool isDeleted = false) => new()
-        {
-            Id = Guid.CreateVersion7(), Title = name, PublicCode = publicCode ?? $"code-{name}", ActorId = actorId, Actor = null!,
-            TenantId = _tenantId, Tenant = null!, EventStatusId = (int)status, EventStatus = null!,
-            VisibilityTypeId = (int)visibility, VisibilityType = null!, EventFormatId = (int)EventFormatEnum.Local,
-            EventFormat = null!, TotalViews = 0, FirstSessionStartUtc = startsAt, CreatedAt = DateTime.UtcNow,
-            IsDeleted = isDeleted, ConcurrencyStamp = Guid.CreateVersion7()
-        };
+            {
+                Id = Guid.CreateVersion7(),
+                Title = name,
+                PublicCode = publicCode ?? $"code-{name}",
+                ActorId = actorId,
+                Actor = null!,
+                TenantId = _tenantId,
+                Tenant = null!,
+                EventStatusId = (int)status,
+                EventStatus = null!,
+                VisibilityTypeId = (int)visibility,
+                VisibilityType = null!,
+                EventFormatId = (int)EventFormatEnum.Local,
+                EventFormat = null!,
+                TotalViews = 0,
+                FirstSessionStartUtc = startsAt,
+                CreatedAt = DateTime.UtcNow,
+                IsDeleted = isDeleted,
+                ConcurrencyStamp = Guid.CreateVersion7()
+            };
     }
 }

@@ -318,11 +318,19 @@ public sealed class GeneratedInitMigrationBehaviorTests(
             {
                 ApplicationName = "authority-migrator-canary"
             };
+            var applicationTarget = new NpgsqlConnectionStringBuilder(fixture.ConnectionString);
             IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
                 new Dictionary<string, string?>
                 {
                     ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase",
-                    ["ConnectionStrings:DefaultConnection"] = fixture.ConnectionString,
+                    ["Database:Provider"] = "PostgreSql",
+                    ["Database:Host"] = applicationTarget.Host,
+                    ["Database:Port"] = applicationTarget.Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["Database:Database"] = applicationTarget.Database,
+                    ["Database:Runtime:Username"] = applicationTarget.Username,
+                    ["Database:Runtime:Password"] = applicationTarget.Password,
+                    ["Database:Migrator:Username"] = applicationTarget.Username,
+                    ["Database:Migrator:Password"] = applicationTarget.Password,
                     ["ConnectionStrings:PrivacyErasureAuthority"] = authorityTarget.ConnectionString
                 }).Build();
             var services = new ServiceCollection();
@@ -330,7 +338,6 @@ public sealed class GeneratedInitMigrationBehaviorTests(
             OptionsValidationException? exception = await Assert.That(() =>
                     services.ConfigurePersistenceServices(
                         configuration,
-                        skipDbContextRegistration: true,
                         skipLookupCacheInitializer: true))
                 .Throws<OptionsValidationException>();
 

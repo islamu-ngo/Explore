@@ -195,11 +195,28 @@ public sealed class RegistrationParticipantPersistenceTests(PostgreSqlContainerF
 
         var eventEntity = new DomainEvent
         {
-            Id = Guid.CreateVersion7(), Title = "Participant persistence event", Subtitle = "", Description = "",
-            FirstSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), LastSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
-            EventTypeId = 1, AudienceGenderId = 1, AudienceAgeId = 1, ActorId = actor.Id, Actor = null!, OrganizerActorId = actor.Id,
-            TenantId = tenant.Id, Tenant = tenant, VisibilityTypeId = 1, VisibilityType = null!, EventStatusId = 1, EventStatus = null!,
-            EventFormatId = 1, EventFormat = null!, EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated, TotalViews = 0
+            Id = Guid.CreateVersion7(),
+            Title = "Participant persistence event",
+            Subtitle = "",
+            Description = "",
+            FirstSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            LastSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            EventTypeId = 1,
+            AudienceGenderId = 1,
+            AudienceAgeId = 1,
+            ActorId = actor.Id,
+            Actor = null!,
+            OrganizerActorId = actor.Id,
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            VisibilityTypeId = 1,
+            VisibilityType = null!,
+            EventStatusId = 1,
+            EventStatus = null!,
+            EventFormatId = 1,
+            EventFormat = null!,
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
+            TotalViews = 0
         };
         var sessions = new[]
         {
@@ -245,10 +262,20 @@ public sealed class RegistrationParticipantPersistenceTests(PostgreSqlContainerF
 
     private static EventRegistration Admission(SeededOrder seed, RegistrationParticipant participant, Guid sessionId) => new()
     {
-        Id = Guid.CreateVersion7(), ConcurrencyStamp = Guid.CreateVersion7(), TenantId = seed.TenantId, Tenant = null!,
-        EventId = seed.EventId, Event = null!, EventSessionId = sessionId, EventSession = null!, RegistrationOrderId = seed.OrderId,
-        RegistrationParticipantId = participant.Id, RegistrationParticipant = participant, LinkedUserId = seed.UserId,
-        ApprovalStatusId = (int)ApprovalStatusEnum.Approved, CoverageEstablishedAt = DateTime.UtcNow
+        Id = Guid.CreateVersion7(),
+        ConcurrencyStamp = Guid.CreateVersion7(),
+        TenantId = seed.TenantId,
+        Tenant = null!,
+        EventId = seed.EventId,
+        Event = null!,
+        EventSessionId = sessionId,
+        EventSession = null!,
+        RegistrationOrderId = seed.OrderId,
+        RegistrationParticipantId = participant.Id,
+        RegistrationParticipant = participant,
+        LinkedUserId = seed.UserId,
+        ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+        CoverageEstablishedAt = DateTime.UtcNow
     };
 
     private static PostgresException FindPostgresException(Exception exception) =>

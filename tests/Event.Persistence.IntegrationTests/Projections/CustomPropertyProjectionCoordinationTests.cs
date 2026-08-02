@@ -271,7 +271,7 @@ public class CustomPropertyProjectionCoordinationTests
         var tenantSettingRepo = new TenantSettingRepository(context);
         var systemSettingRepo = new SystemSettingRepository(
             context,
-            new PostgresSettingMutationLock(context, new EfCoreUnitOfWork(context)));
+            new RelationalSettingMutationLock(context, new EfCoreUnitOfWork(context)));
         var quotaResolver = new CustomPropertyQuotaResolver(tenantSettingRepo, systemSettingRepo);
 
         return new EventCustomPropertyProjectionUpdater(
