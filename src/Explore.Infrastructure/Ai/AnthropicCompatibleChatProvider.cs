@@ -144,7 +144,10 @@ public class AnthropicCompatibleChatProvider : IAiChatProvider
 
             if (!providerResponse.IsSuccessStatusCode)
             {
-                return CompleteFailure(RecordHttpFailure(providerResponse.StatusCode), startedAt, telemetryActivity);
+                var failure = providerResponse.StatusCode is { } statusCode
+                    ? RecordHttpFailure(statusCode)
+                    : RecordFailure("provider_unreachable", "AI provider request failed before a response was received.", isTransient: true);
+                return CompleteFailure(failure, startedAt, telemetryActivity);
             }
 
             if (providerResponse.Content is null)
