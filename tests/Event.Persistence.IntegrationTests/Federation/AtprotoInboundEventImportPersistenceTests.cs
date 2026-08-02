@@ -436,10 +436,10 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
                 sizeBytes: stagedSize,
                 mimeType: stagedMimeType,
                 checksum: stagedChecksum) with
-            {
-                Provider = stagedProvider,
-                ObjectKey = stagedObjectKey
-            };
+        {
+            Provider = stagedProvider,
+            ObjectKey = stagedObjectKey
+        };
         request = WithStagedThumbnail(
             request,
             staged,

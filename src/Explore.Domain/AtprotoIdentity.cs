@@ -1,8 +1,8 @@
 // ABOUTME: Global exact-DID credential identity associated with one represented Actor.
 // ABOUTME: Owns mutable handle, PDS, signing-key, cache, and credential moderation state.
 
-using Explore.Domain.Interfaces;
 using Explore.Domain.Enums;
+using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 

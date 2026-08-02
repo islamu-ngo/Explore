@@ -26,58 +26,58 @@ public sealed class AtprotoSubjectOnboardingOperation(
 {
     public async Task<AtprotoSubjectOnboardingResult> ExecuteAsync(BootstrapAtprotoSessionCommand request, AtprotoVerifiedOAuthSession verified, User user, Actor userActor, Guid tenantId, DateTime at, CancellationToken cancellationToken)
     {
-            if (user.IsDeleted || userActor.IsDeleted || userActor.IsSuspended || userActor.UserId != user.Id)
-                return AtprotoSubjectOnboardingResult.Failed("linked_identity_incomplete");
-            var login = await logins.GetByProviderAndKey("atproto", verified.Did).ConfigureAwait(false);
-            if (login is null || login.UserId != user.Id || login.Provider != "atproto" || login.ProviderKey != verified.Did) return AtprotoSubjectOnboardingResult.Failed("account_not_linked");
+        if (user.IsDeleted || userActor.IsDeleted || userActor.IsSuspended || userActor.UserId != user.Id)
+            return AtprotoSubjectOnboardingResult.Failed("linked_identity_incomplete");
+        var login = await logins.GetByProviderAndKey("atproto", verified.Did).ConfigureAwait(false);
+        if (login is null || login.UserId != user.Id || login.Provider != "atproto" || login.ProviderKey != verified.Did) return AtprotoSubjectOnboardingResult.Failed("account_not_linked");
 
-            var tenantUser = await tenantUsers.GetByTenantAndUserAsync(tenantId, user.Id, cancellationToken).ConfigureAwait(false);
-            if (tenantUser is not null && (tenantUser.IsDeleted || tenantUser.StatusId != (int)TenantUserStatusEnum.Active
-                || tenantUser.ActorId is Guid tenantActorId && tenantActorId != userActor.Id)) return AtprotoSubjectOnboardingResult.Failed("linked_identity_incomplete");
+        var tenantUser = await tenantUsers.GetByTenantAndUserAsync(tenantId, user.Id, cancellationToken).ConfigureAwait(false);
+        if (tenantUser is not null && (tenantUser.IsDeleted || tenantUser.StatusId != (int)TenantUserStatusEnum.Active
+            || tenantUser.ActorId is Guid tenantActorId && tenantActorId != userActor.Id)) return AtprotoSubjectOnboardingResult.Failed("linked_identity_incomplete");
 
-            var identity = await identities.GetByDid(verified.Did, cancellationToken).ConfigureAwait(false);
-            Actor represented;
-            if (identity is null)
+        var identity = await identities.GetByDid(verified.Did, cancellationToken).ConfigureAwait(false);
+        Actor represented;
+        if (identity is null)
+        {
+            if (request.CanonicalActorId is not null) return AtprotoSubjectOnboardingResult.Failed("classification_conflict");
+            represented = await CreateAsync(request.Classification, userActor, user.Id, verified.Handle, at).ConfigureAwait(false);
+            identity = new AtprotoIdentity { Did = verified.Did, ActorId = represented.Id, Actor = represented, Handle = verified.Handle, PdsHost = verified.PdsUri.AbsoluteUri, IsActive = true, LastResolvedAt = at, LastSeenAt = at, CreatedAt = at, CreatedBy = user.Id };
+            await identities.Create(identity).ConfigureAwait(false);
+        }
+        else
+        {
+            represented = identity.Actor;
+            if (identity.IsDeleted || identity.IsSuspended || !identity.IsActive || represented.IsDeleted || represented.IsSuspended)
+                return AtprotoSubjectOnboardingResult.Failed("classification_conflict");
+            if (request.CanonicalActorId is not null)
             {
-                if (request.CanonicalActorId is not null) return AtprotoSubjectOnboardingResult.Failed("classification_conflict");
-                represented = await CreateAsync(request.Classification, userActor, user.Id, verified.Handle, at).ConfigureAwait(false);
-                identity = new AtprotoIdentity { Did = verified.Did, ActorId = represented.Id, Actor = represented, Handle = verified.Handle, PdsHost = verified.PdsUri.AbsoluteUri, IsActive = true, LastResolvedAt = at, LastSeenAt = at, CreatedAt = at, CreatedBy = user.Id };
-                await identities.Create(identity).ConfigureAwait(false);
+                var canonical = await ConsolidateAsync(request, identity, tenantId, user.Id, at, cancellationToken).ConfigureAwait(false);
+                if (canonical is null) return AtprotoSubjectOnboardingResult.Failed("classification_conflict");
+                represented = canonical;
             }
-            else
+            else if (represented.ActorTypeId == (int)ActorTypeEnum.ExternalUnclassified && request.Classification is AtprotoSubjectClassification.Organization or AtprotoSubjectClassification.Group)
             {
-                represented = identity.Actor;
-                if (identity.IsDeleted || identity.IsSuspended || !identity.IsActive || represented.IsDeleted || represented.IsSuspended)
-                    return AtprotoSubjectOnboardingResult.Failed("classification_conflict");
-                if (request.CanonicalActorId is not null)
-                {
-                    var canonical = await ConsolidateAsync(request, identity, tenantId, user.Id, at, cancellationToken).ConfigureAwait(false);
-                    if (canonical is null) return AtprotoSubjectOnboardingResult.Failed("classification_conflict");
-                    represented = canonical;
-                }
-                else if (represented.ActorTypeId == (int)ActorTypeEnum.ExternalUnclassified && request.Classification is AtprotoSubjectClassification.Organization or AtprotoSubjectClassification.Group)
-                {
-                    represented = await PromoteAsync(represented, request.Classification, user.Id, verified.Handle, at).ConfigureAwait(false);
-                }
-                else if (!Matches(represented, userActor, request.Classification)) return AtprotoSubjectOnboardingResult.Failed("classification_conflict");
-
-                identity.ActorId = represented.Id;
-                identity.Actor = represented;
-                identity.RefreshVerifiedMetadata(verified.Did, verified.Handle, verified.PdsUri.AbsoluteUri, null, at);
-                identity.UpdatedAt = at;
-                identity.UpdatedBy = user.Id;
-                await identities.Update(identity).ConfigureAwait(false);
+                represented = await PromoteAsync(represented, request.Classification, user.Id, verified.Handle, at).ConfigureAwait(false);
             }
+            else if (!Matches(represented, userActor, request.Classification)) return AtprotoSubjectOnboardingResult.Failed("classification_conflict");
 
-            tenantUser ??= await tenantUsers.Create(new TenantUser { TenantId = tenantId, Tenant = null!, UserId = user.Id, User = user, ActorId = userActor.Id, Actor = userActor, StatusId = (int)TenantUserStatusEnum.Active, JoinedAt = at, CreatedAt = at, CreatedBy = user.Id }).ConfigureAwait(false);
-            if (tenantUser.ActorId is null)
-            {
-                tenantUser.ActorId = userActor.Id; tenantUser.Actor = userActor; tenantUser.UpdatedAt = at; tenantUser.UpdatedBy = user.Id;
-                await tenantUsers.Update(tenantUser).ConfigureAwait(false);
-            }
+            identity.ActorId = represented.Id;
+            identity.Actor = represented;
+            identity.RefreshVerifiedMetadata(verified.Did, verified.Handle, verified.PdsUri.AbsoluteUri, null, at);
+            identity.UpdatedAt = at;
+            identity.UpdatedBy = user.Id;
+            await identities.Update(identity).ConfigureAwait(false);
+        }
 
-            var participationId = await EnsureParticipationAsync(request.Classification, represented, tenantUser, user, tenantId, await tenantRoles.IsTenantAdminInCurrentTenantAsync(tenantId, user.Id, cancellationToken).ConfigureAwait(false), at, cancellationToken).ConfigureAwait(false);
-            return AtprotoSubjectOnboardingResult.Succeeded(represented.Id, participationId);
+        tenantUser ??= await tenantUsers.Create(new TenantUser { TenantId = tenantId, Tenant = null!, UserId = user.Id, User = user, ActorId = userActor.Id, Actor = userActor, StatusId = (int)TenantUserStatusEnum.Active, JoinedAt = at, CreatedAt = at, CreatedBy = user.Id }).ConfigureAwait(false);
+        if (tenantUser.ActorId is null)
+        {
+            tenantUser.ActorId = userActor.Id; tenantUser.Actor = userActor; tenantUser.UpdatedAt = at; tenantUser.UpdatedBy = user.Id;
+            await tenantUsers.Update(tenantUser).ConfigureAwait(false);
+        }
+
+        var participationId = await EnsureParticipationAsync(request.Classification, represented, tenantUser, user, tenantId, await tenantRoles.IsTenantAdminInCurrentTenantAsync(tenantId, user.Id, cancellationToken).ConfigureAwait(false), at, cancellationToken).ConfigureAwait(false);
+        return AtprotoSubjectOnboardingResult.Succeeded(represented.Id, participationId);
     }
 
     private async Task<Actor?> ConsolidateAsync(BootstrapAtprotoSessionCommand request, AtprotoIdentity identity, Guid tenantId, Guid userId, DateTime at, CancellationToken ct)
