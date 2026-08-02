@@ -562,6 +562,7 @@ public class ContractInvariantsTests
             "HalResourceOfEventDayDto",
             "HalResourceOfEventAgendaItemDto",
             "HalResourceOfNotificationPreferenceMatrixDto",
+            "HalResourceOfRegistrationAnswerFileDto",
             "HalResourceOfTemplateDiffDto"
         };
 

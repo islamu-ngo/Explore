@@ -250,33 +250,45 @@ public sealed class McpSdkContractTests
     [Test]
     public void ApiHostUsesStreamableHttpOnlyForProductMcpTransport()
     {
+        var services = ReadRepoFile("src/Explore.API/Hosting/ApiHostServiceCollectionExtensions.cs");
+        var application = ReadRepoFile("src/Explore.API/Hosting/ApiHostApplicationExtensions.cs");
         var program = ReadRepoFile("src/Explore.API/Program.cs");
 
-        program.Should().Contain(".WithHttpTransport(options =>");
-        program.Should().Contain("options.Stateless = mcpAdapterSettings.Stateless");
-        program.Should().Contain("builder.Services.PostConfigure<McpAdapterSettings>");
-        program.Should().Contain("settings.EndpointPath = endpointPath.StartsWith('/')");
-        program.Should().Contain("app.MapMcp(effectiveMcpAdapterSettings.EndpointPath)");
-        program.Should().Contain(".AllowAnonymous()");
-        program.Should().NotContain(".WithStdioServerTransport");
-        program.Should().NotContain("options.EnableLegacySse");
+        services.Should().Contain(".WithHttpTransport(options =>");
+        services.Should().Contain("options.Stateless = mcpAdapterSettings.Stateless");
+        services.Should().Contain("builder.Services.PostConfigure<McpAdapterSettings>");
+        services.Should().Contain("settings.EndpointPath = endpointPath.StartsWith('/')");
+        application.Should().Contain("app.MapMcp(mcpAdapterSettings.EndpointPath)");
+        application.Should().Contain(".AllowAnonymous()");
+        services.Should().NotContain(".WithStdioServerTransport");
+        application.Should().NotContain(".WithStdioServerTransport");
+        services.Should().NotContain("options.EnableLegacySse");
+        application.Should().NotContain("options.EnableLegacySse");
+        program.Should().Contain("AddApiHostServices");
+        program.Should().NotContain(".WithHttpTransport(");
+        program.Should().NotContain("app.MapMcp(");
     }
 
     [Test]
     public void ApiHostRegistersMcpSurfacesExplicitlyForAotReviewability()
     {
+        var services = ReadRepoFile("src/Explore.API/Hosting/ApiHostServiceCollectionExtensions.cs");
         var program = ReadRepoFile("src/Explore.API/Program.cs");
 
-        program.Should().Contain(".WithTools<AiToolRegistryMcpTools>()");
-        program.Should().Contain(".WithTools<AiAssistantMcpTools>()");
-        program.Should().Contain(".WithTools<EventManagementMcpTools>()");
-        program.Should().Contain(".WithResources<AiAssistantMcpResources>()");
-        program.Should().Contain(".WithResources<EventManagementMcpResources>()");
-        program.Should().Contain(".WithPrompts<AiAssistantMcpPrompts>()");
-        program.Should().Contain("AiMcpProjectedToolOptionsSetup");
-        program.Should().NotContain(".WithToolsFromAssembly");
-        program.Should().NotContain(".WithResourcesFromAssembly");
-        program.Should().NotContain(".WithPromptsFromAssembly");
+        services.Should().Contain(".WithTools<AiToolRegistryMcpTools>()");
+        services.Should().Contain(".WithTools<AiAssistantMcpTools>()");
+        services.Should().Contain(".WithTools<EventManagementMcpTools>()");
+        services.Should().Contain(".WithResources<AiAssistantMcpResources>()");
+        services.Should().Contain(".WithResources<EventManagementMcpResources>()");
+        services.Should().Contain(".WithPrompts<AiAssistantMcpPrompts>()");
+        services.Should().Contain("AiMcpProjectedToolOptionsSetup");
+        services.Should().NotContain(".WithToolsFromAssembly");
+        services.Should().NotContain(".WithResourcesFromAssembly");
+        services.Should().NotContain(".WithPromptsFromAssembly");
+        program.Should().Contain("AddApiHostServices");
+        program.Should().NotContain(".WithTools<");
+        program.Should().NotContain(".WithResources<");
+        program.Should().NotContain(".WithPrompts<");
     }
 
     [Test]
