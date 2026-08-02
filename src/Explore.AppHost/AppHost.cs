@@ -5,8 +5,10 @@ using System.Net.Sockets;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using DotNetEnv;
+using Explore.Application.Configuration;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Webhooks;
+using Explore.Secrets.Database;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -22,14 +24,12 @@ var builder = DistributedApplication.CreateBuilder(args);
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
 var eventLocationPrivacyMigrationStage =
     builder.Configuration["Database:Migrations:EventLocationPrivacyStage"];
-var privacyErasureTopology = ConfiguredValue(
+var privacyErasureTopology = ParsePrivacyErasureTopology(ConfiguredValue(
     builder.Configuration,
     "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY",
-    "CoLocated");
-var usesExternalPrivacyErasureAuthority = string.Equals(
-    privacyErasureTopology,
-    "ExternalDatabase",
-    StringComparison.OrdinalIgnoreCase);
+    nameof(PrivacyErasureAuthorityTopology.EmbeddedSqlite)));
+var usesExternalPrivacyErasureAuthority =
+    privacyErasureTopology == PrivacyErasureAuthorityTopology.ExternalDatabase;
 var webhookProvider = ConfiguredValue(
     builder.Configuration,
     "WEBHOOKS_PROVIDER",
@@ -43,11 +43,22 @@ var keycloakRealmExportPath = Path.Combine(repositoryRoot, "docker", "keycloak",
 var keycloakInitScriptPath = Path.Combine(repositoryRoot, "docker", "keycloak", "keycloak-init.sh");
 var coopNginxConfigPath = Path.Combine(appHostConfigRoot, "coop", "nginx.conf");
 var localStorageRootPath = Path.Combine(repositoryRoot, "storage-data", "aspire-local");
+var embeddedPrivacyErasureAuthorityPath = Path.Combine(
+    repositoryRoot,
+    "privacy-erasure-authority-data",
+    "aspire-local",
+    "privacy_erasure_authority.db");
+var embeddedPrivacyErasureAuthorityDirectory = Path.GetDirectoryName(embeddedPrivacyErasureAuthorityPath)!;
+var embeddedPrivacyErasureAuthorityBusyTimeout = ConfiguredValue(
+    builder.Configuration,
+    "PRIVACY_ERASURE_AUTHORITY_BUSY_TIMEOUT_SECONDS",
+    EmbeddedPrivacyErasureAuthorityOptions.DefaultBusyTimeoutSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture));
 var prometheusConfigPath = Path.Combine(appHostConfigRoot, "prometheus.yaml");
 var grafanaDashboardPath = Path.Combine(appHostConfigRoot, "grafana-dashboard");
 var pgAdminServersPath = Path.Combine(appHostConfigRoot, "pgadmin", "servers.json");
 var pgAdminPassFilePath = Path.Combine(appHostConfigRoot, "pgadmin", "pgpass");
 Directory.CreateDirectory(localStorageRootPath);
+Directory.CreateDirectory(embeddedPrivacyErasureAuthorityDirectory);
 Directory.CreateDirectory(grafanaDashboardPath);
 
 Console.WriteLine("===========================================");
@@ -118,7 +129,15 @@ var migrations = WithProfileSecretMode(
             ExcludeProjectLaunchProfile),
         runMode,
         builder.Configuration)
-    .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology);
+    .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology.ToString());
+
+if (privacyErasureTopology == PrivacyErasureAuthorityTopology.EmbeddedSqlite)
+{
+    migrations = WithEmbeddedPrivacyErasureAuthority(
+        migrations,
+        embeddedPrivacyErasureAuthorityPath,
+        embeddedPrivacyErasureAuthorityBusyTimeout);
+}
 
 if (!string.IsNullOrWhiteSpace(eventLocationPrivacyMigrationStage))
 {
@@ -127,17 +146,28 @@ if (!string.IsNullOrWhiteSpace(eventLocationPrivacyMigrationStage))
 
 if (database is not null)
 {
-    migrations = migrations
-        .WithReference(database, connectionName: "EventMigrationService")
-        .WithReference(database, connectionName: "DefaultConnection")
+    migrations = WithLocalPrimaryDatabase(migrations, database, PrimaryDatabaseRole.Migrator)
         .WaitFor(database);
+}
+else
+{
+    migrations = WithExternalPrimaryDatabase(builder, migrations, PrimaryDatabaseRole.Migrator);
 }
 
 if (privacyErasureDatabase is not null)
 {
-    migrations = migrations
-        .WithReference(privacyErasureDatabase, connectionName: "PrivacyErasureAuthorityMigrator")
+    migrations = WithLocalPrivacyErasureAuthorityDatabase(
+            migrations,
+            privacyErasureDatabase,
+            PrimaryDatabaseRole.Migrator)
         .WaitFor(privacyErasureDatabase);
+}
+else if (usesExternalPrivacyErasureAuthority)
+{
+    migrations = WithExternalPrivacyErasureAuthorityDatabase(
+        builder,
+        migrations,
+        PrimaryDatabaseRole.Migrator);
 }
 
 migrations = ConfigureLocalMailpitSmtp(migrations, mailpit, builder.Configuration);
@@ -157,8 +187,16 @@ var exploreAPI = WithProfileSecretMode(
     .WithEnvironment("Storage__Local__CreateRootIfMissing", "true")
     .WithEnvironment("StorageReconciliation__Enabled", "true")
     .WithEnvironment("StorageReconciliation__DryRun", "true")
-    .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology)
+    .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology.ToString())
     .WaitFor(mailpit);
+
+if (privacyErasureTopology == PrivacyErasureAuthorityTopology.EmbeddedSqlite)
+{
+    exploreAPI = WithEmbeddedPrivacyErasureAuthority(
+        exploreAPI,
+        embeddedPrivacyErasureAuthorityPath,
+        embeddedPrivacyErasureAuthorityBusyTimeout);
+}
 
 exploreAPI = ConfigureLocalMailpitSmtp(exploreAPI, mailpit, builder.Configuration);
 
@@ -189,16 +227,28 @@ exploreAPI = exploreAPI
 
 if (database is not null)
 {
-    exploreAPI = exploreAPI
-        .WithReference(database, connectionName: "DefaultConnection")
+    exploreAPI = WithLocalPrimaryDatabase(exploreAPI, database, PrimaryDatabaseRole.Runtime)
         .WaitFor(database);
+}
+else
+{
+    exploreAPI = WithExternalPrimaryDatabase(builder, exploreAPI, PrimaryDatabaseRole.Runtime);
 }
 
 if (privacyErasureDatabase is not null)
 {
-    exploreAPI = exploreAPI
-        .WithReference(privacyErasureDatabase, connectionName: "PrivacyErasureAuthority")
+    exploreAPI = WithLocalPrivacyErasureAuthorityDatabase(
+            exploreAPI,
+            privacyErasureDatabase,
+            PrimaryDatabaseRole.Runtime)
         .WaitFor(privacyErasureDatabase);
+}
+else if (usesExternalPrivacyErasureAuthority)
+{
+    exploreAPI = WithExternalPrivacyErasureAuthorityDatabase(
+        builder,
+        exploreAPI,
+        PrimaryDatabaseRole.Runtime);
 }
 
 if (cache is not null)
@@ -263,9 +313,12 @@ exploreBlazor = exploreBlazor
 
 if (database is not null)
 {
-    exploreBlazor = exploreBlazor
-        .WithReference(database, connectionName: "DefaultConnection")
+    exploreBlazor = WithLocalPrimaryDatabase(exploreBlazor, database, PrimaryDatabaseRole.Runtime)
         .WaitFor(database);
+}
+else
+{
+    exploreBlazor = WithExternalPrimaryDatabase(builder, exploreBlazor, PrimaryDatabaseRole.Runtime);
 }
 
 if (cache is not null)
@@ -942,6 +995,149 @@ static ReferenceExpression HttpEndpointFromHostAndPort(
 {
     var endpoint = resource.GetEndpoint(endpointName);
     return ReferenceExpression.Create($"http://{endpoint.Property(EndpointProperty.HostAndPort)}");
+}
+
+static IResourceBuilder<ProjectResource> WithLocalPrimaryDatabase(
+    IResourceBuilder<ProjectResource> project,
+    IResourceBuilder<PostgresDatabaseResource> database,
+    PrimaryDatabaseRole role)
+{
+    var credentialPrefix = $"Database__{role}__";
+    var postgres = database.Resource.Parent;
+
+    return project
+        .WithEnvironment("Database__Provider", PrimaryDatabaseProvider.PostgreSql.ToString())
+        .WithEnvironment("Database__Host", postgres.PrimaryEndpoint.Property(EndpointProperty.Host))
+        .WithEnvironment("Database__Port", postgres.PrimaryEndpoint.Property(EndpointProperty.Port))
+        .WithEnvironment("Database__Database", database.Resource.DatabaseName)
+        .WithEnvironment("Database__TlsMode", PrimaryDatabaseTlsMode.Prefer.ToString())
+        .WithEnvironment("Database__TrustServerCertificate", "false")
+        .WithEnvironment($"{credentialPrefix}Username", postgres.UserNameReference)
+        .WithEnvironment($"{credentialPrefix}Password", postgres.PasswordParameter);
+}
+
+static IResourceBuilder<ProjectResource> WithExternalPrimaryDatabase(
+    IDistributedApplicationBuilder builder,
+    IResourceBuilder<ProjectResource> project,
+    PrimaryDatabaseRole role)
+{
+    var database = PrimaryDatabaseConfiguration.Bind(builder.Configuration, role);
+    var credentialPrefix = $"Database__{role}__";
+
+    project = project
+        .WithEnvironment("Database__Provider", database.Provider.ToString())
+        .WithEnvironment("Database__Database", database.Database ?? string.Empty)
+        .WithEnvironment("Database__TlsMode", database.TlsMode.ToString())
+        .WithEnvironment("Database__TrustServerCertificate", database.TrustServerCertificate.ToString());
+
+    if (database.Host is not null)
+        project = project.WithEnvironment("Database__Host", database.Host);
+    if (database.Port is not null)
+        project = project.WithEnvironment("Database__Port", database.Port.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    if (database.Username is not null)
+        project = project.WithEnvironment($"{credentialPrefix}Username", database.Username);
+    if (database.Password is not null)
+    {
+        var password = builder.AddParameter(
+            $"database-{role.ToString().ToLowerInvariant()}-{project.Resource.Name}-password",
+            () => database.Password,
+            publishValueAsDefault: false,
+            secret: true);
+        project = project.WithEnvironment($"{credentialPrefix}Password", password);
+    }
+    if (database.ServerFlavor is not null)
+        project = project.WithEnvironment("Database__ServerFlavor", database.ServerFlavor.Value.ToString());
+    if (database.ServerVersion is not null)
+        project = project.WithEnvironment("Database__ServerVersion", database.ServerVersion.ToString());
+
+    return project;
+}
+
+static IResourceBuilder<ProjectResource> WithLocalPrivacyErasureAuthorityDatabase(
+    IResourceBuilder<ProjectResource> project,
+    IResourceBuilder<PostgresDatabaseResource> database,
+    PrimaryDatabaseRole role)
+{
+    var credentialPrefix = $"PrivacyErasureAuthorityDatabase__{role}__";
+    var postgres = database.Resource.Parent;
+
+    return project
+        .WithEnvironment("PrivacyErasureAuthorityDatabase__Provider", PrimaryDatabaseProvider.PostgreSql.ToString())
+        .WithEnvironment("PrivacyErasureAuthorityDatabase__Host", postgres.PrimaryEndpoint.Property(EndpointProperty.Host))
+        .WithEnvironment("PrivacyErasureAuthorityDatabase__Port", postgres.PrimaryEndpoint.Property(EndpointProperty.Port))
+        .WithEnvironment("PrivacyErasureAuthorityDatabase__Database", database.Resource.DatabaseName)
+        .WithEnvironment("PrivacyErasureAuthorityDatabase__TlsMode", PrimaryDatabaseTlsMode.Prefer.ToString())
+        .WithEnvironment("PrivacyErasureAuthorityDatabase__TrustServerCertificate", "false")
+        .WithEnvironment($"{credentialPrefix}Username", postgres.UserNameReference)
+        .WithEnvironment($"{credentialPrefix}Password", postgres.PasswordParameter);
+}
+
+static IResourceBuilder<ProjectResource> WithExternalPrivacyErasureAuthorityDatabase(
+    IDistributedApplicationBuilder builder,
+    IResourceBuilder<ProjectResource> project,
+    PrimaryDatabaseRole role)
+{
+    var database = PrivacyErasureAuthorityDatabaseConfiguration.Bind(builder.Configuration, role);
+    var credentialPrefix = $"PrivacyErasureAuthorityDatabase__{role}__";
+
+    project = project
+        .WithEnvironment("PrivacyErasureAuthorityDatabase__Provider", database.Provider.ToString())
+        .WithEnvironment("PrivacyErasureAuthorityDatabase__Host", database.Host!)
+        .WithEnvironment(
+            "PrivacyErasureAuthorityDatabase__Port",
+            (database.Port ?? 5432).ToString(System.Globalization.CultureInfo.InvariantCulture))
+        .WithEnvironment("PrivacyErasureAuthorityDatabase__Database", database.Database!)
+        .WithEnvironment("PrivacyErasureAuthorityDatabase__TlsMode", database.TlsMode.ToString())
+        .WithEnvironment(
+            "PrivacyErasureAuthorityDatabase__TrustServerCertificate",
+            database.TrustServerCertificate.ToString())
+        .WithEnvironment($"{credentialPrefix}Username", database.Username!);
+
+    var password = builder.AddParameter(
+        $"privacy-authority-{role.ToString().ToLowerInvariant()}-{project.Resource.Name}-password",
+        () => database.Password!,
+        publishValueAsDefault: false,
+        secret: true);
+    return project.WithEnvironment($"{credentialPrefix}Password", password);
+}
+
+static IResourceBuilder<ProjectResource> WithEmbeddedPrivacyErasureAuthority(
+    IResourceBuilder<ProjectResource> project,
+    string localPath,
+    string busyTimeoutSeconds)
+{
+    const string containerPath = "/app/data/privacy_erasure_authority.db";
+
+    return project
+        .WithReplicas(1)
+        .WithEnvironment("PrivacyErasureAuthorityEmbedded__Path", localPath)
+        .WithEnvironment("PrivacyErasureAuthorityEmbedded__WriterReplicaCount", "1")
+        .WithEnvironment("PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds", busyTimeoutSeconds)
+        .PublishAsDockerFile(container => container
+            .WithEnvironment("PrivacyErasureAuthorityEmbedded__Path", containerPath)
+            .WithVolume("islamu-event-privacy-erasure-authority-data", "/app/data"));
+}
+
+static PrivacyErasureAuthorityTopology ParsePrivacyErasureTopology(string value)
+{
+    if (string.Equals(
+            value,
+            nameof(PrivacyErasureAuthorityTopology.EmbeddedSqlite),
+            StringComparison.OrdinalIgnoreCase))
+    {
+        return PrivacyErasureAuthorityTopology.EmbeddedSqlite;
+    }
+
+    if (string.Equals(
+            value,
+            nameof(PrivacyErasureAuthorityTopology.ExternalDatabase),
+            StringComparison.OrdinalIgnoreCase))
+    {
+        return PrivacyErasureAuthorityTopology.ExternalDatabase;
+    }
+
+    throw new InvalidOperationException(
+        "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY must be EmbeddedSqlite or ExternalDatabase.");
 }
 
 static IResourceBuilder<ProjectResource> WithProfileSecretMode(

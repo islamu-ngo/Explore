@@ -28,26 +28,49 @@ x-secrets-env: &secrets-env
   Infisical__Environment: ${INFISICAL_ENV:-dev}
 
 x-postgres-env: &postgres-env
-  POSTGRES_USER: ${POSTGRESQL_USERNAME:-explore}
-  POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD:-explore}
-  POSTGRES_DB: ${POSTGRESQL_DATABASE:-islamu_event_db}
+  POSTGRES_USER: ${DATABASE_MIGRATOR_USERNAME-explore}
+  POSTGRES_PASSWORD: ${DATABASE_MIGRATOR_PASSWORD-explore}
+  POSTGRES_DB: ${DATABASE_DATABASE:-islamu_event_db}
 
-# Discrete Postgres credentials consumed by BootstrapSecretLoader.
-# Never pre-build ConnectionStrings__DefaultConnection here - the loader composes the string.
-x-postgres-bootstrap-env: &postgres-bootstrap-env
-  POSTGRESQL_HOST: ${POSTGRESQL_HOST:-postgres}
-  POSTGRESQL_PORT: ${POSTGRESQL_PORT:-5432}
-  POSTGRESQL_DATABASE: ${POSTGRESQL_DATABASE:-islamu_event_db}
-  POSTGRESQL_USERNAME: ${POSTGRESQL_USERNAME:-explore}
-  POSTGRESQL_PASSWORD: ${POSTGRESQL_PASSWORD:-explore}
+x-database-env: &database-env
+  Database__Provider: ${DATABASE_PROVIDER:-PostgreSql}
+  Database__Host: ${DATABASE_HOST-postgres}
+  Database__Port: ${DATABASE_PORT-5432}
+  Database__Database: ${DATABASE_DATABASE:-islamu_event_db}
+  Database__TlsMode: ${DATABASE_TLS_MODE:-Prefer}
+  Database__TrustServerCertificate: ${DATABASE_TRUST_SERVER_CERTIFICATE:-false}
+  Database__ServerFlavor: ${DATABASE_SERVER_FLAVOR:-}
+  Database__ServerVersion: ${DATABASE_SERVER_VERSION:-}
+
+x-database-runtime-env: &database-runtime-env
+  Database__Runtime__Username: ${DATABASE_RUNTIME_USERNAME-explore}
+  Database__Runtime__Password: ${DATABASE_RUNTIME_PASSWORD-explore}
+
+x-database-migrator-env: &database-migrator-env
+  Database__Migrator__Username: ${DATABASE_MIGRATOR_USERNAME-explore}
+  Database__Migrator__Password: ${DATABASE_MIGRATOR_PASSWORD-explore}
+
+x-privacy-erasure-authority-env: &privacy-erasure-authority-env
+  PrivacyErasure__Authority__Topology: ${PRIVACY_ERASURE_AUTHORITY_TOPOLOGY:-EmbeddedSqlite}
+  PrivacyErasureAuthorityEmbedded__Path: ${PRIVACY_ERASURE_AUTHORITY_EMBEDDED_PATH:-/app/data/privacy_erasure_authority.db}
+  PrivacyErasureAuthorityEmbedded__WriterReplicaCount: ${PRIVACY_ERASURE_AUTHORITY_WRITER_REPLICA_COUNT:-1}
+  PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds: ${PRIVACY_ERASURE_AUTHORITY_BUSY_TIMEOUT_SECONDS:-30}
+  PrivacyErasureAuthorityDatabase__Provider: PostgreSql
+  PrivacyErasureAuthorityDatabase__Host: ${PRIVACY_ERASURE_AUTHORITY_HOST:-privacy-erasure-db}
+  PrivacyErasureAuthorityDatabase__Port: ${PRIVACY_ERASURE_AUTHORITY_PORT:-5432}
+  PrivacyErasureAuthorityDatabase__Database: ${PRIVACY_ERASURE_AUTHORITY_DATABASE:-islamu_event_privacy_erasure}
+  PrivacyErasureAuthorityDatabase__TlsMode: ${PRIVACY_ERASURE_AUTHORITY_TLS_MODE:-Prefer}
+  PrivacyErasureAuthorityDatabase__TrustServerCertificate: ${PRIVACY_ERASURE_AUTHORITY_TRUST_SERVER_CERTIFICATE:-false}
 
 x-privacy-erasure-runtime-env: &privacy-erasure-runtime-env
-  PrivacyErasure__Authority__Topology: ${PRIVACY_ERASURE_AUTHORITY_TOPOLOGY:-CoLocated}
-  ConnectionStrings__PrivacyErasureAuthority: ${PRIVACY_ERASURE_AUTHORITY_RUNTIME_CONNECTION_STRING:-}
+  <<: *privacy-erasure-authority-env
+  PrivacyErasureAuthorityDatabase__Runtime__Username: ${PRIVACY_ERASURE_AUTHORITY_RUNTIME_USERNAME:-privacy_erasure_runtime}
+  PrivacyErasureAuthorityDatabase__Runtime__Password: ${PRIVACY_ERASURE_AUTHORITY_RUNTIME_PASSWORD:-}
 
 x-privacy-erasure-migrator-env: &privacy-erasure-migrator-env
-  PrivacyErasure__Authority__Topology: ${PRIVACY_ERASURE_AUTHORITY_TOPOLOGY:-CoLocated}
-  ConnectionStrings__PrivacyErasureAuthorityMigrator: ${PRIVACY_ERASURE_AUTHORITY_MIGRATOR_CONNECTION_STRING:-}
+  <<: *privacy-erasure-authority-env
+  PrivacyErasureAuthorityDatabase__Migrator__Username: ${PRIVACY_ERASURE_AUTHORITY_MIGRATOR_USERNAME:-privacy_erasure_migrator}
+  PrivacyErasureAuthorityDatabase__Migrator__Password: ${PRIVACY_ERASURE_AUTHORITY_MIGRATOR_PASSWORD:-}
 
 x-s3-env: &s3-env
   STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:-http://minio:9000}
@@ -180,6 +203,14 @@ x-local-storage-env: &local-storage-env
   StorageReconciliation__DeleteQuarantinedObjects: ${STORAGE_RECONCILIATION_DELETE_QUARANTINED_OBJECTS:-false}
 
 services:
+  privacy-erasure-authority-volume-init:
+    image: busybox:1.37.0-musl
+    restart: "no"
+    user: "0:0"
+    command: ["sh", "-c", "chown 1654:1654 /app/data && chmod 700 /app/data"]
+    volumes:
+      - privacy_erasure_authority_data:/app/data
+
   postgres:
     image: postgres:18-alpine
     restart: unless-stopped
@@ -199,9 +230,9 @@ services:
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${PRIVACY_ERASURE_AUTHORITY_DB_USERNAME:-privacy_erasure_migrator}
-      POSTGRES_PASSWORD: ${PRIVACY_ERASURE_AUTHORITY_DB_PASSWORD:-}
-      POSTGRES_DB: ${PRIVACY_ERASURE_AUTHORITY_DB_DATABASE:-islamu_event_privacy_erasure}
+      POSTGRES_USER: ${PRIVACY_ERASURE_AUTHORITY_MIGRATOR_USERNAME:-privacy_erasure_migrator}
+      POSTGRES_PASSWORD: ${PRIVACY_ERASURE_AUTHORITY_MIGRATOR_PASSWORD:-}
+      POSTGRES_DB: ${PRIVACY_ERASURE_AUTHORITY_DATABASE:-islamu_event_privacy_erasure}
     volumes:
       - privacy_erasure_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -212,17 +243,21 @@ services:
       start_period: 10s
 
   event-migrationservice:
-    profiles: ["privacy-erasure-external"]
     build:
       context: .
       dockerfile: src/Event.MigrationService/Dockerfile
     environment:
-      <<: [*secrets-env, *postgres-bootstrap-env, *privacy-erasure-migrator-env]
+      <<: [*secrets-env, *database-env, *database-migrator-env, *privacy-erasure-migrator-env]
+    volumes:
+      - privacy_erasure_authority_data:/app/data
     depends_on:
+      privacy-erasure-authority-volume-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       privacy-erasure-db:
         condition: service_healthy
+        required: false
 
   redis:
     image: redis:7-alpine
@@ -340,7 +375,7 @@ services:
       context: .
       dockerfile: src/Explore.API/Dockerfile
     environment:
-      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *postgres-bootstrap-env, *privacy-erasure-runtime-env, *api-runtime-env, *ai-env, *mcp-env, *smtp-env, *email-dispatch-rabbitmq-env, *web-push-env, *reporting-env, *webhooks-env, *listmonk-env]
+      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *database-env, *database-runtime-env, *privacy-erasure-runtime-env, *api-runtime-env, *ai-env, *mcp-env, *smtp-env, *email-dispatch-rabbitmq-env, *web-push-env, *reporting-env, *webhooks-env, *listmonk-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
@@ -365,7 +400,12 @@ services:
     volumes:
       - ./cerbos/policies:/app/cerbos/policies:ro
       - local_storage_data:/app/storage-data/local
+      - privacy_erasure_authority_data:/app/data
+    deploy:
+      replicas: 1
     depends_on:
+      privacy-erasure-authority-volume-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       event-migrationservice:
@@ -401,7 +441,7 @@ services:
       context: .
       dockerfile: src/Explore.Blazor/Dockerfile
     environment:
-      <<: [*keycloak-env, *secrets-env, *postgres-bootstrap-env]
+      <<: [*keycloak-env, *secrets-env, *database-env, *database-runtime-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
       API_ENDPOINT: ${API_ENDPOINT:-http://islamu-event-api:8080/}
@@ -719,6 +759,7 @@ services:
 
 volumes:
   postgres_data:
+  privacy_erasure_authority_data:
   privacy_erasure_postgres_data:
   redis_data:
   keycloak_data:

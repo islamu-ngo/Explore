@@ -28,6 +28,7 @@
     <ProjectReference Include="..\Explore.API\Explore.API.csproj" />
     <ProjectReference Include="..\Explore.Blazor\Explore.Blazor.csproj" />
     <ProjectReference Include="..\Explore.Infrastructure\Explore.Infrastructure.csproj" IsAspireProjectResource="false" />
+    <ProjectReference Include="..\Explore.Secrets\Explore.Secrets.csproj" IsAspireProjectResource="false" />
   </ItemGroup>
 
 </Project>
