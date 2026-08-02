@@ -209,6 +209,13 @@ Layout rules:
 - Accessibility: the trigger has an action-oriented label; the modal traps focus, closes on Escape/backdrop/outside-image activation, and restores focus to the trigger.
 - Motion: only tokenized opacity, background-color, and transform feedback; reduced-motion mode makes transitions effectively instant.
 
+### RegistrationFormRenderer
+- Structure: one pinned attendee-safe form definition renders ordered sections and all seventeen portable field semantics through native controls. Short text, email, phone, URL, country, and language share a configured single-line family; integer/decimal and date/time/instant share exact native families; long text, Boolean, single/multiple choice, rating, and consent retain focused renderers where interaction or evidence semantics differ.
+- Authority: launch, submit, skip, and onward progress affordances come only from the current order/attempt HAL relations. The renderer never inspects roles or claims, fetches Studio authoring contracts, or recreates server validation rules. Safe server issue codes and field identities annotate matching controls; the server remains authoritative.
+- Consent and privacy: consent blocks display the exact immutable server text separately from its version evidence and use an explicit agreement control. Answers and attempt capabilities remain in scoped memory for the active journey and never enter browser storage, logs, URLs, or analytics.
+- States: visible field completion and server requirement progress remain distinct. Processing, success, safe error, field issues, optional status, and “Skip and continue” are visible and announced. Hidden conditional answers are removed before submission.
+- Accessibility: the form submits with the native Enter path, uses sequential section headings, explicit labels/legends, native keyboard behavior, stable descriptions/errors, and focusable success feedback. Scoped BEM styles use logical properties and existing `--isl-*` tokens for 375px, 768px, 1280px, 200% zoom, LTR/RTL, light/dark, increased/forced contrast, and reduced motion.
+
 ## 6. Public Home Discovery
 
 ### Page Order And Content Truth

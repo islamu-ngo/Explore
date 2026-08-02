@@ -1279,9 +1279,12 @@ Tasks 8.2–8.8 and Phase 8 verification remain pending. No commit or PR was req
 - **Layer:** API
 - **Files:** attempt-launch + submit endpoints on the order surface (authenticated; guest variant `PublicTransactional` with capability token); HAL `optional-questionnaire`, requirement-progress relations; contract regeneration
 - **Acceptance Criteria:**
-  - [ ] Answers absent from ProblemDetails on validation failure (issue codes + field keys only)
+  - [x] Answers absent from ProblemDetails on validation failure (issue codes + field keys only)
+  - [x] Typed requirement progress, pinned attendee-safe form metadata, server-authored subjects, and state-dependent submit/skip HAL affordances are generated into the NSwag client
 - **Dependencies:** 8.5
 - **Effort:** M
+
+**Completion evidence (2026-08-03):** Authenticated and guest launch/submit HTTP scenarios pass 5/5, including a real MediatR + EF repository flow that reads exact progress descriptors, persists only the attempt capability hash, records an optional skip, and fails closed on wrong channel lineage. Native OpenAPI invariants pass 2/2, the broader OpenAPI parity suite passes 11/11, inventory generation passes 1/1, the generated client and canonical 36-project Release build are green, and LSP reports zero errors. Receipt: `.omo/evidence/phase86-DONE_CLAIM.md`.
 
 #### Task 8.7: Native Blazor form renderer
 - **Type:** create
@@ -1299,7 +1302,7 @@ Tasks 8.2–8.8 and Phase 8 verification remain pending. No commit or PR was req
 - **Files:** `RegistrationAnswerFile.cs` (metadata, quarantine state, scan status, storage reference to `StorageObject`); upload path investigation (existing storage endpoints, MIME sniffing, size limits; malware scanning availability)
 - **Description:** If no scanner exists, ship quarantine-by-default (files never exposed until manually released) and record scanner integration as deferred work — File field type remains publishable only when the deployment enables the file pipeline.
 - **Acceptance Criteria:**
-  - [ ] Quarantined file inaccessible via any read endpoint; decision + deferral recorded
+  - [x] Quarantined file inaccessible via any read endpoint; decision + deferral recorded
 - **Dependencies:** 8.3
 - **Effort:** L
 
