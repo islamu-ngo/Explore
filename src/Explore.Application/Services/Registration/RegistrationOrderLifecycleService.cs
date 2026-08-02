@@ -987,12 +987,12 @@ public sealed class RegistrationOrderLifecycleService(
         RegistrationOrder order,
         RegistrationOrderStatusEnum status,
         string message) => new()
-    {
-        Id = order.Id,
-        Success = true,
-        Message = message,
-        Order = RegistrationOrderDto.From(order, status)
-    };
+        {
+            Id = order.Id,
+            Success = true,
+            Message = message,
+            Order = RegistrationOrderDto.From(order, status)
+        };
 
     private static RegistrationOrderLifecycleResponseDto Missing(Guid orderId) => new()
     {
@@ -1005,13 +1005,13 @@ public sealed class RegistrationOrderLifecycleService(
         Guid orderId,
         RegistrationOrder? order,
         string error) => new()
-    {
-        Id = orderId,
-        Success = false,
-        Message = "Registration order lifecycle change failed.",
-        Errors = [error],
-        Order = order is null ? null : RegistrationOrderDto.From(order)
-    };
+        {
+            Id = orderId,
+            Success = false,
+            Message = "Registration order lifecycle change failed.",
+            Errors = [error],
+            Order = order is null ? null : RegistrationOrderDto.From(order)
+        };
 
     private sealed record FinalizationPlan(
         Guid ConcurrencyStamp,

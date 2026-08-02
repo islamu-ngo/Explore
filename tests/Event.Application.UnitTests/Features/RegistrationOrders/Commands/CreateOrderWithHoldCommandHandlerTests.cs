@@ -51,7 +51,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
                 _orders[order.Id] = order;
                 _saved.Add((order, holds));
                 return Task.CompletedTask;
-        });
+            });
         _inventory.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
         _inventory.GetTicketLimitUsageAsync(
                 Arg.Any<Guid>(),
@@ -634,30 +634,30 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
         Guid? purchaserActorId = null,
         long? chosenUnitPriceMinor = null,
         int? platformContributionBasisPoints = null) => new()
-    {
-        EventId = _eventId,
-        TicketCatalogVersionId = ticketCatalogVersionId,
-        AccountUserId = accountUserId,
-        PurchaserActorId = purchaserActorId,
-        VerifiedContactNormalizedEmail = verifiedContactNormalizedEmail,
-        BookingPartyType = BookingPartyTypeEnum.Individual,
-        GuestAccessTokenHash = accountUserId.HasValue
+        {
+            EventId = _eventId,
+            TicketCatalogVersionId = ticketCatalogVersionId,
+            AccountUserId = accountUserId,
+            PurchaserActorId = purchaserActorId,
+            VerifiedContactNormalizedEmail = verifiedContactNormalizedEmail,
+            BookingPartyType = BookingPartyTypeEnum.Individual,
+            GuestAccessTokenHash = accountUserId.HasValue
             ? null
             : CapabilityTokenHash.Create(Convert.ToBase64String(new byte[32])),
-        PlatformContributionBasisPoints = platformContributionBasisPoints,
-        Lines = [new RegistrationOrderLineSelection(ticketTypeId, quantity, chosenUnitPriceMinor)]
-    };
+            PlatformContributionBasisPoints = platformContributionBasisPoints,
+            Lines = [new RegistrationOrderLineSelection(ticketTypeId, quantity, chosenUnitPriceMinor)]
+        };
 
     private CreateRegistrationOrderWithHoldCommand CreateMultiLineCommand(
         Guid ticketCatalogVersionId,
         params RegistrationOrderLineSelection[] lines) => new()
-    {
-        EventId = _eventId,
-        TicketCatalogVersionId = ticketCatalogVersionId,
-        BookingPartyType = BookingPartyTypeEnum.Individual,
-        GuestAccessTokenHash = CapabilityTokenHash.Create(Convert.ToBase64String(new byte[32])),
-        Lines = lines
-    };
+        {
+            EventId = _eventId,
+            TicketCatalogVersionId = ticketCatalogVersionId,
+            BookingPartyType = BookingPartyTypeEnum.Individual,
+            GuestAccessTokenHash = CapabilityTokenHash.Create(Convert.ToBase64String(new byte[32])),
+            Lines = lines
+        };
 
     private DomainEvent CreatePlatformEvent(IdentityAccessModeEnum identityAccessMode = IdentityAccessModeEnum.CapabilityTokenAllowed) => new()
     {

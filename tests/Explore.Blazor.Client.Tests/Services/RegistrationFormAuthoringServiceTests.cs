@@ -88,8 +88,13 @@ public sealed class RegistrationFormAuthoringServiceTests
         var sectionInput = new RegistrationFormSectionInput { Ordinal = 1, Title = "Contact" };
         var fieldInput = new RegistrationFormFieldCreateInput
         {
-            Ordinal = 1, Namespace = "event", Key = "name", Label = "Name", FieldTypeId = 1,
-            RetentionPolicyId = 1, OrganizerVisibilityId = 2
+            Ordinal = 1,
+            Namespace = "event",
+            Key = "name",
+            Label = "Name",
+            FieldTypeId = 1,
+            RetentionPolicyId = 1,
+            OrganizerVisibilityId = 2
         };
         var field = new RegistrationFormFieldDto { Id = fieldId, ConcurrencyStamp = fieldStamp };
         api.AddRegistrationFormFieldAsync(eventId, formId, versionId, sectionId, $"\"{sectionStamp}\"", fieldInput,
@@ -160,7 +165,10 @@ public sealed class RegistrationFormAuthoringServiceTests
         string root = $"/api/events/{eventId}/registration-forms/{formId}/versions/{versionId}/rules";
         var input = new RegistrationFormRuleInput
         {
-            Ordinal = 1, TargetNamespace = "event", TargetKey = "email", Effect = 1,
+            Ordinal = 1,
+            TargetNamespace = "event",
+            TargetKey = "email",
+            Effect = 1,
             Condition = new RegistrationFormConditionInputDto { Operator = "exists", FieldNamespace = "event", FieldKey = "name" }
         };
         var rule = new RegistrationFormRuleDto { Id = ruleId, ConcurrencyStamp = ruleStamp };
@@ -190,8 +198,13 @@ public sealed class RegistrationFormAuthoringServiceTests
         Guid sectionId = Guid.CreateVersion7();
         var input = new RegistrationFormFieldCreateInput
         {
-            Ordinal = 1, Namespace = "event", Key = "name", Label = "Name", FieldTypeId = 1,
-            RetentionPolicyId = 1, OrganizerVisibilityId = 2
+            Ordinal = 1,
+            Namespace = "event",
+            Key = "name",
+            Label = "Name",
+            FieldTypeId = 1,
+            RetentionPolicyId = 1,
+            OrganizerVisibilityId = 2
         };
 
         await Assert.That(async () => await service.AddFieldAsync(eventId, formId, versionId, sectionId,

@@ -1,13 +1,13 @@
 // ABOUTME: bUnit coverage for HAL-driven Studio form authoring and published immutability.
 // ABOUTME: Proves keyboard reorder boundaries, announcements, and exact mutation target checks.
 
-using Microsoft.AspNetCore.Components.Web;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Pages.Studio.RegistrationForms;
+using Microsoft.AspNetCore.Components.Web;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Studio;
@@ -45,24 +45,46 @@ public sealed class RegistrationFormBuilderTests : IDisposable
         };
         var workflow = new HalResourceOfRegistrationWorkflowDto
         {
-            Id = workflowId, EventId = eventId, Purpose = "registration", Forms = [], ConcurrencyStamp = concurrencyStamp,
+            Id = workflowId,
+            EventId = eventId,
+            Purpose = "registration",
+            Forms = [],
+            ConcurrencyStamp = concurrencyStamp,
             _links = new Dictionary<string, HalLink> { ["create-form"] = createLink }
         };
         var summary = new RegistrationFormVersionSummaryDto
         {
-            Id = Guid.CreateVersion7(), Version = 1, StatusCode = "DRAFT", StatusName = "Draft", LanguageTag = "en"
+            Id = Guid.CreateVersion7(),
+            Version = 1,
+            StatusCode = "DRAFT",
+            StatusName = "Draft",
+            LanguageTag = "en"
         };
         var embedded = new RegistrationFormDto
         {
-            Id = formId, EventId = eventId, Name = "Attendee details", Namespace = "event", Key = "attendee-details", Versions = [summary]
+            Id = formId,
+            EventId = eventId,
+            Name = "Attendee details",
+            Namespace = "event",
+            Key = "attendee-details",
+            Versions = [summary]
         };
         var refreshedWorkflow = new HalResourceOfRegistrationWorkflowDto
         {
-            Id = workflowId, EventId = eventId, Purpose = "registration", Forms = [embedded], ConcurrencyStamp = concurrencyStamp
+            Id = workflowId,
+            EventId = eventId,
+            Purpose = "registration",
+            Forms = [embedded],
+            ConcurrencyStamp = concurrencyStamp
         };
         var createdForm = new HalResourceOfRegistrationFormDto
         {
-            Id = formId, EventId = eventId, Name = embedded.Name, Namespace = embedded.Namespace, Key = embedded.Key, Versions = [summary]
+            Id = formId,
+            EventId = eventId,
+            Name = embedded.Name,
+            Namespace = embedded.Namespace,
+            Key = embedded.Key,
+            Versions = [summary]
         };
         HalResourceOfRegistrationFormVersionDto version = VersionGraph(eventId, formId, "DRAFT");
         version.Id = summary.Id;
@@ -355,7 +377,10 @@ public sealed class RegistrationFormBuilderTests : IDisposable
         });
         _service.GetWorkflowAsync(secondEventId, Arg.Any<CancellationToken>()).Returns(new HalResourceOfRegistrationWorkflowDto
         {
-            Id = Guid.CreateVersion7(), EventId = secondEventId, Purpose = "registration", Forms = []
+            Id = Guid.CreateVersion7(),
+            EventId = secondEventId,
+            Purpose = "registration",
+            Forms = []
         });
 
         var cut = _ctx.RenderMudComponent<RegistrationFormBuilder>(parameters => parameters.Add(component => component.EventId, firstEventId));
@@ -366,7 +391,10 @@ public sealed class RegistrationFormBuilderTests : IDisposable
         await Assert.That(firstToken.IsCancellationRequested).IsTrue();
         pending.SetResult(new HalResourceOfRegistrationWorkflowDto
         {
-            Id = Guid.CreateVersion7(), EventId = firstEventId, Purpose = "registration", Forms =
+            Id = Guid.CreateVersion7(),
+            EventId = firstEventId,
+            Purpose = "registration",
+            Forms =
             [new RegistrationFormDto { Id = Guid.CreateVersion7(), EventId = firstEventId, Name = "Stale", Namespace = "event", Key = "stale" }]
         });
         await cut.InvokeAsync(() => Task.CompletedTask);
@@ -434,8 +462,14 @@ public sealed class RegistrationFormBuilderTests : IDisposable
         }
         return new HalResourceOfRegistrationFormVersionDto
         {
-            Id = versionId, EventId = eventId, RegistrationFormId = formId, Version = 1,
-            StatusCode = status, StatusName = status, LanguageTag = "en", Sections = [first, second],
+            Id = versionId,
+            EventId = eventId,
+            RegistrationFormId = formId,
+            Version = 1,
+            StatusCode = status,
+            StatusName = status,
+            LanguageTag = "en",
+            Sections = [first, second],
             _links = Links(("reorder-sections", $"/api/events/{eventId}/registration-forms/{formId}/versions/{versionId}/sections/reorder", "PUT"))
         };
     }
@@ -453,10 +487,19 @@ public sealed class RegistrationFormBuilderTests : IDisposable
     {
         var field = new RegistrationFormFieldDto
         {
-            Id = Guid.CreateVersion7(), Ordinal = ordinal, Namespace = "event", Key = label.ToLowerInvariant(), Label = label,
-            FieldTypeId = 14, FieldTypeCode = "SINGLE_CHOICE", FieldTypeName = "Single choice",
-            RetentionPolicyId = 1, OrganizerVisibilityId = 2, OrganizerVisibilityCode = "AUTHORIZED_ORGANIZERS",
-            OrganizerVisibilityName = "Authorized organizers", ConcurrencyStamp = Guid.CreateVersion7()
+            Id = Guid.CreateVersion7(),
+            Ordinal = ordinal,
+            Namespace = "event",
+            Key = label.ToLowerInvariant(),
+            Label = label,
+            FieldTypeId = 14,
+            FieldTypeCode = "SINGLE_CHOICE",
+            FieldTypeName = "Single choice",
+            RetentionPolicyId = 1,
+            OrganizerVisibilityId = 2,
+            OrganizerVisibilityCode = "AUTHORIZED_ORGANIZERS",
+            OrganizerVisibilityName = "Authorized organizers",
+            ConcurrencyStamp = Guid.CreateVersion7()
         };
         SetLinks(field.AdditionalProperties,
             ("edit", $"/api/events/{eventId}/registration-forms/{formId}/versions/{versionId}/sections/{sectionId}/fields/{field.Id}", "PATCH"),
@@ -478,7 +521,11 @@ public sealed class RegistrationFormBuilderTests : IDisposable
     {
         var rule = new RegistrationFormRuleDto
         {
-            Id = Guid.CreateVersion7(), Ordinal = 1, TargetNamespace = field.Namespace, TargetKey = field.Key, Effect = 1,
+            Id = Guid.CreateVersion7(),
+            Ordinal = 1,
+            TargetNamespace = field.Namespace,
+            TargetKey = field.Key,
+            Effect = 1,
             Condition = new Condition { Operator = "exists", FieldNamespace = field.Namespace, FieldKey = field.Key },
             ConcurrencyStamp = Guid.CreateVersion7()
         };

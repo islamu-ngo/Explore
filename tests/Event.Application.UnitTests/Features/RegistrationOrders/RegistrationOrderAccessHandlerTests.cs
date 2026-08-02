@@ -1,11 +1,12 @@
 // ABOUTME: Tests guest-capability and account-scoped registration-order CQRS access wrappers.
 // ABOUTME: Proves generic absence semantics, one-time token issuance, and lifecycle delegation.
 
+using System.Text.Json;
+using Explore.Application.Authorization;
+using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
-using Explore.Application.Authorization;
-using Explore.Application.Behaviors;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.RegistrationOrders.Handlers.Commands;
@@ -15,10 +16,9 @@ using Explore.Application.Features.RegistrationOrders.Requests.Queries;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
-using NSubstitute;
-using System.Text.Json;
-using Microsoft.Extensions.Logging;
 using MediatR;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
 
