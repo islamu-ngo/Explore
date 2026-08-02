@@ -589,10 +589,16 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
 
         using var createdDocument = JsonDocument.Parse(createBody);
         int assignmentId = createdDocument.RootElement.GetProperty("id").GetInt32();
-        using var listResponse = await fixture.Client.GetAsync(
-            $"/api/eventsessionlanguage/by-session/{scenario.UnrelatedSessionId}");
+        using var listRequest = fixture.CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            $"/api/eventsessionlanguage/management/by-event/{scenario.UnrelatedEventId}/by-session/{scenario.UnrelatedSessionId}",
+            scenario.UserId);
+        using var listResponse = await fixture.Client.SendAsync(listRequest);
         using var listDocument = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
-        var assignment = listDocument.RootElement.EnumerateArray()
+        var assignment = listDocument.RootElement
+            .GetProperty("_embedded")
+            .GetProperty("items")
+            .EnumerateArray()
             .Single(item => item.GetProperty("id").GetInt32() == assignmentId);
         string concurrencyStamp = assignment.GetProperty("concurrencyStamp").GetString()
             ?? throw new InvalidOperationException("Created language assignment omitted concurrencyStamp.");
@@ -809,6 +815,13 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             .WithVisibility(VisibilityTypeEnum.Public)
             .WithSessionDates(DateOnly.FromDateTime(start.UtcDateTime), DateOnly.FromDateTime(start.UtcDateTime))
             .Build();
+        EventLocation eventLocation = EventLocation.CreatePhysical(
+            tenant.TenantId,
+            @event.Id,
+            location.Id,
+            tenant.UserId,
+            DateTime.UtcNow);
+        EventLocationDisclosureAudit eventLocationAudit = eventLocation.CreateInitialDisclosureAudit();
         var session = new EventSession
         {
             Id = Guid.CreateVersion7(),
@@ -827,6 +840,7 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             SortOrder = 1,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+        session.AssignEventLocation(eventLocation);
         session.Reschedule(start, start.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
 
         var agendaItem = new EventAgendaItem
@@ -844,6 +858,7 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             SortOrder = 2,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+        agendaItem.AssignEventLocation(eventLocation);
         agendaItem.Reschedule(start.AddHours(1), start.AddHours(2), "UTC", new EventScheduleProjectionCalculator());
 
         var sessionGroup = new EventSessionGroup
@@ -861,6 +876,7 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             Tenant = null!,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+        sessionGroup.AssignEventLocation(eventLocation);
         var groupAssignment = new EventSessionGroupSession
         {
             Id = Guid.CreateVersion7(),
@@ -887,6 +903,7 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             TenantId = tenant.TenantId,
             Tenant = null!
         };
+        sessionAgendaItem.AssignEventLocation(eventLocation);
         var unrelatedEvent = new EventBuilder()
             .WithTitle($"Unrelated Privacy Event {marker}")
             .WithActorId(tenant.ActorId)
@@ -895,6 +912,13 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             .WithVisibility(VisibilityTypeEnum.Private)
             .WithSessionDates(DateOnly.FromDateTime(start.UtcDateTime), DateOnly.FromDateTime(start.UtcDateTime))
             .Build();
+        EventLocation unrelatedEventLocation = EventLocation.CreatePhysical(
+            tenant.TenantId,
+            unrelatedEvent.Id,
+            unrelatedLocation.Id,
+            tenant.UserId,
+            DateTime.UtcNow);
+        EventLocationDisclosureAudit unrelatedEventLocationAudit = unrelatedEventLocation.CreateInitialDisclosureAudit();
         var unrelatedSession = new EventSession
         {
             Id = Guid.CreateVersion7(),
@@ -912,6 +936,7 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             RegistrationModeId = 1,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+        unrelatedSession.AssignEventLocation(unrelatedEventLocation);
         unrelatedSession.Reschedule(start, start.AddHours(1), "UTC", new EventScheduleProjectionCalculator());
         var unrelatedAgendaItem = new EventAgendaItem
         {
@@ -928,6 +953,7 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             SortOrder = 1,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+        unrelatedAgendaItem.AssignEventLocation(unrelatedEventLocation);
         unrelatedAgendaItem.Reschedule(start.AddHours(1), start.AddHours(2), "UTC", new EventScheduleProjectionCalculator());
         var unrelatedSessionGroup = new EventSessionGroup
         {
@@ -944,6 +970,7 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             Tenant = null!,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+        unrelatedSessionGroup.AssignEventLocation(unrelatedEventLocation);
         unrelatedEvent.Sessions.Add(unrelatedSession);
         unrelatedEvent.RecalculateScheduleSummaryFromSessions();
 
@@ -957,6 +984,8 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
         context.LocationRooms.Add(unrelatedRoom);
         context.Events.Add(@event);
         context.Events.Add(unrelatedEvent);
+        context.EventLocations.AddRange(eventLocation, unrelatedEventLocation);
+        context.EventLocationDisclosureAudits.AddRange(eventLocationAudit, unrelatedEventLocationAudit);
         context.EventAgendaItems.Add(agendaItem);
         context.EventAgendaItems.Add(unrelatedAgendaItem);
         context.EventSessionGroups.Add(sessionGroup);

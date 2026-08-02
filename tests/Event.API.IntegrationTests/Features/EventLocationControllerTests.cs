@@ -22,7 +22,6 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Infrastructure.Services;
 using Explore.Persistence;
-using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -58,7 +57,7 @@ public sealed class EventLocationControllerTests
             .Where(method => method.GetCustomAttributes<HttpMethodAttribute>(inherit: true).Any())
             .ToDictionary(method => method.Name, StringComparer.Ordinal);
 
-        AssertPublic(actions, "GetPublic", HttpMethods.Get, "public");
+        AssertPublic(actions, "GetPublic", HttpMethods.Get, "");
         AssertPrivate(actions, "GetMyAccess", HttpMethods.Get, "my-access");
         AssertPrivate(actions, "GetManagement", HttpMethods.Get, "{eventLocationId:guid}/management");
         AssertPrivate(actions, "UpdateDisclosure", HttpMethods.Patch, "{eventLocationId:guid}/disclosure");
@@ -229,7 +228,7 @@ public sealed class EventLocationControllerRuntimeTests(EventLocationRouteRuntim
     public async Task PublicRoute_IsPrincipalInvariantAndNeverExposesPhysicalIdentity()
     {
         EventLocationRouteScenario scenario = await SeedScenarioAsync();
-        string route = $"/api/events/{scenario.EventId}/locations/public";
+        string route = $"/api/events/{scenario.EventId}/locations";
 
         using HttpResponseMessage anonymous = await fixture.Client.GetAsync(route);
         byte[] anonymousBody = await anonymous.Content.ReadAsByteArrayAsync();
@@ -256,7 +255,7 @@ public sealed class EventLocationControllerRuntimeTests(EventLocationRouteRuntim
         await Assert.That(json).DoesNotContain(scenario.Postcode);
 
         using HttpResponseMessage legacyRoute = await fixture.Client.GetAsync(
-            $"/api/events/{scenario.EventId}/locations");
+            $"/api/events/{scenario.EventId}/locations/public");
         await Assert.That(legacyRoute.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
@@ -386,7 +385,7 @@ public sealed class EventLocationControllerRuntimeTests(EventLocationRouteRuntim
         EventLocationRouteScenario scenario = await SeedScenarioAsync();
 
         using HttpResponseMessage unknownPublic = await fixture.Client.GetAsync(
-            $"/api/events/{Guid.CreateVersion7()}/locations/public");
+            $"/api/events/{Guid.CreateVersion7()}/locations");
 
         string crossEventRoute =
             $"/api/events/{Guid.CreateVersion7()}/locations/{scenario.EventLocationId}/management";
@@ -647,6 +646,16 @@ public sealed class EventLocationRouteRuntimeFixture : IAsyncInitializer, IAsync
     public async Task InitializeAsync()
     {
         await _container.StartAsync();
+        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseNpgsql(_container.GetConnectionString())
+            .UseSnakeCaseNamingConvention()
+            .Options;
+        await using (var context = new ExploreDbContext(options))
+        {
+            await context.Database.MigrateAsync();
+            await LookupTableSeeder.SeedAsync(context);
+        }
+
         Factory = new PostgreSqlApiWebApplicationFactory(
             _container.GetConnectionString(),
             new Dictionary<string, string?>
@@ -661,12 +670,6 @@ public sealed class EventLocationRouteRuntimeFixture : IAsyncInitializer, IAsync
             });
         Factory.UseKestrel();
         Client = Factory.CreateClient();
-
-        await using AsyncServiceScope scope = Factory.Services.CreateAsyncScope();
-        ExploreDbContext context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        await context.Database.EnsureCreatedAsync();
-        await PostgresModelConstraintApplier.ApplyAsync(context);
-        await LookupTableSeeder.SeedAsync(context);
         _databaseReset = await TestDatabaseReset.CreateAsync(_container.GetConnectionString());
     }
 
@@ -692,8 +695,12 @@ public sealed class EventLocationRouteRuntimeFixture : IAsyncInitializer, IAsync
 
     public async ValueTask DisposeAsync()
     {
-        Client.Dispose();
-        await Factory.DisposeAsync();
+        Client?.Dispose();
+        if (Factory is not null)
+        {
+            await Factory.DisposeAsync();
+        }
+
         await _container.DisposeAsync();
         GC.SuppressFinalize(this);
     }
