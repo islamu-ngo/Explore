@@ -5,6 +5,12 @@
 
 Last Updated: 2026-08-02 Europe/Brussels
 
+## TASK 8.8 FILE-ANSWER DECISION (2026-08-02 Europe/Brussels)
+
+No malware scanner is available in the current deployment stack. File answers therefore use `RegistrationAnswerFile` metadata linked to the existing tenant-contained `StorageObject`; new rows start in `quarantined` / `not_scanned` and only `ReleaseManually` records an explicit operator release. The shared content reader and presigned-download handler deny provider access while any active registration-file association remains quarantined, covering authenticated content, anonymous public image, and presigned URL routes before bytes or credentials are exposed.
+
+`Registration:FileAnswers:Enabled` defaults to `false`. Publication preflight rejects File fields with `field.file_pipeline_disabled` until a deployment deliberately enables the existing upload-session pipeline. That pipeline remains the sole authority for declared content type, extension, exact byte count, and container-signature validation; Task 8.8 adds no second MIME parser or size policy. Malware scanner selection, scan execution, infected-file disposition, and automatic clean-file release remain deferred infrastructure work. No migration or model snapshot was generated or edited in this task, as explicitly required by the Task 8.8 execution boundary.
+
 ## PHASE 8.2 INTERRUPTED HANDOFF (2026-08-02 Europe/Brussels)
 
 ### Verified State

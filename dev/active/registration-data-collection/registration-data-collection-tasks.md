@@ -256,7 +256,9 @@ Last Updated: 2026-08-02 Europe/Brussels
 - [ ] **8.5 Requirement fulfillment + idempotent finalization effect** — fulfillment + fenced `RegistrationFinalizationEffect` shared by all paths — **Acceptance:** duplicate effect executes once; optional never blocks — **Effort:** L — **Dependencies:** 8.3, Phase 5
 - [ ] **8.6 Native submission API surface** — attempt-launch + submit endpoints (auth + guest); contract regen — **Acceptance:** no answers in ProblemDetails — **Effort:** M — **Dependencies:** 8.5
 - [ ] **8.7 Native Blazor form renderer** — `Components/Registration/FormRenderer/**` (new) — **Acceptance:** per-type render + condition toggles; skip flow non-error — **Effort:** XL — **Dependencies:** 8.6
-- [ ] **8.8 File answers (gated)** — `RegistrationAnswerFile` + quarantine-by-default; scanner investigation — **Acceptance:** quarantined files unreachable; deferral recorded — **Effort:** L — **Dependencies:** 8.3
+- [x] **8.8 File answers (gated)** — `RegistrationAnswerFile` + quarantine-by-default; scanner investigation — **Acceptance:** quarantined files unreachable; deferral recorded — **Effort:** L — **Dependencies:** 8.3
+  - **Decision:** no scanner exists; `Registration:FileAnswers:Enabled` defaults off, upload validation reuses the existing storage policy, and scanner/automatic-release integration is deferred. Explicit manual release is the only release transition.
+  - **Evidence:** Domain quarantine/release 3/3, publication gate 2/2, real HTTP content/public/presigned denial-and-release 1/1, tenant-contained EF design model and changed-file LSP clean. Task 8.8 introduced no migration or snapshot change.
 
 ### Phase 8 Verification — RUN ONCE AFTER ALL PHASE TASKS
 - [ ] `dotnet build --configuration Release --verbosity quiet`
